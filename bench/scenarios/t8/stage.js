@@ -111,9 +111,11 @@ function review(id) {
   fs.rmSync(cwd, { recursive: true, force: true });
   fs.cpSync(work(id), cwd, { recursive: true });
   fs.rmSync(path.join(cwd, 'gen'), { recursive: true, force: true });
-  const { credits } = call(model, cwd, fs.readFileSync(path.join(DIR, 'prompts/review.md'), 'utf8'), `${id}.review`);
+  const { credits, finalText } = call(model, cwd, fs.readFileSync(path.join(DIR, 'prompts/review.md'), 'utf8'), `${id}.review`);
   logCall(id, 'review', model, credits);
-  const out = readJson(path.join(cwd, 'review.json'));
+  // Some reviewers print the verdicts instead of writing review.json; read them from the final reply then.
+  const file = path.join(cwd, 'review.json');
+  const out = fs.existsSync(file) ? readJson(file) : jsonIn(finalText);
   fs.writeFileSync(work(`${id}.review.json`), `${JSON.stringify({ model, ...out }, null, 2)}\n`);
   return out;
 }

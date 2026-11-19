@@ -50,3 +50,11 @@ A deepseek author is stopped after 85 tool calls (about 25 credits at T5's rate;
 | t8-rollout-ledger-migration | author (discarded) | deepseek-3.2 | 17.04 | the request listed every constraint and the file holding it; key items matched the agent's free-form step ids and accepted any gate; the generator folder sat inside the fixture; re-authored by gpt-5.6-luna |
 | t8-rollout-ledger-migration | map | glm-5 | 0.16 |  |
 | t8-rollout-ledger-migration | review (stopped) | minimax-m2.5 | 0.00 | stopped once the draft was discarded; the cut stream reports no credits |
+| t8-inc-queue-backlog | author | gpt-5.6-luna | 3.51 |  |
+| t8-inc-queue-backlog | map | glm-5 | 0.16 |  |
+| t8-rollout-ledger-migration | author | gpt-5.6-luna | 3.05 |  |
+| t8-rollout-ledger-migration | map | glm-5 | 0.16 |  |
+| t8-inc-queue-backlog | review | qwen3-coder-next | 0.79 |  |
+| t8-rollout-ledger-migration | review | qwen3-coder-next | 0.58 |  |
+| t8-rollout-ledger-migration | edit | (worker) | 0.00 | the reviewer printed its verdicts instead of writing review.json (read from its reply; stage.js now does that itself); request listed every source file and named the metrics catalogue file; both reduced; every-step gate item limited to traffic steps; an exact canary start time replaced by "every step inside the release window"; decoy and rota patterns widened; a keyword `contains` check and a `fixture/` path prefix removed |
+| t8-inc-queue-backlog | edit | (worker) | 0.00 | delayed-notification count defined in the request; root cause patterns accept "retried", "stuck" and "backlog"; decoy pattern fails only a summary that blames the disk; evidence needs 2 of 3 groups |
