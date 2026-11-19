@@ -1,0 +1,9 @@
+{
+  "name": "harbor-payments",
+  "version": "2.4.1",
+  "description": "Small payment callback service",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "engines": {"node": ">=24"},
+  "scripts": {"start": "node src/index.js", "test": "node --test", "check": "node scripts/check-format.js", "export-ledger": "node scripts/export-ledger.js"}
+}

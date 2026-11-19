@@ -1,0 +1,11 @@
+{
+  "name": "room-booking-service",
+  "version": "2.4.1",
+  "description": "Small service for booking shared rooms",
+  "private": true,
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test",
+    "report": "node src/cli.js report"
+  }
+}

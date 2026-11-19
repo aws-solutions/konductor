@@ -105,6 +105,9 @@ function fix(id) {
   return { credits };
 }
 
+// An author guesses its own time; a developer task gets at least 600 s soft and twice that hard (limits are re-set after the pilot).
+const limitsOf = (l) => { const softSec = Math.max(l.softSec, 600); return { softSec, hardSec: Math.max(l.hardSec, softSec * 2) }; };
+
 const sourceNote = (s) => (s === 'original' ? 'original (author-written; idea only)' : `${s.url} (${s.licence}; idea only, paraphrased)`);
 
 function assemble(id) {
@@ -125,8 +128,8 @@ function assemble(id) {
     prompt: draft.prompt,
     fixture: b.id,
     hidden: b.id,
-    timeoutSec: draft.limits.hardSec,
-    limits: draft.limits,
+    timeoutSec: limitsOf(draft.limits).hardSec,
+    limits: limitsOf(draft.limits),
     checks: draft.checks,
     rubric: draft.rubric,
     targetSkills: mapping.targetSkills,

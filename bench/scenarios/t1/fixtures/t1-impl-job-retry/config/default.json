@@ -1,0 +1,5 @@
+{
+  "queueFile": "data/jobs.json",
+  "pollIntervalMs": 250,
+  "logLevel": "info"
+}

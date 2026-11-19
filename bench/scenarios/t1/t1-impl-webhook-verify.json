@@ -1,0 +1,121 @@
+{
+  "id": "t1-impl-webhook-verify",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please add verification to POST /webhooks/payment without changing the health endpoint, ledger shape, or existing commands. The request header is payment-signature, formatted as t=<unix seconds>,v1=<hex>, with repeated v1 values allowed. Each v1 is an HMAC-SHA256 over the timestamp, a dot, and the exact raw request bytes. Compare candidates in constant time, allow timestamps within WEBHOOK_TOLERANCE_SECONDS (default 300), and accept WEBHOOK_SECRET_PRIMARY plus the optional WEBHOOK_SECRET_SECONDARY during rotation. Missing, malformed, expired, future, or non-matching signatures must all return HTTP 401 with {\"error\":\"unauthorized\"}; malformed JSON or an invalid event must return HTTP 400 with {\"error\":\"invalid_request\"}. Do not reveal which authentication part failed. Keep duplicate event ids idempotent: acknowledge a verified repeat with {\"ok\":true,\"duplicate\":true} and do not add its amount again; a new verified event keeps the existing {\"ok\":true,\"duplicate\":false} response. The event fields are id, type, amount, and three-letter currency. GET /ledger must still report {label,balance,eventIds}. For deterministic callers, src/server.js must continue exporting createServer(options), with options.secrets, options.toleranceSeconds, and options.clock (a function returning unix seconds). Environment configuration must expose the same settings. Keep this dependency-free and keep the current tests passing.",
+  "fixture": "t1-impl-webhook-verify",
+  "hidden": "t1-impl-webhook-verify",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "npm test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f test/webhook-security.test.js && test \"$(grep -c '^test(' test/webhook-security.test.js)\" -ge 1",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "! grep -Eq '\"dependencies\"[[:space:]]*:' package.json && test -f src/webhook-signature.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "signed.*callback",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verification-report",
+      "criterion": "The final report accurately says which visible and hidden checks were run and whether they passed (code cannot check this because it cannot evaluate the agent's statement).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "adversarial-code-review",
+    "security-test-generation",
+    "verification"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-code-review",
+      "security-test-generation",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/stripe/stripe-node",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies security requirements (HMAC-SHA256, constant-time comparison, timestamp tolerance, secret rotation) and response formats without prescribing implementation methods or naming specific files to create beyond src/webhook-signature.js which is verified by a check."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly specifies the signature header format (t=<unix seconds>,v1=<hex>), response formats, error codes, idempotency behavior, environment variables, and the createServer options interface. The 'type' field for events is mentioned as having an optional 'type' in architecture.md but the prompt says 'three-letter currency' and mentions 'type' as an event field without specifying optional/required, however hidden tests accept events with type present."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture files reveal the hidden tests or their answers. The fixture lacks any authentication code, and the existing test only validates event shape. The architecture.md and validation.js show event structure but not signature verification details."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Hidden tests catch lazy implementations: raw-body test catches JSON-normalization shortcuts, rotation tests verify both secrets are checked, invalid-digest-length test catches lenient parsing, and the 'no secret configured' test catches missing edge cases."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable. All requirements are stated in the prompt, the existing code provides clear patterns to follow, and the reference implementation passes all tests. The task-draft notes correctly identify pitfalls (JSON parsing before signing, checking only one secret) that competent implementations should avoid."
+      }
+    ]
+  }
+}
