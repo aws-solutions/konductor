@@ -1,6 +1,6 @@
 ---
 name: task-decomposition
-description: Splits user stories and system design into independent features that can be developed by individual engineers with minimal overlap. Trigger on any "break down / split / decompose <feature> into tasks" request, not only explicit skill invocation. Use after system design / HLD is complete and before Kiro spec generation begins.
+description: Splits user stories and system design into independent features that one engineer each can build with minimal overlap. Trigger on any "break down / split / decompose a feature into tasks" request. Use after system design / HLD is complete and before Kiro spec generation begins.
 version: 1.0.0
 tags: [skill, feature-splitting, task-decomposition, planning, agile]
 ---
@@ -12,6 +12,8 @@ tags: [skill, feature-splitting, task-decomposition, planning, agile]
 Takes user stories and system design / HLD and splits them into independent features scoped for individual engineers. The goal is to minimize overlap and dependency between team members so each engineer can work on their feature track independently.
 
 This skill sits between Design and Kiro Spec Generation in the SDLC — one HLD fans out into multiple independent feature tracks, each going through its own Kiro spec workflow.
+
+Produces engineer-sized features, not a task checklist; for tasks.md use `kiro-task-generation`.
 
 ## Usage
 

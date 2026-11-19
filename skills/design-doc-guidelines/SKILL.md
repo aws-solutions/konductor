@@ -1,6 +1,6 @@
 ---
 name: design-doc-guidelines
-description: Use when writing, reviewing, or restructuring a design doc, RFC, technical spec, architecture proposal, ADR, or one-pager. Trigger on requests like "review my design," "tighten this spec," or "is this too technical?" Covers outside-in structure, plain writing rules, AI slop detection, diagram accuracy, and technical accuracy.
+description: 'Use when writing, reviewing or restructuring a design doc, RFC, spec, ADR or one-pager. Triggers: "review my design", "tighten this spec", "is this too technical?".'
 version: 1
 ---
 
@@ -19,6 +19,8 @@ Every design doc follows this flow:
 5. **Implementation Details** — confined section. Clearly labeled so readers can skip.
 6. **Implementation Plan** — phased task tables
 
+Each layer is self-contained. A reviewer reads 1-4. A developer reads 1-6. Never mix layers.
+
 ## Review Checklist
 
 When reviewing a design doc, check:
@@ -33,6 +35,7 @@ When reviewing a design doc, check:
 - [ ] No forward references (mentioning something before it's defined)?
 - [ ] Decision Requested framed as user outcomes, not feature names?
 - [ ] Features explained in terms of problems they solve, not what the tool does?
+- [ ] If the design spans several features, has a parent or companion doc, targets more than one runtime, or renames a file or config field: checked against `references/multi-doc-designs.md`?
 
 ## Anti-patterns
 
@@ -117,14 +120,6 @@ After writing or restructuring, do a redundancy pass:
 - Sentinel files, retry behavior, validation rules — common offenders for duplication
 - Tables that appear in both "How It Works" and "Implementation Details" need clear boundary: summary vs spec
 - Check adjacent sentences, not just sections: if covering sentence A and reading sentence B alone tells the reader nothing new, cut B or merge its addition into A.
-
-## Document Flow (outside-in)
-
-The doc must tell a story from the outside in:
-
-1. Problem (why) → 2. Solution Overview (what, with full-system diagram) → 3. Decision Requested (approve what outcome) → 4. How It Works (design-level, diagrams first) → 5. Implementation Details (spec-level, confined) → 6. Implementation Plan (tasks)
-
-Each layer is self-contained. A reviewer reads 1-4. A developer reads 1-6. Never mix layers.
 
 ## Multi-Document Designs
 

@@ -20,7 +20,8 @@ All three are declared by all three orchestrators. This page uses the plain
 The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself in
 the default `auto` mode (in `coordinator` mode it hands every change to a specialist); no runtime
 enforces either shape. In Kiro CLI
-`konductor`'s `allowedTools` is `fs_read` alone, which pre-approves reads and nothing else; a write
+`konductor`'s `allowedTools` is `fs_read` and read-only `aws-mcp` lookups, which pre-approve reads
+and nothing else; a write
 or a shell command still reaches you as a permission prompt, because `@builtin` grants both. In
 **Claude Code it is granted `Bash`, `Write` and `Edit`** with no prompt of its own, alongside `Read`, `Glob`, `Grep`,
 `WebFetch`, `WebSearch`, `TodoWrite`, `Workflow`, `Skill`, `SendMessage`, and an `Agent(...)` tool
@@ -182,8 +183,8 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 | | Dispatch mechanism |
 | --- | --- |
 | `konductor` | Kiro CLI's `subagent` tool or Claude Code's `Agent(...)` tool, spawning specialists inline |
-| `konductor-mux-orchestrator` | `skills/mux-dispatch/` shell scripts — a pane per specialist, polling `/tmp/konductor-mux/*.done` |
-| `konductor-cmux-orchestrator` | `skills/cmux-dispatch/cmux-dispatch.sh` — a surface per specialist, polling `/tmp/konductor-cmux/*.done` |
+| `konductor-mux-orchestrator` | `skills/mux-dispatch/` shell scripts — a pane per specialist, polling each dispatch's `.done` under the registry (default `/tmp/konductor-mux`) |
+| `konductor-cmux-orchestrator` | `skills/cmux-dispatch/cmux-dispatch.sh` — a surface per specialist, polling each dispatch's `.done` under the registry (default `/tmp/konductor-cmux`) |
 
 Functionally the same three SOPs run either way.
 

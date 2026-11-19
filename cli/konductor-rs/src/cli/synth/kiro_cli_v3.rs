@@ -12,8 +12,8 @@
 // docstring -- this is NOT one of the "no schema change" fields the
 // rest of this module's rationale applies to).
 //
-// This module targets Kiro CLI V3 (the backend runtime Amazon calls
-// "KAS" internally) specifically. Whether the same JSON shape is also
+// This module targets the Kiro CLI V3 backend runtime specifically.
+// Whether the same JSON shape is also
 // consumed by the Kiro IDE agent picker is plausible but NOT formally
 // confirmed by any of the public kiro.dev pages this module is grounded
 // in -- verify against a real Kiro IDE install before assuming IDE
@@ -37,23 +37,38 @@
 //     alias pairs: read<->fs_read/fsRead, shell<->execute_bash/
 //     execute_cmd, aws<->use_aws, subagent<->use_subagent)
 //
-// `hooks` conversion (`convert_hooks_for_v3`, `KAS_HOOK_TRIGGERS`) is the
-// one exception to "grounded in the four kiro.dev pages above": no public
-// page cited above documents KAS's hook-document schema. Confirmed instead
-// against a vendored, canonically-derived copy of Kiro CLI's own
-// `/upgrade-agent` engine's `kiro_config_migration/hooks.rs` module --
-// the same copy `push_trusted_agent_rules` cites below -- whose `convert_hooks`/
-// `object_form_to_docs`/`hook_entry_to_doc` functions implement this exact
-// conversion: an object (even `{}`) fails whole-profile validation
-// outright under KAS's `hooks: z.array(hookDocumentSchema)` schema, and
-// the array-of-documents target shape (`{name, trigger, matcher?, action,
-// timeout}`) is what that module emits. `convert_hooks_for_v3` below
-// mirrors it (trigger validation against the five known triggers,
-// `command`-less "tool hooks" dropped, `timeout_ms` -> seconds via
-// ceiling-divide with a 1s floor, `name` synthesized as
-// `<trigger>-<index>`) rather than leaving V2's trigger-keyed object
-// shape as a raw passthrough, which is exactly the shape KAS's own
-// validator rejects.
+// `hooks` conversion (`convert_hooks_for_v3`, `KAS_HOOK_TRIGGERS`) is
+// grounded in a fifth page:
+//   - kiro.dev/docs/cli/v3/hooks-migration/ (fetched 2026-10-10) -- the
+//     array-of-documents target shape (`{name, trigger, matcher?,
+//     action, timeout}`), the standalone-file wrapper shape (`{version,
+//     hooks}`), and the fact that the real `/upgrade-agent` converter
+//     drops a Hook V3 can't represent and warns instead of writing an
+//     invalid profile. The agent-config page's New Fields Reference
+//     Table confirms `hooks` is typed as an `array` in V3, so V2's
+//     trigger-keyed object shape doesn't fit it at all -- a raw
+//     passthrough isn't an option.
+//
+// There is no vendored copy of Kiro CLI's upgrade engine in this
+// repository. The `<trigger>-<index>` names and the 10-second default
+// timeout in `convert_hooks_for_v3` match the hooks-migration page's
+// worked example (`agentSpawn-0`, `"timeout": 10`). The `timeout_ms`
+// -> whole-seconds conversion (ceiling-divide, 1-second floor) is this
+// module's own choice, not sourced from a kiro.dev page.
+//
+// `push_trusted_agent_rules`'s `trustedAgents`/`availableAgents` split
+// and `collect_dropped_tools_settings_warnings`'s diagnostic come from
+// a different evidence class: live testing against the installed Kiro
+// CLI `agent upgrade` engine (kiro-cli 2.29.0, run directly on
+// 2026-10-10, and again with kiro-cli 3.4.0 on 2026-11-18; the second
+// run also backs the tool-ID notes on `TOOL_ID_TO_TAG` and
+// `TOOL_ID_TO_CAPABILITY`). Running it on an agent with both fields set shows
+// `trustedAgents` landing in `permissions.rules`' `subagent`
+// capability, while `availableAgents` becomes new `subagent/<name>`
+// tags appended to `tools` -- two different fields feeding two
+// different parts of the output, and `availableAgents` has a real
+// mapping this module doesn't implement yet (see
+// `push_trusted_agent_rules` and `collect_dropped_tools_settings_warnings`).
 //
 // ── Reconciling "rename" vs "alias" (no contradiction) ──────────────────
 // The migration guide frames old tool IDs as renamed ("Old Tool ID
@@ -77,9 +92,9 @@ use serde::Serialize;
 
 use super::content_writers::{write_all_context, write_all_skills, write_all_sops};
 use super::kiro_cli_v2::{
-    match_skill_resource, write_skill_scopes_sidecar, write_sop_scopes_sidecar,
-    AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR,
-    SOPS_CONTENT_TYPE_DIR,
+    match_skill_resource, with_registry_mcp_servers, write_skill_scopes_sidecar,
+    write_sop_scopes_sidecar, AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR,
+    SKILLS_CONTENT_TYPE_DIR, SOPS_CONTENT_TYPE_DIR,
 };
 use super::model::CanonicalModel;
 use super::parse_canonical::skill_names_from_dependencies;
@@ -116,6 +131,10 @@ use super::HarnessTransformer;
 /// It is a Kiro-only field, so it lives in the Kiro client config -- exactly
 /// the "corresponding `KiroCliConfig` field plus a matching addition here"
 /// the note above calls for.
+///
+/// `hooks` is omitted when the agent has none. Kiro accepts a file without
+/// the key, and the Kiro IDE docs say it does not show agents that carry
+/// `hooks`, so only agents with real hooks pay that cost.
 #[derive(Serialize)]
 struct KiroV3AgentFile<'a> {
     name: &'a str,
@@ -130,8 +149,13 @@ struct KiroV3AgentFile<'a> {
     permissions: PermissionsBlock,
     #[serde(rename = "mcpServers")]
     mcp_servers: serde_json::Value,
+    #[serde(skip_serializing_if = "is_empty_hook_list")]
     hooks: serde_json::Value,
     resources: Vec<String>,
+}
+
+fn is_empty_hook_list(hooks: &serde_json::Value) -> bool {
+    hooks.as_array().is_some_and(Vec::is_empty)
 }
 
 /// The V3 `permissions` block. `rules` mirrors the shape confirmed on
@@ -165,10 +189,10 @@ struct PermissionRule {
     exclude: Vec<String>,
 }
 
-/// Confirmed old-tool-ID -> new-canonical-tag mappings for the `tools`
-/// field, drawn directly from the two sources below (both fetched
-/// 2026-09-06/07, see this module's header comment). Every entry here
-/// is independently confirmed on at least one of the two pages; entries
+/// Old-tool-ID -> new-canonical-tag mappings for the `tools` field.
+/// Most rows come from the two kiro.dev pages below (both fetched
+/// 2026-09-06/07, see this module's header comment); the per-row notes
+/// say which rows rest on a live engine run or on neither source. Entries
 /// NOT in this table (e.g. a bare individual MCP tool name, or a
 /// server-scoped `@<server-name>` tag -- V3's tag table only confirms
 /// the collective `@mcp`/`@builtin`/`*` forms, not per-server tags) pass
@@ -185,45 +209,33 @@ struct PermissionRule {
 ///     `web_search`: migration guide's "Old Tool ID (2.x)" / "New Tool
 ///     ID" table, confirmed verbatim (a second, stricter verbatim-only
 ///     fetch re-confirmed every row of this specific table).
-///   - `todo`/`task` -> `todo_list`, `agent_crew` -> `subagent`: not
-///     named on either public page above. Confirmed instead against
-///     a vendored, canonically-derived copy of Kiro CLI's own
-///     `/upgrade-agent` engine's `kiro_config_migration` module
-///     (`tool_table.rs`/`vendored_types.rs` -- the same
-///     copy `push_trusted_agent_rules` cites below): the vendored
-///     `BuiltInToolName::Task`'s confirmed parse spellings are `todo`,
-///     `task`, and `todo_list` (canonical display `todo_list`, upstream
-///     `task/task_tool.rs`), and `BuiltInToolName::AgentCrew`'s are
-///     `agent_crew` and `use_subagent` (canonical display `subagent`,
-///     upstream `agent_crew.rs`). `todo` additionally has direct in-repo
-///     evidence -- four real agent-spec.json files across this workspace
-///     declare the literal `"todo"` tool (two in this repo's own
-///     `agents/`, two in a downstream internal package), and an
-///     unconverted `"todo"` in a V3
-///     agent's `tools` array is exactly the shape the real engine's own
-///     V2-authorship detection flags as still needing migration -- so
-///     `map_tool_tag` must convert it, the same way it already converts
-///     every other tag on those agents.
+///   - `agent_crew` -> `subagent`: not named on either public page
+///     above. Confirmed by live testing against the installed Kiro CLI
+///     `agent upgrade` engine (kiro-cli 3.4.0, run on 2026-11-18): an
+///     agent whose `tools` is `["agent_crew"]` comes out as
+///     `["subagent"]`, the same result as `["use_subagent"]`.
+///   - `todo`/`task` -> `todo_list`: not named on either public page
+///     above, and NOT confirmed by the live engine. The same kiro-cli
+///     3.4.0 run leaves `todo`, `task` and `todo_list` unchanged and
+///     reports each as a V2 tool with no V3 equivalent. These two rows
+///     are this module's own choice. Two agent specs in this repo's
+///     `agents/` (the mux and cmux orchestrators) declare the literal
+///     `"todo"` tool, so the rows are load-bearing.
 ///
-///     `agentCrew` (camelCase) remains deliberately absent: the vendored
-///     module's `BuiltInToolName::AgentCrew` accepts `agent_crew` and
-///     `use_subagent` as parse spellings, not `agentCrew`, and neither
-///     kiro.dev/docs/reference/built-in-tools/ nor any agent-spec.json
-///     file in this repo names it either. Treat it as an unconfirmed
-///     spelling, not an alias, unless a real source confirms otherwise.
+///     `agentCrew` (camelCase) remains deliberately absent: the same
+///     live run leaves it unchanged rather than renaming it, and
+///     neither kiro.dev/docs/reference/built-in-tools/ nor any
+///     agent-spec.json file in this repo names it. Treat it as an
+///     unconfirmed spelling, not an alias, unless a real source confirms
+///     otherwise.
 ///
-///     Known gap this table does NOT cover: the same vendored
-///     `tool_table.rs` also folds `WebFetch`/`WebSearch` into tag
-///     `"web"`, and `Grep`/`Glob`/`Code`/`Introspect` into tag `"read"`
-///     -- conflicting with this table's own `webFetch -> web_fetch`/
-///     `webSearch -> web_search` rows (confirmed verbatim against the
-///     public migration guide instead) and leaving bare `grep`/`glob`/
-///     `code`/`introspect` uncovered entirely. No agent spec in this
-///     package uses any of these five spellings literally (verified
-///     across every declared `clientConfig.kiroCli.tools` array), so
-///     only the `todo`/`task`/`agent_crew` rows above are currently
-///     load-bearing. Resolving the `web`/`read` conflict against the
-///     public guide is left to this module's doc owner.
+///     Known gap this table does NOT cover: in the same live run, the
+///     engine keeps `grep`/`glob`/`code`/`introspect` and adds a `read`
+///     tag next to each, and keeps `web_fetch`/`web_search` and adds a
+///     `web` tag. No agent spec in this package uses any of these
+///     spellings literally (verified across every declared
+///     `clientConfig.kiroCli.tools` array), so this module does not
+///     mirror that behavior.
 const TOOL_ID_TO_TAG: &[(&str, &str)] = &[
     ("fs_read", "read"),
     ("fsRead", "read"),
@@ -295,14 +307,11 @@ const TOOL_ID_TO_TAG: &[(&str, &str)] = &[
 /// `subagent`. Checked against kiro.dev's built-in-tools reference
 /// (confirms only `read<->fs_read/fsRead`,
 /// `shell<->execute_bash/execute_cmd`, `aws<->use_aws`,
-/// `subagent<->use_subagent`), a vendored, canonically-derived copy of
-/// Kiro CLI's own `/upgrade-agent` engine's
-/// `kiro_config_migration` module (`BuiltInToolName::AgentCrew`'s only
-/// confirmed parse spellings are `agent_crew`/`use_subagent`, and its
-/// `aliases()` returns only `agent_crew`), and the pinned
-/// `testdata/upstream-aliases.txt` fixture (`AgentCrew = [agent_crew]`,
-/// no `delegate`). Same treatment as the unconfirmed `agentCrew`
-/// camelCase spelling: left out rather than guessed at.
+/// `subagent<->use_subagent`) and against the installed Kiro CLI
+/// `agent upgrade` engine (kiro-cli 3.4.0, run on 2026-11-18), which
+/// leaves a `delegate` tool unchanged rather than renaming it to
+/// `subagent`. Same treatment as the unconfirmed `agentCrew` camelCase
+/// spelling: left out rather than guessed at.
 ///
 /// `use_aws`/`aws` are deliberately ABSENT from this table (they exist
 /// as tags in `TOOL_ID_TO_TAG`, mapping to the visibility tag `aws`, but
@@ -381,6 +390,12 @@ impl HarnessTransformer for KiroCliV3Transformer {
                 let Some(kiro) = &agent.client_config.kiro_cli else {
                     continue;
                 };
+                for warning in
+                    collect_dropped_tools_settings_warnings(&agent.name, &kiro.tools_settings)
+                {
+                    eprintln!("konductor: warning: {warning}");
+                }
+                let kiro = with_registry_mcp_servers(kiro, &agent.dependencies.mcp_registry);
                 let declared: Vec<&str> =
                     skill_names_from_dependencies(&agent.dependencies.skills).collect();
                 let prompt = skill_index::kiro_skill_block(&agent.name, &declared, &model.skills)
@@ -388,7 +403,7 @@ impl HarnessTransformer for KiroCliV3Transformer {
                 let mut file = render_agent_file(
                     &agent.name,
                     &agent.config,
-                    kiro,
+                    &kiro,
                     &agent.dependencies.context.context_names,
                     &skill_names,
                 )?;
@@ -658,12 +673,22 @@ fn regex_to_glob(pattern: &str, for_allow_surface: bool) -> Option<String> {
     Some(widen_unanchored_ends_for_deny(widened, pattern, false))
 }
 
+/// The `toolsSettings` keys this module has a confirmed V3 mapping for.
+/// Single source of truth for "confirmed" shared by `derive_permission_rules`
+/// (which gates its per-key match on membership before dispatching, since it
+/// still needs distinct rule-building logic per key) and
+/// `collect_dropped_tools_settings_warnings` (which uses membership directly
+/// as a skip-the-generic-warning check). Add a key here only once a real
+/// mapping exists for it in `derive_permission_rules`.
+const CONFIRMED_TOOLS_SETTINGS_KEYS: &[&str] = &["execute_bash", "fs_read", "fs_write", "subagent"];
+
 /// Derives `permissions.rules[]` from the source agent-spec's
 /// `toolsSettings` (raw-JSON passthrough in the V2 IR) and `allowedTools`
 /// fields, per the migration guide's own `toolsSettings` ->
 /// `permissions.rules` table.
 ///
-/// `toolsSettings` handling, one match arm per confirmed key:
+/// `toolsSettings` handling, one match arm per key in
+/// `CONFIRMED_TOOLS_SETTINGS_KEYS`:
 ///   - `execute_bash.allowedCommands`/`deniedCommands` -> `shell`
 ///     `allow`/`deny` rules (glob-converted via
 ///     `regex_to_glob_best_effort`). `execute_bash.denyByDefault: true`
@@ -683,12 +708,14 @@ fn regex_to_glob(pattern: &str, for_allow_surface: bool) -> Option<String> {
 ///     cell. Flagged here rather than silently treated as equally
 ///     confirmed.
 ///   - `subagent.trustedAgents` -> a scoped `subagent` `allow` rule (see
-///     `push_trusted_agent_rules`'s own docstring for why this one
-///     unconfirmed-by-the-migration-table key is deliberately mapped
-///     anyway). `subagent.availableAgents` and any other `toolsSettings`
-///     key (e.g. a hypothetical `web_fetch` settings block) have no
-///     kiro.dev-documented mapping; deliberately skipped, not guessed
-///     at.
+///     `push_trusted_agent_rules`'s docstring for why this
+///     migration-table-unconfirmed key is mapped anyway).
+///     `subagent.availableAgents` governs `tools`-array visibility
+///     tags, not an authorization rule, so it has no entry here; this
+///     module doesn't implement that mapping yet, so dropping it is
+///     surfaced via `collect_dropped_tools_settings_warnings` instead
+///     of being silently absorbed. Any other `toolsSettings` key gets
+///     the same diagnostic treatment.
 ///
 /// `allowedTools` handling: each entry resolves to a capability (and,
 /// for a namespaced MCP reference, a specific `server/tool` or
@@ -725,6 +752,12 @@ fn derive_permission_rules(
 
     if let serde_json::Value::Object(map) = tools_settings {
         for (tool_key, settings) in map {
+            if !CONFIRMED_TOOLS_SETTINGS_KEYS.contains(&tool_key.as_str()) {
+                // No kiro.dev-documented mapping into permissions.rules
+                // for this key; the caller surfaces its drop via
+                // collect_dropped_tools_settings_warnings instead.
+                continue;
+            }
             match tool_key.as_str() {
                 "execute_bash" => {
                     push_path_or_command_rules(
@@ -766,11 +799,18 @@ fn derive_permission_rules(
                         settings,
                     );
                 }
-                _ => {
-                    // No kiro.dev-documented mapping for this
-                    // toolsSettings key -- deliberately skipped rather
-                    // than guessed at (see this function's docstring).
-                }
+                // Unreachable by construction: the membership check above
+                // only lets a key through when it's in
+                // CONFIRMED_TOOLS_SETTINGS_KEYS, and every key in that
+                // array has a match arm above. A key added to the array
+                // without a matching arm here hits this panic rather than
+                // silently falling through -- see
+                // `tools_settings_sentinel_key_is_rejected_consistently_by_both_functions`
+                // in the test module for the consistency check this
+                // guards.
+                _ => unreachable!(
+                    "'{tool_key}' is in CONFIRMED_TOOLS_SETTINGS_KEYS but has no match arm here"
+                ),
             }
         }
     }
@@ -937,28 +977,25 @@ fn push_path_or_command_rules(
 /// `KiroCliConfig::tools_settings`'s own docstring and
 /// `kiro_cli_v2.rs`'s test fixtures).
 ///
-/// kiro.dev's own public pages document no `subagent`-capability match
-/// syntax at all (checked directly, not from memory, as part of this
-/// fix), so `trustedAgents` specifically (as opposed to its sibling
-/// `availableAgents`, see below) is not confirmed by a PUBLIC kiro.dev
-/// source. It IS confirmed directly against a vendored,
-/// canonically-derived copy of Kiro CLI's own
-/// `/upgrade-agent` engine's `kiro_config_migration` module -- a vendored, canonically-derived
-/// copy of Kiro CLI's own real `/upgrade-agent` engine, not a guess --
-/// which shows, with a side-by-side per-agent table built from that
-/// engine's actual installed output, that `permissions.rules`' derived
-/// `subagent` allow/deny pair is bound to `trustedAgents` specifically
-/// (the engine recomputes it from the agent's own composed
-/// `toolsSettings.subagent.trustedAgents`), while the SEPARATE `tools`
-/// array's `subagent/<name>` visibility TAGS are bound to the sibling
-/// field `availableAgents` instead -- confirming the two artifacts are
-/// driven by two different fields. This module's own tags-vs-capabilities
-/// distinction (see `TOOL_ID_TO_CAPABILITY`'s docstring) is exactly that
-/// same split: `trustedAgents` -> the `permissions.rules` capability this
-/// function derives; `availableAgents` -> a `tools`-array visibility tag,
-/// which is a DIFFERENT field (`tools`, not `toolsSettings`) that this
-/// module's `map_tool_tag` path already handles independently and which
-/// this function correctly does not touch.
+/// kiro.dev's public pages document no `subagent`-capability match
+/// syntax, so `trustedAgents` is not confirmed by a public source. It
+/// IS confirmed against the real, installed Kiro CLI `agent upgrade`
+/// engine (kiro-cli 2.29.0, verified live on 2026-10-10): running
+/// `kiro-cli agent upgrade` on an agent with both `trustedAgents` and
+/// `availableAgents` set shows the resulting `permissions.rules`'
+/// `subagent` allow/deny pair is bound to `trustedAgents`, while a
+/// separate change -- new `subagent/<name>` entries appended to the
+/// `tools` array -- is bound to `availableAgents` instead. This
+/// module's tags-vs-capabilities distinction (see
+/// `TOOL_ID_TO_CAPABILITY`'s docstring) matches that split:
+/// `trustedAgents` -> this function's `permissions.rules` output;
+/// `availableAgents` -> `tools`-array tags on a different field.
+/// Nothing in this module implements that `tools`-array side yet --
+/// `map_tool_tag`/`TOOL_ID_TO_TAG` only rewrite IDs already present in
+/// `tools`, they don't synthesize new `subagent/<name>` entries --
+/// which is why dropping `availableAgents` gets a diagnostic
+/// (`collect_dropped_tools_settings_warnings` below) instead of silent
+/// treatment.
 ///
 /// `trustedAgents` entries are emitted as literal (non-glob) match
 /// strings: kiro.dev/docs/permissions/'s "Pattern matching" section
@@ -969,11 +1006,13 @@ fn push_path_or_command_rules(
 /// reasonable interpretation of `match` (literal or glob) since a plain
 /// string with no metacharacters means the same thing either way.
 ///
-/// `availableAgents` is deliberately NOT mapped into a `permissions.rules`
-/// `subagent` entry by this function, per the internal evidence above:
-/// it drives the `tools` array's visibility tags, not the authorization
-/// rule this function derives. Mapping it here would conflate two
-/// fields the vendored engine itself keeps separate.
+/// `availableAgents` is correctly NOT mapped into a `permissions.rules`
+/// `subagent` entry here: it drives `tools`-array visibility tags, not
+/// an authorization rule, and mapping it in would conflate two fields
+/// the real engine keeps separate. Its actual mapping target (new
+/// `subagent/<name>` tags) isn't implemented anywhere in this module,
+/// which is why dropping it gets a diagnostic instead of silent
+/// treatment (see `collect_dropped_tools_settings_warnings`).
 fn push_trusted_agent_rules(
     rules: &mut Vec<PermissionRule>,
     capabilities_with_allow_rule: &mut HashSet<&'static str>,
@@ -1002,10 +1041,76 @@ fn push_trusted_agent_rules(
     capabilities_with_allow_rule.insert("subagent");
 }
 
-/// KAS's five recognized hook triggers, camelCase, per Kiro CLI's own
-/// real hook-trigger enum (see this module's header comment for the
-/// provenance of this class of evidence). A V2 trigger spelling not in
-/// this list has no KAS equivalent and is dropped by
+/// Collects synth-time diagnostics for `toolsSettings` content this
+/// transformer drops with no V3 equivalent. Returns plain message
+/// strings rather than printing directly, so the caller controls the
+/// `eprintln!` prefix -- mirrors `parse_canonical.rs::check_skill_scope_consistency`,
+/// since this crate has no general warnings-collection channel through
+/// `HarnessTransformer`.
+///
+/// `subagent.availableAgents` gets its own message rather than the
+/// generic case below: it DOES have a confirmed V3 mapping, verified
+/// live against the installed Kiro CLI `agent upgrade` engine
+/// (kiro-cli 2.29.0, 2026-10-10), which rewrites
+/// `availableAgents: ["a", "b"]` into scoped `subagent/a`/`subagent/b`
+/// tags on `tools` (not into `permissions.rules`, where `trustedAgents`
+/// lands -- see `push_trusted_agent_rules`). This transformer doesn't
+/// implement that mapping yet, so dropping the field silently would
+/// lose which subagents an agent's menu should show; the diagnostic is
+/// a stopgap until the mapping exists, not a claim the field is
+/// unmappable. The warning is for orchestrators only: `render_agent_file`
+/// strips every spawn tag and `subagent` rule from a specialist, so
+/// there is no list to restrict, and `parse_canonical`'s
+/// `check_specialist_spawn_grants` already warns when a specialist's
+/// spec names a subagent.
+///
+/// Any other key not in `CONFIRMED_TOOLS_SETTINGS_KEYS` gets the generic
+/// message: no agent spec in this repository uses one today, but a future
+/// per-tool settings block would hit it and deserves the same visibility.
+fn collect_dropped_tools_settings_warnings(
+    agent_name: &str,
+    tools_settings: &serde_json::Value,
+) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let serde_json::Value::Object(map) = tools_settings else {
+        return warnings;
+    };
+    for (tool_key, settings) in map {
+        if tool_key == "subagent" {
+            // `subagent` is itself a confirmed key (see
+            // CONFIRMED_TOOLS_SETTINGS_KEYS), but still needs its own
+            // check layered on top: `trustedAgents` is fully mapped by
+            // push_trusted_agent_rules, while `availableAgents` is
+            // dropped despite having a real mapping this module doesn't
+            // implement yet (see this function's docstring).
+            let has_available_agents = settings
+                .get("availableAgents")
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|arr| !arr.is_empty());
+            if has_available_agents && !is_specialist(agent_name) {
+                warnings.push(format!(
+                    "agent '{agent_name}': toolsSettings.subagent.availableAgents was \
+                     dropped during V3 synth -- this transformer does not yet emit the \
+                     scoped `subagent/<name>` tool tags the real Kiro CLI upgrade engine \
+                     uses for this field, so the agent's V3 `tools` array will show the \
+                     unscoped `subagent` capability instead of the restricted list"
+                ));
+            }
+            continue;
+        }
+        if !CONFIRMED_TOOLS_SETTINGS_KEYS.contains(&tool_key.as_str()) {
+            warnings.push(format!(
+                "agent '{agent_name}': toolsSettings.{tool_key} has no V3 mapping in this \
+                 synth target and was dropped"
+            ));
+        }
+    }
+    warnings
+}
+
+/// The five CLI 2.x hook triggers, camelCase, as listed in the
+/// hooks-migration page's 2.x-to-V3 trigger table. A V2 trigger spelling
+/// not in this list has no KAS equivalent and is dropped by
 /// `convert_hooks_for_v3` rather than guessed at.
 const KAS_HOOK_TRIGGERS: &[&str] = &[
     "agentSpawn",
@@ -1015,25 +1120,21 @@ const KAS_HOOK_TRIGGERS: &[&str] = &[
     "stop",
 ];
 
-/// CLI absent-`timeout_ms` default, in milliseconds, per Kiro CLI's own
-/// real V2 reader default -- KAS defaults an absent array-form `timeout`
-/// to 60s, a different value, so an omitted V2 timeout is always emitted
-/// explicitly here rather than left absent for KAS to default on its
-/// own.
+/// Timeout emitted for a V2 hook with no `timeout_ms`, in milliseconds.
+/// The 10-second value matches the hooks-migration page's worked
+/// example, where `/upgrade-agent` writes `"timeout": 10` on every
+/// converted hook, so `timeout` is always emitted explicitly.
 const DEFAULT_HOOK_TIMEOUT_MS: u64 = 10_000;
 
 /// Converts V2's trigger-keyed `hooks` object into KAS's
 /// array-of-documents form (`[{name, trigger, matcher?, action, timeout},
-/// ...]`). Per this module's header comment, KAS's own validator rejects
-/// object-form `hooks` outright ("fails whole-profile validation and
-/// drops the entire agent") -- a raw passthrough of `kiro.hooks`'s
-/// native, V2 object shape is exactly the shape that gets an agent's
-/// entire profile rejected under V3, so this conversion is required, not
-/// optional polish.
+/// ...]`). Per this module's header comment, V3's `hooks` field is
+/// typed as an `array` -- V2's trigger-keyed OBJECT shape does not fit
+/// that field at all, so a raw passthrough of `kiro.hooks`'s native V2
+/// shape is not an option; this conversion is required, not optional
+/// polish.
 ///
-/// Mirrors Kiro CLI's own real hook-conversion algorithm (see this
-/// module's header comment for why this class of evidence outranks the
-/// four kiro.dev pages the rest of this module cites):
+/// The algorithm below (see this module's header comment for sourcing):
 /// triggers are visited in sorted key order for deterministic output;
 /// each trigger's entries are converted independently and indexed
 /// (`<trigger>-<index>`) so KAS's required non-empty `name` is always
@@ -1041,42 +1142,36 @@ const DEFAULT_HOOK_TIMEOUT_MS: u64 = 10_000;
 /// ceiling division with a 1-second floor (an authored sub-second value,
 /// or a literal `0`, maps to KAS's tightest expressible bound rather than
 /// `0`, which KAS reads as "disabled" -- inverting the author's intent);
-/// an absent `timeout_ms` still emits `timeout` at the CLI's own default
-/// (10s), so the migrated hook does not silently run under KAS's larger
-/// 60s default instead. A "tool hook" (no `command` key -- KAS's
-/// `action` is a discriminated union with no non-command variant) and an
-/// entry under an unrecognized trigger are both dropped rather than
-/// emitted as an invalid document, matching the vendored engine's own
-/// fail-safe: this crate has no warnings-collection mechanism to surface
-/// the drop through (unlike the vendored engine's own
-/// `MigrationWarning`), so silent omission is this module's equivalent of
-/// that engine's "drop with a warning".
+/// an absent `timeout_ms` still emits `timeout` at
+/// `DEFAULT_HOOK_TIMEOUT_MS` (10s), as the worked example does. A "tool
+/// hook" (no `command` key -- KAS's `action` is a discriminated union
+/// with no non-command variant) and an entry under an unrecognized
+/// trigger are both dropped rather than emitted as an invalid document.
+/// The public hooks-migration page says the real `/upgrade-agent`
+/// converter also drops an unrepresentable Hook, but it reports a
+/// warning. This function drops hooks silently: only `toolsSettings`
+/// drops print a warning today (see
+/// `collect_dropped_tools_settings_warnings` above).
 ///
-/// This function's array-form output does NOT reach AIM's own installer
-/// merge path, so a known hazard elsewhere -- array-form hooks throwing
-/// on that path, with the original silently kept on catch -- does not
-/// apply to this output today. Verified, not assumed: `install/registry.rs`'s
-/// `STRATEGIES` registers exactly two install strategies,
-/// `KiroCliInstallStrategy` and `ClaudeInstallStrategy` -- there is no
-/// `kiro-cli-v3` install strategy. `tests/synth_install_e2e.rs` states
-/// this directly ("install (untouched by this CR) only ever reads from
-/// the kiro-cli-v2 output today"), and this crate's `install` command
-/// never reads `dist/kiro-cli-v3/` anywhere. Separately, the merge path
-/// with that hazard (`adapter.rs`) lives entirely inside the vendored
-/// upgrade-agent engine's own crate -- a different build tool (`aim-build`, driven by `aim
-/// agents install`/`aim plugins install`) with its own separate pipeline
-/// that composes `clientConfig.kiroCli` fragments from agent-spec.json
-/// files directly; it never reads this crate's `dist/` output either.
-/// `adapter.rs` does not exist anywhere in this crate's own source tree
-/// (confirmed by search). So this is two genuinely separate,
-/// non-intersecting pipelines today, not one gap silently glossed over:
-/// this synth target's array-form hooks output has no current consumer
-/// that could carry it into AIM's merge path. This determination holds
-/// only as long as both stay true -- it must be re-checked if a
-/// `kiro-cli-v3` install strategy is ever added, since that strategy
-/// (unlike `KiroCliInstallStrategy` today) would be the first thing to
-/// actually install this output into a live, possibly AIM-managed, agent
-/// file.
+/// This function's array-form output does NOT reach a merge-with-
+/// existing-content path, so a known hazard elsewhere -- array-form
+/// hooks throwing on that path, with the original silently kept on
+/// catch -- does not apply here. `install/registry.rs`'s `STRATEGIES`
+/// registers three install strategies -- `KiroCliInstallStrategy`,
+/// `KiroCliV3InstallStrategy`, and `ClaudeInstallStrategy`.
+/// `KiroCliV3InstallStrategy` is a real consumer of this output: its
+/// `install_from_local` reads agent files out of `dist/kiro-v3/` (the
+/// directory `KiroCliV3Transformer::transform` writes) and
+/// copies/rewrites them into `.kiro/agents/`. The hazard still doesn't
+/// apply because that strategy never merges hooks into pre-existing
+/// agent content -- per its own module doc comment, its agents are
+/// always freshly synthesized JSON with no merge concern.
+///
+/// The merge path that DOES carry the hazard (`adapter.rs`) belongs to
+/// a separate installer outside this crate, which composes
+/// `clientConfig.kiroCli` fragments from agent-spec.json files directly
+/// and never reads this crate's `dist/` output. `adapter.rs` does not
+/// exist anywhere in this crate's own source tree.
 fn convert_hooks_for_v3(
     hooks: &indexmap::IndexMap<String, serde_json::Value>,
 ) -> serde_json::Value {
@@ -1106,30 +1201,18 @@ fn convert_hooks_for_v3(
 /// docstring for why this is dropped rather than emitted.
 ///
 /// `matcher` is carried over verbatim as an opaque string -- no
-/// regex-to-glob rewrite, no alternation splitting, no validation of any
-/// kind -- and this is deliberate, not an oversight. The vendored
-/// `kiro_config_migration::hooks::hook_entry_to_doc` (a canonically-derived
-/// copy of Kiro CLI's own `/upgrade-agent` engine,
-/// `src/kiro_config_migration/hooks.rs`) is the canonical, real
-/// `/upgrade-agent` conversion this function mirrors, and its own
-/// handling of `matcher` is the identical single line: read the string if
-/// present, insert it unchanged, nothing else. That module DOES carry a
-/// dedicated regex-to-glob converter (`regex_to_glob.rs`), but it is wired
-/// only into `permissions.rs` for the `shell`/`web_fetch` capability
-/// `match` arrays derived from V2's `toolsSettings` -- `hooks.rs` never
-/// calls it. So a hook's `matcher` and a `permissions.rules[].match`
-/// entry are not the same kind of field despite the shared name: KAS
-/// treats the latter as glob syntax (converted from V2's regex before
-/// this crate ever sees it) but the vendored engine's own silence on any
-/// matcher transformation for hooks is the evidence that KAS's hook
-/// matcher is consumed as whatever raw string form the V2 hook already
-/// used -- which already is a `|`-separated regex alternation in a real
-/// agent spec elsewhere in this workspace (a security-gate hook's
-/// matcher combining multiple guard patterns).
-/// Converting or splitting that string here would not match the vendored
-/// engine's own behavior and would risk breaking exactly the
-/// security-gate matchers (read/write and push-gate guards)
-/// this field exists to carry.
+/// regex-to-glob rewrite, no alternation splitting, no validation of
+/// any kind -- and this is deliberate, not an oversight. A hook's
+/// `matcher` and a `permissions.rules[].match` entry are not the same
+/// kind of field despite the shared name: KAS treats the latter as
+/// glob syntax, converted from V2's regex via `regex_to_glob` before
+/// this crate ever emits it. The hooks-migration page says
+/// `/upgrade-agent` rewrites a known 2.x tool name in a matcher to its
+/// shared group (`fs_read` becomes `read`); this function does not do
+/// that rewrite. Converting or splitting the string would risk
+/// breaking a `|`-separated regex alternation, such as a guard hook's
+/// matcher that combines several patterns, so the matcher passes
+/// through unchanged.
 fn convert_hook_entry(
     trigger: &str,
     idx: usize,
@@ -1347,9 +1430,10 @@ mod tests {
     use super::*;
     use crate::cli::synth::kiro_cli_v2::{SKILL_SCOPES_SIDECAR_FILE, SOP_SCOPES_SIDECAR_FILE};
     use crate::cli::synth::parser::{
-        AgentConfig, AgentDependencies, ClientConfig, ParsedAgentSpec,
+        AgentConfig, AgentDependencies, ClientConfig, McpServerDef, ParsedAgentSpec,
     };
     use crate::cli::synth::spawn_policy::KIRO_SPAWN_TOOL_IDS;
+    use std::collections::BTreeMap;
 
     fn agent_with_kiro(name: &str, kiro: KiroCliConfig) -> ParsedAgentSpec {
         ParsedAgentSpec {
@@ -1417,14 +1501,12 @@ mod tests {
     }
 
     /// The `todo`/`task` -> `todo_list`, `agent_crew` -> `subagent` rows
-    /// in `TOOL_ID_TO_TAG` (see that table's own doc comment). Regression
-    /// guard for a live agent-spec shape in this package
-    /// (`konductor-mux-orchestrator` et al. declare the literal `"todo"`
-    /// tool): an unconverted `"todo"` in a V3 agent's `tools` array is
-    /// exactly the shape the real Kiro CLI V3 engine's own
-    /// V2-authorship detection flags as still needing migration.
+    /// in `TOOL_ID_TO_TAG` (see that table's doc comment for which rows
+    /// are confirmed). Regression guard for a live agent-spec shape in
+    /// this package: the mux and cmux orchestrators declare the literal
+    /// `"todo"` tool.
     #[test]
-    fn map_tool_tag_converts_vendored_engine_sourced_ids() {
+    fn map_tool_tag_converts_todo_task_and_agent_crew() {
         assert_eq!(map_tool_tag("todo"), "todo_list");
         assert_eq!(map_tool_tag("task"), "todo_list");
         assert_eq!(map_tool_tag("agent_crew"), "subagent");
@@ -1826,10 +1908,11 @@ mod tests {
         );
     }
 
-    /// `subagent.availableAgents` is the one field of the `subagent`
-    /// `toolsSettings` block that stays unmapped -- see
-    /// `push_trusted_agent_rules`'s own docstring for why (a visibility/
-    /// discovery concept, not a confirmed authorization boundary).
+    /// `subagent.availableAgents` stays out of `permissions.rules` --
+    /// see `push_trusted_agent_rules`'s docstring for why (it drives
+    /// `tools`-array visibility tags, not an authorization rule). See
+    /// `collect_dropped_tools_settings_warnings_flags_available_agents`
+    /// below for where its drop is still surfaced.
     #[test]
     fn derive_permission_rules_skips_available_agents_but_not_trusted_agents() {
         let tools_settings = serde_json::json!({
@@ -1840,6 +1923,183 @@ mod tests {
             rules.is_empty(),
             "expected no rule derived from availableAgents alone, got: {rules:?}"
         );
+    }
+
+    // ── collect_dropped_tools_settings_warnings ───────────────────────
+
+    #[test]
+    fn collect_dropped_tools_settings_warnings_is_empty_for_confirmed_keys() {
+        let tools_settings = serde_json::json!({
+            "execute_bash": {"allowedCommands": ["^git status$"]},
+            "fs_read": {"allowedPaths": ["src/**"]},
+            "fs_write": {"allowedPaths": ["src/**"]},
+            "subagent": {"trustedAgents": ["helper-one"]}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings for fully-mapped toolsSettings keys, got: {warnings:?}"
+        );
+    }
+
+    #[test]
+    fn collect_dropped_tools_settings_warnings_is_empty_for_absent_tools_settings() {
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &serde_json::json!({}));
+        assert!(warnings.is_empty());
+    }
+
+    /// `availableAgents` has a real, confirmed V3 mapping that this
+    /// module doesn't implement yet -- its drop must be surfaced, not
+    /// silently absorbed.
+    #[test]
+    fn collect_dropped_tools_settings_warnings_flags_available_agents() {
+        let tools_settings = serde_json::json!({
+            "subagent": {"availableAgents": ["helper-one", "helper-two"]}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("konductor", &tools_settings);
+        assert_eq!(
+            warnings.len(),
+            1,
+            "expected exactly one warning, got: {warnings:?}"
+        );
+        assert!(warnings[0].contains("konductor"));
+        assert!(warnings[0].contains("availableAgents"));
+    }
+
+    /// A specialist loses every spawn tag and `subagent` rule in
+    /// `render_agent_file`, and `check_specialist_spawn_grants` already
+    /// warns about the spec, so this function stays quiet for it.
+    #[test]
+    fn collect_dropped_tools_settings_warnings_skips_available_agents_for_specialists() {
+        let tools_settings = serde_json::json!({
+            "subagent": {"availableAgents": ["helper-one"]}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    /// An empty `availableAgents` array carries no information worth
+    /// warning about -- same treatment `derive_permission_rules` gives
+    /// an empty `trustedAgents` array.
+    #[test]
+    fn collect_dropped_tools_settings_warnings_ignores_empty_available_agents() {
+        let tools_settings = serde_json::json!({
+            "subagent": {"availableAgents": []}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    /// `subagent.trustedAgents` alone (no `availableAgents`) must not
+    /// trigger the `availableAgents`-specific warning -- it is already
+    /// fully mapped by `push_trusted_agent_rules`.
+    #[test]
+    fn collect_dropped_tools_settings_warnings_does_not_flag_trusted_agents_alone() {
+        let tools_settings = serde_json::json!({
+            "subagent": {"trustedAgents": ["helper-one"]}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    #[test]
+    fn collect_dropped_tools_settings_warnings_flags_unconfirmed_keys() {
+        let tools_settings = serde_json::json!({
+            "web_fetch": {"allowedDomains": ["example.com"]}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert_eq!(
+            warnings.len(),
+            1,
+            "expected exactly one warning, got: {warnings:?}"
+        );
+        assert!(warnings[0].contains("k-example"));
+        assert!(warnings[0].contains("web_fetch"));
+    }
+
+    // ── CONFIRMED_TOOLS_SETTINGS_KEYS: single source of truth ─────────
+    //
+    // `derive_permission_rules` and `collect_dropped_tools_settings_warnings`
+    // both read `CONFIRMED_TOOLS_SETTINGS_KEYS` instead of each listing its
+    // own four strings (see that const's own docstring). A `const` can't be
+    // mutated from within a test to literally prove "adding a key changes
+    // both functions' behavior", so the two tests below prove the same
+    // claim the only way a compile-time array allows: by iterating the real
+    // array (so a future edit to it is picked up automatically) and showing
+    // both functions treat every member as confirmed, while a key held out
+    // of the array is treated as unconfirmed by both.
+
+    /// Every key in `CONFIRMED_TOOLS_SETTINGS_KEYS` must be dispatched to a
+    /// real match arm in `derive_permission_rules` (not silently absorbed,
+    /// not hitting that function's `unreachable!` catch-all) and must never
+    /// trigger `collect_dropped_tools_settings_warnings`'s generic "has no
+    /// V3 mapping" message. `subagent` is checked with `trustedAgents` only
+    /// so it exercises the fully-mapped path without also tripping its
+    /// separate, deliberately-kept `availableAgents` warning (see
+    /// `collect_dropped_tools_settings_warnings_flags_available_agents`
+    /// above for that distinct behavior).
+    #[test]
+    fn confirmed_tools_settings_keys_are_dispatched_consistently_by_both_functions() {
+        let settings_for = |key: &str| -> serde_json::Value {
+            match key {
+                "execute_bash" => serde_json::json!({"allowedCommands": ["^git status$"]}),
+                "fs_read" | "fs_write" => serde_json::json!({"allowedPaths": ["src/**"]}),
+                "subagent" => serde_json::json!({"trustedAgents": ["helper-one"]}),
+                other => panic!(
+                    "no representative settings fixture for '{other}' -- add one here when \
+                     adding it to CONFIRMED_TOOLS_SETTINGS_KEYS"
+                ),
+            }
+        };
+
+        for key in CONFIRMED_TOOLS_SETTINGS_KEYS {
+            let tools_settings = serde_json::json!({ *key: settings_for(key) });
+
+            let rules = derive_permission_rules(&tools_settings, &[]);
+            assert!(
+                !rules.is_empty(),
+                "expected '{key}' to be dispatched to a rule-producing match arm \
+                 in derive_permission_rules, got no rules"
+            );
+
+            let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+            assert!(
+                !warnings.iter().any(|w| w.contains("has no V3 mapping")),
+                "expected '{key}' to be recognized by \
+                 collect_dropped_tools_settings_warnings as confirmed, got: {warnings:?}"
+            );
+        }
+    }
+
+    /// The mirror of the test above: a key deliberately NOT in
+    /// `CONFIRMED_TOOLS_SETTINGS_KEYS` must be rejected the same way by
+    /// both functions -- no rule from `derive_permission_rules`, and
+    /// exactly the generic "has no V3 mapping" warning from
+    /// `collect_dropped_tools_settings_warnings`.
+    #[test]
+    fn tools_settings_sentinel_key_is_rejected_consistently_by_both_functions() {
+        const SENTINEL_KEY: &str = "__sentinel_unconfirmed_key_for_test__";
+        assert!(
+            !CONFIRMED_TOOLS_SETTINGS_KEYS.contains(&SENTINEL_KEY),
+            "test sentinel must stay outside the confirmed-keys list for this test to mean \
+             anything"
+        );
+        let tools_settings = serde_json::json!({ SENTINEL_KEY: {"anything": true} });
+
+        let rules = derive_permission_rules(&tools_settings, &[]);
+        assert!(
+            rules.is_empty(),
+            "expected no rule for a key outside CONFIRMED_TOOLS_SETTINGS_KEYS, got: {rules:?}"
+        );
+
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert_eq!(
+            warnings.len(),
+            1,
+            "expected exactly the generic unconfirmed-key warning, got: {warnings:?}"
+        );
+        assert!(warnings[0].contains(SENTINEL_KEY));
+        assert!(warnings[0].contains("has no V3 mapping"));
     }
 
     /// Generic, unscoped `allowedTools` entries (a bare `fs_read` or
@@ -2155,8 +2415,7 @@ mod tests {
 
     /// A single-trigger, single-entry hook converts to a one-element KAS
     /// array with a synthesized `<trigger>-<index>` name and the CLI's
-    /// own absent-timeout default (10s) -- mirrors the vendored engine's
-    /// own `object_form_becomes_kas_array` fixture case.
+    /// own absent-timeout default (10s).
     #[test]
     fn convert_hooks_for_v3_converts_single_trigger_entry() {
         let mut hooks = indexmap::IndexMap::new();
@@ -2211,11 +2470,11 @@ mod tests {
     /// matcher already takes in a real agent spec elsewhere in this
     /// workspace (combining multiple read/write guard patterns) -- must
     /// survive conversion byte-for-byte. `convert_hook_entry`'s docstring
-    /// is the evidence trail for why this is correct: the vendored engine's own
-    /// `hook_entry_to_doc` carries `matcher` over as an opaque string with
-    /// no regex-to-glob rewrite and no alternation splitting, unlike the
-    /// `shell`/`web_fetch` capability `match` arrays it derives elsewhere,
-    /// which DO go through a dedicated regex-to-glob converter. A prior
+    /// is the rationale for why this is correct: `matcher` carries over
+    /// as an opaque string with no regex-to-glob rewrite and no
+    /// alternation splitting, unlike the `shell`/`web_fetch` capability
+    /// `match` arrays `derive_permission_rules` derives elsewhere, which
+    /// DO go through a dedicated `regex_to_glob` conversion. A prior
     /// metacharacter-free fixture (`"fs_write"`, above) could not have
     /// distinguished "carried verbatim" from "converted, but the input
     /// had nothing for the conversion to change" -- this fixture can.
@@ -2248,8 +2507,7 @@ mod tests {
     /// Sub-second and zero `timeout_ms` values clamp UP to a 1-second
     /// floor rather than down to 0 -- KAS reads a `0` timeout as
     /// "disabled", which would invert an author's short-timeout intent
-    /// into no timeout at all. Mirrors the vendored engine's own
-    /// `authored_timeout_clamps_up_to_at_least_one_second` fixture.
+    /// into no timeout at all.
     #[test]
     fn convert_hooks_for_v3_clamps_sub_second_timeout_up_to_one_second() {
         for (ms, secs) in [
@@ -2323,8 +2581,8 @@ mod tests {
     }
 
     /// An empty `hooks` object converts to an empty array -- KAS rejects
-    /// `{}` but accepts `[]` -- matching this module's existing
-    /// "minimal valid output" contract for `permissions`.
+    /// `{}` but accepts `[]`. `KiroV3AgentFile` then leaves the empty list
+    /// out of the written file.
     #[test]
     fn convert_hooks_for_v3_empty_object_becomes_empty_array() {
         let hooks = indexmap::IndexMap::new();
@@ -2335,8 +2593,8 @@ mod tests {
     /// End-to-end guard, at the `transform` level rather than the unit
     /// level: a `hooks` object anywhere in the installed V3 agent file
     /// is exactly the shape KAS's own validator rejects (see this
-    /// module's header comment), so the file `render_agent_file`
-    /// produces must always carry `hooks` as an array.
+    /// module's header comment), so an agent with hooks must get them
+    /// as an array in the file `render_agent_file` produces.
     #[test]
     fn transform_emits_hooks_as_array_not_object() {
         let mut hooks_map = indexmap::IndexMap::new();
@@ -2373,6 +2631,23 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    #[test]
+    fn transform_omits_hooks_key_when_the_agent_has_no_hooks() {
+        let dir = temp_dir("no-hooks");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("k-unhooked", KiroCliConfig::default())],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+
+        let agent_file = dir.join(expected_output_dir()).join("k-unhooked.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&agent_file).unwrap()).unwrap();
+        assert!(parsed.get("hooks").is_none(), "got: {parsed}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     // ── Minimal valid output (no toolsSettings) ───────────────────────
 
     /// An agent-spec with no `toolsSettings` at all (the parser's own
@@ -2396,6 +2671,65 @@ mod tests {
             parsed.get("toolsSettings").is_none(),
             "toolsSettings must not appear in V3 output, got: {parsed}"
         );
+    }
+
+    /// End-to-end guard for `transform`'s own call site of
+    /// `collect_dropped_tools_settings_warnings` (the one place in this
+    /// module the two functions' outputs must stay consistent with each
+    /// other): a real agent with `subagent.availableAgents` set must not
+    /// have a rule for the available-but-not-trusted name leak into the
+    /// rendered agent file's `permissions.rules`, even though the sibling
+    /// `trustedAgents` name on the same `subagent` key legitimately does.
+    /// The agent is an orchestrator, since a specialist loses its
+    /// `subagent` rule entirely. The other
+    /// `collect_dropped_tools_settings_warnings_*` and
+    /// `derive_permission_rules_*` tests call those functions directly;
+    /// this is the only test that drives them through the real `transform`
+    /// call site to prove the wiring, not just the pure functions.
+    ///
+    /// This covers the file-output side of that wiring only. It does not
+    /// assert on the warning text `transform` prints via `eprintln!`,
+    /// because this test harness has no stderr-capture mechanism.
+    #[test]
+    fn transform_does_not_leak_available_agents_only_name_into_permission_rules() {
+        let kiro = KiroCliConfig {
+            tools_settings: serde_json::json!({
+                "subagent": {
+                    "trustedAgents": ["helper-trusted"],
+                    "availableAgents": ["helper-trusted", "helper-available-only"]
+                }
+            }),
+            ..Default::default()
+        };
+        let dir = temp_dir("available-agents-no-leak");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("konductor", kiro)],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+
+        let agent_file = dir.join(expected_output_dir()).join("konductor.json");
+        let contents = fs::read_to_string(&agent_file).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&contents).unwrap();
+
+        assert!(
+            !contents.contains("helper-available-only"),
+            "availableAgents-only name must not appear anywhere in rendered \
+             output, got: {contents}"
+        );
+        assert_eq!(
+            parsed["permissions"]["rules"],
+            serde_json::json!([{
+                "capability": "subagent",
+                "match": ["helper-trusted"],
+                "effect": "allow",
+            }]),
+            "expected exactly the trustedAgents-derived rule and nothing \
+             from availableAgents, got: {}",
+            parsed["permissions"]["rules"]
+        );
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -2821,5 +3155,96 @@ mod tests {
         assert!(!absolute_escape.exists());
 
         let _ = fs::remove_dir_all(&output_root);
+    }
+
+    fn aws_mcp_registry_entry() -> McpServerDef {
+        McpServerDef {
+            command: Some("uvx".to_string()),
+            args: vec![
+                "mcp-proxy-for-aws-cli==1.7.0".to_string(),
+                "https://aws-mcp.us-east-1.api.aws/mcp".to_string(),
+            ],
+            url: None,
+        }
+    }
+
+    fn agent_with_mcp_registry(
+        name: &str,
+        kiro: KiroCliConfig,
+        registry: BTreeMap<String, McpServerDef>,
+    ) -> ParsedAgentSpec {
+        let mut agent = agent_with_kiro(name, kiro);
+        agent.dependencies.mcp_registry = registry;
+        agent
+    }
+
+    fn transform_and_read_agent(label: &str, agent: ParsedAgentSpec) -> serde_json::Value {
+        let dir = temp_dir(label);
+        let file_name = format!("{}.json", agent.name);
+        let model = CanonicalModel {
+            agents: vec![agent],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+        let written = fs::read_to_string(dir.join(expected_output_dir()).join(file_name)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+        serde_json::from_str(&written).unwrap()
+    }
+
+    #[test]
+    fn transform_renders_mcp_servers_from_dependencies_mcp_registry() {
+        let registry = BTreeMap::from([("aws-mcp".to_string(), aws_mcp_registry_entry())]);
+        let agent = agent_with_mcp_registry("k-developer", KiroCliConfig::default(), registry);
+
+        let file = transform_and_read_agent("mcp-registry", agent);
+
+        assert_eq!(file["mcpServers"]["aws-mcp"]["command"], "uvx");
+        assert_eq!(
+            file["mcpServers"]["aws-mcp"]["args"],
+            serde_json::json!([
+                "mcp-proxy-for-aws-cli==1.7.0",
+                "https://aws-mcp.us-east-1.api.aws/mcp"
+            ])
+        );
+    }
+
+    #[test]
+    fn kiro_cli_mcp_servers_entry_overrides_the_same_named_registry_entry() {
+        let registry = BTreeMap::from([
+            ("aws-mcp".to_string(), aws_mcp_registry_entry()),
+            (
+                "other-mcp".to_string(),
+                McpServerDef {
+                    command: Some("other".to_string()),
+                    ..Default::default()
+                },
+            ),
+        ]);
+        let mut kiro_servers = indexmap::IndexMap::new();
+        kiro_servers.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("kiro-specific".to_string()),
+                ..Default::default()
+            },
+        );
+        let kiro = KiroCliConfig {
+            mcp_servers: kiro_servers,
+            ..Default::default()
+        };
+
+        let file = transform_and_read_agent(
+            "mcp-registry-override",
+            agent_with_mcp_registry("k-developer", kiro, registry),
+        );
+
+        let servers = file["mcpServers"].as_object().unwrap();
+        assert_eq!(
+            servers.keys().collect::<Vec<_>>(),
+            ["aws-mcp", "other-mcp"],
+            "the kiroCli entry replaces the registry entry in place"
+        );
+        assert_eq!(servers["aws-mcp"]["command"], "kiro-specific");
+        assert_eq!(servers["aws-mcp"]["args"], serde_json::json!([]));
     }
 }

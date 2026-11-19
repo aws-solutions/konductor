@@ -1,7 +1,7 @@
 ---
 name: socratic-elicitation
-description: 'Interactive Socratic questioning that surfaces missing information, unstated assumptions, and unresolved tradeoffs from the user before work begins, or when stress-testing a plan the user already holds. Use when the user says "ask me questions first", "what am I missing", "poke holes in this", or "challenge this plan", or when a request is too vague to start. Asks one question at a time and ends with a requirements or challenge summary.'
-version: 1.0.0
+description: 'Asks one question at a time to find gaps or test a plan. Use when the user says "ask me questions first", "what am I missing", "poke holes in this", "challenge this plan", or a request is too vague.'
+version: 1.1.1
 tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planning]
 ---
 
@@ -11,7 +11,7 @@ tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planni
 
 Socratic Elicitation surfaces what is missing, ambiguous, or assumed BEFORE work begins (Mode A), or stress-tests a plan the user already holds before any artifact exists to review (Mode B). It works through one focused question at a time, waits for the answer, and lets each answer determine whether to follow up or move on — never a fixed script read start to finish.
 
-This is a conversation with the human, not an evaluation of a document. If a finished artifact already exists, evaluate it with `asdlc-aspect-review` instead of running this skill against the human who wrote it.
+This is a conversation with the human, not an evaluation of a document. If a finished artifact already exists, evaluate it with `k-aspect-review` instead of running this skill against the human who wrote it.
 
 Both modes draw on the same underlying discipline: [Socratic questioning](https://en.wikipedia.org/wiki/Socratic_questioning), a public method of directed inquiry with six recognized question categories — clarification, probing assumptions, probing evidence/reasons, probing implications, examining alternative viewpoints, and questioning the question itself. Mode A and Mode B apply that discipline to two different situations.
 
@@ -45,7 +45,7 @@ Both modes draw on the same underlying discipline: [Socratic questioning](https:
 
 ## Mode B: Challenge Mode (plan not yet an artifact)
 
-**Purpose:** Stress-test an idea, plan, or decision the user already holds, while it still exists only as an intention — before it has become a document or a design an evaluator could review. If a completed artifact exists, use `asdlc-aspect-review` instead.
+**Purpose:** Stress-test an idea, plan, or decision the user already holds, while it still exists only as an intention — before it has become a document or a design an evaluator could review. If a completed artifact exists, use `k-aspect-review` instead.
 
 **Triggers:**
 
@@ -105,41 +105,29 @@ This skill stops as soon as ANY of these is true:
 
 ## Escalation to Deliberation Panel
 
-When this skill reaches an unresolved ambiguity or a significant tradeoff where:
-
-- The user's answer reveals 2+ viable paths with non-trivial trade-offs, AND
-- No clear winner emerges from the user's stated preference
-
-this skill OFFERS (never auto-runs) a deliberation panel. Present the offer with a cost/time note:
+When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, stop asking new questions and offer (never auto-run) a deliberation panel. State only the options and trade-offs the user has raised, in their terms, without adding options or leaning toward either side:
 
 ```
-I've identified a significant tradeoff:
+I've found a decision with no clear winner:
 
-  [Option A]: <description> — favors <dimension>
-  [Option B]: <description> — favors <dimension>
-  [Option C]: <description> (if applicable)
+  [Option A]: <description> (favors <dimension>)
+  [Option B]: <description> (favors <dimension>)
 
 How would you like to proceed?
 
   1. Answer directly (tell me your preference and we'll keep going)
-  2. Convene a deliberation panel (~2-3 minutes) — independent
-     perspectives derived from this specific tradeoff's own axes
-     argue it out, then an arbiter synthesizes a confidence-scored
-     recommendation
+  2. Convene a deliberation panel (~2-3 minutes): it derives 3-6 axes
+     specific to this decision, argues each independently,
+     cross-examines the arguments, and returns a scored recommendation
 ```
 
-**When the user opts in:**
+**Once per session per topic.** For a later tradeoff on the same topic, don't print the block or the numbered menu again. Write only this one line:
 
-1. This skill pauses its question sequence.
-2. Invoke the `deliberation-panel` skill directly with `decision_domain` inferred from context (default `general-tradeoff`), `stance=evaluative`, and `consent_confirmed=true` (the user's opt-in above satisfies the panel's consent gate — pass it through explicitly rather than making the panel ask again). Pass the specific tradeoff as the subject.
-3. Present the panel's recommendation to the user.
-4. Resume elicitation with the user's decision incorporated into the requirements summary.
+```
+Another decision point: <Option A> vs <Option B>. Convene a panel, or decide directly?
+```
 
-**Rules:**
-
-- Offer the panel at MOST once per session per topic. Subsequent tradeoffs get a lighter prompt: "I found another tradeoff — same treatment?"
-- Never auto-run the panel without the user's explicit opt-in.
-- If the `deliberation-panel` skill is not available in the current environment, offer the user the option to think it through together instead: "I found a significant tradeoff — would you like to reason through it together, or decide directly?"
+If the user opts in, run the panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
 
 ---
 

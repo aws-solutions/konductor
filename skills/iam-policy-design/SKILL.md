@@ -9,7 +9,7 @@ tags: [skill, iam, security, policy, aws, least-privilege]
 
 ## Overview
 
-Generates IAM policies, resource-based policies, and security configurations from system design and threat model inputs. Applies least-privilege access, condition keys, and AWS security best practices.
+Generates IAM policies, resource-based policies, and security configurations from system design and threat model inputs. Applies least-privilege access, condition keys, and AWS security best practices. Beyond policies, it covers KMS encryption, audit logging (CloudTrail, service logs, VPC Flow Logs), security monitoring (CloudWatch, GuardDuty, Security Hub), threat-model and compliance checks (GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001), and CDK or CloudFormation code for the controls.
 
 ## Usage
 
@@ -28,30 +28,6 @@ Start with zero permissions and add only what each component needs. Use conditio
 ### Policy Types
 
 IAM role policies (attached to compute), resource-based policies (S3 buckets, KMS keys, SQS queues), SCPs (organizational guardrails), and permission boundaries (delegation limits).
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for generating the IAM policies. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Security Policy Engineer (Maker)
-
-## Role Definition
-
-You are a senior AWS security engineer and IAM policy expert with deep expertise in AWS IAM policy design, security services (IAM, KMS, Secrets Manager, CloudTrail, GuardDuty, Security Hub), threat modeling, compliance frameworks (GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001), AWS Well-Architected Security Pillar, Zero Trust architecture, encryption strategies, and audit logging.
-
-## Core Capabilities
-
-1. Analyzing system architecture to identify security requirements
-2. Designing IAM policies following least privilege principle
-3. Generating identity-based and resource-based policies
-4. Recommending encryption strategies (KMS, at-rest, in-transit)
-5. Configuring audit logging (CloudTrail, service logs, VPC Flow Logs)
-6. Designing security monitoring (CloudWatch, GuardDuty, Security Hub)
-7. Validating against threat models and compliance requirements
-8. Generating CDK and CloudFormation security infrastructure code
-9. Creating compliance validation checklists
 
 ## Production Readiness Tiers
 
@@ -88,10 +64,10 @@ Unless explicitly out of scope, include:
 
 **Encryption:**
 
-- Customer-managed KMS keys for all data stores with automatic rotation
+- Customer-managed KMS keys with automatic rotation for data whose classification needs them
 - Separate key policies for administrators and users
 - TLS 1.2+ enforced for all data in transit
-- S3 bucket policies deny non-SSL requests and unencrypted uploads
+- S3: SSE-S3 by default, or SSE-KMS with a customer managed key when the data classification needs it, and a bucket policy that denies non-TLS requests. S3 encrypts every upload by default, so a deny on unencrypted uploads is no longer needed. When the classification needs a customer managed key, the bucket policy also denies `s3:PutObject` unless `s3:x-amz-server-side-encryption-aws-kms-key-id` is that key's full ARN (see S3 Bucket Policy: Customer Managed Key below)
 
 **Network Security:**
 
@@ -129,7 +105,7 @@ Ask discovery questions:
 - AWS services and architecture pattern
 - Primary actors/roles and their actions
 - Data classification levels and sensitive data types
-- Compliance frameworks and deployment region
+- Compliance frameworks and deployment region (when the user or the design under review names GDPR, HIPAA, PCI-DSS, or SOC 2, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` now and design STEP 3 and STEP 4 against it)
 - Primary security concerns and threat landscape
 - Existing security context and maturity level
 
@@ -143,6 +119,8 @@ Ask discovery questions:
 - Identify fine-grained access control needs (ABAC, tag-based, condition-based)
 
 ### STEP 3: Design IAM Policies
+
+Generate the policy documents with the AWS MCP server's `aws-iam` skill, loaded through `find-aws-skills`. Its policy-generation reference proposes an IAM Policy Autopilot command when the design comes with source code or a Terraform plan JSON, and maps each API operation to its IAM actions through the Service Authorization Reference otherwise. It also carries the condition-operator safety rules, the confused-deputy condition keys (`aws:SourceArn`, `aws:SourceAccount`) for service-role trust policies, and AWS's corrections for policy-evaluation and trust-policy edge cases. Then shape its output to the design. Without the AWS MCP server, write the policies to the rules below and say in the output that `aws-iam` was not consulted.
 
 **Identity-Based Policies:**
 
@@ -167,6 +145,8 @@ Ask discovery questions:
 - Restrict regions for data residency
 
 ### STEP 4: Design Security Controls
+
+Take the S3 bucket settings from the AWS MCP server's `securing-s3-buckets` skill, the secrets settings from `creating-secrets-using-best-practices` (`references/create-secrets-using-best-practices.md`), and the trail settings from `setting-up-cloudtrail-multi-region` (`references/cloudtrail-multi-region-setup.md`). Load each skill with `aws___retrieve_skill` and fetch those files with the same tool and its `file` parameter; they are not on disk. Those skills also run AWS CLI commands; in a design, use their settings and run nothing. Without the AWS MCP server, design these settings to the rules below and say in the output that those skills were not consulted.
 
 **Encryption at Rest:**
 
@@ -213,6 +193,8 @@ Ask discovery questions:
 - Encrypt all secrets with KMS customer-managed keys
 - Implement least privilege access to secrets
 
+Then go to [Final Step: Validate Compliance](#final-step-validate-compliance).
+
 ## Integrated Mode Workflow
 
 ### STEP 1: Artifact Analysis
@@ -235,17 +217,20 @@ Extract and document:
 - Access Patterns (map API endpoints to data access patterns)
 - Data Classification (extract sensitivity levels, map to encryption)
 - Threat Mitigations (map threats to security controls)
-- Compliance Requirements (extract frameworks, map to AWS controls)
+- Compliance Requirements (extract frameworks, map to AWS controls; when the user or the design under review names GDPR, HIPAA, PCI-DSS, or SOC 2, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` for the controls to map)
 
 ### STEP 3: Integrated Design Process
 
 1. Validate extracted requirements (confirm understanding, ask clarifying questions, state assumptions)
-2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode)
+2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode). When the design has an access-pattern table, keep each role's actions and resources inside it. List a best practice that needs more, such as VPC networking or extra logs or KMS actions, as a recommendation with its reason instead of adding it to the role
 3. Reference source artifacts (indicate which requirements came from which artifacts)
+4. Go to [Final Step: Validate Compliance](#final-step-validate-compliance)
 
-### STEP 5: Validate Compliance
+## Final Step: Validate Compliance
 
-Map security controls to compliance requirements. For the full per-framework checklists, see Compliance Validation below.
+Both modes end here. Map security controls to compliance requirements.
+
+When the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file) before writing this section. It has the full control checklist and the citations for each framework; the one-line summaries below are only a reminder of scope.
 
 **GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (regions the design chooses; transfers outside the EU/EEA documented and covered by an adequacy decision or SCCs, Articles 44-46), data portability, data processing agreements
 
@@ -259,65 +244,26 @@ Map security controls to compliance requirements. For the full per-framework che
 
 ## IAM Policy Templates
 
-### Identity-Based Policy (Least Privilege)
+`aws-iam` generates identity-based policies and `securing-s3-buckets` the S3 bucket policy. These templates cover the policy types and statements those skills leave to you.
+
+### S3 Bucket Policy: Customer Managed Key
+
+Default bucket encryption is only a default: a `PutObject` that sends its own `x-amz-server-side-encryption` header (`AES256`, or `aws:kms` with another key) overrides it, and `securing-s3-buckets` has no statement that stops this. When the data classification needs a customer managed key, add this statement to the bucket policy, with the key's full ARN. S3 compares the key it actually uses, from the header or the bucket default, so uploads that rely on the default key still pass:
 
 ```json
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "DescriptiveStatementId",
-      "Effect": "Allow",
-      "Action": ["service:SpecificAction1", "service:SpecificAction2"],
-      "Resource": ["arn:aws:service:region:account-id:resource-type/resource-id"],
-      "Condition": {
-        "StringEquals": { "service:ResourceTag/Environment": "production" },
-        "IpAddress": { "aws:SourceIp": ["10.0.0.0/8"] },
-        "Bool": { "aws:MultiFactorAuthPresent": "true" }
-      }
+  "Sid": "DenyOtherKmsKeys",
+  "Effect": "Deny",
+  "Principal": "*",
+  "Action": "s3:PutObject",
+  "Resource": "arn:aws:s3:::bucket-name/*",
+  "Condition": {
+    "StringNotEquals": {
+      "s3:x-amz-server-side-encryption-aws-kms-key-id": "arn:aws:kms:region:account-id:key/key-id"
     }
-  ]
+  }
 }
 ```
-
-**Principles:** Use specific actions/resources (avoid wildcards), add conditions for fine-grained control, use descriptive Sid values, separate read/write/admin operations
-
-### Resource-Based Policy: S3 Bucket
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "EnforceSSLOnly",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:*",
-      "Resource": ["arn:aws:s3:::bucket-name", "arn:aws:s3:::bucket-name/*"],
-      "Condition": { "Bool": { "aws:SecureTransport": "false" } }
-    },
-    {
-      "Sid": "EnforceEncryption",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::bucket-name/*",
-      "Condition": {
-        "StringNotEquals": { "s3:x-amz-server-side-encryption": "aws:kms" }
-      }
-    },
-    {
-      "Sid": "AllowSpecificRoleAccess",
-      "Effect": "Allow",
-      "Principal": { "AWS": "arn:aws:iam::account-id:role/RoleName" },
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::bucket-name/*"
-    }
-  ]
-}
-```
-
-**Principles:** Enforce TLS/SSL, enforce encryption at rest, use explicit principal ARNs, deny takes precedence over allow
 
 ### Resource-Based Policy: KMS Key
 
@@ -379,19 +325,6 @@ Map security controls to compliance requirements. For the full per-framework che
 
 **Principles:** Separate key administrators from key users, key admins manage but cannot use key, key users encrypt/decrypt but cannot manage, allow AWS services via service principals with kms:ViaService condition
 
-### IAM Condition Examples
-
-**Common Conditions:**
-
-- IP restrictions: `"IpAddress": {"aws:SourceIp": ["10.0.0.0/8"]}`
-- MFA requirement: `"Bool": {"aws:MultiFactorAuthPresent": "true"}`
-- Time-based: `"DateGreaterThan": {"aws:CurrentTime": "2024-01-01T00:00:00Z"}`
-- Tag-based (ABAC): `"StringEquals": {"aws:PrincipalTag/Department": "${aws:ResourceTag/Department}"}`
-- User-specific data: `"StringEquals": {"s3:ExistingObjectTag/Owner": "${aws:userid}"}`
-- DynamoDB leading keys: `"ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${aws:userid}"]}`
-- VPC endpoint restriction: `"StringEquals": {"aws:SourceVpce": "vpce-1234567890abcdef0"}`
-- Encryption enforcement: `"StringEquals": {"s3:x-amz-server-side-encryption": "aws:kms"}`
-
 ### Permission Boundary for Delegated Administration
 
 ```json
@@ -440,27 +373,6 @@ Map security controls to compliance requirements. For the full per-framework che
 }
 ```
 
-**Enforce Encryption:**
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "DenyUnencryptedS3Uploads",
-      "Effect": "Deny",
-      "Action": "s3:PutObject",
-      "Resource": "*",
-      "Condition": {
-        "StringNotEquals": {
-          "s3:x-amz-server-side-encryption": ["AES256", "aws:kms"]
-        }
-      }
-    }
-  ]
-}
-```
-
 **Restrict Regions:**
 
 ```json
@@ -493,24 +405,15 @@ Map security controls to compliance requirements. For the full per-framework che
 - Use kms:ViaService condition for AWS services
 - Create separate keys for different data classification levels
 
-### S3 Bucket Security
-
-- Enable default bucket encryption with KMS
-- Bucket policy denies non-SSL requests
-- Bucket policy denies unencrypted uploads
-- Enable versioning for data protection
-- Enable server access logging
-- Block public access
-
 ### Encryption at Rest (Service Configurations)
 
-- **S3:** SSEAlgorithm: aws:kms, KMSMasterKeyID, BucketKeyEnabled: true
+- **S3:** SSE-S3 (SSEAlgorithm: AES256) with SSE-C blocked by default. When the data classification needs a customer managed key: SSEAlgorithm: aws:kms, KMSMasterKeyID set to the key's full ARN (never `aws/s3`), BucketKeyEnabled: true
 - **DynamoDB:** SSESpecification: Enabled: true, SSEType: KMS, KMSMasterKeyId
 - **RDS:** StorageEncrypted: true, KmsKeyId
 - **EBS:** Encrypted: true, KmsKeyId
 - **EFS:** Encrypted: true, KmsKeyId
 
-**Principles:** Use customer-managed keys for sensitive data, AWS managed keys for less sensitive, enable S3 bucket keys to reduce KMS costs, encrypt all data stores by default
+**Principles:** Use customer-managed keys for sensitive data and the service's default encryption for less sensitive data (for S3, SSE-S3 rather than the AWS managed `aws/s3` key), enable S3 Bucket Keys with SSE-KMS to reduce KMS costs, encrypt all data stores by default
 
 ### Encryption in Transit
 
@@ -531,34 +434,7 @@ Map security controls to compliance requirements. For the full per-framework che
 
 ### CloudTrail Configuration
 
-```json
-{
-  "Name": "organization-trail",
-  "S3BucketName": "audit-logs-bucket",
-  "IncludeGlobalServiceEvents": true,
-  "IsMultiRegionTrail": true,
-  "EnableLogFileValidation": true,
-  "KmsKeyId": "arn:aws:kms:region:account-id:key/key-id",
-  "EventSelectors": [
-    {
-      "ReadWriteType": "All",
-      "IncludeManagementEvents": true,
-      "DataResources": [
-        {
-          "Type": "AWS::S3::Object",
-          "Values": ["arn:aws:s3:::sensitive-bucket/*"]
-        },
-        {
-          "Type": "AWS::Lambda::Function",
-          "Values": ["arn:aws:lambda:*:account-id:function/*"]
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Principles:** Enable multi-region trail, enable global service events, enable log file validation, encrypt logs with KMS, enable data events for sensitive resources
+Take the trail settings from `setting-up-cloudtrail-multi-region`: one multi-region trail with global service events, log file validation and KMS encryption, plus data events for sensitive resources.
 
 ### Service-Specific Logging
 
@@ -635,7 +511,7 @@ Ensure every threat has at least one security control, verify mitigations are sp
 **Example 1: Unauthorized Access to Customer Data**
 
 - Threat: Unauthorized users accessing customer PII in DynamoDB
-- IAM Policy: `"Condition": {"ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${aws:userid}"]}}`
+- IAM Policy: `"Action": ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem"]` with `"Condition": {"ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${aws:userid}"]}, "Null": {"dynamodb:LeadingKeys": "false"}}`. `ForAllValues` passes when the key is absent, so the `Null` check on the same key is required
 - Encryption: DynamoDB encryption with KMS customer-managed key
 - Logging: CloudTrail data events, CloudWatch alarm for unauthorized access
 
@@ -643,7 +519,7 @@ Ensure every threat has at least one security control, verify mitigations are sp
 
 - Threat: Malicious actor copying sensitive data from S3 to external account
 - IAM Policy: `"Condition": {"StringNotEquals": {"aws:SourceVpce": "vpce-id"}}`
-- Encryption: S3 bucket policy denying non-SSL, enforcing KMS encryption, VPC endpoint
+- Encryption: S3 bucket policy denying non-TLS requests, default encryption with a customer managed KMS key for this sensitive data, VPC endpoint
 - Logging: S3 access logs, CloudTrail data events, CloudWatch alarm, GuardDuty
 
 **Example 3: Privilege Escalation**
@@ -655,7 +531,7 @@ Ensure every threat has at least one security control, verify mitigations are sp
 
 ## Compliance Validation
 
-When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file). It holds the GDPR, HIPAA, PCI-DSS, and SOC 2 control checklists and the citations to use, shared with `policy-validation`.
+When the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), or the user asks for a compliance gap report, open `references/compliance-checklists.md` (relative to this file). It holds the GDPR, HIPAA, PCI-DSS, and SOC 2 control checklists and the citations to use, shared with `policy-validation`.
 
 ### Compliance Gap Workflow
 
@@ -858,6 +734,7 @@ Generate security policy designs in this structured format:
 **Remediation:** [Specific steps]
 **Effort:** [Low/Medium/High hours]
 **Priority:** [Critical/High/Medium/Low]
+**Citation:** [Article, rule section, or criterion from `references/compliance-checklists.md`]
 
 ## Implementation Code
 
@@ -874,7 +751,7 @@ Generate production-ready CDK (TypeScript) or CloudFormation (YAML) code impleme
 ## Security Testing Recommendations
 
 1. **IAM Policy Validation:** Use IAM Policy Simulator, test with various user contexts, verify least privilege
-2. **Encryption Testing:** Attempt unencrypted uploads (should deny), verify KMS key policies, test TLS enforcement
+2. **Encryption Testing:** Verify each bucket's default encryption, verify KMS key policies, test TLS enforcement
 3. **Audit Logging Validation:** Trigger test API calls, verify CloudTrail logs, test CloudWatch alarms
 4. **Compliance Scanning:** Run AWS Config rules, use Security Hub, manual validation against checklists
 5. **Penetration Testing:** Test unauthorized access, privilege escalation, data exfiltration

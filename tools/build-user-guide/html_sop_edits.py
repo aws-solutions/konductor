@@ -22,7 +22,7 @@ _PE_REVIEW = ''',
       { name: "k-principal-engineer-design-review", file: "agent-sops/k-principal-engineer-design-review.sop.md", owner: "k-architect",
         what: "Runs a pre-submission quality gate on a design document before it goes to a Principal Engineer. It combines slop detection, an architecture-principles evaluation, and an adversarial review loop, so the most common human review comments are already resolved by the time a person opens the document.",
         when: "A design document is finished and about to be sent for human review.",
-        get: "A findings report at output_file covering the slop/quality gate, the architecture-principles evaluation, and every adversarial round, ordered CRITICAL → IMPORTANT → MINOR.",
+        get: "A findings report at output_file covering the slop/quality gate, the architecture-principles evaluation, and every adversarial round, ordered CRITICAL → IMPORTANT → SUGGESTION.",
         prompt: "Run the k-principal-engineer-design-review SOP. doc_input: docs/design/rate-limiting.md",
         params: [param("doc_input", true, "— a path to the design document, or the document content itself"), param("output_file", false, "<doc-name>-principal-engineer-review.md beside the input doc, or docs/design/principal-engineer-review.md when invoked without a path")],
         flowCaption: "k-principal-engineer-design-review: two gates, then a bounded adversarial loop.",
@@ -36,9 +36,9 @@ _PE_REVIEW = ''',
         ],
         know: [
           { title: "Step 1 is a hard gate.", body: " The quality score is 1-5, and a score below 3 STOPS the SOP outright \u2014 it presents the issues and asks for a revision rather than proceeding to step 2." },
-          { title: "The adversarial loop is bounded at 5 rounds.", body: " It exits early when 0 CRITICAL, 0 IMPORTANT and fewer than 3 MINOR findings remain. Hitting round 5 without converging exits with the outstanding findings rather than looping forever." },
+          { title: "The adversarial loop is bounded at 5 rounds.", body: " It exits early when 0 CRITICAL, 0 IMPORTANT and fewer than 3 SUGGESTION findings remain. Hitting round 5 without converging exits with the outstanding findings rather than looping forever." },
           { title: "One finding can end the loop early.", body: " Any CRITICAL ARCHITECTURAL finding still present after round 2 stops the loop immediately and forces the FUNDAMENTAL REDESIGN REQUIRED verdict. A CRITICAL FACTUAL finding does not \u2014 a wrong technical claim is correctable by revision, so it yields REVISIONS NEEDED instead." },
-          { title: "The report is headed by a verdict.", body: " PE-READY (quality score at least 3, 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR), REVISIONS NEEDED, or FUNDAMENTAL REDESIGN REQUIRED. These strings are user-visible." },
+          { title: "The report is headed by a verdict.", body: " PE-READY (quality score at least 3, 0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION), REVISIONS NEEDED, or FUNDAMENTAL REDESIGN REQUIRED. These strings are user-visible." },
           { title: "Three skills do the work:", body: " design-quality-check for the slop and quality gate, design-evaluation for architecture principles, and adversarial-design-review for the loop, with argumentation-reference checking the reasoning for fallacies." },
           { title: "It reviews one document, not a directory.", body: " For a set of design artifacts — system design, threat model, API specs, data models — use k-existing-design-review." }
         ] }'''
@@ -90,6 +90,13 @@ _LIGHT_UI = ''',
         ] }'''
 
 SOP_EDITS = [
+    # ---- adr-generator folded into decision-writing's ADR Mode -------------
+    ("design SOP: inline ADR skill",
+     'Every significant decision gets an inline ADR via adr-generator: Context, Decision, Alternatives Considered table, Consequences.',
+     "Every significant decision gets an inline ADR via decision-writing's ADR Mode: Context, Decision, Alternatives Considered table, Consequences."),
+    ("design SOP: phase 3 ADR check",
+     'adr-generator verifies the Phase 2 ADRs are embedded — enrich only, never regenerate.',
+     'decision-writing (ADR Mode) verifies the Phase 2 ADRs are embedded — enrich only, never regenerate.'),
     # NAV entry for the new page
     ("NAV: orchestration page",
      '["sop-test","Testing, analysis, specs"]]]',
@@ -172,11 +179,11 @@ SOP_EDITS += [
 # k-architect's model and skill count, in the agents page's own prose and tables.
 SOP_EDITS += [
     ("agents bullet: architect model",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5.",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
+     "k-architect carries 39 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code.",
+     "k-architect carries 38 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
     ("specialists table: architect",
-     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.',
-     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 38 skills.'),
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 38 skills.',
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 37 skills.'),
     ("specialists table: developer skills",
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 19 skills',
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 27 skills'),
@@ -234,17 +241,17 @@ SOP_EDITS += [
 # directly with no prompt of any kind.
 SOP_EDITS += [
     ("update task: sample output",
-     "Updating Konductor\n  agents          11 updated\n  skills          82 updated\n  SOPs            19 updated\n  context files    1 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
-     "Updating Konductor\n  agents          11 updated\n  skills          81 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
+     "Updating Konductor\n  agents          11 updated\n  skills          80 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
+     "Updating Konductor\n  agents          11 updated\n  skills          79 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
     ("update task: locally-modified row",
      "Your files are kept. The release version is not applied to them.",
      "OVERWRITTEN. The count of clobbered files is reported afterwards; run --dry-run first to see which."),
     ("uninstall task: sample output",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    1\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          81\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          79\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          79\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (changed since install; kept)\n\nProject files under .konductor/ would be left in place."),
     ("uninstall task: prompt prose",
-     'Answer <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">y</span> and it reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. Answering anything else cancels and changes nothing. To skip the prompt in a script:',
-     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
+     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:',
+     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all. It marks each path whose content changed since install, a file you hand-edited, as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(changed since install; kept)</span>, and a Kiro agent file that <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">kiro-cli agent upgrade</span> rewrote as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(rewritten by Kiro; removed)</span>. It also lists the Kiro agent backups a real run would leave. Under <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--json</span>, <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">would_delete</span> holds only the files a real run removes and <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">would_keep</span> the changed files it keeps, each with a count (<span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">would_delete_count</span>, <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">would_keep_count</span>), and <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">kept_backups</span> lists the backups. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
 ]
 
 # Install samples: --harness is required and there is no destination auto-detection,
@@ -276,14 +283,14 @@ SOP_EDITS += [
 # command with no --harness.
 SOP_EDITS += [
     ("hero tile: skills",
-     '>75</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
-     '>81</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
+     '>80</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
+     '>79</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
     ("hero tile: SOPs",
      '>13</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>',
      '>19</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>'),
     ('hero snippet: banner',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 2',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 81 · SOPs 19 · context 4'),
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 80 · SOPs 19 · context 4',
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 79 · SOPs 19 · context 4'),
     ("runtime binding: harnessFlag",
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",',
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",\n      harnessFlag: kiro ? "kiro-cli-v2" : "claude",'),
@@ -397,14 +404,14 @@ SOP_EDITS += [
      "the Kiro CLI allowedTools enumerates 13 specific browser tools: snapshot, screenshot, console messages, network requests, tabs, navigate, navigate back, wait for, click, type, select option, press key, close."),
     # counts
     ("concepts tree: skills/sops counts",
-     "skills/ \u2014 75 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 13 procedures",
-     "skills/ \u2014 81 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
+     "skills/ \u2014 80 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures",
+     "skills/ \u2014 79 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
     ("concepts grid: skills count",
-     ">75 modules</span>",
-     ">81 modules</span>"),
+     ">80 modules</span>",
+     ">79 modules</span>"),
     ("home: on-demand modules",
-     "<div>11 agents with scoped tools and 75 on-demand knowledge modules.</div>",
-     "<div>11 agents with scoped tools and 81 on-demand knowledge modules.</div>"),
+     "<div>11 agents with scoped tools and 80 on-demand knowledge modules.</div>",
+     "<div>11 agents with scoped tools and 79 on-demand knowledge modules.</div>"),
     # pr_url is context-only (agent-sops/k-adversarial-pull-request-review.sop.md:15)
     ("pr_url: flow gate",
      'node("00", "diff_input OR pr_url given?", "If neither, the SOP asks for one and waits. It will not ask for output_file.", "gate")',
@@ -557,17 +564,17 @@ SOP_EDITS += [
 # Values from agents/konductor*.agent-spec.json.
 SOP_EDITS += [
     ('orchestrators: konductor skills',
-     '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }',
-     '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }'),
-    ("orchestrators: konductor tools",
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }',
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }'),
+     '{ k: "konductor skills (25)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. claude-teams-behavior is Claude Code only. Kiro CLI has the other 24 plus humanize-writing, on demand" }',
+     '{ k: "konductor skills (25)", v: "constraints, humanize-writing, delegation-protocol, agents-md-authoring, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. On Claude Code it preloads constraints and claude-teams-behavior, which is Claude Code only and not one of the 25" }'),
+    ('orchestrators: konductor tools',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests three read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation and mcp__aws-mcp__aws___read_documentation" }',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests five read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation, mcp__aws-mcp__aws___read_documentation, mcp__aws-mcp__aws___list_regions and mcp__aws-mcp__aws___get_regional_availability" }'),
     ("orchestrators: mux/cmux SOPs",
      '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
      '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
     ("orchestrators: mux/cmux skills",
-     '{ k: "mux / cmux skills (8)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, plus mux-dispatch or cmux-dispatch" }',
-     '{ k: "mux / cmux skills (10)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch" }'),
+     '{ k: "mux / cmux skills (10)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch" }',
+     '{ k: "mux / cmux skills (11)", v: "constraints, humanize-writing, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch. On Claude Code each preloads only constraints" }'),
     ("orchestrators: mux/cmux tools",
      'Claude Code: Workflow, TodoWrite, Read, Bash, Grep, Glob. No write, but yes shell — needed for pane dispatch" }',
      'Claude Code: Workflow, TodoWrite, Read, Bash, Grep, Glob, Write, Skill. Kiro CLI gives them shell but not write — needed for pane dispatch; Claude Code gives them both" }'),
@@ -685,18 +692,18 @@ SOP_EDITS += [
     # bundled skill-lookup MCP server that serves them. Claude Code is the native
     # case: `clientConfig.claudeCli.skills` plus `.claude/skills/<name>/SKILL.md`.
     ("runtime differences: skills resolution row",
-     '{ k: "Skills resolution", v: "skill://~/.kiro/skills/<name>/SKILL.md resource URIs · clientConfig.claudeCli.skills names" }',
-     '{ k: "Skills resolution", v: "through the bundled skill-lookup MCP server — skills install to .konductor/skills/, outside the .kiro/skills/ tree Kiro CLI scans · native Claude Code skills: clientConfig.claudeCli.skills names the set, each body at .claude/skills/<name>/SKILL.md" }'),
+     '{ k: "Skills resolution", v: "through the bundled skill-lookup MCP server \u2014 skills install to .konductor/skills/, outside the .kiro/skills/ tree Kiro CLI scans · native Claude Code skills: clientConfig.claudeCli.skills names the set, each body at .claude/skills/<name>/SKILL.md" }',
+     '{ k: "Skills resolution", v: "through the bundled skill-lookup MCP server \u2014 skills install to .konductor/skills/, outside the .kiro/skills/ tree Kiro CLI scans · native Claude Code skills: each body at .claude/skills/<name>/SKILL.md; clientConfig.claudeCli.skills names the few a subagent preloads, and the rest load through the Skill tool" }'),
 
     # Same correction in the contributing example: there is no per-skill entry
     # under clientConfig.kiroCli.resources. The only skill:// resource any spec
     # carries is the `ws-*` workspace-skills glob.
     ("contributing: add-a-skill JSON",
-     'code: "{\\n  \\"clientConfig\\": {\\n    \\"kiroCli\\": {\\n      \\"resources\\": [\\"skill://~/.kiro/skills/my-new-skill/SKILL.md\\"]\\n    },\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"',
-     'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  },\\n  \\"clientConfig\\": {\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"'),
+     'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  },\\n  \\"clientConfig\\": {\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"',
+     'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"'),
     ("skills: recently-fixed wiring sentence",
-     "Both runtimes were wired: the skill name in clientConfig.claudeCli.skills and a matching skill:// resource entry in clientConfig.kiroCli.resources.",
-     "Both runtimes were wired: the skill name in dependencies.skills.skillNames, which is what konductor synth reads for either harness, and in clientConfig.claudeCli.skills, which is what Claude Code lists in the rendered agent's skills: frontmatter."),
+     "Both runtimes were wired: the skill name in dependencies.skills.skillNames, which is what konductor synth reads for either harness, and in clientConfig.claudeCli.skills, which is what Claude Code lists in the rendered agent's skills: frontmatter.",
+     "Each is declared in dependencies.skills.skillNames, which konductor synth reads for either harness, and both runtimes load it on demand."),
 
     # Three design SOPs, not two: k-principal-engineer-design-review is one, and
     # the picker's own comparison table already contrasts it with
@@ -714,10 +721,10 @@ SOP_EDITS += [
     # delegation from availableAgents plus each spec's Agent(...) tool.
     ("roster row: PM skills",
      "No SOPs — skill-driven. 16 skills: user-story-writing",
-     "No SOPs — skill-driven. 15 skills: user-story-writing"),
+     "No SOPs — skill-driven. 16 skills: user-story-writing"),
     ("roster row: researcher skills",
-     "No SOPs — skill-driven. 7 skills: external-research",
-     "No SOPs — skill-driven. 8 skills: external-research"),
+     "No SOPs \u2014 skill-driven. 8 skills: external-research",
+     'No SOPs \u2014 skill-driven. 9 skills: external-research'),
 ]
 
 # ── Review findings: bundle-only drift ────────────────────────────────────────
@@ -758,11 +765,11 @@ SOP_EDITS += [
 # the essentials table instead of being dropped.
 SOP_EDITS += [
     ("concepts: drop the verify-it-yourself panel",
-     "<div style=\"border:1px solid rgba(61,220,151,.35);border-radius:12px;background:rgba(61,220,151,.05);padding:18px 20px\">\n              <div style=\"font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--sig);margin-bottom:10px\">COUNT · VERIFY IT YOURSELF</div>\n              <p style=\"margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--mu)\">The package ships 82 skills — 82 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>.</p>\n              <pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--tx)\">ls skills | wc -l</pre>\n            </div>\n          </section>",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 81 skills</strong> — 81 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 81 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
+     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 80 skills</strong> — 80 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 80 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>",
+     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 79 skills</strong> — 79 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 79 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
     ("skills: coverage section drops check-it-yourself",
-     "{\"paras\":[\"All 82 skills are declared by at least one agent. Check it yourself with ls skills | wc -l, then compare that against the union of every spec's declared skills — if the two ever diverge, a skill exists that no agent can load, which matters most when a SOP instructs an agent to use it.\"],\"code\":\"ls skills | wc -l\",",
-     "{\"paras\":[\"All 81 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
+     "{\"paras\":[\"All 80 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],",
+     "{\"paras\":[\"All 79 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
     ("prerequisites: drop the what-you-do-not-need section",
      "\n\n          <section id=\"p-not\" style=\"padding-bottom:44px;border-top:1px solid var(--bd);padding-top:40px\">\n            <h2 style=\"margin:0 0 16px;font-size:30px;letter-spacing:-.025em;font-weight:600\">What you do <em>not</em> need</h2>\n            <p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">Worth stating, because it is unusual:</p>\n            <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px\">\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No servers or infrastructure</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Agents are configuration files your runtime executes.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No database</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Nothing persists except plain files you can read.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No build toolchain</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">There is no published binary yet, so you build the CLI from a clone with make build. A Rust toolchain is required.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No network access at run time for the CLI</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">init</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">synth</span> touch only the local filesystem — and so do <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">update</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">doctor</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">metrics</span>. The single remote path is <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">install</span> with --from omitted, which tries a GitHub Release. Every documented workflow here passes --from, so in practice nothing reaches the network.</div>\n              </div>\n            </div>\n          </section>\n\n          ",
      "\n\n          "),
@@ -1219,19 +1226,9 @@ SPAN = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;colo
 
 SOP_EDITS += [
     # ---- single-writer shape: konductor edits, the shared rules file, four context files ----
-    ("qs checkpoint names the single-writer shape",
-     "Watch what happens after you ask for implementation work. You should see the orchestrator "
-     "<strong style=\"color:var(--tx);font-weight:600\">delegate</strong> to a specialist rather than start "
-     "editing files itself. That is the whole design, and it is a rule rather than a wall in both runtimes. "
-     "In Kiro CLI konductor pre-approves fs_read alone, so a write or a command stops to ask you rather than "
-     "being refused; in Claude Code it holds Write and Bash outright. Either way what keeps it delegating is "
-     "its routing rules. If it starts editing directly, see",
-     "Watch what happens when you ask for a single change, such as a bug fix in one module. You should see "
-     "konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A "
-     "multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves "
-     "fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash "
-     "outright. If you want an orchestrator that hands every change to a specialist, use "
-     "konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see"),
+    ('qs checkpoint names the single-writer shape',
+     'Watch what happens when you ask for a single change, such as a bug fix in one module. You should see konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash outright. If you want an orchestrator that hands every change to a specialist, use konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see',
+     'Watch what happens when you ask for a single change, such as a bug fix in one module. You should see konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves only reads (fs_read and read-only aws-mcp lookups), so each write or command stops to ask you first; in Claude Code it holds Write and Bash outright. If you want an orchestrator that hands every change to a specialist, use konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see'),
     ("ik success signal: konductor edits and spawns a reviewer",
      "Giving it implementation work produces a <strong style=\"color:var(--tx);font-weight:600\">delegation</strong> "
      "to a specialist, not the orchestrator doing the work itself.",
@@ -1244,10 +1241,8 @@ SOP_EDITS += [
      "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
      "files directly, its routing rules did not load — see"),
     ("faq: read-only rule scope and konductor's permissions",
-     "konductor loads k-direct-work.md instead and edits files itself. On Kiro CLI it pre-approves fs_read alone",
-     "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode "
-     "it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator "
-     "mode). On Kiro CLI it pre-approves fs_read alone"),
+     'konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator mode). On Kiro CLI it pre-approves fs_read alone',
+     'konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator mode). On Kiro CLI it pre-approves only reads (fs_read and read-only aws-mcp lookups)'),
     ("faq: shared rules apply to all three orchestrators",
      "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
      "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",
@@ -1285,4 +1280,76 @@ SOP_EDITS += [
     ("agents: mux section declares @builtin, synth strips it on v2",
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their Kiro CLI tools are [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"], and shell is how they work:',
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their specs declare [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"] for Kiro CLI; on Kiro CLI v2 synth replaces that @builtin with the same explicit built-in list a specialist gets, so only konductor holds subagent on Kiro CLI v2. Shell is how they work:'),
+]
+
+SOP_EDITS += [
+    # ---- design SOP: OVERSTATED doc-accuracy findings are flagged and gate readiness ----
+    ("design use case: checklist gates OVERSTATED",
+     "0 INCORRECT</strong>, each corrected in the text (UNVERIFIED is acceptable with callouts)",
+     '0 INCORRECT</strong>, each corrected in the text, <strong style="color:var(--tx);font-weight:600">0 '
+     'UNVERIFIED noted "contradicts prior knowledge"</strong>, each checked against the named page and '
+     "reclassified or corrected, and every OVERSTATED finding corrected or flagged "
+     "(other UNVERIFIED findings are acceptable with callouts)"),
+    ("design SOP: gate row gates OVERSTATED",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
+     '{ k: "doc-accuracy-analyzer", v: "0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings '
+     'noted \\"contradicts prior knowledge\\", each checked against the named page and reclassified or '
+     "corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable "
+     "with callouts)\" },"),
+    ("design use case: Phase 3 is two passes and flags OVERSTATED",
+     "Three automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS claims to aws-service-validator. INCORRECT and UNVERIFIED "
+     "findings get inline callouts but do not stop the phase; Phase 5 corrects the INCORRECT ones. "
+     "aws-service-validator checks every AWS service and feature claim against live AWS documentation, "
+     "classifying each CONFIRMED / UNVERIFIED / INCORRECT.",
+     "Two automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS service and feature claims to aws-service-validator, which "
+     "checks them against live AWS documentation and classifies each CONFIRMED / UNVERIFIED / INCORRECT. "
+     "INCORRECT, OVERSTATED, and UNVERIFIED findings get inline callouts but do not stop the phase; Phase 5 "
+     "corrects the INCORRECT ones."),
+    ("design SOP: Phase 3 node routes AWS claims and flags OVERSTATED",
+     "doc-accuracy-analyzer verifies claims against the codebase, flagging INCORRECT / UNVERIFIED inline. "
+     "aws-service-validator checks every AWS claim via aws-mcp (CONFIRMED / UNVERIFIED / INCORRECT) and writes "
+     "the validation report.",
+     "doc-accuracy-analyzer verifies claims against primary sources, flagging INCORRECT / OVERSTATED / UNVERIFIED "
+     "inline, and routes AWS claims to aws-service-validator, which checks them via aws-mcp (CONFIRMED / "
+     "UNVERIFIED / INCORRECT) and writes the validation report."),
+    ("design SOP: OVERSTATED blocks until corrected or flagged",
+     "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
+     "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "
+     "and OVERSTATED findings block until they are corrected or flagged. An UNVERIFIED claim noted "
+     '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
+     "reclassify it, or correct the text."),
+]
+
+SOP_EDITS += [
+    # Synth bundles aws-mcp into the Kiro CLI agent files too. The reference note,
+    # the install-kiro-cli paragraph and the design use case are rewritten by the
+    # aws-mcp entries in sync-html-content.py, which already own that text.
+    ("agents: runtime MCP servers row bundles aws-mcp in both runtimes",
+     '{ k: "MCP servers", v: "declared and launched from dependencies.mcpRegistry \u00b7 requested via tool globs (mcp__aws-mcp__*); you configure the server yourself" }',
+     '{ k: "MCP servers", v: "aws-mcp launched from dependencies.mcpRegistry; tools granted as @aws-mcp, or as five named read-only tools on konductor \u00b7 aws-mcp launched from dependencies.mcpRegistry; tools granted via globs (mcp__aws-mcp__*), or as five named read-only tools on konductor" }'),
+]
+
+_MONO13 = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">"
+_UNINSTALL_P = '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">'
+
+SOP_EDITS += [
+    # uninstall keeps a file changed since install, removes a Kiro agent file that
+    # kiro-cli agent upgrade rewrote, and keeps every .bak (docs/user-guide/tasks/uninstall.md).
+    ("uninstall: a real run keeps changed files and Kiro backups",
+     f'<p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves',
+     f"{_UNINSTALL_P}A file you changed after install is kept. {_MONO13}uninstall</span> prints a warning naming it "
+     f"and still exits {_MONO13}0</span>. The kept file is still live, so your runtime keeps loading it, but it is no "
+     "longer tracked: delete it yourself if you do not want it. For a kept Kiro CLI v3 hooks document, the warning "
+     "also names the Konductor hook entries to remove from it.</p>\n"
+     f"        {_UNINSTALL_P}Kiro CLI's {_MONO13}kiro-cli agent upgrade</span> rewrites each "
+     f"{_MONO13}.kiro/agents/&lt;name&gt;.json</span> and saves the original as {_MONO13}&lt;name&gt;.json.bak</span>. "
+     f"When that backup matches what Konductor installed, {_MONO13}uninstall</span> removes the rewritten agent file. "
+     f"It never deletes a {_MONO13}.bak</span> file: it prints a warning listing each matching backup by full path, "
+     "and you can remove them by hand. A backup that does not match is left alone and not listed.</p>\n"
+     f"        {_UNINSTALL_P}{_MONO13}uninstall</span> cannot tell Kiro's rewrite from an edit you made after running "
+     f"{_MONO13}kiro-cli agent upgrade</span>, because the backup still matches in both cases. An agent file you edited "
+     "after the upgrade is removed too. Copy it somewhere else first if you want to keep it.</p>\n"
+     f'        <p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves'),
 ]

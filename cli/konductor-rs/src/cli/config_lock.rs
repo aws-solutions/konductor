@@ -89,8 +89,10 @@ pub enum ConfigLockError {
         path: PathBuf,
         source: std::io::Error,
     },
-    /// Another process held the lock for the entire `DEFAULT_TIMEOUT`
-    /// bounded wait. Not a crash/bug -- just a sibling `config set` (or
+    /// The lock was not acquired within the `DEFAULT_TIMEOUT` bounded
+    /// wait: another process held it the whole time, or the lock file
+    /// kept being replaced so every lock taken was on a stale inode.
+    /// Not a crash/bug -- usually a sibling `config set` (or
     /// `init`, if it ever takes this same lock) that did not finish in
     /// time, or a stale lock from a killed process (advisory locks are
     /// released automatically by the OS when the holding process exits
@@ -113,7 +115,10 @@ impl std::fmt::Display for ConfigLockError {
                 write!(f, "could not open config lock {}: {source}", path.display())
             }
             ConfigLockError::Contended { .. } => {
-                write!(f, "config is locked by another process, try again")
+                write!(
+                    f,
+                    "config lock not acquired: another process holds it or the lock file kept changing, try again"
+                )
             }
         }
     }
@@ -175,6 +180,17 @@ pub fn acquire(konductor_dir: &Path) -> Result<ConfigLockGuard, ConfigLockError>
 /// `".config.lock"`-named special case of this function, kept as the
 /// stable name every existing `config.rs` call site already uses.
 pub fn acquire_named(dir: &Path, file_name: &str) -> Result<ConfigLockGuard, ConfigLockError> {
+    acquire_named_with(dir, file_name, DEFAULT_TIMEOUT, path_names_open_file)
+}
+
+/// `acquire_named` with the timeout and the path-identity check passed in,
+/// so tests can drive the reopen path without racing real unlinks.
+fn acquire_named_with(
+    dir: &Path,
+    file_name: &str,
+    timeout: Duration,
+    path_names_file: fn(&Path, &File) -> bool,
+) -> Result<ConfigLockGuard, ConfigLockError> {
     let lock_path = dir.join(file_name);
 
     std::fs::create_dir_all(dir).map_err(|source| ConfigLockError::Unavailable {
@@ -182,7 +198,7 @@ pub fn acquire_named(dir: &Path, file_name: &str) -> Result<ConfigLockGuard, Con
         source,
     })?;
 
-    let deadline = Instant::now() + DEFAULT_TIMEOUT;
+    let deadline = Instant::now() + timeout;
     loop {
         let file = OpenOptions::new()
             .create(true)
@@ -224,12 +240,18 @@ pub fn acquire_named(dir: &Path, file_name: &str) -> Result<ConfigLockGuard, Con
         // The holder we waited on may have unlinked the file (see
         // `remove_file_while_held`). A lock on an unlinked inode excludes
         // nobody, so retry on the file now at the path.
-        if path_names_open_file(&lock_path, &file) {
+        if path_names_file(&lock_path, &file) {
             return Ok(ConfigLockGuard {
                 _file: file,
                 path: lock_path,
             });
         }
+        // The same deadline bounds the reopen path, so a lock file that
+        // keeps being replaced ends in `Contended` instead of a busy loop.
+        if Instant::now() >= deadline {
+            return Err(ConfigLockError::Contended { path: lock_path });
+        }
+        std::thread::sleep(RETRY_INTERVAL);
     }
 }
 
@@ -287,6 +309,18 @@ mod tests {
         let third = acquire_named(&dir, ".x.lock").expect_err("waiter's lock must exclude");
         assert!(matches!(third, ConfigLockError::Contended { .. }));
         drop(waiter);
+    }
+
+    /// A lock file that never stays put must not spin past the deadline.
+    #[test]
+    fn reopen_path_gives_up_at_the_deadline() {
+        let dir = scratch_dir("reopen-deadline");
+        let started = Instant::now();
+        let err = acquire_named_with(&dir, ".x.lock", Duration::from_millis(200), |_, _| false)
+            .expect_err("a persistent identity mismatch must time out");
+        assert!(matches!(err, ConfigLockError::Contended { .. }));
+        assert!(started.elapsed() < Duration::from_secs(5));
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
@@ -361,6 +395,17 @@ mod tests {
         let err = acquire(&dir).expect_err("second acquisition must be contended");
         assert!(matches!(err, ConfigLockError::Contended { .. }));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn contended_message_names_both_causes() {
+        let err = ConfigLockError::Contended {
+            path: PathBuf::from("/x/.config.lock"),
+        };
+        assert_eq!(
+            err.to_string(),
+            "config lock not acquired: another process holds it or the lock file kept changing, try again"
+        );
     }
 
     #[test]

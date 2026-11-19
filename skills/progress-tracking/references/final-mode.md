@@ -22,8 +22,6 @@ Read this when mode is final, after Stage 5 passes. Each report uses the Standar
 
 Store: validation_results.code_analysis
 
-**Requirements:** 3.2, 3.3, 3.4, 3.5
-
 ---
 
 ## Stage 7: Pattern Matching (Final Mode Only)
@@ -42,8 +40,6 @@ Store: validation_results.code_analysis
 
 Store: validation_results.pattern_analysis
 
-**Requirements:** 4.1, 4.2, 4.3, 4.4
-
 ---
 
 ## Stage 8: Traceability Matrix (Final Mode Only)
@@ -61,5 +57,3 @@ Store: validation_results.pattern_analysis
 **Report:** Use standard template. Summary: overall traceability %, complete/partial/missing counts, gaps counts. Traceability Matrix: per-requirement with status, completeness, design/tasks/code details. Traceability Gaps: critical and warning gaps with remediation. Insights: strong traceability, concerns, recommendations. Detailed mode: full chains, all files, detailed remediation, table format. Summary mode: stats, gaps, high-level guidance.
 
 Store: validation_results.traceability
-
-**Requirements:** 5.1, 5.2, 5.3, 5.4

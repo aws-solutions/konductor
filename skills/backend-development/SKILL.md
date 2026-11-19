@@ -1,7 +1,7 @@
 ---
 name: backend-development
-description: Implements backend code changes for Lambda handlers, service layers, and DynamoDB operations. Use when fixing code quality issues, adding features, or optimizing backend logic. Follows KISS/YAGNI/DRY principles with minimal, surgical changes.
-version: 1.0.0
+description: Implements backend changes for Lambda handlers, service layers, and DynamoDB operations. Use when fixing code quality issues, adding features, or optimizing backend logic in a TypeScript/Node codebase. Keeps changes minimal and surgical.
+version: 1.1.0
 tags: [skill, backend, lambda, dynamodb, typescript, nodejs, implementation]
 ---
 
@@ -9,7 +9,7 @@ tags: [skill, backend, lambda, dynamodb, typescript, nodejs, implementation]
 
 ## Overview
 
-Implements backend changes with surgical precision — only the specific issue, nothing more. Covers Lambda handler patterns, service layer architecture, DynamoDB operations, type safety, error handling, and test improvements.
+Implements backend changes with surgical precision: only the specific issue, nothing more. Covers Lambda handler patterns, service layer architecture, DynamoDB operations, type safety, error handling, and test improvements.
 
 ## Usage
 
@@ -25,28 +25,35 @@ Use this skill when:
 
 ### Architectural Layers
 
-Handlers (entry point, delegates to facade) → Business Facade (orchestrates service calls) → Services (created via factory, contain business logic) → Repositories (data access through interfaces). No layer should bypass the one below it.
+Keep whichever of these layers the codebase has: handlers delegate to a facade, services come from a factory, data access goes through repository interfaces. Do not add a layer it lacks.
 
 ### KISS/YAGNI/DRY
 
-Prefer simple, minimal solutions. Only add abstractions that solve a real, existing problem — not hypothetical future needs.
-
-## Core Principles
-
-**Always read the complete file before making changes.** Make minimal changes — only fix the specific issue. Follow established patterns in the codebase. Maintain backward compatibility.
-
-**Prefer simple solutions over design patterns.** Only introduce patterns (Strategy, Observer) when they solve a real, existing problem — not hypothetical future needs. Call out over-engineering directly.
+Prefer simple, minimal solutions. Only add abstractions or patterns (Strategy, Observer) that solve a real, existing problem, not hypothetical future needs. Call out over-engineering directly.
 
 ## Implementation Standards
 
+### General
+
+- Read the complete file before changing it, and read a sibling file that already does it right (for example another handler) so the fix copies its pattern.
+- Make minimal changes, only fix the specific issue. Leave unrelated files and code alone.
+- Follow established patterns in the codebase.
+- Keep changes backward compatible; a breaking change needs a migration path.
+- Keep observable behavior you weren't asked to change: response codes and bodies, log messages and their fields, error types callers already handle.
+
+### When a Fix Changes the Call Path
+
+Moving a call behind a facade, service or repository often switches on rules the old path skipped, such as transition validation or a write condition. Each rule can now throw an error the caller never saw before. For every new error:
+
+- Catch it by type and map it to a specific response (a 4xx for a client-caused failure), so it doesn't fall through to a 500
+- Add a test for that path
+- Name the behavior change in your final message, so the reviewer can decide on it
+
 ### Handler Patterns
 
-- Handlers delegate to a business facade — no direct business logic in handlers
-- Services created via factory pattern — no direct instantiation
-- Data access through repository interfaces — no direct database calls
 - Use return values from store operations to avoid extra queries
 
-### Type Safety
+### TypeScript Type Safety
 
 - No `any` types in production code (test mocks are the only exception)
 - Use utility types: `Partial<T>`, `Pick<T, K>`, `Omit<T, K>`
@@ -57,7 +64,7 @@ Prefer simple, minimal solutions. Only add abstractions that solve a real, exist
 
 - Atomic operations use transactions for multi-item updates
 - Use conditional writes to prevent race conditions
-- No extra queries — use return values from write operations
+- No extra queries; use return values from write operations
 - Follow single-table design patterns (PK/SK)
 
 ### Error Handling
@@ -69,29 +76,29 @@ Prefer simple, minimal solutions. Only add abstractions that solve a real, exist
 
 ### Testing
 
-- Create shared fixture factories for test data — not inline objects
+- Create shared fixture factories for test data, not inline objects
 - Use `toContainEqual` for order-independent assertions
 - Add tests for new code before marking complete
 - Test edge cases: null values, empty arrays, boundary conditions
 
 ## Output Format
 
-For each change, provide:
+End with a final message that covers each changed file:
 
 1. File path
-2. Issue (with line numbers)
-3. Exact code changes
-4. How to verify the fix
-5. What else might be affected
+2. Issue, citing line numbers in the original file
+3. Exact code change, as a short diff or before/after snippet
+4. How you verified it: the command you ran and its result. If you couldn't run it, say so first and give the exact command for the reviewer
+5. What else might be affected, including every behavior change (new status codes, changed log fields) and each assumption you made
 
 ## Quality Gate
 
 **CRITICAL (must fix before done):**
 
+- Direct database call that bypasses a repository layer the codebase already uses
 - TypeScript compilation fails
 - Tests fail
 - Breaking change introduced without migration path
-- Direct database connection bypassing repository layer
 - Race condition introduced (non-atomic multi-item update)
 
 **IMPORTANT (should fix):**
@@ -108,4 +115,4 @@ For each change, provide:
 - Could add structured log fields for better observability
 - Could strengthen test assertions to check actual values
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

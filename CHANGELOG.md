@@ -57,9 +57,37 @@ not per individual commit.
   this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
   persona load the session-start hook runs, so a digest over the hook's output budget is
   `failed`, and an install root outside the home that is not a git checkout root is `warn`.
+- `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
+  32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
+  `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
+  Code agent file ends with a "Skills you can load" block listing its declared skills that are not
+  preloaded; `synth` warns when such an agent's `tools` list lacks `Skill`.
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
+  `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
 
 ### Changed
 
+- Shorter descriptions for 20 skills and 11 SOPs, so Claude Code's skill listing keeps every
+  description when the SOPs are listed too. Claude Code's listing budget is 30,000 chars on a
+  1M-window model, and past it the skills last in A to Z order become name only. With the 19
+  SOPs listed, the listing drops from 33,836 to 28,561 chars (the method of
+  `tests/test_skill_listing_budget.py`). Each description keeps its "Use when/for" cue, its
+  trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
+  short first Overview paragraph, which is the one the installer lists; the old paragraph
+  stays below it. Skill patch versions are bumped.
+- 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
+  plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
+- `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
+  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.3 KB). It also gains a
+  scope section and a shorter Coverage-mode path for one module or one PR, and drops the
+  compatibility and roadmap lists.
+- `cypress-test-implementation` moved its task breakdown, Cypress patterns, and report templates into
+  `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.4 KB). It also gains a
+  scope section and a short path that writes the specs directly for one or two flows, and its
+  Quality Gate no longer renders inside a code block.
+- Claude Code subagents now preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
+  load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
   it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so;
   an SOP `konductor` does not declare is run by the specialist that declares it. Parallel parts reach your branch only after
@@ -112,6 +140,29 @@ not per individual commit.
   longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
   report uses one per-framework template. `smithy-validation` loads its example review only when
   writing a report.
+- `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
+  `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
+- `e2e-test-strategy` keeps its Stage 9 report template in `references/report-template.md` and
+  opens it only when writing the report.
+- `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
+  rules that served one draw.io-based tool. It places S3 with the regional services, since each
+  bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
+  A Lambda function with VPC config is drawn in its subnets.
+- The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
+- `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
+  second prompt and role. `infra-validation` asks for scope once, and skips the questions when
+  the caller passes the type, path and environment or `scope_confirmed`. It rates findings
+  CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate, and names `policy-validation` as
+  the home for policy-level IAM checks. `iam-policy-design` ends both modes with one compliance
+  step.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -186,6 +237,34 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- The Claude Code plugin is ready for the plugin directory. The README says what the plugin runs,
+  sends and fetches, including the telemetry endpoint and payload, that telemetry is on by default,
+  and how to turn it off, and adds example prompts and a support link. The plugin ships the brand
+  logo as its listing icon at the plugin root, named by `icon` in `plugin.json` along with a
+  `supportUrl`, and drops the `kiro` keyword. The mux and cmux orchestrators describe `.done`
+  completion on both runtimes, release assembly stages generator output in a temporary
+  directory, and `make claude-plugin` writes the gitignored `dist/claude-plugin/`.
+- **Behavior change:** on Claude Code, the mux and cmux orchestrators no longer start each child
+  with every permission check skipped (what is now `bypass`); the default is `interactive`, which
+  prompts in the child's pane. For unattended runs, set
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE=headless` and allowlist your build and test commands, or use
+  `bypass` only in an isolated environment. An interactive child completes when it writes its
+  `$KONDUCTOR_DONE_FILE`. The plugin's `dispatch_permission_mode` option sets the same modes.
+- Each dispatched child gets its own 0700 directory under the registry for its brief, result and
+  `.done`, and is granted only that directory. A `.done` the child writes is kept, and the launcher
+  adds the exit code when the session ends, so a non-zero exit is always recorded as `error`.
+  `--brief <file>` passes a long brief. An existing registry that is group- or world-writable, such
+  as one created under umask 002, is now refused with a message to `chmod 700` it.
+  The orchestrators write a long brief to a `mktemp` file outside the registry, and they poll
+  the registry the scripts use, including one set with `KONDUCTOR_MUX_REGISTRY_DIR` or
+  `KONDUCTOR_CMUX_REGISTRY_DIR`.
+- `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
+  scopes the `pr_url` and historical-filtering limits, including the report's
+  `Historical filtering:` line.
+- `cmux-dispatch` renames the done-key variable it exports to the dispatched pane to
+  `KONDUCTOR_DONE_KEY`, and `cmux-completion-hook.sh` reads the new name. A custom completion
+  hook must read `KONDUCTOR_DONE_KEY` too; the bundled hook still falls back to
+  `CMUX_WORKSPACE_ID`.
 - Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
   or one the re-review reports there, carried over or new, or caused by the fix in what depends on it, stops work on that artifact;
   a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
@@ -240,9 +319,178 @@ not per individual commit.
   section to the design document, and points follow-up work at konductor skills instead of
   prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
   changing access patterns, not infrequently accessed data.
+- Fact-checking starts at `doc-accuracy-analyzer`. It routes AWS feature, limit, pricing and
+  Region claims to `aws-service-validator`, rates findings CRITICAL, IMPORTANT or SUGGESTION,
+  and states when a document passes. When checking an artifact, `decision-research` now adds only
+  prior art and missing context. `k-product-manager` gains `doc-accuracy-analyzer`.
+- `smithy-modeling`, `smithy-validation`, and `progress-tracking` now read as one set of
+  instructions instead of a summary followed by a pasted prompt. `smithy-validation`'s output
+  format uses its Quality Gate's severity names, and it flags operations left callable without
+  authentication instead of operations missing `@auth`. `smithy-modeling`'s service templates
+  carry an auth scheme trait and no longer set a doc comment and `@documentation` on the same
+  shape, which Smithy rejects as a trait conflict. `progress-tracking` takes `plan_path`
+  and per-feature `spec_dir`, defaulting to the `.kiro/specs/` paths it used
+  before.
+- `policy-validation` reads as one instruction set, without a pasted second prompt and role. It
+  keeps one Rules section, one IAM score rubric and one Iteration Progress template, and rates
+  findings CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate.
+- About 40 skills were revised after test runs showed where they went wrong. What changes when
+  you use them:
+  - Review and validation skills rate findings CRITICAL, IMPORTANT or SUGGESTION and keep
+    CRITICAL for real blockers such as exposure, data loss and credential risk. Each finding
+    cites its location and a concrete fix. Context the skill could not check is reported as an
+    assumption or an unscored note, not a rated finding.
+  - Tell a skill not to ask questions, or pass the scope up front, and it records its
+    assumptions in the output and finishes instead of stopping to ask. This covers the kiro
+    spec, requirements, user story, threat model, NFR, cost and sprint-planning skills.
+  - A request for a security-focused or adversarial second pass loads `adversarial-code-review`
+    instead of `code-review`. `verification`, `git-merge` and `decision-research` load on more
+    of the requests they cover, such as finishing a change test-first or syncing a branch.
+  - `git-merge` checks the staged merge before it commits and recovers from a rejected push
+    without force-pushing or rebasing.
+- AWS guidance comes from the AWS MCP server's skills instead of local copies:
+  - `dynamodb-design` is now a short skill: access patterns first, keys and per-partition
+    limits, GSI write sharding for low-cardinality keys with a worked example, capacity, and a
+    review gate that rates a hot partition or an unsharded low-cardinality GSI key CRITICAL, with
+    six checks that each state their fact and severity: throttle alarm metrics, sharding a
+    deployed GSI key, PITR and deletion protection, TTL, the capacity-mode switch limit and
+    price provenance. It points to the server's `amazon-dynamodb` skill, loaded through `find-aws-skills`, which
+    `k-architect` now declares, for Streams, backup, security and cost depth.
+    `dynamodb-validation` is removed; `dynamodb-design`'s gate reviews a finished design. Custom
+    agent specs that declare it must drop it: `konductor synth` rejects a spec that names a skill
+    that does not exist.
+  - `find-aws-skills` now loads for any AWS service guidance, even when a local skill covers part
+    of the task, and `architecture-advisor`, `kiro-design-generation` and `system-design-patterns`
+    load `dynamodb-design` and apply its quality gate before designing DynamoDB keys and indexes.
+    When a lookup fails, `find-aws-skills` offers direct API calls through `aws___run_script` only
+    when the agent has that tool.
+  - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
+    `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
+    read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
+    only after the user confirms the code is trusted; otherwise it reads the template in
+    `cdk.out/` or the constructs and lists synth and cdk-nag as not run. An unsharded
+    low-cardinality DynamoDB partition key is CRITICAL, matching `dynamodb-design`. Without the server it
+    runs the local tools the project has and checks its quality gate items by reading the code.
+    `k-code-review-workflow` passes it `scope_confirmed`, the infra files and a new optional
+    `environment` parameter, so the review does not stop to ask for scope.
+  - `iam-policy-design` generates policies with `aws-iam` and takes S3, secrets and CloudTrail
+    settings from the server's skills for them. `policy-validation` checks statements against
+    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`. It and
+    `infra-validation` rate `iam:PassRole` or an IAM escalation action on `*` CRITICAL, a scoped
+    escalation action or `ForAllValues` without a `Null` check IMPORTANT, and map the S3
+    checklist's tiers onto their own scale. The `iam-policy-design` tenant isolation example
+    pairs its `LeadingKeys` condition with a `Null` check and limits the actions.
+  - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
+    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
+    shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
+    server, shown to the user and run locally only after the user confirms. When the server is available it requires a Price List lookup for
+    each line item and labels any figure it did not look up "recalled, unverified".
+  - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
+    rotation period as configurable, uses the Security Hub CSPM name, and, when the user asks,
+    runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
+  - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
+    so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
+    read-only documentation, skill and Region tools. On both harnesses `konductor` is granted only
+    those five tools by name (`aws___retrieve_skill`, `aws___search_documentation`,
+    `aws___read_documentation`, `aws___list_regions`, `aws___get_regional_availability`), so it
+    has no `aws___run_script`, and its prompt requires confirmation before any mutating AWS action.
+    All three start the server with `--skip-auth`, so documentation search and skills work
+    without AWS credentials; calls that act on an account still need them.
+    The skill-name test now also checks aws-mcp skill names in table cells and prose.
+- The Kiro spec skills and the `kiro-spec-workflow` SOP write specs in the format Kiro writes
+  them:
+  - `requirements.md` has a Glossary, and each requirement names the user story it came from on
+    a `**Source:**` line (for example `US-3`), so it traces back to the PM handoff.
+  - `design.md` has Kiro's seven sections, with Correctness Properties: `*For any* ... SHALL`
+    statements, each with the requirements it validates.
+  - `tasks.md` marks optional test tasks with `- [ ]*`, adds checkpoint tasks, names the
+    property each property test checks, and ends with a Task Dependency Graph (a flowchart and
+    a JSON list of waves, with each checkpoint alone in its wave, same-file writes in
+    separate waves, and every task after the waves its required predecessors are listed in),
+    which Kiro's spec format check requires.
+  - The SOP takes `spec_type` (`feature` or `bugfix`) and `workflow` (`requirements-first` or
+    `design-first`), and writes `.config.kiro`. A bugfix spec writes `bugfix.md` with Current,
+    Expected and Unchanged Behavior sections from a `bug_report_path`. Run on its own on Kiro,
+    the SOP offers `/spec new` seeded with the handoff files and hands execution to `/spec run`;
+    inside `k-full-sdlc` it leaves execution to that SOP. Its last step reports gaps between the
+    documents instead of a traceability table.
+
+- Overlapping skills now keep each rule set in one place. `decision-writing` gains an ADR Mode
+  that replaces `adr-generator`, which is removed (79 skills). `adversarial-code-review` points
+  to its three pass skills for each lens's checklist and severities, keeping a severity rule
+  of its own for a run that loads no pass, and `frontend-review` checks changes against the
+  rules in `frontend-development`.
+- Two pass ratings now match the old `adversarial-code-review` gate: a new field missing
+  validation or a default at any entry point is IMPORTANT (was SUGGESTION), and any unguarded
+  map or optional access is IMPORTANT (was limited to access reached at runtime). The security
+  pass also rates an internal error code or raw exception message surfaced to a caller CRITICAL.
+- `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
+  over `.transform()` for cross-field validation, defensive checks on array index access, and
+  TypeScript utility types.
+
+### Removed
+
+- Breaking: three skills are renamed and their old names are removed, with no aliases:
+  `asdlc-aspect-review` is now `k-aspect-review`, `asdlc-code-simplifier` is now
+  `k-code-simplifier`, and `document-formats` is now `docx-conversion`, whose description names
+  `.docx`. Custom agent specs must use the new names: `konductor synth` rejects a spec that still
+  declares an old one.
 
 ### Fixed
 
+- `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
+  `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
+  to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
+  without that yes, or to push the default branch. Orchestrators never add the flag to a SOP
+  command unless the user gave it.
+- The `adversarial-code-review` description says "Use for a second pass after code review"
+  (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
+  activation condition. The trigger itself is unchanged.
+- Skill bodies no longer contradict themselves or the codebase. `backend-development` and
+  `backend-review` keep a facade, factory or repository layering only when the codebase already
+  uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
+  TDD's RED phase to code changes, and `k-code-simplifier` runs the tests before and after
+  and reports each change with its reason. The full deliberation panel run is defined once, in
+  `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
+  Repeated paragraphs and tables are cut from several skills.
+- Design and planning skills no longer contradict themselves or point at sections that don't
+  exist. The design review skills and their SOPs call the lowest finding tier SUGGESTION, as the
+  other checkers do. `design-evaluation` lists missing artifacts before it scores and its gate
+  items map to its 10 dimensions, which both design review SOPs and the user guide now use.
+  Eight of them are scored. The high-level assessment and the recommendations are unscored
+  report sections, so a SOP's confidence score averages only the eight.
+  Missing artifacts are listed apart from findings and carry no severity, and the PE review and
+  design-doc SOPs evaluate a single document without asking for the rest of a package, so a
+  one-doc review can reach PE-READY. In `k-existing-design-review` a missing threat model rules
+  out READY FOR IMPLEMENTATION.
+  `plan-review` has a SHIP IT template and star rules that don't overlap, and
+  `trade-off-evaluator` writes to the caller's output directory or reports inline. The
+  `external-research` AWS example states a checked fact instead of a wrong one.
+  `program-decision-docs` treats fewer than 2 options, counting do nothing, as CRITICAL.
+  `non-functional-requirements` asks for targets per operation type. `design-evaluation` does
+  not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
+- `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
+  unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
+  flag them only when the data needs SSE-KMS or a customer managed key. For a customer managed
+  key, `iam-policy-design` adds a bucket policy statement that denies `s3:PutObject` under any
+  other key, and `policy-validation` asks for one; only the deny on unencrypted uploads is gone.
+- `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
+  shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
+  `@httpLabel` members, the DANGER severity, `smithy validate --severity` and
+  `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
+  breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
+  review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
+  file-organization reference pins every Smithy artifact no newer than the installed CLI, with
+  1.75.0 in the example, and adds `$schema`.
+- The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and say each list
+  operation carries its own `@paginated`, which can take its settings from a service-level
+  `@paginated`.
+- The Smithy skills accept any string as a service `version`; a date is only a convention.
+- `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
+  `@httpLabel` member, and says mixins pass their traits to the shapes that use them.
+- The file-organization reference's documentation validator checks operations only, and the
+  guide calls its file naming a convention and a doc comment plus `@documentation` redundant.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
@@ -273,6 +521,11 @@ not per individual commit.
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
+- The config lock gives up with a contention error at its 5-second deadline when the lock file
+  keeps being replaced under it, instead of retrying without a limit. The error now says the lock
+  is held by another process or the lock file kept changing.
+- The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
+  relative target to the release tag and leaves an absolute one alone, keeping the brackets.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
@@ -285,6 +538,65 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `konductor config set` keeps an existing `config.yml`'s permission bits and refuses a symlinked
+  `.konductor/` or `config.yml` instead of writing through it.
+- The session keys for gate facts and the fix-cycle cap are listed once, in the `gate_facts` block
+  of `sop-orchestration.yml`, and `konductor verify-run` reads them from there.
+  `make sop-orchestration-check` fails when a gated SOP stops naming its boundaries' keys. A key
+  named only inside a fenced code block does not count.
+- `verify-run`'s `CONFIG_SOURCE` line now comes from the same config read as the threshold.
+- `verify-run`'s `EVIDENCE_MISSING` message now names the root the evidence path was resolved
+  against. The reason code and exit code are unchanged.
+- Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
+  --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`). These forms
+  stop repository config from running a program through `core.fsmonitor`, `core.pager`,
+  `diff.external`, a textconv driver, signature checks or a submodule diff. `git status` and
+  `git diff` also take `--ignore-submodules=dirty`, so they never check a submodule's working
+  tree, where the submodule's own config could run a `filter.<driver>`. Submodule working-tree
+  changes stay hidden from these reads; a submodule at a new commit still shows. No flag stops a
+  `filter.<driver>`, so orchestrators skip `git status`, working-tree `git diff`, `git blame` and
+  `git ls-files -m` when `.git/config` or a file it includes defines one, or when
+  `extensions.worktreeConfig` is true in `.git/config` and the worktree's `config.worktree` (or a
+  file it includes) defines one. They also skip them when `extensions.worktreeConfig` holds a value that is not a boolean. They use
+  `git diff --cached`, `git log`, `git show` and the file tools instead, and tell the user why.
+- The orchestrator routing rules list memory and skill capture as direct work, matching what
+  Memory & Skill Reflexes ask for.
+- Core rule 12's example search that skips `.env` files keeps `.env.example` in its results.
+- `persistent-memory` allows removing an untagged entry when the user asks, as the agent prompts do.
+- `verify-run` rejects a misspelled key in `sop-orchestration.yml`, such as `boundries`, instead of
+  reading it as a SOP with no gate boundaries.
+- `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
+  only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
+  and branch cleanup wait for a successful push. The merge into the default branch never runs in
+  a dispatched pane. `git-workflow` now merges the default branch in
+  before a PR instead of rebasing, matching `git-merge`.
+- `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
+  skip permission prompts, so dispatch only tasks you would approve unattended.
+- Kiro CLI v3 synth now prints a warning when it drops an orchestrator's
+  `toolsSettings.subagent.availableAgents`, or any other unmapped `toolsSettings` key, instead of
+  dropping it silently. Specialists get no `availableAgents` warning: their output carries no
+  subagent tools, and synth already warns when a specialist's spec names a subagent.
+- Doc comments in the kiro-v3 synth module now cite the real sources for its `hooks`, tool-ID
+  and `trustedAgents`/`availableAgents` mappings (public kiro.dev pages and live testing against
+  the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
+  in this repository. They say which tool-ID rows no source confirms, and correctly state that
+  `install/registry.rs` registers three install strategies, not two.
+- Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
+  orchestrators, which have a `stop` hook, still have a `hooks` field.
+- Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
+  agents already did, so `konductor`, `k-architect` and `k-developer` can use their `aws-mcp` tools
+  without a hand-added MCP config. Without `uvx` the server fails to start and the agents work
+  without it.
+- `uninstall` now keeps tracked files that changed since install and warns about them, instead of
+  deleting them. The warning says a kept file is still live and, for a Kiro CLI v3 hook document,
+  names the Konductor hook entries to remove; that document's lock file is kept with it. A Kiro
+  agent file that `kiro-cli agent upgrade` rewrote is still removed when its `.json.bak` backup
+  matches what Konductor installed. This also removes an agent file you edited after the upgrade,
+  since the backup still matches. `uninstall` never deletes a `.bak` file; it lists each matching
+  backup by full path and suggests removing them by hand. The `--json` output adds `kept_changed`,
+  `kept_changed_paths` and `kept_backups`. Under `--dry-run --json`, `would_delete` holds only real
+  removals and a new `would_keep` array lists the kept files, with `would_delete_count` and
+  `would_keep_count`.
 
 ### Security
 

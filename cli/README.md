@@ -184,7 +184,9 @@ dist/
 Each Kiro CLI v2 and v3 agent's `prompt` ends with a generated `## Your skills`
 block listing the agent's declared skills with a rule for when to load one.
 Skills whose description starts "MUST USE for every" (today only `constraints`)
-are left out, since they claim every task. Claude Code agents get no block.
+are left out, since they claim every task. Each Claude Code agent file ends with a
+`## Skills you can load` block instead, listing only the declared skills it does not preload
+(see the preload paragraph below).
 
 The filename carries no architecture or OS: the packaged content (agent/skill/SOP
 markdown and JSON config, no compiled code) is architecture- and OS-independent within
@@ -200,6 +202,15 @@ On success, `synth` prints two summary lines to stdout: what was written
 (agent/skill/SOP/context counts and the output root) and the packaged
 artifact's filename. `dist/` is gitignored - inspect the output with a
 plain directory listing, e.g. `find dist -maxdepth 3`.
+
+Claude Code injects every skill in an agent's `clientConfig.claudeCli.skills` into each
+subagent it spawns, so `synth` measures that preload. It prints a `konductor: warning:` line to
+stderr for any agent over 32 KiB or 32 names; past 32 names it lists the skills Claude Code would
+drop. The command still succeeds. `-v` adds one
+`claude preload: <agent> <bytes> B, <n> skill(s)` line per agent, and `--json` carries the same
+figures in a `claude_preload` array. Each agent file lists the declared skills it does not
+preload, to be loaded with the `Skill` tool, so `synth` also warns when an agent has such skills
+but an explicit `clientConfig.claudeCli.tools` list without `Skill`.
 
 ---
 
@@ -668,12 +679,13 @@ lock file; a partial uninstall and `--dry-run` leave it. The manifest's own lock
 (`.konductor/.manifest.lock`) is not removed, so `.konductor/` is not empty after a full
 uninstall.
 
-`--dry-run` reports exactly which files would be removed for every selected target,
-without touching the filesystem in any way, flagging each individual path that has
-diverged from its manifest-recorded hash (i.e. would have local edits destroyed) - distinct
-from an unmodified tracked path, both in plain-text (`(local edits would be destroyed)`)
-and `--json` (a per-path `"diverged"` boolean), not just an aggregate count. Without
-`--dry-run`, a real uninstall proceeds directly, with no confirmation prompt of any kind.
+`--dry-run` reports what a real run would do for every selected target, without touching
+the filesystem in any way. It lists the files a real run would remove, marking a
+Kiro-rewritten agent as `(rewritten by Kiro; removed)`, then the files it would keep because
+they changed since install, then the matching Kiro agent backups it would leave. The
+"would remove" count covers removals only. See [`uninstall --json`](#uninstall---json) for
+the JSON shape. Without `--dry-run`, a real uninstall proceeds directly, with no
+confirmation prompt of any kind.
 
 Uses `update`'s `--target`/`--all` selection table above exactly, with no divergence:
 a bare invocation (`--target` omitted, `--all` not passed) against 2+ tracked installs
@@ -687,15 +699,44 @@ treats this as a non-fatal prune - it removes the stale tracked install entry an
 reports `stale: true` rather than failing, since there is nothing left on disk to
 protect.
 
-`uninstall` reports how many deleted files had a hash that diverged from the manifest's
-recorded hash (i.e. a file that was hand-edited after install and is about to be deleted
-anyway), naming the specific diverged file paths - a disclosure, not a safeguard that
-blocks deletion.
+`uninstall` keeps a tracked file whose content no longer matches the manifest's recorded
+hash, prints a warning naming it, and still exits `0`. The kept file is still live (the
+runtime keeps loading it) but is no longer tracked once the manifest entry is gone. For a
+kept Kiro CLI v3 hook document the warning also names the Konductor hook entries to
+remove, and the document's lock file is left with it. One exception covers Kiro CLI's
+`kiro-cli agent upgrade`, which rewrites each `.kiro/agents/<name>.json` in place and
+saves the original as `<name>.json.bak`: when that backup hashes to the manifest's
+recorded hash, the rewritten agent file is removed and listed. Uninstall never deletes a
+`.bak` file. It prints a warning listing, by full path, each backup that matches the
+manifest (next to a rewritten or an unchanged agent file) and suggests removing them by
+hand. A backup that does not match is neither touched nor listed, and `.bak` files
+anywhere else are ignored. This rule cannot tell Kiro's rewrite from an edit you make
+after `kiro-cli agent upgrade`: the backup still matches, so an agent file edited after
+the upgrade is removed too.
 
 Exit codes: `0` on success, `64` (`EXIT_USAGE_ERROR`) on any usage error (including the
 2+-tracked-installs ambiguity case), `65` (`EXIT_VERIFY_FAILED`) on an unsupported index
 schema version, `6` (`EXIT_SUCCESS_WITH_WARNINGS`) when everything this uninstall was
 responsible for succeeded but a tracked `--link-bin` symlink could not be removed.
+
+### `uninstall --json`
+
+A real run's document (one per target, or one `succeeded` entry per target under `--all`)
+carries `files_deleted`, `diverged_deleted` and `diverged_paths` (only Kiro-rewritten agent
+files), `kept_changed` (a count) and `kept_changed_paths` (relative paths), `kept_backups`
+(absolute paths of the matching Kiro agent backups left in place), plus `dirs_removed`,
+`stale` and the `--link-bin` fields. The plain-text warnings about kept files and backups
+are not printed under `--json`.
+
+A `--dry-run` document (one per target, or one `previewed` entry per target under `--all`)
+carries:
+
+- `would_delete`: only the files a real run removes, each `{"path", "diverged"}`, where
+  `diverged` is `true` only for a Kiro-rewritten agent;
+- `would_keep`: the relative paths of files a real run keeps because they changed since
+  install;
+- `would_delete_count` and `would_keep_count`: the lengths of those two arrays;
+- `kept_backups`: as in the real run.
 
 ---
 
@@ -906,6 +947,12 @@ phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its p
 and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
 pass. The SOP name comes from the file name (`<sop>-<digit>...`).
 
+The session keys it reads come from `gate_facts` in the same file: `gate_<phase>_result`,
+`gate_<phase>_evidence`, `gate_<phase>_checker`, and `gate_<phase>_override` for each boundary, and
+`run.data.max_fix_cycles` for the fix-cycle cap. `k-full-sdlc`'s Progress Tracking section says
+when it writes each one, and `make sop-orchestration-check` fails when a gated SOP stops naming
+the keys of its boundaries.
+
 It reads the session file (at most 1 MiB), checks that the evidence files the session
 names exist (it never opens them), and reads the effective config (preset, then
 `~/.konductor/config.yml`, then `<cwd>/.konductor/config.yml`) for
@@ -944,7 +991,7 @@ The first row that fires sets the exit; every firing reason prints.
 | V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the root, or rejected by the YAML loader. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 65 |
 | V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
 | V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
-| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file in the project | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
+| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file inside the root | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
 | V5 | A phase is `BLOCKED`, or a per-feature phase stays `IN_PROGRESS` after a later phase completed | `HALTED` | 1 |
 | V6 | A feature's `fix_cycles_used` is above the cap: `run.data.max_fix_cycles`, or 2 when none is recorded. Also checks the run-level `doc_fix_cycles_used` | `BUDGET_EXCEEDED` | 3 |
 | V7 | A check-threshold or loop-exit `gate_<phase>_result` ranks at or above the effective threshold. A word in no severity list ranks as CRITICAL | `FINDING_UNRESOLVED` | 2 |

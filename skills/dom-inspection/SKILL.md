@@ -1,7 +1,7 @@
 ---
 name: dom-inspection
-version: 1.0.0
-description: 'Extracts structured field-level metadata from web forms using the browser DOM and HTML5 Constraint Validation API. Use when a functional test or discovery report needs a form''s validation rules, error selectors or conditional fields from the live DOM. Produces a per-field inspection report capturing validation rules, error message selectors, and conditional visibility.'
+version: 1.1.0
+description: Extracts field-level metadata from web forms using the browser DOM and the HTML5 Constraint Validation API. Use when a functional test or discovery report needs a form's validation rules, error selectors or conditional fields from the live DOM. Produces a per-field inspection report.
 tags: [dom, forms, validation, testing, browser, html5, constraint-validation]
 ---
 
@@ -11,10 +11,10 @@ tags: [dom, forms, validation, testing, browser, html5, constraint-validation]
 
 Extracts structured metadata from web forms by inspecting the live DOM. Produces a per-field inspection report that captures:
 
-- **Declarative constraints** — HTML5 validation attributes (`required`, `pattern`, `min`, `max`, `minlength`, `maxlength`, `type`)
-- **Error message selectors** — elements that render validation errors for each field (`aria-describedby`, `aria-errormessage`, `[role="alert"]`)
-- **Conditional visibility** — fields that appear or disappear based on other field values
-- **Cross-field business rules** — observable constraints between fields (e.g. date ranges, dependent dropdowns)
+- **Declarative constraints**: HTML5 validation attributes (`required`, `pattern`, `min`, `max`, `minlength`, `maxlength`, `type`)
+- **Error message selectors**: elements that render validation errors for each field (`aria-describedby`, `aria-errormessage`, `[role="alert"]`)
+- **Conditional visibility**: fields that appear or disappear based on other field values
+- **Cross-field business rules**: observable constraints between fields (e.g. date ranges, dependent dropdowns)
 
 **This skill is distinct from accessibility auditing.** It focuses on extracting test oracles for functional test generation, not WCAG compliance. Accessibility concerns (contrast, focus order, screen reader compatibility) belong in a separate skill.
 
@@ -31,6 +31,8 @@ Load this skill into `k-browser` (for live DOM inspection during app discovery) 
 ## Inspection Protocol
 
 ### Phase 1: Static DOM Analysis
+
+If the page uses Cloudscape (`awsui` class names), open `references/cloudscape.md` (relative to this file) before running this script: the attributes sit on the inner `<input>`, so the field query below needs the Cloudscape form.
 
 For each form on the page, extract HTML5 validation attributes without triggering any interaction:
 
@@ -96,9 +98,11 @@ return Array.from(document.querySelectorAll('form')).map((form, index) => ({
 }));
 ```
 
+The script's keys are camelCase. When writing the report, use the snake_case schema in Report Schema: `initiallyHidden` becomes `initially_hidden`, and `ariaDescribedBy` or `ariaErrorMessage` resolves to the element you record as `error_message_selector`.
+
 ### Phase 2: Validation Trigger Analysis
 
-For each form, determine when validation fires. **Try non-destructive methods first** — form submission can cause server-side side effects (creating records, sending emails, triggering workflows) on live apps. Note: a missing `action` attribute does NOT mean submission is safe — forms without `action` submit to the current URL, and SPAs ignore `action` entirely and use JS fetch/XHR handlers.
+For each form, determine when validation fires. **Try non-destructive methods first**: form submission can cause server-side side effects (creating records, sending emails, triggering workflows) on live apps. Note: a missing `action` attribute does NOT mean submission is safe. Forms without `action` submit to the current URL, and SPAs ignore `action` entirely and use JS fetch/XHR handlers.
 
 Detection order:
 
@@ -108,7 +112,9 @@ Detection order:
 
 **Default to `validation_trigger: unknown`** when blur/change detection is inconclusive and submission safety has not been confirmed. This is the safe choice for live apps.
 
-Capture the exact error message text rendered for each field — this is the assertion string for test generation.
+**Static or saved-file inspection.** When you only have the HTML source and no browser, you cannot observe blur or change, and reading a submit handler does not confirm that submitting is safe. Set `validation_trigger: unknown` unless the user has confirmed submission is safe, even when the source clearly validates on submit. Put what the source suggests and any side effects in `validation_trigger_note`, for example: `source validates in the submit handler, which POSTs to /api/orders and places an order; safety not confirmed`. Test generation reads `unknown` as "ask before submitting", which is what protects a live app.
+
+Capture the exact error message text rendered for each field. It is the assertion string for test generation. On Cloudscape pages, find it with the error selectors in `references/cloudscape.md`, since it is not linked through `aria-describedby`.
 
 ### Phase 3: Conditional Visibility
 
@@ -129,7 +135,7 @@ Observe and record:
 - Dependent dropdowns (selecting value A in field 1 filters options in field 2)
 - Fields that become required only when another field has a specific value
 
-These cannot be extracted statically — they require interaction. Trigger each observable rule and record the constraint.
+These cannot be extracted statically. They require interaction. Trigger each observable rule and record the constraint.
 
 ## Report Schema
 
@@ -141,8 +147,9 @@ Produce a `dom-inspection-report.json` with this structure:
   "ui_framework": "cloudscape | material-ui | plain-html | unknown",
   "forms": [
     {
-      "form_selector": "<selector>",
+      "form_selector": "<one parseable selector>",
       "validation_trigger": "submit | blur | change | unknown",
+      "validation_trigger_note": "<what the source or observation suggests, and any submit side effects, or null>",
       "fields": [
         {
           "selector": "<most reliable selector>",
@@ -193,5 +200,5 @@ Open `references/cloudscape.md` (relative to this file) when the page uses Cloud
 
 **SUGGESTION:**
 
-- Capture `placeholder` text — useful as a fallback selector and documents expected input format
-- Note fields with `autocomplete` attributes — relevant for test data strategy
+- Capture `placeholder` text, which is useful as a fallback selector and documents expected input format
+- Note fields with `autocomplete` attributes, which matter for test data strategy

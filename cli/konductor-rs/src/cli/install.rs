@@ -4500,7 +4500,7 @@ mod tests {
     /// `install_sop_skills`), so the summary must say so -- never the
     /// Kiro-only "skipped ... no runtime discovery path yet" wording the
     /// test above pins for Kiro CLI. Mirrors
-    /// `generated/claude-plugin/README.md`'s former "Known gap" section
+    /// the plugin build README's former "Known gap" section
     /// (`konductor install --harness claude` printed "skipped 19 SOP(s)"
     /// while having, in the same run, correctly installed all 19).
     #[test]
@@ -4550,8 +4550,8 @@ mod tests {
             .join(harness_dir)
             .join(SOPS_CONTENT_TYPE_DIR);
         fs::create_dir_all(&sops_dir).unwrap();
-        fs::write(sops_dir.join("asdlc-plan.sop.md"), b"# Plan\n").unwrap();
-        fs::write(sops_dir.join("asdlc-verify.sop.md"), b"# Verify\n").unwrap();
+        fs::write(sops_dir.join("k-plan.sop.md"), b"# Plan\n").unwrap();
+        fs::write(sops_dir.join("k-verify.sop.md"), b"# Verify\n").unwrap();
         // A non-`.sop.md` file must not be counted.
         fs::write(sops_dir.join("README.md"), b"notes\n").unwrap();
 
@@ -4653,7 +4653,7 @@ mod tests {
 
     /// Companion to the test above, for the Claude harness: `sops_skipped`
     /// keeps its established numeric meaning (the count of staged
-    /// `.sop.md` files -- 19 in the real `generated/claude-plugin/`
+    /// `.sop.md` files -- 19 in the real plugin build
     /// case), and the new `sops_converted_to_skills` flag is `true`,
     /// disambiguating that those files were actually installed as
     /// `sop-<name>/SKILL.md` skills rather than genuinely skipped.

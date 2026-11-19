@@ -4,7 +4,7 @@
 
 [← Task guides](README.md) · [Guide index](../README.md)
 
-Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
+Registers the 11 agents, 79 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
 
 **Time required:** about 2 minutes.
 
@@ -97,7 +97,7 @@ Run the k-code-review-workflow SOP against my current branch.
 - [ ] Giving it implementation work has `konductor` edit files itself, each write asking you first,
       then spawn a `k-*` **reviewer** when the phase closes.
 
-That last point is the real signal. In Kiro CLI the orchestrator pre-approves `fs_read` alone, so
+That last point is the real signal. In Kiro CLI the orchestrator pre-approves only reads, so
 a write or a shell command surfaces a permission prompt instead of happening quietly — it is not
 refused, because `@builtin` grants both. (In Claude Code it is granted `Write` and `Bash` with no
 prompt gate of its own; the reviewer at each phase gate is the check.) If you use
@@ -148,11 +148,19 @@ Choosing among the three orchestrators:
 
 ## Optional integrations
 
-Two are pre-configured in the agent specs and need only their local dependency.
+Two are declared in the agent specs.
 
-**AWS documentation lookups** — `k-architect` and `k-developer`. Install `uvx` and configure
-AWS credentials in `~/.aws/credentials` or environment variables. Both agents work without
-credentials, just without AWS lookups.
+**AWS documentation lookups** for `konductor`, `k-architect` and `k-developer`. Install `uvx`.
+Their agent files carry an `aws-mcp` entry in `mcpServers`, launched via
+`uvx mcp-proxy-for-aws-cli==1.7.0` with `--skip-auth`, so you do not add it to your own MCP config.
+Without `uvx` the server fails to start and the agents still work, just without AWS lookups. The
+first start downloads the proxy through `uvx`, which can delay the agent's first reply.
+
+With `--skip-auth`, documentation search and skills work without AWS credentials. Configure
+credentials in `~/.aws/credentials` or environment variables only for calls that act on an AWS
+account. `konductor` gets only the five read-only tools. For `k-architect` and `k-developer`,
+knowledge tools are pre-approved and AWS API tools ask first. Use the `aws:ViaAWSMCPService` and
+`aws:CalledViaAWSMCP` IAM condition keys to limit agent-initiated calls.
 
 **Browser automation** — `k-browser`. Install the browser binary:
 

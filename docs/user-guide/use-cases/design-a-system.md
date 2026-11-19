@@ -10,7 +10,7 @@ problem statement into a document meant to survive principal-engineer review. A 
 [`k-existing-design-review`](../sop-workflows/design.md#k-existing-design-review), evaluates design
 artifacts that already exist. A third, [`k-principal-engineer-design-review`](../sop-workflows/design.md#k-principal-engineer-design-review),
 gates a finished document before a human reviewer sees it. All three are owned by
-**`k-architect`**, which carries 38 of the package's 81 skills — the largest share of any agent.
+**`k-architect`**, which carries 37 of the package's 79 skills — the largest share of any agent.
 
 **Read this before you pick one.** `k-existing-design-review` is explicitly deprecated for authoring;
 its own header says so:
@@ -98,7 +98,7 @@ Requirements, Open Items — that you confirm before Phase 2 begins.
 The architect drafts using the outside-in structure: Problem → Requirements → Solution Overview →
 How It Works → Implementation Details → Implementation Plan. Mermaid diagrams are generated
 **before** the prose for each major section. Every significant decision — "DynamoDB single-table
-versus relational", say — gets an inline ADR via `adr-generator`: Context, Decision, Alternatives
+versus relational", say — gets an inline ADR via `decision-writing` in ADR Mode: Context, Decision, Alternatives
 Considered table, Consequences.
 
 The draft then goes through a `design-doc-guidelines` maker-checker pass. Any CRITICAL finding is
@@ -106,13 +106,13 @@ fixed and the pass re-run before Phase 3. This can loop a few times without aski
 
 ### Phase 3 — Quality gates *(no pause, by design)*
 
-Three automated passes, with no user interaction permitted:
+Two automated passes, with no user interaction permitted:
 
-- **`doc-accuracy-analyzer`** checks every technical claim against the codebase. INCORRECT and
-  UNVERIFIED findings get inline `> ⚠️` callouts but do not block.
-- **`aws-service-validator`** checks every AWS service and feature claim against live AWS
-  documentation, classifying each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
-  `docs/design/pennywise-aws-validation.md`.
+- **`doc-accuracy-analyzer`** checks every technical claim against primary sources. It routes AWS
+  service and feature claims to `aws-service-validator`, which checks them against live AWS
+  documentation, classifies each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
+  `docs/design/pennywise-aws-validation.md`. INCORRECT, OVERSTATED, and UNVERIFIED findings get
+  inline `> ⚠️` callouts but do not stop the phase. Phase 5 corrects the INCORRECT ones.
 - **`trade-off-evaluator`** scores every multi-option decision 1–5 across cost, latency,
   complexity, scalability, and operability, embeds the table in the relevant ADR, and writes
   `docs/design/pennywise-tradeoffs.md`.
@@ -120,12 +120,12 @@ Three automated passes, with no user interaction permitted:
 ### Phase 4 — Adversarial review loop *(can pause once)*
 
 The architect challenges its own design across up to 5 rounds, classifying findings CRITICAL
-(architectural or factual) / IMPORTANT / MINOR.
+(architectural or factual) / IMPORTANT / SUGGESTION.
 
 **If a CRITICAL architectural finding survives past round 2, the loop stops immediately** and you
 are asked whether to redesign or override. That is the one hard pause in Phases 2–4.
 
-Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR
+Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION
 findings, applying corrections and re-running the guidelines check between rounds. No finding is
 silently dropped — each is either fixed or recorded as an engineer override.
 
@@ -135,7 +135,7 @@ silently dropped — each is either fixed or recorded as an engineer override.
 ### Phase 5 — Final output
 
 The architect applies every correction from Phases 3 and 4, runs `design-evaluation` for a
-confidence score (the average of 10 dimension scores, 1–5 each; anything below 3 is flagged),
+confidence score (the average of its 8 scored dimensions, 1 to 5 each; anything below 3 is flagged),
 writes the final file, and reports the path, the score, and any open issues — without pasting the
 document into the chat.
 
@@ -154,8 +154,8 @@ document into the chat.
 The SOP will not claim the doc is ready for principal-engineer review unless **all four** hold:
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
-- [ ] `doc-accuracy-analyzer`: **0 INCORRECT** (UNVERIFIED is acceptable with callouts)
-- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR**
+- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text, **0 UNVERIFIED noted "contradicts prior knowledge"**, each checked against the named page and reclassified or corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable with callouts)
+- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
 If any fails, it presents what is left and asks: `Fix these before submission? [y/n]`.
@@ -178,9 +178,10 @@ Review the design package in design/pennywise/.
    hard pause; it will not continue without an answer.
 3. **Read all artifacts** — in order: system design → threat model → API specs → data models →
    security policies → diagrams.
-4. **Run `design-evaluation`** — scores all 10 dimensions 1–5: template adherence, scalability,
-   security and threat coverage, maintainability, resilience, testability, operational readiness,
-   cost, API quality, data model quality. Below 3 is flagged for revision.
+4. **Run `design-evaluation`**: scores 8 dimensions 1 to 5: template adherence, scalability
+   (including cost), performance, security, maintainability, resilience, code quality, and
+   testability. Below 3 is flagged for revision. A high-level assessment and actionable
+   recommendations are written as unscored report sections.
 5. **Generate report** — writes `design-review-report.md` (or your `output_file`) with dimension
    scores and Critical / Important / Suggestion findings.
 6. **Present recommendation** — **READY FOR IMPLEMENTATION** or **NOT READY**, plus the blockers if
@@ -199,10 +200,9 @@ None specific to these SOPs — both behave the same in Kiro CLI and Claude Code
 to `k-architect`.
 
 One thing to know about Phase 3: the AWS validation step uses the architect's `aws-mcp` server. In
-Kiro CLI that server is declared and launched from the agent spec. **In Claude Code the agent only
-requests the tools via the `mcp__aws-mcp__*` glob — you must configure an `aws-mcp` server
-yourself** or those tools will not resolve. Either way, with no AWS credentials the step degrades to
-UNVERIFIED findings rather than failing.
+Claude Code and Kiro CLI the install launches that server from the agent file. The server starts
+with `--skip-auth`, so the lookups work without AWS credentials. Without the server (no `uvx`, for
+example), the step degrades to UNVERIFIED findings rather than failing.
 
 ---
 

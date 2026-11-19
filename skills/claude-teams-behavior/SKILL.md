@@ -1,7 +1,7 @@
 ---
 name: claude-teams-behavior
-description: Claude Code Agent Teams patterns for the orchestrator. Use when orchestrating on Claude Code with SendMessage or background agents, for parallel specialists, mid-run context, or naming a write agent's worktree. Loaded only in Claude Code sessions via claudeCli.skills. Provides hub-and-spoke contract, decision rules for SendMessage, background agent spawning, and agent name resolution.
-version: 1.2.0
+description: 'Use when orchestrating on Claude Code with SendMessage, background agents or parallel specialists, or naming a write agent''s worktree. Agent Teams patterns; loaded only in Claude Code.'
+version: 1.2.1
 tags: [skill, claude-code, agent-teams, orchestration]
 ---
 
