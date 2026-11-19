@@ -1,0 +1,85 @@
+{
+  "runner": "python",
+  "testCmd": "",
+  "pattern": "test*.py",
+  "perTestSec": 5,
+  "pristine": [
+    "schedulerlib/scheduler.py",
+    "schedulerlib/retry.py",
+    "schedulerlib/priority_queue.py",
+    "schedulerlib/rate_limiter.py",
+    "schedulerlib/persistence.py"
+  ],
+  "mutants": [
+    {
+      "id": "m01",
+      "files": [
+        "schedulerlib/scheduler.py"
+      ],
+      "note": "A ranged step can emit one value beyond its inclusive end."
+    },
+    {
+      "id": "m02",
+      "files": [
+        "schedulerlib/scheduler.py"
+      ],
+      "note": "Month selection skips the first day of an allowed month."
+    },
+    {
+      "id": "m03",
+      "files": [
+        "schedulerlib/scheduler.py"
+      ],
+      "note": "The last valid day of every month is treated as invalid."
+    },
+    {
+      "id": "m04",
+      "files": [
+        "schedulerlib/scheduler.py"
+      ],
+      "note": "Next-run calculation drops the input timezone offset."
+    },
+    {
+      "id": "m05",
+      "files": [
+        "schedulerlib/retry.py"
+      ],
+      "note": "The retry cap is one second lower when the exponential delay reaches it."
+    },
+    {
+      "id": "m06",
+      "files": [
+        "schedulerlib/retry.py"
+      ],
+      "note": "A failed operation gets one extra attempt after the configured limit."
+    },
+    {
+      "id": "m07",
+      "files": [
+        "schedulerlib/priority_queue.py"
+      ],
+      "note": "Equal-priority items are returned in reverse insertion order."
+    },
+    {
+      "id": "m08",
+      "files": [
+        "schedulerlib/rate_limiter.py"
+      ],
+      "note": "An event remains counted at the exact sliding-window boundary."
+    },
+    {
+      "id": "m09",
+      "files": [
+        "schedulerlib/persistence.py"
+      ],
+      "note": "An empty state file reaches JSON parsing instead of the empty-state branch."
+    },
+    {
+      "id": "m10",
+      "files": [
+        "schedulerlib/persistence.py"
+      ],
+      "note": "Malformed non-empty state is re-raised instead of recovered as empty state."
+    }
+  ]
+}

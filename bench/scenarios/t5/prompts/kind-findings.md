@@ -12,3 +12,4 @@ Write `solution/` containing the reference document at the path the prompt names
 Verify: write a tiny script in a scratch folder that reads your `solution` document and the key and checks every key id is found by location and fix keywords. Print its result.
 
 Request rules for this kind: say what the user needs and why in their own words. Do NOT list the risk areas, modules or kinds of defect to look for. The agent has to read the code to find them. Name only the output file and the JSON block format. No file may exist in `fixture/` that the reference solution creates.
+Do not put an example JSON block with real paths from the fixture in the request; describe the three fields in words, or use a placeholder path such as `path/to/file`.

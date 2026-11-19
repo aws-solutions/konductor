@@ -1,0 +1,201 @@
+{
+  "id": "t5-qa-suite-audit",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "code-review"
+  ],
+  "questions": "allowed",
+  "prompt": "Coverage is at 92%, but we still shipped a billing calculation bug. Please audit the existing test suite and tell me which tests give us false confidence. Read the implementation, the tests, and the project history closely enough to explain why each test could pass while the behavior is wrong, then say what the test should check instead. I only need the audit, not product changes or new tests. Do not change source files or existing tests. Put the finished report in docs/TEST-AUDIT.md. End the report with one fenced JSON block containing a list of findings. Each object in that list must have a location naming the test file or place, a severity of critical, high, medium, or low, and a fix describing the test to add or change. Keep the JSON block as the final content in the file.",
+  "fixture": "t5-qa-suite-audit",
+  "hidden": "t5-qa-suite-audit",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 findings.test.js",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/TEST-AUDIT.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/TEST-AUDIT.md",
+      "pattern": "```json\\s*\\[",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/TEST-AUDIT.md",
+      "pattern": "\\\"location\\\"\\s*:",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/proration.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "explanation",
+      "criterion": "The audit explains why each identified test can pass while the behavior is wrong and names a concrete replacement assertion (code cannot check this because it depends on the clarity of the prose).",
+      "weight": 2
+    }
+  ],
+  "findingsKey": [
+    {
+      "id": "proration-self-comparison",
+      "location": "test/proration.test.js",
+      "severity": "critical",
+      "fix": [
+        "independent",
+        "expected",
+        "amount",
+        "boundary",
+        "specific",
+        "assertion"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "invoice-output-recomputed",
+      "location": "test/invoice-contract.test.js",
+      "severity": "high",
+      "fix": [
+        "literal",
+        "expected",
+        "fields",
+        "contract",
+        "independent",
+        "fixture"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "retry-unit-replaced",
+      "location": "test/retry.test.js",
+      "severity": "high",
+      "fix": [
+        "real",
+        "implementation",
+        "behavior",
+        "stub",
+        "dependency",
+        "integration"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "webhook-error-ignored",
+      "location": "test/webhook-failure.test.js",
+      "severity": "high",
+      "fix": [
+        "assert",
+        "error",
+        "throws",
+        "invalid",
+        "rejection",
+        "failure"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "proration-shared-formula",
+      "location": "test/proration-preview.test.js",
+      "severity": "critical",
+      "fix": [
+        "independent",
+        "oracle",
+        "boundary",
+        "amount",
+        "fixture",
+        "example"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "api-body-unchecked",
+      "location": "test/api-routes.test.js",
+      "severity": "high",
+      "fix": [
+        "body",
+        "payload",
+        "response",
+        "error",
+        "content",
+        "assert"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "empty-adjustment-loop",
+      "location": "test/discounts.test.js",
+      "severity": "medium",
+      "fix": [
+        "non-empty",
+        "case",
+        "iteration",
+        "fixture",
+        "assert",
+        "example"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "snapshot-overwritten",
+      "location": "test/invoice-snapshot.test.js",
+      "severity": "medium",
+      "fix": [
+        "committed",
+        "review",
+        "snapshot",
+        "independent",
+        "detect",
+        "compare"
+      ],
+      "fixMin": 2
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://martinfowler.com/articles/mocksArentStubs.html",
+      "licence": "Copyright Martin Fowler; no licence granted, idea only (no text used)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}

@@ -1,0 +1,76 @@
+{
+  "id": "t5-qa-scheduler-gaps",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "prompt": "A job fired one day late after a month ended, and I no longer trust the checks around the scheduler and retry path. Please strengthen the tests under tests/ so they give us confidence in the calendar rule parser and next-run calculation, including the priority queue, sliding-window limiter, retry policy, and JSON state persistence that support job execution. The existing tests should stay useful, and the new coverage should exercise the real public behavior rather than implementation details. Keep the suite quick and deterministic, and make sure temporary state used by tests is cleaned up. Do not change anything under schedulerlib/, the command-line behavior, documentation, configuration, or CI files. The repository must continue to run with its existing Python 3.12 test command, and the current README.md must remain present. Keep all additions or edits limited to tests/.",
+  "fixture": "t5-qa-scheduler-gaps",
+  "hidden": "t5-qa-scheduler-gaps",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -c \"import pathlib,re; files=pathlib.Path('tests').glob('test*.py'); n=sum(len(re.findall(r'^\\s*def test_', p.read_text(), re.M)) for p in files); raise SystemExit(0 if n >= 33 else 1)\" && python3 -m unittest discover -s tests",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "schedulerlib/scheduler.py",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "README.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "The added tests make their expected scheduling and retry contracts clear to a maintainer (code cannot check this because intent and clarity are not observable from execution.)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/boxed/mutmut",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}

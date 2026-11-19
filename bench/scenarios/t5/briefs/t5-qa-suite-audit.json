@@ -4,8 +4,8 @@
   "phases2": [
     "code-review"
   ],
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
   "stack": "node",
   "kind": "findings",
   "size": "35 to 50",
@@ -19,7 +19,8 @@
     "licenceCheckedAt": "2026-11-19",
     "use": "idea"
   },
-  "keyExtra": "Locations are test file paths (for example `test/billing.test.js`), each key item a different file. The fix field names what the test should check instead.",
+  "keyExtra": "Exactly one key item per test file: eight different test files, each holding one weak test or weak pattern, so locations (test file paths) are unique across the key.",
   "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js subscription billing service (plans, invoices, proration, dunning, webhooks, a small HTTP-free API layer) with a large existing test suite that passes. The task is to AUDIT the test suite, not write product code or new tests: the agent writes docs/TEST-AUDIT.md naming which existing test files give false confidence and why, and what each should check instead, with a JSON list at the end whose `location` is the test file path. Seed 8 weak test files (for example: assertions that compare a value to itself or to the function's own output, a mock that replaces the unit under test, a test that catches and ignores the thrown error, a test whose expected value is computed with the same formula as the code, assertions only on the status code and never the body, a test that passes when the loop body never runs, snapshots updated blindly, an ordering dependence on a file written by an earlier test). Add decoys: a long, ugly but sound test file and a heavily mocked but legitimate adapter test.\n\nThe request is from a QA lead: 'coverage is 92% and we still shipped a proration bug; which tests are we kidding ourselves with'.",
-  "id": "t5-qa-suite-audit"
+  "id": "t5-qa-suite-audit",
+  "authorNote": "deepseek-3.2 draft discarded (16.14 credits): several key items shared one test file so the location grader could not tell them apart, and the request carried an example block with real paths; re-authored by gpt-5.6-luna"
 }
