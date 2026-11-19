@@ -630,6 +630,13 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   `resources` of the installed agent (rule files included); opencode primary agent file and the skill index (names and
   descriptions). Vanilla gets the built-in agent, best effort and unsized. `skills` on an old run sizes rule files from `--repo-root`.
 - Limits: a load is a call that returned text; reading a `SKILL.md` with the file tool is not counted; bytes include JSON framing.
+- Load check (`loadCheck` in `result.json`, null for vanilla arms or with no stream): the units (skills, SOPs, agents) the run loaded, each
+  with the stream index of its first load, and `firstWriteAt`, the index of the first file-writing tool call. A task lists the units it
+  needs in `loadCheck.mustLoad` (default: its target skills and SOP) and the ones it must not trigger in `loadCheck.mustNotLoad`;
+  the result says for each whether it loaded and whether it loaded before the first write (`mustLoadBeforeWrite`, `mustNotLoaded`).
+  The skills report adds a selection-rate table per arm and unit: runs needing it, loaded, loaded before the first write, false loads.
+  A file written only through a shell command (`cat > f`) is not seen as a write, so `firstWriteAt` can come late (`shortcut:` comment in
+  `bench/runner/lib/load-check.js`).
 
 ## Skill evaluation scenarios
 
@@ -686,9 +693,19 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   Residual risk: a build script of an arbitrary ref still runs as you and can read any file you can read, including the real CARGO_HOME. Build only
   refs you trust, or build on a host with nothing in that account to lose.
 - `run` records `env.json` with the interpreter versions (node, python3, python, pytest). `tasks/toolchain/pins.json` lists the versions the checks
-  were validated with; a mismatch is logged and kept in `run-config.json` as `toolchainCheck`, and never fails the run. The global
+  were validated with; a mismatch is logged and kept in `run-config.json` as `toolchainCheck`. The global
   pins apply only when a task in the run has check commands or hidden tests, so a plant run (whose gateway uses `--plant-python`
-  and Strands agent `--strands-python`) is not warned about the `python3` on PATH.
+  and Strands agent `--strands-python`) is not warned about the `python3` on PATH. Python is the one pin that is enforced (next item).
+- Python pin. A version manager shim (mise, pyenv) finds its interpreter from the real home, so inside a run, where `HOME` is a
+  scratch dir, a bare `python3` falls back to the system one (3.9 on a common dev host). When a task runs Python (a check or a real
+  repo's test command names python or pytest, or the task is a plant task), `run` and `--prepare-only` first pick an interpreter
+  that matches `global.python3` in `pins.json` (3.12): `--python PATH`, else `BENCH_PYTHON`, else `python3.12`, else `python3` on
+  `PATH`. They link it as `python3`, `python` and `python3.12` in `python-bin` under the run's scratch root and put that dir first on
+  `PATH`, so the agent, the checks and the gateway all see it. They then start `python3` with a scratch `HOME` and refuse when it is
+  not 3.12, or when `--python` or `--plant-python` is another version. With no match the refusal names each candidate tried. The
+  chosen interpreter and the version seen in the sandbox are recorded in `run-config.json` under `python`. Runs with no Python task
+  skip the pin. The pin changes `python3` for every process the run starts, `bench.js` children included; Strands arms set their own
+  `PATH` and use `--strands-python`. The policy plant arm still needs `--plant-python` to name an interpreter with `cedarpy`.
 - `--isolate auto` (default) uses `unshare --user --map-root-user --mount --pid --fork --kill-child`
   and aborts when the probe fails; `--isolate none` is the explicit opt-out. Inside: the real home,
   /tmp, /var/tmp and /dev/shm are read-only and only the run's scratch root is writable. Hidden (empty
@@ -1072,9 +1089,15 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   recommendation per skill and harness: HARMS, RELOCATE, PRUNE, FIX, KEEP or NEEDS DATA, plus a TRIM flag. Free, read-only, never a deletion.
   How to evaluate skills and decide keep, fix, trim, relocate or prune: [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md).
   A skill counts as exposed in a run when the agent that started the run lists it (its own installed skill filter, else the base tree's listing for that agent), or an agent the stream shows the run spawning lists it, or the run loaded it. Each run keeps the entry agent's own `installed-agent.json` (`--arm-agent k-developer` saves k-developer's, not konductor's). Runs saved before that fix hold konductor's file for every entry agent; `prune-report` ignores that file when its name differs from the entry agent, uses the base tree's listing instead, and counts those runs in `usage.runs.staleInstalledAgent` with a warning.
-- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
+- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
+  `--preset noskills` builds the `konductor-noskills` arm (B4): every `skills/` dir is removed and every agent's skill lists
+  (`skillNames`, `claudeCli.skills`) are emptied; prompts, SOPs, context files and subagents stay. Use the same tree on both harnesses:
+  `--arms konductor-noskills=dir:PATH` (Kiro CLI: the skills MCP server indexes 0 skills) and `cc-konductor-noskills=dir:PATH`
+  (Claude Code: no konductor skill under `~/.claude/skills`; the `sop-*` SOP wrappers stay). The `--prepare-only` table's `skills`
+  column shows the konductor skills each arm installs and, in brackets, its SOP wrappers (for example `0 (+19 sop)` against
+  `78 (+19 sop)` for the full arm), and each run's `startup.json` records the same as `konductorSkills` with the arm's `variant`.
 - `cap scenarios --cap ID,ID [--n 8] [--dry-run]` drafts 8 to 30 task scenarios per skill into `DIR/scenarios/<id>.json` and `.md` for review. `--dry-run` writes the prompt only: no model call, no login, no credits.
 - `cap scenarios --cap ID --mode trigger [--n 10] [--seed-queries FILE] [--dry-run]` drafts tasks for a skill that rarely loads: `--n` (8 to 10, default 10) tasks that should make the agent load it on its own and as many near misses that should not, into `DIR/scenarios/<id>.trigger.json` and `.md`.
   It follows skill-creator's trigger eval method (Description Optimization, step 1): realistic, concrete requests in varied phrasings that never name the skill, and near misses that share its words but belong elsewhere rather than unrelated requests.

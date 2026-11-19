@@ -30,6 +30,9 @@ const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = req
 const { loadRun } = require('../../report/load.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
 const toolchain = require('./toolchain.js');
+const { pinPython } = require('./python-pin.js');
+// A string flag value, or null when the flag is absent or given bare.
+const strOpt = (v) => (v !== undefined && v !== true && v !== '' ? String(v) : null);
 const { ensureOwnedDir, writeAtomic } = require('./owned.js');
 const { studyInfraCheck } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
@@ -121,7 +124,7 @@ function summarize(runConfig, state, extra) {
 
 // Builds and trial-installs every arm exactly as `run` does before it launches an agent, prints the preflight table
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
-function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
+function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log, tasks = [], benchDir }) {
   if (runtimes.some((r) => !descriptorOf(r).supports.prepareOnly)) throw new Error(`--prepare-only covers ${joinNames(supporting('prepareOnly').map((d) => d.proseName))} arms; ${joinNames(notSupporting('prepareOnly').map((d) => d.proseName))} arms need their binary and AWS credentials, so check them with a normal run`);
   // Claude Code arms are built and trial-installed with their model pin check; claude itself is never started.
   const isCc = runtimes.includes('claude-code');
@@ -139,6 +142,8 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
   const window = createInstallsGate().begin();
   try {
+    const py = pinPython({ tasks, scratchDir, benchDir, flag: strOpt(opts.python), plantPython: strOpt(opts['plant-python']) });
+    if (py) log(`python: ${py.version} (${py.executable}, from ${py.source}); python3 in the sandbox is ${py.sandboxVersion}`);
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
       config: isCc ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) } : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
@@ -251,7 +256,7 @@ async function cmdRun(opts, deps = {}) {
     // The checks a real run makes before it needs credentials or a binary; a plant suite's shape is checked at intake.
     for (const runtime of runtimes) checkHarnessFlags({ opts, tasks, runtime });
     if (arms.some((a) => a.plant)) checkSuiteShape({ arms, tasks, parallel });
-    return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
+    return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, tasks, benchDir, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   }
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
@@ -313,6 +318,8 @@ async function cmdRun(opts, deps = {}) {
   if (isCc) cc.checkScratchRoot(os.tmpdir());
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
+  // Pins python3 for the agent, the checks and the gateway (S6); refuses when tasks run Python and 3.12 is not found.
+  const pythonPin = pinPython({ tasks, scratchDir, benchDir, flag: strOpt(opts.python), plantPython: strOpt(opts['plant-python']) });
 
   let runBudgetUsd = null;
   let ccRegion = null;
@@ -473,6 +480,7 @@ async function cmdRun(opts, deps = {}) {
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
       variants: variants.map((v) => ({ ...v })),
+      python: pythonPin,
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
       ...config, ...ctx.envInfo,

@@ -20,7 +20,9 @@ const { kiroReachers, split } = require('./reach.js');
 const { inboundRefs } = require('./audit.js');
 
 const TOOL_VERSION = 'cap-variant/1';
-const PRESETS = ['skills-only', 'bare'];
+const PRESETS = ['skills-only', 'bare', 'noskills'];
+// The arm a preset builds is named after the preset, except noskills: konductor with every skill removed (B4).
+const PRESET_ARM = { noskills: 'konductor-noskills' };
 const BARE_PROMPT = 'You are a general software engineering assistant. Do the work you are asked to do.';
 const ORCHESTRATOR = 'konductor';
 
@@ -251,7 +253,25 @@ function opAdd(tree, arg, agents) {
   return { op: 'add', id, beforeSha256: null, afterSha256: sha256(bytes), agents: [...agents] };
 }
 
+// noskills: every skill directory goes, and every agent's skill lists (the Kiro filter and claudeCli.skills) are
+// emptied. Prompts, SOPs, context files and subagents stay as they are, so the arm isolates konductor without skills.
+function opNoSkills(tree) {
+  const dir = path.join(tree, 'skills');
+  const removed = fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort() : [];
+  fs.rmSync(dir, { recursive: true, force: true });
+  const changed = editSpecs(tree, (j) => {
+    let hit = false;
+    const list = j.dependencies?.skills?.skillNames;
+    if (Array.isArray(list) && list.length) { j.dependencies.skills.skillNames = []; hit = true; }
+    const claude = CLAUDE_SKILLS.get(j);
+    if (Array.isArray(claude) && claude.length) { CLAUDE_SKILLS.set(j, []); hit = true; }
+    return hit;
+  });
+  return { op: 'preset', id: 'noskills', beforeSha256: null, afterSha256: null, skillsRemoved: removed.length, agentsEdited: changed.sort() };
+}
+
 function opPreset(tree, preset) {
+  if (preset === 'noskills') return opNoSkills(tree);
   const file = path.join(tree, `agents/${ORCHESTRATOR}.agent-spec.json`);
   if (!fs.existsSync(file)) throw new Error(`preset ${preset} needs agents/${ORCHESTRATOR}.agent-spec.json at the base ref`);
   const before = readSha(file);
@@ -278,7 +298,7 @@ function opPreset(tree, preset) {
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
 function namesFor({ drop, replace, add, overlay = [], preset }) {
-  const kinds = [drop.length && 'x-minus', replace.length && 'x-replace', add.length && 'x-plus', overlay.length && 'x-overlay', preset].filter(Boolean);
+  const kinds = [drop.length && 'x-minus', replace.length && 'x-replace', add.length && 'x-plus', overlay.length && 'x-overlay', preset && (PRESET_ARM[preset] ?? preset)].filter(Boolean);
   const armName = kinds.length === 1 ? kinds[0] : 'x-variant';
   const first = drop[0] ?? (replace[0] ? parseIdFile(replace[0], '--replace').id : null) ?? (add[0] ? parseIdFile(add[0], '--add').id : null) ?? (overlay[0] ? parseIdFile(overlay[0], '--overlay').id : null);
   const nameOf = first ? first.slice(first.indexOf(':') + 1) : '';
@@ -430,4 +450,4 @@ function verifyInstalled({ variant, prepared, tmpRoot = os.tmpdir(), home = null
   }
 }
 
-module.exports = { buildVariant, variantPaths, verifyInstalled, reachWarning, checkScratch, PRESETS, TOOL_VERSION, BARE_PROMPT };
+module.exports = { buildVariant, variantPaths, verifyInstalled, reachWarning, checkScratch, PRESETS, PRESET_ARM, TOOL_VERSION, BARE_PROMPT };

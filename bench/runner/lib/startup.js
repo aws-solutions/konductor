@@ -28,6 +28,28 @@ const filesUnder = (dir) => {
 };
 const skillCount = (dir) => { try { return fs.readdirSync(dir).filter((n) => fs.existsSync(path.join(dir, n, 'SKILL.md'))).length; } catch { return 0; } };
 
+const skillDirs = (dir) => { try { return fs.readdirSync(dir).filter((n) => fs.existsSync(path.join(dir, n, 'SKILL.md'))); } catch { return []; } };
+
+/**
+ * The konductor skills an install put where its runtime serves them from: the skills MCP server's root
+ * (~/.konductor/skills) on Kiro CLI, ~/.claude/skills on Claude Code. `sop-<name>` dirs are SOPs the install wraps as
+ * skills (~/.kiro/skills on Kiro CLI), counted apart in `sops`. A konductor-noskills arm has 0 skills and keeps its SOPs.
+ */
+function installedSkills(home, runtime) {
+  const cc = runtime === 'claude-code';
+  const served = skillDirs(path.join(home, cc ? '.claude/skills' : '.konductor/skills'));
+  const wrapped = cc ? served : skillDirs(path.join(home, '.kiro/skills'));
+  return { skills: served.filter((n) => !n.startsWith('sop-')).length, sops: wrapped.filter((n) => n.startsWith('sop-')).length };
+}
+
+/** The variant.json a `cap variant` dir arm carries beside its tree, reduced to what names the arm; null for other arms. */
+function variantOf(arm) {
+  if (!arm?.dir) return null;
+  const v = readJson(path.join(path.dirname(arm.dir), 'variant.json'));
+  if (!v?.variantId) return null;
+  return { variantId: v.variantId, armName: v.armName ?? null, base: v.base?.commitSha ?? null, ops: (v.ops ?? []).map((o) => `${o.op} ${o.id}`), variantHash: v.variantHash ?? null };
+}
+
 /** Symlinks below `root` (depth-limited) whose target resolves into one of `forbidden`. */
 function linksInto(root, forbidden, maxDepth = 6) {
   const hits = [];
@@ -68,6 +90,8 @@ function startupRecord({ runtime, arm, home, cwd, realHome = os.homedir(), stric
     homeIsolated: path.resolve(home) !== path.resolve(realHome) && !forbidden.some((f) => isInside(path.resolve(home), f)),
     realHomeLinks: [...linksInto(home, forbidden), ...linksInto(cwd, forbidden)],
     agent: null, agentSource: null, mcpServers: [], mcpIgnored: [], steering: [], skills: 0,
+    // The konductor skills the arm can load, and the cap variant it was built as (konductor-noskills: 0 skills).
+    konductorSkills: installedSkills(home, runtime), variant: variantOf(arm),
   };
   if (runtime === 'kiro-cli') {
     const settings = readJson(path.join(home, '.kiro/settings/cli.json')) ?? {};
@@ -105,4 +129,4 @@ function startupRecord({ runtime, arm, home, cwd, realHome = os.homedir(), stric
   return rec;
 }
 
-module.exports = { startupRecord };
+module.exports = { startupRecord, installedSkills, variantOf };

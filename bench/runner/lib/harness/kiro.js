@@ -13,6 +13,7 @@ const { crossCheckCredits } = require('../result.js');
 const { buildChildEnv } = require('../env.js');
 const sandbox = require('../sandbox.js');
 const skills = require('../skills.js');
+const { installedSkills } = require('../startup.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetricsOfRunDir } = require('../orch-metrics.js');
@@ -185,6 +186,7 @@ function trialInstall(prepared, ctx) {
     }
     prepared.skillInfo = skills.kiroSkillInfo(home, prepared.exportDir, prepared.entryAgent ?? 'konductor');
     prepared.skillListing = skillListingOf(home, prepared.skillInfo);
+    prepared.skillsInstalled = installedSkills(home, 'kiro-cli');
     prepared.skillListingError = null;
     return rewritten;
   } finally {

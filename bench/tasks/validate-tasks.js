@@ -49,6 +49,7 @@ const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
 const controls = require('./controls.js');
 const toolchain = require('../runner/lib/toolchain.js');
 const { suiteExtraDirs } = require('../runner/lib/tasks.js');
+const { v3Errors } = require('../runner/lib/task-v3.js');
 const { loadPack, patternKeyProblems, declaredArtifacts } = require('../judge/pack/index.js');
 
 const BENCH = path.resolve(__dirname, '..');
@@ -221,7 +222,8 @@ function validateTriggerShape(file, t) {
   need(isStr(t.id), 'id must be a non-empty string');
   need(where === `${t.id}.json`, `file name must be <id>.json (id is "${t.id}")`);
   need(R.extra, 'trigger tasks live in an --extra-tasks directory, not in bench/tasks');
-  need(t.target === null || isStr(t.target), 'target must be a string or null');
+  need(t.target === undefined || t.target === null || isStr(t.target), 'target must be a string or null');
+  for (const e of v3Errors(t)) err(where, e);
   need(isStr(t.prompt) && t.prompt.length <= TRIGGER_PROMPT_MAX, `prompt must be 1 to ${TRIGGER_PROMPT_MAX} characters`);
   need(isStr(t.fixture) && fs.existsSync(fixtureDir(t.fixture)), `fixture "${t.fixture}" does not exist`);
   need(isInt(t.timeoutSec) && t.timeoutSec > 0, 'timeoutSec must be a positive integer');
@@ -243,7 +245,8 @@ function validateShape(file, t, textOnly = false, rubricMax = 6) {
   need(isStr(t.id), 'id must be a non-empty string');
   need(where === `${t.id}.json`, `file name must be <id>.json (id is "${t.id}")`);
   need(CLASSES.includes(t.class), `class must be one of ${CLASSES.join('|')}`);
-  need(t.target === null || isStr(t.target), 'target must be a string or null');
+  need(t.target === undefined || t.target === null || isStr(t.target), 'target must be a string or null');
+  for (const e of v3Errors(t)) err(where, e);
   need(isStr(t.prompt), 'prompt must be a non-empty string');
   const real = t.class === 'real';
   if (real) need(t.fixture === undefined, 'real tasks have no fixture; the base tree comes from the real-repository cache');

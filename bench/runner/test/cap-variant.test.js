@@ -157,6 +157,28 @@ test('preset bare gives the orchestrator a one-line prompt, empty lists and no s
   } finally { s.done(); }
 });
 
+test('preset noskills removes every skill and every skill list, and keeps prompts, SOPs and context (B4)', () => {
+  const s = setup();
+  try {
+    const before = s.build({ preset: 'skills-only' });
+    const v = s.build({ preset: 'noskills' });
+    assert.equal(fs.existsSync(path.join(v.dir, 'skills')), false);
+    for (const name of ['konductor', 'k-dev']) {
+      assert.deepEqual(lists(v, name).skills, [], name);
+      assert.deepEqual(spec_(v, name).clientConfig?.claudeCli?.skills ?? [], [], name);
+      assert.equal(spec_(v, name).config.systemPrompt, spec_(before, name).config.systemPrompt, `${name} prompt unchanged`);
+    }
+    assert.deepEqual(lists(v, 'konductor').sops, ['k-plan']);
+    assert.deepEqual(lists(v, 'k-dev').ctx, ['core.md']);
+    assert.equal(v.meta.armName, 'konductor-noskills');
+    assert.match(v.armSpec, /^konductor-noskills=dir:/);
+    assert.equal(parseArmSpec(v.armSpec).name, 'konductor-noskills');
+    assert.equal(parseArmSpec(`cc-${v.armSpec}`).claude ?? parseArmSpec(`cc-${v.armSpec}`).cc, true);
+    assert.ok(v.meta.ops[0].skillsRemoved > 0);
+    assert.deepEqual(v.meta.ops[0].agentsEdited, ['k-dev', 'konductor']);
+  } finally { s.done(); }
+});
+
 test('variant.json records the base, every op with before and after hashes, inbound references and the tree hash', () => {
   const s = setup();
   try {

@@ -229,7 +229,7 @@ function noteListing(arm, { skillListing = null, skillListingError = null }, ctx
 const armKey = (a) => (a.commitSha ? a.commitSha.slice(0, 10) : a.contentHash ? `dir:${a.contentHash.slice(0, 10)}` : '-');
 
 function preflightTable(arms, prepared, errors) {
-  const rows = [['arm', 'ref', 'commit', 'mcp sha256', 'state']];
+  const rows = [['arm', 'ref', 'commit', 'mcp sha256', 'skills', 'state']];
   for (const a of arms) {
     const p = prepared.get(a.id);
     rows.push([
@@ -237,6 +237,7 @@ function preflightTable(arms, prepared, errors) {
       a.ref ?? '-',
       armKey(a),
       p?.mcpSha256 ? p.mcpSha256.slice(0, 12) : '-',
+      a.vanilla ? '0' : Number.isInteger(p?.skillsInstalled?.skills) ? `${p.skillsInstalled.skills} (+${p.skillsInstalled.sops} sop)` : '-',
       a.vanilla ? 'ready' : errors.has(a.id) ? 'FAILED' : p?.cached ? 'ready (cached)' : 'ready (built)',
     ]);
   }

@@ -34,7 +34,7 @@ const USAGE = `Usage:
        [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
-       [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
+       [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
@@ -57,7 +57,9 @@ const USAGE = `Usage:
        receiver the runner starts per run, and kiro-cli v3 dumps every model request; each run gets <run>/introspect (mode 0700) with probe.json and timeline.md.
        Nothing goes to a host collector. Off by default; scripts/introspect-summary.js summarizes an out dir; see INTROSPECT.md)
        (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
-       to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3. A plant suite runs
+       to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3.
+       --python is the Python 3.12 interpreter task checks and the gateway's python3 get (default BENCH_PYTHON, then python3.12, then
+       python3 on PATH); a run, and --prepare-only, refuse when tasks run Python and python3 in the sandbox would not be 3.12. A plant suite runs
        plant arms and plant tasks only, at --parallel 1; without --kiro-bin it is counted and the Kiro CLI must match the release pin)
        (st-plant-policy, st-plant-allowall and their -hooked forms run a Strands agent whose plant tools forward to the gateway: --strands-python is the
        interpreter with strands-agents, default python3; --strands-agent FILE holds build_agent(model, tools), default a plain Agent; --model must be
@@ -244,7 +246,7 @@ const USAGE = `Usage:
        exists, only listed lint findings are tolerated: a new finding fails, and so does a listed one that no longer occurs. --update-baseline writes
        the file (all findings if absent; afterwards it only removes stale waivers, adding needs --force); it is never run for you)
   node bench/runner/bench.js cap variant --scratch DIR [--base REF] [--drop ID,ID] [--replace ID=FILE] [--overlay ID=DIR] [--add ID=FILE --to-agent A,B]
-       [--preset skills-only|bare] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
+       [--preset skills-only|bare|noskills] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
        [--cargo-online] [--repo-root DIR] [--bench-dir DIR] [--json]
        (builds a dir: arm from git archive of the base ref with the capability dropped, replaced or added, and prints the arm string for the run command.
        --overlay skill:NAME=DIR replaces SKILL.md and adds references/** from DIR in one step (a section moved out of a skill); it never overwrites a reference file.
