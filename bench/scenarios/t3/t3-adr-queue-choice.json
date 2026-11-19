@@ -114,5 +114,61 @@
         "note": "All needed numbers are provided: 8M events/day, 90KB size, 400/s peak, $900 budget, and detailed pricing. Output format is specified clearly."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that SQS FIFO cannot meet the 400 events/second peak throughput requirement due to its 300 messages/second per message group limit, making it an invalid option regardless of its lower per-request cost.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e2",
+        "text": "Correctly calculates SQS request billing using 64KB chunks for the 90KB average message size, resulting in 2 chunks per message (not 1), which affects the total request count for cost calculations.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "Accounts for the complete message lifecycle in cost calculations: send, receive, and delete operations (3 operations per message, each billed separately), not just send operations alone.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "Identifies that ordering is not strictly required per the requirements document (which states the team decided FIFO semantics are not required if reasonable processing order can be maintained), removing a key advantage of SQS FIFO from the decision.",
+        "source": "original"
+      },
+      {
+        "id": "e5",
+        "text": "Uses the correct peak throughput figure of 400 events/second from requirements and technical design, explicitly rejecting the outdated 500 events/second figure that appears in historical notes.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "For Kinesis, correctly calculates PUT payload units using 25KB chunks for the 90KB message size (4 units per message, not 3), and includes shard-hour costs plus any data retention costs in the total.",
+        "source": "original"
+      },
+      {
+        "id": "e7",
+        "text": "Verifies that the chosen option's monthly cost stays within the $900 budget constraint, showing the computed value and confirming it meets the limit.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e8",
+        "text": "Discusses operational trade-offs: Kinesis requires shard capacity planning and monitoring (higher operational complexity), while SQS Standard offers simpler operations but with possible duplicate processing requiring idempotent consumers.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e9",
+        "text": "Notes that SQS Standard's at-least-once delivery may produce duplicate messages, requiring idempotent consumer logic, which is acceptable since the previous system experienced this and the requirements do not mandate exactly-once processing.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Selects SQS FIFO because it has the lowest per-request price ($0.45 vs $0.50 for Standard) without checking the 300 messages/second throughput limit against the 400 events/second peak requirement.",
+      "Calculates SQS cost using 1 request per message, ignoring the 64KB chunk billing that makes a 90KB message count as 2 requests per operation.",
+      "Only accounts for send operations in cost estimates, omitting receive and delete operations that triple the actual request count.",
+      "Uses the 500 events/second peak figure from historical notes instead of the current 400 events/second requirement stated in the technical design document.",
+      "Dismisses Kinesis due to operational complexity without calculating its actual cost, missing that it is significantly cheaper than SQS options for this message volume."
+    ]
   }
 }
