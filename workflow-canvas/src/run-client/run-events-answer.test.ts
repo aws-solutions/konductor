@@ -142,6 +142,12 @@ describe('parseRunEventsAnswer', () => {
       'a run_finished with no exit code',
       answerWith([{ seq: 1, type: 'run_finished', status: 'passed' }]),
     ],
+    [
+      'a run_finished with a negative exit code',
+      answerWith([
+        { seq: 1, type: 'run_finished', status: 'halted', exit_code: -1 },
+      ]),
+    ],
   ])('is undefined for %s', (_, body) => {
     expect(parseRunEventsAnswer(body)).toBeUndefined();
   });
