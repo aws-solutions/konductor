@@ -46,6 +46,17 @@ test('the schema rejects bad v3 values', () => {
   }
 });
 
+test('expertKey holds judge-only items with a source and 3 to 5 weak answers', () => {
+  const schema = loadSchema('task');
+  const key = { items: [{ id: 'e1', text: 'Says what happens when the counter store is down', source: 'https://example.org/a (MIT)' }], weakAnswers: ['Looks good', 'Add caching', 'Consider scale'] };
+  assert.deepEqual(validate(schema, { ...V3, expertKey: key }), []);
+  assert.deepEqual(v3Errors({ ...V3, expertKey: key }), []);
+  for (const bad of [{ items: [], weakAnswers: key.weakAnswers }, { items: key.items, weakAnswers: ['one', 'two'] }, { items: [{ id: 'e1', text: 'x' }], weakAnswers: key.weakAnswers }, { ...key, extra: 1 }]) {
+    assert.ok(validate(schema, { ...V3, expertKey: bad }).length, JSON.stringify(bad));
+  }
+  assert.ok(v3Errors({ ...V3, expertKey: { ...key, weakAnswers: ['a', 'b', 'c', 'd', 'e', 'f'] } }).length);
+});
+
 test('authorship.source is "original" or a licensed source object', () => {
   const schema = loadSchema('task');
   const withSource = (source) => validate(schema, { ...V3, authorship: { ...V3.authorship, source } });
