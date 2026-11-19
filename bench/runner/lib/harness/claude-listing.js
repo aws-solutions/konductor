@@ -4,7 +4,7 @@
 // The Claude Code skill listing an arm's runs get: the listing budget, the listing size, which konductor skills keep their
 // description and which are name-only, and whether the SOPs are model-invocable. Claude Code sends the model one line per
 // skill ("- name: description"); past the budget it keeps the built-in descriptions and fills the rest in name order, and
-// a skill that no longer fits is sent by name only (bench/README.md, "Skill listing").
+// a skill that no longer fits is sent by name only (bench/docs/reference.md, "Skill listing").
 //
 // Found once per arm, from a trial install, with four local `claude -p` calls and no credentials in their environment,
 // so none of them can reach a model:
@@ -116,7 +116,7 @@ function call(claude, args, { cwd, env, timeoutMs }) {
 
 /**
  * Measures the listing of the install in `home` (its `.claude` dir); `envFor(extra)` gives the run environment with
- * `extra` on top. The caller passes no credentials. Returns the record (see bench/README.md, "Skill listing").
+ * `extra` on top. The caller passes no credentials. Returns the record (see bench/docs/reference.md, "Skill listing").
  */
 function measure({ claude, model, home, envFor, scratch, timeoutMs = 60000 }) {
   const configDir = path.join(home, '.claude');

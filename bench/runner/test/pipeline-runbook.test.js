@@ -10,7 +10,7 @@ const path = require('node:path');
 
 const BENCH = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(BENCH, 'scripts');
-const doc = fs.readFileSync(path.join(BENCH, 'RUNBOOK.md'), 'utf8');
+const doc = fs.readFileSync(path.join(BENCH, 'docs', 'RUNBOOK.md'), 'utf8');
 const sources = Object.fromEntries(fs.readdirSync(SCRIPTS).filter((f) => f.endsWith('.sh')).map((f) => [f, fs.readFileSync(path.join(SCRIPTS, f), 'utf8')]));
 const allSource = Object.values(sources).join('\n');
 
@@ -66,11 +66,11 @@ test('the paths the runbook names exist', () => {
 });
 
 test('the README links the runbook and the runbook links back to the README and playbook', () => {
-  const readme = fs.readFileSync(path.join(BENCH, 'README.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(BENCH, 'docs', 'reference.md'), 'utf8');
   assert.match(readme, /\(RUNBOOK\.md\)/);
   assert.match(readme, /run-after-capability\.sh/);
-  assert.match(doc, /bench\/README\.md/);
-  assert.match(doc, /bench\/CAP-PLAYBOOK\.md/);
+  assert.match(doc, /bench\/docs\/reference\.md/);
+  assert.match(doc, /bench\/docs\/CAP-PLAYBOOK\.md/);
 });
 
 test('the runbook uses no em or en dashes and no first-person chat wording', () => {

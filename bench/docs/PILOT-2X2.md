@@ -1,7 +1,7 @@
 # Design note: the 2x2 pilot (harness by konductor)
 
 Status: the pilot is built and tested with fakes; it has not been run against real services. How to run it is in
-[README.md](README.md#2x2-pilot). This note records what the pilot measures, what it cannot, and how the pieces fit.
+[README.md](reference.md#2x2-pilot). This note records what the pilot measures, what it cannot, and how the pieces fit.
 
 ## The question
 
@@ -33,7 +33,7 @@ real cost of each cell, and prove the pipeline end to end (run, judge, combine).
   revisions, and any run scored by only part of the panel.
 - **Skill listing.** Claude Code sends the model each skill's description only up to a budget (30,000 chars for this model);
   past it, skills are sent by name only, while Kiro CLI has no known cap. Each run records the listing its arm got
-  (`skillListing`, see [README](README.md#skill-listing)); the combiner shows it per cell and refuses a konductor cell whose
+  (`skillListing`, see [README](reference.md#skill-listing)); the combiner shows it per cell and refuses a konductor cell whose
   runs sent a konductor skill by name only, since that harness would lose descriptions the other keeps.
 
 ## Units

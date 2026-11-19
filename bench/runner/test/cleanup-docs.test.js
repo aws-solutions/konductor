@@ -13,7 +13,7 @@ const gc = require('../lib/gc.js');
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
 
 test('the README has a Cleaning up section that names every kind, the defaults and the protect file', () => {
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   const at = doc.indexOf('\n## Cleaning up\n');
   assert.ok(at > 0, 'no "Cleaning up" heading');
   const section = doc.slice(at, doc.indexOf('\n## ', at + 5));
@@ -29,15 +29,15 @@ test('the README has a Cleaning up section that names every kind, the defaults a
 });
 
 test('the question-table row has the same number of cells as the rows around it', () => {
-  const rows = read('README.md').split('\n').filter((l) => l.startsWith('| ') && l.includes('`gc`'));
+  const rows = read('docs/reference.md').split('\n').filter((l) => l.startsWith('| ') && l.includes('`gc`'));
   assert.equal(rows.length, 1);
   const cells = (l) => l.split(/(?<!\\)\|/).length;
-  const neighbour = read('README.md').split('\n').find((l) => l.startsWith('| Does the answer depend on the harness'));
+  const neighbour = read('docs/reference.md').split('\n').find((l) => l.startsWith('| Does the answer depend on the harness'));
   assert.equal(cells(rows[0]), cells(neighbour));
 });
 
 test('the runbook points at gc, archive and the protect file', () => {
-  const doc = read('RUNBOOK.md');
+  const doc = read('docs/RUNBOOK.md');
   assert.match(doc, /bench\.js gc/);
   assert.match(doc, /archive --run DIR/);
   assert.match(doc, /bench-gc-protect\.txt/);
@@ -45,7 +45,7 @@ test('the runbook points at gc, archive and the protect file', () => {
 
 test('the new docs and code carry no em dash, en dash or curly quote', () => {
   const bad = /[\u2013\u2014\u2018\u2019\u201C\u201D]/;
-  const section = read('README.md');
+  const section = read('docs/reference.md');
   const at = section.indexOf('\n## Cleaning up\n');
   assert.doesNotMatch(section.slice(at, section.indexOf('\n## ', at + 5)), bad);
   for (const f of ['runner/lib/owned.js', 'runner/lib/gc.js', 'runner/lib/archive.js', 'runner/lib/cleanup-cmd.js']) assert.doesNotMatch(read(f), bad, f);

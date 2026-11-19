@@ -1,6 +1,6 @@
 # Benchmark tasks
 
-This document covers the task suite: tasks, fixtures, checks, rubrics, answer keys and the judge panel. The runner is documented in `bench/README.md`.
+This document covers the task suite: tasks, fixtures, checks, rubrics, answer keys and the judge panel. The runner is documented in `bench/docs/reference.md`.
 
 ## How the pieces fit
 

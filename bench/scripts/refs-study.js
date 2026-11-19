@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Planning, arm checks and the driver for the references-read study (bench/REFERENCES-READ.md).
+// Planning, arm checks and the driver for the references-read study (bench/docs/studies/REFERENCES-READ.md).
 // Nothing here calls a model. `build-arms` checks the pinned commits and writes the forced-load prefix files under a
 // scratch directory (never into the repository), and `driver` writes the shell script that runs the groups one after another.
 //

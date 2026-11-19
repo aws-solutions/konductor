@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Planning, arm building and the driver for the constraints probe study (bench/CONSTRAINTS-PROBE.md).
+// Planning, arm building and the driver for the constraints probe study (bench/docs/studies/CONSTRAINTS-PROBE.md).
 // Nothing here calls a model. `build-arms` extracts a pinned commit twice under a scratch directory (never into the
 // repository) and `driver` writes the shell script that runs the groups one after another.
 //

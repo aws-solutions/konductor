@@ -1,6 +1,6 @@
 # Runbook: running and monitoring an unattended benchmark study
 
-This is the operator's guide to the scripts in `bench/scripts/` that run a long study without a person at the keyboard. For the benchmark itself (suites, arms, judging, reports) see `bench/README.md`. For the per-skill study see `bench/CAP-PLAYBOOK.md`.
+This is the operator's guide to the scripts in `bench/scripts/` that run a long study without a person at the keyboard. For the benchmark itself (suites, arms, judging, reports) see `bench/docs/reference.md`. For the per-skill study see `bench/docs/CAP-PLAYBOOK.md`.
 
 All commands are `bash <script>` from any directory. Nothing needs `sudo`. The scripts share one state directory, `STATE_DIR` (default `${XDG_STATE_HOME:-$HOME/.local/state}/konductor-bench`, else `$TMPDIR/konductor-bench-<uid>`; `AC_STATE_DIR` for the chain). The scripts create it with mode 700 and refuse one that is a symlink, owned by another user, or writable by group or others. A `STATE_DIR` override gets the same checks. If the directory sits on a RAM-backed tmpfs, a reboot loses it; set `STATE_DIR` and `RESULTS` to a disk path for a study that must survive one.
 
@@ -10,14 +10,14 @@ All commands are `bash <script>` from any directory. Nothing needs `sudo`. The s
 |---|---|
 | `run-real-pilot.sh` | Capability study: the tasks in a task file, one `bench.js run` per task, on vanilla plus konductor arms. |
 | `run-after-capability.sh` | The chain: waits for the capability study, then runs the optional patch and autonomy-rerun phases, judging, the skill bench and a summary. |
-| `run-skill-bench.sh` | Per-skill study (delete, prune or keep). See `bench/CAP-PLAYBOOK.md`. |
+| `run-skill-bench.sh` | Per-skill study (delete, prune or keep). See `bench/docs/CAP-PLAYBOOK.md`. |
 | `run-judging.sh` | Judges a finished orchestrator study (one directory per cell) and writes the final reports. |
 | `monitor.sh` | Read-only dashboard of the chain. |
 | `real-pilot-tasks.txt` | Default task list for `run-real-pilot.sh`. |
 
 Every script takes `--help`.
 
-A study fills the disk. `node bench/runner/bench.js gc` lists what the bench made and may reclaim (a dry run; `--apply` deletes), and `archive --run DIR` packs finished workspaces. Directories under a protect entry in `~/.konductor/bench-gc-protect.txt` are never touched. See "Cleaning up" in `bench/README.md`.
+A study fills the disk. `node bench/runner/bench.js gc` lists what the bench made and may reclaim (a dry run; `--apply` deletes), and `archive --run DIR` packs finished workspaces. Directories under a protect entry in `~/.konductor/bench-gc-protect.txt` are never touched. See "Cleaning up" in `bench/docs/reference.md`.
 
 ## What the chain runs
 
@@ -97,7 +97,7 @@ STUDY=/path/to/study bash run-judging.sh --status
 
 A budget stop exits 3. Raise the cap and rerun: `BUDGET_USD=25 bash run-judging.sh` (finished calls are cached and not paid again). `SMOKE` names an optional smoke script that makes a few real judge calls first.
 
-Evidence-quote rule. `judge` records the verdict under both quote rules for every criterion, so no extra pass is needed to read a study either way. Reports use the lenient rule (tightened) unless the scoring file says `"quotes": "strict"` (`bench/profiles/scoring-strict-quotes.json`), and every report names the rule on its first lines and shows the other rule beside it. Judgments made before this change are strict as stored; a report builds their lenient view from the saved output when the run directory still holds its workspace. See `bench/README.md`.
+Evidence-quote rule. `judge` records the verdict under both quote rules for every criterion, so no extra pass is needed to read a study either way. Reports use the lenient rule (tightened) unless the scoring file says `"quotes": "strict"` (`bench/profiles/scoring-strict-quotes.json`), and every report names the rule on its first lines and shows the other rule beside it. Judgments made before this change are strict as stored; a report builds their lenient view from the saved output when the run directory still holds its workspace. See `bench/docs/reference.md`.
 
 ### Credentials (P4, P5 and run-judging.sh)
 

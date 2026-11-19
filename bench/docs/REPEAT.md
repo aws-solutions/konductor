@@ -5,7 +5,7 @@ it, run the free checks, run each paid stage under its cap, judge, report, and r
 the three run levels (LITE, STANDARD, FULL) and says which of their pieces exist. Anything that does not exist yet is
 marked **not built yet**.
 
-The scripts are in [kit/](kit/README.md). Every command below runs from your own terminal, not from an agent shell: the
+The scripts are in [kit/](../kit/README.md). Every command below runs from your own terminal, not from an agent shell: the
 paid stages need the sandbox (`unshare`) and spend credits or dollars. **A paid stage starts only after the owner has
 approved its cap.** The caps written in the scripts are the ones approved for the first study and the Kiro-only rerun
 (table in [Spend and caps](#spend-and-caps)). Another run needs a new approval, then a change to the `CAP` lines in your
@@ -202,7 +202,7 @@ What exists today and what does not:
 | --- | --- |
 | Run kits, freeze, gate, judge plan, re-score by limit, timelines, probe | built: this directory |
 | Tasks of the 2x2 (the `sdlc` and `rootcause` suites, `hard-*`, `orch-*`) | built: `bench/sdlc`, `bench/rootcause`, `bench/tasks` |
-| The three-arm kit with vanilla, konductor and a drop-one skill (`cap variant --drop skill:NAME`), `cap decide`, `cap forced-prefix` for skills | built: see [README.md](README.md#capability-benchmarking-cap) |
+| The three-arm kit with vanilla, konductor and a drop-one skill (`cap variant --drop skill:NAME`), `cap decide`, `cap forced-prefix` for skills | built: see [README.md](reference.md#capability-benchmarking-cap) |
 | The old `run --suite lite` (five tasks, vanilla, v1.2.0 and main) | built, but it is not the LITE above |
 | The scenario pack of 150 to 200 tasks, with DEV and HELD-OUT lists and the coverage matrix | **not built yet** |
 | The fixed LITE list (the lowest-hash DEV task per phase, plus one control and one twin) and the stored vanilla baseline | **not built yet** (needs the pack) |
@@ -219,7 +219,7 @@ STANDARD or FULL.
 ## 8. The PR #312 probe
 
 Twelve short prompts, each needing one skill that was unreachable before PR #312, none naming it. Steps and cost are in
-[kit/probes/pr312-skill-access/README.md](kit/probes/pr312-skill-access/README.md).
+[kit/probes/pr312-skill-access/README.md](../kit/probes/pr312-skill-access/README.md).
 
 ## Host rules
 

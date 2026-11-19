@@ -18,7 +18,7 @@ const FILES = [
   'scripts/monitor.sh',
   'scripts/state-dir.sh',
   'scripts/real-pilot-tasks.txt',
-  'RUNBOOK.md',
+  'docs/RUNBOOK.md',
   'runner/test/pipeline-scripts-hygiene.test.js',
   'runner/test/pipeline-scripts.test.js',
   'runner/test/pipeline-runbook.test.js',
@@ -58,7 +58,7 @@ for (const rel of FILES) {
 test('the markers catch internal launcher names, and the bench docs name the launcher only generically', () => {
   const names = [['tool', 'box-exec'], ['aim', ' sandbox --client kiro-cli'], ['~/.tool', 'box/bin/kiro-cli']].map((p) => p.join(''));
   for (const n of names.slice(0, 2)) assert.equal(findMarker(`runs ${n} first`)?.marker, 'internal tool', n);
-  for (const rel of ['README.md', 'GUIDE.md', 'DEBT.md', 'physical/STEP0-FINDINGS.md', 'runner/lib/plant/intake.js']) {
+  for (const rel of ['docs/reference.md', 'GUIDE.md', 'DEBT.md', 'docs/history/STEP0-FINDINGS.md', 'runner/lib/plant/intake.js']) {
     const text = fs.readFileSync(path.join(BENCH, rel), 'utf8');
     for (const n of names) assert.equal(text.includes(n), false, `${rel} names ${n}`);
   }
