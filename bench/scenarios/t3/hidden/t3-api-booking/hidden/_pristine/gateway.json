@@ -1,0 +1,5 @@
+{
+  "environment": "production",
+  "response_body_limit_bytes": 1048576,
+  "unit": "bytes"
+}

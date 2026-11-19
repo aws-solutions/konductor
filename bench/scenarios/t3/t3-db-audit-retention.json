@@ -1,0 +1,161 @@
+{
+  "id": "t3-db-audit-retention",
+  "class": "design",
+  "target": null,
+  "prompt": "We need to design the database schema for our audit log system. Review the requirements in the fixture directory carefully. The system handles 25,000 events per second on average, with each event about 220 bytes. Compliance now requires 400 days of retention.\n\nWe need a schema that supports efficient time-range queries and user activity analysis. The retention cleanup must delete by time bucket (like monthly partitions or an indexed bucket column) so deleting a month doesn't require a full table scan.\n\nDeliver two files:\n1. db/schema.sql - The complete database schema with tables, indexes, and partitioning strategy\n2. docs/decision.md - Your architecture decision document\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\" (the option id you selected)\n- \"options\" (array of option ids you considered)\n- \"limits\" (object mapping limit name to {\"limit\": number, \"value\": number} for each hard limit)\n- \"monthly_cost_usd\" (the monthly storage cost for your chosen option)\n\nCalculate the storage needs based on the numbers in the fixture files. Consider the storage limit and monthly budget constraints. Choose an indexing strategy that fits within the storage capacity while supporting the required query patterns.",
+  "fixture": "t3-db-audit-retention",
+  "timeoutSec": 900,
+  "hidden": "t3-db-audit-retention",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 22
+    },
+    {
+      "type": "file_exists",
+      "path": "db/schema.sql"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff_explanation",
+      "criterion": "Explanation of query performance trade-offs given the single-index constraint (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
+      "weight": 1
+    },
+    {
+      "id": "compliance_integration",
+      "criterion": "Integration of compliance requirements into the architecture justification (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "system-design-patterns",
+    "decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "system-design-patterns",
+      "decision-writing"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt asks for indexing strategy and references constraints but never names '1-index', '2-indexes', or '3-indexes' - agent must derive options from storage calculations."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All numbers provided in fixture files (25k/sec, 220 bytes, 400 days, 300TB, $7k). Math yields exactly one correct answer that satisfies both storage and budget limits."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files contain constraints but not the answer. Hidden-tests/meta.json names 1-index but agents cannot access hidden-tests directory."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Requires non-trivial calculation of storage needs, index overhead factors, and validation against both TB and budget limits. 2-indexes is a tempting trap that exceeds storage capacity."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers present in fixture. Output format clearly specified. Tests verify both constraints are met and calculations are correct."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that the 2-index option (120% overhead, 380+ TB) exceeds the 300 TB storage limit and must be rejected, showing the calculation that proves it doesn't fit",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "identifies the 90-day retention figure from legacy documentation as superseded by the 400-day requirement, and uses only 400 days in storage calculations",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "calculates monthly storage cost (~$6,514) and validates it fits within the $7,000 monthly storage budget hard limit",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "explains the query performance trade-off: the single (user_id, event_time) index optimizes the 65% time-range queries with user filter, but resource_type queries (20%) will require partition scans",
+        "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "specifies monthly partitioning (not daily) as the retention cleanup mechanism, enabling O(1) partition drops instead of DELETE scans",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "addresses the failure mode where queries without user_id require full partition scans, and proposes mitigations like batch processing during off-peak or materialized views for aggregates",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "notes that if budget increases or storage costs drop, adding a second index on (resource_type, event_time) would improve the 20% user activity queries that currently scan partitions",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "identifies that the 20% capacity headroom requirement from budget-constraints.md means the 300 TB technical limit should not be fully utilized, and shows that ~277 TB usage leaves adequate buffer",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "picks the 2-index option because it provides better query coverage without calculating whether it fits the storage limit",
+      "uses the 90-day retention period from legacy documentation instead of the 400-day requirement, drastically underestimating storage needs",
+      "selects 3-index strategy for optimal query performance, ignoring both the 300 TB storage limit and $7,000 budget constraint",
+      "proposes daily DELETE operations for retention cleanup without recognizing this requires full table scans and violates the time-bucket deletion requirement",
+      "calculates raw storage (190 TB) but forgets index overhead, incorrectly concluding the 2-index or 3-index options fit within 300 TB"
+    ]
+  }
+}

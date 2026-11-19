@@ -1,0 +1,157 @@
+{
+  "id": "t3-adr-batch-vs-stream",
+  "class": "design",
+  "target": null,
+  "prompt": "Our nightly reporting pipeline needs an architectural decision to handle projected growth through 2025. Currently processing 1.4 TB in 2.1 hours, we have a strict 4-hour processing window ending at 6 AM. Data is growing 35% per quarter, and we need a solution that works for the next 4 quarters.\n\nThe business has set a hard monthly budget limit of $10,000 for infrastructure. We must maintain 99.5% uptime and 99.9% data accuracy. The team has expertise in batch processing but would need training for streaming technologies.\n\nI need you to analyze the options and make a recommendation. Create an Architecture Decision Record at docs/adr/0001-processing.md that documents your analysis and decision.\n\nThe ADR must include a fenced code block with info string `decision` containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option\n- \"options\": array of option IDs you considered\n- \"limits\": object where each key is a limit name and value is {\"limit\": number, \"value\": number} - include every hard limit from the requirements\n- \"monthly_cost_usd\": the monthly cost for your chosen option, computed from the pricing data\n\nBase your analysis on the documents in the fixture/ directory. Consider all constraints including processing window, budget, and growth projections. The solution must work through Q4 2025.",
+  "fixture": "t3-adr-batch-vs-stream",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-batch-vs-stream",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 16
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-processing.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of analytical reasoning and tradeoff analysis (not code-checkable: Tests can verify numerical calculations and constraint compliance, but cannot assess the quality of reasoning, consideration of tradeoffs, or clarity of explanation in the ADR narrative.)",
+      "weight": 1
+    },
+    {
+      "id": "business_context",
+      "criterion": "Appropriate consideration of business context and team capabilities (not code-checkable: While tests can verify cost and performance numbers, they cannot evaluate whether the decision appropriately considers factors like team skills, training requirements, implementation risk, or alignment with business strategy beyond the hard constraints.)",
+      "weight": 1
+    },
+    {
+      "id": "documentation_quality",
+      "criterion": "Clarity and completeness of Architecture Decision Record documentation (not code-checkable: Tests can verify the presence of required sections and the decision block, but cannot assess the quality of writing, clarity of explanation, appropriate level of detail, or usefulness of the ADR as a decision record for future reference.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-writing",
+    "trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt is neutral - asks for ADR analyzing options for growth through 2025, no method or solution hinted."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All constraints clearly specified (4hr window, $10k budget, 35% growth, 4 quarters). Minor terminology mismatch (Q4 2025 vs Q3 2025 = 4.65 TB) but consistent in tests/solution."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture provides constraints and data but no explicit answer. Solution must calculate processing time scaling (1.5 hr/TB) to discover batch_current fails window at 4.65TB."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "batch_current seems cheapest ($4,316) but fails at 4.65TB (6.98hr > 4hr). batch_3x_scaling works but exceeds budget ($12,948 > $10k). Must pick batch_2x_scaling or streaming."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All needed numbers provided: 1.4TB baseline, 2.1hr processing, 35% growth, pricing, budget. Tests specify exact JSON structure needed. No missing info."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that batch_current fails the 4-hour processing window constraint at Q3 2025 volume (4.65 TB × 1.5 hrs/TB = 6.98 hours, exceeding the 4-hour limit), making it unsuitable despite being the cheapest option at $4,316/month.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "States that batch_3x_scaling at $12,948/month exceeds the $10,000 monthly budget constraint and must be rejected as a solution.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Uses the correct storage cost of $23/TB-month from pricing.json, not the superseded $28/TB-month figure mentioned in the notes section.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Recognizes that the 4.65 TB Q3 2025 projection (not Q4 2025's 6.28 TB) is the critical planning threshold because the task requires the solution to work through 4 quarters, and Q3 2025 marks the point where batch_current definitively fails the window constraint.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Addresses the team skill gap for streaming technologies, noting that streaming would require 60 hours of training ($7,000 investment) while batch_2x_scaling leverages existing Spark expertise with no training required.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Computes monthly cost correctly using the $68/hour batch cluster rate: batch_2x_scaling at 16 nodes × $68/hour × ~8 hours processing × 30 days = approximately $8,632/month, staying within the $10,000 budget.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Discusses the implementation risk trade-off: batch scaling is incremental with lower risk and 2-week timeline, while streaming is an architectural change with higher risk and 8-week timeline including training.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "Notes that streaming provides near-real-time capability which is not required for nightly reporting, making batch_2x_scaling the pragmatic choice that meets all constraints without over-engineering.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Selects batch_current because it's the cheapest option at $4,316/month without calculating that 4.65 TB would take 6.98 hours, exceeding the 4-hour window.",
+      "Selects batch_3x_scaling for maximum headroom without checking that $12,948/month exceeds the $10,000 budget constraint.",
+      "Uses the superseded $28/TB-month storage cost instead of the current $23/TB-month rate when computing total cost.",
+      "Recommends streaming solely because it has the lowest monthly infrastructure cost (~$1,824) without considering the $7,000 training investment or the fact that real-time processing is not needed for nightly reports.",
+      "Calculates costs for Q4 2025 (6.28 TB) instead of the 4-quarter planning horizon ending at Q3 2025 (4.65 TB), leading to incorrect constraint analysis."
+    ]
+  }
+}

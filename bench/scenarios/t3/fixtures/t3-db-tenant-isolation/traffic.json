@@ -1,0 +1,10 @@
+{
+  "tenant_count": 12000,
+  "largest_tenant_tickets": 40000000,
+  "tenants_over_one_million_tickets": 400,
+  "peak_read_qps": 1800,
+  "peak_write_qps": 2200,
+  "required_write_capacity_qps": 2500,
+  "monthly_requests_millions": 30,
+  "connection_pool_slots": 1000
+}

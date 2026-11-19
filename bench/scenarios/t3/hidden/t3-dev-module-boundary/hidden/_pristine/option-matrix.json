@@ -1,0 +1,47 @@
+{
+  "options": {
+    "in_memory_delay_queue": {
+      "display_name": "In-memory delay queue",
+      "memory_model": "peak_records_times_payload_mb",
+      "base_memory_mb": 0,
+      "batch_records": 120000,
+      "latency_p95_seconds": 8,
+      "throughput_per_second": 500,
+      "rpo_minutes": 2,
+      "rto_minutes": 10,
+      "supported_payload_kb": 16,
+      "billing_model": "in_memory"
+    },
+    "database_retry_table": {
+      "display_name": "Database-backed retry table",
+      "memory_model": "base_plus_batch_payload_mb",
+      "base_memory_mb": 36,
+      "batch_records": 512,
+      "latency_p95_seconds": 42,
+      "throughput_per_second": 180,
+      "rpo_minutes": 1,
+      "rto_minutes": 18,
+      "supported_payload_kb": 32,
+      "billing_model": "database_retry_table",
+      "compute_units": 2,
+      "storage_gb": 1.2,
+      "backup_gb": 3,
+      "requests_million": 8
+    },
+    "external_retry_queue": {
+      "display_name": "External retry queue",
+      "memory_model": "base_plus_batch_payload_mb",
+      "base_memory_mb": 52,
+      "batch_records": 256,
+      "latency_p95_seconds": 18,
+      "throughput_per_second": 350,
+      "rpo_minutes": 1,
+      "rto_minutes": 12,
+      "supported_payload_kb": 256,
+      "billing_model": "external_retry_queue",
+      "worker_units": 2,
+      "storage_gb": 1,
+      "requests_million": 8
+    }
+  }
+}

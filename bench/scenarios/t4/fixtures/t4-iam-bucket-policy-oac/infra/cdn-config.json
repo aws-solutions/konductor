@@ -1,0 +1,35 @@
+{
+  "accountId": "111122223333",
+  "distributions": {
+    "staging": {
+      "id": "E1A2B3C4D5E6F7",
+      "arn": "arn:aws:cloudfront::111122223333:distribution/E1A2B3C4D5E6F7",
+      "comment": "Staging CDN for marketing site",
+      "origins": {
+        "assets": "assets-bucket-staging.s3.amazonaws.com",
+        "downloads": "downloads-bucket-staging.s3.amazonaws.com"
+      }
+    },
+    "production": {
+      "id": "F8E7D6C5B4A3F2",
+      "arn": "arn:aws:cloudfront::111122223333:distribution/F8E7D6C5B4A3F2",
+      "comment": "Production CDN for marketing site",
+      "origins": {
+        "assets": "assets-bucket-prod.s3.amazonaws.com",
+        "downloads": "downloads-bucket-prod.s3.amazonaws.com"
+      }
+    }
+  },
+  "bucketNames": {
+    "staging": {
+      "assets": "assets-bucket-staging",
+      "downloads": "downloads-bucket-staging",
+      "logs": "logs-bucket-staging"
+    },
+    "production": {
+      "assets": "assets-bucket-prod",
+      "downloads": "downloads-bucket-prod",
+      "logs": "logs-bucket-prod"
+    }
+  }
+}

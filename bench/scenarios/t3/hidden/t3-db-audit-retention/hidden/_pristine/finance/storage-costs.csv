@@ -1,0 +1,10 @@
+storage_tier,region,cost_per_gb_month_usd,min_gb,max_gb
+standard,us-east-1,0.023,1024,1048576
+standard,us-west-2,0.025,1024,1048576
+standard,eu-west-1,0.028,1024,1048576
+premium,us-east-1,0.045,1024,262144
+premium,us-west-2,0.048,1024,262144
+premium,eu-west-1,0.052,1024,262144
+archive,us-east-1,0.004,10240,10485760
+archive,us-west-2,0.0045,10240,10485760
+archive,eu-west-1,0.005,10240,10485760

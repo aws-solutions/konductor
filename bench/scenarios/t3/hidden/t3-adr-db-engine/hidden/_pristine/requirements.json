@@ -1,0 +1,7 @@
+{
+  "service_objectives": {
+    "read_p99_max_ms": 15,
+    "monthly_budget_usd": 7000,
+    "max_item_size_bytes": 1024
+  }
+}

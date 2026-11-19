@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [24.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Run lint
+      run: npm run lint
+    
+    - name: Verify deploy scripts
+      run: |
+        node deploy/deploy.js staging
+        node deploy/deploy.js production
+    
+  validate-policies:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate JSON files
+      run: |
+        # Check all JSON files are valid
+        find . -name "*.json" -type f | while read file; do
+          echo "Validating $file"
+          python3 -m json.tool "$file" > /dev/null || exit 1
+        done
+    
+    - name: Check required files exist
+      run: |
+        # Required infrastructure files
+        [ -f infra/cdn-config.json ] || exit 1
+        [ -f infra/buckets/assets-policy.json ] || exit 1
+        [ -f infra/buckets/downloads-policy.json ] || exit 1
+        [ -f infra/buckets/logs-policy.json ] || exit 1
+        [ -f infra/iam/deploy-role-policy.json ] || exit 1
+        echo "All required files present"

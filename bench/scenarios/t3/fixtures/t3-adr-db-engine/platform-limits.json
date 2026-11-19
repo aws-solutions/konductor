@@ -1,0 +1,5 @@
+{
+  "key_value_service_limits": {
+    "max_wcu_per_storage_partition_per_second": 1000
+  }
+}

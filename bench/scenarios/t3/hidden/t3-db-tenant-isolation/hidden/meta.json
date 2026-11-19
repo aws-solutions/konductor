@@ -1,0 +1,6 @@
+{
+  "deliverables": ["db/schema.sql", "docs/decision.md"],
+  "acceptableOptions": ["shared-composite"],
+  "temptingOption": "tenant-database-per-customer",
+  "notes": "The per-customer option looks cheaper in the worksheet but its 12,000 logical databases exceed the 1,000 connection-pool limit assembled from traffic and operations inputs."
+}

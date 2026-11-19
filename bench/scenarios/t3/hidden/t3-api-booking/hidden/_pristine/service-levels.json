@@ -1,0 +1,8 @@
+{
+  "environment": "production",
+  "list_p95_latency_ms_limit": 350,
+  "peak_capacity_rps_minimum": 240,
+  "monthly_budget_usd_limit": 500,
+  "rpo_minutes_limit": 5,
+  "rto_minutes_limit": 30
+}

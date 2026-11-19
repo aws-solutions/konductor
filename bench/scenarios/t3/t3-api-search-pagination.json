@@ -1,0 +1,161 @@
+{
+  "id": "t3-api-search-pagination",
+  "class": "design",
+  "target": null,
+  "prompt": "Choose an architecture for the product search service using the supplied requirements, traffic measurements, option profiles, and price sheet. Produce the public API contract at `api/openapi.json` and explain the choice and tradeoffs at `docs/decision.md`. Keep the API suitable for deep crawler traversal while meeting every hard limit in the input files. In `docs/decision.md`, include a fenced block whose info string is `decision` and whose JSON has exactly `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the selected option id, `options` to the option ids considered, and make `limits` map each hard-limit name to an object with numeric `limit` and computed `value` fields. Set `monthly_cost_usd` to the selected option's monthly cost computed from the supplied price data, and make the contract document the bounded request size and continuation fields.",
+  "fixture": "t3-api-search-pagination",
+  "timeoutSec": 900,
+  "hidden": "t3-api-search-pagination",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 18
+    },
+    {
+      "type": "file_exists",
+      "path": "api/openapi.json"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The decision explains why the selected design meets the deep-traversal latency target and connects each material input to the recommendation. (not code-checkable: A script can recompute measurements but cannot reliably judge whether the explanation is technically coherent or uses the evidence well.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff-explanation",
+      "criterion": "The decision fairly compares cost, operational capacity, recovery characteristics, client behavior, and migration implications rather than presenting only the winning numbers. (not code-checkable: The tests can check numeric fields but cannot assess whether the prose presents meaningful tradeoffs or acknowledges the rejected option's strengths.)",
+      "weight": 1
+    },
+    {
+      "id": "api-clarity",
+      "criterion": "The API explanation makes the continuation contract understandable to client authors, including replay behavior, final-page behavior, and the reason the value is opaque. (not code-checkable: Schema checks can find fields and constraints, but they cannot determine whether the accompanying explanation is clear and useful to a human reader.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OAI/OpenAPI-Specification",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "system-design-patterns"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-architect",
+  "loadCheck": {
+    "mustLoad": [
+      "system-design-patterns",
+      "k-architect"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks to choose an architecture based on supplied data without naming or hinting a specific method or the answer."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All hard limits are clearly defined in the fixture files with explicit direction (max/min) and numeric values."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture files present both options with their metrics but do not state the answer; analysis is required to determine which meets the latency constraint."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires parsing multiple data files, understanding latency calculations, calculating costs, comparing 6 hard limits, producing a valid OpenAPI spec, and writing a decision.md with specific JSON format."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers are present in fixture files; no unstated format requirements or impossible constraints."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the offset-sql option cannot be selected because its deep-page latency of 4,200 ms (from the deep_offset_p99 measurement in traffic.csv multiplied by the latency_value of 1 in option-profiles.csv) exceeds the 250 ms p99_search_latency limit.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "States that the old_staging_p99 value of 120 ms in traffic.csv is superseded and must not be used for the latency calculation, as the production measurement at 60 million items is the authoritative source.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Computes the monthly cost using the peak rate of 1,800 req/s from traffic.csv over 30 days at 24 hours per day, with the cursor-index option's fixed cost, storage, and replica charges, arriving at approximately $7,975.81 USD.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Explains that the continuation value (cursor) is opaque to clients, which prevents exposing internal storage keys and allows the service to change its index layout without requiring a client migration.",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Notes that cursor-index meets the RPO limit of 60 seconds (with 30 seconds) and RTO limit of 15 minutes (with 10 minutes), while offset-sql also meets these limits (45 seconds RPO, 12 minutes RTO) but fails on latency.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Documents that the limit parameter is bounded (1-100) and that a final page returns a null or absent next_cursor, enabling clients to detect the end of results without counting total records.",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Acknowledges that offset-sql has lower monthly cost and sufficient throughput (2,400 req/s) and capacity (60 million items), making the latency constraint the decisive factor rather than cost or capacity.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "Explains that cursor-based pagination avoids the deep-page performance degradation inherent in offset-based approaches because it resumes from a known position rather than scanning and discarding earlier rows.",
+        "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Selects offset-sql because it has lower monthly cost and meets throughput and capacity requirements, without analyzing deep-page latency.",
+      "Uses the old_staging_p99 value of 120 ms to justify selecting offset-sql, ignoring the superseded note and the production measurement.",
+      "Computes monthly cost using only the fixed and storage charges without including the request volume or replica charges.",
+      "Recommends cursor-index without explaining why offset-sql is inadequate, or without comparing RPO, RTO, and migration trade-offs.",
+      "Proposes exposing storage keys or internal offsets in the API contract instead of an opaque continuation token."
+    ]
+  }
+}

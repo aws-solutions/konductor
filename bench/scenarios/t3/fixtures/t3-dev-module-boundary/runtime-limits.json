@@ -1,0 +1,7 @@
+{
+  "container_memory_mb": 512,
+  "runtime_reserved_mb": 200,
+  "retry_memory_limit_mb": 312,
+  "dispatch_latency_p95_seconds": 60,
+  "dispatch_throughput_min_per_second": 100
+}

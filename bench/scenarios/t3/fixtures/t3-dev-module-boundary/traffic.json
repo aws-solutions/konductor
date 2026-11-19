@@ -1,0 +1,9 @@
+{
+  "profile": "production-webhook-retries",
+  "peak_pending_retries": 120000,
+  "payload_kb": 8,
+  "maximum_payload_kb": 16,
+  "monthly_retry_attempts_million": 8,
+  "measurement_unit": "decimal_kb_and_mb",
+  "notes": "The peak count and payload size are simultaneous planning inputs. Monthly attempts are billable queue or table operations, expressed in millions."
+}

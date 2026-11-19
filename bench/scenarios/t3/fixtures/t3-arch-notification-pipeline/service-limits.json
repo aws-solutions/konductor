@@ -1,0 +1,6 @@
+{
+  "environment": "production",
+  "queue_capacity_messages_per_second": 3000,
+  "broker_max_payload_bytes": 4096,
+  "quota_scope": "per queue"
+}
