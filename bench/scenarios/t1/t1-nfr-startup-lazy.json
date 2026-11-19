@@ -81,11 +81,13 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code (code cannot check this because it cannot assess the engineer\u2019s explanation)"
+      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code (code cannot check this because it cannot assess the engineer\u2019s explanation)",
+      "weight": 1
     },
     {
       "id": "r2",
-      "criterion": "The final message states what was measured and calls out the deliberate choice to keep config validation eager and load-time registration intact (code cannot check this because it cannot assess the final explanation of trade-offs)"
+      "criterion": "The final message states what was measured and calls out the deliberate choice to keep config validation eager and load-time registration intact (code cannot check this because it cannot assess the final explanation of trade-offs)",
+      "weight": 1
     }
   ],
   "targetSkills": [
