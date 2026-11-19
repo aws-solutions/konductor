@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks for an abort threshold and a load-shedding or pause procedure when copy traffic pushes search latency or writer lag toward its page limits.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Requires an explicit policy for failed bulk requests, version conflicts, task cancellation, and retry visibility rather than treating task completion as the whole operational result.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Requests a mapping and analyzer compatibility review against the known incident, including a representative relevance comparison for locale and exact-title queries.",
+      "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Asks for least-privilege separation between index creation, document writing, alias updates, and deletion, with an audit record for each privileged operation.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Clarifies shard placement, replica recovery time, and behavior after a data-node failure while the two generations consume cluster resources.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Defines configuration provenance so the generation name, mapping hash, writer image, and runtime settings are supplied consistently without hidden machine-specific state.",
+      "source": "https://12factor.net (MIT)"
+    }
+  ],
+  "weakAnswers": [
+    "The design is clear and the alias swap should provide zero downtime.",
+    "Consider scalability, monitoring, and failure handling before rollout.",
+    "The proposal correctly builds a new index, copies data, and changes the alias.",
+    "Add more testing and coordinate with the other teams."
+  ]
+}

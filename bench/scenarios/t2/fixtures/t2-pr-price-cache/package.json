@@ -1,0 +1,12 @@
+{
+  "name": "ledger-catalog-api",
+  "version": "3.8.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node src/app.mjs",
+    "test": "node --test",
+    "check:data": "node scripts/check-data.mjs"
+  }
+}

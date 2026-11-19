@@ -1,0 +1,5 @@
+[
+  {"productId":"pencil","currency":"USD","amount":1.25,"updatedAt":"2025-02-10T09:00:00.000Z"},
+  {"productId":"notebook","currency":"USD","amount":5.5,"updatedAt":"2025-02-10T09:00:00.000Z"},
+  {"productId":"desk-lamp","currency":"USD","amount":29.99,"updatedAt":"2025-02-10T09:00:00.000Z"}
+]

@@ -1,0 +1,276 @@
+diff --git a/config/default.json b/config/default.json
+index 7abe542..c5a3541 100644
+--- a/config/default.json
++++ b/config/default.json
+@@ -2,8 +2,8 @@
+   "port": 3000,
+   "dataDir": "./data",
+   "priceCache": {
+-    "enabled": false,
+-    "ttlMs": 30000,
++    "enabled": true,
++    "ttlSeconds": 30,
+     "maxEntries": 500
+   }
+ }
+diff --git a/config/test.json b/config/test.json
+index 2cbec56..c9bcbb7 100644
+--- a/config/test.json
++++ b/config/test.json
+@@ -2,8 +2,8 @@
+   "port": 0,
+   "dataDir": "./data",
+   "priceCache": {
+-    "enabled": false,
+-    "ttlMs": 100,
++    "enabled": true,
++    "ttlSeconds": 1,
+     "maxEntries": 20
+   }
+ }
+diff --git a/docs/caching.md b/docs/caching.md
+new file mode 100644
+index 0000000..2edf4e3
+--- /dev/null
++++ b/docs/caching.md
+@@ -0,0 +1,11 @@
++# Price lookup cache
++
++Price list reads use a process-local read-through cache. It is enabled in the default profile and disabled by setting `priceCache.enabled` to false. The cache is an optimization only; JSON files remain the source of truth.
++
++## Configuration
++
++`priceCache.ttlSeconds` controls how long a price list may be served without reading its file. `priceCache.maxEntries` sets the intended working size for cached lists. The default is 30 seconds and 500 lists.
++
++## Operations
++
++The cache lives inside the API process and starts empty after a restart. It is safe to clear during maintenance because the next request reads from the JSON store. The service continues to work when caching is disabled, which is useful when reproducing a pricing issue locally.
+diff --git a/src/app.mjs b/src/app.mjs
+index 765d8c4..aeb602e 100644
+--- a/src/app.mjs
++++ b/src/app.mjs
+@@ -6,6 +6,7 @@ import { CatalogRepository } from './repositories/catalog-repository.mjs';
+ import { PriceRepository } from './repositories/price-repository.mjs';
+ import { CatalogService } from './services/catalog-service.mjs';
+ import { PriceService } from './services/price-service.mjs';
++import { PriceCache } from './cache/price-cache.mjs';
+ import { TenantService } from './services/tenant-service.mjs';
+ import { createRoutes } from './routes.mjs';
+ import { createHttpServer } from './http.mjs';
+@@ -13,9 +14,15 @@ import { createHttpServer } from './http.mjs';
+ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+ const config = await loadConfig(root);
+ const store = new JsonStore(config.dataDir);
++const priceCache = config.priceCache.enabled
++  ? new PriceCache({ maxEntries: config.priceCache.maxEntries })
++  : null;
+ const route = createRoutes({
+   catalog: new CatalogService(new CatalogRepository(store)),
+-  prices: new PriceService(new PriceRepository(store)),
++  prices: new PriceService(new PriceRepository(store), {
++    cache: priceCache,
++    ttlSeconds: config.priceCache.ttlSeconds
++  }),
+   tenants: new TenantService(store)
+ });
+ const server = createHttpServer(route);
+diff --git a/src/cache/price-cache.mjs b/src/cache/price-cache.mjs
+new file mode 100644
+index 0000000..7225fee
+--- /dev/null
++++ b/src/cache/price-cache.mjs
+@@ -0,0 +1,50 @@
++const DEFAULT_TTL_MS = 30_000;
++
++/**
++ * Small process-local cache used for the read-heavy price endpoint.
++ * The store is intentionally private so callers cannot replace its map.
++ */
++export class PriceCache {
++  #entries = new Map();
++  #clock;
++  #defaultTtlMs;
++  #maxEntries;
++
++  constructor({ maxEntries = 500, ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
++    this.#maxEntries = maxEntries;
++    this.#defaultTtlMs = ttlMs;
++    this.#clock = now;
++  }
++
++  get(key) {
++    const entry = this.#entries.get(key);
++    if (!entry) return undefined;
++    if (entry.expiresAt <= this.#clock()) {
++      this.#entries.delete(key);
++      return undefined;
++    }
++    return entry.value;
++  }
++
++  set(key, value, ttlMs = this.#defaultTtlMs) {
++    const expiresAt = this.#clock() + ttlMs;
++    this.#entries.set(key, { value, expiresAt });
++    return value;
++  }
++
++  delete(key) {
++    return this.#entries.delete(key);
++  }
++
++  clear() {
++    this.#entries.clear();
++  }
++
++  get size() {
++    return this.#entries.size;
++  }
++
++  get limit() {
++    return this.#maxEntries;
++  }
++}
+diff --git a/src/services/price-service.mjs b/src/services/price-service.mjs
+index 6aec707..300439f 100644
+--- a/src/services/price-service.mjs
++++ b/src/services/price-service.mjs
+@@ -1,12 +1,31 @@
+ export class PriceService {
+-  constructor(repository) { this.repository = repository; }
++  constructor(repository, { cache = null, ttlSeconds = 30 } = {}) {
++    this.repository = repository;
++    this.cache = cache;
++    this.ttlSeconds = ttlSeconds;
++  }
++
+   async list(tenantId, listId = 'retail') {
+-    return this.repository.listPrices(tenantId, listId);
++    if (!this.cache) return this.repository.listPrices(tenantId, listId);
++
++    const cached = this.cache.get(listId);
++    if (cached) return cached;
++    const prices = await this.#load(tenantId, listId);
++    this.cache.set(listId, prices, this.ttlSeconds);
++    return prices;
+   }
++
+   async update(tenantId, listId, productId, patch) {
+-    return this.repository.updatePrice(tenantId, listId, productId, patch);
++    const price = await this.repository.updatePrice(tenantId, listId, productId, patch);
++    this.cache?.delete(listId);
++    return price;
+   }
++
+   async replace(tenantId, listId, prices) {
+     return this.repository.replacePrices(tenantId, listId, prices);
+   }
++
++  async #load(tenantId, listId) {
++    return this.repository.listPrices(tenantId, listId);
++  }
+ }
+diff --git a/test/price-cache.test.mjs b/test/price-cache.test.mjs
+new file mode 100644
+index 0000000..ef478a8
+--- /dev/null
++++ b/test/price-cache.test.mjs
+@@ -0,0 +1,74 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { PriceCache } from '../src/cache/price-cache.mjs';
++
++test('cache returns a value before its deadline', () => {
++  let now = 1000;
++  const cache = new PriceCache({ now: () => now, ttlMs: 100 });
++  const prices = [{ productId: 'pencil', amount: 1.25 }];
++  cache.set('retail', prices);
++  assert.deepEqual(cache.get('retail'), prices);
++  now = 1099;
++  assert.deepEqual(cache.get('retail'), prices);
++});
++
++test('cache removes an expired value on read', () => {
++  let now = 1000;
++  const cache = new PriceCache({ now: () => now, ttlMs: 100 });
++  cache.set('retail', [{ productId: 'pencil' }]);
++  now = 1100;
++  assert.equal(cache.get('retail'), undefined);
++  assert.equal(cache.size, 0);
++});
++
++test('cache can remove one list after a write', () => {
++  const cache = new PriceCache();
++  cache.set('retail', [{ amount: 1 }]);
++  cache.set('contract', [{ amount: 2 }]);
++  assert.equal(cache.delete('retail'), true);
++  assert.equal(cache.get('retail'), undefined);
++  assert.deepEqual(cache.get('contract'), [{ amount: 2 }]);
++});
++
++test('cache reports the configured entry ceiling', () => {
++  const cache = new PriceCache({ maxEntries: 2 });
++  cache.set('a', 1);
++  cache.set('b', 2);
++  assert.equal(cache.limit, 2);
++  assert.equal(cache.size, 2);
++});
++
++test('cache clear removes all lists', () => {
++  const cache = new PriceCache();
++  cache.set('retail', []);
++  cache.clear();
++  assert.equal(cache.size, 0);
++});
++
++test('cache overwrites a list when refreshed', () => {
++  const cache = new PriceCache();
++  cache.set('retail', [{ amount: 1 }]);
++  cache.set('retail', [{ amount: 2 }]);
++  assert.deepEqual(cache.get('retail'), [{ amount: 2 }]);
++});
++
++test('cache accepts a per-entry lifetime', () => {
++  let now = 500;
++  const cache = new PriceCache({ now: () => now, ttlMs: 1000 });
++  cache.set('retail', ['fresh'], 20);
++  now = 519;
++  assert.deepEqual(cache.get('retail'), ['fresh']);
++  now = 520;
++  assert.equal(cache.get('retail'), undefined);
++});
++
++test('cache treats an absent key as a miss', () => {
++  const cache = new PriceCache();
++  assert.equal(cache.get('unknown'), undefined);
++});
++
++test('cache accepts a falsy stored value', () => {
++  const cache = new PriceCache();
++  cache.set('empty', 0);
++  assert.equal(cache.get('empty'), 0);
++});
+diff --git a/test/price-service.test.mjs b/test/price-service.test.mjs
+index 289aced..d56565f 100644
+--- a/test/price-service.test.mjs
++++ b/test/price-service.test.mjs
+@@ -14,3 +14,20 @@ test('price service delegates list and writes', async () => {
+   assert.deepEqual(await service.replace('northwind', 'retail', [{ amount: 5 }]), [{ amount: 5 }]);
+   assert.equal(calls.length, 3);
+ });
++
++test('price service reads a cached list on a second request', async () => {
++  let reads = 0;
++  const cache = new Map();
++  const service = new PriceService({
++    async listPrices() { reads += 1; return [{ amount: 3 }]; }
++  }, {
++    cache: {
++      get: (key) => cache.get(key),
++      set: (key, value) => cache.set(key, value)
++    },
++    ttlSeconds: 30
++  });
++  assert.deepEqual(await service.list('northwind'), [{ amount: 3 }]);
++  assert.deepEqual(await service.list('northwind'), [{ amount: 3 }]);
++  assert.equal(reads, 1);
++});

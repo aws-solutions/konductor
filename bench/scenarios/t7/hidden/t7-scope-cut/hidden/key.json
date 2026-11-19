@@ -1,0 +1,152 @@
+{
+  "output": "plan/scope-replan.md",
+  "block": "replan",
+  "assertions": [
+    {
+      "id": "added-core",
+      "desc": "Names the first group of net-new active tickets",
+      "op": "includes",
+      "path": "added_after_lock",
+      "ids": [
+        "PRJ-1008",
+        "PRJ-1031",
+        "PRJ-1064"
+      ]
+    },
+    {
+      "id": "added-later",
+      "desc": "Names the second group of net-new active tickets",
+      "op": "includes",
+      "path": "added_after_lock",
+      "ids": [
+        "PRJ-1097",
+        "PRJ-1128",
+        "PRJ-1156"
+      ]
+    },
+    {
+      "id": "added-precision",
+      "desc": "Keeps the added-work list focused",
+      "op": "precision",
+      "path": "added_after_lock",
+      "ids": [
+        "PRJ-1008",
+        "PRJ-1031",
+        "PRJ-1064",
+        "PRJ-1097",
+        "PRJ-1128",
+        "PRJ-1156"
+      ],
+      "min": 0.8,
+      "maxCount": 8
+    },
+    {
+      "id": "split-decoy-one",
+      "desc": "Does not count the first zero-net bug split",
+      "op": "absent",
+      "path": "added_after_lock",
+      "ids": [
+        "PRJ-1019"
+      ]
+    },
+    {
+      "id": "split-decoy-two",
+      "desc": "Does not count the second zero-net bug split",
+      "op": "absent",
+      "path": "added_after_lock",
+      "ids": [
+        "PRJ-1073"
+      ]
+    },
+    {
+      "id": "added-points",
+      "desc": "Totals net-new points",
+      "op": "number",
+      "path": "added_points",
+      "value": 29,
+      "tol": 0
+    },
+    {
+      "id": "slack",
+      "desc": "Totals remaining holiday-adjusted slack",
+      "op": "number",
+      "path": "slack_points",
+      "value": 17,
+      "tol": 0
+    },
+    {
+      "id": "cut-total",
+      "desc": "Calculates the required reduction",
+      "op": "number",
+      "path": "points_to_cut",
+      "value": 12,
+      "tol": 0
+    },
+    {
+      "id": "cut-items",
+      "desc": "Names the items that supply the reduction",
+      "op": "includes",
+      "path": "cut",
+      "ids": [
+        "PRJ-1114",
+        "PRJ-1162"
+      ]
+    },
+    {
+      "id": "cut-focus",
+      "desc": "Keeps the dependency-protected stretch item out of cuts",
+      "op": "excludes",
+      "path": "cut",
+      "ids": [
+        "PRJ-1046"
+      ]
+    },
+    {
+      "id": "keep-protected",
+      "desc": "Keeps the optional-looking dependency",
+      "op": "includes",
+      "path": "keep_despite_optional",
+      "ids": [
+        "PRJ-1046"
+      ]
+    },
+    {
+      "id": "contract",
+      "desc": "Names the customer commitment that cannot move",
+      "op": "includes",
+      "path": "cannot_cut",
+      "ids": [
+        "PRJ-1008"
+      ]
+    },
+    {
+      "id": "contract-not-cut",
+      "desc": "Does not put the customer commitment in cuts",
+      "op": "excludes",
+      "path": "cut",
+      "ids": [
+        "PRJ-1008"
+      ]
+    },
+    {
+      "id": "launch-date",
+      "desc": "Preserves the fixed launch date",
+      "op": "date",
+      "path": "date",
+      "value": "2027-06-18",
+      "tolDays": 0
+    },
+    {
+      "id": "cut-precision",
+      "desc": "Keeps the cut list concise",
+      "op": "precision",
+      "path": "cut",
+      "ids": [
+        "PRJ-1114",
+        "PRJ-1162"
+      ],
+      "min": 0.5,
+      "maxCount": 4
+    }
+  ]
+}

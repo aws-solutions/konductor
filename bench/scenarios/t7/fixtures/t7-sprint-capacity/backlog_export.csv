@@ -1,0 +1,131 @@
+ticket_id,title,priority,estimate_points,depends_on,skill,status,comment
+T-001,Review settings panel,Should,5,,platform,Ready,Small follow-up from the last review.
+T-002,Add status badge,Should,3,,data,Done,Use the existing pattern where possible.
+T-003,Review event filter,Could,3,,backend,In Progress,Example payload is in the attached notes.
+T-004,Improve export view,Could,8,,payments,Canceled,Use the existing pattern where possible.
+T-005,Update search result,Should,3,,security,Blocked,Confirm copy with the working group.
+T-006,Refresh export view,Could,5,,backend,Ready,
+T-007,Review settings panel,Should,2,,payments,Ready,Confirm copy with the working group.
+T-008,Update cache hint,Should,8,,payments,Closed,Example payload is in the attached notes.
+T-009,Refresh search result,Could,8,,payments,Open,Example payload is in the attached notes.
+T-010,Review retry path,Should,2,,platform,Open,Confirm copy with the working group.
+T-011,Add account entry screen,Must,5,,frontend,Ready,Keep the first-run copy concise.
+T-012,Add search result,Should,8,,payments,Closed,Confirm copy with the working group.
+T-013,Add event filter,Should,3,,data,Blocked,Use the existing pattern where possible.
+T-014,Tune sample data,Should,3,,frontend,Ready,Small follow-up from the last review.
+T-015,Add status badge,Could,5,,frontend,Ready,Small follow-up from the last review.
+T-016,Document status badge,Should,13,,data,Open,Use the existing pattern where possible.
+T-017,Document export view,Could,2,,frontend,In Progress,Small follow-up from the last review.
+T-018,Refresh empty-state illustration,Could,3,,frontend,Open,Use the current neutral palette.
+T-019,Improve retry path,Could,3,,frontend,Ready,Confirm copy with the working group.
+T-020,Review export view,Should,8,,qa,Ready,Example payload is in the attached notes.
+T-021,Add retry path,Should,3,,payments,Open,
+T-022,Improve status badge,Should,5,,data,Blocked,Use the existing pattern where possible.
+T-023,Add request throttling,Must,8,,backend,In Progress,Record the response header in the API notes.
+T-024,Tune cache hint,Should,5,,data,Done,
+T-025,Refresh cache hint,Could,3,,backend,Blocked,Confirm copy with the working group.
+T-026,Handle settings panel,Should,3,,platform,Open,
+T-027,Document cache hint,Could,2,,payments,Open,Confirm copy with the working group.
+T-028,Tune settings panel,Could,2,,payments,Ready,Example payload is in the attached notes.
+T-029,Document retry path,Could,2,,data,Open,Confirm copy with the working group.
+T-030,Refresh retry path,Could,13,,backend,Blocked,Small follow-up from the last review.
+T-031,Improve sample data,Could,13,,backend,Cancelled,Confirm copy with the working group.
+T-032,Add sample data,Could,8,,qa,Cancelled,
+T-033,Refresh retry path,Could,3,,qa,Open,Confirm copy with the working group.
+T-034,Add sample data,Could,3,,security,Cancelled,Small follow-up from the last review.
+T-035,Document status badge,Should,2,,platform,Open,Small follow-up from the last review.
+T-036,Improve export view,Should,5,,payments,Open,Example payload is in the attached notes.
+T-037,Add beta test fixtures,Should,3,,qa,Ready,Keep fixtures small enough for local runs.
+T-038,Refresh retry path,Could,13,,frontend,Open,Use the existing pattern where possible.
+T-039,Improve event filter,Could,2,,backend,Closed,Small follow-up from the last review.
+T-040,Add export view,Should,5,,data,Done,Use the existing pattern where possible.
+T-041,Review retry path,Should,3,,frontend,Open,
+T-042,Refresh event filter,Should,3,,backend,Open,Confirm copy with the working group.
+T-043,Handle sample data,Should,13,,backend,Open,Small follow-up from the last review.
+T-044,Review notification wording,Should,3,,frontend,Open,A copy review is still pending.
+T-045,Document event filter,Could,3,,data,Open,Small follow-up from the last review.
+T-046,Improve export view,Should,2,,data,In Progress,
+T-047,Review status badge,Could,5,,backend,In Progress,Confirm copy with the working group.
+T-048,Update status badge,Should,3,,data,Canceled,
+T-049,Add retention cleanup job,Must,4,,data,Open,Use the existing daily job window.
+T-050,Update cache hint,Could,5,,data,In Progress,Small follow-up from the last review.
+T-051,Add search result,Should,3,,data,Ready,Example payload is in the attached notes.
+T-052,Handle event filter,Could,5,,frontend,In Progress,
+T-053,Add sample data,Should,3,,backend,In Progress,Use the existing pattern where possible.
+T-054,Refresh search result,Could,2,,data,Done,
+T-055,Document event filter,Should,3,,security,Done,Confirm copy with the working group.
+T-056,Review search result,Should,5,,data,Done,Example payload is in the attached notes.
+T-057,Improve export view,Could,8,,security,In Progress,Confirm copy with the working group.
+T-058,Update event filter,Should,13,,frontend,In Progress,Confirm copy with the working group.
+T-059,Handle status badge,Could,3,,qa,Closed,Confirm copy with the working group.
+T-060,Review search result,Should,3,,data,Open,Confirm copy with the working group.
+T-061,Add audit export,Must,4,,security,Ready,Export fields should match the account view.
+T-062,Tune sample data,Could,5,,payments,Open,Example payload is in the attached notes.
+T-063,Handle sample data,Could,5,,qa,In Progress,Example payload is in the attached notes.
+T-064,Document export view,Should,8,,qa,Cancelled,Example payload is in the attached notes.
+T-065,Improve cache hint,Could,13,,backend,Open,Confirm copy with the working group.
+T-066,Document status badge,Could,5,,data,In Progress,Use the existing pattern where possible.
+T-067,Document retry path,Should,2,,platform,Canceled,Example payload is in the attached notes.
+T-068,Seed payment sandbox data,Should,3,,payments,Open,Use non-production card numbers only.
+T-069,Update event filter,Could,2,,qa,Open,Use the existing pattern where possible.
+T-070,Improve event filter,Should,13,,platform,Open,Use the existing pattern where possible.
+T-071,Improve settings panel,Should,3,,payments,Cancelled,Confirm copy with the working group.
+T-072,Document settings panel,Could,3,,frontend,Done,
+T-073,Review cache hint,Should,5,,security,Ready,Confirm copy with the working group.
+T-074,Enable payment sandbox checkout,Must,8,T-068,payments,Ready,Leave the customer-facing label unchanged.
+T-075,Add export view,Should,3,,qa,Open,Small follow-up from the last review.
+T-076,Handle search result,Could,2,,frontend,Closed,Use the existing pattern where possible.
+T-077,Tune cache hint,Should,3,,data,Done,Use the existing pattern where possible.
+T-078,Improve search result,Should,3,,qa,In Progress,Small follow-up from the last review.
+T-079,Document event filter,Could,3,,security,Canceled,Use the existing pattern where possible.
+T-080,Tune retry path,Should,8,,payments,Closed,Confirm copy with the working group.
+T-081,Improve search result,Should,2,,frontend,Canceled,
+T-082,Add settings panel,Could,2,,platform,In Progress,Small follow-up from the last review.
+T-083,Add beta readiness checks,Must,3,T-037,qa,Open,Report failures in the existing summary.
+T-084,Review sample data,Should,3,,frontend,Cancelled,Small follow-up from the last review.
+T-085,Tune event filter,Should,3,,qa,In Progress,Use the existing pattern where possible.
+T-086,Refresh retry path,Could,2,,platform,Blocked,Small follow-up from the last review.
+T-087,Document settings panel,Should,3,,backend,Ready,Small follow-up from the last review.
+T-088,Tune search result,Could,3,,backend,Open,Small follow-up from the last review.
+T-089,Handle search result,Could,5,,backend,In Progress,Use the existing pattern where possible.
+T-090,Handle cache hint,Could,2,,security,Open,Small follow-up from the last review.
+T-091,Tune cache hint,Could,8,,payments,Ready,Use the existing pattern where possible.
+T-092,Refresh event filter,Could,8,,frontend,In Progress,
+T-093,Review sample data,Should,3,,qa,Done,
+T-094,Refresh event filter,Should,3,,platform,In Progress,Small follow-up from the last review.
+T-095,Handle export view,Should,8,,qa,Open,Example payload is in the attached notes.
+T-096,Add beta service dashboard,Must,,,platform,Open,Use the existing service names.
+T-097,Handle status badge,Could,2,,data,Open,Confirm copy with the working group.
+T-098,Improve sample data,Should,2,,backend,In Progress,Small follow-up from the last review.
+T-099,Review settings panel,Could,3,,security,Closed,Example payload is in the attached notes.
+T-100,Review export view,Should,3,,payments,Open,Use the existing pattern where possible.
+T-101,Update search result,Could,5,,qa,Open,Confirm copy with the working group.
+T-102,Improve settings panel,Should,3,,security,Blocked,Example payload is in the attached notes.
+T-103,Update search result,Could,3,,data,Open,Use the existing pattern where possible.
+T-104,Add legacy import note,Must,5,,data,Done,Released with the earlier beta build.
+T-105,Review export view,Should,3,,qa,Open,Example payload is in the attached notes.
+T-106,Review settings panel,Should,8,,frontend,Canceled,Example payload is in the attached notes.
+T-107,Refresh retry path,Should,5,,payments,Closed,Example payload is in the attached notes.
+T-108,Add account usage limits,Must,8,T-023,backend,Ready,Document the default limit in the API notes.
+T-109,Document retry path,Should,13,,security,Open,Small follow-up from the last review.
+T-110,Review retry path,Should,2,,backend,Open,Confirm copy with the working group.
+T-111,Add cache hint,Could,5,,security,Cancelled,Confirm copy with the working group.
+T-112,Refresh cache hint,Should,2,,frontend,Cancelled,Small follow-up from the last review.
+T-113,Update beta help panel,Must,8,,frontend,Open,Keep the panel usable at narrow widths.
+T-114,Review export view,Should,3,,platform,Ready,
+T-115,Add retry path,Should,5,,backend,Done,
+T-116,Refresh export view,Should,3,,data,Ready,
+T-117,Update retry path,Could,3,,qa,Open,Small follow-up from the last review.
+T-118,Update sample data,Should,8,,security,Done,Confirm copy with the working group.
+T-119,Add service health probes,Must,8,,platform,In Progress,Use the same timeout as the service checks.
+T-120,Update sample data,Should,13,,frontend,Done,
+T-121,Tune cache hint,Could,13,,qa,Done,Example payload is in the attached notes.
+T-122,Add export view,Could,3,,security,Open,Confirm copy with the working group.
+T-123,Handle retry path,Could,8,,data,Open,Use the existing pattern where possible.
+T-124,Update export view,Could,8,,qa,Open,Example payload is in the attached notes.
+T-125,Document event filter,Could,2,,data,Blocked,Example payload is in the attached notes.
+T-126,Add settings panel,Could,13,,data,Ready,Example payload is in the attached notes.
+T-127,Refresh search result,Could,3,,data,Open,Confirm copy with the working group.
+T-128,Document event filter,Could,13,,security,Closed,Example payload is in the attached notes.
+T-129,Handle cache hint,Should,13,,security,Blocked,Use the existing pattern where possible.
+T-130,Refresh search result,Should,3,,security,Closed,Confirm copy with the working group.

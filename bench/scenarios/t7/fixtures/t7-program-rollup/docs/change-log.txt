@@ -1,0 +1,2 @@
+2027-08-12  Re-exported the three queues after owner names were normalized.
+2027-08-26  Removed one cancelled maintenance row from a local view; raw extracts retain history.

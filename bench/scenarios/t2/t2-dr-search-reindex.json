@@ -1,0 +1,195 @@
+{
+  "id": "t2-dr-search-reindex",
+  "version": 1,
+  "class": "design",
+  "phase": "design-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "Review the zero-downtime product search re-index proposal in `fixture/docs/design/zero-downtime-reindex.md` and the supporting packet around it. I own the rollout and need a decision-quality review before this reaches the production change window. Pay attention to whether the design is safe to operate, fits the stated project constraints, and gives the team a reliable way to know the rollout worked. Write the review to `REVIEW.md` at the top of the project. End it with a fenced json list of findings, each with `location` (the section number of the document, like `3.2`), `severity` (critical, high, medium, low or nit), `issue` and `fix`.",
+  "questions": "allowed",
+  "fixture": "t2-dr-search-reindex",
+  "hidden": "t2-dr-search-reindex",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 20,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const H=new Set();for(const l of fs.readFileSync(\"docs/design/zero-downtime-reindex.md\",\"utf8\").split(\"\\n\")){const m=l.match(/^#+\\s*(?:section\\s*)?(\\d+(?:\\.\\d+)*)/i);if(m)H.add(m[1])}process.exit(L.every(x=>{const m=String(x.location).match(/\\d+(?:\\.\\d+)*/);return m&&H.has(m[0])})?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/design/zero-downtime-reindex.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Each important finding explains the concrete consequence in this project and gives a fix a developer or operator can act on, without inventing problems unsupported by the packet (code cannot check this because it requires judging project-specific reasoning and evidence)",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "The writer is enabled only after the bulk copy, so updates that reach the old index while documents are being copied are absent from the new generation and can be lost at cutover.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "The plan deletes the previous generation shortly after the alias swap without defining an alias-reversal or other rollback procedure, leaving no fast recovery path when the new generation is bad.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "The capacity calculation counts only the replacement generation and a 60 GiB buffer even though both generations coexist during the copy and the sizing sheet requires 15 percent free, so the production run can exhaust node disks.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "The six-hour copy window uses 18,000 writes per hour instead of the recorded peak of 61,200, making the duration and operational overlap estimate unreliable.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "The pre-cutover checks prove only that a few queries return results and never compare the replacement contents with the source, so a partial or failed copy can be promoted.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "Success is defined as HTTP 200, a few results, and a green dashboard rather than measurable availability, latency, empty-result, and writer-lag thresholds from the service targets.",
+      "weight": 1
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Asks for an abort threshold and a load-shedding or pause procedure when copy traffic pushes search latency or writer lag toward its page limits.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Requires an explicit policy for failed bulk requests, version conflicts, task cancellation, and retry visibility rather than treating task completion as the whole operational result.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Requests a mapping and analyzer compatibility review against the known incident, including a representative relevance comparison for locale and exact-title queries.",
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e4",
+        "text": "Asks for least-privilege separation between index creation, document writing, alias updates, and deletion, with an audit record for each privileged operation.",
+        "source": "OWASP Cheat Sheet Series, https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e5",
+        "text": "Clarifies shard placement, replica recovery time, and the required operator response after a data-node failure during the copy or before cutover.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e6",
+        "text": "Defines configuration provenance so the generation name, mapping hash, writer image, and runtime settings are supplied consistently without hidden machine-specific state.",
+        "source": "The Twelve-Factor App, https://12factor.net (MIT)"
+      }
+    ],
+    "weakAnswers": [
+      "The design is clear and the alias swap should provide zero downtime.",
+      "Consider scalability, monitoring, and failure handling before rollout.",
+      "The proposal correctly builds a new index, copies data, and changes the alias.",
+      "Add more testing and coordinate with the other teams."
+    ]
+  },
+  "targetSkills": [
+    "design-evaluation",
+    "design-impact-review",
+    "doc-accuracy-analyzer"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": "k-architect",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "design-evaluation",
+      "k-existing-design-review"
+    ],
+    "mustNotLoad": [
+      "code-review",
+      "backend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/rust-lang/rfcs",
+      "licence": "MIT OR Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a decision-quality review of safety, constraints, and success criteria without naming specific issues, hinting at planted problems, or revealing the number of findings."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The task is clear: review the design document at a specific path, write to REVIEW.md at project root, and format findings as a fenced JSON list with location, severity, issue, and fix fields."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow review could miss the writer timing gap (updates during copy are lost), the capacity overlap omission (old+new coexist), the peak traffic mismatch (18k vs 61k), and the weak success criteria. Evidence is distributed across multiple files."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items are supported by the fixture: k1 (section 3.2 explicitly describes writer enabling after copy), k2 (section 3.4 describes 15-minute retention before deletion), k3 (section 4.1 omits old index from capacity, and cluster-sizing.yaml requires 15% free), k4 (traffic-by-hour.csv shows 61,200 peak vs design's 18,000), k5 (section 4.3 describes only smoke queries), k6 (section 5.1 success criteria lack thresholds, service-targets.md has them)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No file names, comments, or docs directly point to the planted problems. The traffic data and sizing sheet require cross-referencing to discover the gaps."
+      }
+    ]
+  }
+}

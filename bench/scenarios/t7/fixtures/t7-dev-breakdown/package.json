@@ -1,0 +1,8 @@
+{
+  "name": "harbor-catalog-service",
+  "version": "3.8.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test", "lint": "node scripts/lint-check.js", "start": "node src/server.js" }
+}

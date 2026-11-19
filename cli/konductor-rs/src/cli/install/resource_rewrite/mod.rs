@@ -55,12 +55,14 @@ pub(super) use telemetry_hook_pass::{
     remove_v3_standalone_telemetry_hook,
 };
 // `pub(crate)`, not `pub(super)`: `uninstall.rs` (a sibling of `install`,
-// not a descendant) also needs both names to clean up the untracked
-// lock file alongside the manifest-tracked hook document -- see
+// not a descendant) also needs these to clean up the untracked lock file
+// alongside the manifest-tracked hook document, and to name the hook
+// entries of a document it keeps -- see
 // `V3_STANDALONE_HOOK_LOCK_FILE_NAME`'s own doc comment.
 pub(crate) use telemetry_hook_pass::{
-    V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
-    V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+    v3_hook_entry_names, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+    V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME, V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 
 /// Everything a pass may need at install time beyond the JSON value

@@ -1,0 +1,28 @@
+{
+  "id": "t7-sprint-capacity",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/openstack/releases",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "backlog export (CSV, 90 to 140 tickets with priority, estimate, depends_on, skill tag), team roster with per-person focus factor and sprint dates, holidays and an on-call rotation, and a short note from the director",
+  "scenario": "The director says: plan the next three sprints for the team so that the must-haves for the beta land, and tell me what does not fit. On-call weeks cost a person half their capacity.",
+  "seeds": "(1) capacity per sprint must account for holidays, on-call halving and focus factor; (2) one must-have depends on a should-have, so the should-have must be pulled in; (3) one person is the only one with a needed skill tag and is over-allocated if the plan is naive; (4) the must-haves alone exceed sprint 1 capacity, so order matters; (5) an unestimated must-have ticket that should be called out, not silently dropped.",
+  "block": "sprint-plan",
+  "output": "plan/next-three-sprints.md",
+  "shape": "{\"capacity_by_sprint\": {\"<sprint>\": points}, \"sprints\": {\"<sprint>\": [ticket ids]}, \"not_fitting\": [ids], \"pulled_in_dependencies\": [ids], \"over_allocated\": [{\"person\": str, \"sprint\": str, \"assigned\": n, \"capacity\": n}], \"unestimated\": [ids]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
+    "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
+    "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+  ],
+  "replaces": "t7-sprint-plan"
+}

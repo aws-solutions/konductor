@@ -1,0 +1,6 @@
+changed_date,ticket_id,field,old_value,new_value,reason
+2026-12-18,WORK-1021,estimate_points,5,8,Clarified acceptance examples
+2027-01-03,WORK-1046,status,Open,In Progress,Implementation started
+2027-01-08,WORK-1063,title,Old parser wording,Update import parser 63,Title cleanup
+2027-01-12,WORK-1079,status,In Progress,Done,Merged in maintenance branch
+2027-01-20,WORK-1036,comment,,Recovery test added,Review note

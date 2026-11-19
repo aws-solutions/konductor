@@ -1,0 +1,9 @@
+{
+  "port": 0,
+  "dataDir": "./data",
+  "priceCache": {
+    "enabled": true,
+    "ttlSeconds": 1,
+    "maxEntries": 20
+  }
+}

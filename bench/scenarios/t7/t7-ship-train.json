@@ -1,0 +1,156 @@
+{
+  "id": "t7-ship-train",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need a release answer for the new storage engine for the director review. Tell me which train we are most likely to make and which release I can promise customers, with the dates and the numbers behind the call. Use the files in this folder and write the requester-facing answer to docs/storage-engine-forecast.md. Include one fenced JSON block whose info string is forecast so our tooling can read it. The JSON object must contain exactly these keys: likely_release (string), committed_release (string), likely_branch_date (YYYY-MM-DD string), committed_release_date (YYYY-MM-DD string), remaining_points (number), throughput_points_per_sprint (number), sprints_needed (number), excluded_tickets (array of ticket ID strings), and notes (array of strings). Keep the prose clear about the bottom line, assumptions, and uncertainty. The block is the machine-readable part of the answer.",
+  "fixture": "t7-ship-train",
+  "hidden": "t7-ship-train",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 9,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/storage-engine-forecast.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "remaining-work.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/storage-engine-forecast.md",
+      "pattern": "```\\s*forecast",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The prose gives the customer promise and the most likely release near the beginning and distinguishes those two decisions (code cannot check this because it cannot evaluate prose priority or meaning).",
+      "weight": 2
+    },
+    {
+      "id": "reasoning",
+      "criterion": "The prose connects the dates and numbers to the supplied records and states the important uncertainty without claiming a guarantee for the likely date (code cannot check this because it cannot judge explanatory reasoning in prose).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "branch-not-release",
+        "text": "On a train model the deadline that matters is the branch cut, not the release date: work that is not merged by a train's branch date waits for the next train, so the forecast has to land before the cut.",
+        "source": "The Rust Book, How Rust is Made and Nightly Rust, https://doc.rust-lang.org/book/appendix-07-nightly-rust.html (MIT OR Apache-2.0)"
+      },
+      {
+        "id": "promise-vs-likely",
+        "text": "Separates the train the team will most likely make from the release it can promise customers, and explains the gap (the feature-flag soak train and forecast uncertainty) instead of promising the most likely train.",
+        "source": "The Rust Book, How Rust is Made and Nightly Rust, https://doc.rust-lang.org/book/appendix-07-nightly-rust.html (MIT OR Apache-2.0)"
+      },
+      {
+        "id": "freeze-slack",
+        "text": "Shows how much slack sits between the forecast finish and the branch cut, and what happens if the work lands just after the cut (a full train of delay), so a small slip has a large cost.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "non-comparable-history",
+        "text": "Treats the hackathon sprint as not comparable delivery and says how throughput was taken from ordinary sprints, with the spread of those sprints as a range on the finish.",
+        "source": "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
+      },
+      {
+        "id": "unestimated-scope",
+        "text": "Sizes the unestimated tickets by the stated rule and says how a larger true size would move the train.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "scope-boundary",
+        "text": "Draws the scope boundary from the roadmap initiative, not from the word storage in titles, and says which ticket was left out and why.",
+        "source": "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
+      },
+      {
+        "id": "dependency-order",
+        "text": "Notes that dependent tickets cannot all run in parallel, so throughput alone can understate the finish when a chain is long.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Ships in the next release because there is plenty of time.",
+      "Uses the release date of a train as the merge deadline.",
+      "Averages all twelve sprints, hackathon included.",
+      "Promises customers the same train it most likely makes.",
+      "Leaves unestimated tickets out of the remaining points."
+    ]
+  },
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/rust-lang/rust/blob/main/RELEASES.md",
+      "licence": "MIT OR Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a release forecast but does not name specific methods (median, rounding rule) or hint at traps. The notes in task-draft.json describe intended traps but are authoring metadata, not visible to the agent."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The fixture documents (review-and-stabilisation.md, roadmap.md) explicitly state the blank-estimate median rule, the hackathon exclusion, the feature-flag stabilization train, and the workstream/initiative distinction. All key values follow from these rules."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file reveals the answer. The decoy ticket WORK-1063 appears normally in the export with Archive Migration initiative; the blank-estimate tickets have no special marker. Capacity, comments, and change-log are context only."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that includes the hackathon sprint in throughput (36 pts/sprint), uses release dates instead of branch dates, treats blanks as zero, and ignores the stabilization train passes only 2 of 12 tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "I independently re-derived: (1) remaining_points=110 using the median rule for WORK-1008/WORK-1048 blanks, (2) throughput=30 from ordinary sprints (excluding hackathon), (3) sprints_needed=4, (4) likely=2027.06 branch 2027-05-07, (5) committed=2027.07 release 2027-07-30. All match the key."
+      }
+    ]
+  }
+}

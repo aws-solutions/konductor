@@ -1,0 +1,5 @@
+[
+  {"productId":"pencil","currency":"USD","amount":2.25,"updatedAt":"2025-02-11T09:00:00.000Z"},
+  {"productId":"notebook","currency":"USD","amount":6.5,"updatedAt":"2025-02-11T09:00:00.000Z"},
+  {"productId":"packing-tape","currency":"USD","amount":8.75,"updatedAt":"2025-02-11T09:00:00.000Z"}
+]

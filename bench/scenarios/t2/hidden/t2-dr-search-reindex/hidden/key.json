@@ -1,0 +1,72 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "dual-write before copy",
+        "replay events",
+        "catch-up"
+      ],
+      "finding": "The writer is enabled only after the bulk copy, so updates that reach the old index while documents are being copied are absent from the new generation and can be lost at cutover."
+    },
+    {
+      "id": "k2",
+      "section": "3.4",
+      "severity": "high",
+      "fix": [
+        "rollback path",
+        "retain old index",
+        "alias reversal"
+      ],
+      "finding": "The plan deletes the previous generation shortly after the alias swap without defining an alias-reversal or other rollback procedure, leaving no fast recovery path when the new generation is bad."
+    },
+    {
+      "id": "k3",
+      "section": "4.1",
+      "severity": "high",
+      "fix": [
+        "include old index",
+        "15 percent free",
+        "expand storage"
+      ],
+      "finding": "The capacity calculation counts only the replacement generation and a 60 GiB buffer even though both generations coexist during the copy and the sizing sheet requires 15 percent free, so the production run can exhaust node disks."
+    },
+    {
+      "id": "k4",
+      "section": "3.3",
+      "severity": "medium",
+      "fix": [
+        "peak write rate",
+        "61,200",
+        "recalculate"
+      ],
+      "finding": "The six-hour copy window uses 18,000 writes per hour instead of the recorded peak of 61,200, making the duration and operational overlap estimate unreliable."
+    },
+    {
+      "id": "k5",
+      "section": "4.3",
+      "severity": "high",
+      "fix": [
+        "document count",
+        "checksum",
+        "completeness gate"
+      ],
+      "finding": "The pre-cutover checks prove only that a few queries return results and never compare the replacement contents with the source, so a partial or failed copy can be promoted."
+    },
+    {
+      "id": "k6",
+      "section": "5.1",
+      "severity": "medium",
+      "fix": [
+        "measurable threshold",
+        "control query",
+        "latency target"
+      ],
+      "finding": "Success is defined as HTTP 200, a few results, and a green dashboard rather than measurable availability, latency, empty-result, and writer-lag thresholds from the service targets."
+    }
+  ],
+  "decoys": []
+}

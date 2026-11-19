@@ -1,0 +1,9 @@
+roadmap_id,feature_id,theme,target_window,roadmap_status,comment
+RM-01,F-004,Workspace,2027-Q3,Active,Included in the operating view theme.
+RM-02,F-010,Onboarding,2027-Q3,Active,Import improvements are under discussion.
+RM-03,F-044,Leadership reporting,2027-Q3,Proposed,Requested for an internal showcase.
+RM-04,F-052,Regional insight,2027-Q3,Proposed,Dashboard concept needs a thin first slice.
+RM-05,F-057,Mobile workflow,2027-Q4,Planned,Mobile work follows the conference cut.
+RM-06,F-063,Adoption,2027-Q3,Active,Follow-up reporting is part of the launch story.
+RM-07,F-018,Mobile workflow,2027-Q3,Cancelled,Old date retained in export.
+RM-08,F-071,Admin,2027-Q2,Closed,Historical roadmap row.

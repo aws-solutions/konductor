@@ -1,0 +1,6 @@
+Backlog export notes, 2027-07-26
+
+- One row has a blank estimate and remains unschedulable.
+- Closed and cancelled rows are retained by the export.
+- The owner spelling "Ilan" appears in older rows; do not merge it with another person.
+- Values were copied from the planning workbook and are not revenue amounts.

@@ -1,0 +1,27 @@
+{
+  "id": "t7-release-gate",
+  "phase": "release-ops",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/kubernetes/sig-release",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a release tracking folder: release-blocking issue export (CSV, 50 to 80 issues), cherry-pick queue (CSV), CI signal summary for the release branch (JSON, per job pass rates over 7 days), the release calendar with freeze dates, and the release notes draft",
+  "scenario": "The release lead is out and the director asks: are we go or no-go for Thursday's release? If no-go, what has to happen and by when.",
+  "seeds": "(1) a release-blocking issue is closed on main but its fix was never cherry-picked to the release branch; (2) one CI job is flaky at 85% pass rate and another fails consistently since a specific commit; (3) a cherry-pick was approved after the cherry-pick deadline in the calendar; (4) the release notes promise a feature whose ticket was reverted; (5) a decoy: an open issue labelled release-blocker that the triage note demoted.",
+  "block": "release-decision",
+  "output": "release/go-no-go.md",
+  "shape": "{\"decision\": \"go|no-go\", \"blockers\": [{\"tickets\": [ids], \"summary\": str, \"owner\": str}], \"failing_jobs\": [names], \"flaky_jobs\": [names], \"late_cherry_picks\": [ids], \"notes_corrections\": [ids], \"earliest_release_date\": \"YYYY-MM-DD\"}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "Kubernetes release-blocking jobs, https://github.com/kubernetes/sig-release/blob/master/release-blocking-jobs.md (Apache-2.0)",
+    "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+    "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+  ]
+}

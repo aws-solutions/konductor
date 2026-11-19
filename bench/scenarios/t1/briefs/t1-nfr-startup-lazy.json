@@ -1,0 +1,16 @@
+{
+  "id": "t1-nfr-startup-lazy",
+  "phase": "nfr",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/sindresorhus/import-lazy",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: NFR and performance. Role: developer. Repo kind: a Node.js 24 command-line tool with many subcommands (about 40 files, each subcommand in its own module that loads heavy local modules at the top; no dependencies; tests, CI config, docs). Inspiration (idea only): public lazy-loading helpers that delay a module until first use to cut start-up time. Build a task where the owner says the tool takes too long to start and states numeric limits: running `--help` or `--version` must load at most a small fixed number of modules (counted through a loader hook the hidden tests install), a subcommand must load only its own dependencies, and behaviour and output stay the same. Include wrinkles of your own design (a module with a side effect at load that must still run before first use, an exported constant that callers read, and an error that must still appear at start for a bad config)."
+}

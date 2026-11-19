@@ -105,6 +105,11 @@ function fix(id) {
   return { credits };
 }
 
+// An author guesses its own time; a developer task gets at least 600 s soft and twice that hard (limits are re-set after the pilot).
+const limitsOf = (l) => { const softSec = Math.max(l.softSec, 600); return { softSec, hardSec: Math.max(l.hardSec, softSec * 2) }; };
+
+const sourceNote = (s) => (s === 'original' ? 'original (author-written; idea only)' : `${s.url} (${s.licence}; idea only, paraphrased)`);
+
 function assemble(id) {
   const w = path.join(AUTH, 'work', id);
   const b = brief(id);
@@ -123,8 +128,8 @@ function assemble(id) {
     prompt: draft.prompt,
     fixture: b.id,
     hidden: b.id,
-    timeoutSec: draft.limits.hardSec,
-    limits: draft.limits,
+    timeoutSec: limitsOf(draft.limits).hardSec,
+    limits: limitsOf(draft.limits),
     checks: draft.checks,
     rubric: draft.rubric,
     targetSkills: mapping.targetSkills,
@@ -132,6 +137,7 @@ function assemble(id) {
     targetAgent: mapping.targetAgent,
     controlKind: b.controlKind || 'none',
     ...(b.twinOf ? { twinOf: b.twinOf } : {}),
+    ...(draft.expertKey ? { expertKey: { items: draft.expertKey.items.map((i) => ({ id: i.id, text: i.text, source: i.source || sourceNote(b.source) })), weakAnswers: draft.expertKey.weakAnswers } } : {}),
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: b.mustNotLoad || [] },
     tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source === 'original' ? 'original' : b.source },

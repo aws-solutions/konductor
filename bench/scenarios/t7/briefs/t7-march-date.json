@@ -1,0 +1,23 @@
+{
+  "id": "t7-march-date",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "deepseek-3.2",
+  "source": {
+    "url": "https://peps.python.org/pep-0745/",
+    "licence": "public domain or CC0-1.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "structure"
+  },
+  "kind": "ticket export (JSON, 120 to 180 tickets) for a data-platform migration, plus a release calendar in the style of a language release schedule (alpha, beta, release candidate, final), per-person capacity, a PTO list and a holiday list",
+  "scenario": "A director asks: can we hit the March 31 date? The work must land before a feature-freeze date that sits 3 weeks before final. They want a yes or no, the earliest realistic date, and what drives it.",
+  "seeds": "(1) holidays and two planned leaves cut capacity in exactly the sprints where the critical chain runs; (2) a person on leave owns a ticket on the critical chain; (3) one chain is longer in calendar time than in points because of a hand-off between two teams that only overlap 2 days a week; (4) a date conflict between the freeze date and a dependency due date; (5) a decoy: a large epic with many points that is not on the critical chain and can slip without moving the date. The honest answer is no for March 31 with a specific later date.",
+  "block": "forecast",
+  "output": "docs/march-forecast.md",
+  "shape": "{\"can_hit_target\": true|false, \"target_date\": \"YYYY-MM-DD\", \"earliest_date\": \"YYYY-MM-DD\", \"critical_path\": [ids], \"drivers\": [{\"tickets\": [ids], \"why\": str}], \"capacity_by_sprint\": {\"<sprint>\": points}, \"assumptions\": [str]}",
+  "expert": false,
+  "controlKind": "none",
+  "reviewer": "minimax-m2.5",
+  "date": "2026-11-19",
+  "dropped": "after one fix round (plan 4.6): planted tickets still recognisable, sprint dates not on working days, three assertions test the same date; replaced by t7-freeze-forecast"
+}

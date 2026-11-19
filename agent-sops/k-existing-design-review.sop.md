@@ -4,6 +4,8 @@
 
 ## Overview
 
+Reviews a finished set of design artifacts (system design, threat model, API specs, data models, diagrams) across 10 dimensions with design-evaluation before implementation.
+
 This SOP guides a structured review of all design artifacts before handoff to implementation. It collects system design, threat model, API specs, data models, security policies, and architecture diagrams, then runs a principal-engineer-level evaluation across 10 dimensions using the design-evaluation skill.
 
 Use this SOP after completing all design artifacts and before starting implementation.

@@ -8,10 +8,10 @@
   "prompt": "Please add per-API-key request limiting to this booking service without changing the existing booking response shapes or the health/readiness responses. Booking routes are GET/POST /bookings and GET/DELETE /bookings/:id. They must require a non-blank key from x-api-key or x-booking-api-key; when both are present, x-api-key wins. A missing key returns 401 JSON with error code missing_api_key and must not use quota. GET /health and GET /ready are exempt and need no key.\n\nPut the settings in config/default.json and config/test.json under rateLimit: windowMs 60000, maxClients 1000, defaultPlan free, plans { free: { limit: 5 }, team: { limit: 20 } }, with keyPlans mapping team-demo to team. Unmapped keys use defaultPlan. Quota is shared across booking routes. Keyed responses must include RateLimit-Limit and RateLimit-Remaining; after the limit, return 429 with remaining 0, error code rate_limit_exceeded, and Retry-After in whole seconds. The window must use the injected clock passed as clock to createApp({ config, clock }), so tests can advance time without sleeping. Keep tracked clients bounded by maxClients, removing expired entries and otherwise evicting the least recently seen key. Keep the no-dependency setup and existing tests working, and document the change in the changelog.",
   "fixture": "t1-impl-rate-limit",
   "hidden": "t1-impl-rate-limit",
-  "timeoutSec": 240,
+  "timeoutSec": 1200,
   "limits": {
-    "softSec": 120,
-    "hardSec": 240
+    "softSec": 600,
+    "hardSec": 1200
   },
   "checks": [
     {

@@ -1,0 +1,5 @@
+team,ordinary_workdays,handoff_acceptance_weekdays,timezone
+Data Foundations,Mon-Fri,"Tue,Wed",UTC-5
+Runtime Migration,Mon-Fri,"Tue,Wed",UTC-5
+Release Operations,Mon-Fri,"Mon,Thu",UTC-5
+Analytics,Mon-Fri,"Tue,Thu",UTC-5

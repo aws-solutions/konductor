@@ -1,0 +1,16 @@
+{
+  "id": "t1-impl-settings-expand",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "python",
+  "size": "25 to 35",
+  "source": {
+    "url": "https://github.com/theskumar/python-dotenv",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Python 3.12 command-line and library project (standard library only) that loads service settings from layered .env style files and environment variables, with a parser, a loader, a typed settings object, a CLI that prints the resolved settings, tests, CI config and docs. Size: about 30 files. Inspiration (an idea only, nothing copied): public dotenv libraries that expand ${VAR} and ${VAR:-default} references inside values. Build a task where the owner asks for reference expansion in the settings files, with wrinkles of your own design (for example references that point across layers, defaults that themselves hold references, escaping, an error that names the key and file on a reference cycle or a missing name, and a flag on the existing CLI to turn expansion off)."
+}

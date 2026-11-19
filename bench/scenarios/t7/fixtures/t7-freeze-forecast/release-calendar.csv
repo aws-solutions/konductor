@@ -1,0 +1,7 @@
+stage,version,date,notes
+target,8.0.0,2027-03-31,requested migration date
+alpha,8.0.0-alpha1,2027-01-25,internal integration build
+beta,8.0.0-beta1,2027-03-01,feature-complete candidate
+release candidate,8.0.0-rc1,2027-04-19,stabilization build
+feature freeze,8.0.0,2027-04-12,new feature work stops
+final,8.0.0,2027-05-03,public release

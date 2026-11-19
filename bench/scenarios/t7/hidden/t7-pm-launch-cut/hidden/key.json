@@ -1,0 +1,130 @@
+{
+  "output": "docs/launch-scope.md",
+  "block": "launch-scope",
+  "assertions": [
+    {
+      "id": "committed-export-in",
+      "desc": "The signed launch export commitment is in scope",
+      "op": "includes",
+      "path": "in",
+      "ids": [
+        "F-014"
+      ]
+    },
+    {
+      "id": "committed-export-must-have",
+      "desc": "The signed launch export is called out as a must-have",
+      "op": "includes",
+      "path": "must_haves",
+      "ids": [
+        "F-014"
+      ]
+    },
+    {
+      "id": "committed-import-in",
+      "desc": "The committed launch import is in scope",
+      "op": "includes",
+      "path": "in",
+      "ids": [
+        "F-010"
+      ]
+    },
+    {
+      "id": "target-dashboard-in",
+      "desc": "The high-value regional dashboard is in scope",
+      "op": "includes",
+      "path": "in",
+      "ids": [
+        "F-052"
+      ]
+    },
+    {
+      "id": "dashboard-prerequisite",
+      "desc": "The dashboard prerequisite is pulled into the plan",
+      "op": "includes",
+      "path": "dependencies_pulled_in",
+      "ids": [
+        "F-031"
+      ]
+    },
+    {
+      "id": "internal-wallboard-out",
+      "desc": "The internal-only wallboard is not in scope",
+      "op": "absent",
+      "path": "in",
+      "ids": [
+        "F-044"
+      ]
+    },
+    {
+      "id": "field-mobile-out",
+      "desc": "The field-sales mobile request is not in scope",
+      "op": "excludes",
+      "path": "in",
+      "ids": [
+        "F-057"
+      ]
+    },
+    {
+      "id": "capacity-total",
+      "desc": "Capacity reflects the four dated sprints and holiday",
+      "op": "number",
+      "path": "capacity_points",
+      "value": 63,
+      "tol": 0
+    },
+    {
+      "id": "planned-total",
+      "desc": "Planned points cover the required features and stay within capacity",
+      "op": "number",
+      "path": "planned_points",
+      "value": 60.5,
+      "tol": 2.5
+    },
+    {
+      "id": "launch-snapshot-in",
+      "desc": "The launch follow-up snapshot is in scope",
+      "op": "includes",
+      "path": "in",
+      "ids": [
+        "F-063"
+      ]
+    },
+    {
+      "id": "approval-rules-in",
+      "desc": "The target segment approval workflow is in scope",
+      "op": "includes",
+      "path": "in",
+      "ids": [
+        "F-038"
+      ]
+    },
+    {
+      "id": "audit-filters-in",
+      "desc": "The target segment audit workflow is in scope",
+      "op": "includes",
+      "path": "in",
+      "ids": [
+        "F-021"
+      ]
+    },
+    {
+      "id": "must-have-import",
+      "desc": "The committed import is explicitly marked a must-have",
+      "op": "includes",
+      "path": "must_haves",
+      "ids": [
+        "F-010"
+      ]
+    },
+    {
+      "id": "out-list-has-decoy",
+      "desc": "The internal-only wallboard is listed out",
+      "op": "includes",
+      "path": "out",
+      "ids": [
+        "F-044"
+      ]
+    }
+  ]
+}

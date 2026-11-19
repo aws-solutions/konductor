@@ -1,0 +1,147 @@
+{
+  "output": "status/program-rollup.md",
+  "block": "program-status",
+  "assertions": [
+    {
+      "id": "overall-color",
+      "desc": "program is red",
+      "op": "equals",
+      "path": "overall",
+      "value": "red"
+    },
+    {
+      "id": "arc-actual",
+      "desc": "ARC actual color",
+      "op": "equals",
+      "path": "teams.ARC.actual",
+      "value": "amber"
+    },
+    {
+      "id": "beam-actual",
+      "desc": "BEAM actual color",
+      "op": "equals",
+      "path": "teams.BEAM.actual",
+      "value": "red"
+    },
+    {
+      "id": "cove-actual",
+      "desc": "COVE actual color",
+      "op": "equals",
+      "path": "teams.COVE.actual",
+      "value": "amber"
+    },
+    {
+      "id": "arc-points",
+      "desc": "ARC remaining points",
+      "op": "number",
+      "path": "teams.ARC.remaining_points",
+      "value": 88,
+      "tol": 0
+    },
+    {
+      "id": "beam-points",
+      "desc": "BEAM remaining points",
+      "op": "number",
+      "path": "teams.BEAM.remaining_points",
+      "value": 83,
+      "tol": 0
+    },
+    {
+      "id": "cove-points",
+      "desc": "COVE remaining points",
+      "op": "number",
+      "path": "teams.COVE.remaining_points",
+      "value": 83,
+      "tol": 0
+    },
+    {
+      "id": "critical-path-members",
+      "desc": "critical path names its chain",
+      "op": "includes",
+      "path": "critical_path",
+      "ids": [
+        "ARC-117",
+        "BEAM-224",
+        "COVE-331",
+        "COVE-342"
+      ]
+    },
+    {
+      "id": "critical-path-order",
+      "desc": "critical path keeps dependency order",
+      "op": "order",
+      "path": "critical_path",
+      "ids": [
+        "ARC-117",
+        "BEAM-224",
+        "COVE-331",
+        "COVE-342"
+      ]
+    },
+    {
+      "id": "blocker-citations",
+      "desc": "blocker cites linked work",
+      "op": "cites",
+      "path": "cross_team_blockers",
+      "field": "tickets",
+      "ids": [
+        "ARC-117",
+        "BEAM-224",
+        "COVE-331",
+        "COVE-342"
+      ],
+      "min": 3
+    },
+    {
+      "id": "blocker-precision",
+      "desc": "blocker list is focused",
+      "op": "precision",
+      "path": "cross_team_blockers",
+      "field": "tickets",
+      "ids": [
+        "ARC-117",
+        "BEAM-224",
+        "COVE-331",
+        "COVE-342"
+      ],
+      "min": 0.5,
+      "maxCount": 2
+    },
+    {
+      "id": "duplicate-ticket",
+      "desc": "duplicate ticket is disclosed",
+      "op": "includes",
+      "path": "duplicates",
+      "ids": [
+        "ARC-143"
+      ]
+    },
+    {
+      "id": "decoy-off-path",
+      "desc": "maintenance decoy is off the path",
+      "op": "absent",
+      "path": "critical_path",
+      "ids": [
+        "COVE-354"
+      ]
+    },
+    {
+      "id": "decoy-off-blockers",
+      "desc": "maintenance decoy is not a program blocker",
+      "op": "absent",
+      "path": "cross_team_blockers",
+      "field": "tickets",
+      "ids": [
+        "COVE-354"
+      ]
+    },
+    {
+      "id": "forecast",
+      "desc": "capacity forecast date",
+      "op": "date",
+      "path": "forecast_date",
+      "value": "2027-11-26",
+      "tolDays": 14
+    }
+  ]
+}

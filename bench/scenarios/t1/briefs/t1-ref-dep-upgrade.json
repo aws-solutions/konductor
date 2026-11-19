@@ -1,0 +1,16 @@
+{
+  "id": "t1-ref-dep-upgrade",
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/lodash/lodash",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor, migration and dependency upgrade. Role: developer. Repo kind: a Node.js 24 reporting tool that uses a small vendored utility library in `vendor/` (about 35 files: the app, the vendored library v1 with its tests, and a folder with the new v2 release with a CHANGELOG and a migration guide, and tests). Inspiration (idea only): public libraries' major upgrades (for example the move between two major versions of a utility library: renamed functions, changed argument order, removed shortcuts, changed defaults). Build a task where the owner asks to switch the app from v1 to v2, with wrinkles of your own design (a renamed function, a changed default that silently changes output, a removed shortcut that the app uses in one rarely run path, and a behaviour change listed only in the changelog). The migration guide must be realistic and incomplete in one place."
+}
