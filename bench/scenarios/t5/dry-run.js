@@ -18,10 +18,12 @@ const { scoreOf } = require('../t1/dry-run.js');
 const DIR = __dirname;
 const signature = (results) => JSON.stringify(results.map((r) => [r.type, r.passed, r.tests ? [r.tests.passed, r.tests.total] : null]));
 
+// `reference` is true (the solution overlay), false (the stub) or a variant { name, overlay } (any answer overlay).
 function workspace(root, id, reference, dir = DIR) {
-  const ws = path.join(root, reference ? 'ref' : 'stub');
+  const ws = path.join(root, reference === true ? 'ref' : reference ? `variant-${reference.name}` : 'stub');
   fs.cpSync(path.join(dir, 'fixtures', id), ws, { recursive: true });
-  if (reference) fs.cpSync(path.join(dir, 'solutions', id), ws, { recursive: true });
+  if (reference === true) fs.cpSync(path.join(dir, 'solutions', id), ws, { recursive: true });
+  else if (reference) fs.cpSync(reference.overlay, ws, { recursive: true });
   return ws;
 }
 
@@ -38,7 +40,8 @@ function runChecks(task, ws, id, env, scratchDir, dir = DIR) {
 }
 
 // `dir` is the batch directory (default T5's); T8 reuses this scorer with its own.
-function dryRun(id, { repeat = 3, dir = DIR } = {}) {
+// `variants` ({ name: overlayDir }) are other answers to score once each, for example a lazy and an alternative answer.
+function dryRun(id, { repeat = 3, dir = DIR, variants = {} } = {}) {
   const task = JSON.parse(fs.readFileSync(path.join(dir, `${id}.json`), 'utf8'));
   const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), `dry-${id}-`));
   try {
@@ -52,6 +55,11 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
       for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, id, env, path.join(root, 'scratch'), dir));
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
       out[mode] = { ...scoreOf(runs[0]), checks_: runs[0].map((r) => ({ type: r.type, kind: r.kind, weight: r.weight, passed: r.passed, detail: r.detail })) };
+    }
+    out.variants = {};
+    for (const [name, overlay] of Object.entries(variants)) {
+      const ws = workspace(root, id, { name, overlay }, dir);
+      out.variants[name] = scoreOf(runChecks(task, ws, id, env, path.join(root, 'scratch'), dir));
     }
     out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic;
     return out;

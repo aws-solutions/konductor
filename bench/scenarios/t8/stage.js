@@ -9,6 +9,8 @@
 //   normalize <id>  moves stray author files into work/<id>/fixture/ and builds hidden/ from the draft (lib/selfcheck.js)
 //   map <id>        glm-5 tags the finished task from skill, SOP and agent names and descriptions only (work/<id>.map.json)
 //   review <id>     a model of another family reviews the finished task (work/<id>.review.json)
+//   variants <id>   a model of a third family answers the request twice on a copy of the fixture, once with care and once in
+//                   a hurry; the changed files become variants/<id>/alt/ and variants/<id>/lazy/ (scored by dry-run.js)
 //   assemble <id>   writes the task into bench/scenarios/t8/ (task file, fixtures/, hidden/, solutions/, authoring/<id>/gen)
 // Needs T8_AUTH: a directory with run.sh (run.sh <model> <cwd> <promptfile> <outprefix>), work/<id>/ (the author's
 // output) and catalog.json (names and descriptions, ../t1/catalog-descriptions.js). Every model call is logged with its credits.
@@ -120,6 +122,50 @@ function review(id) {
   return out;
 }
 
+const HURRY = '\nYou have ten minutes before a meeting. Read the README and at most two other small files, do not open the large log, metric or data files, and write a plausible answer from what you saw.\n';
+
+function listTree(root, rel = '') {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+    const r = path.join(rel, e.name);
+    if (e.isDirectory()) out.push(...listTree(root, r));
+    else if (e.isFile()) out.push(r);
+  }
+  return out;
+}
+
+// The files an answer added or changed against the fixture, copied to `to`.
+function overlayOf(ws, fixture, to) {
+  fs.rmSync(to, { recursive: true, force: true });
+  let n = 0;
+  for (const rel of listTree(ws)) {
+    const orig = path.join(fixture, rel);
+    if (fs.existsSync(orig) && fs.readFileSync(orig).equals(fs.readFileSync(path.join(ws, rel)))) continue;
+    fs.mkdirSync(path.dirname(path.join(to, rel)), { recursive: true });
+    fs.copyFileSync(path.join(ws, rel), path.join(to, rel));
+    n++;
+  }
+  return n;
+}
+
+function variants(id) {
+  const b = brief(id);
+  const task = readJson(path.join(DIR, `${id}.json`));
+  const model = b.answerer;
+  const fixture = path.join(DIR, 'fixtures', id);
+  const out = {};
+  for (const [name, hurry] of [['alt', ''], ['lazy', HURRY]]) {
+    const cwd = work(`${id}-${name}`);
+    fs.rmSync(cwd, { recursive: true, force: true });
+    fs.cpSync(fixture, cwd, { recursive: true });
+    const prompt = fs.readFileSync(path.join(DIR, 'prompts/answer.md'), 'utf8').replace('{{HURRY}}', () => hurry).replace('{{PROMPT}}', () => task.prompt);
+    const { credits } = call(model, cwd, prompt, `${id}.${name}`);
+    logCall(id, `${name} answer`, model, credits);
+    out[name] = overlayOf(cwd, fixture, path.join(DIR, 'variants', id, name));
+  }
+  return out;
+}
+
 // A reviewer's verdict, with the worker's disposition for a failed check ({ check: { verdict, note } }).
 function reviewed(v, disposition) {
   const d = disposition[v.check];
@@ -158,7 +204,7 @@ function assemble(id) {
   const limits = { softSec, hardSec: softSec * 2 };
   const prompt = SOP_NEEDS_YES.has(mapping.targetSop) && !draft.prompt.includes(YES_SENTENCE) ? `${draft.prompt} ${YES_SENTENCE}` : draft.prompt;
   const task = {
-    id, class: 'hard', version: 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
+    id, class: 'hard', version: b.version || 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
     questions: b.questions || 'allowed', prompt, fixture: id, hidden: id,
     timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: withExpertRubric(draft.rubric, b.expertKey),
     ...(b.expertKey ? { expertKey: b.expertKey } : {}),
@@ -181,10 +227,10 @@ function assemble(id) {
 if (require.main === module) {
   const [cmd, id] = process.argv.slice(2);
   if (!AUTH) { console.error('set T8_AUTH'); process.exit(2); }
-  const fn = { audit, 'log-author': logAuthor, normalize, map, review, assemble }[cmd];
-  if (!fn || !id) { console.error('usage: stage.js audit|log-author|normalize|map|review|assemble <id>'); process.exit(2); }
+  const fn = { audit, 'log-author': logAuthor, normalize, map, review, variants, assemble }[cmd];
+  if (!fn || !id) { console.error('usage: stage.js audit|log-author|normalize|map|review|variants|assemble <id>'); process.exit(2); }
   const r = fn(id);
   if (r) console.log(JSON.stringify(r, null, 1));
 }
 
-module.exports = { audit, auditStream, normalize, map, review, assemble };
+module.exports = { audit, auditStream, normalize, map, review, variants, overlayOf, assemble };

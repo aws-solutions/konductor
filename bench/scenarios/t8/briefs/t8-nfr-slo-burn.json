@@ -6,7 +6,7 @@
   "phases2": [
     "release-ops"
   ],
-  "author": "gpt-5.6-luna",
+  "author": "minimax-m2.5",
   "reviewer": "qwen3-coder-next",
   "stack": "ops",
   "size": "15 to 30",
@@ -61,5 +61,13 @@
       "Keep the CPU over 80% page."
     ]
   },
-  "authorSwitchedFrom": "deepseek-3.2"
+  "authorSwitchedFrom": "deepseek-3.2",
+  "rewriteOf": {
+    "version": 1,
+    "author": "gpt-5.6-luna",
+    "reviewer": "qwen3-coder-next"
+  },
+  "version": 2,
+  "answerer": "glm-5",
+  "date": "2026-11-19"
 }
