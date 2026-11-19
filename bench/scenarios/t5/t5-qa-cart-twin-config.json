@@ -65,7 +65,10 @@
       "code-review",
       "verification"
     ],
-    "mustNotLoad": []
+    "mustNotLoad": [
+      "test-coverage-analysis",
+      "k-test-coverage-review"
+    ]
   },
   "effectSubset": false,
   "tiers": [
@@ -76,6 +79,37 @@
     "model": "gpt-5.6-luna",
     "date": "2026-11-19",
     "source": "original"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes the desired behavior without naming methods, tools, or specific implementation approaches. It uses terms like 'freeShippingThresholdCents' and 'standardShippingCents' as config file keys, which is appropriate domain vocabulary."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the config file structure (default object, countries object, partial overrides), the behavior (threshold inclusive for free shipping), the fallback (missing/empty file uses 5000/799 cents), and the error handling (ValidationError with clear message). The hidden tests align with these requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no mentions of shipping.json or country-based shipping. The existing shipping.js uses the same default values (5000, 799) which the request specifies as fallbacks. The errors.js already exports ValidationError. No answers are leaked."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy implementation that ignores the config file would fail 12 of 15 hidden tests. A naive implementation that only reads the file once at module load would fail the tests that swap config files dynamically. The error validation tests catch implementations that skip input validation."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable: read a JSON file, validate its structure, merge defaults with country overrides, and preserve existing explicit options behavior. No timing-dependent or flaky tests. The ValidationError class already exists in the fixture."
+      }
+    ]
   },
   "pilot": null,
   "lockedAt": null

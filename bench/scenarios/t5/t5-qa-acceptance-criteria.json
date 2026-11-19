@@ -143,12 +143,16 @@
     ],
     "defaultReply": "I do not have a further policy detail to add. Please use the product note and keep the criterion observable."
   },
-  "targetSkills": [],
+  "targetSkills": [
+    "user-story-writing"
+  ],
   "targetSop": null,
-  "targetAgent": null,
+  "targetAgent": "k-quality-assurance",
   "controlKind": "none",
   "loadCheck": {
-    "mustLoad": [],
+    "mustLoad": [
+      "user-story-writing"
+    ],
     "mustNotLoad": []
   },
   "effectSubset": false,
@@ -165,6 +169,37 @@
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
     }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes the task outcome (create ACCEPTANCE.md with observable criteria) without naming tools, methods, or specific processes the agent must use."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the expected deliverable: a Markdown document with concrete, observable criteria covering conditions, actions, outcomes, and boundaries. The scripted product owner answers provide all necessary specifics (30-day window, $500 threshold, Finance Operations approval, etc.) that a competent agent can discover through interaction."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture provides context documents but does not reveal the exact values (30 days, $500, 15 minutes, 7 years) or team name (Finance Operations). The glossary contains a conflicting 14-day window, but the prompt explicitly warns that the glossary may be outdated, requiring the agent to confirm with the product owner rather than copy blindly."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy response with vague criteria (e.g., 'customers can request a refund') fails all 12 hidden tests because the tests require specific values (30 days, $500, SAVE10, 15 minutes, 7 years, Finance Operations, 'individual item', 'allocated bundle price'). The tests also verify observable outcome language using verbs like 'is', 'receives', 'must', etc."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is fair: the agent can discover all required values through scripted product owner interaction, the template provides clear formatting guidance, and the request specifies what to leave unchanged. The glossary conflict is intentional and explicitly noted as something to confirm rather than copy."
+      }
+    ]
   },
   "pilot": null,
   "lockedAt": null

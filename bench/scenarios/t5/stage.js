@@ -99,6 +99,13 @@ function withExpertRubric(rubric, key) {
   return [...(rubric || []).filter((r) => r.id !== 'expert-key'), item];
 }
 
+// A twin must not load what its source task is meant to load (skills and SOP), unless its own mapping needs it.
+function mustNotLoad(b, mapping) {
+  if (!b.twinOf) return b.mustNotLoad || [];
+  const src = readJson(path.join(DIR, `${b.twinOf}.json`));
+  return [...src.targetSkills, ...(src.targetSop ? [src.targetSop] : [])].filter((n) => !mapping.targetSkills.includes(n));
+}
+
 function assemble(id) {
   const w = work(id);
   const b = brief(id);
@@ -120,7 +127,7 @@ function assemble(id) {
     ...(b.expertKey ? { expertKey: b.expertKey } : {}),
     targetSkills: mapping.targetSkills, targetSop: mapping.targetSop, targetAgent: mapping.targetAgent,
     controlKind: b.controlKind || 'none', ...(b.twinOf ? { twinOf: b.twinOf } : {}),
-    loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: b.mustNotLoad || [] },
+    loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source },
     ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.map((v) => reviewed(v, disposition)) } } : {}),
