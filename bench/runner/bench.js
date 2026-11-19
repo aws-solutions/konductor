@@ -238,6 +238,12 @@ const USAGE = `Usage:
        (the prompt leak lint: refuses a task prompt that names a skill, SOP or agent of the konductor tree at --base, uses a term from the fixed method
        list, or says "do not ask" on a task where questions are allowed; also refuses a v3 task (one with a phase) with no authorship.source or an empty
        licence. DIR holds task files, or batch directories of them. Exit 1 when there is any finding. No credits)
+  node bench/runner/bench.js scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole] [--repo-root DIR]
+       (writes coverage.json and coverage.md into --out (default DIR) from the task files under DIR: the phase by role counts of real tasks against the
+       target counts, and one row per skill, SOP and agent of the tree at --base with its targeted DEV and HELD-OUT tasks, twins and controls, effect
+       tasks and a status: covered (3 targeted tasks, 2 of them HELD-OUT, 1 twin or control), selection-only (a unit listed with a reason in
+       --selection-only FILE, default DIR/selection-only.json, as { "skill:name": "reason" }) or hole. --fail-on-hole exits 1 on any hole or any phase
+       or role below its minimum. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger

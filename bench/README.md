@@ -1191,6 +1191,13 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   one-word name (`verification`) is caught only in backticks or quotes, or next to the word skill, SOP or agent, because it is also an everyday word. It also refuses a
   v3 task (one with a `phase`) that has no `authorship.source`, or a public source with an empty licence. Plain deliverable names (ADR, postmortem,
   threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks. Exit 1 on any finding.
+- `scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole]` builds the coverage matrix from the task files and writes
+  `coverage.json` and `coverage.md` (into `--out`, default DIR). View 1 is phase by role: counts of real tasks (not twins or controls) against the target
+  counts of the plan, a phase needing 8 tasks and 5 held-out, a role 8 real tasks. View 2 has one row per skill, SOP and agent of the tree: owner agents,
+  targeted tasks split into DEV and HELD-OUT by the SR-32 rule (`bench/scenarios/split.js`), twins and controls, effect tasks and a status. A unit is
+  **covered** with 3 targeted tasks (2 HELD-OUT) and 1 twin or control (a twin of a task that targets it, or a control that lists it in
+  `loadCheck.mustNotLoad`). A unit short of that is a **hole**, or **selection-only** when `selection-only.json` (`{ "skill:name": "reason" }`, beside
+  the tasks or given by `--selection-only`) holds the owner's reason. `--fail-on-hole` exits 1 on any hole or any phase or role under its minimum.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.
