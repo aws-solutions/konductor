@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Free dry run of one T2 task: scores the reference solution, an empty stub and a "flag every changed line" dump
-// three times each with the runner's own check code, and reports whether the scores repeat.
+// Free dry run of one T2 task: scores the reference solution, an empty stub and a dump that flags every changed line
+// (or every subsection of a design document)
+// three times each with the runner's own check code, and reports whether the scores repeat. The dump is reported, not gated.
 // Usage: node dry-run.js <task-id>   (prints JSON; exit 1 when a gate fails)
 // Gates: reference >= 95, stub <= 20, every check passes the reference, identical results over 3 repeats.
 // Score = (0.5 x hidden-test share + 0.2 x substance-check share) / 0.7 x 100: the default weights with the
@@ -53,12 +54,19 @@ function dumpReview(root) {
   return `# Review\n\n\`\`\`json\n${JSON.stringify(items, null, 1)}\n\`\`\`\n`;
 }
 
+// A review that names every subsection of the design document with a medium severity: the long-list baseline.
+function dumpDesign(root) {
+  const doc = fs.readFileSync(path.join(root, task.checks.find((c) => c.type === 'fixture_unchanged').path), 'utf8');
+  const items = [...doc.matchAll(/^#+\s*(\d+(?:\.\d+)+)/gm)].map((m) => ({ location: m[1], severity: 'medium', issue: 'check this section', fix: 'review' }));
+  return `# Review\n\n\`\`\`json\n${JSON.stringify(items, null, 1)}\n\`\`\`\n`;
+}
+
 function runOnce(kind) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `t2dry-${id}-`));
   try {
     fs.cpSync(fixtureDir, root, { recursive: true });
     if (kind === 'reference') fs.cpSync(solutionDir, root, { recursive: true });
-    if (kind === 'dump') fs.writeFileSync(path.join(root, 'REVIEW.md'), dumpReview(root));
+    if (kind === 'dump') fs.writeFileSync(path.join(root, 'REVIEW.md'), task.class === 'design' ? dumpDesign(root) : dumpReview(root));
     const results = runChecks(root, task.checks, { pristineDir: fixtureDir, hiddenDir, scratchDir: path.join(root, '..', `${path.basename(root)}-chk`) });
     fs.rmSync(path.join(root, '..', `${path.basename(root)}-chk`), { recursive: true, force: true });
     return { score: score(results), checks: results.map((r) => `${r.passed ? 'pass' : 'FAIL'} ${r.type}${r.tests ? ` ${r.tests.passed}/${r.tests.total}` : ''}`) };
@@ -67,7 +75,7 @@ function runOnce(kind) {
   }
 }
 
-const kinds = ['reference', 'stub', ...(fs.existsSync(path.join(fixtureDir, 'pr')) && task.controlKind !== 'twin' ? ['dump'] : [])];
+const kinds = ['reference', 'stub', ...(task.controlKind !== 'twin' ? ['dump'] : [])];
 const out = {};
 for (const k of kinds) {
   const runs = [runOnce(k), runOnce(k), runOnce(k)];
