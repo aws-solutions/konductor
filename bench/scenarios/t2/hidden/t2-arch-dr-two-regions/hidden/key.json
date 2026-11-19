@@ -1,0 +1,113 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "conflict",
+        "resolution",
+        "last-write-wins",
+        "double",
+        "booking"
+      ],
+      "finding": "Last-write-wins conflict resolution allows the same seat to be sold in both regions, violating the core business rule against double booking."
+    },
+    {
+      "id": "k2",
+      "section": "6.3",
+      "severity": "high",
+      "fix": [
+        "recovery",
+        "point",
+        "objective",
+        "rpo",
+        "lag",
+        "measurements"
+      ],
+      "finding": "The claimed RPO of 60 seconds in section 6.3 is smaller than the measured replication lag which exceeds 60 seconds at P99, meaning data loss could exceed the recovery target."
+    },
+    {
+      "id": "k3",
+      "section": "6.2",
+      "severity": "high",
+      "fix": [
+        "dns",
+        "ttl",
+        "health",
+        "check",
+        "recovery",
+        "time"
+      ],
+      "finding": "DNS TTL of 300 seconds plus health check timing of 60 seconds exceeds the 60-second RTO stated in section 6.2, meaning failover will take longer than the recovery target."
+    },
+    {
+      "id": "k4",
+      "section": "8.1",
+      "severity": "medium",
+      "fix": [
+        "budget",
+        "database",
+        "cost",
+        "cross-region",
+        "transfer"
+      ],
+      "finding": "The budget allocation in section 8.1 omits the doubled database cost for the second region and underestimates cross-region data transfer costs."
+    },
+    {
+      "id": "k5",
+      "section": "7.1",
+      "severity": "medium",
+      "fix": [
+        "failback",
+        "procedure",
+        "missing",
+        "detailed",
+        "steps"
+      ],
+      "finding": "The failback procedure in section 7.1 is vague and missing detailed steps for verifying data consistency before returning traffic to the restored region."
+    },
+    {
+      "id": "k6",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "global",
+        "counter",
+        "merge",
+        "rule",
+        "conflict",
+        "resolution"
+      ],
+      "finding": "A global seats-left counter updated in both regions with no merge rule will cause inventory discrepancies and potential overselling."
+    },
+    {
+      "id": "k7",
+      "section": "6.1",
+      "severity": "medium",
+      "fix": [
+        "recovery",
+        "time",
+        "estimate",
+        "dns",
+        "propagation"
+      ],
+      "finding": "The estimated recovery time in section 6.1 doesn't account for DNS propagation delay beyond TTL, which could extend the actual outage duration."
+    },
+    {
+      "id": "k8",
+      "section": "2.2",
+      "severity": "low",
+      "fix": [
+        "asynchronous",
+        "replication",
+        "strong",
+        "consistency",
+        "requirement"
+      ],
+      "finding": "Asynchronous replication contradicts the strong consistency requirement for seat inventory stated in the product rules, creating dependency compatibility issues."
+    }
+  ],
+  "decoys": []
+}

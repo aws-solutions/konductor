@@ -196,6 +196,8 @@ ROUTING_SENTENCE = "route it to that specialist instead of doing it yourself"
 def test_routing_rules_carry_the_specialist_skill_routing_sentence():
     text = (ROOT / "context" / "k-orchestrator-routing-rules.md").read_text(encoding="utf-8")
     assert ROUTING_SENTENCE in text
+    assert "Your skills list may include skills a specialist owns." in text
+    assert "is for your own orchestration work" not in text
 
 
 def test_direct_work_never_routes_a_listed_skill_away():

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forum-backend"
+version = "0.1.0"
+description = "Simple community forum backend using Python's http.server"
+readme = "README.md"
+authors = [
+    {name = "Forum Team", email = "team@forum.example"},
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/example/forum-backend"
+Repository = "https://github.com/example/forum-backend.git"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.yml", "*.yaml"]

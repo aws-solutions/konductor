@@ -1,0 +1,13 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "The prompt asks for a design review without naming a specific method, checklist, process, or hinting at planted problems. It does not state how many issues exist." },
+    { "check": "ambiguity", "verdict": "pass", "note": "The task clearly specifies reviewing the proposal against supporting material, focusing on concrete risks, writing findings to REVIEW.md, and formatting them as a JSON list with location (section number), severity, issue, and fix." },
+    { "check": "ceiling", "verdict": "pass", "note": "The key items require cross-referencing claims in the proposal against numbers and constraints in service-targets.yaml, data-ownership.md, incident-2024-11.md, and checkout-call-graph.csv. A shallow read that only looks at the design document would miss most findings." },
+    { "check": "floor", "verdict": "pass", "note": "All key items are grounded in the fixture: k1 matches section 3.2 and data-ownership.md; k2 matches section 3.4 workflow description; k3's math is verifiable in service-targets.yaml; k4 matches section 5.1 rollout text; k5 matches section 3.3 customer arrangement text; k6 matches section 2.3 caller list; k7 matches section 6.3 and incident-2024-11.md. Severities are defensible." },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No comments, tests, docs, or file names point at the planted problems. The incident summary describes a past failure that the proposal repeats, but it is legitimate supporting context, not a hidden answer." }
+  ],
+  "keyProblems": [
+    "k3: The math in section 4.2 (440 ms) uses different numbers than service-targets.yaml. The proposal lists 70+140+110+80+40=440, but service-targets.yaml shows observed_p99_components_ms as local_validation:70, gateway_to_checkout:55, checkout_to_payments:190, checkout_to_fulfillment:155, order_write:85. The key's sum of 70+55+190+155+85=555 ms is correct for the yaml values, but the proposal's own stated numbers do sum to 440. The key finding is that the proposal's timing budget is inconsistent with the context file - this is valid and verifiable."
+  ],
+  "suggestedFixes": []
+}

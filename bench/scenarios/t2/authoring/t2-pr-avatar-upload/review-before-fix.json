@@ -1,0 +1,37 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt doesn't name a review method, hint at specific planted problems, or give the number of issues."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review pr/418/changes.diff, write findings to REVIEW.md with specified JSON format including location, severity, issue, and fix."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "fail",
+      "note": "The diff contains many explicit bug-revealing comments like 'This is vulnerable to path traversal', '(decoy - looks like TOCTOU)', 'PRIVACY ISSUE', 'NO SIZE LIMIT CHECK', 'BUT WE WON'T DELETE IT ON ERROR PATH'. A shallow review reading these comments finds most key items."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 7 key items verified in fixture: k1 (path traversal line 54), k2 (missing max_size param), k3 (Content-Type trust line 104), k4 (temp file cleanup), k5 (email in URL line 272), k6 (old file deletion lines 204-206), k7 (docs contradiction line 105). All have clear evidence."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "fail",
+      "note": "Diff file comments explicitly point to planted bugs: 'This is vulnerable to path traversal', '(decoy - looks like TOCTOU but ok for this use case)', 'PRIVACY ISSUE', etc. These comments serve as hidden answers."
+    }
+  ],
+  "keyProblems": [
+    "Diff comments reveal planted bugs directly, making ceiling too low",
+    "Comments like 'This is vulnerable to path traversal' and '(decoy - looks like TOCTOU)' act as hints"
+  ],
+  "suggestedFixes": [
+    "Remove all bug-revealing comments from the diff file - show only code changes without explanatory hints about security issues",
+    "Keep the comments neutral or remove them entirely so the agent must analyze the code, not read hints"
+  ]
+}

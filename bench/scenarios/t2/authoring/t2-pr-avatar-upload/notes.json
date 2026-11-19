@@ -1,0 +1,3 @@
+{
+  "notes": "The path traversal bug is subtle - original_filename used directly in os.path.join. The size limit bug requires checking config.MAX_UPLOAD_SIZE isn't passed to process_image_upload. The Content-Type trust issue needs cross-file reading to see actual validation happens after checking headers. The temp file cleanup requires analyzing the error flow. Email in URL exposes PII. Old file deletion contradicts docs promise. One decoy looks like a race condition check but is actually safe."
+}
