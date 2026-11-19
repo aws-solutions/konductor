@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const { TASKS, MAIN, FEATURE, CHECKLIST, BRANCH } = require('./build-tasks.js');
+const { dryRun, PLAYS } = require('./dry-run.js');
+
+const DIR = __dirname;
+const git = (gitDir, ...args) => execFileSync('git', [`--git-dir=${gitDir}`, ...args], { encoding: 'utf8', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' } }).trim();
+const fx = (name, sub) => path.join(DIR, 'fixtures', name, sub);
+
+test('task files are what build-tasks.js writes', () => {
+  for (const t of TASKS) {
+    const onDisk = JSON.parse(fs.readFileSync(path.join(DIR, `${t.id}.json`), 'utf8'));
+    assert.equal(onDisk.id, t.id);
+    assert.deepEqual(Object.keys(PLAYS).sort(), TASKS.map((x) => x.id).sort());
+  }
+});
+
+test('the fixture repositories hold the commit ids the checks name', () => {
+  for (const name of ['probe-e2e-feature', 'probe-e2e-main']) assert.equal(git(fx(name, 'remote.git'), 'rev-parse', 'refs/heads/main'), MAIN, name);
+  assert.equal(git(fx('probe-e2e-feature', 'dotgit'), 'rev-parse', 'HEAD'), FEATURE);
+  assert.equal(git(fx('probe-e2e-main', 'dotgit'), 'rev-parse', 'HEAD'), MAIN);
+  assert.equal(git(fx('probe-e2e-checklist', 'dotgit'), 'rev-parse', 'HEAD'), CHECKLIST);
+  assert.equal(git(fx('probe-e2e-feature', 'dotgit'), 'symbolic-ref', '--short', 'HEAD'), BRANCH);
+  assert.equal(git(fx('probe-e2e-feature', 'dotgit'), 'symbolic-ref', 'refs/remotes/origin/HEAD'), 'refs/remotes/origin/main');
+});
+
+test('every remote holds exactly one ref and no network URL is configured', () => {
+  for (const name of ['probe-e2e-feature', 'probe-e2e-main', 'probe-e2e-checklist']) {
+    assert.equal(git(fx(name, 'remote.git'), 'for-each-ref').split('\n').length, 1, name);
+    assert.match(fs.readFileSync(fx(name, 'dotgit/config'), 'utf8'), /url = remote\.git\b/, name);
+    assert.doesNotMatch(fs.readFileSync(fx(name, 'dotgit/config'), 'utf8'), /url = (https?:|ssh:|git:|\S+@)/, name);
+  }
+});
+
+test('dry run: the good play scores 100 and the bad play less, twice the same', () => {
+  for (const id of Object.keys(PLAYS)) {
+    const r = dryRun(id);
+    assert.equal(r.good, 100, id);
+    assert.ok(r.bad < 100, id);
+    assert.ok(r.deterministic, id);
+  }
+});

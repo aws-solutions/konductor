@@ -1,0 +1,64 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListStageBuckets",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": [
+        "arn:aws:s3:::lantern-staging-assets-111122223333",
+        "arn:aws:s3:::lantern-production-assets-111122223333"
+      ]
+    },
+    {
+      "Sid": "UploadStageAssets",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": [
+        "arn:aws:s3:::lantern-staging-assets-111122223333/*",
+        "arn:aws:s3:::lantern-production-assets-111122223333/*"
+      ]
+    },
+    {
+      "Sid": "UpdateApiFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:UpdateFunctionCode",
+        "lambda:PublishVersion"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-staging",
+        "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-production"
+      ]
+    },
+    {
+      "Sid": "RefreshProductionDistributions",
+      "Effect": "Allow",
+      "Action": "cloudfront:CreateInvalidation",
+      "Resource": "arn:aws:cloudfront::111122223333:distribution/E1PRODUCTIONLANTERN"
+    },
+    {
+      "Sid": "PassApiExecutionRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::111122223333:role/lantern-api-staging-exec",
+        "arn:aws:iam::111122223333:role/lantern-api-production-exec"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "RollbackLiveAliases",
+      "Effect": "Allow",
+      "Action": "lambda:UpdateAlias",
+      "Resource": [
+        "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-staging:live",
+        "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-production:live"
+      ]
+    }
+  ]
+}

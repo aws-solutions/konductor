@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-stock-reserve",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "pr",
+  "wave": 2,
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "size": "30 to 45",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js inventory service for a small retailer (warehouses, SKUs, reservations, an event emitter for downstream sync, tests, docs). The PR adds reservation holds for checkout with expiry. Plant: reserve reads stock, awaits something, then writes, so two checkouts oversell; one async call is not awaited, so its error is lost; the expiry sweep uses the local clock and compares date strings; a catch block swallows the store error and returns success; the release path emits the downstream event before the write commits; the new test uses real timers with a short sleep, so it is flaky. Add one decoy.",
+  "stack": "node",
+  "pr": 1544
+}

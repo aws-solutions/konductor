@@ -27,3 +27,18 @@ test('copyFixture never copies the answer key into the agent working directory',
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('copyFixture renames a fixture dotgit directory to .git', () => {
+  const root = mkScratch('fixcopy-git-');
+  try {
+    const src = path.join(root, 'src');
+    fs.mkdirSync(path.join(src, 'dotgit'), { recursive: true });
+    fs.writeFileSync(path.join(src, 'dotgit', 'HEAD'), 'ref: refs/heads/main\n');
+    const dest = path.join(root, 'dest');
+    copyFixture(src, dest);
+    assert.equal(fs.readFileSync(path.join(dest, '.git', 'HEAD'), 'utf8'), 'ref: refs/heads/main\n');
+    assert.equal(fs.existsSync(path.join(dest, 'dotgit')), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

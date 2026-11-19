@@ -1,0 +1,23 @@
+[project]
+name = "internal-reporting-service"
+version = "1.0.0"
+description = "Internal reporting service for customer and sales data"
+authors = [
+    {name = "Dev Team", email = "dev@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+dev = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.sql", "*.csv"]

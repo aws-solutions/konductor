@@ -1,0 +1,129 @@
+{
+  "id": "t4-iam-ci-deploy-role",
+  "version": 1,
+  "class": "complex",
+  "phase": "security",
+  "phases2": [],
+  "role": "security",
+  "questions": "allowed",
+  "prompt": "Our security audit flagged the CI deploy role as far too broad, and I agree. Please tighten its policy in infra/iam/ci-deploy-policy.json down to what this deploy tooling really does, for both staging and production, without breaking any deploy or rollback. Stage settings are in config/staging.json and config/production.json; the deploy is scripts/deploy.js and the rollback is scripts/rollback.js. Every cloud call goes through scripts/lib/cloud-client.js, and createFakeClient(calls) there records each call as { action, resource, params }, which may help you see what is used. Keep the deploy({ stage, client, releaseId }) and rollback({ stage, client, version }) interfaces as they are. Change only the policy: not the scripts, config, workflow, packages or the public site. Keep the file valid IAM policy JSON.",
+  "fixture": "t4-iam-ci-deploy-role",
+  "hidden": "t4-iam-ci-deploy-role",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 17,
+      "weight": 6,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "pattern": "Resource[^:]*:\\s*\"\\*\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "pattern": "Action[^:]*:\\s*\"iam:\\*\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reviewable-policy",
+      "criterion": "The permission entries are organized so a reviewer can tell which deploy operation each resource grant supports (code cannot check this because the evaluator checks decisions, not the policy's explanatory structure).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "threat-modeling",
+      "system-design-patterns",
+      "security-remediation"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/salesforce/cloudsplaining",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to deliver (a tightened IAM policy) without prescribing a named method, checklist, or process for how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All hidden tests derive from the prompt's explicit requirements: stage resources from config files, actions from deploy.js and rollback.js, production-only CDN refresh, Lambda-only role passing. The staging distribution denial test correctly follows from 'Production refreshes its CDN but staging does not'."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture comments, docs, or tests reveal the solution. The fixture has intentionally broad permissions; the answer requires reading deploy.js and rollback.js to identify specific actions and resources."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt gave away the traps (production-only CDN refresh, rollback alias updates, PassRole limited to Lambda). The lead rewrote the prompt, and split the one all-calls test into deploy and rollback tests so a policy that drops the rollback path loses a test of its own (3 of 17 pass on the fixture)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are stated in the prompt: read config files and scripts, allow needed actions on specific resources, deny everything else, restrict role passing to Lambda service with a condition. No hidden knowledge required."
+      }
+    ]
+  }
+}

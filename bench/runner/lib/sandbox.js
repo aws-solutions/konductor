@@ -221,8 +221,11 @@ function removeAuthCopy(home, platform = process.platform) {
 }
 
 // The answer key is judge-only; the agent must never find it in its working directory.
+// A fixture directory `dotgit/` is the fixture's own git repository: git cannot store a .git directory, so the copy renames it.
 function copyFixture(src, dest) {
   fs.cpSync(src, dest, { recursive: true, filter: (p) => path.basename(p) !== ANSWER_KEY });
+  const dotgit = path.join(dest, 'dotgit');
+  if (fs.existsSync(dotgit)) fs.renameSync(dotgit, path.join(dest, '.git'));
 }
 
 function findAnswerKey(dir) {

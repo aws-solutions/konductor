@@ -1,0 +1,10 @@
+{
+  "notes": [
+    "The main traps: duplicate detection missing despite past incident, vendor rate limits without throttling, data protection violations.",
+    "Quick reviews miss: capacity over-provisioning (20x current load), single-zone deployment for 99.95% target, timezone handling for quiet hours.",
+    "Cross-file reading needed: traffic CSV vs capacity claims, vendor limits YAML vs design, service targets vs data retention.",
+    "The incident report shows why duplicates matter - not just technical issue but user trust impact.",
+    "Cost sheet shows budget constraints but design has expensive over-provisioning.",
+    "Retry storm risk from unlimited retries without dead-letter queue."
+  ]
+}

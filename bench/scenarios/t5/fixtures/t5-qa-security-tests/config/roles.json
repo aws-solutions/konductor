@@ -1,0 +1,5 @@
+{
+  "admin": ["read:any", "export:any", "download"],
+  "editor": ["read:owned", "export:owned"],
+  "reviewer": ["read:owned"]
+}

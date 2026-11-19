@@ -1,0 +1,6 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; background: #f5f1e8; color: #25323a; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+main { max-width: 38rem; padding: 3rem; }
+.eyebrow { color: #b85c38; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; }
+h1 { font-size: clamp(3rem, 10vw, 6rem); margin: .2em 0; }
+.button { display: inline-block; margin-top: 1.5rem; padding: .8rem 1rem; color: #fff; background: #25323a; border-radius: .3rem; text-decoration: none; }

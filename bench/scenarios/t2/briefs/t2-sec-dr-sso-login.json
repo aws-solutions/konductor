@@ -1,0 +1,18 @@
+{
+  "id": "t2-sec-dr-sso-login",
+  "phase": "design-review",
+  "role": "security",
+  "kind": "design",
+  "wave": 2,
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "size": "8 to 14",
+  "source": {
+    "url": "https://www.rfc-editor.org/rfc/rfc9700",
+    "licence": "IETF Trust Legal Provisions (BCP 78)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: design review. Role of the person asking: security. Packet kind: a design for adding single sign-on with external identity providers (OpenID Connect) to a B2B web app that already has password login. Context: current auth architecture, customer requirements, session policy, an account-takeover incident report, list of identity providers. Plant: no state or nonce in the sign-in flow; accounts are linked by matching email even when the provider does not assert the email is verified, so a user can take over an existing account; allowed redirect addresses use a wildcard; tokens are kept in browser local storage; sessions created from sign-in outlive the provider's revocation with no back-channel or short lifetime, against the session policy; the provider's signing keys are fetched once at deploy and never refreshed.",
+  "doc": "docs/design/sso-sign-in.md"
+}

@@ -1,0 +1,24 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowWorkerExportWrites",
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::111122223333:role/nightly-export-job"},
+      "Action": ["s3:PutObject", "s3:UploadPart"],
+      "Resource": "arn:aws:s3:::nightly-exports-example/exports/*"
+    },
+    {
+      "Sid": "RejectUnexpectedKey",
+      "Effect": "Deny",
+      "Principal": {"AWS": "arn:aws:iam::111122223333:role/nightly-export-job"},
+      "Action": ["s3:PutObject", "s3:UploadPart"],
+      "Resource": "arn:aws:s3:::nightly-exports-example/exports/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption-aws-kms-key-id": "arn:aws:kms:us-test-1:111122223333:key/12345678-1234-4abc-8def-1234567890ab"
+        }
+      }
+    }
+  ]
+}

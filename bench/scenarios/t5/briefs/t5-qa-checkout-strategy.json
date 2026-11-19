@@ -1,0 +1,26 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "security"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "findings",
+  "size": "40 to 55",
+  "nkey": 8,
+  "ntrap": 3,
+  "ndecoy": 2,
+  "source": {
+    "url": "https://github.com/OWASP/wstg",
+    "licence": "CC-BY-SA-4.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "keyExtra": "Locations are source file paths (for example `src/payments/webhook.js`) so that matching is unambiguous; give each key item a distinct file.",
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js checkout backend (orders, inventory reservation, a payment provider adapter with webhooks and retries, promo codes, refunds, email notifications, a nightly settlement job, admin scripts, a generated tax table, docs, CI config, an existing small suite and about 40 commits of git-style history described in docs/CHANGELOG.md). The task is NOT to write tests; it is to plan them. The agent must write docs/TEST-PLAN.md for the coming rework: where the real risk is, how bad each is, and the test to add for each, with a JSON list at the end. Seed 8 real risk areas found only by reading code (for example: float money arithmetic in one path, a webhook handler that is not idempotent or accepts replays, an inventory read-then-write race, a retry wrapper that can double-charge on timeout, an error swallowed by an empty catch, a cut-off time computed in server local time, partial-refund rounding, a feature flag default that disables a guard). Add decoys: a large generated tax table and a messy legacy admin script that are low risk.\n\nThe request is from a QA lead starting a rework next sprint with limited time: 'tell me what to test first and why'.",
+  "questionsNote": "",
+  "id": "t5-qa-checkout-strategy",
+  "outputFile": "docs/TEST-PLAN.md"
+}

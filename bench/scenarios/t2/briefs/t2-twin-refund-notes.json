@@ -1,0 +1,18 @@
+{
+  "id": "t2-twin-refund-notes",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "twin",
+  "twinOf": "t2-pr-refund-flow",
+  "wave": 2,
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "output": "RELEASE-NOTES.md",
+  "source": {
+    "url": "https://github.com/killbill/killbill",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Near-miss twin of t2-pr-refund-flow: same fixture, a different ask that a review does not help with. Ask: Write the release-notes entry for this PR: what changes for merchants and for the operations team, in plain words."
+}

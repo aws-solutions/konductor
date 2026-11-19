@@ -1,0 +1,60 @@
+# Vendor API rate limits and quotas
+# Updated: 2024-02-28
+
+vendors:
+  apns:
+    name: "Apple Push Notification Service"
+    authentication: "token-based"
+    limits:
+      per_second: 5000
+      per_minute: 300000
+      per_hour: 18000000
+    notes: "Token-based authentication, requires JWT renewal every hour"
+    
+  fcm:
+    name: "Firebase Cloud Messaging"
+    authentication: "server-key"
+    limits:
+      per_second: 1000  # This is the per-project limit
+      per_minute: 60000
+      burst_window: "1 second"
+      burst_limit: 500
+    notes: "Limit applies per project, can be increased with quota request"
+    
+  sendgrid:
+    name: "SendGrid Email API"
+    authentication: "api-key"
+    limits:
+      per_second: 100  # Per account limit
+      per_day: 1000000
+      monthly: 30000000
+    notes: "Free tier has lower limits, we're on Pro plan"
+    
+  ses:
+    name: "Amazon Simple Email Service"
+    authentication: "aws-signature"
+    limits:
+      per_second: 50  # Default sending quota
+      max_daily: 50000
+    notes: "Limits can be increased via support case"
+    
+  internal_websocket:
+    name: "Internal WebSocket Service"
+    authentication: "service-token"
+    limits:
+      per_second: 10000
+      connections: 100000
+    notes: "Internal service, limits are soft and can be adjusted"
+    
+global_limits:
+  # Overall system limits to prevent vendor exhaustion
+  max_notifications_per_second: 2000
+  max_concurrent_workers: 50
+  circuit_breaker_threshold: "5% error rate for 1 minute"
+  
+billing:
+  apns: "Free (included in Apple Developer Program)"
+  fcm: "Free up to certain limits"
+  sendgrid: "$0.10 per 1000 emails"
+  ses: "$0.10 per 1000 emails"
+  internal_websocket: "Infrastructure cost only"

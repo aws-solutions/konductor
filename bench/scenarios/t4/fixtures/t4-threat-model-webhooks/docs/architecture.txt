@@ -1,0 +1,23 @@
+Harborline relay, local topology
+
+                         partner systems
+                               |
+                         HTTPS /events
+                               v
+                       +----------------+
+                       | EdgeGateway    |
+                       | TLS boundary   |
+                       +--------+-------+
+                                |
+                         private service link
+                                v
+ +-------------+       +--------+--------+       +----------------+
+ | Public      |------>| InboundReceiver |------>| EventStore     |
+ | RateLimiter |       +--------+--------+       +----------------+
+ +-------------+                |
+                                v
+                       +--------+--------+
+                       | RetryScheduler  |------> DeliveryForwarder ---> customer callback
+                       +-----------------+
+
+Administrative traffic enters AdminApi on the private operations network. ApiKeyAuthenticator resolves partner keys to accounts. AuditLogger receives structured service records. QueryLayer is the only module allowed to build database statements.

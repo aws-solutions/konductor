@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-search-reindex",
+  "phase": "design-review",
+  "role": "reviewer",
+  "kind": "design",
+  "wave": 2,
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "8 to 14",
+  "source": {
+    "url": "https://github.com/rust-lang/rfcs",
+    "licence": "MIT OR Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: design review. Role of the person asking: reviewer. Packet kind: a design, in a summary / motivation / detailed design / drawbacks / alternatives / unresolved questions structure, for re-indexing a product search cluster with no downtime using a new index and an alias swap. Context: cluster sizing, index sizes and growth, write rate by hour, a budget sheet, the current mapping, an incident where a mapping change broke search. Plant: writes that arrive during the bulk copy are lost because dual-writing starts after the copy; no rollback after the alias swap; the storage plan ignores that both indexes exist at once and the disk headroom in the sizing file is too small; the copy-time estimate uses the wrong write rate; there is no check that the new index is complete before the swap; success is defined as 'search works' with no measurable check.",
+  "doc": "docs/design/zero-downtime-reindex.md"
+}
