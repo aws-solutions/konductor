@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": [
+        "arn:aws:secretsmanager:us-east-1:111122223333:secret:staging/payment-webhook-abc123",
+        "arn:aws:secretsmanager:us-west-2:111122223333:secret:prod/payment-webhook-abc123"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "dynamodb:UpdateItem",
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:111122223333:table/staging-payments",
+        "arn:aws:dynamodb:us-west-2:111122223333:table/prod-payments"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": [
+        "arn:aws:sqs:us-east-1:111122223333:staging-fulfilment",
+        "arn:aws:sqs:us-west-2:111122223333:prod-fulfilment"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/staging-payment-webhook:*",
+        "arn:aws:logs:us-west-2:111122223333:log-group:/aws/lambda/prod-payment-webhook:*"
+      ]
+    }
+  ]
+}

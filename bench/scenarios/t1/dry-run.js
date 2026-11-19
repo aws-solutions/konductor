@@ -17,6 +17,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { evalCheck } = require('../../runner/lib/check-matcher.js');
+const { resolvePython, linkPython, wantedVersion } = require('../../runner/lib/python-pin.js');
 
 const DIR = __dirname;
 const WEIGHTS = { hidden: 0.5, checks: 0.2 };
@@ -94,6 +95,9 @@ function dryRun(id, { repeat = 3 } = {}) {
     const env = { ...process.env, TMPDIR: path.join(root, 'tmp') };
     delete env.NODE_TEST_CONTEXT;
     fs.mkdirSync(env.TMPDIR);
+    // Python 3.12 first on PATH, as the bench pins it for a run whose checks name python.
+    const py = resolvePython({ env, want: wantedVersion(path.join(DIR, '..', '..')) });
+    if (py.executable) env.PATH = [linkPython(root, py.executable, py.version), env.PATH].join(path.delimiter);
     const hiddenDir = path.join(DIR, 'hidden', id);
     const out = { id, repeat, reference: null, stub: null, deterministic: true, canary: null };
     for (const [mode, ref] of [['reference', true], ['stub', false]]) {

@@ -1,0 +1,6 @@
+{
+  "level": "info",
+  "format": "json",
+  "includeRequestIds": true,
+  "redact": ["authorization", "x-amz-security-token"]
+}

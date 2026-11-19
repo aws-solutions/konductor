@@ -1,7 +1,7 @@
 {
   "id": "probe-e2e-caller-answer",
   "class": "sop",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -30,7 +30,7 @@
     "mustNotLoad": []
   },
   "fixture": "probe-e2e-checklist",
-  "prompt": "The Fernwood Books site is a set of static files in site/ (serve it on 127.0.0.1 if you need a URL), and e2e/ holds its Playwright project with one test. Carry on with step 9 of docs/release-checklist.md. List any assumptions you make in your final message.",
+  "prompt": "The Fernwood Books site is a set of static files in site/ (serve it on 127.0.0.1 if you need a URL), and e2e/ holds its Playwright project with one test. Carry on with step 9 of docs/release-checklist.md, and commit it on this branch. List any assumptions you make in your final message.",
   "checks": [
     {
       "type": "cmd",
@@ -62,7 +62,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "test -z \"$(git status --porcelain)\"",
+      "cmd": "test -z \"$(git status --porcelain | grep -vE '(node_modules/|package-lock[.]json|test-results/|playwright-report/)')\"",
       "expectExit": 0,
       "weight": 2,
       "kind": "substance"

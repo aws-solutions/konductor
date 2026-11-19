@@ -1,0 +1,7 @@
+{
+  "serviceName": "example-documents",
+  "region": "us-east-1",
+  "logLevel": "info",
+  "requestTimeoutMs": 3500,
+  "features": { "manifestExport": true, "auditSummary": true }
+}

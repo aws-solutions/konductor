@@ -1,0 +1,83 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "high",
+      "fix": [
+        "versioning",
+        "upcasters",
+        "compatibility"
+      ],
+      "finding": "The design keeps immutable events for the life of the service but only promises optional fields and consumer tolerance, with no event versioning, upcaster policy, or procedure for incompatible domain changes over years of stored data."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "critical",
+      "fix": [
+        "read-your-writes",
+        "consistent read",
+        "projection catch-up"
+      ],
+      "finding": "The customer endpoints read an asynchronous projection and explicitly return stale data when it is behind, contradicting the product requirement that a successful placement is immediately visible and leaving no read-your-writes mechanism."
+    },
+    {
+      "id": "k3",
+      "section": "6.2",
+      "severity": "critical",
+      "fix": [
+        "recalculate",
+        "replay throughput",
+        "rto"
+      ],
+      "finding": "At 2.5 million events per minute, replaying the 174.66 million current events takes about 70 minutes rather than the stated ten, so the full rebuild cannot meet the 15-minute recovery target and the projected growth worsens it."
+    },
+    {
+      "id": "k4",
+      "section": "7.2",
+      "severity": "critical",
+      "fix": [
+        "redaction",
+        "tokenization",
+        "retention"
+      ],
+      "finding": "The proposal stores customer and delivery personal data in an indefinitely retained immutable event log but only deletes projections, so the product deletion contract has no way to erase or irreversibly de-identify the source data."
+    },
+    {
+      "id": "k5",
+      "section": "5.1",
+      "severity": "medium",
+      "fix": [
+        "outbox",
+        "audit table",
+        "simpler option"
+      ],
+      "finding": "The options table compares event sourcing with an inaccurately reduced CRUD baseline and omits the existing outbox plus audit-table design, which could provide reliable integration and history with materially less migration and operational cost."
+    },
+    {
+      "id": "k6",
+      "section": "4.1",
+      "severity": "medium",
+      "fix": [
+        "snapshot trigger",
+        "snapshot storage",
+        "retention"
+      ],
+      "finding": "Snapshots are deferred to a later spike without specifying when they are created, how writes coordinate with them, where they are stored and indexed, or how their format and retention are operated."
+    },
+    {
+      "id": "k7",
+      "section": "5.2",
+      "severity": "high",
+      "fix": [
+        "reporting projection",
+        "schema contract",
+        "warehouse feed"
+      ],
+      "finding": "Removing the reporting team's direct SQL access and pointing vaguely to an API, daily export, or future feed does not replace its current-day SQL contract, seven-year reproducibility, or full audit fields."
+    }
+  ],
+  "decoys": []
+}

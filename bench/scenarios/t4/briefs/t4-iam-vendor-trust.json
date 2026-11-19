@@ -1,0 +1,13 @@
+{
+  "id": "t4-iam-vendor-trust",
+  "wave": 2,
+  "phase": "security",
+  "role": "security",
+  "kind": "policy",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "25 to 40",
+  "source": { "url": "https://github.com/duo-labs/parliament", "licence": "BSD-3-Clause", "licenceCheckedAt": "2026-11-19", "use": "idea" },
+  "brief": "Phase: security and IAM. Role: security engineer. Repo kind: the integrations repo of a SaaS product: role trust policies and permission policies under infra/roles/ for three outside parties (a monitoring vendor, a backup vendor, a partner's CI) and for an internal cross-account deploy role, an onboarding doc per party with the account ids, role names and external ids they gave, the organization id in a docs page, a Node.js 24 checker script without dependencies, CI, tests. Seeded problems: the monitoring trust allows Principal {\"AWS\": \"*\"} with only a weak condition; the backup trust names the vendor account but has no sts:ExternalId condition although the doc gives one; the partner CI trust names a whole account root where the doc names one role; the deploy trust names the tools account but allows sts:TagSession and sts:SetSourceIdentity freely and lacks the aws:PrincipalOrgID condition the doc requires; the monitoring permission policy can read secrets and write metrics. The request: before onboarding a new vendor, make each trust policy accept exactly who the docs say under the conditions the docs give, and trim the monitoring permissions to read-only metrics and logs. Hidden tests with the provided evaluator: each legitimate assume request (right principal, right external id, right org id) is allowed; wrong account, wrong role in the right account, missing or wrong external id, outside the org, and anonymous are denied; tagging the session is allowed only where the doc says so; the monitoring role cannot read secrets or write anything; all files lint clean."
+}

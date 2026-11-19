@@ -1,0 +1,15 @@
+ticket_id,created_at,tag,summary,resolution,plan
+sp-2201,2025-06-01,payment_failed,card declined and no second attempt,member updated card,solo
+sp-2202,2025-06-02,payment_failed,asked whether payment would retry,article sent,family
+sp-2203,2025-06-03,cancellation,too many meals,closed,solo
+sp-2204,2025-06-05,payment_failed,bank said card was fine,manual payment,family
+sp-2205,2025-06-06,cancellation,price is high,closed,solo
+sp-2206,2025-06-08,payment_failed,notice arrived after access stopped,manual payment,solo
+sp-2207,2025-06-10,payment_failed,wanted another charge attempt,card update link,family
+sp-2208,2025-06-12,cancellation,needed a pause,closed,family
+sp-2209,2025-06-14,payment_failed,card was replaced,card update link,solo
+sp-2210,2025-06-16,payment_failed,invoice stayed unpaid,manual payment,family
+sp-2211,2025-06-18,cancellation,freezer full,closed,family
+sp-2212,2025-06-21,payment_failed,asked for retry timing,manual payment,solo
+# Full export has 286 tickets: 173 tagged payment_failed and 113 tagged cancellation or other.
+# The displayed rows are a review sample, not a count of tickets.

@@ -1,0 +1,10 @@
+{
+  "eventId": "evt-doc-0001",
+  "tenantId": "tenant-demo",
+  "type": "invoice.updated",
+  "occurredAt": "2025-01-20T12:00:00Z",
+  "data": {
+    "invoiceId": "inv-example-42",
+    "state": "paid"
+  }
+}

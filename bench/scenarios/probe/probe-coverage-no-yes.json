@@ -1,7 +1,7 @@
 {
   "id": "probe-coverage-no-yes",
   "class": "sop",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -34,7 +34,7 @@
   "checks": [
     {
       "type": "cmd",
-      "cmd": "find . -name test-gap-analysis.md -not -path './node_modules/*' | grep -q .",
+      "cmd": "grep -rliE '(critical|important|suggestion)' test-coverage-review --include='*.md' | grep -q .",
       "expectExit": 0,
       "weight": 2,
       "kind": "substance"

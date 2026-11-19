@@ -1,0 +1,9 @@
+{
+  "port": 4100,
+  "host": "127.0.0.1",
+  "tokenSecret": "replace-this-in-deployment",
+  "publicKey": "replace-this-in-deployment",
+  "accessLifetimeSeconds": 900,
+  "refreshLifetimeSeconds": 2592000,
+  "dataDirectory": "./data"
+}

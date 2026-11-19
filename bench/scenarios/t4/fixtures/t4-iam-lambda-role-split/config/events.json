@@ -1,0 +1,24 @@
+{
+  "createOrder": {
+    "stage": "staging",
+    "orderId": "order-1001",
+    "customerId": "customer-22"
+  },
+  "paymentWebhook": {
+    "stage": "staging",
+    "paymentId": "payment-77",
+    "status": "settled"
+  },
+  "fulfilmentWorker": {
+    "stage": "staging",
+    "messageId": "message-3"
+  },
+  "nightlyReport": {
+    "stage": "staging",
+    "reportDate": "2025-01-15"
+  },
+  "adminExport": {
+    "stage": "staging",
+    "exportId": "export-9"
+  }
+}

@@ -1,0 +1,7 @@
+You map ONE finished benchmark task to the units of an agent toolkit that would genuinely help an agent do it well. Work only inside the current directory and do not change any file except `map.json`. You have no network.
+
+`task.json` holds the task: the request (`prompt`), the reviewer notes (`notes`), the list of fixture files, and for some tasks the number of hidden facts a simulated colleague reveals only when asked. `units.json` lists the toolkit's skills, SOPs and agents by kind, name and a one-line description. Judge from the descriptions only.
+
+Pick 1 to 3 units in all that would clearly change the quality of the result on THIS task (not units that merely could be used). Prefer skills; name an SOP or an agent only when its description fits the whole task. For the load check, `mustLoad` is the one to three units an agent should load before writing the output, and `mustNotLoad` is 0 to 2 units whose descriptions share words with the task but do not fit it. Then give one idea for a near-miss twin: a different request on the same folder where the main unit would NOT help.
+
+Write `map.json`: {"targetSkills": ["name", ...], "targetSop": "name" or null, "targetAgent": "name" or null, "loadCheck": {"mustLoad": ["skill:name" or "sop:name" or "agent:name", ...], "mustNotLoad": [...]}, "reason": "two sentences", "twinIdea": "one sentence"}. Use names exactly as in units.json. Then stop.

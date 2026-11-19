@@ -1,0 +1,5 @@
+{
+  "format": "example-manifest-v2",
+  "createdBy": "local-example",
+  "documents": ["brief.pdf", "notes.txt"]
+}

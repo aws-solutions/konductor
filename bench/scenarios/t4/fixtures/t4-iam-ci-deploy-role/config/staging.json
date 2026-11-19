@@ -1,0 +1,11 @@
+{
+  "stage": "staging",
+  "region": "us-east-1",
+  "accountId": "111122223333",
+  "bucketName": "lantern-staging-assets-111122223333",
+  "distributionId": "E1STAGING9LANTERN",
+  "functionName": "lantern-api-staging",
+  "executionRoleName": "lantern-api-staging-exec",
+  "liveAlias": "live",
+  "sitePrefix": "site/"
+}

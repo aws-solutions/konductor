@@ -1,0 +1,18 @@
+{
+ "id": "t6-idea-pricing-test",
+ "wave": 2,
+ "kind": "doc",
+ "phase": "ideation",
+ "role": "pm",
+ "out": "docs/framing.md",
+ "repo": "a document folder for an online course platform where a pricing page test 'won': the experiment brief, daily results CSV per variant, assignment log summary, refund data, a marketing calendar, the analyst's slide notes. About 22 files.",
+ "idea": "Framing whether to roll out a test result: seed a sample ratio mismatch (assignment not 50/50), a promotion that overlapped one variant's days, and refunds that erase part of the gain. JSON block scored by a hidden script: the decision, the issues found, the corrected effect range, and the next step.",
+ "source": {
+  "url": "https://www.gov.uk/guidance/ab-testing-comparative-studies",
+  "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

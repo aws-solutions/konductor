@@ -96,6 +96,47 @@
       "weight": 1
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "The design commits offsets only after batch completion, which means processing failures can cause repeated reprocessing of the same messages during consumer restarts.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Hardcoded configuration values like batch size and timeouts violate the third factor (config) by not storing config in environment variables.",
+        "source": "The Twelve-Factor App, https://12factor.net (MIT)"
+      },
+      {
+        "id": "e4",
+        "text": "The circuit breaker pattern after 5 consecutive failures lacks hysteresis, potentially causing rapid toggling between open and closed states during partial outages.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "The design lacks canary deployment strategy for vendor API changes, risking production outages when switching to new API versions.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e7",
+        "text": "No mention of consumer group rebalancing impact during autoscaling events, which can cause processing pauses and latency spikes.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e8",
+        "text": "The 30-second batch timeout is longer than most Kubernetes liveness probe defaults, risking pod termination during legitimate long-running processing.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "The design should use Redis instead of Kafka for better performance.",
+      "The service should be written in Rust instead of Go for memory safety.",
+      "The team should implement blockchain for notification traceability.",
+      "All notifications should be end-to-end encrypted with user keys.",
+      "The system needs artificial intelligence to predict notification timing."
+    ]
+  },
   "targetSkills": [
     "adversarial-design-review",
     "doc-accuracy-analyzer",
@@ -133,27 +174,27 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "Prompt gives general categories (breakage, cost, compliance) but doesn't name specific issues, number of problems, or review methods. Mention of past duplicate incidents is reasonable context."
+        "note": "Mention of past duplicate issue is contextual business background, not explicit hint to planted bug"
       },
       {
         "check": "ambiguity",
         "verdict": "pass",
-        "note": "Clear: review docs/design/notification-fanout.md and supporting docs, write to REVIEW.md, output as fenced JSON with section, severity, issue, fix."
+        "note": "Clear review scope, output location, and JSON format specified"
       },
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "Several items require cross-file analysis (capacity vs traffic CSV, rate limits vs vendor limits, encryption requirement vs design). Quick review wouldn't find all items."
+        "note": "Requires cross-file analysis and understanding Kafka delivery semantics - not trivially shallow"
       },
       {
         "check": "floor",
         "verdict": "pass",
-        "note": "All 7 key items have evidence in fixture: deduplication (5.3 no duplicate detection), retry (5.3 indefinite, no DLQ), capacity (5.5 10k vs traffic 550), throttling (5.4.2 100/sec limit no throttling), PII (5.7.1 not encrypted vs service-targets encryption required), zone (5.6 single AZ for 99.95%), timezone (5.8 fixed US/Eastern). All severities reasonable."
+        "note": "All 7 key items verifiable in fixture with supporting evidence and appropriate severities"
       },
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "File names are appropriate supporting docs (incident report, vendor limits, traffic data). No inline hints or comments in design document pointing at problems."
+        "note": "No comments, tests, or file names point at planted problems"
       }
     ]
   }

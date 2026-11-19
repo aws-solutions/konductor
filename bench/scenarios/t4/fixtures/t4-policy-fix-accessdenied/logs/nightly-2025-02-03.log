@@ -1,0 +1,5 @@
+{"time":"2025-02-03T02:15:04Z","level":"info","event":"export_started","date":"2025-02-03"}
+{"time":"2025-02-03T02:15:05Z","level":"info","event":"source_query","index":"by_day","items":3}
+{"time":"2025-02-03T02:15:06Z","level":"info","event":"object_upload","key":"exports/2025-02-03/ledger.json","encryption":"aws:kms"}
+{"time":"2025-02-03T02:15:07Z","level":"error","event":"upload_failed","status":"AccessDenied","action":"s3:PutObject","key":"exports/2025-02-03/ledger.ndjson"}
+{"time":"2025-02-03T02:15:08Z","level":"error","event":"source_retry_failed","status":"AccessDenied","action":"dynamodb:Query","index":"by_day"}

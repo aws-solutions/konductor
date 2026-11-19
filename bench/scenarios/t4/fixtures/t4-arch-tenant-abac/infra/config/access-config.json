@@ -1,0 +1,10 @@
+{
+  "accountId": "111122223333",
+  "region": "us-east-1",
+  "bucketName": "ledger-tenant-documents-example",
+  "bucketArn": "arn:aws:s3:::ledger-tenant-documents-example",
+  "tableName": "ledger-tenant-metadata-example",
+  "tableArn": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
+  "supportPrincipal": "arn:aws:iam::111122223333:role/support-readonly",
+  "tenantRolePrefix": "ledger-tenant-"
+}
