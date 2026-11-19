@@ -68,6 +68,14 @@ not per individual commit.
 
 ### Changed
 
+- Shorter descriptions for 20 skills and 11 SOPs, so Claude Code's skill listing keeps every
+  description when the SOPs are listed too. Claude Code's listing budget is 30,000 chars on a
+  1M-window model, and past it the skills last in A to Z order become name only. With the 19
+  SOPs listed, the listing drops from 33,836 to 28,561 chars (the method of
+  `tests/test_skill_listing_budget.py`). Each description keeps its "Use when/for" cue, its
+  trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
+  short first Overview paragraph, which is the one the installer lists; the old paragraph
+  stays below it. Skill patch versions are bumped.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
@@ -229,6 +237,27 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- The Claude Code plugin is ready for the plugin directory. The README says what the plugin runs,
+  sends and fetches, including the telemetry endpoint and payload, that telemetry is on by default,
+  and how to turn it off, and adds example prompts and a support link. The plugin ships the brand
+  logo as its listing icon at the plugin root, named by `icon` in `plugin.json` along with a
+  `supportUrl`, and drops the `kiro` keyword. The mux and cmux orchestrators describe `.done`
+  completion on both runtimes, release assembly stages generator output in a temporary
+  directory, and `make claude-plugin` writes the gitignored `dist/claude-plugin/`.
+- **Behavior change:** on Claude Code, the mux and cmux orchestrators no longer start each child
+  with every permission check skipped (what is now `bypass`); the default is `interactive`, which
+  prompts in the child's pane. For unattended runs, set
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE=headless` and allowlist your build and test commands, or use
+  `bypass` only in an isolated environment. An interactive child completes when it writes its
+  `$KONDUCTOR_DONE_FILE`. The plugin's `dispatch_permission_mode` option sets the same modes.
+- Each dispatched child gets its own 0700 directory under the registry for its brief, result and
+  `.done`, and is granted only that directory. A `.done` the child writes is kept, and the launcher
+  adds the exit code when the session ends, so a non-zero exit is always recorded as `error`.
+  `--brief <file>` passes a long brief. An existing registry that is group- or world-writable, such
+  as one created under umask 002, is now refused with a message to `chmod 700` it.
+  The orchestrators write a long brief to a `mktemp` file outside the registry, and they poll
+  the registry the scripts use, including one set with `KONDUCTOR_MUX_REGISTRY_DIR` or
+  `KONDUCTOR_CMUX_REGISTRY_DIR`.
 - `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
   scopes the `pr_url` and historical-filtering limits, including the report's
   `Historical filtering:` line.
@@ -409,6 +438,14 @@ not per individual commit.
 
 ### Fixed
 
+- `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
+  `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
+  to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
+  without that yes, or to push the default branch. Orchestrators never add the flag to a SOP
+  command unless the user gave it.
+- The `adversarial-code-review` description says "Use for a second pass after code review"
+  (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
+  activation condition. The trigger itself is unchanged.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
@@ -544,6 +581,22 @@ not per individual commit.
   the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
   in this repository. They say which tool-ID rows no source confirms, and correctly state that
   `install/registry.rs` registers three install strategies, not two.
+- Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
+  orchestrators, which have a `stop` hook, still have a `hooks` field.
+- Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
+  agents already did, so `konductor`, `k-architect` and `k-developer` can use their `aws-mcp` tools
+  without a hand-added MCP config. Without `uvx` the server fails to start and the agents work
+  without it.
+- `uninstall` now keeps tracked files that changed since install and warns about them, instead of
+  deleting them. The warning says a kept file is still live and, for a Kiro CLI v3 hook document,
+  names the Konductor hook entries to remove; that document's lock file is kept with it. A Kiro
+  agent file that `kiro-cli agent upgrade` rewrote is still removed when its `.json.bak` backup
+  matches what Konductor installed. This also removes an agent file you edited after the upgrade,
+  since the backup still matches. `uninstall` never deletes a `.bak` file; it lists each matching
+  backup by full path and suggests removing them by hand. The `--json` output adds `kept_changed`,
+  `kept_changed_paths` and `kept_backups`. Under `--dry-run --json`, `would_delete` holds only real
+  removals and a new `would_keep` array lists the kept files, with `would_delete_count` and
+  `would_keep_count`.
 - `k-verify` no longer runs `cdk synth`, `cdk ls` or `cdk diff` until the user confirms the CDK
   app is trusted, since all three run the app's code and `cdk diff` also reads the deployed stack.
 
