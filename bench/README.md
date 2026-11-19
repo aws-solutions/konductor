@@ -6,6 +6,7 @@ bench runs the same tasks with and without a change, scores the output with a pa
 and reports cost, quality and run-to-run noise. It is plain Node, with no install step beyond the tools below.
 
 New to bench? Start with [GUIDE.md](GUIDE.md). Known open debt in the bench code is tracked in [DEBT.md](DEBT.md).
+To repeat the 2x2 study, or a run level, from the scripts in this repository, see [REPEAT.md](REPEAT.md) and [kit/README.md](kit/README.md).
 
 Two kinds of question, two sets of commands:
 
