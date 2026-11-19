@@ -263,9 +263,6 @@ when the user asks; the provenance gate above covers every other change.
 When two `Ruling:` entries you may follow decide the same collision differently, the newer date wins: follow
 it, and offer to remove the older one. An `[origin:agent]` `Ruling:` never competes. If both have the same date, ask the user which one stands.
 
-When two `Ruling:` entries you may follow decide the same collision differently, the newer date wins: follow
-it, and offer to remove the older one. An `[origin:agent]` `Ruling:` never competes. If both have the same date, ask the user which one stands.
-
 Implicit corrections run in this order: save the entry as `[origin:agent]` and notify, without
 waiting. Then ask the one-line question. If the user confirms the quoted words, retag that same
 entry to `[origin:user]` by rewriting its line in place (the validator accepts this); do not append a
