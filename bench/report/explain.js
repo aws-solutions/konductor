@@ -76,7 +76,7 @@ function checksSection(L, { r, row, task, weights }) {
     L(`   #${String(i).padStart(2)} ${c.passed ? 'PASS' : 'FAIL'}  ${checkLabel(i, c, task?.checks).padEnd(18)} type=${c.type}  ${checkDesc(c)}${c.passed ? '' : `  OBSERVED: ${cut(c.detail)}`}`);
     if (c.passed && c.detail && /\d/.test(c.detail) && c.type !== 'cmd') L(`        recorded: ${cut(c.detail)}`);
   });
-  const mode = weights.checksMode === 'fraction' ? 'fraction passed' : 'all-or-nothing';
+  const mode = weights.checksMode === 'all' ? 'all-or-nothing' : 'weighted fraction of substance checks';
   L(`   Component score (${mode}): checks = ${row.checks === null ? 'n/a (no checks)' : f3(row.checks)}  [${checks.length ? `every check passed? ${checks.every((c) => c.passed)}` : 'none'}]`);
   return checks;
 }
@@ -154,10 +154,10 @@ function whatIfSection(L, { n, q, weights, checks }) {
   L('6. WHAT-IF (not the formula in use)');
   if (!q) { L('   n/a'); return; }
   const passed = checks.filter((c) => c.passed).length;
-  const frac = checks.length ? passed / checks.length : null;
-  const byFraction = qualityOfRun({ ...n, checks: frac }, weights);
+  const allOrNothing = checks.length ? (passed === checks.length ? 1 : 0) : null;
+  const byAll = qualityOfRun({ ...n, checks: allOrNothing }, weights);
   const allPass = qualityOfRun({ ...n, checks: checks.length ? 1 : null }, weights);
-  L(`   [A] checks scored as a fraction (${passed}/${checks.length} = ${f3(frac)}, profiles/scoring-quality-fractional.json): quality ${q.score.toFixed(2)} -> ${f1(byFraction?.score)}  (${signed(byFraction.score - q.score)} points)`);
+  L(`   [A] checks scored all or nothing, the old rule (${passed}/${checks.length} passed = ${f3(allOrNothing)}, profiles/scoring-all.json): quality ${q.score.toFixed(2)} -> ${f1(byAll?.score)}  (${signed(byAll.score - q.score)} points)`);
   L(`   [B] every check passed: quality ${q.score.toFixed(2)} -> ${f1(allPass?.score)}  (${signed(allPass.score - q.score)} points: the most the failed checks cost)`);
 }
 
@@ -172,10 +172,10 @@ function explainRow({ row, run, tasks, weights, unit, scoringFile, dir, executed
   const out = [];
   const L = (s = '') => out.push(s);
   if (brief) {
-    const byFraction = qualityOfRun({ ...n, checks: checks.length ? checks.filter((c) => c.passed).length / checks.length : null }, weights);
+    const byAll = qualityOfRun({ ...n, checks: checks.length ? (failed.length ? 0 : 1) : null }, weights);
     return [[row.arm, row.task, `rep${row.rep}`, row.status, `checks ${checks.length - failed.length}/${checks.length}`,
       `failed=[${failed.map((x) => `#${x.i}:${checkLabel(x.i, x.c, task?.checks)}`).join(',')}]`, `checksTerm=${row.checks ?? 'n/a'}`, `hidden=${f3(row.hidden)}`, `rubric=${f3(row.rubric)}`,
-      `quality=${f1(q?.score)}`, `ifFraction=${f1(byFraction?.score)}`].join('\t')];
+      `quality=${f1(q?.score)}`, `ifAllOrNothing=${f1(byAll?.score)}`].join('\t')];
   }
   L('='.repeat(100));
   L(`RUN  ${path.join(dir, row.arm, row.task, String(row.rep))}`);

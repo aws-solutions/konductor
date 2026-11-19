@@ -1182,11 +1182,10 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   the judge heatmap and pairwise bars, autonomy, skill load, contamination, spend by phase, run durations, provenance, commands to reproduce, and the existing text tables unchanged.
   A run without judgments still renders; the charts that need them are listed under "Not shown". New JSON keys (`scores`, `diligence`, `detail`) are additive.
 - Scores (`report/scores.js`; every one has n and a 95% bootstrap CI, and is "anecdotal" below 3 runs; a failed run is never hidden):
-  - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (all pass = 1), rubric
+  - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (the weight-share of `substance` checks passed; `format` checks and `tests` checks are reported, not scored), rubric
     (median over judges of the verified score, NO DATA under 3 judges; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`).
-    With no hidden tests the weights renormalise to checks 0.4 and rubric 0.6, so one failed check out of many costs 40 points. `--scoring bench/profiles/scoring-fractional.json` (same weights) scores the checks
-    term as passed / total instead, and `profiles/scoring-quality-fractional.json` does the same with the quality pack. A scoring file opts in with `"checks": "fraction"`; the default is `"all"`. The report's weights line and
-    quality formula say which mode was used, and the default output is unchanged. A missing component is dropped and the
+    With no hidden tests the weights renormalise to checks 0.4 and rubric 0.6, so one failed check of five costs 8 points. Each check may carry `weight` (default 1) and `kind` (`substance`, the default, or `format`). `--scoring bench/profiles/scoring-all.json` (same weights) restores the old rule, 1 only when every check passed, for reports made before 2026-11-19. A scoring file picks the mode with `"checks": "fraction"` (the default) or `"all"`. The report's weights line and
+    quality formula say when `all` was used. A missing component is dropped and the
     others renormalised, never imputed. infraError, modelMismatch and runs with no component are left out and counted. The inputs used are printed beside the score.
   - Reliability /100: 100 minus the share of runs that timed out, errored, hit infraError or had a modelMismatch.
   - Autonomy /100 (autonomy tier only): share of runs completed without help, with interjections per task and the unnecessary-question rate beside it.
