@@ -815,6 +815,107 @@
         null
       ]
     },
+    "loadCheck": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The load check (load-check.js): konductor units the run loaded with the stream index of their first load, and whether each unit the task needs (loadCheck.mustLoad, else its target skills and SOP) loaded before the first file write. Null for vanilla arms and runs saved before it existed.",
+      "required": [
+        "source",
+        "firstWriteAt",
+        "loaded",
+        "mustLoad",
+        "mustLoadBeforeWrite",
+        "mustNotLoaded"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "loadCheck",
+            "targets"
+          ]
+        },
+        "firstWriteAt": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "loaded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "unit",
+              "kind",
+              "firstAt",
+              "beforeFirstWrite"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "skill",
+                  "sop",
+                  "agent"
+                ]
+              },
+              "firstAt": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "beforeFirstWrite": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "mustLoad": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "unit",
+              "loaded",
+              "beforeFirstWrite"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "loaded": {
+                "type": "boolean"
+              },
+              "beforeFirstWrite": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "mustLoadBeforeWrite": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "mustNotLoaded": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "hiddenTests": {
       "type": [
         "object",

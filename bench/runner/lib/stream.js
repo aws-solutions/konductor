@@ -112,6 +112,23 @@ function skillActivationOf(update) {
   return name ? { name } : null;
 }
 
+const SKILL_MD = /(?:^|\/)([^/\s'"]+)\/SKILL\.md$/;
+const SHELL_SKILL_READ = /\b(?:cat|head|tail|sed|less|more|bat|awk)\b[^|;&\n]*?([^/\s'"]+)\/SKILL\.md\b/;
+const READ_TOOLS = new Set(['read_file', 'fs_read']);
+const SHELL_TOOLS = new Set(['execute_bash', 'execute_cmd']);
+
+// { name, via } of a kiro read_file/fs_read of a SKILL.md, or of a shell command that prints one; else null.
+function skillFileReadOf(u) {
+  const tool = toolNameOf(u);
+  const raw = u?.rawInput && typeof u.rawInput === 'object' ? u.rawInput : {};
+  if (READ_TOOLS.has(tool)) {
+    const paths = [raw.path, ...(Array.isArray(raw.operations) ? raw.operations.map((o) => o?.path) : []), ...(u.locations ?? []).map((l) => l?.path)];
+    for (const p of paths) { const m = SKILL_MD.exec(String(p ?? '')); if (m) return { name: m[1], via: 'read-skill-md' }; }
+  }
+  if (SHELL_TOOLS.has(tool)) { const m = SHELL_SKILL_READ.exec(String(raw.command ?? '')); if (m) return { name: m[1], via: 'shell-read-skill-md' }; }
+  return null;
+}
+
 // The arguments of an MCP tool call. v3 nests them under rawInput.arguments next to the tool id; v2 sends them flat.
 function mcpInputOf(rawInput) {
   if (!rawInput || typeof rawInput !== 'object' || typeof rawInput.tool_id !== 'string') return rawInput;
@@ -395,4 +412,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { toolNameOf, isV3Call, mcpCallOf, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { toolNameOf, isV3Call, mcpCallOf, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };

@@ -170,7 +170,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     authFailure,
     launchFailure,
     error,
-    ...resultFields({ extraction: skills?.extraction ?? null, info: skills?.info ?? null, task, arm, extras: skills?.extras ?? null }),
+    ...resultFields({ extraction: skills?.extraction ?? null, info: skills?.info ?? null, task, arm, extras: skills?.extras ?? null, order: skills?.order ?? null }),
     capInvocation: capInvocationOf({ agg, extraction: skills?.extraction ?? null, sops: skills?.info?.catalog?.sops ?? [] }),
     triggerQuery: task.triggerQuery ? { ...task.triggerQuery, rep: replicate } : null,
     variant: arm.variant ?? null,

@@ -10,6 +10,7 @@ const { median, mean } = require('./stats.js');
 const { parseStream } = require('../runner/lib/stream.js');
 const { runtimeOf } = require('../runner/lib/harness/runtime.js');
 const { SKILL_FIELDS, extractSkills, resultFields, catalogFrom, listCatalogDir, startupKiro, builtinStartup } = require('../runner/lib/skills.js');
+const { loadOrderOf } = require('../runner/lib/load-check.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design'];
 const share = (n, d) => (d ? n / d : null);
@@ -46,6 +47,24 @@ function topSkills(rows, limit = 5) {
 }
 
 /**
+ * Selection rate per unit (the units a task's load check needs) for one arm's rows: runs that needed it, runs that
+ * loaded it, runs that loaded it before the first file write, and false loads (a mustNotLoad unit that loaded).
+ */
+function selectionOf(rows) {
+  const units = new Map();
+  const cell = (unit) => units.get(unit) ?? units.set(unit, { unit, needed: 0, loaded: 0, beforeWrite: 0, falseLoads: 0 }).get(unit);
+  let checked = 0;
+  for (const r of rows) {
+    const lc = r.fields?.loadCheck;
+    if (!lc) continue;
+    checked++;
+    for (const m of lc.mustLoad ?? []) { const c = cell(m.unit); c.needed++; if (m.loaded) c.loaded++; if (m.beforeFirstWrite) c.beforeWrite++; }
+    for (const u of lc.mustNotLoaded ?? []) cell(u).falseLoads++;
+  }
+  return { checked, units: [...units.values()].sort((a, b) => a.unit.localeCompare(b.unit)) };
+}
+
+/**
  * rows: [{armId, taskId, taskClass, target, fields}] where `fields` holds the skill fields or is null when the
  * run did not record them. startup: {armId: startup record}. Arms keep the order of `armOrder`.
  */
@@ -71,6 +90,7 @@ function summarizeSkills(rows, { armOrder = [], startup = {} } = {}) {
       startup: st ? { builtin: Boolean(st.builtin), count: st.count ?? null, totalBytes: st.totalBytes ?? null, unknownSizes: st.unknownSizes ?? null, approxSizes: st.approxSizes ?? 0 } : null,
       scopes: [...new Set(mine.map((r) => r.fields.skillsScope).filter(Boolean))],
       sopNameSources: [...new Set(mine.map((r) => r.fields.sopNameSource).filter(Boolean))],
+      selection: selectionOf(mine),
     };
   }
   return { recorded: recorded.length, notRecorded: rows.length - recorded.length, arms };
@@ -116,6 +136,13 @@ function renderSkillsMarkdown(sum, { title = '## Skills actually used' } = {}) {
     ['arm', 'top 5 (loads)'],
     arms.map(([arm, a]) => [arm, a.topSkills.length ? a.topSkills.map((s) => `${s.name} (${s.loads})`).join(', ') : 'none']),
   ), '');
+
+  const sel = arms.flatMap(([arm, a]) => (a.selection?.units ?? []).map((u) => [arm, u.unit, u.needed, fraction(u.loaded, u.needed), fraction(u.beforeWrite, u.needed), u.falseLoads]));
+  if (sel.length) {
+    out.push('### Load check: selection rate per unit', '', 'Each unit a task needs (its `loadCheck.mustLoad`, else its target skills and SOP), per arm: how many runs needed it, how many loaded it, and how many loaded it before the first file write. A run where the unit did not load does not count toward that unit\'s effect. False loads count runs where a `mustNotLoad` unit loaded (twins and controls).', '', table(
+      ['arm', 'unit', 'runs needing it', 'loaded', 'loaded before first write', 'false loads'], sel,
+    ), '');
+  }
 
   const vanilla = arms.filter(([arm]) => /(^|-)vanilla$/.test(arm)).map(([arm]) => arm);
   if (vanilla.length) {
@@ -168,7 +195,7 @@ function collectRows(runDir, { tasks = new Map(), repoRoot = null } = {}) {
         const task = tasks.get(taskId) ?? { target: null, class: 'unknown' };
         const { events } = parseStream(fs.readFileSync(streamFile, 'utf8'));
         const extraction = extractSkills(events, runtime);
-        const fields = resultFields({ extraction, info: ctxCache.v.info, task, arm: { vanilla } });
+        const fields = resultFields({ extraction, info: ctxCache.v.info, task, arm: { vanilla }, order: loadOrderOf(events, runtime) });
         rows.push({ armId, taskId, replicate: Number(rep), taskClass: task.class, target: task.target ?? null, fields, complete: Boolean(result), extraction, sops: ctxCache.v.info?.catalog?.sops ?? [] });
         startup[armId] = ctxCache.v.startup;
       }
@@ -183,9 +210,9 @@ function rowsFromResults(runs, classOf, targetOf) {
     armId: r.armId, taskId: r.taskId, replicate: r.replicate, taskClass: classOf(r.taskId), target: targetOf(r.taskId),
     fields: r.result.skillsLoaded == null ? null : {
       ...Object.fromEntries(SKILL_FIELDS.map((k) => [k, r.result[k] ?? null])),
-      skillsLoaded: r.result.skillsLoaded, sopsLoaded: r.result.sopsLoaded ?? [],
+      skillsLoaded: r.result.skillsLoaded, sopsLoaded: r.result.sopsLoaded ?? [], loadCheck: r.result.loadCheck ?? null,
     },
   }));
 }
 
-module.exports = { summarizeSkills, renderSkillsMarkdown, collectRows, rowsFromResults };
+module.exports = { summarizeSkills, renderSkillsMarkdown, collectRows, rowsFromResults, selectionOf };

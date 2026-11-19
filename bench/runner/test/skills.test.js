@@ -259,7 +259,7 @@ test('resultFields: every field is present, SOPs are the subset of loaded skills
   const cat = catalogFromListing({ sops: ['k-verify'], skills: ['verification'], agents: [] });
   const startup = { count: 5, totalBytes: 1000 };
   const f = resultFields({ extraction: extractSkills(events, 'kiro-cli'), info: { catalog: cat, startup }, task: { target: 'k-verify', class: 'sop' }, arm: { vanilla: false } });
-  assert.deepEqual(Object.keys(f).sort(), [...SKILL_FIELDS].sort());
+  assert.deepEqual(Object.keys(f).sort(), [...SKILL_FIELDS, 'loadCheck'].sort());
   assert.deepEqual(f.sopsLoaded.map((s) => s.name), ['k-verify']);
   assert.equal(f.sopNameSource, 'listing');
   assert.equal(f.startupResourceCount, 5);
@@ -274,7 +274,7 @@ test('resultFields: every field is present, SOPs are the subset of loaded skills
   assert.equal(van.startupResourceCount, null);
 
   const none = resultFields({ extraction: null, info: null, task: { target: null }, arm: { vanilla: false } });
-  assert.deepEqual(Object.keys(none).sort(), [...SKILL_FIELDS].sort());
+  assert.deepEqual(Object.keys(none).sort(), [...SKILL_FIELDS, 'loadCheck'].sort());
   assert.ok(Object.values(none).every((v) => v === null));
   assert.equal(resultFields({ extraction: extractSkills([], 'opencode'), info: null, task: {}, arm: {} }).skillsScope, 'parent-session');
 });

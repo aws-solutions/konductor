@@ -6,9 +6,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, skillActivationOf, mcpInputOf } = require('./stream.js');
+const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
 const claudeParse = require('./harness/claude-code-parse.js');
+const { loadOrderOf, loadCheckOf } = require('./load-check.js');
 
 const SKILL_FIELDS = [
   'skillsLoaded', 'skillQueries', 'sopsLoaded', 'skillBytesLoaded', 'skillCallsFailed', 'skillCallsFailedByTool', 'findSkillsCalls', 'findSkillsEmpty',
@@ -49,23 +50,6 @@ function kiroErrored(call) {
 // Name a failed skill call is listed under when the stream recorded no arguments for it, as for a bare deferred
 // v3 get_skill call. The model may have passed a name; the stream just does not say.
 const ARGS_NOT_RECORDED = '(args not recorded)';
-
-const SKILL_MD = /(?:^|\/)([^/\s'"]+)\/SKILL\.md$/;
-const SHELL_SKILL_READ = /\b(?:cat|head|tail|sed|less|more|bat|awk)\b[^|;&\n]*?([^/\s'"]+)\/SKILL\.md\b/;
-const READ_TOOLS = new Set(['read_file', 'fs_read']);
-const SHELL_TOOLS = new Set(['execute_bash', 'execute_cmd']);
-
-// { name, via } of a kiro read_file/fs_read of a SKILL.md, or of a shell command that prints one; else null.
-function skillFileReadOf(u) {
-  const tool = toolNameOf(u);
-  const raw = u?.rawInput && typeof u.rawInput === 'object' ? u.rawInput : {};
-  if (READ_TOOLS.has(tool)) {
-    const paths = [raw.path, ...(Array.isArray(raw.operations) ? raw.operations.map((o) => o?.path) : []), ...(u.locations ?? []).map((l) => l?.path)];
-    for (const p of paths) { const m = SKILL_MD.exec(String(p ?? '')); if (m) return { name: m[1], via: 'read-skill-md' }; }
-  }
-  if (SHELL_TOOLS.has(tool)) { const m = SHELL_SKILL_READ.exec(String(raw.command ?? '')); if (m) return { name: m[1], via: 'shell-read-skill-md' }; }
-  return null;
-}
 
 // Text a v3 tool_call_update carries in `content`; read_file answers there, not in rawOutput.
 const contentTextOf = (u) => (Array.isArray(u?.content) ? u.content.map((c) => c?.content?.text ?? '').join('') : '');
@@ -531,7 +515,7 @@ function captureSkills({ runtime, events, arm, ctx }) {
     const info = arm?.vanilla ? null : ctx?.skillInfo?.get(arm?.id) ?? null;
     const extras = runtime === 'claude-code' ? safe(() => claudeSkillExtras(events, info?.startup ?? null)) : null;
     if (extras && arm?.vanilla) { extras.skillsPreloaded = []; extras.skillBytesPreloaded = 0; }
-    return { extraction: extractSkills(events, runtime), info, ...(extras ? { extras } : {}) };
+    return { extraction: extractSkills(events, runtime), info, order: safe(() => loadOrderOf(events, runtime)), ...(extras ? { extras } : {}) };
   });
 }
 
@@ -555,10 +539,10 @@ function capInvocationOf({ agg, extraction, sops = [] }) {
   };
 }
 
-/** The result.json fields. All null when nothing was captured. */
-function resultFields({ extraction, info, task, arm, extras = null }) {
+/** The result.json fields. All null when nothing was captured. `order` (load-check.js loadOrderOf) adds loadCheck. */
+function resultFields({ extraction, info, task, arm, extras = null, order = null }) {
   const cc = extras ? Object.fromEntries(CLAUDE_SKILL_FIELDS.map((k) => [k, extras[k] ?? null])) : {};
-  if (!extraction) return { ...Object.fromEntries(SKILL_FIELDS.map((k) => [k, null])), ...cc };
+  if (!extraction) return { ...Object.fromEntries(SKILL_FIELDS.map((k) => [k, null])), loadCheck: null, ...cc };
   const catalog = info?.catalog ?? catalogFrom();
   const startup = arm?.vanilla ? null : info?.startup ?? null;
   return {
@@ -574,6 +558,7 @@ function resultFields({ extraction, info, task, arm, extras = null }) {
     ...targetOutcome({ extraction, task, arm, catalog, startup }),
     sopNameSource: catalog.sopSource,
     skillsScope: extraction.runtime === 'opencode' ? 'parent-session' : 'all-sessions',
+    loadCheck: safe(() => loadCheckOf({ order, extraction, task, arm, isSop: (n) => isSopName(n, catalog) })),
     ...cc,
   };
 }
