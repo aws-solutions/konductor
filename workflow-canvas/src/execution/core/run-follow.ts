@@ -180,9 +180,10 @@ function applyOne(run: FollowedRun, event: RunEvent): FollowedRun {
  * Applies `events`, in `seq` order, to what is known of the run. An event
  * whose `seq` is not above `next` was read before and is dropped, so a call
  * that resumes from an earlier `after` changes nothing twice. A `seq` may be
- * skipped, as the server keeps no console lines once a run ends. An event of
- * an unknown type, for a stage the run does not have, or after the end of the
- * run moves `next` and changes nothing else.
+ * skipped when a finished run is read after the server's 60-second grace for
+ * console lines, or after the server restarts. An event of an unknown type,
+ * for a stage the run does not have, or after the end of the run moves `next`
+ * and changes nothing else.
  */
 export function applyRunEvents(
   run: FollowedRun,
