@@ -301,6 +301,15 @@ launch code `e2e-launch-code-0123456789`, and run the tests within 60 seconds
 of it listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
+### The shared corpus
+
+`api/corpus/` holds workflow files, `<case>.yml`, with the diagnostics and the view that a check must give, in
+`<case>.json`. The messages are left out, because each loader words its own. The stub's tests
+(`stub-api/core/corpus.test.ts`) and the Rust loader's tests (`workflow-engine/adapters/tests/corpus.rs`) read the
+same folder, so a difference between the two loaders fails a test. Every diagnostic code has a case. To add one,
+write the `.yml`, run `UPDATE_CORPUS=1 cargo test -p workflow-adapters --test corpus` in `workflow-engine/`, and
+check that the stub agrees.
+
 The `editing` project (`e2e/editing`) saves over the root workflow, so it runs
 only against the stub. With `WC_API_TARGET` set it is left out of the project
 list, `--project=editing` fails with "not found", and the `functional` project
