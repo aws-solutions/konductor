@@ -66,5 +66,51 @@
     }
   },
   "pilot": null,
-  "version": 1
+  "version": 1,
+  "targetSkills": [
+    "skill:decision-writing",
+    "skill:smithy-modeling"
+  ],
+  "targetSop": null,
+  "targetAgent": "agent:k-architect",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing",
+      "skill:smithy-modeling",
+      "agent:k-architect"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name or hint at specific frameworks, methods, or the correct option."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits, values, and required output format are explicitly defined with no reasonable ambiguity."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture data provides raw numbers but does not state the answer or which option to select; meta.json only labels a tempting option."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fail",
+        "note": "The task requires non-trivial calculation: computing monthly cost from price sheet usage, verifying 6 hard constraints, and selecting the viable option (rejecting the cheaper but oversized direct-large-batch)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All necessary data is provided in fixture/; tests validate all required fields; no impossible or unfair requirements."
+      }
+    ]
+  }
 }
