@@ -1,0 +1,59 @@
+{
+  "service_targets": {
+    "authentication_service": {
+      "availability": {
+        "target": 99.95,
+        "measurement_period": "monthly",
+        "exclusions": ["scheduled_maintenance", "provider_outages"]
+      },
+      "latency": {
+        "p95_end_to_end": 2000,
+        "p99_end_to_end": 5000,
+        "measurement_unit": "milliseconds"
+      },
+      "capacity": {
+        "peak_auths_per_second": 50,
+        "concurrent_sessions": 100000,
+        "growth_rate_per_month": 0.15
+      }
+    },
+    "identity_providers": {
+      "supported_providers": ["google", "microsoft", "okta", "auth0", "generic_oidc"],
+      "max_configuration_latency": {
+        "new_provider": 3600,
+        "config_update": 300,
+        "unit": "seconds"
+      },
+      "outage_tolerance": {
+        "single_provider_outage_impact": "degraded_mode",
+        "degraded_mode_fallback": "password_auth",
+        "max_degradation_duration": 7200
+      }
+    }
+  },
+  "security_requirements": {
+    "token_validation": {
+      "max_clock_skew": 300,
+      "required_validations": ["signature", "issuer", "audience", "expiry", "issued_at"],
+      "jwks_refresh_interval": 3600
+    },
+    "session_management": {
+      "max_session_age": 2592000,
+      "absolute_max_session_age": 7776000,
+      "session_cleanup_interval": 3600
+    }
+  },
+  "compliance": {
+    "data_retention": {
+      "auth_logs": 365,
+      "session_data": 90,
+      "failed_attempts": 30,
+      "unit": "days"
+    },
+    "audit": {
+      "immutable_logs": true,
+      "real_time_alerting": true,
+      "weekly_review": true
+    }
+  }
+}

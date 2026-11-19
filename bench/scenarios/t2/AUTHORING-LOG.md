@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 218.65 credits over 79 calls.
+Total captured: 227.35 credits over 83 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -85,3 +85,7 @@ Total captured: 218.65 credits over 79 calls.
 | 2026-11-19T23:26:34Z | t2-pr-stock-reserve | author | gpt-5.6-luna | 181 | 3.54 | ok |
 | 2026-11-19T23:27:23Z | t2-pr-stock-reserve | map | glm-5 | 36 | 0.54 | ok |
 | 2026-11-19T23:28:35Z | t2-pr-stock-reserve | review | qwen3-coder-next | 71 | 0.30 | ok |
+| 2026-11-19T23:39:43Z | t2-sec-dr-sso-login | author | deepseek-3.2 | 666 | 5.98 | ok |
+| 2026-11-19T23:40:45.738Z | t2-sec-dr-sso-login | expert | deepseek-3.2 | 62 | 0.95 | ok |
+| 2026-11-19T23:41:37Z | t2-sec-dr-sso-login | map | glm-5 | 47 | 0.73 | ok |
+| 2026-11-19T23:51:44Z | t2-sec-dr-sso-login | review | minimax-m2.5 | 607 | 1.03 | ok |

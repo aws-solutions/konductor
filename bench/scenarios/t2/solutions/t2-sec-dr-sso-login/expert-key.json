@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks how the design handles gradual rollout and rollback when SSO failures affect availability.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Notes missing consideration for IdP performance variability and recommends circuit breakers to prevent cascading failures.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Questions how user consent is obtained and documented for account linking across identity providers.",
+      "source": "https://www.rfc-editor.org/rfc/rfc9700 (IETF Trust)"
+    },
+    {
+      "id": "e4",
+      "text": "Identifies missing disaster recovery plan for when primary IdPs are unavailable for extended periods.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Asks about monitoring for suspicious linking patterns that might indicate coordinated account takeover attempts.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Notes that configuration stored in YAML files violates the twelve-factor app principle of storing config in environment.",
+      "source": "https://12factor.net (MIT)"
+    },
+    {
+      "id": "e7",
+      "text": "Questions how the design handles token binding to prevent token replay across different clients or devices.",
+      "source": "https://www.rfc-editor.org/rfc/rfc9700 (IETF Trust)"
+    },
+    {
+      "id": "e8",
+      "text": "Asks about data residency implications when IdPs and user data span different regulatory jurisdictions.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    }
+  ],
+  "weakAnswers": [
+    "The design looks comprehensive and covers the main requirements.",
+    "Consider adding more details about scalability and performance.",
+    "Make sure to follow security best practices throughout implementation.",
+    "The document is well-structured but could use more diagrams.",
+    "Good start, just need to consider edge cases and error handling."
+  ]
+}
