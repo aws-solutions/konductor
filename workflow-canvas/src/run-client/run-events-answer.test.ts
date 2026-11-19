@@ -10,6 +10,32 @@ const answerWith = (events: unknown[], next = 9, finished = false) => ({
   finished,
 });
 
+// One valid event of each known type. Each malformed case below changes one
+// field of one of them, so it is refused for that field alone.
+const STAGE = {
+  ...common,
+  seq: 1,
+  type: 'stage_state',
+  stage: 'a',
+  status: 'running',
+};
+const LINE = { ...common, seq: 1, type: 'console', stage: 'a', n: 1, text: '' };
+const FINISHED = {
+  ...common,
+  seq: 1,
+  type: 'run_finished',
+  status: 'passed',
+  exit_code: 0,
+};
+
+const one = (event: Record<string, unknown>) => answerWith([event]);
+
+function without(event: Record<string, unknown>, key: string) {
+  return Object.fromEntries(
+    Object.entries(event).filter(([name]) => name !== key),
+  );
+}
+
 describe('parseRunEventsAnswer', () => {
   it('reads each known event with the fields the reducer takes', () => {
     const answer = parseRunEventsAnswer(
@@ -106,85 +132,43 @@ describe('parseRunEventsAnswer', () => {
     ],
     ['a seq of 0', answerWith([{ seq: 0, type: 'stage_note' }])],
     ['an empty type', answerWith([{ seq: 1, type: '' }])],
-    [
-      'a stage status of pending',
-      answerWith([
-        { seq: 1, type: 'stage_state', stage: 'a', status: 'pending' },
-      ]),
-    ],
-    [
-      'a blocked stage with no reason',
-      answerWith([
-        { seq: 1, type: 'stage_state', stage: 'a', status: 'blocked' },
-      ]),
-    ],
+    ['a stage status of pending', one({ ...STAGE, status: 'pending' })],
+    ['a blocked stage with no reason', one({ ...STAGE, status: 'blocked' })],
     [
       'a reason on a stage that is not blocked',
-      answerWith([
-        {
-          seq: 1,
-          type: 'stage_state',
-          stage: 'a',
-          status: 'passed',
-          reason: 'TIMEOUT',
-        },
-      ]),
+      one({ ...STAGE, status: 'passed', reason: 'TIMEOUT' }),
     ],
-    [
-      'a console line numbered 0',
-      answerWith([{ seq: 1, type: 'console', stage: 'a', n: 0, text: '' }]),
-    ],
-    [
-      'a console line with no text',
-      answerWith([{ seq: 1, type: 'console', stage: 'a', n: 1 }]),
-    ],
+    ['a stage_state with no stage', one(without(STAGE, 'stage'))],
+    ['a console line numbered 0', one({ ...LINE, n: 0 })],
+    ['a console line with no text', one(without(LINE, 'text'))],
+    ['a console line with no stage', one(without(LINE, 'stage'))],
     [
       'a run_finished of a running run',
-      answerWith([
-        { seq: 1, type: 'run_finished', status: 'running', exit_code: 0 },
-      ]),
+      one({ ...FINISHED, status: 'running' }),
     ],
-    [
-      'a run_finished with no at',
-      answerWith([
-        { seq: 1, type: 'run_finished', status: 'passed', exit_code: 0 },
-      ]),
-    ],
+    ['a run_finished with no at', one(without(FINISHED, 'at'))],
     [
       'a run_finished on a day past the end of its month',
-      answerWith([
-        {
-          seq: 1,
-          type: 'run_finished',
-          at: '2026-02-30T04:12:05Z',
-          status: 'passed',
-          exit_code: 0,
-        },
-      ]),
+      one({ ...FINISHED, at: '2026-02-30T04:12:05Z' }),
     ],
     [
       'a run_finished at a time that is not a timestamp',
-      answerWith([
-        {
-          seq: 1,
-          type: 'run_finished',
-          at: 'yesterday',
-          status: 'passed',
-          exit_code: 0,
-        },
-      ]),
+      one({ ...FINISHED, at: 'yesterday' }),
     ],
-    [
-      'a run_finished with no exit code',
-      answerWith([{ seq: 1, type: 'run_finished', status: 'passed' }]),
-    ],
+    ['a run_finished with no exit code', one(without(FINISHED, 'exit_code'))],
     [
       'a run_finished with a negative exit code',
-      answerWith([
-        { seq: 1, type: 'run_finished', status: 'halted', exit_code: -1 },
-      ]),
+      one({ ...FINISHED, exit_code: -1 }),
     ],
   ])('is undefined for %s', (_, body) => {
     expect(parseRunEventsAnswer(body)).toBeUndefined();
+  });
+
+  it.each([
+    ['stage_state', STAGE],
+    ['console', LINE],
+    ['run_finished', FINISHED],
+  ])('reads the valid %s that the malformed cases start from', (_, event) => {
+    expect(parseRunEventsAnswer(one(event))?.events).toHaveLength(1);
   });
 });

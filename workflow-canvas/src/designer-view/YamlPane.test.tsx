@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { YAML_WINDOW_LINES } from './line-window';
 import { BLOCK, FLOW, STAGES_FIRST, type SampleText } from './sample-texts';
@@ -154,7 +154,7 @@ describe('YamlPane', () => {
       expect(container.querySelectorAll('li')).toHaveLength(YAML_WINDOW_LINES);
       expect(numberOf(items()[0]!)).toBe(1);
       expect(windowNotes(container)).toEqual([
-        `Lines ${(YAML_WINDOW_LINES + 1).toLocaleString('en-US')} to ${total.toLocaleString('en-US')} not shown.`,
+        `Show lines ${(YAML_WINDOW_LINES + 1).toLocaleString('en-US')} to ${(2 * YAML_WINDOW_LINES).toLocaleString('en-US')}`,
       ]);
     });
 
@@ -172,8 +172,8 @@ describe('YamlPane', () => {
       expect(current()).toEqual([1500]);
       expect(numberOf(items()[0]!)).toBe(1251);
       expect(windowNotes(container)).toEqual([
-        'Lines 1 to 1,250 not shown.',
-        'Lines 1,751 to 3,000 not shown.',
+        'Show lines 751 to 1,250',
+        'Show lines 1,751 to 2,250',
       ]);
     });
 
@@ -189,7 +189,7 @@ describe('YamlPane', () => {
       expect(marked()).toEqual([2998, 2999, 3000]);
       expect(numberOf(items().at(-1)!)).toBe(3000);
       expect(items()[2998 - 2501]?.textContent).toContain('line 2998');
-      expect(windowNotes(container)).toEqual(['Lines 1 to 2,500 not shown.']);
+      expect(windowNotes(container)).toEqual(['Show lines 2,001 to 2,500']);
     });
 
     it('shows the first lines of a range longer than the window and says it continues', () => {
@@ -206,8 +206,8 @@ describe('YamlPane', () => {
       expect(current()).toEqual([100]);
       expect(marked()).toHaveLength(YAML_WINDOW_LINES);
       expect(windowNotes(container)).toEqual([
-        'Lines 1 to 99 not shown.',
-        'Stage draft continues. Lines 600 to 3,000 not shown.',
+        'Show lines 1 to 99',
+        'Stage draft continues. Show lines 600 to 1,099',
       ]);
       expect(
         screen.getByText('Read-only. Lines 100 to 1,200 are stage draft.').id,
@@ -218,14 +218,73 @@ describe('YamlPane', () => {
       );
     });
 
-    it('says a single line is not shown', () => {
+    it('offers a single line that is not shown', () => {
       const { container } = render(
         <YamlPane file="hello.yml" text={numbered(YAML_WINDOW_LINES + 1)} />,
       );
 
       expect(windowNotes(container)).toEqual([
-        `Line ${YAML_WINDOW_LINES + 1} not shown.`,
+        `Show line ${YAML_WINDOW_LINES + 1}`,
       ]);
+    });
+
+    it('offers the lines before and after the window as named buttons', () => {
+      render(
+        <YamlPane
+          file="hello.yml"
+          text={numbered(3000)}
+          stage={{ name: 'draft', range: { line: 1500, end_line: 1501 } }}
+        />,
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'Show lines 751 to 1,250' }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: 'Show lines 1,751 to 2,250' }),
+      ).toBeTruthy();
+    });
+
+    it('moves down and back up to the first window, with the true line numbers', () => {
+      render(<YamlPane file="hello.yml" text={numbered(3000)} />);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      expect(numberOf(items()[0]!)).toBe(501);
+      expect(items()[0]?.textContent).toContain('line 501');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 1 to 500' }),
+      );
+      expect(numberOf(items()[0]!)).toBe(1);
+      expect(items()).toHaveLength(YAML_WINDOW_LINES);
+    });
+
+    it('keeps the focus on the button while it remains', () => {
+      render(<YamlPane file="hello.yml" text={numbered(3000)} />);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      expect(document.activeElement?.textContent).toBe(
+        'Show lines 1,001 to 1,500',
+      );
+    });
+
+    it('reaches the end of a file near the size limit, then moves the focus to the first new line', () => {
+      const text = numbered(1200);
+      const { container } = render(<YamlPane file="hello.yml" text={text} />);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 1,001 to 1,200' }),
+      );
+      expect(numberOf(items().at(-1)!)).toBe(1200);
+      expect(numberOf(items()[0]!)).toBe(701);
+      expect(windowNotes(container)).toEqual(['Show lines 201 to 700']);
+      expect(numberOf(document.activeElement as HTMLElement)).toBe(1001);
     });
   });
 });
