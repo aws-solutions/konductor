@@ -70,13 +70,18 @@ list or hardcoded SOP count.
 
 ## MCP setup
 
-Kiro does not automatically configure servers from `dependencies.mcpRegistry`.
-Users must configure them in `.kiro/settings/mcp.json` or
-`~/.kiro/settings/mcp.json`.
+The `konductor`, `k-architect` and `k-developer` agent files carry the
+`aws-mcp` entry from their `dependencies.mcpRegistry`, so those three agents
+launch AWS MCP themselves. It needs `uvx`; without it the server fails to start and the
+agents work without it. It starts with `--skip-auth`, so documentation search
+and skills work without AWS credentials. Kiro does not configure the other
+`dependencies.mcpRegistry` entries automatically. Users configure them in
+`.kiro/settings/mcp.json` or `~/.kiro/settings/mcp.json`.
 
-For AWS MCP, use the `aws-mcp` key and the pinned proxy configuration in the
-Kiro Power install guide. Knowledge tools are pre-approved; API tools prompt
-for confirmation. There is no `aws___call_aws` tool.
+To use AWS MCP from other agents, use the `aws-mcp` key and the pinned proxy
+configuration in the Kiro Power install guide. Knowledge tools are
+pre-approved; API tools prompt for confirmation. There is no `aws___call_aws`
+tool.
 
 `k-browser` requires a user-configured `playwright-mcp` server. Do not launch
 or configure browser or AWS MCP servers on the user’s behalf.

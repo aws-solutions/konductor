@@ -167,7 +167,8 @@ KONDUCTOR_BIN := build/cli/konductor
 # an actual environment variable (`TARGET=... make synth`) does. This makes
 # both invocation styles behave the same.
 # --claude-bundled-mcp-servers pre-wires AWS MCP into dist/claude/agents/*.md
-# for the STANDALONE Claude Code install too, not just the plugin path --
+# and the dist/kiro-cli-v2 and dist/kiro-v3 agent files, so the standalone
+# Claude Code and Kiro installs get it too, not just the plugin path --
 # see scripts/claude-plugin-mcp-servers.json (the single source of truth
 # scripts/read-bundled-mcp-servers.sh reads) and cli/konductor-rs/src/cli.rs's
 # own doc comment on this flag. The launch command/args baked into

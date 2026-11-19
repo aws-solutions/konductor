@@ -582,6 +582,12 @@ not per individual commit.
   the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
   in this repository. They say which tool-ID rows no source confirms, and correctly state that
   `install/registry.rs` registers three install strategies, not two.
+- Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
+  orchestrators, which have a `stop` hook, still have a `hooks` field.
+- Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
+  agents already did, so `konductor`, `k-architect` and `k-developer` can use their `aws-mcp` tools
+  without a hand-added MCP config. Without `uvx` the server fails to start and the agents work
+  without it.
 
 ### Security
 

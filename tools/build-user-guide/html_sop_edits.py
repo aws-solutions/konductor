@@ -1321,3 +1321,12 @@ SOP_EDITS += [
      '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
      "reclassify it, or correct the text."),
 ]
+
+SOP_EDITS += [
+    # Synth bundles aws-mcp into the Kiro CLI agent files too. The reference note,
+    # the install-kiro-cli paragraph and the design use case are rewritten by the
+    # aws-mcp entries in sync-html-content.py, which already own that text.
+    ("agents: runtime MCP servers row bundles aws-mcp in both runtimes",
+     '{ k: "MCP servers", v: "declared and launched from dependencies.mcpRegistry \u00b7 requested via tool globs (mcp__aws-mcp__*); you configure the server yourself" }',
+     '{ k: "MCP servers", v: "aws-mcp launched from dependencies.mcpRegistry; tools granted by name (such as @aws-mcp/aws___search_documentation): the eight known tools on k-architect and k-developer, five read-only ones on konductor \u00b7 aws-mcp launched from dependencies.mcpRegistry; tools granted by name (such as mcp__aws-mcp__aws___search_documentation), the same eight and five; playwright-mcp tools requested by glob (mcp__playwright-mcp__*), and you configure that server yourself" }'),
+]
