@@ -466,8 +466,9 @@ impl SkillLookupServer {
     /// doc comment on this tool's schema). Three distinct,
     /// non-overlapping failure signals:
     ///   - unknown name: `InvalidParams`, `"skill not found: <name>"`,
-    ///     plus a note when `--skill-name-filter` hides an existing skill
-    ///     and up to three close names (see `skill_not_found`).
+    ///     plus either a note that `--skill-name-filter` hides an
+    ///     existing skill or up to three close names, never both (see
+    ///     `skill_not_found`).
     ///   - read failure on a name the index does have (file deleted,
     ///     moved, or permissions changed since the last scan):
     ///     `InternalError`, `"skill file unreadable: <name>: <io error>"`.
@@ -536,16 +537,22 @@ impl SkillLookupServer {
 
     /// The `get_skill` not-found message. Always starts with
     /// `SKILL_NOT_FOUND_PREFIX` and the requested name, which telemetry
-    /// classification matches on; then says when the skill exists but
-    /// `--skill-name-filter` hides it from this agent, and suggests up to
-    /// `MAX_CLOSE_NAMES` indexed names close to the one requested.
+    /// classification matches on. Then exactly one of two things: that
+    /// the skill exists but `--skill-name-filter` hides it from this
+    /// agent, or up to `MAX_CLOSE_NAMES` indexed names close to the one
+    /// requested.
     fn skill_not_found(&self, name: &str) -> String {
         let mut message = format!("{SKILL_NOT_FOUND_PREFIX}{name}");
+        // A filtered-out name needs no guess: the server knows which
+        // skill was asked for and that it exists, so the only thing a
+        // close name adds is a different skill for the agent to load
+        // instead of reporting this one unavailable.
         if self.index.is_filtered_out(name) {
             message.push_str(
                 " (the skill exists but is not available to this agent: the server's \
                  --skill-name-filter excludes it)",
             );
+            return message;
         }
         let close = close_skill_names(name, &self.index.names());
         if !close.is_empty() {
@@ -1434,6 +1441,73 @@ mod tool_handlers {
             err.message
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Writes an install manifest at `<base>/.konductor/manifest` marking
+    /// each of `skill_names` konductor-installed, so that
+    /// `--skill-name-filter` actually removes one: the filter only ever
+    /// scopes skills konductor installed, and `installed_by_konductor`
+    /// defaults to false, so without this a filtered server silently
+    /// indexes everything.
+    fn write_manifest_marking_installed(base: &Path, skill_names: &[&str]) {
+        let files: Vec<String> = skill_names
+            .iter()
+            .map(|name| {
+                format!(
+                    r#"{{"path":".konductor/skills/{name}/SKILL.md","sha256":null,"provenance":"created"}}"#
+                )
+            })
+            .collect();
+        fs::write(
+            base.join(".konductor").join("manifest"),
+            format!(
+                r#"{{"schema_version":2,"strategies":[{{"strategy":"kiro-cli-v2","installed_at":"2026-01-01T00:00:00Z","destination":".","source":null,"status":"complete","files":[{}]}}]}}"#,
+                files.join(",")
+            ),
+        )
+        .unwrap();
+    }
+
+    // A filtered-out name is the one case where the server already knows
+    // which skill was asked for, so a close name can only name a different
+    // one. It is also where the suggestions went wrong on the real specs:
+    // `code-review` is filtered out of an agent whose index still holds
+    // `adversarial-code-review` and its pass skills, every one of which
+    // contains the requested name as a substring.
+    #[test]
+    fn get_skill_filtered_out_name_reports_the_filter_and_suggests_nothing() {
+        let names = [
+            "code-review",
+            "adversarial-code-review",
+            "adversarial-code-review-pass-schema",
+        ];
+        let base = temp_dir("get-skill-filtered-out");
+        let skills_root = base.join(".konductor").join("skills");
+        fs::create_dir_all(&skills_root).unwrap();
+        for name in names {
+            write_skill(&skills_root, name, "d", &[]);
+        }
+        write_manifest_marking_installed(&base, &names);
+        let (index, _diag, filtered_out, _excluded) = SkillIndex::build(
+            vec![ResolvedDir::managed(&skills_root)],
+            Some("adversarial-*".to_string()),
+        );
+        assert_eq!(filtered_out, 1, "expected code-review to be the only one");
+
+        let err = SkillLookupServer {
+            index,
+            sops: SopIndex::default(),
+            tool_call_counters: None,
+            initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+        .get_skill(&args(&[("name", "code-review")]))
+        .unwrap_err();
+        assert_eq!(
+            err.message,
+            "skill not found: code-review (the skill exists but is not available to this \
+             agent: the server's --skill-name-filter excludes it)"
+        );
+        let _ = fs::remove_dir_all(&base);
     }
 
     #[test]
