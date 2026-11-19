@@ -418,8 +418,9 @@ not per individual commit.
 
 - `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
   `k-test-coverage-review` now counts only when it comes from the user, so a model that starts
-  one of these SOPs cannot skip its confirmation. `k-e2e-test-generation` will not stage, commit
-  or push without that yes, and never pushes the default branch.
+  one of these SOPs, or sets the flag itself, cannot skip its confirmation.
+  `k-e2e-test-generation` will not stage, commit or push without that yes, and never pushes the
+  default branch. Orchestrators never add the flag to a SOP command unless the user gave it.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
