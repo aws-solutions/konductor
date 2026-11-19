@@ -1,0 +1,11 @@
+{
+  "downtime_limit_min": 20,
+  "rpo_limit_min": 5,
+  "directions": {
+    "downtime_min": "max",
+    "rpo_min": "max",
+    "latency_ms": "max",
+    "throughput_mb_s": "min",
+    "monthly_cost_usd": "max"
+  }
+}

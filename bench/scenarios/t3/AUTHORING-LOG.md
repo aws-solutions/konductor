@@ -94,3 +94,7 @@
 | t3-nfr-capacity-autoscale | map | glm-5 | 0.63 |
 | t3-nfr-capacity-autoscale | review | minimax-m2.5 | 4.40 |
 | t3-nfr-capacity-autoscale | expertKey | glm-5 | 1.27 |
+| t3-tpm-migration-cutover | author | gpt-5.6-luna | 2.02 |
+| t3-tpm-migration-cutover | map | glm-5 | 0.62 |
+| t3-tpm-migration-cutover | review | qwen3-coder-next | 0.40 |
+| t3-tpm-migration-cutover | expertKey | glm-5 | 2.57 |

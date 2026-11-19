@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/cutover.md"],
+  "acceptableOptions": ["continuous_replication"],
+  "temptingOption": "big_bang_copy",
+  "notes": "The low-cost big-bang option exceeds the downtime limit because the 1.8 TB size and 450 MB/s copy rate are in migration-model.json while the 20-minute limit is in acceptance.json and requirements.md."
+}

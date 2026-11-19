@@ -1,0 +1,25 @@
+{
+  "production_data_tb": 1.8,
+  "decimal_mb_per_tb": 1000000,
+  "off_hours_replication_mb_s": 450,
+  "options": {
+    "big_bang_copy": {
+      "downtime_formula": "production_data_tb * decimal_mb_per_tb / off_hours_replication_mb_s / 60",
+      "rpo_min": 0,
+      "latency_ms": 20,
+      "throughput_source": "off_hours_replication_mb_s"
+    },
+    "continuous_replication": {
+      "handoff_steps_min": [3, 5],
+      "rpo_min": 2,
+      "latency_ms": 12,
+      "throughput_source": "business_hours_network_cap_mb_s"
+    },
+    "dual_write": {
+      "handoff_steps_min": [2, 3],
+      "rpo_min": 0.5,
+      "latency_ms": 22,
+      "throughput_source": "business_hours_network_cap_mb_s"
+    }
+  }
+}
