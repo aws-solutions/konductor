@@ -1,0 +1,14 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "The prompt asks for a code review without naming any specific review method, checklist, or process. It does not hint at planted problems or give a count. The request is generic: review the PR, write findings with location/severity/issue/fix." },
+    { "check": "ambiguity", "verdict": "pass", "note": "The task is clear: review PR 214, compare changes.diff against the repository root, write REVIEW.md with a JSON list of findings. The output format (location, severity, issue, fix) is well-defined." },
+    { "check": "ceiling", "verdict": "pass", "note": "The issues require cross-file reasoning: comparing the refund route to the capture route's ownership check, noticing the unused idempotency helper, checking logging.md for restrictions, and understanding the async gap in check-then-act. A shallow review would miss several items." },
+    { "check": "floor", "verdict": "pass", "note": "All key items are findable from the fixture. The idempotency helper exists in src/store/idempotency.js, the logging rules in docs/logging.md, the ledger integer requirement in src/ledger/ledger.js and docs/ledger.md, and the ownership check pattern in src/orders/capture.js. The async gap is visible as `await Promise.resolve()` on line 24 of service.js." },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No comments, test names, or file names point directly at the planted problems. The decoy (roundToMinor helper) is plausible but intentionally not a defect. The test file uses generic test data that doesn't reveal issues." }
+  ],
+  "keyProblems": [
+    "k3 line range: the key says lines 16-17 for the ownership check, but line 16 is `const order = findOrder(store, orderId);` and the missing check should be described as absent after line 16, not as lines 16-17 containing the issue. The location is acceptable but could be clearer.",
+    "k4 line range: the key says lines 24-30 but the check-then-write gap spans from line 21 (the balance check) through line 30 (the ledger write). Line 24 is just `await Promise.resolve();`. The location is within 3 lines and acceptable."
+  ],
+  "suggestedFixes": []
+}
