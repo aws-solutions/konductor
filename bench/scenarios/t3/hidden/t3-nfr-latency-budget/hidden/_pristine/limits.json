@@ -1,8 +1,0 @@
-{
-  "end_to_end_p99_ms": {"limit": 600, "direction": "max"},
-  "throughput_rps": {"limit": 1200, "direction": "min"},
-  "monthly_cost_usd": {"limit": 1000, "direction": "max"},
-  "payload_kb": {"limit": 256, "direction": "max"},
-  "rpo_seconds": {"limit": 60, "direction": "max"},
-  "rto_minutes": {"limit": 5, "direction": "max"}
-}

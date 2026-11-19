@@ -1,1 +1,0 @@
-{"deliverables":["docs/latency.md"],"acceptableOptions":["parallelize-pricing-inventory"],"temptingOption":"keep-serial","notes":"The cheap serial option exceeds the latency limit when hop values from service-latencies.csv are summed, while the budgeted parallel option uses the max of the pricing and inventory branch."}

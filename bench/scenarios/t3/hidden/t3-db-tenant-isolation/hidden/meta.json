@@ -1,6 +1,0 @@
-{
-  "deliverables": ["db/schema.sql", "docs/decision.md"],
-  "acceptableOptions": ["schema_tenant_column", "schema_tenant_partition", "tenant_views"],
-  "temptingOption": "global_unique_keys",
-  "notes": "The trap is a global unique index on ticket_key which breaks tenant reuse and forces scans; the limit is 12,000 databases exceeding connection pool limit of 1,000."
-}
