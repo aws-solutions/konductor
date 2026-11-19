@@ -43,8 +43,8 @@ that measure the fix (t4-dev-sql-report-filters) or split so one forgotten path 
 | wave | credits |
 | --- | --- |
 | 1 | 146.42 |
-| 2 | 89.29 |
-| all | 235.71 |
+| 2 | 114.60 |
+| all | 261.02 |
 
 ## Calls
 
@@ -85,3 +85,6 @@ Times are UTC on 2026-11-19. Credits are what each call reported in its stream.
 | 19:14 | t4-arch-tenant-abac | review | glm-5 | 2 | 152 | 5.77 |  |
 | 19:21 | t4-iam-privesc-groups | author | deepseek-3.2 | 2 | 97 | 0.91 |  |
 | 19:38 | t4-iam-ci-deploy-role-twin | fix | deepseek-3.2 | 2 | 2058 | 31.76 |  |
+| 19:55 | t4-iam-bucket-policy-oac | author | deepseek-3.2 | 2 | 2035 | 22.83 |  |
+| 19:55 | t4-iam-bucket-policy-oac | map | glm-5 | 2 | 20 | 0.74 |  |
+| 19:57 | t4-iam-bucket-policy-oac | review | gpt-5.6-luna | 2 | 90 | 1.74 |  |
