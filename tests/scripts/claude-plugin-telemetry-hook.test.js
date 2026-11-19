@@ -703,6 +703,11 @@ test('rendered hooks.json wires both events and matches every plugin agent', (t)
   const { hooks } = JSON.parse(fs.readFileSync(output, 'utf8'));
   assert.deepEqual(Object.keys(hooks), ['SessionStart', 'SubagentStart']);
   assert.equal(hooks.SessionStart[0].matcher, 'startup|clear');
+  assert.equal(hooks.SessionStart.length, 2);
+  assert.equal(hooks.SessionStart[1].matcher, 'startup|resume|clear|compact');
+  assert.deepEqual(hooks.SessionStart[1].hooks, [
+    { type: 'command', command: 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh"' },
+  ]);
   for (const [event, arg] of [['SessionStart', 'agent-invocation'], ['SubagentStart', 'subagent-invocation']]) {
     const [handler] = hooks[event][0].hooks;
     assert.equal(handler.type, 'command');

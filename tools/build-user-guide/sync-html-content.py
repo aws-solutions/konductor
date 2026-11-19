@@ -95,14 +95,15 @@ EDITS = [
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
     ("layout tree skills", "├── skills/                       80 skills (<name>/SKILL.md",
      "├── skills/                       79 skills (<name>/SKILL.md"),
-    # ---- aws-mcp launches a pinned version, not a floating @latest ----------
-    ('reference MCP registry note: pinned aws-mcp',
+    # ---- aws-mcp: pinned, and synth bundles it into Claude Code and Kiro CLI agents ----
+    ('reference MCP registry note: synth bundles aws-mcp',
      'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
-     ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.',
+     ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.',
      'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
-     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
-     ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'),
+     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. konductor synth --claude-bundled-mcp-servers aws-mcp (what make synth and the release build run) writes the aws-mcp entry into the Claude Code and Kiro CLI agent files, so konductor, k-architect and k-developer launch it themselves.'
+     ' k-architect and k-developer request all its tools (mcp__aws-mcp__* in Claude Code, @aws-mcp in Kiro CLI). konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'
+     ' playwright-mcp is not bundled: k-browser requests its tools (mcp__playwright-mcp__* in Claude Code, @playwright-mcp in Kiro CLI) and you configure the server yourself.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
@@ -850,10 +851,9 @@ ROSTER = [
     ("install-kiro-cli integrations: intro",
      "Two are pre-configured in the agent specs and need only their local dependency.</p>",
      "Two are declared in the agent specs.</p>"),
-    ("install-kiro-cli integrations: aws-mcp config",
-     _mono("k-developer") + ". Install " + _mono("uvx") + " and configure AWS credentials in "
-     + _mono("~/.aws/credentials") + " or environment variables. Both agents work without credentials,"
-     " just without AWS lookups.</p>",
+    # Synth now carries the spec's aws-mcp entry into the Kiro CLI agent files, so
+    # the hand-written mcp.json block is gone.
+    ("install-kiro-cli integrations: aws-mcp ships in the agent files",
      _mono("k-developer") + ". Install " + _mono("uvx") + " and add " + _mono("aws-mcp") + " to "
      + _mono(".kiro/settings/mcp.json") + " for one project or " + _mono("~/.kiro/settings/mcp.json")
      + " for all projects, since Kiro CLI does not start MCP servers from the agent specs:</p>"
@@ -861,18 +861,30 @@ ROSTER = [
      + '\n            <p style="margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)">With '
      + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
      " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
-     " act on an AWS account.</p>"),
+     " act on an AWS account.</p>",
+     _mono("k-developer") + ". Install " + _mono("uvx") + ". Their agent files carry an " + _mono("aws-mcp")
+     + " entry in " + _mono("mcpServers") + ", launched via " + _mono("uvx mcp-proxy-for-aws-cli==1.7.0")
+     + " with " + _mono("--skip-auth") + ", so you do not add it to your own MCP config. Without "
+     + _mono("uvx") + " the server fails to start and the agents still work, just without AWS lookups."
+     " The first start downloads the proxy through " + _mono("uvx") + ", which can delay the agent's"
+     " first reply.</p>"
+     + '\n            <p style="margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)">With '
+     + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
+     " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
+     " act on an AWS account. " + _mono("konductor") + " gets only the five read-only tools. For "
+     + _mono("k-architect") + " and " + _mono("k-developer") + ", knowledge tools are pre-approved and"
+     " AWS API tools ask first. Use the " + _mono("aws:ViaAWSMCPService") + " and "
+     + _mono("aws:CalledViaAWSMCP") + " IAM condition keys to limit agent-initiated calls.</p>"),
     ("design-a-system: phase 3 aws-mcp callout",
-     "server. In Kiro CLI that server is declared and launched from the agent spec. "
-     '<strong style="color:var(--tx);font-weight:600">In Claude Code the agent only requests the tools via the '
-     + _UC_CODE("mcp__aws-mcp__*") + " glob — you must configure an " + _UC_CODE("aws-mcp")
-     + " server yourself</strong> or those tools will not resolve. Either way, with no AWS credentials the"
-     " step degrades to UNVERIFIED findings rather than failing.",
      "server. In Claude Code the install launches that server. "
      '<strong style="color:var(--tx);font-weight:600">In Kiro CLI you add ' + _UC_CODE("aws-mcp")
      + " to your own MCP config</strong> (Install for Kiro CLI, Optional integrations) or those tools will"
      " not resolve. The server starts with " + _UC_CODE("--skip-auth") + ", so the lookups work without"
-     " AWS credentials. Without the server, the step degrades to UNVERIFIED findings rather than failing."),
+     " AWS credentials. Without the server, the step degrades to UNVERIFIED findings rather than failing.",
+     "server. In Claude Code and Kiro CLI the install launches that server from the agent file. The server"
+     " starts with " + _UC_CODE("--skip-auth") + ", so the lookups work without AWS credentials. Without"
+     " the server (no " + _UC_CODE("uvx") + ", for example), the step degrades to UNVERIFIED findings"
+     " rather than failing."),
     ("faq: aws-mcp needs uvx only",
      "It needs uvx and credentials present.",
      "It needs uvx present."),
