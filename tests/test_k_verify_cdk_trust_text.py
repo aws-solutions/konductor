@@ -19,7 +19,8 @@ def k_verify_guide():
 def test_step_5_waits_for_trust_confirmation():
     text = step_5()
     assert "You MUST NOT run `cdk synth`, `cdk ls` or `cdk diff` until the user confirms that the CDK app is trusted to execute in this environment" in text
-    assert "A change you wrote yourself in this session counts as trusted; a checkout under review does not." in text
+    assert "A CDK app you created in this session, or one the user says they own, counts as confirmed." in text
+    assert "Editing a checkout under review does not make it trusted" in text
 
 
 def test_step_5_runs_ls_and_synth_strict_and_diff_only_on_request():

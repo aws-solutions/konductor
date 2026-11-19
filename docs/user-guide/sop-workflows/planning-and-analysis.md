@@ -318,11 +318,12 @@ project-specific.
   if applicable. Any failure means the task is not complete.
 - **CDK commands wait for your confirmation.** `cdk synth`, `cdk ls` and `cdk diff` all run the
   CDK app's own code, and `cdk diff` also reads the deployed stack, so the SOP runs none of them
-  until you confirm the CDK app is trusted to run where the agent is working. A change the agent
-  wrote in the same session counts as trusted; a checkout under review does not. Once you
-  confirm, it runs `cdk ls` and `cdk synth --strict`. It runs `cdk diff` only when you also ask
-  for a check against the deployed stack, and it runs `cdk diff` and any context lookup only with
-  the credentials you name. Without confirmation it validates an existing `cdk.out/` template or reads the stacks,
+  until you confirm the CDK app is trusted to run where the agent is working. A CDK app the agent
+  created in the same session, or one you say you own, counts as confirmed. Editing a checkout
+  under review does not make it trusted, so the agent asks first. Once you confirm, it runs
+  `cdk ls` and `cdk synth --strict`. It runs `cdk diff` only when you also ask for a check against
+  the deployed stack, and it runs `cdk diff` and any context lookup only with the credentials you
+  name. Without confirmation it validates an existing `cdk.out/` template or reads the stacks,
   and reports all three commands as not run. It never deploys, bootstraps or creates a change set.
 
 ---
