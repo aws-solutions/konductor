@@ -178,7 +178,10 @@ export interface StageStateEvent extends EventBase {
   reason?: StageReason;
 }
 
-/** One line of a stage's standard output, sent only while the run is active. */
+/**
+ * One line of a stage's standard output. It is sent while the run is active
+ * and for 60 seconds after `run_finished`, and never stored.
+ */
 export interface ConsoleEvent extends EventBase {
   type: 'console';
   stage: string;
