@@ -1,0 +1,16 @@
+{
+  "id": "t1-impl-cli-envprefix",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "python",
+  "size": "25 to 35",
+  "source": {
+    "url": "https://github.com/pallets/click",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a small Python 3.12 command-line tool (standard library only, argparse) that syncs a folder to a storage service stub, with subcommands, a config module, a logging setup, tests, CI config and docs. About 25 files. Inspiration (idea only): public command-line libraries that let every option be set from an environment variable with an automatic prefix, with the command line winning over the environment and the environment over a config file. Build a task where the owner asks for that precedence chain on the existing options, with wrinkles of your own design (booleans and repeatable options from the environment, an empty variable meaning unset, a prefix set by an existing setting, a `--show-config` flag that prints each value with its source, and a clear error naming the variable on a bad value)."
+}

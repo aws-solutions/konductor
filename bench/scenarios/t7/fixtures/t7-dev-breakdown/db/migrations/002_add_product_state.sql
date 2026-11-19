@@ -1,0 +1,1 @@
+ALTER TABLE products ADD COLUMN state TEXT NOT NULL DEFAULT 'active';

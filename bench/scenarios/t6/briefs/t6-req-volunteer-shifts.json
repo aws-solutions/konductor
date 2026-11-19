@@ -9,5 +9,5 @@
  "idea": "Requirements with safeguarding and operational rules. Hidden facts could cover: minimum age and guardian consent, roles needing a background check, shift caps per site, cancellation notice, reminders, group bookings, languages, data the coordinator must not see.",
  "source": "original",
  "author": "deepseek-3.2",
- "reviewer": "minimax-m2.5"
+ "reviewer": "gpt-5.6-luna"
 }

@@ -5,7 +5,7 @@
 // Free dry run of one T1 task (no model call): scores the reference solution and a stub with the bench's own check
 // code, repeats the run to prove the checks are deterministic, and proves that a hung hidden test fails alone.
 //
-//   node dry-run.js <task-id> [--repeat 3] [--json]
+//   node dry-run.js <task-id> [--repeat 3] [--json] [--dir BATCH_DIR]   (default: this directory; T7 uses it with --dir)
 //
 // Layout under bench/scenarios/t1/: <id>.json, fixtures/<id>/, hidden/<id>/ (copied over the workspace root, so a
 // task's tests sit in hidden/<id>/hidden/), solutions/<id>/ (overlay on the fixture; solutions/<id>/DELETE.txt lists
@@ -45,11 +45,14 @@ function copyTree(src, dest) {
 }
 
 // A workspace: the fixture, plus the reference overlay when `reference` is set.
-function workspace(root, id, reference) {
+// `dir` is the batch directory; a task may name another task's fixture (a near-miss twin shares its real task's).
+const fixtureOf = (dir, task) => path.join(dir, 'fixtures', task.fixture || task.id);
+
+function workspace(root, task, reference, dir) {
   const ws = path.join(root, reference ? 'ref' : 'stub');
-  copyTree(path.join(DIR, 'fixtures', id), ws);
+  copyTree(fixtureOf(dir, task), ws);
   if (reference) {
-    const sol = path.join(DIR, 'solutions', id);
+    const sol = path.join(dir, 'solutions', task.id);
     const del = path.join(sol, 'DELETE.txt');
     if (fs.existsSync(del)) {
       for (const p of fs.readFileSync(del, 'utf8').split('\n').filter(Boolean)) fs.rmSync(path.join(ws, p), { recursive: true, force: true });
@@ -59,11 +62,11 @@ function workspace(root, id, reference) {
   return ws;
 }
 
-function runChecks(task, ws, hiddenDir, id, env, scratchDir) {
+function runChecks(task, ws, hiddenDir, dir, env, scratchDir) {
   return task.checks.map((c) => {
     let r;
     try {
-      r = evalCheck(ws, c, { pristineDir: path.join(DIR, 'fixtures', id), hiddenDir, env, scratchDir });
+      r = evalCheck(ws, c, { pristineDir: fixtureOf(dir, task), hiddenDir, env, scratchDir });
     } catch (e) {
       r = { passed: false, detail: e.message };
     }
@@ -74,9 +77,9 @@ function runChecks(task, ws, hiddenDir, id, env, scratchDir) {
 const signature = (results) => JSON.stringify(results.map((r) => [r.type, r.passed, r.tests ? [r.tests.passed, r.tests.total] : null]));
 
 // Adds a test that never finishes to a copy of the hidden dir; the suite must still finish, with that one test failed.
-function canary(task, id, ws, env, scratchDir, baseline) {
+function canary(task, hiddenDir, ws, env, scratchDir, baseline) {
   const hid = path.join(scratchDir, 'hidden-canary');
-  copyTree(path.join(DIR, 'hidden', id), hid);
+  copyTree(hiddenDir, hid);
   const py = fs.existsSync(path.join(hid, 'hidden', 'py'));
   if (py) fs.writeFileSync(path.join(hid, 'hidden', 'py', 'test_zz_canary.py'), CANARY_PY);
   else fs.writeFileSync(path.join(hid, 'hidden', 'zz-canary.test.js'), CANARY_NODE);
@@ -88,8 +91,8 @@ function canary(task, id, ws, env, scratchDir, baseline) {
   return { ok, seconds: sec, detail: r.detail };
 }
 
-function dryRun(id, { repeat = 3 } = {}) {
-  const task = JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8'));
+function dryRun(id, { repeat = 3, dir = DIR } = {}) {
+  const task = JSON.parse(fs.readFileSync(path.join(dir, `${id}.json`), 'utf8'));
   const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), `t1-dry-${id}-`));
   try {
     const env = { ...process.env, TMPDIR: path.join(root, 'tmp') };
@@ -98,17 +101,17 @@ function dryRun(id, { repeat = 3 } = {}) {
     // Python 3.12 first on PATH, as the bench pins it for a run whose checks name python.
     const py = resolvePython({ env, want: wantedVersion(path.join(DIR, '..', '..')) });
     if (py.executable) env.PATH = [linkPython(root, py.executable, py.version), env.PATH].join(path.delimiter);
-    const hiddenDir = path.join(DIR, 'hidden', id);
+    const hiddenDir = path.join(dir, 'hidden', id);
     const out = { id, repeat, reference: null, stub: null, deterministic: true, canary: null };
     for (const [mode, ref] of [['reference', true], ['stub', false]]) {
-      const ws = workspace(root, id, ref);
+      const ws = workspace(root, task, ref, dir);
       const runs = [];
-      for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, hiddenDir, id, env, path.join(root, 'scratch')));
+      for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, hiddenDir, dir, env, path.join(root, 'scratch')));
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
       out[mode] = { ...scoreOf(runs[0]), checks_: runs[0].map((r) => ({ type: r.type, kind: r.kind, weight: r.weight, passed: r.passed, detail: r.detail })) };
       if (ref) {
         const base = runs[0].find((r) => r.type === 'tests');
-        out.canary = canary(task, id, ws, env, path.join(root, 'scratch'), base.tests);
+        out.canary = canary(task, hiddenDir, ws, env, path.join(root, 'scratch'), base.tests);
       }
     }
     out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic && out.canary.ok;
@@ -120,9 +123,10 @@ function dryRun(id, { repeat = 3 } = {}) {
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  const id = args.find((a) => !a.startsWith('--'));
+  const id = args.find((a, i) => !a.startsWith('--') && !['--repeat', '--dir'].includes(args[i - 1]));
   const repeat = args.includes('--repeat') ? Number(args[args.indexOf('--repeat') + 1]) : 3;
-  const res = dryRun(id, { repeat });
+  const dir = args.includes('--dir') ? path.resolve(args[args.indexOf('--dir') + 1]) : DIR;
+  const res = dryRun(id, { repeat, dir });
   const brief = (m) => ({ score: Number(m.score.toFixed(1)), hidden: m.hidden, checks: m.checks });
   console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), deterministic: res.deterministic, canary: res.canary, pass: res.pass }, null, 2));
   if (!res.pass) process.exitCode = 1;

@@ -1,0 +1,28 @@
+routes:
+  web-primary:
+    channel: pager
+    escalation: web-oncall
+  data-primary:
+    channel: pager
+    escalation: data-oncall
+  jobs-primary:
+    channel: pager
+    escalation: jobs-oncall
+  identity-queue:
+    channel: ticket
+    queue: identity
+  billing-queue:
+    channel: ticket
+    queue: billing
+  edge-queue:
+    channel: ticket
+    queue: edge
+  search-queue:
+    channel: ticket
+    queue: search
+  platform-queue:
+    channel: ticket
+    queue: platform
+  release-primary:
+    channel: pager
+    escalation: release-oncall

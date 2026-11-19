@@ -1,0 +1,111 @@
+{
+  "id": "t8-neg-alert-threshold",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Please make the small alert-config update for checkout-api. In `rules/checkout-api.json`, a JSON document with alert objects under `rules`, find the object whose `name` is `CheckoutLatencyHigh`. Change its numeric `threshold` from `0.8` to `1.2`, change its string `duration` from `\"10m\"` to `\"15m\"`, and add `labels.runbook` with the exact URL `https://ops.example.test/runbooks/checkout-latency-high`. Keep the alert's existing fields, the other alert objects, and every other file unchanged. This gives the warning a useful window for the current checkout traffic pattern and gives the person on call a direct path to the response steps. The result must remain valid JSON, `src/validate-rules.js` must accept it, and the existing tests in `test/validator.test.js` must continue to pass. This is the only requested configuration change.",
+  "fixture": "t8-neg-alert-threshold",
+  "hidden": "t8-neg-alert-threshold",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden-check.test.js",
+      "min": 6,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "runbooks/request-triage.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "rules/checkout-api.json",
+      "pattern": "\\\"threshold\\\"\\s*:\\s*1\\.2",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "rules/checkout-api.json",
+      "pattern": "\\\"duration\\\"\\s*:\\s*\\\"15m\\\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "rules/checkout-api.json",
+      "pattern": "https://ops\\.example\\.test/runbooks/checkout-latency-high",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "negative",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": [
+      "verification"
+    ]
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies what to change (threshold 0.8→1.2, duration 10m→15m, add runbook label) without dictating the method or process. It describes the desired outcome, not the implementation steps."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All key values are explicitly stated: threshold 1.2, duration '15m', runbook URL 'https://ops.example.test/runbooks/checkout-latency-high'. The target alert is uniquely identified by name 'CheckoutLatencyHigh'. No path, field name, or unit is left undefined."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's notes, docs, comments, and file names do not reveal the exact numbers (1.2, 15m) or the hidden key. The notes file only discusses naming consistency and doesn't mention the specific threshold/duration values."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer might be editing the first rule encountered or using the newest deploy's values, but the test 'CheckoutLatencyHigh uses the requested threshold' would catch that. The multiple similar alert objects in the fixture mean a blind edit could land on the wrong rule, but the tests verify exact field values and hash-based file integrity."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the task request. The thresholds, durations, and runbook URL are explicitly provided. The hidden test validates against known expected values that match the request description. No value is impossible to derive from the fixture plus the request."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

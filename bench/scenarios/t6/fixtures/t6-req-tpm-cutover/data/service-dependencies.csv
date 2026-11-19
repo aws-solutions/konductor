@@ -1,0 +1,14 @@
+Service,Depends On,Message Type,Ordering Required,Idempotent,Timeout (sec),Retry Count,Notes
+Order API,,order.create,yes,no,30,3,Primary producer
+Payment Processor,Order API,payment.auth,yes,no,30,3,Critical ordering
+Payment Processor,Order API,payment.capture,yes,no,30,3,Critical ordering
+Fulfillment Engine,Order API,fulfillment.start,no,yes,60,5,Can handle duplicates
+Fulfillment Engine,Payment Processor,fulfillment.approve,no,yes,60,5,
+Inventory Manager,Order API,inventory.reserve,no,yes,45,4,
+Shipping Service,Fulfillment Engine,shipment.create,no,yes,120,3,Long timeout for carrier API
+Notification Service,Order API,notification.order,no,no,15,2,Best effort
+Notification Service,Payment Processor,notification.payment,no,no,15,2,Best effort
+Notification Service,Fulfillment Engine,notification.ship,no,no,15,2,Best effort
+Analytics Pipeline,Order API,analytics.order,no,yes,300,1,Batch processing
+Analytics Pipeline,Payment Processor,analytics.payment,no,yes,300,1,Batch processing
+Analytics Pipeline,Fulfillment Engine,analytics.fulfill,no,yes,300,1,Batch processing

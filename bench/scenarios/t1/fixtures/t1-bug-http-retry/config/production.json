@@ -1,0 +1,5 @@
+{
+  "timeoutMs": 2500,
+  "retries": 2,
+  "retryDelayMs": 200
+}

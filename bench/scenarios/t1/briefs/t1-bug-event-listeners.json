@@ -1,0 +1,16 @@
+{
+  "id": "t1-bug-event-listeners",
+  "phase": "bugfix",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/nodejs/node",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: bug fix. Role: developer. Repo kind: a Node.js 24 real-time notification service (no dependencies): an event bus built on node:events, subscribers per user, a websocket-like connection stub, a heartbeat timer, tests, CI config, docs. About 30 files. Inspiration (a bug class only, nothing copied): public issue trackers for event-driven code show listeners that are never removed on disconnect, handlers added twice on reconnect, an error in one async handler that silently stops the rest, and timers that keep the process alive. Build a task where the owner reports symptoms (memory climbs after many reconnects, users get each message twice, one broken handler silences others, the process will not exit in tests), with no diagnosis. Two or three interacting defects, one subtle. Visible tests pass today and do not point at them."
+}

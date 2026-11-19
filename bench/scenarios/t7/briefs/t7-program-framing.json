@@ -1,0 +1,28 @@
+{
+  "id": "t7-program-framing",
+  "phase": "ideation",
+  "role": "tpm",
+  "author": "deepseek-3.2",
+  "source": {
+    "url": "https://github.com/kubernetes/enhancements",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a folder of inputs for a new program: three teams' current tool inventories (CSV), their roadmaps (md), a ticket export of open requests (CSV, 80 to 120 tickets), headcount sheet and a leadership memo",
+  "scenario": "Leadership wants one shared deployment tool instead of three. The director asks the TPM: frame this as a program I can take to the staff meeting: what problem we solve, the workstreams, what each depends on, the first milestones, and what we do not know yet.",
+  "seeds": "(1) two teams' roadmaps both claim to own the same migration in the same quarter; (2) a hidden shared dependency (an auth or secrets service) that all workstreams need and that has one owner; (3) the headcount sheet shows a gap of a specific number of engineers against the memo's ask; (4) one team's tool has a compliance requirement (audit log retention) the others do not, which constrains the choice; (5) a decoy: a request with many votes that is out of scope per the memo.",
+  "block": "program",
+  "output": "docs/program-brief.md",
+  "shape": "{\"problem\": str, \"workstreams\": [{\"name\": str, \"teams\": [str], \"depends_on\": [names or ids]}], \"shared_dependencies\": [names], \"conflicts\": [{\"between\": [teams], \"about\": str}], \"headcount_gap\": n, \"constraints\": [str], \"milestones\": [{\"name\": str, \"date\": \"YYYY-MM-DD\"}], \"open_questions\": [str], \"out_of_scope\": [ids]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "minimax-m2.5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)",
+    "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
+    "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+  ],
+  "dropped": "first draft unusable and not given a fix round: date assertions use fields the grader does not have, most assertions match ordinary words, and the request lists the expected sections; replaced by t7-program-brief"
+}

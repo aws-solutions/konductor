@@ -1,7 +1,7 @@
 ---
 name: user-story-writing
-description: 'Creates user stories with INVEST principles, epics, and acceptance criteria from business requirements or product documentation. Use when asked for user stories, epics or acceptance criteria, or to turn a feature idea or rough ask into backlog items, even with no requirements doc yet. Sizes: MVP (10-15 stories), Production (20-30), full (30-40).'
-version: 1.1.0
+description: 'Use when asked for user stories, epics or acceptance criteria, or to turn a feature idea into backlog items, even with no requirements doc. INVEST; MVP 10-15 stories, full 30-40.'
+version: 1.1.1
 tags: [skill, user-stories, agile, invest, acceptance-criteria, requirements]
 ---
 

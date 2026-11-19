@@ -1,0 +1,13 @@
+# Configuration review: catalogue release 2025.03.18-4
+# Reviewed by Maya Chen and Ravi Mehta
+
+ cache-policy.yaml
+-  default_ttl_seconds: 900
+-  jitter_seconds: 60
++  default_ttl_seconds: 1800
++  jitter_seconds: 0
+   warmup_on_reload: true
+   warmup_batch_size: 800
+
+ catalog-api.yaml
+   request_timeout_ms: 2000

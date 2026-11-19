@@ -1,0 +1,8 @@
+[
+  "There's a tax filing freeze from April 15 that blocks all changes. We can't cut over during that, so our window is either April 25-26 or we wait until after May 1.",
+  "The business approved maximum is 15 minutes of service degradation. Payment processing specifically can't be down more than 10 minutes during the cutover window.",
+  "We roll back automatically if services aren't fully operational within 20 minutes of cutover start. The decision point is at T+15, execute by T+20.",
+  "Sarah Johnson (VP Engineering) gives the final go/no-go, but she wants Alex Rodriguez (Platform Lead) and Lisa Wong (Payment Lead) to confirm their areas are ready first.",
+  "Payment messages require strict FIFO ordering. We'll use a single Kafka partition for all payment topics to guarantee this, even though it limits throughput to 2,000 messages per second.",
+  "We'll run both systems in parallel for 21 days. That's the minimum per security policy but saves cost versus the full 30 days. After 21 days with no issues, we'll turn off RabbitMQ."
+]

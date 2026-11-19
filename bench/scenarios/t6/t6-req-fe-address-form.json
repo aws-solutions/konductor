@@ -1,0 +1,222 @@
+{
+  "id": "t6-req-fe-address-form",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "frontend",
+  "questions": "scripted",
+  "prompt": "We need a clear set of requirements for redesigning the checkout address form in our small web shop frontend, for the frontend team. Read the project material and turn it into requirements specific enough to build and test, including behavior, validation, accessibility, mobile use, analytics, and unresolved assumptions. Put the result at docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "launch scope",
+          "countries",
+          "country rollout",
+          "launch country"
+        ],
+        "answer": "For the first release, ship address entry only for the United States, Canada, and the United Kingdom. Australia is explicitly deferred until the second rollout on 2026-04-15."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "postcode format",
+          "postal code rules",
+          "zip format",
+          "postal validation"
+        ],
+        "answer": "US ZIP codes may be five digits or five digits plus a hyphen and four digits; Canada uses A1A 1A1; the UK uses the current outward/inward pattern. Run the format check on blur, while server validation remains authoritative."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "address lookup",
+          "lookup provider",
+          "lookup service",
+          "suggestion limit"
+        ],
+        "answer": "Use the ParcelPin Lookup v2 service. Allow at most 3 lookup requests in one checkout session; after that, show manual entry and do not block checkout."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "accessibility target",
+          "WCAG",
+          "conformance target",
+          "screen reader"
+        ],
+        "answer": "The form must meet WCAG 2.2 AA. Invalid fields need programmatic associations and focus must reach the error summary without relying on color."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "analytics events",
+          "event names",
+          "payload keys",
+          "dashboard tracking"
+        ],
+        "answer": "Keep the existing checkout_address_viewed, checkout_address_submitted, and checkout_address_lookup_used events and their current payload keys unchanged, and fire each event once for its matching action."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "mobile width",
+          "small screen",
+          "touch target",
+          "keyboard"
+        ],
+        "answer": "Design for a 360px-wide viewport without horizontal scrolling; make the primary controls at least 48px tall and keep the keyboard from hiding the active field's error."
+      },
+      {
+        "id": "F7",
+        "topics": [
+          "PO box",
+          "post office box",
+          "delivery address policy",
+          "box address"
+        ],
+        "answer": "Permit PO boxes for the United States and Canada, but reject them for the United Kingdom with an actionable message explaining that a street address is required."
+      },
+      {
+        "id": "F8",
+        "topics": [
+          "autofill",
+          "autocomplete tokens",
+          "browser fill",
+          "unit number"
+        ],
+        "answer": "Use the browser autofill tokens for name, organization, address-line1, address-line2, address-level2, address-level1, postal-code, and country; lookup selection must not overwrite a manually entered unit."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-fe-address-form",
+  "hidden": "t6-req-fe-address-form",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); const t=fs.readFileSync('docs/requirements.md','utf8'); const tick=String.fromCharCode(96); const a=t.indexOf(tick+tick+tick+'json'); const b=t.indexOf(tick+tick+tick,a+1); if(a<0||b<0) process.exit(1); const start=t.indexOf('\\\\n',a)+1; const j=JSON.parse(t.slice(start,b).trim()); if(!Array.isArray(j.requirements)||j.requirements.length<5||j.requirements.some(r=>!r.id||!r.text)) process.exit(1);\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "assumptions|open points|confirm|out of scope",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "quality",
+      "criterion": "Requirements are clear, testable, scoped to the frontend, and distinguish commitments from unresolved decisions (code cannot check this because judgment of clarity and usefulness requires a human reader)",
+      "weight": 2
+    },
+    {
+      "id": "coverage",
+      "criterion": "The document turns the mixed notes into a coherent implementation-ready contract without silently inventing policy (code cannot check this because completeness and faithful synthesis require reviewing the source material)",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "kiro-requirements-generation",
+    "socratic-elicitation"
+  ],
+  "targetSop": "k-context-gathering",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:kiro-requirements-generation",
+      "skill:socratic-elicitation",
+      "sop:k-context-gathering"
+    ],
+    "mustNotLoad": [
+      "skill:frontend-development",
+      "skill:frontend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/alphagov/govuk-design-system",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies the desired outcome (requirements document) and format, but does not prescribe methods, frameworks, or processes."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the output location, JSON structure, and topic areas. Hidden tests check for specific facts from scriptedUser answers that cannot be guessed from fixture alone."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires synthesizing 8 distinct facts from scriptedUser across multiple domains (countries, validation, lookup, accessibility, analytics, mobile, PO box, autofill). A quick answer would miss critical details like ParcelPin v2, the 3-request limit, or WCAG 2.2 AA specifically."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All scripted facts have reasonable topic mappings (e.g., 'launch scope', 'countries' -> country list). The reference scores 100/100. No impossible requirements detected."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Key decisions (ParcelPin v2, 3-request limit, WCAG 2.2 AA, PO box rules, specific event names) are only in scriptedUser facts, not in fixture. Fixture contains permissive validation code and broader country list that would mislead without asking."
+      }
+    ]
+  }
+}

@@ -1,0 +1,91 @@
+ticket_id,title,initiative,status,points,sprint,updated,links,depends_on,comments,owner
+COVE-301,Cache polish,Relay,Ready,13,S-07,2027-07-09,,,Small follow-up from the weekly review.,Jon
+COVE-302,Guard review,Relay,Done,5,S-08,2027-07-12,,,,Priya
+COVE-303,Ledger adapter,Relay,Done,2,S-09,2027-07-15,,,Waiting for the usual test fixture refresh.,Mira
+COVE-304,Handoff rules,Harbor,Done,8,S-10,2027-07-18,,,Acceptance notes are in the linked design.,Mira
+COVE-305,Ledger adapter,Relay,Done,3,S-11,2027-07-21,,,Waiting for the usual test fixture refresh.,Priya
+COVE-306,Mapping polish,Relay,New,13,S-12,2027-07-24,,,One empty estimate was retained from the export.,Priya
+COVE-307,Cache review,Relay,Done,5,S-13,2027-07-27,,,No customer-visible wording needed.,Sol
+COVE-308,Cache rules,Relay,Done,2,S-07,2027-07-30,,,Small follow-up from the weekly review.,Mira
+COVE-309,Cache review,Relay,Done,8,S-08,2027-08-02,,,Waiting for the usual test fixture refresh.,Tess
+COVE-310,Retry polish,Relay,Done,3,S-09,2027-08-05,,,Waiting for the usual test fixture refresh.,Tess
+COVE-311,Schema rules,Relay,Done,13,S-10,2027-08-08,,,Acceptance notes are in the linked design.,Priya
+COVE-312,Schema polish,Relay,Done,5,S-11,2027-08-11,,,Imported from an older queue; owner field was blank.,
+COVE-313,Session review,Relay,Done,2,S-12,2027-08-14,,,One empty estimate was retained from the export.,Tess
+COVE-314,Ledger adapter,Relay,Done,8,S-13,2027-08-17,,,No customer-visible wording needed.,Jon
+COVE-315,Export polish,Relay,Done,3,S-07,2027-08-20,,,,Jon
+COVE-316,Handoff rules,Relay,Done,13,S-08,2027-08-23,,,Acceptance notes are in the linked design.,Priya
+COVE-317,Handoff rules,Harbor,Done,5,S-09,2027-08-26,,,,Jon
+COVE-318,Mapping review,Relay,New,2,S-10,2027-08-29,,,Small follow-up from the weekly review.,Sol
+COVE-319,Retry rules,Relay,Done,8,S-11,2027-07-06,,,No customer-visible wording needed.,Tess
+COVE-320,Routing review,Relay,Done,3,S-12,2027-07-09,,,No customer-visible wording needed.,Priya
+COVE-321,Export service,Relay,Done,13,S-13,2027-07-12,,,Waiting for the usual test fixture refresh.,Jon
+COVE-322,Guard polish,Relay,Done,5,S-07,2027-07-15,,,,Priya
+COVE-323,Handoff rules,Relay,In Progress,2,S-08,2027-07-18,,,Acceptance notes are in the linked design.,Mira
+COVE-324,Routing review,Relay,Done,8,S-09,2027-07-21,,,One empty estimate was retained from the export.,Jon
+COVE-325,Routing service,Relay,Done,3,S-10,2027-07-24,,,Acceptance notes are in the linked design.,Tess
+COVE-326,Routing rules,Relay,Done,13,S-11,2027-07-27,,,One empty estimate was retained from the export.,Mira
+COVE-327,Cache review,Relay,Done,5,S-12,2027-07-30,,,Small follow-up from the weekly review.,Sol
+COVE-328,Handoff polish,Relay,Done,2,S-13,2027-08-02,,,Waiting for the usual test fixture refresh.,Jon
+COVE-329,Retry rules,Relay,Done,8,S-07,2027-08-05,,,,Priya
+COVE-330,Schema polish,Harbor,Done,3,S-08,2027-08-08,,,Acceptance notes are in the linked design.,Tess
+COVE-331,Client session bridge,Relay,Ready,8,S-10,2027-08-11,,,needs BEAM-224; sample payload is available.,Sol
+COVE-332,Routing review,Relay,Done,5,S-10,2027-08-14,,,No customer-visible wording needed.,Sol
+COVE-333,Routing polish,Relay,Done,2,S-11,2027-08-17,,,Acceptance notes are in the linked design.,Priya
+COVE-334,Export service,Relay,Done,8,S-12,2027-08-20,,,Small follow-up from the weekly review.,Tess
+COVE-335,Handoff polish,Relay,In Progress,3,S-13,2027-08-23,,,No customer-visible wording needed.,Jon
+COVE-336,Schema adapter,Relay,Done,13,S-07,2027-08-26,,,Waiting for the usual test fixture refresh.,Mira
+COVE-337,Handoff adapter,Relay,Done,5,S-08,2027-08-29,,,One empty estimate was retained from the export.,Mira
+COVE-338,Retry polish,Relay,Done,2,S-09,2027-07-06,,,,Jon
+COVE-339,Routing review,Relay,Done,8,S-10,2027-07-09,,,One empty estimate was retained from the export.,Priya
+COVE-340,Schema polish,Relay,Ready,3,S-11,2027-07-12,,,,Tess
+COVE-341,Routing review,Relay,Done,13,S-12,2027-07-15,,,,Tess
+COVE-342,Bridge acceptance checks,Relay,In Progress,8,S-11,2027-07-18,,,needs COVE-331; checking the mobile retry case.,Sol
+ARC-143,Schema mapping review,Relay,Ready,5,S-10,2027-07-20,,,Review sample is ready for the next pass.,Tess
+COVE-344,Ledger service,Relay,Done,8,S-08,2027-07-24,,,,Tess
+COVE-345,Session rules,Relay,Done,3,S-09,2027-07-27,,,Small follow-up from the weekly review.,Tess
+COVE-346,Routing rules,Relay,Done,13,S-10,2027-07-30,,,Acceptance notes are in the linked design.,Jon
+COVE-347,Ledger service,Relay,Done,5,S-11,2027-08-02,,,One empty estimate was retained from the export.,Mira
+COVE-348,Handoff review,Relay,Done,2,S-12,2027-08-05,,,Small follow-up from the weekly review.,Priya
+COVE-349,Guard review,Relay,Done,8,S-13,2027-08-08,,,Small follow-up from the weekly review.,Sol
+COVE-350,Export rules,Relay,Done,3,S-07,2027-08-11,,,Waiting for the usual test fixture refresh.,Tess
+COVE-351,Routing rules,Relay,Done,13,S-08,2027-08-14,,,One empty estimate was retained from the export.,Jon
+COVE-352,Routing adapter,Relay,Ready,5,S-09,2027-08-17,,,No customer-visible wording needed.,Sol
+COVE-353,Session review,Relay,Done,2,S-10,2027-08-20,,,No customer-visible wording needed.,Tess
+COVE-354,Cache rollback audit,Harbor,Blocked,13,S-09,2027-08-23,,,Waiting for a separate maintenance window.,Priya
+COVE-355,Mapping rules,Relay,Done,3,S-12,2027-08-26,,,One empty estimate was retained from the export.,Tess
+COVE-356,Retry review,Harbor,Done,13,S-13,2027-08-29,,,No customer-visible wording needed.,Sol
+COVE-357,Cache polish,Relay,New,5,S-07,2027-07-06,,,Acceptance notes are in the linked design.,Mira
+COVE-358,Guard polish,Relay,Done,2,S-08,2027-07-09,,,No customer-visible wording needed.,Sol
+COVE-359,Export service,Relay,Done,8,S-09,2027-07-12,,,Acceptance notes are in the linked design.,Jon
+COVE-360,Retry review,Relay,Done,3,S-10,2027-07-15,,,Small follow-up from the weekly review.,Tess
+COVE-361,Retry review,Relay,Done,13,S-11,2027-07-18,,,No customer-visible wording needed.,Sol
+COVE-362,Handoff adapter,Relay,Done,5,S-12,2027-07-21,,,Waiting for the usual test fixture refresh.,Priya
+COVE-363,Session rules,Relay,Done,2,S-13,2027-07-24,,,Small follow-up from the weekly review.,Sol
+COVE-364,Routing rules,Relay,Done,8,S-07,2027-07-27,,,One empty estimate was retained from the export.,Jon
+COVE-365,Session polish,Relay,Done,3,S-08,2027-07-30,,,One empty estimate was retained from the export.,Priya
+COVE-366,Mapping rules,Relay,Done,13,S-09,2027-08-02,,,Small follow-up from the weekly review.,Tess
+COVE-367,Session rules,Relay,Done,5,S-10,2027-08-05,,,Acceptance notes are in the linked design.,Jon
+COVE-368,Guard polish,Relay,Done,2,S-11,2027-08-08,,,Acceptance notes are in the linked design.,Tess
+COVE-369,Ledger polish,Harbor,New,8,S-12,2027-08-11,,,No customer-visible wording needed.,Priya
+COVE-370,Export service,Relay,Done,3,S-13,2027-08-14,,,,Sol
+COVE-371,Routing adapter,Relay,Done,13,S-07,2027-08-17,,,,Sol
+COVE-372,Handoff rules,Relay,Done,5,S-08,2027-08-20,,,Waiting for the usual test fixture refresh.,Sol
+COVE-373,Schema review,Relay,Done,2,S-09,2027-08-23,,,Waiting for the usual test fixture refresh.,Tess
+COVE-374,Session rules,Relay,In Progress,8,S-10,2027-08-26,,,Waiting for the usual test fixture refresh.,Tess
+COVE-375,Mapping service,Relay,Done,,S-11,2027-08-29,,,Waiting for the usual test fixture refresh.,Jon
+COVE-376,Retry service,Relay,Done,13,S-12,2027-07-06,,,Acceptance notes are in the linked design.,Priya
+COVE-377,Schema polish,Relay,Done,5,S-13,2027-07-09,,,Small follow-up from the weekly review.,Sol
+COVE-378,Handoff review,Relay,Done,2,S-07,2027-07-12,,,,Tess
+COVE-379,Retry review,Relay,Done,8,S-08,2027-07-15,,,Waiting for the usual test fixture refresh.,Jon
+COVE-380,Mapping service,Relay,Done,3,S-09,2027-07-18,,,Waiting for the usual test fixture refresh.,Jon
+COVE-381,Export rules,Relay,Done,13,S-10,2027-07-21,,,No customer-visible wording needed.,Sol
+COVE-382,Guard adapter,Harbor,Done,5,S-11,2027-07-24,,,Small follow-up from the weekly review.,Mira
+COVE-383,Guard rules,Relay,Done,2,S-12,2027-07-27,,,One empty estimate was retained from the export.,Mira
+COVE-384,Routing polish,Relay,Done,8,S-13,2027-07-30,,,One empty estimate was retained from the export.,Priya
+COVE-385,Retry service,Relay,Done,3,S-07,2027-08-02,,,No customer-visible wording needed.,Priya
+COVE-386,Mapping review,Relay,In Progress,13,S-08,2027-08-05,,,Waiting for the usual test fixture refresh.,Sol
+COVE-387,Export polish,Relay,Done,5,S-09,2027-08-08,,,Small follow-up from the weekly review.,Mira
+COVE-388,Ledger review,Relay,Done,2,S-10,2027-08-11,,,Waiting for the usual test fixture refresh.,Tess
+COVE-389,Export rules,Relay,Done,8,S-11,2027-08-14,,,,Mira
+COVE-390,Retry review,Relay,Done,3,S-12,2027-08-17,,,Waiting for the usual test fixture refresh.,Priya

@@ -1,0 +1,1440 @@
+2026-06-08T00:00:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00001f41-26ef
+2026-06-08T00:01:00Z service=edge-api WARN slow request req-00001f42-0484 region=veyra route=/wallet latency_ms=1261
+2026-06-08T00:02:00Z service=edge-api WARN slow request req-00001f43-a5d7 region=solmere route=/wallet latency_ms=1320
+2026-06-08T00:03:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00001f44-a356
+2026-06-08T00:04:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T00:05:00Z service=edge-api INFO request req-00001f46-66a3 region=veyra route=/wallet status=200 latency_ms=12
+2026-06-08T00:06:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=69
+2026-06-08T00:07:00Z service=edge-api INFO request req-00001f48-1ad7 region=veyra route=/wallet status=200 latency_ms=69
+2026-06-08T00:08:00Z service=edge-api INFO request req-00001f49-928c region=solmere route=/wallet status=200 latency_ms=56
+2026-06-08T00:09:00Z service=edge-api INFO request req-00001f4a-9a38 region=veyra route=/wallet status=200 latency_ms=68
+2026-06-08T00:10:00Z service=edge-api WARN slow request req-00001f4b-c38d region=solmere route=/wallet latency_ms=969
+2026-06-08T00:11:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00001f4c-c10f
+2026-06-08T00:12:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=55
+2026-06-08T00:13:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00001f4e-9e65
+2026-06-08T00:14:00Z service=edge-api INFO request req-00001f4f-cd0b region=solmere route=/wallet status=200 latency_ms=64
+2026-06-08T00:15:00Z service=edge-api INFO request req-00001f50-f905 region=veyra route=/wallet status=200 latency_ms=39
+2026-06-08T00:16:00Z service=edge-api INFO request req-00001f51-52cf region=solmere route=/wallet status=200 latency_ms=27
+2026-06-08T00:17:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T00:18:00Z service=edge-api INFO request req-00001f53-da41 region=solmere route=/wallet status=200 latency_ms=25
+2026-06-08T00:19:00Z service=edge-api INFO request req-00001f54-153a region=veyra route=/wallet status=204 latency_ms=22
+2026-06-08T00:20:00Z service=edge-api INFO request req-00001f55-e43c region=solmere route=/wallet status=204 latency_ms=16
+2026-06-08T00:21:00Z service=edge-api INFO request req-00001f56-a764 region=veyra route=/wallet status=204 latency_ms=16
+2026-06-08T00:22:00Z service=edge-api INFO request req-00001f57-d721 region=solmere route=/wallet status=200 latency_ms=61
+2026-06-08T00:23:00Z service=edge-api WARN slow request req-00001f58-2bfc region=veyra route=/wallet latency_ms=1570
+2026-06-08T00:24:00Z service=edge-api INFO request req-00001f59-2cae region=solmere route=/wallet status=204 latency_ms=73
+2026-06-08T00:25:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00001f5a-069e
+2026-06-08T00:26:00Z service=edge-api INFO request req-00001f5b-3e68 region=solmere route=/wallet status=204 latency_ms=68
+2026-06-08T00:27:00Z service=edge-api INFO request req-00001f5c-c9df region=veyra route=/wallet status=204 latency_ms=42
+2026-06-08T00:28:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001f5d-2df8
+2026-06-08T00:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=64
+2026-06-08T00:30:00Z service=edge-api WARN slow request req-00001f5f-2970 region=solmere route=/wallet latency_ms=1076
+2026-06-08T00:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T00:32:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001f61-7cb2
+2026-06-08T00:33:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f62-f47e
+2026-06-08T00:34:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T00:35:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f64-a425
+2026-06-08T00:36:00Z service=edge-api INFO request req-00001f65-4abb region=solmere route=/wallet status=200 latency_ms=23
+2026-06-08T00:37:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f66-c0f3
+2026-06-08T00:38:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001f67-ba1b
+2026-06-08T00:39:00Z service=edge-api WARN slow request req-00001f68-903b region=veyra route=/wallet latency_ms=1865
+2026-06-08T00:40:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00001f69-c159
+2026-06-08T00:41:00Z service=edge-api WARN slow request req-00001f6a-bb6f region=veyra route=/wallet latency_ms=1286
+2026-06-08T00:42:00Z service=edge-api WARN slow request req-00001f6b-5fd7 region=solmere route=/wallet latency_ms=921
+2026-06-08T00:43:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00001f6c-19f9
+2026-06-08T00:44:00Z service=edge-api WARN slow request req-00001f6d-77ae region=solmere route=/wallet latency_ms=1344
+2026-06-08T00:45:00Z service=edge-api INFO request req-00001f6e-89db region=veyra route=/wallet status=204 latency_ms=45
+2026-06-08T00:46:00Z service=edge-api WARN slow request req-00001f6f-262e region=solmere route=/wallet latency_ms=1030
+2026-06-08T00:47:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f70-3eec
+2026-06-08T00:48:00Z service=edge-api INFO request req-00001f71-6619 region=solmere route=/wallet status=200 latency_ms=38
+2026-06-08T00:49:00Z service=edge-api WARN slow request req-00001f72-85a6 region=veyra route=/wallet latency_ms=1792
+2026-06-08T00:50:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00001f73-0f08
+2026-06-08T00:51:00Z service=edge-api INFO request req-00001f74-7c77 region=veyra route=/wallet status=204 latency_ms=19
+2026-06-08T00:52:00Z service=edge-api WARN slow request req-00001f75-eb2a region=solmere route=/wallet latency_ms=1788
+2026-06-08T00:53:00Z service=edge-api INFO request req-00001f76-3386 region=veyra route=/wallet status=204 latency_ms=43
+2026-06-08T00:54:00Z service=edge-api INFO request req-00001f77-30c9 region=solmere route=/wallet status=204 latency_ms=24
+2026-06-08T00:55:00Z service=edge-api INFO request req-00001f78-122e region=veyra route=/wallet status=204 latency_ms=58
+2026-06-08T00:56:00Z service=edge-api INFO request req-00001f79-1a0b region=solmere route=/wallet status=204 latency_ms=32
+2026-06-08T00:57:00Z service=edge-api WARN slow request req-00001f7a-dddd region=veyra route=/wallet latency_ms=1353
+2026-06-08T00:58:00Z service=edge-api INFO request req-00001f7b-6bb9 region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T00:59:00Z service=edge-api INFO request req-00001f7c-131a region=veyra route=/wallet status=200 latency_ms=29
+2026-06-08T01:00:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001f7d-c590
+2026-06-08T01:01:00Z service=edge-api INFO request req-00001f7e-074b region=veyra route=/wallet status=204 latency_ms=56
+2026-06-08T01:02:00Z service=edge-api INFO request req-00001f7f-d8a9 region=solmere route=/wallet status=200 latency_ms=18
+2026-06-08T01:03:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f80-8fe5
+2026-06-08T01:04:00Z service=edge-api INFO request req-00001f81-6a99 region=solmere route=/wallet status=204 latency_ms=75
+2026-06-08T01:05:00Z service=edge-api WARN slow request req-00001f82-fc17 region=veyra route=/wallet latency_ms=1495
+2026-06-08T01:06:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00001f83-1668
+2026-06-08T01:07:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f84-0ea9
+2026-06-08T01:08:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00001f85-3b6e
+2026-06-08T01:09:00Z service=edge-api INFO request req-00001f86-775d region=veyra route=/wallet status=204 latency_ms=74
+2026-06-08T01:10:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T01:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=29
+2026-06-08T01:12:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001f89-63fe
+2026-06-08T01:13:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001f8a-5a67
+2026-06-08T01:14:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00001f8b-580b
+2026-06-08T01:15:00Z service=edge-api WARN slow request req-00001f8c-3065 region=veyra route=/wallet latency_ms=1174
+2026-06-08T01:16:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001f8d-c35f
+2026-06-08T01:17:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T01:18:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00001f8f-6ef1
+2026-06-08T01:19:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00001f90-38ef
+2026-06-08T01:20:00Z service=edge-api INFO request req-00001f91-9333 region=solmere route=/wallet status=204 latency_ms=55
+2026-06-08T01:21:00Z service=edge-api INFO request req-00001f92-dac4 region=veyra route=/wallet status=204 latency_ms=17
+2026-06-08T01:22:00Z service=edge-api INFO request req-00001f93-adb2 region=solmere route=/wallet status=204 latency_ms=40
+2026-06-08T01:23:00Z service=edge-api INFO request req-00001f94-b099 region=veyra route=/wallet status=200 latency_ms=9
+2026-06-08T01:24:00Z service=edge-api WARN slow request req-00001f95-0111 region=solmere route=/wallet latency_ms=1386
+2026-06-08T01:25:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=48
+2026-06-08T01:26:00Z service=edge-api INFO request req-00001f97-df60 region=solmere route=/wallet status=200 latency_ms=47
+2026-06-08T01:27:00Z service=edge-api INFO request req-00001f98-88d5 region=veyra route=/wallet status=200 latency_ms=17
+2026-06-08T01:28:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00001f99-b76b
+2026-06-08T01:29:00Z service=edge-api WARN slow request req-00001f9a-1f28 region=veyra route=/wallet latency_ms=1607
+2026-06-08T01:30:00Z service=edge-api WARN slow request req-00001f9b-654d region=solmere route=/wallet latency_ms=1621
+2026-06-08T01:31:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00001f9c-e0e9
+2026-06-08T01:32:00Z service=edge-api WARN slow request req-00001f9d-5a8f region=solmere route=/wallet latency_ms=1244
+2026-06-08T01:33:00Z service=edge-api INFO request req-00001f9e-d903 region=veyra route=/wallet status=200 latency_ms=49
+2026-06-08T01:34:00Z service=edge-api INFO request req-00001f9f-7bf0 region=solmere route=/wallet status=204 latency_ms=36
+2026-06-08T01:35:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001fa0-987c
+2026-06-08T01:36:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T01:37:00Z service=edge-api INFO request req-00001fa2-d712 region=veyra route=/wallet status=204 latency_ms=23
+2026-06-08T01:38:00Z service=edge-api INFO request req-00001fa3-4c22 region=solmere route=/wallet status=200 latency_ms=37
+2026-06-08T01:39:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00001fa4-5370
+2026-06-08T01:40:00Z service=edge-api INFO request req-00001fa5-4ffe region=solmere route=/wallet status=200 latency_ms=63
+2026-06-08T01:41:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00001fa6-cfa5
+2026-06-08T01:42:00Z service=edge-api INFO request req-00001fa7-afcb region=solmere route=/wallet status=200 latency_ms=61
+2026-06-08T01:43:00Z service=edge-api INFO request req-00001fa8-de2b region=veyra route=/wallet status=200 latency_ms=68
+2026-06-08T01:44:00Z service=edge-api WARN slow request req-00001fa9-783c region=solmere route=/wallet latency_ms=1343
+2026-06-08T01:45:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=53
+2026-06-08T01:46:00Z service=edge-api INFO request req-00001fab-d77f region=solmere route=/wallet status=200 latency_ms=35
+2026-06-08T01:47:00Z service=edge-api INFO request req-00001fac-c4b1 region=veyra route=/wallet status=204 latency_ms=12
+2026-06-08T01:48:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=45
+2026-06-08T01:49:00Z service=edge-api INFO request req-00001fae-42ff region=veyra route=/wallet status=200 latency_ms=18
+2026-06-08T01:50:00Z service=edge-api WARN slow request req-00001faf-272e region=solmere route=/wallet latency_ms=975
+2026-06-08T01:51:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00001fb0-2965
+2026-06-08T01:52:00Z service=edge-api INFO request req-00001fb1-814b region=solmere route=/wallet status=200 latency_ms=26
+2026-06-08T01:53:00Z service=edge-api INFO request req-00001fb2-44ff region=veyra route=/wallet status=204 latency_ms=47
+2026-06-08T01:54:00Z service=edge-api INFO request req-00001fb3-2d88 region=solmere route=/wallet status=200 latency_ms=45
+2026-06-08T01:55:00Z service=edge-api WARN slow request req-00001fb4-7153 region=veyra route=/wallet latency_ms=1231
+2026-06-08T01:56:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T01:57:00Z service=edge-api INFO request req-00001fb6-01f7 region=veyra route=/wallet status=200 latency_ms=43
+2026-06-08T01:58:00Z service=edge-api WARN slow request req-00001fb7-fb96 region=solmere route=/wallet latency_ms=1830
+2026-06-08T01:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=47
+2026-06-08T02:00:00Z service=edge-api INFO request req-00001fb9-c67c region=solmere route=/wallet status=204 latency_ms=38
+2026-06-08T02:01:00Z service=edge-api INFO request req-00001fba-c3e9 region=veyra route=/wallet status=204 latency_ms=24
+2026-06-08T02:02:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=69
+2026-06-08T02:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=23
+2026-06-08T02:04:00Z service=edge-api INFO request req-00001fbd-6fe2 region=solmere route=/wallet status=200 latency_ms=33
+2026-06-08T02:05:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=9
+2026-06-08T02:06:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=58
+2026-06-08T02:07:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=68
+2026-06-08T02:08:00Z service=edge-api INFO request req-00001fc1-16ba region=solmere route=/wallet status=204 latency_ms=67
+2026-06-08T02:09:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001fc2-24c8
+2026-06-08T02:10:00Z service=edge-api WARN slow request req-00001fc3-bf9b region=solmere route=/wallet latency_ms=1208
+2026-06-08T02:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=10
+2026-06-08T02:12:00Z service=edge-api INFO request req-00001fc5-726e region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T02:13:00Z service=edge-api INFO request req-00001fc6-52ca region=veyra route=/wallet status=200 latency_ms=20
+2026-06-08T02:14:00Z service=edge-api INFO request req-00001fc7-f288 region=solmere route=/wallet status=204 latency_ms=66
+2026-06-08T02:15:00Z service=edge-api INFO request req-00001fc8-04e8 region=veyra route=/wallet status=200 latency_ms=32
+2026-06-08T02:16:00Z service=edge-api INFO request req-00001fc9-61c5 region=solmere route=/wallet status=204 latency_ms=12
+2026-06-08T02:17:00Z service=edge-api WARN slow request req-00001fca-0fb7 region=veyra route=/wallet latency_ms=1158
+2026-06-08T02:18:00Z service=edge-api INFO request req-00001fcb-561f region=solmere route=/wallet status=200 latency_ms=31
+2026-06-08T02:19:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=23
+2026-06-08T02:20:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=16
+2026-06-08T02:21:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001fce-3b3f
+2026-06-08T02:22:00Z service=edge-api INFO request req-00001fcf-4c93 region=solmere route=/wallet status=204 latency_ms=31
+2026-06-08T02:23:00Z service=edge-api WARN slow request req-00001fd0-f70a region=veyra route=/wallet latency_ms=976
+2026-06-08T02:24:00Z service=edge-api INFO request req-00001fd1-7101 region=solmere route=/wallet status=200 latency_ms=17
+2026-06-08T02:25:00Z service=edge-api WARN slow request req-00001fd2-0ee8 region=veyra route=/wallet latency_ms=1127
+2026-06-08T02:26:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001fd3-dc8a
+2026-06-08T02:27:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001fd4-cff4
+2026-06-08T02:28:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00001fd5-653b
+2026-06-08T02:29:00Z service=edge-api INFO request req-00001fd6-db02 region=veyra route=/wallet status=204 latency_ms=13
+2026-06-08T02:30:00Z service=edge-api INFO request req-00001fd7-c3dd region=solmere route=/wallet status=200 latency_ms=43
+2026-06-08T02:31:00Z service=edge-api INFO request req-00001fd8-c5fa region=veyra route=/wallet status=200 latency_ms=15
+2026-06-08T02:32:00Z service=edge-api INFO request req-00001fd9-b0be region=solmere route=/wallet status=200 latency_ms=33
+2026-06-08T02:33:00Z service=edge-api INFO request req-00001fda-de93 region=veyra route=/wallet status=200 latency_ms=10
+2026-06-08T02:34:00Z service=edge-api WARN slow request req-00001fdb-ba33 region=solmere route=/wallet latency_ms=1750
+2026-06-08T02:35:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00001fdc-45da
+2026-06-08T02:36:00Z service=edge-api INFO request req-00001fdd-b87b region=solmere route=/wallet status=204 latency_ms=59
+2026-06-08T02:37:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=21
+2026-06-08T02:38:00Z service=edge-api INFO request req-00001fdf-723d region=solmere route=/wallet status=204 latency_ms=41
+2026-06-08T02:39:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=22
+2026-06-08T02:40:00Z service=edge-api INFO request req-00001fe1-68e6 region=solmere route=/wallet status=200 latency_ms=65
+2026-06-08T02:41:00Z service=edge-api INFO request req-00001fe2-87a9 region=veyra route=/wallet status=200 latency_ms=16
+2026-06-08T02:42:00Z service=edge-api INFO request req-00001fe3-6771 region=solmere route=/wallet status=204 latency_ms=19
+2026-06-08T02:43:00Z service=edge-api WARN slow request req-00001fe4-75d3 region=veyra route=/wallet latency_ms=1540
+2026-06-08T02:44:00Z service=edge-api INFO request req-00001fe5-92bb region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T02:45:00Z service=edge-api WARN slow request req-00001fe6-b7e4 region=veyra route=/wallet latency_ms=1159
+2026-06-08T02:46:00Z service=edge-api WARN slow request req-00001fe7-293b region=solmere route=/wallet latency_ms=1424
+2026-06-08T02:47:00Z service=edge-api INFO request req-00001fe8-8a0f region=veyra route=/wallet status=200 latency_ms=41
+2026-06-08T02:48:00Z service=edge-api INFO request req-00001fe9-826f region=solmere route=/wallet status=200 latency_ms=41
+2026-06-08T02:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=29
+2026-06-08T02:50:00Z service=edge-api WARN slow request req-00001feb-1378 region=solmere route=/wallet latency_ms=1401
+2026-06-08T02:51:00Z service=edge-api WARN slow request req-00001fec-5645 region=veyra route=/wallet latency_ms=1685
+2026-06-08T02:52:00Z service=edge-api INFO request req-00001fed-d880 region=solmere route=/wallet status=200 latency_ms=11
+2026-06-08T02:53:00Z service=edge-api INFO request req-00001fee-cabf region=veyra route=/wallet status=200 latency_ms=44
+2026-06-08T02:54:00Z service=edge-api INFO request req-00001fef-d974 region=solmere route=/wallet status=204 latency_ms=71
+2026-06-08T02:55:00Z service=edge-api WARN slow request req-00001ff0-c1e1 region=veyra route=/wallet latency_ms=1386
+2026-06-08T02:56:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00001ff1-a3f0
+2026-06-08T02:57:00Z service=edge-api WARN slow request req-00001ff2-9ea4 region=veyra route=/wallet latency_ms=1489
+2026-06-08T02:58:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00001ff3-8876
+2026-06-08T02:59:00Z service=edge-api INFO request req-00001ff4-45f7 region=veyra route=/wallet status=200 latency_ms=57
+2026-06-08T03:00:00Z service=edge-api INFO request req-00001ff5-599a region=solmere route=/wallet status=200 latency_ms=22
+2026-06-08T03:01:00Z service=edge-api INFO request req-00001ff6-af96 region=veyra route=/wallet status=204 latency_ms=53
+2026-06-08T03:02:00Z service=edge-api WARN slow request req-00001ff7-0f7b region=solmere route=/wallet latency_ms=1287
+2026-06-08T03:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=65
+2026-06-08T03:04:00Z service=edge-api INFO request req-00001ff9-105a region=solmere route=/wallet status=200 latency_ms=10
+2026-06-08T03:05:00Z service=edge-api INFO request req-00001ffa-78e3 region=veyra route=/wallet status=204 latency_ms=11
+2026-06-08T03:06:00Z service=edge-api INFO request req-00001ffb-6cd6 region=solmere route=/wallet status=204 latency_ms=48
+2026-06-08T03:07:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=15
+2026-06-08T03:08:00Z service=edge-api INFO request req-00001ffd-53f9 region=solmere route=/wallet status=204 latency_ms=71
+2026-06-08T03:09:00Z service=edge-api WARN slow request req-00001ffe-f194 region=veyra route=/wallet latency_ms=1470
+2026-06-08T03:10:00Z service=edge-api WARN slow request req-00001fff-6e53 region=solmere route=/wallet latency_ms=1734
+2026-06-08T03:11:00Z service=edge-api WARN slow request req-00002000-34c6 region=veyra route=/wallet latency_ms=1140
+2026-06-08T03:12:00Z service=edge-api WARN slow request req-00002001-536f region=solmere route=/wallet latency_ms=1302
+2026-06-08T03:13:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=10
+2026-06-08T03:14:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=59
+2026-06-08T03:15:00Z service=edge-api INFO request req-00002004-d8af region=veyra route=/wallet status=204 latency_ms=34
+2026-06-08T03:16:00Z service=edge-api WARN slow request req-00002005-7f40 region=solmere route=/wallet latency_ms=1752
+2026-06-08T03:17:00Z service=edge-api INFO request req-00002006-8c12 region=veyra route=/wallet status=204 latency_ms=52
+2026-06-08T03:18:00Z service=edge-api INFO request req-00002007-b35d region=solmere route=/wallet status=204 latency_ms=53
+2026-06-08T03:19:00Z service=edge-api INFO request req-00002008-0a9f region=veyra route=/wallet status=204 latency_ms=71
+2026-06-08T03:20:00Z service=edge-api WARN slow request req-00002009-0f79 region=solmere route=/wallet latency_ms=1015
+2026-06-08T03:21:00Z service=edge-api INFO request req-0000200a-9925 region=veyra route=/wallet status=204 latency_ms=16
+2026-06-08T03:22:00Z service=edge-api INFO request req-0000200b-0f7e region=solmere route=/wallet status=204 latency_ms=43
+2026-06-08T03:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=63
+2026-06-08T03:24:00Z service=edge-api INFO request req-0000200d-261a region=solmere route=/wallet status=200 latency_ms=51
+2026-06-08T03:25:00Z service=edge-api WARN slow request req-0000200e-a716 region=veyra route=/wallet latency_ms=1715
+2026-06-08T03:26:00Z service=edge-api INFO request req-0000200f-23f2 region=solmere route=/wallet status=200 latency_ms=68
+2026-06-08T03:27:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002010-3971
+2026-06-08T03:28:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=10
+2026-06-08T03:29:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002012-45ca
+2026-06-08T03:30:00Z service=edge-api INFO request req-00002013-85c9 region=solmere route=/wallet status=204 latency_ms=64
+2026-06-08T03:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T03:32:00Z service=edge-api INFO request req-00002015-c318 region=solmere route=/wallet status=200 latency_ms=36
+2026-06-08T03:33:00Z service=edge-api INFO request req-00002016-b8e1 region=veyra route=/wallet status=204 latency_ms=50
+2026-06-08T03:34:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=71
+2026-06-08T03:35:00Z service=edge-api INFO request req-00002018-b548 region=veyra route=/wallet status=200 latency_ms=24
+2026-06-08T03:36:00Z service=edge-api INFO request req-00002019-6abf region=solmere route=/wallet status=204 latency_ms=31
+2026-06-08T03:37:00Z service=edge-api INFO request req-0000201a-163c region=veyra route=/wallet status=200 latency_ms=19
+2026-06-08T03:38:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=15
+2026-06-08T03:39:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T03:40:00Z service=edge-api INFO request req-0000201d-7f93 region=solmere route=/wallet status=200 latency_ms=64
+2026-06-08T03:41:00Z service=edge-api INFO request req-0000201e-786f region=veyra route=/wallet status=200 latency_ms=65
+2026-06-08T03:42:00Z service=edge-api WARN slow request req-0000201f-5f1a region=solmere route=/wallet latency_ms=1523
+2026-06-08T03:43:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002020-4766
+2026-06-08T03:44:00Z service=edge-api WARN slow request req-00002021-494f region=solmere route=/wallet latency_ms=1123
+2026-06-08T03:45:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002022-c0ec
+2026-06-08T03:46:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T03:47:00Z service=edge-api WARN slow request req-00002024-4785 region=veyra route=/wallet latency_ms=1694
+2026-06-08T03:48:00Z service=edge-api INFO request req-00002025-3cce region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T03:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=49
+2026-06-08T03:50:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002027-8aca
+2026-06-08T03:51:00Z service=edge-api INFO request req-00002028-0511 region=veyra route=/wallet status=200 latency_ms=11
+2026-06-08T03:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=33
+2026-06-08T03:53:00Z service=edge-api INFO request req-0000202a-9443 region=veyra route=/wallet status=200 latency_ms=33
+2026-06-08T03:54:00Z service=edge-api INFO request req-0000202b-b38b region=solmere route=/wallet status=204 latency_ms=54
+2026-06-08T03:55:00Z service=edge-api WARN slow request req-0000202c-551d region=veyra route=/wallet latency_ms=1696
+2026-06-08T03:56:00Z service=edge-api WARN slow request req-0000202d-6926 region=solmere route=/wallet latency_ms=1159
+2026-06-08T03:57:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=65
+2026-06-08T03:58:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000202f-378a
+2026-06-08T03:59:00Z service=edge-api INFO request req-00002030-93f4 region=veyra route=/wallet status=200 latency_ms=65
+2026-06-08T04:00:00Z service=edge-api INFO request req-00002031-58a6 region=solmere route=/wallet status=200 latency_ms=16
+2026-06-08T04:01:00Z service=edge-api INFO request req-00002032-6d45 region=veyra route=/wallet status=204 latency_ms=34
+2026-06-08T04:02:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002033-a153
+2026-06-08T04:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=62
+2026-06-08T04:04:00Z service=edge-api WARN slow request req-00002035-2040 region=solmere route=/wallet latency_ms=1374
+2026-06-08T04:05:00Z service=edge-api INFO request req-00002036-66c0 region=veyra route=/wallet status=200 latency_ms=54
+2026-06-08T04:06:00Z service=edge-api INFO request req-00002037-63f8 region=solmere route=/wallet status=204 latency_ms=34
+2026-06-08T04:07:00Z service=edge-api INFO request req-00002038-8fe4 region=veyra route=/wallet status=200 latency_ms=74
+2026-06-08T04:08:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002039-27db
+2026-06-08T04:09:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000203a-9312
+2026-06-08T04:10:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000203b-4c2c
+2026-06-08T04:11:00Z service=edge-api WARN slow request req-0000203c-a7ef region=veyra route=/wallet latency_ms=1892
+2026-06-08T04:12:00Z service=edge-api INFO request req-0000203d-398f region=solmere route=/wallet status=204 latency_ms=48
+2026-06-08T04:13:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000203e-140d
+2026-06-08T04:14:00Z service=edge-api INFO request req-0000203f-6911 region=solmere route=/wallet status=200 latency_ms=28
+2026-06-08T04:15:00Z service=edge-api INFO request req-00002040-6fa4 region=veyra route=/wallet status=204 latency_ms=32
+2026-06-08T04:16:00Z service=edge-api INFO request req-00002041-81fc region=solmere route=/wallet status=204 latency_ms=38
+2026-06-08T04:17:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002042-b65d
+2026-06-08T04:18:00Z service=edge-api WARN slow request req-00002043-a723 region=solmere route=/wallet latency_ms=1014
+2026-06-08T04:19:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=62
+2026-06-08T04:20:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=65
+2026-06-08T04:21:00Z service=edge-api INFO request req-00002046-fc74 region=veyra route=/wallet status=204 latency_ms=33
+2026-06-08T04:22:00Z service=edge-api INFO request req-00002047-3c0d region=solmere route=/wallet status=204 latency_ms=57
+2026-06-08T04:23:00Z service=edge-api INFO request req-00002048-2b2c region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T04:24:00Z service=edge-api INFO request req-00002049-507a region=solmere route=/wallet status=200 latency_ms=41
+2026-06-08T04:25:00Z service=edge-api INFO request req-0000204a-8cc8 region=veyra route=/wallet status=204 latency_ms=35
+2026-06-08T04:26:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=59
+2026-06-08T04:27:00Z service=edge-api WARN slow request req-0000204c-85d7 region=veyra route=/wallet latency_ms=1526
+2026-06-08T04:28:00Z service=edge-api INFO request req-0000204d-bd96 region=solmere route=/wallet status=204 latency_ms=50
+2026-06-08T04:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=61
+2026-06-08T04:30:00Z service=edge-api INFO request req-0000204f-3869 region=solmere route=/wallet status=204 latency_ms=54
+2026-06-08T04:31:00Z service=edge-api WARN slow request req-00002050-ee47 region=veyra route=/wallet latency_ms=1635
+2026-06-08T04:32:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002051-2e6d
+2026-06-08T04:33:00Z service=edge-api INFO request req-00002052-d163 region=veyra route=/wallet status=204 latency_ms=16
+2026-06-08T04:34:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002053-4dc2
+2026-06-08T04:35:00Z service=edge-api WARN slow request req-00002054-dd7c region=veyra route=/wallet latency_ms=1283
+2026-06-08T04:36:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=71
+2026-06-08T04:37:00Z service=edge-api WARN slow request req-00002056-5d8b region=veyra route=/wallet latency_ms=1447
+2026-06-08T04:38:00Z service=edge-api WARN slow request req-00002057-a37f region=solmere route=/wallet latency_ms=1322
+2026-06-08T04:39:00Z service=edge-api WARN slow request req-00002058-60ca region=veyra route=/wallet latency_ms=1718
+2026-06-08T04:40:00Z service=edge-api INFO request req-00002059-050d region=solmere route=/wallet status=200 latency_ms=39
+2026-06-08T04:41:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000205a-c764
+2026-06-08T04:42:00Z service=edge-api INFO request req-0000205b-3bb6 region=solmere route=/wallet status=200 latency_ms=34
+2026-06-08T04:43:00Z service=edge-api WARN slow request req-0000205c-a16a region=veyra route=/wallet latency_ms=1587
+2026-06-08T04:44:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000205d-2cf8
+2026-06-08T04:45:00Z service=edge-api WARN slow request req-0000205e-015f region=veyra route=/wallet latency_ms=1596
+2026-06-08T04:46:00Z service=edge-api INFO request req-0000205f-b484 region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T04:47:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=13
+2026-06-08T04:48:00Z service=edge-api INFO request req-00002061-ede8 region=solmere route=/wallet status=200 latency_ms=45
+2026-06-08T04:49:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002062-faf6
+2026-06-08T04:50:00Z service=edge-api INFO request req-00002063-3e94 region=solmere route=/wallet status=204 latency_ms=20
+2026-06-08T04:51:00Z service=edge-api WARN slow request req-00002064-a335 region=veyra route=/wallet latency_ms=1026
+2026-06-08T04:52:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002065-8cbc
+2026-06-08T04:53:00Z service=edge-api INFO request req-00002066-c75d region=veyra route=/wallet status=204 latency_ms=55
+2026-06-08T04:54:00Z service=edge-api WARN slow request req-00002067-55f7 region=solmere route=/wallet latency_ms=977
+2026-06-08T04:55:00Z service=edge-api INFO request req-00002068-4d4d region=veyra route=/wallet status=200 latency_ms=58
+2026-06-08T04:56:00Z service=edge-api INFO request req-00002069-7613 region=solmere route=/wallet status=204 latency_ms=71
+2026-06-08T04:57:00Z service=edge-api INFO request req-0000206a-dd06 region=veyra route=/wallet status=200 latency_ms=54
+2026-06-08T04:58:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T04:59:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000206c-bd70
+2026-06-08T05:00:00Z service=edge-api WARN slow request req-0000206d-588d region=solmere route=/wallet latency_ms=1701
+2026-06-08T05:01:00Z service=edge-api WARN slow request req-0000206e-0d59 region=veyra route=/wallet latency_ms=947
+2026-06-08T05:02:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=30
+2026-06-08T05:03:00Z service=edge-api WARN slow request req-00002070-e55a region=veyra route=/wallet latency_ms=1859
+2026-06-08T05:04:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=23
+2026-06-08T05:05:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002072-1428
+2026-06-08T05:06:00Z service=edge-api WARN slow request req-00002073-85c3 region=solmere route=/wallet latency_ms=1392
+2026-06-08T05:07:00Z service=edge-api INFO request req-00002074-eb21 region=veyra route=/wallet status=204 latency_ms=24
+2026-06-08T05:08:00Z service=edge-api INFO request req-00002075-7e37 region=solmere route=/wallet status=200 latency_ms=67
+2026-06-08T05:09:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=67
+2026-06-08T05:10:00Z service=edge-api INFO request req-00002077-8f62 region=solmere route=/wallet status=200 latency_ms=35
+2026-06-08T05:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=29
+2026-06-08T05:12:00Z service=edge-api WARN slow request req-00002079-fd92 region=solmere route=/wallet latency_ms=1697
+2026-06-08T05:13:00Z service=edge-api INFO request req-0000207a-9891 region=veyra route=/wallet status=204 latency_ms=34
+2026-06-08T05:14:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000207b-aa5d
+2026-06-08T05:15:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000207c-6f13
+2026-06-08T05:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=52
+2026-06-08T05:17:00Z service=edge-api WARN slow request req-0000207e-480e region=veyra route=/wallet latency_ms=908
+2026-06-08T05:18:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=23
+2026-06-08T05:19:00Z service=edge-api WARN slow request req-00002080-e505 region=veyra route=/wallet latency_ms=1019
+2026-06-08T05:20:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T05:21:00Z service=edge-api INFO request req-00002082-0d64 region=veyra route=/wallet status=204 latency_ms=19
+2026-06-08T05:22:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=22
+2026-06-08T05:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=74
+2026-06-08T05:24:00Z service=edge-api WARN slow request req-00002085-ef3a region=solmere route=/wallet latency_ms=1676
+2026-06-08T05:25:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002086-60bb
+2026-06-08T05:26:00Z service=edge-api INFO request req-00002087-94db region=solmere route=/wallet status=204 latency_ms=18
+2026-06-08T05:27:00Z service=edge-api WARN slow request req-00002088-72e1 region=veyra route=/wallet latency_ms=1460
+2026-06-08T05:28:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=75
+2026-06-08T05:29:00Z service=edge-api WARN slow request req-0000208a-6d18 region=veyra route=/wallet latency_ms=1818
+2026-06-08T05:30:00Z service=edge-api INFO request req-0000208b-69b9 region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T05:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=31
+2026-06-08T05:32:00Z service=edge-api WARN slow request req-0000208d-64f4 region=solmere route=/wallet latency_ms=1203
+2026-06-08T05:33:00Z service=edge-api INFO request req-0000208e-1d9a region=veyra route=/wallet status=200 latency_ms=65
+2026-06-08T05:34:00Z service=edge-api WARN slow request req-0000208f-f7ad region=solmere route=/wallet latency_ms=1066
+2026-06-08T05:35:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002090-16fd
+2026-06-08T05:36:00Z service=edge-api INFO request req-00002091-d8e5 region=solmere route=/wallet status=204 latency_ms=15
+2026-06-08T05:37:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=15
+2026-06-08T05:38:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002093-21ed
+2026-06-08T05:39:00Z service=edge-api WARN slow request req-00002094-f6e1 region=veyra route=/wallet latency_ms=892
+2026-06-08T05:40:00Z service=edge-api WARN slow request req-00002095-5b4e region=solmere route=/wallet latency_ms=913
+2026-06-08T05:41:00Z service=edge-api WARN slow request req-00002096-9f4c region=veyra route=/wallet latency_ms=936
+2026-06-08T05:42:00Z service=edge-api WARN slow request req-00002097-cfe9 region=solmere route=/wallet latency_ms=966
+2026-06-08T05:43:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T05:44:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T05:45:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=66
+2026-06-08T05:46:00Z service=edge-api INFO request req-0000209b-ca1e region=solmere route=/wallet status=200 latency_ms=17
+2026-06-08T05:47:00Z service=edge-api WARN slow request req-0000209c-d416 region=veyra route=/wallet latency_ms=1284
+2026-06-08T05:48:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000209d-caca
+2026-06-08T05:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=62
+2026-06-08T05:50:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=13
+2026-06-08T05:51:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=22
+2026-06-08T05:52:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000020a1-6d8e
+2026-06-08T05:53:00Z service=edge-api INFO request req-000020a2-fec8 region=veyra route=/wallet status=200 latency_ms=10
+2026-06-08T05:54:00Z service=edge-api INFO request req-000020a3-d795 region=solmere route=/wallet status=200 latency_ms=38
+2026-06-08T05:55:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000020a4-2715
+2026-06-08T05:56:00Z service=edge-api INFO request req-000020a5-a13b region=solmere route=/wallet status=204 latency_ms=34
+2026-06-08T05:57:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000020a6-c290
+2026-06-08T05:58:00Z service=edge-api WARN slow request req-000020a7-8831 region=solmere route=/wallet latency_ms=1176
+2026-06-08T05:59:00Z service=edge-api INFO request req-000020a8-86ad region=veyra route=/wallet status=200 latency_ms=10
+2026-06-08T06:00:00Z service=edge-api WARN slow request req-000020a9-5f5c region=solmere route=/wallet latency_ms=1630
+2026-06-08T06:01:00Z service=edge-api WARN slow request req-000020aa-1be6 region=veyra route=/wallet latency_ms=1870
+2026-06-08T06:02:00Z service=edge-api WARN slow request req-000020ab-e5d0 region=solmere route=/wallet latency_ms=1677
+2026-06-08T06:03:00Z service=edge-api WARN slow request req-000020ac-7264 region=veyra route=/wallet latency_ms=1200
+2026-06-08T06:04:00Z service=edge-api WARN slow request req-000020ad-1218 region=solmere route=/wallet latency_ms=1696
+2026-06-08T06:05:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=16
+2026-06-08T06:06:00Z service=edge-api WARN slow request req-000020af-d815 region=solmere route=/wallet latency_ms=1173
+2026-06-08T06:07:00Z service=edge-api INFO request req-000020b0-bf33 region=veyra route=/wallet status=200 latency_ms=37
+2026-06-08T06:08:00Z service=edge-api WARN slow request req-000020b1-3644 region=solmere route=/wallet latency_ms=1763
+2026-06-08T06:09:00Z service=edge-api WARN slow request req-000020b2-562a region=veyra route=/wallet latency_ms=1897
+2026-06-08T06:10:00Z service=edge-api INFO request req-000020b3-a2f1 region=solmere route=/wallet status=204 latency_ms=73
+2026-06-08T06:11:00Z service=edge-api INFO request req-000020b4-a264 region=veyra route=/wallet status=200 latency_ms=49
+2026-06-08T06:12:00Z service=edge-api WARN slow request req-000020b5-51ca region=solmere route=/wallet latency_ms=1241
+2026-06-08T06:13:00Z service=edge-api INFO request req-000020b6-91f1 region=veyra route=/wallet status=200 latency_ms=24
+2026-06-08T06:14:00Z service=edge-api INFO request req-000020b7-a52d region=solmere route=/wallet status=204 latency_ms=23
+2026-06-08T06:15:00Z service=edge-api INFO request req-000020b8-605d region=veyra route=/wallet status=204 latency_ms=29
+2026-06-08T06:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=31
+2026-06-08T06:17:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000020ba-649e
+2026-06-08T06:18:00Z service=edge-api INFO request req-000020bb-d460 region=solmere route=/wallet status=204 latency_ms=56
+2026-06-08T06:19:00Z service=edge-api INFO request req-000020bc-811e region=veyra route=/wallet status=200 latency_ms=47
+2026-06-08T06:20:00Z service=edge-api INFO request req-000020bd-834a region=solmere route=/wallet status=204 latency_ms=62
+2026-06-08T06:21:00Z service=edge-api INFO request req-000020be-520d region=veyra route=/wallet status=204 latency_ms=45
+2026-06-08T06:22:00Z service=edge-api WARN slow request req-000020bf-94c4 region=solmere route=/wallet latency_ms=1179
+2026-06-08T06:23:00Z service=edge-api WARN slow request req-000020c0-7d27 region=veyra route=/wallet latency_ms=1633
+2026-06-08T06:24:00Z service=edge-api WARN slow request req-000020c1-1626 region=solmere route=/wallet latency_ms=1093
+2026-06-08T06:25:00Z service=edge-api INFO request req-000020c2-7b52 region=veyra route=/wallet status=200 latency_ms=24
+2026-06-08T06:26:00Z service=edge-api INFO request req-000020c3-347d region=solmere route=/wallet status=204 latency_ms=43
+2026-06-08T06:27:00Z service=edge-api INFO request req-000020c4-1c50 region=veyra route=/wallet status=204 latency_ms=50
+2026-06-08T06:28:00Z service=edge-api INFO request req-000020c5-519c region=solmere route=/wallet status=204 latency_ms=42
+2026-06-08T06:29:00Z service=edge-api INFO request req-000020c6-6d40 region=veyra route=/wallet status=204 latency_ms=55
+2026-06-08T06:30:00Z service=edge-api WARN slow request req-000020c7-237e region=solmere route=/wallet latency_ms=1657
+2026-06-08T06:31:00Z service=edge-api INFO request req-000020c8-d97d region=veyra route=/wallet status=200 latency_ms=68
+2026-06-08T06:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=24
+2026-06-08T06:33:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000020ca-7160
+2026-06-08T06:34:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000020cb-58fb
+2026-06-08T06:35:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T06:36:00Z service=edge-api WARN slow request req-000020cd-6693 region=solmere route=/wallet latency_ms=1219
+2026-06-08T06:37:00Z service=edge-api INFO request req-000020ce-7e8e region=veyra route=/wallet status=204 latency_ms=30
+2026-06-08T06:38:00Z service=edge-api INFO request req-000020cf-a9ef region=solmere route=/wallet status=200 latency_ms=24
+2026-06-08T06:39:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000020d0-9881
+2026-06-08T06:40:00Z service=edge-api WARN slow request req-000020d1-b20c region=solmere route=/wallet latency_ms=1731
+2026-06-08T06:41:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000020d2-2636
+2026-06-08T06:42:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000020d3-2c58
+2026-06-08T06:43:00Z service=edge-api INFO request req-000020d4-3470 region=veyra route=/wallet status=204 latency_ms=57
+2026-06-08T06:44:00Z service=edge-api INFO request req-000020d5-4306 region=solmere route=/wallet status=200 latency_ms=37
+2026-06-08T06:45:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T06:46:00Z service=edge-api INFO request req-000020d7-907d region=solmere route=/wallet status=200 latency_ms=65
+2026-06-08T06:47:00Z service=edge-api WARN slow request req-000020d8-894e region=veyra route=/wallet latency_ms=926
+2026-06-08T06:48:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000020d9-5ec7
+2026-06-08T06:49:00Z service=edge-api INFO request req-000020da-eabf region=veyra route=/wallet status=200 latency_ms=10
+2026-06-08T06:50:00Z service=edge-api WARN slow request req-000020db-b166 region=solmere route=/wallet latency_ms=1047
+2026-06-08T06:51:00Z service=edge-api INFO request req-000020dc-5a00 region=veyra route=/wallet status=200 latency_ms=36
+2026-06-08T06:52:00Z service=edge-api WARN slow request req-000020dd-06e7 region=solmere route=/wallet latency_ms=1368
+2026-06-08T06:53:00Z service=edge-api INFO request req-000020de-6caf region=veyra route=/wallet status=200 latency_ms=17
+2026-06-08T06:54:00Z service=edge-api INFO request req-000020df-7de2 region=solmere route=/wallet status=204 latency_ms=46
+2026-06-08T06:55:00Z service=edge-api INFO request req-000020e0-1406 region=veyra route=/wallet status=200 latency_ms=75
+2026-06-08T06:56:00Z service=edge-api INFO request req-000020e1-687d region=solmere route=/wallet status=200 latency_ms=54
+2026-06-08T06:57:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000020e2-e0a4
+2026-06-08T06:58:00Z service=edge-api INFO request req-000020e3-49db region=solmere route=/wallet status=204 latency_ms=69
+2026-06-08T06:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=51
+2026-06-08T07:00:00Z service=edge-api WARN slow request req-000020e5-726b region=solmere route=/wallet latency_ms=1796
+2026-06-08T07:01:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000020e6-1eb4
+2026-06-08T07:02:00Z service=edge-api INFO request req-000020e7-cf3d region=solmere route=/wallet status=200 latency_ms=34
+2026-06-08T07:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=67
+2026-06-08T07:04:00Z service=edge-api INFO request req-000020e9-1c0c region=solmere route=/wallet status=204 latency_ms=18
+2026-06-08T07:05:00Z service=edge-api INFO request req-000020ea-17fc region=veyra route=/wallet status=204 latency_ms=22
+2026-06-08T07:06:00Z service=edge-api INFO request req-000020eb-5149 region=solmere route=/wallet status=204 latency_ms=33
+2026-06-08T07:07:00Z service=edge-api INFO request req-000020ec-fbe1 region=veyra route=/wallet status=200 latency_ms=64
+2026-06-08T07:08:00Z service=edge-api WARN slow request req-000020ed-67b6 region=solmere route=/wallet latency_ms=1514
+2026-06-08T07:09:00Z service=edge-api INFO request req-000020ee-7bcd region=veyra route=/wallet status=204 latency_ms=50
+2026-06-08T07:10:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T07:11:00Z service=edge-api INFO request req-000020f0-f635 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T07:12:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000020f1-fde4
+2026-06-08T07:13:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000020f2-eaaa
+2026-06-08T07:14:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T07:15:00Z service=edge-api INFO request req-000020f4-d3d6 region=veyra route=/wallet status=200 latency_ms=69
+2026-06-08T07:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=32
+2026-06-08T07:17:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000020f6-1736
+2026-06-08T07:18:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000020f7-8376
+2026-06-08T07:19:00Z service=edge-api INFO request req-000020f8-5161 region=veyra route=/wallet status=200 latency_ms=42
+2026-06-08T07:20:00Z service=edge-api INFO request req-000020f9-b864 region=solmere route=/wallet status=200 latency_ms=20
+2026-06-08T07:21:00Z service=edge-api INFO request req-000020fa-9fe8 region=veyra route=/wallet status=200 latency_ms=8
+2026-06-08T07:22:00Z service=edge-api WARN slow request req-000020fb-0eef region=solmere route=/wallet latency_ms=1315
+2026-06-08T07:23:00Z service=edge-api WARN slow request req-000020fc-7a27 region=veyra route=/wallet latency_ms=1880
+2026-06-08T07:24:00Z service=edge-api WARN slow request req-000020fd-d8c1 region=solmere route=/wallet latency_ms=931
+2026-06-08T07:25:00Z service=edge-api INFO request req-000020fe-c4cc region=veyra route=/wallet status=204 latency_ms=65
+2026-06-08T07:26:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000020ff-f03d
+2026-06-08T07:27:00Z service=edge-api WARN slow request req-00002100-17fe region=veyra route=/wallet latency_ms=1750
+2026-06-08T07:28:00Z service=edge-api WARN slow request req-00002101-1152 region=solmere route=/wallet latency_ms=1429
+2026-06-08T07:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=45
+2026-06-08T07:30:00Z service=edge-api WARN slow request req-00002103-0da2 region=solmere route=/wallet latency_ms=1771
+2026-06-08T07:31:00Z service=edge-api INFO request req-00002104-bbbe region=veyra route=/wallet status=204 latency_ms=54
+2026-06-08T07:32:00Z service=edge-api INFO request req-00002105-4282 region=solmere route=/wallet status=200 latency_ms=48
+2026-06-08T07:33:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002106-1f25
+2026-06-08T07:34:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002107-6baf
+2026-06-08T07:35:00Z service=edge-api INFO request req-00002108-f3bc region=veyra route=/wallet status=200 latency_ms=27
+2026-06-08T07:36:00Z service=edge-api WARN slow request req-00002109-2764 region=solmere route=/wallet latency_ms=1270
+2026-06-08T07:37:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000210a-cda4
+2026-06-08T07:38:00Z service=edge-api INFO request req-0000210b-ef57 region=solmere route=/wallet status=204 latency_ms=12
+2026-06-08T07:39:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000210c-eeb3
+2026-06-08T07:40:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=22
+2026-06-08T07:41:00Z service=edge-api INFO request req-0000210e-10a2 region=veyra route=/wallet status=204 latency_ms=13
+2026-06-08T07:42:00Z service=edge-api INFO request req-0000210f-ff65 region=solmere route=/wallet status=200 latency_ms=14
+2026-06-08T07:43:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=47
+2026-06-08T07:44:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T07:45:00Z service=edge-api INFO request req-00002112-0986 region=veyra route=/wallet status=204 latency_ms=11
+2026-06-08T07:46:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=52
+2026-06-08T07:47:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002114-b2e9
+2026-06-08T07:48:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002115-059e
+2026-06-08T07:49:00Z service=edge-api WARN slow request req-00002116-7a34 region=veyra route=/wallet latency_ms=1015
+2026-06-08T07:50:00Z service=edge-api WARN slow request req-00002117-fb60 region=solmere route=/wallet latency_ms=966
+2026-06-08T07:51:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=20
+2026-06-08T07:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T07:53:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=69
+2026-06-08T07:54:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=32
+2026-06-08T07:55:00Z service=edge-api WARN slow request req-0000211c-594d region=veyra route=/wallet latency_ms=1787
+2026-06-08T07:56:00Z service=edge-api INFO request req-0000211d-4e8f region=solmere route=/wallet status=204 latency_ms=33
+2026-06-08T07:57:00Z service=edge-api WARN slow request req-0000211e-f193 region=veyra route=/wallet latency_ms=1500
+2026-06-08T07:58:00Z service=edge-api INFO request req-0000211f-88b1 region=solmere route=/wallet status=204 latency_ms=37
+2026-06-08T07:59:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002120-48cb
+2026-06-08T08:00:00Z service=edge-api WARN slow request req-00002121-da43 region=solmere route=/wallet latency_ms=866
+2026-06-08T08:01:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002122-7273
+2026-06-08T08:02:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=69
+2026-06-08T08:03:00Z service=edge-api INFO request req-00002124-3c5c region=veyra route=/wallet status=204 latency_ms=55
+2026-06-08T08:04:00Z service=edge-api WARN slow request req-00002125-1dcb region=solmere route=/wallet latency_ms=974
+2026-06-08T08:05:00Z service=edge-api INFO request req-00002126-e4ec region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T08:06:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002127-ceeb
+2026-06-08T08:07:00Z service=edge-api INFO request req-00002128-95bf region=veyra route=/wallet status=204 latency_ms=26
+2026-06-08T08:08:00Z service=edge-api INFO request req-00002129-db37 region=solmere route=/wallet status=200 latency_ms=66
+2026-06-08T08:09:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000212a-f81f
+2026-06-08T08:10:00Z service=edge-api WARN slow request req-0000212b-e57f region=solmere route=/wallet latency_ms=1571
+2026-06-08T08:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=36
+2026-06-08T08:12:00Z service=edge-api WARN slow request req-0000212d-6ef9 region=solmere route=/wallet latency_ms=1752
+2026-06-08T08:13:00Z service=edge-api WARN slow request req-0000212e-3ee1 region=veyra route=/wallet latency_ms=1589
+2026-06-08T08:14:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000212f-2421
+2026-06-08T08:15:00Z service=edge-api INFO request req-00002130-4d85 region=veyra route=/wallet status=200 latency_ms=18
+2026-06-08T08:16:00Z service=edge-api INFO request req-00002131-9e93 region=solmere route=/wallet status=204 latency_ms=20
+2026-06-08T08:17:00Z service=edge-api INFO request req-00002132-b323 region=veyra route=/wallet status=200 latency_ms=36
+2026-06-08T08:18:00Z service=edge-api INFO request req-00002133-3238 region=solmere route=/wallet status=200 latency_ms=65
+2026-06-08T08:19:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=53
+2026-06-08T08:20:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002135-cfd4
+2026-06-08T08:21:00Z service=edge-api INFO request req-00002136-6094 region=veyra route=/wallet status=200 latency_ms=59
+2026-06-08T08:22:00Z service=edge-api INFO request req-00002137-5889 region=solmere route=/wallet status=200 latency_ms=75
+2026-06-08T08:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=72
+2026-06-08T08:24:00Z service=edge-api INFO request req-00002139-bd95 region=solmere route=/wallet status=204 latency_ms=25
+2026-06-08T08:25:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=62
+2026-06-08T08:26:00Z service=edge-api WARN slow request req-0000213b-03a3 region=solmere route=/wallet latency_ms=1262
+2026-06-08T08:27:00Z service=edge-api WARN slow request req-0000213c-23be region=veyra route=/wallet latency_ms=1129
+2026-06-08T08:28:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000213d-5529
+2026-06-08T08:29:00Z service=edge-api WARN slow request req-0000213e-e1f8 region=veyra route=/wallet latency_ms=1583
+2026-06-08T08:30:00Z service=edge-api WARN slow request req-0000213f-7d3e region=solmere route=/wallet latency_ms=1777
+2026-06-08T08:31:00Z service=edge-api INFO request req-00002140-f3d3 region=veyra route=/wallet status=204 latency_ms=38
+2026-06-08T08:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T08:33:00Z service=edge-api INFO request req-00002142-cfab region=veyra route=/wallet status=200 latency_ms=47
+2026-06-08T08:34:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T08:35:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T08:36:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002145-48bd
+2026-06-08T08:37:00Z service=edge-api INFO request req-00002146-bde2 region=veyra route=/wallet status=200 latency_ms=39
+2026-06-08T08:38:00Z service=edge-api WARN slow request req-00002147-4087 region=solmere route=/wallet latency_ms=1510
+2026-06-08T08:39:00Z service=edge-api INFO request req-00002148-c57e region=veyra route=/wallet status=204 latency_ms=23
+2026-06-08T08:40:00Z service=edge-api INFO request req-00002149-48c8 region=solmere route=/wallet status=200 latency_ms=18
+2026-06-08T08:41:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000214a-f03e
+2026-06-08T08:42:00Z service=edge-api INFO request req-0000214b-9b5b region=solmere route=/wallet status=200 latency_ms=41
+2026-06-08T08:43:00Z service=edge-api INFO request req-0000214c-58b1 region=veyra route=/wallet status=204 latency_ms=46
+2026-06-08T08:44:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=12
+2026-06-08T08:45:00Z service=edge-api INFO request req-0000214e-7c26 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T08:46:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=20
+2026-06-08T08:47:00Z service=edge-api INFO request req-00002150-6cc0 region=veyra route=/wallet status=200 latency_ms=13
+2026-06-08T08:48:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=45
+2026-06-08T08:49:00Z service=edge-api INFO request req-00002152-a3fc region=veyra route=/wallet status=200 latency_ms=44
+2026-06-08T08:50:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002153-bdcb
+2026-06-08T08:51:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002154-d7ac
+2026-06-08T08:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=8
+2026-06-08T08:53:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=61
+2026-06-08T08:54:00Z service=edge-api INFO request req-00002157-05bf region=solmere route=/wallet status=204 latency_ms=22
+2026-06-08T08:55:00Z service=edge-api WARN slow request req-00002158-c403 region=veyra route=/wallet latency_ms=1715
+2026-06-08T08:56:00Z service=edge-api WARN slow request req-00002159-2115 region=solmere route=/wallet latency_ms=1681
+2026-06-08T08:57:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=19
+2026-06-08T08:58:00Z service=edge-api INFO request req-0000215b-bc7b region=solmere route=/wallet status=204 latency_ms=16
+2026-06-08T08:59:00Z service=edge-api WARN slow request req-0000215c-0e58 region=veyra route=/wallet latency_ms=1055
+2026-06-08T09:00:00Z service=edge-api WARN slow request req-0000215d-2645 region=solmere route=/wallet latency_ms=1173
+2026-06-08T09:01:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T09:02:00Z service=edge-api WARN slow request req-0000215f-e8bf region=solmere route=/wallet latency_ms=1712
+2026-06-08T09:03:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002160-ca0c
+2026-06-08T09:04:00Z service=edge-api WARN slow request req-00002161-ad54 region=solmere route=/wallet latency_ms=897
+2026-06-08T09:05:00Z service=edge-api INFO request req-00002162-aac6 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T09:06:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=66
+2026-06-08T09:07:00Z service=edge-api INFO request req-00002164-7808 region=veyra route=/wallet status=200 latency_ms=56
+2026-06-08T09:08:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002165-bf50
+2026-06-08T09:09:00Z service=edge-api INFO request req-00002166-6267 region=veyra route=/wallet status=204 latency_ms=57
+2026-06-08T09:10:00Z service=edge-api WARN slow request req-00002167-72f6 region=solmere route=/wallet latency_ms=1316
+2026-06-08T09:11:00Z service=edge-api INFO request req-00002168-7d00 region=veyra route=/wallet status=204 latency_ms=45
+2026-06-08T09:12:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002169-8786
+2026-06-08T09:13:00Z service=edge-api INFO request req-0000216a-ee95 region=veyra route=/wallet status=204 latency_ms=31
+2026-06-08T09:14:00Z service=edge-api WARN slow request req-0000216b-6515 region=solmere route=/wallet latency_ms=1044
+2026-06-08T09:15:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=48
+2026-06-08T09:16:00Z service=edge-api WARN slow request req-0000216d-546b region=solmere route=/wallet latency_ms=1204
+2026-06-08T09:17:00Z service=edge-api WARN slow request req-0000216e-7479 region=veyra route=/wallet latency_ms=1788
+2026-06-08T09:18:00Z service=edge-api WARN slow request req-0000216f-689a region=solmere route=/wallet latency_ms=1266
+2026-06-08T09:19:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002170-d958
+2026-06-08T09:20:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002171-18b7
+2026-06-08T09:21:00Z service=edge-api WARN slow request req-00002172-c5fc region=veyra route=/wallet latency_ms=1780
+2026-06-08T09:22:00Z service=edge-api INFO request req-00002173-5bc7 region=solmere route=/wallet status=204 latency_ms=63
+2026-06-08T09:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=10
+2026-06-08T09:24:00Z service=edge-api INFO request req-00002175-8b25 region=solmere route=/wallet status=204 latency_ms=38
+2026-06-08T09:25:00Z service=edge-api INFO request req-00002176-01a3 region=veyra route=/wallet status=204 latency_ms=25
+2026-06-08T09:26:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002177-8a81
+2026-06-08T09:27:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002178-f61e
+2026-06-08T09:28:00Z service=edge-api INFO request req-00002179-2673 region=solmere route=/wallet status=204 latency_ms=14
+2026-06-08T09:29:00Z service=edge-api INFO request req-0000217a-06e9 region=veyra route=/wallet status=200 latency_ms=41
+2026-06-08T09:30:00Z service=edge-api WARN slow request req-0000217b-533a region=solmere route=/wallet latency_ms=1349
+2026-06-08T09:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=66
+2026-06-08T09:32:00Z service=edge-api INFO request req-0000217d-f3e2 region=solmere route=/wallet status=204 latency_ms=28
+2026-06-08T09:33:00Z service=edge-api INFO request req-0000217e-4547 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T09:34:00Z service=edge-api WARN slow request req-0000217f-5fd1 region=solmere route=/wallet latency_ms=1305
+2026-06-08T09:35:00Z service=edge-api INFO request req-00002180-0186 region=veyra route=/wallet status=200 latency_ms=70
+2026-06-08T09:36:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T09:37:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=73
+2026-06-08T09:38:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002183-9d64
+2026-06-08T09:39:00Z service=edge-api INFO request req-00002184-2489 region=veyra route=/wallet status=200 latency_ms=57
+2026-06-08T09:40:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T09:41:00Z service=edge-api WARN slow request req-00002186-4c30 region=veyra route=/wallet latency_ms=1221
+2026-06-08T09:42:00Z service=edge-api WARN slow request req-00002187-bd2c region=solmere route=/wallet latency_ms=861
+2026-06-08T09:43:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=12
+2026-06-08T09:44:00Z service=edge-api INFO request req-00002189-6fcd region=solmere route=/wallet status=200 latency_ms=74
+2026-06-08T09:45:00Z service=edge-api INFO request req-0000218a-c97c region=veyra route=/wallet status=204 latency_ms=73
+2026-06-08T09:46:00Z service=edge-api INFO request req-0000218b-4e7f region=solmere route=/wallet status=204 latency_ms=57
+2026-06-08T09:47:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=13
+2026-06-08T09:48:00Z service=edge-api INFO request req-0000218d-63b6 region=solmere route=/wallet status=200 latency_ms=55
+2026-06-08T09:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=9
+2026-06-08T09:50:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000218f-7564
+2026-06-08T09:51:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002190-41f5
+2026-06-08T09:52:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002191-825f
+2026-06-08T09:53:00Z service=edge-api INFO request req-00002192-f32f region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T09:54:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=37
+2026-06-08T09:55:00Z service=edge-api WARN slow request req-00002194-8b1c region=veyra route=/wallet latency_ms=1409
+2026-06-08T09:56:00Z service=edge-api WARN slow request req-00002195-7162 region=solmere route=/wallet latency_ms=1751
+2026-06-08T09:57:00Z service=edge-api INFO request req-00002196-0aeb region=veyra route=/wallet status=200 latency_ms=75
+2026-06-08T09:58:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=40
+2026-06-08T09:59:00Z service=edge-api INFO request req-00002198-2859 region=veyra route=/wallet status=200 latency_ms=31
+2026-06-08T10:00:00Z service=edge-api WARN slow request req-00002199-7e74 region=solmere route=/wallet latency_ms=1289
+2026-06-08T10:01:00Z service=edge-api INFO request req-0000219a-a020 region=veyra route=/wallet status=204 latency_ms=16
+2026-06-08T10:02:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=51
+2026-06-08T10:03:00Z service=edge-api WARN slow request req-0000219c-2c40 region=veyra route=/wallet latency_ms=1668
+2026-06-08T10:04:00Z service=edge-api WARN slow request req-0000219d-8447 region=solmere route=/wallet latency_ms=1254
+2026-06-08T10:05:00Z service=edge-api WARN slow request req-0000219e-49e4 region=veyra route=/wallet latency_ms=974
+2026-06-08T10:06:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000219f-00d1
+2026-06-08T10:07:00Z service=edge-api INFO request req-000021a0-77b1 region=veyra route=/wallet status=200 latency_ms=61
+2026-06-08T10:08:00Z service=edge-api INFO request req-000021a1-27d3 region=solmere route=/wallet status=204 latency_ms=24
+2026-06-08T10:09:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=22
+2026-06-08T10:10:00Z service=edge-api INFO request req-000021a3-8a09 region=solmere route=/wallet status=200 latency_ms=22
+2026-06-08T10:11:00Z service=edge-api INFO request req-000021a4-f58c region=veyra route=/wallet status=204 latency_ms=68
+2026-06-08T10:12:00Z service=edge-api WARN slow request req-000021a5-bd41 region=solmere route=/wallet latency_ms=1728
+2026-06-08T10:13:00Z service=edge-api INFO request req-000021a6-1f8f region=veyra route=/wallet status=204 latency_ms=36
+2026-06-08T10:14:00Z service=edge-api INFO request req-000021a7-f3cc region=solmere route=/wallet status=200 latency_ms=28
+2026-06-08T10:15:00Z service=edge-api INFO request req-000021a8-1155 region=veyra route=/wallet status=204 latency_ms=24
+2026-06-08T10:16:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000021a9-8ebb
+2026-06-08T10:17:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=15
+2026-06-08T10:18:00Z service=edge-api WARN slow request req-000021ab-4573 region=solmere route=/wallet latency_ms=1632
+2026-06-08T10:19:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T10:20:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000021ad-8b94
+2026-06-08T10:21:00Z service=edge-api INFO request req-000021ae-ee87 region=veyra route=/wallet status=200 latency_ms=18
+2026-06-08T10:22:00Z service=edge-api WARN slow request req-000021af-82e3 region=solmere route=/wallet latency_ms=1605
+2026-06-08T10:23:00Z service=edge-api WARN slow request req-000021b0-a5a4 region=veyra route=/wallet latency_ms=1227
+2026-06-08T10:24:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=60
+2026-06-08T10:25:00Z service=edge-api INFO request req-000021b2-e9ec region=veyra route=/wallet status=204 latency_ms=68
+2026-06-08T10:26:00Z service=edge-api INFO request req-000021b3-c045 region=solmere route=/wallet status=204 latency_ms=17
+2026-06-08T10:27:00Z service=edge-api WARN slow request req-000021b4-8d95 region=veyra route=/wallet latency_ms=853
+2026-06-08T10:28:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000021b5-673e
+2026-06-08T10:29:00Z service=edge-api WARN slow request req-000021b6-a574 region=veyra route=/wallet latency_ms=1060
+2026-06-08T10:30:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=68
+2026-06-08T10:31:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000021b8-b061
+2026-06-08T10:32:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000021b9-1b30
+2026-06-08T10:33:00Z service=edge-api INFO request req-000021ba-8c04 region=veyra route=/wallet status=204 latency_ms=64
+2026-06-08T10:34:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000021bb-32a7
+2026-06-08T10:35:00Z service=edge-api WARN slow request req-000021bc-e766 region=veyra route=/wallet latency_ms=878
+2026-06-08T10:36:00Z service=edge-api WARN slow request req-000021bd-c2c6 region=solmere route=/wallet latency_ms=1348
+2026-06-08T10:37:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000021be-90f6
+2026-06-08T10:38:00Z service=edge-api INFO request req-000021bf-62be region=solmere route=/wallet status=200 latency_ms=54
+2026-06-08T10:39:00Z service=edge-api INFO request req-000021c0-a65a region=veyra route=/wallet status=204 latency_ms=75
+2026-06-08T10:40:00Z service=edge-api INFO request req-000021c1-7cfc region=solmere route=/wallet status=204 latency_ms=66
+2026-06-08T10:41:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=17
+2026-06-08T10:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=37
+2026-06-08T10:43:00Z service=edge-api INFO request req-000021c4-f01d region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T10:44:00Z service=edge-api INFO request req-000021c5-4d6e region=solmere route=/wallet status=200 latency_ms=65
+2026-06-08T10:45:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000021c6-e0d4
+2026-06-08T10:46:00Z service=edge-api WARN slow request req-000021c7-83fd region=solmere route=/wallet latency_ms=1701
+2026-06-08T10:47:00Z service=edge-api WARN slow request req-000021c8-08f2 region=veyra route=/wallet latency_ms=1228
+2026-06-08T10:48:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000021c9-67b5
+2026-06-08T10:49:00Z service=edge-api INFO request req-000021ca-c001 region=veyra route=/wallet status=200 latency_ms=52
+2026-06-08T10:50:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000021cb-bcc9
+2026-06-08T10:51:00Z service=edge-api INFO request req-000021cc-cb20 region=veyra route=/wallet status=204 latency_ms=69
+2026-06-08T10:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=14
+2026-06-08T10:53:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000021ce-dfd0
+2026-06-08T10:54:00Z service=edge-api INFO request req-000021cf-87c9 region=solmere route=/wallet status=200 latency_ms=64
+2026-06-08T10:55:00Z service=edge-api INFO request req-000021d0-a198 region=veyra route=/wallet status=200 latency_ms=20
+2026-06-08T10:56:00Z service=edge-api INFO request req-000021d1-dde7 region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T10:57:00Z service=edge-api INFO request req-000021d2-b102 region=veyra route=/wallet status=200 latency_ms=58
+2026-06-08T10:58:00Z service=edge-api INFO request req-000021d3-a742 region=solmere route=/wallet status=204 latency_ms=64
+2026-06-08T10:59:00Z service=edge-api WARN slow request req-000021d4-309e region=veyra route=/wallet latency_ms=1740
+2026-06-08T11:00:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=58
+2026-06-08T11:01:00Z service=edge-api INFO request req-000021d6-9965 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T11:02:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000021d7-2bd0
+2026-06-08T11:03:00Z service=edge-api WARN slow request req-000021d8-63e4 region=veyra route=/wallet latency_ms=1075
+2026-06-08T11:04:00Z service=edge-api INFO request req-000021d9-479e region=solmere route=/wallet status=204 latency_ms=22
+2026-06-08T11:05:00Z service=edge-api WARN slow request req-000021da-7060 region=veyra route=/wallet latency_ms=1272
+2026-06-08T11:06:00Z service=edge-api INFO request req-000021db-aa0c region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T11:07:00Z service=edge-api INFO request req-000021dc-86e9 region=veyra route=/wallet status=204 latency_ms=59
+2026-06-08T11:08:00Z service=edge-api INFO request req-000021dd-dfcd region=solmere route=/wallet status=204 latency_ms=9
+2026-06-08T11:09:00Z service=edge-api INFO request req-000021de-6153 region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T11:10:00Z service=edge-api WARN slow request req-000021df-92ef region=solmere route=/wallet latency_ms=1475
+2026-06-08T11:11:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000021e0-bd72
+2026-06-08T11:12:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000021e1-6681
+2026-06-08T11:13:00Z service=edge-api INFO request req-000021e2-7f37 region=veyra route=/wallet status=200 latency_ms=65
+2026-06-08T11:14:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=23
+2026-06-08T11:15:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T11:16:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000021e5-8743
+2026-06-08T11:17:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000021e6-5b9e
+2026-06-08T11:18:00Z service=edge-api WARN slow request req-000021e7-b35c region=solmere route=/wallet latency_ms=898
+2026-06-08T11:19:00Z service=edge-api INFO request req-000021e8-edbf region=veyra route=/wallet status=204 latency_ms=75
+2026-06-08T11:20:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000021e9-fb14
+2026-06-08T11:21:00Z service=edge-api INFO request req-000021ea-813a region=veyra route=/wallet status=200 latency_ms=22
+2026-06-08T11:22:00Z service=edge-api WARN slow request req-000021eb-94a6 region=solmere route=/wallet latency_ms=1726
+2026-06-08T11:23:00Z service=edge-api INFO request req-000021ec-4078 region=veyra route=/wallet status=204 latency_ms=28
+2026-06-08T11:24:00Z service=edge-api WARN slow request req-000021ed-97a7 region=solmere route=/wallet latency_ms=1265
+2026-06-08T11:25:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=49
+2026-06-08T11:26:00Z service=edge-api WARN slow request req-000021ef-ae31 region=solmere route=/wallet latency_ms=906
+2026-06-08T11:27:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=52
+2026-06-08T11:28:00Z service=edge-api INFO request req-000021f1-803f region=solmere route=/wallet status=204 latency_ms=53
+2026-06-08T11:29:00Z service=edge-api WARN slow request req-000021f2-3775 region=veyra route=/wallet latency_ms=1404
+2026-06-08T11:30:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000021f3-790d
+2026-06-08T11:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=32
+2026-06-08T11:32:00Z service=edge-api INFO request req-000021f5-52fd region=solmere route=/wallet status=200 latency_ms=58
+2026-06-08T11:33:00Z service=edge-api INFO request req-000021f6-4d89 region=veyra route=/wallet status=200 latency_ms=12
+2026-06-08T11:34:00Z service=edge-api WARN slow request req-000021f7-9ab6 region=solmere route=/wallet latency_ms=1009
+2026-06-08T11:35:00Z service=edge-api INFO request req-000021f8-0662 region=veyra route=/wallet status=204 latency_ms=11
+2026-06-08T11:36:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=61
+2026-06-08T11:37:00Z service=edge-api WARN slow request req-000021fa-ae3d region=veyra route=/wallet latency_ms=1762
+2026-06-08T11:38:00Z service=edge-api WARN slow request req-000021fb-393a region=solmere route=/wallet latency_ms=1804
+2026-06-08T11:39:00Z service=edge-api INFO request req-000021fc-69da region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T11:40:00Z service=edge-api WARN slow request req-000021fd-048b region=solmere route=/wallet latency_ms=1308
+2026-06-08T11:41:00Z service=edge-api INFO request req-000021fe-f5d0 region=veyra route=/wallet status=200 latency_ms=21
+2026-06-08T11:42:00Z service=edge-api INFO request req-000021ff-1521 region=solmere route=/wallet status=204 latency_ms=10
+2026-06-08T11:43:00Z service=edge-api INFO request req-00002200-a349 region=veyra route=/wallet status=204 latency_ms=58
+2026-06-08T11:44:00Z service=edge-api INFO request req-00002201-04c2 region=solmere route=/wallet status=204 latency_ms=28
+2026-06-08T11:45:00Z service=edge-api INFO request req-00002202-be26 region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T11:46:00Z service=edge-api INFO request req-00002203-b234 region=solmere route=/wallet status=200 latency_ms=54
+2026-06-08T11:47:00Z service=edge-api INFO request req-00002204-1554 region=veyra route=/wallet status=204 latency_ms=30
+2026-06-08T11:48:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002205-d831
+2026-06-08T11:49:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002206-7c3e
+2026-06-08T11:50:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002207-3aea
+2026-06-08T11:51:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002208-a659
+2026-06-08T11:52:00Z service=edge-api INFO request req-00002209-259d region=solmere route=/wallet status=204 latency_ms=43
+2026-06-08T11:53:00Z service=edge-api INFO request req-0000220a-fed5 region=veyra route=/wallet status=200 latency_ms=32
+2026-06-08T11:54:00Z service=edge-api INFO request req-0000220b-f166 region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T11:55:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-0000220c-6af4
+2026-06-08T11:56:00Z service=edge-api INFO request req-0000220d-a332 region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T11:57:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=57
+2026-06-08T11:58:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T11:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=16
+2026-06-08T12:00:00Z service=edge-api INFO request req-00002211-9c97 region=solmere route=/wallet status=200 latency_ms=44
+2026-06-08T12:01:00Z service=edge-api INFO request req-00002212-01e5 region=veyra route=/wallet status=200 latency_ms=32
+2026-06-08T12:02:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002213-4aa7
+2026-06-08T12:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=49
+2026-06-08T12:04:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=31
+2026-06-08T12:05:00Z service=edge-api INFO request req-00002216-3920 region=veyra route=/wallet status=204 latency_ms=70
+2026-06-08T12:06:00Z service=edge-api INFO request req-00002217-ca1c region=solmere route=/wallet status=204 latency_ms=71
+2026-06-08T12:07:00Z service=edge-api INFO request req-00002218-8324 region=veyra route=/wallet status=200 latency_ms=53
+2026-06-08T12:08:00Z service=edge-api WARN slow request req-00002219-e6b9 region=solmere route=/wallet latency_ms=1630
+2026-06-08T12:09:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000221a-aeaa
+2026-06-08T12:10:00Z service=edge-api INFO request req-0000221b-1809 region=solmere route=/wallet status=200 latency_ms=31
+2026-06-08T12:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=50
+2026-06-08T12:12:00Z service=edge-api WARN slow request req-0000221d-4c41 region=solmere route=/wallet latency_ms=1621
+2026-06-08T12:13:00Z service=edge-api WARN slow request req-0000221e-0161 region=veyra route=/wallet latency_ms=1241
+2026-06-08T12:14:00Z service=edge-api INFO request req-0000221f-9fdb region=solmere route=/wallet status=204 latency_ms=24
+2026-06-08T12:15:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002220-bbaf
+2026-06-08T12:16:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002221-d375
+2026-06-08T12:17:00Z service=edge-api INFO request req-00002222-444a region=veyra route=/wallet status=204 latency_ms=21
+2026-06-08T12:18:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=36
+2026-06-08T12:19:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002224-1806
+2026-06-08T12:20:00Z service=edge-api INFO request req-00002225-8856 region=solmere route=/wallet status=204 latency_ms=31
+2026-06-08T12:21:00Z service=edge-api INFO request req-00002226-33d3 region=veyra route=/wallet status=204 latency_ms=22
+2026-06-08T12:22:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T12:23:00Z service=edge-api WARN slow request req-00002228-861a region=veyra route=/wallet latency_ms=955
+2026-06-08T12:24:00Z service=edge-api INFO request req-00002229-2cc4 region=solmere route=/wallet status=204 latency_ms=47
+2026-06-08T12:25:00Z service=edge-api INFO request req-0000222a-31a6 region=veyra route=/wallet status=204 latency_ms=31
+2026-06-08T12:26:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T12:27:00Z service=edge-api INFO request req-0000222c-f9a7 region=veyra route=/wallet status=200 latency_ms=43
+2026-06-08T12:28:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T12:29:00Z service=edge-api INFO request req-0000222e-9af4 region=veyra route=/wallet status=200 latency_ms=69
+2026-06-08T12:30:00Z service=edge-api INFO request req-0000222f-be8d region=solmere route=/wallet status=204 latency_ms=16
+2026-06-08T12:31:00Z service=edge-api INFO request req-00002230-318c region=veyra route=/wallet status=200 latency_ms=46
+2026-06-08T12:32:00Z service=edge-api WARN slow request req-00002231-8beb region=solmere route=/wallet latency_ms=989
+2026-06-08T12:33:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002232-b8ab
+2026-06-08T12:34:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=44
+2026-06-08T12:35:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002234-53b4
+2026-06-08T12:36:00Z service=edge-api INFO request req-00002235-f076 region=solmere route=/wallet status=200 latency_ms=64
+2026-06-08T12:37:00Z service=edge-api INFO request req-00002236-afdf region=veyra route=/wallet status=200 latency_ms=64
+2026-06-08T12:38:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002237-0f8b
+2026-06-08T12:39:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002238-727e
+2026-06-08T12:40:00Z service=edge-api INFO request req-00002239-6ffa region=solmere route=/wallet status=204 latency_ms=52
+2026-06-08T12:41:00Z service=edge-api INFO request req-0000223a-cb8d region=veyra route=/wallet status=200 latency_ms=27
+2026-06-08T12:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=53
+2026-06-08T12:43:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-0000223c-bfff
+2026-06-08T12:44:00Z service=edge-api WARN slow request req-0000223d-18d7 region=solmere route=/wallet latency_ms=1297
+2026-06-08T12:45:00Z service=edge-api INFO request req-0000223e-7b49 region=veyra route=/wallet status=204 latency_ms=63
+2026-06-08T12:46:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000223f-6a04
+2026-06-08T12:47:00Z service=edge-api WARN slow request req-00002240-aace region=veyra route=/wallet latency_ms=1698
+2026-06-08T12:48:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002241-8fe6
+2026-06-08T12:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=28
+2026-06-08T12:50:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=66
+2026-06-08T12:51:00Z service=edge-api INFO request req-00002244-5fdb region=veyra route=/wallet status=200 latency_ms=48
+2026-06-08T12:52:00Z service=edge-api WARN slow request req-00002245-d66f region=solmere route=/wallet latency_ms=1121
+2026-06-08T12:53:00Z service=edge-api INFO request req-00002246-4347 region=veyra route=/wallet status=200 latency_ms=63
+2026-06-08T12:54:00Z service=edge-api INFO request req-00002247-a70d region=solmere route=/wallet status=204 latency_ms=39
+2026-06-08T12:55:00Z service=edge-api INFO request req-00002248-3d19 region=veyra route=/wallet status=204 latency_ms=49
+2026-06-08T12:56:00Z service=edge-api INFO request req-00002249-fd88 region=solmere route=/wallet status=204 latency_ms=8
+2026-06-08T12:57:00Z service=edge-api INFO request req-0000224a-419a region=veyra route=/wallet status=204 latency_ms=45
+2026-06-08T12:58:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000224b-f9f6
+2026-06-08T12:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=74
+2026-06-08T13:00:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=9
+2026-06-08T13:01:00Z service=edge-api WARN slow request req-0000224e-2ec7 region=veyra route=/wallet latency_ms=1134
+2026-06-08T13:02:00Z service=edge-api INFO request req-0000224f-e103 region=solmere route=/wallet status=204 latency_ms=10
+2026-06-08T13:03:00Z service=edge-api WARN slow request req-00002250-fa0d region=veyra route=/wallet latency_ms=893
+2026-06-08T13:04:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=12
+2026-06-08T13:05:00Z service=edge-api WARN slow request req-00002252-6c30 region=veyra route=/wallet latency_ms=1168
+2026-06-08T13:06:00Z service=edge-api INFO request req-00002253-bf16 region=solmere route=/wallet status=200 latency_ms=55
+2026-06-08T13:07:00Z service=edge-api INFO request req-00002254-3775 region=veyra route=/wallet status=200 latency_ms=67
+2026-06-08T13:08:00Z service=edge-api INFO request req-00002255-1d47 region=solmere route=/wallet status=200 latency_ms=62
+2026-06-08T13:09:00Z service=edge-api WARN slow request req-00002256-a83b region=veyra route=/wallet latency_ms=1553
+2026-06-08T13:10:00Z service=edge-api INFO request req-00002257-bcc5 region=solmere route=/wallet status=204 latency_ms=15
+2026-06-08T13:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=44
+2026-06-08T13:12:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T13:13:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T13:14:00Z service=edge-api INFO request req-0000225b-4239 region=solmere route=/wallet status=200 latency_ms=61
+2026-06-08T13:15:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000225c-39a9
+2026-06-08T13:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=72
+2026-06-08T13:17:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=17
+2026-06-08T13:18:00Z service=edge-api INFO request req-0000225f-fc9d region=solmere route=/wallet status=204 latency_ms=71
+2026-06-08T13:19:00Z service=edge-api WARN slow request req-00002260-236c region=veyra route=/wallet latency_ms=1042
+2026-06-08T13:20:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002261-e400
+2026-06-08T13:21:00Z service=edge-api INFO request req-00002262-554a region=veyra route=/wallet status=200 latency_ms=38
+2026-06-08T13:22:00Z service=edge-api INFO request req-00002263-e2f0 region=solmere route=/wallet status=200 latency_ms=66
+2026-06-08T13:23:00Z service=edge-api INFO request req-00002264-99fb region=veyra route=/wallet status=200 latency_ms=24
+2026-06-08T13:24:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002265-a8cf
+2026-06-08T13:25:00Z service=edge-api INFO request req-00002266-df92 region=veyra route=/wallet status=200 latency_ms=46
+2026-06-08T13:26:00Z service=edge-api WARN slow request req-00002267-c00f region=solmere route=/wallet latency_ms=1309
+2026-06-08T13:27:00Z service=edge-api INFO request req-00002268-128e region=veyra route=/wallet status=204 latency_ms=29
+2026-06-08T13:28:00Z service=edge-api INFO request req-00002269-720b region=solmere route=/wallet status=204 latency_ms=58
+2026-06-08T13:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T13:30:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=50
+2026-06-08T13:31:00Z service=edge-api INFO request req-0000226c-8ff6 region=veyra route=/wallet status=200 latency_ms=60
+2026-06-08T13:32:00Z service=edge-api INFO request req-0000226d-e44d region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T13:33:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=20
+2026-06-08T13:34:00Z service=edge-api WARN slow request req-0000226f-38d2 region=solmere route=/wallet latency_ms=1142
+2026-06-08T13:35:00Z service=edge-api INFO request req-00002270-5177 region=veyra route=/wallet status=204 latency_ms=46
+2026-06-08T13:36:00Z service=edge-api INFO request req-00002271-d85c region=solmere route=/wallet status=204 latency_ms=31
+2026-06-08T13:37:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002272-5f9b
+2026-06-08T13:38:00Z service=edge-api INFO request req-00002273-dc7d region=solmere route=/wallet status=204 latency_ms=28
+2026-06-08T13:39:00Z service=edge-api INFO request req-00002274-f069 region=veyra route=/wallet status=200 latency_ms=53
+2026-06-08T13:40:00Z service=edge-api INFO request req-00002275-23d9 region=solmere route=/wallet status=200 latency_ms=20
+2026-06-08T13:41:00Z service=edge-api INFO request req-00002276-c775 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T13:42:00Z service=edge-api WARN slow request req-00002277-b1d3 region=solmere route=/wallet latency_ms=928
+2026-06-08T13:43:00Z service=edge-api WARN slow request req-00002278-f46e region=veyra route=/wallet latency_ms=1566
+2026-06-08T13:44:00Z service=edge-api INFO request req-00002279-8c6e region=solmere route=/wallet status=204 latency_ms=31
+2026-06-08T13:45:00Z service=edge-api INFO request req-0000227a-2eaa region=veyra route=/wallet status=204 latency_ms=60
+2026-06-08T13:46:00Z service=edge-api INFO request req-0000227b-9d2d region=solmere route=/wallet status=204 latency_ms=16
+2026-06-08T13:47:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=28
+2026-06-08T13:48:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000227d-7d9b
+2026-06-08T13:49:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000227e-16cc
+2026-06-08T13:50:00Z service=edge-api WARN slow request req-0000227f-96a6 region=solmere route=/wallet latency_ms=1036
+2026-06-08T13:51:00Z service=edge-api INFO request req-00002280-f348 region=veyra route=/wallet status=204 latency_ms=69
+2026-06-08T13:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=72
+2026-06-08T13:53:00Z service=edge-api WARN slow request req-00002282-a989 region=veyra route=/wallet latency_ms=1393
+2026-06-08T13:54:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T13:55:00Z service=edge-api INFO request req-00002284-a898 region=veyra route=/wallet status=200 latency_ms=60
+2026-06-08T13:56:00Z service=edge-api WARN slow request req-00002285-1086 region=solmere route=/wallet latency_ms=880
+2026-06-08T13:57:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T13:58:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002287-ef4b
+2026-06-08T13:59:00Z service=edge-api INFO request req-00002288-ab07 region=veyra route=/wallet status=204 latency_ms=68
+2026-06-08T14:00:00Z service=edge-api INFO request req-00002289-f74b region=solmere route=/wallet status=200 latency_ms=33
+2026-06-08T14:01:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-0000228a-4eec
+2026-06-08T14:02:00Z service=edge-api WARN slow request req-0000228b-3cd9 region=solmere route=/wallet latency_ms=1033
+2026-06-08T14:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=19
+2026-06-08T14:04:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000228d-769b
+2026-06-08T14:05:00Z service=edge-api INFO request req-0000228e-7428 region=veyra route=/wallet status=204 latency_ms=14
+2026-06-08T14:06:00Z service=edge-api INFO request req-0000228f-1e0d region=solmere route=/wallet status=204 latency_ms=74
+2026-06-08T14:07:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=29
+2026-06-08T14:08:00Z service=edge-api INFO request req-00002291-309e region=solmere route=/wallet status=200 latency_ms=55
+2026-06-08T14:09:00Z service=edge-api INFO request req-00002292-5f41 region=veyra route=/wallet status=204 latency_ms=72
+2026-06-08T14:10:00Z service=edge-api INFO request req-00002293-a20b region=solmere route=/wallet status=204 latency_ms=68
+2026-06-08T14:11:00Z service=edge-api INFO request req-00002294-ded0 region=veyra route=/wallet status=204 latency_ms=16
+2026-06-08T14:12:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=10
+2026-06-08T14:13:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=23
+2026-06-08T14:14:00Z service=edge-api WARN slow request req-00002297-98f2 region=solmere route=/wallet latency_ms=1385
+2026-06-08T14:15:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=53
+2026-06-08T14:16:00Z service=edge-api INFO request req-00002299-52d8 region=solmere route=/wallet status=200 latency_ms=15
+2026-06-08T14:17:00Z service=edge-api INFO request req-0000229a-d49d region=veyra route=/wallet status=204 latency_ms=20
+2026-06-08T14:18:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=65
+2026-06-08T14:19:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=54
+2026-06-08T14:20:00Z service=edge-api INFO request req-0000229d-86a5 region=solmere route=/wallet status=200 latency_ms=45
+2026-06-08T14:21:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=41
+2026-06-08T14:22:00Z service=edge-api INFO request req-0000229f-bc8e region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T14:23:00Z service=edge-api INFO request req-000022a0-12d4 region=veyra route=/wallet status=200 latency_ms=65
+2026-06-08T14:24:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000022a1-a978
+2026-06-08T14:25:00Z service=edge-api INFO request req-000022a2-63ae region=veyra route=/wallet status=204 latency_ms=17
+2026-06-08T14:26:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000022a3-418e
+2026-06-08T14:27:00Z service=edge-api WARN slow request req-000022a4-5e40 region=veyra route=/wallet latency_ms=1548
+2026-06-08T14:28:00Z service=edge-api INFO request req-000022a5-40bd region=solmere route=/wallet status=204 latency_ms=52
+2026-06-08T14:29:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000022a6-8c8b
+2026-06-08T14:30:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000022a7-b8d7
+2026-06-08T14:31:00Z service=edge-api WARN slow request req-000022a8-5ab7 region=veyra route=/wallet latency_ms=1677
+2026-06-08T14:32:00Z service=edge-api WARN slow request req-000022a9-7a68 region=solmere route=/wallet latency_ms=1519
+2026-06-08T14:33:00Z service=edge-api INFO request req-000022aa-2338 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T14:34:00Z service=edge-api WARN slow request req-000022ab-2238 region=solmere route=/wallet latency_ms=1531
+2026-06-08T14:35:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000022ac-0802
+2026-06-08T14:36:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000022ad-38bf
+2026-06-08T14:37:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=37
+2026-06-08T14:38:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000022af-1718
+2026-06-08T14:39:00Z service=edge-api INFO request req-000022b0-2d79 region=veyra route=/wallet status=204 latency_ms=53
+2026-06-08T14:40:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=40
+2026-06-08T14:41:00Z service=edge-api INFO request req-000022b2-142d region=veyra route=/wallet status=204 latency_ms=58
+2026-06-08T14:42:00Z service=edge-api INFO request req-000022b3-a230 region=solmere route=/wallet status=204 latency_ms=11
+2026-06-08T14:43:00Z service=edge-api INFO request req-000022b4-6c4c region=veyra route=/wallet status=204 latency_ms=30
+2026-06-08T14:44:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=14
+2026-06-08T14:45:00Z service=edge-api INFO request req-000022b6-eaa5 region=veyra route=/wallet status=200 latency_ms=31
+2026-06-08T14:46:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=25
+2026-06-08T14:47:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000022b8-222a
+2026-06-08T14:48:00Z service=edge-api INFO request req-000022b9-80c6 region=solmere route=/wallet status=204 latency_ms=39
+2026-06-08T14:49:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000022ba-c6e1
+2026-06-08T14:50:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000022bb-9ef4
+2026-06-08T14:51:00Z service=edge-api INFO request req-000022bc-9036 region=veyra route=/wallet status=200 latency_ms=64
+2026-06-08T14:52:00Z service=edge-api WARN slow request req-000022bd-fedd region=solmere route=/wallet latency_ms=1659
+2026-06-08T14:53:00Z service=edge-api INFO request req-000022be-be30 region=veyra route=/wallet status=204 latency_ms=19
+2026-06-08T14:54:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=63
+2026-06-08T14:55:00Z service=edge-api INFO request req-000022c0-c412 region=veyra route=/wallet status=204 latency_ms=30
+2026-06-08T14:56:00Z service=edge-api INFO request req-000022c1-f5fe region=solmere route=/wallet status=200 latency_ms=68
+2026-06-08T14:57:00Z service=edge-api INFO request req-000022c2-5180 region=veyra route=/wallet status=200 latency_ms=11
+2026-06-08T14:58:00Z service=edge-api INFO request req-000022c3-50fb region=solmere route=/wallet status=200 latency_ms=73
+2026-06-08T14:59:00Z service=edge-api INFO request req-000022c4-8ac0 region=veyra route=/wallet status=200 latency_ms=58
+2026-06-08T15:00:00Z service=edge-api WARN slow request req-000022c5-ef89 region=solmere route=/wallet latency_ms=1869
+2026-06-08T15:01:00Z service=edge-api INFO request req-000022c6-5276 region=veyra route=/wallet status=200 latency_ms=12
+2026-06-08T15:02:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=17
+2026-06-08T15:03:00Z service=edge-api INFO request req-000022c8-8263 region=veyra route=/wallet status=200 latency_ms=35
+2026-06-08T15:04:00Z service=edge-api WARN slow request req-000022c9-297a region=solmere route=/wallet latency_ms=1265
+2026-06-08T15:05:00Z service=edge-api WARN slow request req-000022ca-5201 region=veyra route=/wallet latency_ms=1705
+2026-06-08T15:06:00Z service=edge-api WARN slow request req-000022cb-14b5 region=solmere route=/wallet latency_ms=1424
+2026-06-08T15:07:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000022cc-5035
+2026-06-08T15:08:00Z service=edge-api INFO request req-000022cd-127b region=solmere route=/wallet status=204 latency_ms=74
+2026-06-08T15:09:00Z service=edge-api WARN slow request req-000022ce-e5d9 region=veyra route=/wallet latency_ms=1715
+2026-06-08T15:10:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000022cf-356a
+2026-06-08T15:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=10
+2026-06-08T15:12:00Z service=edge-api INFO request req-000022d1-297c region=solmere route=/wallet status=204 latency_ms=65
+2026-06-08T15:13:00Z service=edge-api INFO request req-000022d2-ee48 region=veyra route=/wallet status=200 latency_ms=20
+2026-06-08T15:14:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000022d3-7b82
+2026-06-08T15:15:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000022d4-9ab9
+2026-06-08T15:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=17
+2026-06-08T15:17:00Z service=edge-api WARN slow request req-000022d6-1686 region=veyra route=/wallet latency_ms=1123
+2026-06-08T15:18:00Z service=edge-api INFO request req-000022d7-13d3 region=solmere route=/wallet status=200 latency_ms=35
+2026-06-08T15:19:00Z service=edge-api INFO request req-000022d8-5e48 region=veyra route=/wallet status=204 latency_ms=11
+2026-06-08T15:20:00Z service=edge-api WARN slow request req-000022d9-756d region=solmere route=/wallet latency_ms=1873
+2026-06-08T15:21:00Z service=edge-api INFO request req-000022da-e662 region=veyra route=/wallet status=200 latency_ms=53
+2026-06-08T15:22:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=14
+2026-06-08T15:23:00Z service=edge-api INFO request req-000022dc-9eb7 region=veyra route=/wallet status=204 latency_ms=34
+2026-06-08T15:24:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=37
+2026-06-08T15:25:00Z service=edge-api INFO request req-000022de-3af7 region=veyra route=/wallet status=204 latency_ms=17
+2026-06-08T15:26:00Z service=edge-api WARN slow request req-000022df-45cd region=solmere route=/wallet latency_ms=925
+2026-06-08T15:27:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=19
+2026-06-08T15:28:00Z service=edge-api WARN slow request req-000022e1-c565 region=solmere route=/wallet latency_ms=1293
+2026-06-08T15:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T15:30:00Z service=edge-api INFO request req-000022e3-dfd5 region=solmere route=/wallet status=204 latency_ms=9
+2026-06-08T15:31:00Z service=edge-api INFO request req-000022e4-a877 region=veyra route=/wallet status=200 latency_ms=63
+2026-06-08T15:32:00Z service=edge-api INFO request req-000022e5-3fd2 region=solmere route=/wallet status=200 latency_ms=26
+2026-06-08T15:33:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=20
+2026-06-08T15:34:00Z service=edge-api INFO request req-000022e7-65fc region=solmere route=/wallet status=200 latency_ms=61
+2026-06-08T15:35:00Z service=edge-api WARN slow request req-000022e8-7538 region=veyra route=/wallet latency_ms=867
+2026-06-08T15:36:00Z service=edge-api INFO request req-000022e9-e15b region=solmere route=/wallet status=200 latency_ms=34
+2026-06-08T15:37:00Z service=edge-api INFO request req-000022ea-21b8 region=veyra route=/wallet status=200 latency_ms=20
+2026-06-08T15:38:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T15:39:00Z service=edge-api INFO request req-000022ec-427d region=veyra route=/wallet status=200 latency_ms=59
+2026-06-08T15:40:00Z service=edge-api WARN slow request req-000022ed-5a29 region=solmere route=/wallet latency_ms=927
+2026-06-08T15:41:00Z service=edge-api INFO request req-000022ee-4324 region=veyra route=/wallet status=200 latency_ms=10
+2026-06-08T15:42:00Z service=edge-api INFO request req-000022ef-dd96 region=solmere route=/wallet status=200 latency_ms=8
+2026-06-08T15:43:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000022f0-2f76
+2026-06-08T15:44:00Z service=edge-api INFO request req-000022f1-8a02 region=solmere route=/wallet status=200 latency_ms=44
+2026-06-08T15:45:00Z service=edge-api INFO request req-000022f2-e8e5 region=veyra route=/wallet status=200 latency_ms=52
+2026-06-08T15:46:00Z service=edge-api WARN slow request req-000022f3-6028 region=solmere route=/wallet latency_ms=1048
+2026-06-08T15:47:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T15:48:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=40
+2026-06-08T15:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=58
+2026-06-08T15:50:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000022f7-5e95
+2026-06-08T15:51:00Z service=edge-api INFO request req-000022f8-7c38 region=veyra route=/wallet status=200 latency_ms=15
+2026-06-08T15:52:00Z service=edge-api INFO request req-000022f9-f5b0 region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T15:53:00Z service=edge-api INFO request req-000022fa-419f region=veyra route=/wallet status=204 latency_ms=75
+2026-06-08T15:54:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T15:55:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T15:56:00Z service=edge-api INFO request req-000022fd-bd89 region=solmere route=/wallet status=200 latency_ms=40
+2026-06-08T15:57:00Z service=edge-api INFO request req-000022fe-be9b region=veyra route=/wallet status=200 latency_ms=30
+2026-06-08T15:58:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000022ff-c1be
+2026-06-08T15:59:00Z service=edge-api WARN slow request req-00002300-f330 region=veyra route=/wallet latency_ms=1430
+2026-06-08T16:00:00Z service=edge-api INFO request req-00002301-56f2 region=solmere route=/wallet status=200 latency_ms=27
+2026-06-08T16:01:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002302-8ee3
+2026-06-08T16:02:00Z service=edge-api INFO request req-00002303-5012 region=solmere route=/wallet status=204 latency_ms=25
+2026-06-08T16:03:00Z service=edge-api INFO request req-00002304-bdf9 region=veyra route=/wallet status=200 latency_ms=40
+2026-06-08T16:04:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002305-ea97
+2026-06-08T16:05:00Z service=edge-api INFO request req-00002306-aad6 region=veyra route=/wallet status=204 latency_ms=10
+2026-06-08T16:06:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=54
+2026-06-08T16:07:00Z service=edge-api INFO request req-00002308-420f region=veyra route=/wallet status=200 latency_ms=59
+2026-06-08T16:08:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T16:09:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=24
+2026-06-08T16:10:00Z service=edge-api INFO request req-0000230b-f81a region=solmere route=/wallet status=200 latency_ms=74
+2026-06-08T16:11:00Z service=edge-api INFO request req-0000230c-159a region=veyra route=/wallet status=204 latency_ms=37
+2026-06-08T16:12:00Z service=edge-api WARN slow request req-0000230d-5f33 region=solmere route=/wallet latency_ms=1536
+2026-06-08T16:13:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000230e-13ce
+2026-06-08T16:14:00Z service=edge-api INFO request req-0000230f-0d4b region=solmere route=/wallet status=204 latency_ms=26
+2026-06-08T16:15:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002310-d422
+2026-06-08T16:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=45
+2026-06-08T16:17:00Z service=edge-api WARN slow request req-00002312-d6eb region=veyra route=/wallet latency_ms=1025
+2026-06-08T16:18:00Z service=edge-api WARN slow request req-00002313-06d3 region=solmere route=/wallet latency_ms=1496
+2026-06-08T16:19:00Z service=edge-api INFO request req-00002314-b309 region=veyra route=/wallet status=200 latency_ms=57
+2026-06-08T16:20:00Z service=edge-api INFO request req-00002315-ceaf region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T16:21:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002316-59a6
+2026-06-08T16:22:00Z service=edge-api INFO request req-00002317-f725 region=solmere route=/wallet status=204 latency_ms=22
+2026-06-08T16:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T16:24:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T16:25:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000231a-7f0a
+2026-06-08T16:26:00Z service=edge-api INFO request req-0000231b-2c2b region=solmere route=/wallet status=204 latency_ms=57
+2026-06-08T16:27:00Z service=edge-api WARN slow request req-0000231c-e8f0 region=veyra route=/wallet latency_ms=1212
+2026-06-08T16:28:00Z service=edge-api INFO request req-0000231d-b5ce region=solmere route=/wallet status=204 latency_ms=23
+2026-06-08T16:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=43
+2026-06-08T16:30:00Z service=edge-api INFO request req-0000231f-0a21 region=solmere route=/wallet status=200 latency_ms=42
+2026-06-08T16:31:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002320-42bb
+2026-06-08T16:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=53
+2026-06-08T16:33:00Z service=edge-api INFO request req-00002322-5b42 region=veyra route=/wallet status=204 latency_ms=11
+2026-06-08T16:34:00Z service=edge-api INFO request req-00002323-ebcd region=solmere route=/wallet status=200 latency_ms=68
+2026-06-08T16:35:00Z service=edge-api WARN slow request req-00002324-f0c3 region=veyra route=/wallet latency_ms=999
+2026-06-08T16:36:00Z service=edge-api INFO request req-00002325-5d4c region=solmere route=/wallet status=200 latency_ms=71
+2026-06-08T16:37:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=74
+2026-06-08T16:38:00Z service=edge-api INFO request req-00002327-111b region=solmere route=/wallet status=204 latency_ms=66
+2026-06-08T16:39:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002328-19a0
+2026-06-08T16:40:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002329-3419
+2026-06-08T16:41:00Z service=edge-api INFO request req-0000232a-e401 region=veyra route=/wallet status=200 latency_ms=52
+2026-06-08T16:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T16:43:00Z service=edge-api WARN slow request req-0000232c-a3fc region=veyra route=/wallet latency_ms=1369
+2026-06-08T16:44:00Z service=edge-api INFO request req-0000232d-3374 region=solmere route=/wallet status=204 latency_ms=67
+2026-06-08T16:45:00Z service=edge-api INFO request req-0000232e-b04d region=veyra route=/wallet status=204 latency_ms=38
+2026-06-08T16:46:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000232f-0e2c
+2026-06-08T16:47:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002330-a7b5
+2026-06-08T16:48:00Z service=edge-api INFO request req-00002331-8ce2 region=solmere route=/wallet status=204 latency_ms=36
+2026-06-08T16:49:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002332-3281
+2026-06-08T16:50:00Z service=edge-api INFO request req-00002333-e0d0 region=solmere route=/wallet status=200 latency_ms=47
+2026-06-08T16:51:00Z service=edge-api WARN slow request req-00002334-6fd2 region=veyra route=/wallet latency_ms=1499
+2026-06-08T16:52:00Z service=edge-api INFO request req-00002335-ca0e region=solmere route=/wallet status=200 latency_ms=43
+2026-06-08T16:53:00Z service=edge-api INFO request req-00002336-b01c region=veyra route=/wallet status=204 latency_ms=71
+2026-06-08T16:54:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-00002337-b03d
+2026-06-08T16:55:00Z service=edge-api INFO request req-00002338-e7ab region=veyra route=/wallet status=204 latency_ms=62
+2026-06-08T16:56:00Z service=edge-api INFO request req-00002339-1097 region=solmere route=/wallet status=200 latency_ms=31
+2026-06-08T16:57:00Z service=edge-api INFO request req-0000233a-99c0 region=veyra route=/wallet status=204 latency_ms=35
+2026-06-08T16:58:00Z service=edge-api WARN slow request req-0000233b-3c54 region=solmere route=/wallet latency_ms=949
+2026-06-08T16:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=34
+2026-06-08T17:00:00Z service=edge-api WARN slow request req-0000233d-a0e9 region=solmere route=/wallet latency_ms=1159
+2026-06-08T17:01:00Z service=edge-api WARN slow request req-0000233e-1eda region=veyra route=/wallet latency_ms=1416
+2026-06-08T17:02:00Z service=edge-api INFO request req-0000233f-361a region=solmere route=/wallet status=204 latency_ms=33
+2026-06-08T17:03:00Z service=edge-api WARN slow request req-00002340-b377 region=veyra route=/wallet latency_ms=1084
+2026-06-08T17:04:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=62
+2026-06-08T17:05:00Z service=edge-api INFO request req-00002342-6b84 region=veyra route=/wallet status=204 latency_ms=20
+2026-06-08T17:06:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002343-d543
+2026-06-08T17:07:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002344-cc1a
+2026-06-08T17:08:00Z service=edge-api INFO request req-00002345-4bcd region=solmere route=/wallet status=200 latency_ms=54
+2026-06-08T17:09:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002346-4c69
+2026-06-08T17:10:00Z service=edge-api WARN slow request req-00002347-422b region=solmere route=/wallet latency_ms=1662
+2026-06-08T17:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=32
+2026-06-08T17:12:00Z service=edge-api WARN slow request req-00002349-a525 region=solmere route=/wallet latency_ms=860
+2026-06-08T17:13:00Z service=edge-api INFO request req-0000234a-8a01 region=veyra route=/wallet status=200 latency_ms=24
+2026-06-08T17:14:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000234b-9484
+2026-06-08T17:15:00Z service=edge-api INFO request req-0000234c-20bf region=veyra route=/wallet status=200 latency_ms=44
+2026-06-08T17:16:00Z service=edge-api INFO request req-0000234d-1139 region=solmere route=/wallet status=204 latency_ms=26
+2026-06-08T17:17:00Z service=edge-api INFO request req-0000234e-d380 region=veyra route=/wallet status=200 latency_ms=34
+2026-06-08T17:18:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000234f-4ee5
+2026-06-08T17:19:00Z service=edge-api INFO request req-00002350-c214 region=veyra route=/wallet status=204 latency_ms=61
+2026-06-08T17:20:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=50
+2026-06-08T17:21:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002352-c586
+2026-06-08T17:22:00Z service=edge-api INFO request req-00002353-e854 region=solmere route=/wallet status=204 latency_ms=25
+2026-06-08T17:23:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002354-9284
+2026-06-08T17:24:00Z service=edge-api INFO request req-00002355-d488 region=solmere route=/wallet status=200 latency_ms=31
+2026-06-08T17:25:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002356-6d70
+2026-06-08T17:26:00Z service=edge-api INFO request req-00002357-e4ce region=solmere route=/wallet status=204 latency_ms=43
+2026-06-08T17:27:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002358-70fe
+2026-06-08T17:28:00Z service=edge-api WARN slow request req-00002359-b344 region=solmere route=/wallet latency_ms=1826
+2026-06-08T17:29:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=21
+2026-06-08T17:30:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000235b-9f1b
+2026-06-08T17:31:00Z service=edge-api WARN slow request req-0000235c-e9bb region=veyra route=/wallet latency_ms=1267
+2026-06-08T17:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T17:33:00Z service=edge-api INFO request req-0000235e-e989 region=veyra route=/wallet status=204 latency_ms=58
+2026-06-08T17:34:00Z service=edge-api WARN slow request req-0000235f-6777 region=solmere route=/wallet latency_ms=1702
+2026-06-08T17:35:00Z service=edge-api INFO request req-00002360-bef1 region=veyra route=/wallet status=204 latency_ms=50
+2026-06-08T17:36:00Z service=edge-api INFO request req-00002361-f8eb region=solmere route=/wallet status=200 latency_ms=10
+2026-06-08T17:37:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002362-e566
+2026-06-08T17:38:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=69
+2026-06-08T17:39:00Z service=edge-api WARN slow request req-00002364-3524 region=veyra route=/wallet latency_ms=1412
+2026-06-08T17:40:00Z service=edge-api INFO request req-00002365-3cec region=solmere route=/wallet status=204 latency_ms=74
+2026-06-08T17:41:00Z service=edge-api WARN slow request req-00002366-4022 region=veyra route=/wallet latency_ms=1552
+2026-06-08T17:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T17:43:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002368-0d05
+2026-06-08T17:44:00Z service=edge-api INFO request req-00002369-5e30 region=solmere route=/wallet status=204 latency_ms=25
+2026-06-08T17:45:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=47
+2026-06-08T17:46:00Z service=edge-api INFO request req-0000236b-84d6 region=solmere route=/wallet status=200 latency_ms=63
+2026-06-08T17:47:00Z service=edge-api INFO request req-0000236c-a83c region=veyra route=/wallet status=204 latency_ms=31
+2026-06-08T17:48:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000236d-1d2a
+2026-06-08T17:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=48
+2026-06-08T17:50:00Z service=edge-api INFO request req-0000236f-11a3 region=solmere route=/wallet status=204 latency_ms=8
+2026-06-08T17:51:00Z service=edge-api INFO request req-00002370-f5db region=veyra route=/wallet status=200 latency_ms=30
+2026-06-08T17:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T17:53:00Z service=edge-api INFO request req-00002372-f128 region=veyra route=/wallet status=200 latency_ms=45
+2026-06-08T17:54:00Z service=edge-api INFO request req-00002373-dd38 region=solmere route=/wallet status=200 latency_ms=72
+2026-06-08T17:55:00Z service=edge-api WARN slow request req-00002374-5564 region=veyra route=/wallet latency_ms=1507
+2026-06-08T17:56:00Z service=edge-api WARN slow request req-00002375-aed7 region=solmere route=/wallet latency_ms=1544
+2026-06-08T17:57:00Z service=edge-api WARN slow request req-00002376-e980 region=veyra route=/wallet latency_ms=1354
+2026-06-08T17:58:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002377-bd1a
+2026-06-08T17:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T18:00:00Z service=edge-api INFO request req-00002379-8e04 region=solmere route=/wallet status=204 latency_ms=34
+2026-06-08T18:01:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000237a-e1dd
+2026-06-08T18:02:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000237b-3f17
+2026-06-08T18:03:00Z service=edge-api INFO request req-0000237c-2fc7 region=veyra route=/wallet status=204 latency_ms=53
+2026-06-08T18:04:00Z service=edge-api INFO request req-0000237d-6ece region=solmere route=/wallet status=204 latency_ms=22
+2026-06-08T18:05:00Z service=edge-api INFO request req-0000237e-4615 region=veyra route=/wallet status=204 latency_ms=57
+2026-06-08T18:06:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000237f-6b64
+2026-06-08T18:07:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=63
+2026-06-08T18:08:00Z service=edge-api INFO request req-00002381-e55e region=solmere route=/wallet status=200 latency_ms=35
+2026-06-08T18:09:00Z service=edge-api INFO request req-00002382-a5b0 region=veyra route=/wallet status=200 latency_ms=54
+2026-06-08T18:10:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002383-89ff
+2026-06-08T18:11:00Z service=edge-api WARN slow request req-00002384-045c region=veyra route=/wallet latency_ms=1360
+2026-06-08T18:12:00Z service=edge-api INFO request req-00002385-a18b region=solmere route=/wallet status=204 latency_ms=52
+2026-06-08T18:13:00Z service=edge-api INFO request req-00002386-4c96 region=veyra route=/wallet status=200 latency_ms=63
+2026-06-08T18:14:00Z service=edge-api INFO request req-00002387-889c region=solmere route=/wallet status=200 latency_ms=21
+2026-06-08T18:15:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=58
+2026-06-08T18:16:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=29
+2026-06-08T18:17:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=18
+2026-06-08T18:18:00Z service=edge-api WARN slow request req-0000238b-d13b region=solmere route=/wallet latency_ms=1822
+2026-06-08T18:19:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000238c-989f
+2026-06-08T18:20:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-0000238d-4dd0
+2026-06-08T18:21:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000238e-b15e
+2026-06-08T18:22:00Z service=edge-api INFO request req-0000238f-fecd region=solmere route=/wallet status=200 latency_ms=50
+2026-06-08T18:23:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002390-632d
+2026-06-08T18:24:00Z service=edge-api INFO request req-00002391-5f59 region=solmere route=/wallet status=200 latency_ms=13
+2026-06-08T18:25:00Z service=edge-api INFO request req-00002392-e154 region=veyra route=/wallet status=200 latency_ms=68
+2026-06-08T18:26:00Z service=edge-api WARN slow request req-00002393-0887 region=solmere route=/wallet latency_ms=1688
+2026-06-08T18:27:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002394-fbb5
+2026-06-08T18:28:00Z service=edge-api INFO request req-00002395-ffbf region=solmere route=/wallet status=204 latency_ms=23
+2026-06-08T18:29:00Z service=edge-api INFO request req-00002396-343a region=veyra route=/wallet status=204 latency_ms=52
+2026-06-08T18:30:00Z service=edge-api INFO request req-00002397-6b05 region=solmere route=/wallet status=204 latency_ms=43
+2026-06-08T18:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T18:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=59
+2026-06-08T18:33:00Z service=edge-api INFO request req-0000239a-5440 region=veyra route=/wallet status=200 latency_ms=74
+2026-06-08T18:34:00Z service=edge-api INFO request req-0000239b-efe6 region=solmere route=/wallet status=204 latency_ms=50
+2026-06-08T18:35:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=48
+2026-06-08T18:36:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000239d-c7fd
+2026-06-08T18:37:00Z service=edge-api WARN slow request req-0000239e-e82e region=veyra route=/wallet latency_ms=1647
+2026-06-08T18:38:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T18:39:00Z service=edge-api WARN slow request req-000023a0-8dbf region=veyra route=/wallet latency_ms=1003
+2026-06-08T18:40:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000023a1-5ae7
+2026-06-08T18:41:00Z service=edge-api WARN slow request req-000023a2-8d68 region=veyra route=/wallet latency_ms=1253
+2026-06-08T18:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=16
+2026-06-08T18:43:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000023a4-1a0c
+2026-06-08T18:44:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000023a5-1173
+2026-06-08T18:45:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000023a6-7c7d
+2026-06-08T18:46:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000023a7-7da2
+2026-06-08T18:47:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T18:48:00Z service=edge-api INFO request req-000023a9-22cd region=solmere route=/wallet status=200 latency_ms=49
+2026-06-08T18:49:00Z service=edge-api WARN slow request req-000023aa-af3e region=veyra route=/wallet latency_ms=1866
+2026-06-08T18:50:00Z service=edge-api WARN slow request req-000023ab-9dfd region=solmere route=/wallet latency_ms=948
+2026-06-08T18:51:00Z service=edge-api WARN slow request req-000023ac-3df4 region=veyra route=/wallet latency_ms=1415
+2026-06-08T18:52:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000023ad-1081
+2026-06-08T18:53:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=9
+2026-06-08T18:54:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=15
+2026-06-08T18:55:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000023b0-ec16
+2026-06-08T18:56:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000023b1-9753
+2026-06-08T18:57:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000023b2-cd12
+2026-06-08T18:58:00Z service=edge-api WARN slow request req-000023b3-e39d region=solmere route=/wallet latency_ms=1886
+2026-06-08T18:59:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000023b4-2680
+2026-06-08T19:00:00Z service=edge-api INFO request req-000023b5-cadd region=solmere route=/wallet status=204 latency_ms=17
+2026-06-08T19:01:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T19:02:00Z service=edge-api INFO request req-000023b7-52e3 region=solmere route=/wallet status=204 latency_ms=23
+2026-06-08T19:03:00Z service=edge-api INFO request req-000023b8-52e7 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T19:04:00Z service=edge-api WARN slow request req-000023b9-1e9b region=solmere route=/wallet latency_ms=1816
+2026-06-08T19:05:00Z service=edge-api INFO request req-000023ba-04fe region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T19:06:00Z service=edge-api INFO request req-000023bb-73a6 region=solmere route=/wallet status=204 latency_ms=21
+2026-06-08T19:07:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023bc-c75a
+2026-06-08T19:08:00Z service=edge-api WARN slow request req-000023bd-24be region=solmere route=/wallet latency_ms=876
+2026-06-08T19:09:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T19:10:00Z service=edge-api INFO request req-000023bf-2487 region=solmere route=/wallet status=204 latency_ms=17
+2026-06-08T19:11:00Z service=edge-api INFO request req-000023c0-865f region=veyra route=/wallet status=204 latency_ms=32
+2026-06-08T19:12:00Z service=edge-api INFO request req-000023c1-c56e region=solmere route=/wallet status=200 latency_ms=48
+2026-06-08T19:13:00Z service=edge-api WARN slow request req-000023c2-5c5c region=veyra route=/wallet latency_ms=1442
+2026-06-08T19:14:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000023c3-60c8
+2026-06-08T19:15:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=56
+2026-06-08T19:16:00Z service=edge-api WARN slow request req-000023c5-fe78 region=solmere route=/wallet latency_ms=1846
+2026-06-08T19:17:00Z service=edge-api WARN slow request req-000023c6-0557 region=veyra route=/wallet latency_ms=1024
+2026-06-08T19:18:00Z service=edge-api INFO request req-000023c7-69f0 region=solmere route=/wallet status=200 latency_ms=34
+2026-06-08T19:19:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000023c8-1736
+2026-06-08T19:20:00Z service=edge-api INFO request req-000023c9-493b region=solmere route=/wallet status=204 latency_ms=49
+2026-06-08T19:21:00Z service=edge-api INFO request req-000023ca-2f4f region=veyra route=/wallet status=204 latency_ms=63
+2026-06-08T19:22:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000023cb-594a
+2026-06-08T19:23:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000023cc-1272
+2026-06-08T19:24:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000023cd-75c1
+2026-06-08T19:25:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000023ce-da22
+2026-06-08T19:26:00Z service=edge-api INFO request req-000023cf-55d1 region=solmere route=/wallet status=200 latency_ms=40
+2026-06-08T19:27:00Z service=edge-api WARN slow request req-000023d0-ba24 region=veyra route=/wallet latency_ms=1394
+2026-06-08T19:28:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T19:29:00Z service=edge-api INFO request req-000023d2-8151 region=veyra route=/wallet status=200 latency_ms=64
+2026-06-08T19:30:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000023d3-1481
+2026-06-08T19:31:00Z service=edge-api WARN slow request req-000023d4-f2f5 region=veyra route=/wallet latency_ms=1388
+2026-06-08T19:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=74
+2026-06-08T19:33:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023d6-1ab1
+2026-06-08T19:34:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000023d7-45eb
+2026-06-08T19:35:00Z service=edge-api INFO request req-000023d8-51d7 region=veyra route=/wallet status=200 latency_ms=32
+2026-06-08T19:36:00Z service=edge-api INFO request req-000023d9-f3a5 region=solmere route=/wallet status=200 latency_ms=64
+2026-06-08T19:37:00Z service=edge-api INFO request req-000023da-f28b region=veyra route=/wallet status=200 latency_ms=56
+2026-06-08T19:38:00Z service=edge-api WARN slow request req-000023db-e2fb region=solmere route=/wallet latency_ms=1398
+2026-06-08T19:39:00Z service=edge-api INFO request req-000023dc-259a region=veyra route=/wallet status=204 latency_ms=44
+2026-06-08T19:40:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000023dd-42ff
+2026-06-08T19:41:00Z service=edge-api INFO request req-000023de-6290 region=veyra route=/wallet status=204 latency_ms=72
+2026-06-08T19:42:00Z service=edge-api INFO request req-000023df-1c36 region=solmere route=/wallet status=200 latency_ms=12
+2026-06-08T19:43:00Z service=edge-api INFO request req-000023e0-6cf4 region=veyra route=/wallet status=200 latency_ms=27
+2026-06-08T19:44:00Z service=edge-api INFO request req-000023e1-91e1 region=solmere route=/wallet status=200 latency_ms=48
+2026-06-08T19:45:00Z service=edge-api INFO request req-000023e2-bc00 region=veyra route=/wallet status=200 latency_ms=40
+2026-06-08T19:46:00Z service=edge-api INFO request req-000023e3-2bfe region=solmere route=/wallet status=204 latency_ms=28
+2026-06-08T19:47:00Z service=edge-api INFO request req-000023e4-5346 region=veyra route=/wallet status=200 latency_ms=55
+2026-06-08T19:48:00Z service=edge-api INFO request req-000023e5-78f9 region=solmere route=/wallet status=200 latency_ms=18
+2026-06-08T19:49:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023e6-ed94
+2026-06-08T19:50:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=41
+2026-06-08T19:51:00Z service=edge-api INFO request req-000023e8-b7c5 region=veyra route=/wallet status=204 latency_ms=42
+2026-06-08T19:52:00Z service=edge-api INFO request req-000023e9-bfda region=solmere route=/wallet status=204 latency_ms=66
+2026-06-08T19:53:00Z service=edge-api INFO request req-000023ea-5d09 region=veyra route=/wallet status=200 latency_ms=46
+2026-06-08T19:54:00Z service=edge-api INFO request req-000023eb-b685 region=solmere route=/wallet status=200 latency_ms=67
+2026-06-08T19:55:00Z service=edge-api INFO request req-000023ec-930e region=veyra route=/wallet status=200 latency_ms=36
+2026-06-08T19:56:00Z service=edge-api WARN slow request req-000023ed-23b5 region=solmere route=/wallet latency_ms=885
+2026-06-08T19:57:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023ee-7bc1
+2026-06-08T19:58:00Z service=edge-api INFO request req-000023ef-9868 region=solmere route=/wallet status=200 latency_ms=43
+2026-06-08T19:59:00Z service=edge-api INFO request req-000023f0-ebf0 region=veyra route=/wallet status=204 latency_ms=56
+2026-06-08T20:00:00Z service=edge-api INFO request req-000023f1-3405 region=solmere route=/wallet status=200 latency_ms=29
+2026-06-08T20:01:00Z service=edge-api INFO request req-000023f2-b22f region=veyra route=/wallet status=204 latency_ms=54
+2026-06-08T20:02:00Z service=edge-api INFO request req-000023f3-2d97 region=solmere route=/wallet status=204 latency_ms=33
+2026-06-08T20:03:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023f4-ce6c
+2026-06-08T20:04:00Z service=edge-api WARN slow request req-000023f5-6d6b region=solmere route=/wallet latency_ms=1634
+2026-06-08T20:05:00Z service=edge-api INFO request req-000023f6-4231 region=veyra route=/wallet status=204 latency_ms=28
+2026-06-08T20:06:00Z service=edge-api INFO request req-000023f7-7956 region=solmere route=/wallet status=200 latency_ms=71
+2026-06-08T20:07:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023f8-1975
+2026-06-08T20:08:00Z service=edge-api INFO request req-000023f9-dc21 region=solmere route=/wallet status=204 latency_ms=33
+2026-06-08T20:09:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000023fa-3cdf
+2026-06-08T20:10:00Z service=edge-api INFO request req-000023fb-39d2 region=solmere route=/wallet status=204 latency_ms=10
+2026-06-08T20:11:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=66
+2026-06-08T20:12:00Z service=edge-api INFO request req-000023fd-441d region=solmere route=/wallet status=204 latency_ms=41
+2026-06-08T20:13:00Z service=edge-api INFO request req-000023fe-1cb3 region=veyra route=/wallet status=204 latency_ms=11
+2026-06-08T20:14:00Z service=edge-api INFO request req-000023ff-c4e0 region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T20:15:00Z service=edge-api INFO request req-00002400-2550 region=veyra route=/wallet status=204 latency_ms=42
+2026-06-08T20:16:00Z service=edge-api INFO request req-00002401-1805 region=solmere route=/wallet status=200 latency_ms=11
+2026-06-08T20:17:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002402-a69f
+2026-06-08T20:18:00Z service=edge-api WARN slow request req-00002403-c46b region=solmere route=/wallet latency_ms=930
+2026-06-08T20:19:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=21
+2026-06-08T20:20:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=64
+2026-06-08T20:21:00Z service=edge-api INFO request req-00002406-61c7 region=veyra route=/wallet status=204 latency_ms=24
+2026-06-08T20:22:00Z service=edge-api WARN slow request req-00002407-35b7 region=solmere route=/wallet latency_ms=994
+2026-06-08T20:23:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-00002408-0fc5
+2026-06-08T20:24:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-00002409-b915
+2026-06-08T20:25:00Z service=edge-api INFO request req-0000240a-9f22 region=veyra route=/wallet status=204 latency_ms=63
+2026-06-08T20:26:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=60
+2026-06-08T20:27:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000240c-b0a3
+2026-06-08T20:28:00Z service=edge-api INFO request req-0000240d-b5e5 region=solmere route=/wallet status=204 latency_ms=55
+2026-06-08T20:29:00Z service=edge-api INFO request req-0000240e-716f region=veyra route=/wallet status=204 latency_ms=43
+2026-06-08T20:30:00Z service=edge-api WARN slow request req-0000240f-2a66 region=solmere route=/wallet latency_ms=1823
+2026-06-08T20:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T20:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=19
+2026-06-08T20:33:00Z service=edge-api WARN slow request req-00002412-933b region=veyra route=/wallet latency_ms=1516
+2026-06-08T20:34:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002413-35d6
+2026-06-08T20:35:00Z service=edge-api INFO request req-00002414-bd9b region=veyra route=/wallet status=204 latency_ms=58
+2026-06-08T20:36:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=33
+2026-06-08T20:37:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T20:38:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002417-46ef
+2026-06-08T20:39:00Z service=edge-api INFO request req-00002418-2cf9 region=veyra route=/wallet status=204 latency_ms=44
+2026-06-08T20:40:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=64
+2026-06-08T20:41:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-0000241a-8e33
+2026-06-08T20:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=12
+2026-06-08T20:43:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000241c-a811
+2026-06-08T20:44:00Z service=edge-api INFO request req-0000241d-e157 region=solmere route=/wallet status=204 latency_ms=9
+2026-06-08T20:45:00Z service=edge-api INFO request req-0000241e-1326 region=veyra route=/wallet status=200 latency_ms=23
+2026-06-08T20:46:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T20:47:00Z service=edge-api INFO request req-00002420-0109 region=veyra route=/wallet status=204 latency_ms=9
+2026-06-08T20:48:00Z service=edge-api INFO request req-00002421-e765 region=solmere route=/wallet status=200 latency_ms=66
+2026-06-08T20:49:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-00002422-2c9c
+2026-06-08T20:50:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002423-c7ab
+2026-06-08T20:51:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=55
+2026-06-08T20:52:00Z service=edge-api WARN slow request req-00002425-f1e2 region=solmere route=/wallet latency_ms=1565
+2026-06-08T20:53:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=39
+2026-06-08T20:54:00Z service=edge-api INFO request req-00002427-7dfc region=solmere route=/wallet status=200 latency_ms=65
+2026-06-08T20:55:00Z service=edge-api WARN slow request req-00002428-bfd6 region=veyra route=/wallet latency_ms=880
+2026-06-08T20:56:00Z service=edge-api INFO request req-00002429-82b8 region=solmere route=/wallet status=200 latency_ms=63
+2026-06-08T20:57:00Z service=edge-api WARN slow request req-0000242a-07eb region=veyra route=/wallet latency_ms=1562
+2026-06-08T20:58:00Z service=edge-api INFO request req-0000242b-f092 region=solmere route=/wallet status=204 latency_ms=15
+2026-06-08T20:59:00Z service=edge-api WARN slow request req-0000242c-d9ab region=veyra route=/wallet latency_ms=1016
+2026-06-08T21:00:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=27
+2026-06-08T21:01:00Z service=edge-api INFO request req-0000242e-3c31 region=veyra route=/wallet status=204 latency_ms=14
+2026-06-08T21:02:00Z service=edge-api INFO request req-0000242f-634c region=solmere route=/wallet status=200 latency_ms=13
+2026-06-08T21:03:00Z service=edge-api WARN slow request req-00002430-3b75 region=veyra route=/wallet latency_ms=1120
+2026-06-08T21:04:00Z service=edge-api INFO request req-00002431-e0fe region=solmere route=/wallet status=200 latency_ms=53
+2026-06-08T21:05:00Z service=edge-api INFO request req-00002432-2790 region=veyra route=/wallet status=204 latency_ms=37
+2026-06-08T21:06:00Z service=edge-api WARN slow request req-00002433-0fd7 region=solmere route=/wallet latency_ms=1895
+2026-06-08T21:07:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=28
+2026-06-08T21:08:00Z service=edge-api INFO request req-00002435-833d region=solmere route=/wallet status=204 latency_ms=9
+2026-06-08T21:09:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=51
+2026-06-08T21:10:00Z service=edge-api INFO request req-00002437-cbbb region=solmere route=/wallet status=200 latency_ms=39
+2026-06-08T21:11:00Z service=edge-api INFO request req-00002438-9c51 region=veyra route=/wallet status=204 latency_ms=65
+2026-06-08T21:12:00Z service=edge-api INFO request req-00002439-66b0 region=solmere route=/wallet status=204 latency_ms=69
+2026-06-08T21:13:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=54
+2026-06-08T21:14:00Z service=edge-api INFO request req-0000243b-1438 region=solmere route=/wallet status=200 latency_ms=18
+2026-06-08T21:15:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-0000243c-d299
+2026-06-08T21:16:00Z service=edge-api INFO request req-0000243d-c23a region=solmere route=/wallet status=200 latency_ms=68
+2026-06-08T21:17:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=21
+2026-06-08T21:18:00Z service=edge-api INFO request req-0000243f-6cce region=solmere route=/wallet status=204 latency_ms=53
+2026-06-08T21:19:00Z service=edge-api WARN slow request req-00002440-e92f region=veyra route=/wallet latency_ms=1001
+2026-06-08T21:20:00Z service=edge-api INFO request req-00002441-a519 region=solmere route=/wallet status=204 latency_ms=74
+2026-06-08T21:21:00Z service=edge-api INFO request req-00002442-f8c3 region=veyra route=/wallet status=204 latency_ms=71
+2026-06-08T21:22:00Z service=edge-api INFO request req-00002443-af52 region=solmere route=/wallet status=200 latency_ms=66
+2026-06-08T21:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=24
+2026-06-08T21:24:00Z service=edge-api INFO request req-00002445-7bfe region=solmere route=/wallet status=200 latency_ms=10
+2026-06-08T21:25:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-00002446-74e8
+2026-06-08T21:26:00Z service=edge-api INFO request req-00002447-91f7 region=solmere route=/wallet status=204 latency_ms=45
+2026-06-08T21:27:00Z service=edge-api INFO request req-00002448-9af3 region=veyra route=/wallet status=200 latency_ms=54
+2026-06-08T21:28:00Z service=edge-api INFO request req-00002449-1e8f region=solmere route=/wallet status=200 latency_ms=34
+2026-06-08T21:29:00Z service=edge-api INFO request req-0000244a-e5c5 region=veyra route=/wallet status=200 latency_ms=32
+2026-06-08T21:30:00Z service=edge-api INFO request req-0000244b-1f23 region=solmere route=/wallet status=204 latency_ms=62
+2026-06-08T21:31:00Z service=edge-api WARN slow request req-0000244c-95a4 region=veyra route=/wallet latency_ms=1640
+2026-06-08T21:32:00Z service=edge-api INFO request req-0000244d-3e23 region=solmere route=/wallet status=204 latency_ms=42
+2026-06-08T21:33:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=20
+2026-06-08T21:34:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-0000244f-b889
+2026-06-08T21:35:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=21
+2026-06-08T21:36:00Z service=edge-api INFO request req-00002451-d927 region=solmere route=/wallet status=204 latency_ms=51
+2026-06-08T21:37:00Z service=edge-api INFO request req-00002452-bb09 region=veyra route=/wallet status=204 latency_ms=36
+2026-06-08T21:38:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002453-0fe0
+2026-06-08T21:39:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=73
+2026-06-08T21:40:00Z service=edge-api INFO request req-00002455-569e region=solmere route=/wallet status=200 latency_ms=24
+2026-06-08T21:41:00Z service=edge-api INFO request req-00002456-f31d region=veyra route=/wallet status=200 latency_ms=63
+2026-06-08T21:42:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002457-9bec
+2026-06-08T21:43:00Z service=edge-api INFO request req-00002458-fdf7 region=veyra route=/wallet status=204 latency_ms=45
+2026-06-08T21:44:00Z service=edge-api WARN slow request req-00002459-8420 region=solmere route=/wallet latency_ms=1341
+2026-06-08T21:45:00Z service=edge-api INFO request req-0000245a-e540 region=veyra route=/wallet status=204 latency_ms=73
+2026-06-08T21:46:00Z service=edge-api WARN slow request req-0000245b-9937 region=solmere route=/wallet latency_ms=1712
+2026-06-08T21:47:00Z service=edge-api INFO request req-0000245c-8f3e region=veyra route=/wallet status=200 latency_ms=69
+2026-06-08T21:48:00Z service=edge-api INFO request req-0000245d-7f5f region=solmere route=/wallet status=200 latency_ms=23
+2026-06-08T21:49:00Z service=edge-api INFO request req-0000245e-a666 region=veyra route=/wallet status=204 latency_ms=35
+2026-06-08T21:50:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T21:51:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=48
+2026-06-08T21:52:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=8
+2026-06-08T21:53:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=45
+2026-06-08T21:54:00Z service=edge-api INFO request req-00002463-c373 region=solmere route=/wallet status=204 latency_ms=15
+2026-06-08T21:55:00Z service=edge-api INFO request req-00002464-db03 region=veyra route=/wallet status=200 latency_ms=72
+2026-06-08T21:56:00Z service=edge-api INFO request req-00002465-3ea8 region=solmere route=/wallet status=200 latency_ms=68
+2026-06-08T21:57:00Z service=edge-api INFO request req-00002466-fc5a region=veyra route=/wallet status=204 latency_ms=39
+2026-06-08T21:58:00Z service=edge-api INFO request req-00002467-609f region=solmere route=/wallet status=200 latency_ms=25
+2026-06-08T21:59:00Z service=edge-api WARN slow request req-00002468-2571 region=veyra route=/wallet latency_ms=1792
+2026-06-08T22:00:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=26
+2026-06-08T22:01:00Z service=edge-api WARN slow request req-0000246a-a8ea region=veyra route=/wallet latency_ms=1709
+2026-06-08T22:02:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T22:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T22:04:00Z service=edge-api WARN slow request req-0000246d-47cc region=solmere route=/wallet latency_ms=1655
+2026-06-08T22:05:00Z service=edge-api INFO request req-0000246e-8a3b region=veyra route=/wallet status=200 latency_ms=42
+2026-06-08T22:06:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=41
+2026-06-08T22:07:00Z service=edge-api WARN slow request req-00002470-8778 region=veyra route=/wallet latency_ms=877
+2026-06-08T22:08:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T22:09:00Z service=edge-api INFO request req-00002472-8f01 region=veyra route=/wallet status=200 latency_ms=44
+2026-06-08T22:10:00Z service=edge-api INFO request req-00002473-64cd region=solmere route=/wallet status=204 latency_ms=30
+2026-06-08T22:11:00Z service=edge-api WARN slow request req-00002474-2f6a region=veyra route=/wallet latency_ms=1124
+2026-06-08T22:12:00Z service=edge-api INFO request req-00002475-ede8 region=solmere route=/wallet status=204 latency_ms=14
+2026-06-08T22:13:00Z service=edge-api INFO request req-00002476-4020 region=veyra route=/wallet status=200 latency_ms=46
+2026-06-08T22:14:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T22:15:00Z service=edge-api INFO request req-00002478-a653 region=veyra route=/wallet status=200 latency_ms=47
+2026-06-08T22:16:00Z service=edge-api WARN slow request req-00002479-fa10 region=solmere route=/wallet latency_ms=1072
+2026-06-08T22:17:00Z service=edge-api INFO request req-0000247a-10ba region=veyra route=/wallet status=204 latency_ms=22
+2026-06-08T22:18:00Z service=edge-api INFO request req-0000247b-bd6b region=solmere route=/wallet status=200 latency_ms=28
+2026-06-08T22:19:00Z service=edge-api INFO request req-0000247c-321c region=veyra route=/wallet status=200 latency_ms=18
+2026-06-08T22:20:00Z service=edge-api WARN slow request req-0000247d-b442 region=solmere route=/wallet latency_ms=1210
+2026-06-08T22:21:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-0000247e-a872
+2026-06-08T22:22:00Z service=edge-api WARN slow request req-0000247f-f109 region=solmere route=/wallet latency_ms=1504
+2026-06-08T22:23:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=25
+2026-06-08T22:24:00Z service=edge-api INFO request req-00002481-7483 region=solmere route=/wallet status=200 latency_ms=69
+2026-06-08T22:25:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=15
+2026-06-08T22:26:00Z service=edge-api INFO request req-00002483-af19 region=solmere route=/wallet status=200 latency_ms=43
+2026-06-08T22:27:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=17
+2026-06-08T22:28:00Z service=edge-api INFO request req-00002485-d0dd region=solmere route=/wallet status=204 latency_ms=8
+2026-06-08T22:29:00Z service=edge-api WARN slow request req-00002486-1f2b region=veyra route=/wallet latency_ms=916
+2026-06-08T22:30:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=58
+2026-06-08T22:31:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=25
+2026-06-08T22:32:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=70
+2026-06-08T22:33:00Z service=edge-api INFO request req-0000248a-305a region=veyra route=/wallet status=200 latency_ms=40
+2026-06-08T22:34:00Z service=edge-api WARN slow request req-0000248b-d6fd region=solmere route=/wallet latency_ms=872
+2026-06-08T22:35:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-0000248c-03a5
+2026-06-08T22:36:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-0000248d-6609
+2026-06-08T22:37:00Z service=edge-api WARN slow request req-0000248e-b7bb region=veyra route=/wallet latency_ms=1511
+2026-06-08T22:38:00Z service=edge-api INFO request req-0000248f-785e region=solmere route=/wallet status=204 latency_ms=13
+2026-06-08T22:39:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=13
+2026-06-08T22:40:00Z service=edge-api INFO request req-00002491-a67f region=solmere route=/wallet status=200 latency_ms=11
+2026-06-08T22:41:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=11
+2026-06-08T22:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=48
+2026-06-08T22:43:00Z service=edge-api INFO request req-00002494-6ce9 region=veyra route=/wallet status=200 latency_ms=27
+2026-06-08T22:44:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-00002495-1245
+2026-06-08T22:45:00Z service=edge-api INFO request req-00002496-1558 region=veyra route=/wallet status=200 latency_ms=20
+2026-06-08T22:46:00Z service=edge-api INFO request req-00002497-7305 region=solmere route=/wallet status=204 latency_ms=69
+2026-06-08T22:47:00Z service=edge-api INFO request req-00002498-296e region=veyra route=/wallet status=200 latency_ms=53
+2026-06-08T22:48:00Z service=edge-api INFO request req-00002499-6fa2 region=solmere route=/wallet status=200 latency_ms=43
+2026-06-08T22:49:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=25
+2026-06-08T22:50:00Z service=edge-api INFO request req-0000249b-8d74 region=solmere route=/wallet status=204 latency_ms=60
+2026-06-08T22:51:00Z service=edge-api INFO request req-0000249c-07b0 region=veyra route=/wallet status=204 latency_ms=22
+2026-06-08T22:52:00Z service=edge-api INFO request req-0000249d-08f9 region=solmere route=/wallet status=200 latency_ms=24
+2026-06-08T22:53:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=64
+2026-06-08T22:54:00Z service=edge-api INFO request req-0000249f-38dd region=solmere route=/wallet status=200 latency_ms=28
+2026-06-08T22:55:00Z service=edge-api WARN slow request req-000024a0-db0c region=veyra route=/wallet latency_ms=1006
+2026-06-08T22:56:00Z service=edge-api INFO request req-000024a1-5e02 region=solmere route=/wallet status=204 latency_ms=19
+2026-06-08T22:57:00Z service=edge-api INFO request req-000024a2-208e region=veyra route=/wallet status=204 latency_ms=44
+2026-06-08T22:58:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=46
+2026-06-08T22:59:00Z service=edge-api WARN slow request req-000024a4-547d region=veyra route=/wallet latency_ms=1212
+2026-06-08T23:00:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=68
+2026-06-08T23:01:00Z service=edge-api INFO request req-000024a6-4600 region=veyra route=/wallet status=204 latency_ms=53
+2026-06-08T23:02:00Z service=edge-api WARN slow request req-000024a7-7ad4 region=solmere route=/wallet latency_ms=1625
+2026-06-08T23:03:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=28
+2026-06-08T23:04:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000024a9-d983
+2026-06-08T23:05:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000024aa-2801
+2026-06-08T23:06:00Z service=edge-api INFO request req-000024ab-96e4 region=solmere route=/wallet status=200 latency_ms=14
+2026-06-08T23:07:00Z service=edge-api INFO request req-000024ac-424a region=veyra route=/wallet status=200 latency_ms=69
+2026-06-08T23:08:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=69
+2026-06-08T23:09:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000024ae-2a86
+2026-06-08T23:10:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000024af-a1ca
+2026-06-08T23:11:00Z service=edge-api WARN slow request req-000024b0-0971 region=veyra route=/wallet latency_ms=1691
+2026-06-08T23:12:00Z service=edge-api WARN upstream retry region=solmere attempt=1 request=req-000024b1-2709
+2026-06-08T23:13:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=62
+2026-06-08T23:14:00Z service=edge-api INFO request req-000024b3-17cc region=solmere route=/wallet status=200 latency_ms=64
+2026-06-08T23:15:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000024b4-e2a2
+2026-06-08T23:16:00Z service=edge-api WARN slow request req-000024b5-1253 region=solmere route=/wallet latency_ms=1698
+2026-06-08T23:17:00Z service=edge-api WARN upstream retry region=veyra attempt=1 request=req-000024b6-2b48
+2026-06-08T23:18:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=16
+2026-06-08T23:19:00Z service=edge-api WARN slow request req-000024b8-75b0 region=veyra route=/wallet latency_ms=1526
+2026-06-08T23:20:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000024b9-f604
+2026-06-08T23:21:00Z service=edge-api INFO request req-000024ba-8cb8 region=veyra route=/wallet status=200 latency_ms=52
+2026-06-08T23:22:00Z service=edge-api WARN upstream retry region=solmere attempt=2 request=req-000024bb-2bb2
+2026-06-08T23:23:00Z service=edge-api WARN slow request req-000024bc-cefb region=veyra route=/wallet latency_ms=1452
+2026-06-08T23:24:00Z service=edge-api INFO request req-000024bd-9eea region=solmere route=/wallet status=204 latency_ms=16
+2026-06-08T23:25:00Z service=edge-api INFO request req-000024be-0b43 region=veyra route=/wallet status=200 latency_ms=41
+2026-06-08T23:26:00Z service=edge-api INFO request req-000024bf-e874 region=solmere route=/wallet status=204 latency_ms=11
+2026-06-08T23:27:00Z service=edge-api INFO request req-000024c0-92f0 region=veyra route=/wallet status=200 latency_ms=66
+2026-06-08T23:28:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=40
+2026-06-08T23:29:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000024c2-ca37
+2026-06-08T23:30:00Z service=edge-api WARN slow request req-000024c3-ba26 region=solmere route=/wallet latency_ms=989
+2026-06-08T23:31:00Z service=edge-api WARN slow request req-000024c4-18fc region=veyra route=/wallet latency_ms=870
+2026-06-08T23:32:00Z service=edge-api WARN upstream retry region=solmere attempt=3 request=req-000024c5-b389
+2026-06-08T23:33:00Z service=edge-api WARN upstream retry region=veyra attempt=3 request=req-000024c6-4e82
+2026-06-08T23:34:00Z service=edge-api INFO request req-000024c7-ba3a region=solmere route=/wallet status=204 latency_ms=75
+2026-06-08T23:35:00Z service=edge-api INFO request req-000024c8-717b region=veyra route=/wallet status=204 latency_ms=31
+2026-06-08T23:36:00Z service=edge-api INFO request req-000024c9-9e1a region=solmere route=/wallet status=204 latency_ms=14
+2026-06-08T23:37:00Z service=edge-api INFO request req-000024ca-94d3 region=veyra route=/wallet status=204 latency_ms=27
+2026-06-08T23:38:00Z service=edge-api INFO request req-000024cb-9b36 region=solmere route=/wallet status=200 latency_ms=40
+2026-06-08T23:39:00Z service=edge-api WARN slow request req-000024cc-1b03 region=veyra route=/wallet latency_ms=1778
+2026-06-08T23:40:00Z service=edge-api INFO request req-000024cd-b9b1 region=solmere route=/wallet status=204 latency_ms=70
+2026-06-08T23:41:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000024ce-0baa
+2026-06-08T23:42:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=17
+2026-06-08T23:43:00Z service=edge-api WARN upstream retry region=veyra attempt=2 request=req-000024d0-ed52
+2026-06-08T23:44:00Z service=edge-api INFO request req-000024d1-450d region=solmere route=/wallet status=204 latency_ms=29
+2026-06-08T23:45:00Z service=edge-api INFO request req-000024d2-7656 region=veyra route=/wallet status=204 latency_ms=41
+2026-06-08T23:46:00Z service=edge-api INFO request req-000024d3-b7d8 region=solmere route=/wallet status=204 latency_ms=48
+2026-06-08T23:47:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=38
+2026-06-08T23:48:00Z service=edge-api WARN slow request req-000024d5-d1e8 region=solmere route=/wallet latency_ms=1449
+2026-06-08T23:49:00Z service=edge-api INFO request req-000024d6-843f region=veyra route=/wallet status=204 latency_ms=18
+2026-06-08T23:50:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=32
+2026-06-08T23:51:00Z service=edge-api INFO request req-000024d8-e815 region=veyra route=/wallet status=200 latency_ms=19
+2026-06-08T23:52:00Z service=edge-api INFO request req-000024d9-6ca0 region=solmere route=/wallet status=200 latency_ms=57
+2026-06-08T23:53:00Z service=edge-api INFO request req-000024da-60c7 region=veyra route=/wallet status=204 latency_ms=56
+2026-06-08T23:54:00Z service=edge-api INFO request req-000024db-c7da region=solmere route=/wallet status=200 latency_ms=61
+2026-06-08T23:55:00Z service=edge-api WARN slow request req-000024dc-3276 region=veyra route=/wallet latency_ms=1045
+2026-06-08T23:56:00Z service=edge-api INFO request req-000024dd-5c7a region=solmere route=/wallet status=204 latency_ms=73
+2026-06-08T23:57:00Z service=edge-api WARN slow request req-000024de-cde2 region=veyra route=/wallet latency_ms=1156
+2026-06-08T23:58:00Z service=edge-api INFO request req-000024df-9fb7 region=solmere route=/wallet status=204 latency_ms=62
+2026-06-08T23:59:00Z service=edge-api INFO health check dependency=wallet-session status=ok latency_ms=49

@@ -1,0 +1,6 @@
+{
+  "healthy": 200,
+  "temporary": 503,
+  "missing": 404,
+  "badGateway": 502
+}

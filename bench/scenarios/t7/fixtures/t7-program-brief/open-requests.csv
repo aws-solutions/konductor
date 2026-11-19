@@ -1,0 +1,101 @@
+id,title,status,votes,requester,team,estimate_points,created,updated,comment
+REQ-001,Add retry detail to deployment view,In Progress,19,quality,Growth,8,2027-01-14,2027-03-04,This came from the weekly operations notes.
+REQ-002,Add a release summary to the weekly report,Waiting,0,quality,Cedar,1,2027-02-27,2027-04-09,This came from the weekly operations notes.
+REQ-003,Refresh service ownership list,Done,13,release-ops,Growth,2,2027-03-26,2027-03-12,The current screen is usable but easy to miss.
+REQ-004,Correct timestamp on release history,Open,19,service-team,Cedar,8,2027-01-14,2027-03-01,The current screen is usable but easy to miss.
+REQ-005,Clarify release approval message,In Progress,1,product,Platform,3,2027-01-01,2027-04-05,No customer deadline recorded.
+REQ-006,Record the initiating user on a release,Closed,13,support,Cedar,5,2027-02-01,2027-04-07,No customer deadline recorded.
+REQ-007,Clarify release approval message,In Progress,20,support,Atlas,3,2027-03-27,2027-04-02,This came from the weekly operations notes.
+REQ-008,Make release notes easier to scan,Closed,20,release-ops,Beacon,2,2027-01-18,2027-03-05,No customer deadline recorded.
+REQ-009,Add retry detail to deployment view,Waiting,20,release-ops,Beacon,1,2027-02-20,2027-03-04,Needs a small wording pass before review.
+REQ-010,Document staging promotion steps,Open,21,service-team,Platform,2,2027-02-21,2027-04-02,Waiting for an example from a service owner.
+REQ-011,Correct timestamp on release history,Open,2,product,Platform,,2027-03-01,2027-04-03,This came from the weekly operations notes.
+REQ-012,Provide deployment identity for service accounts,Open,8,release-ops,Platform,5,2027-02-07,2027-04-03,Release jobs need token exchange through the Identity Services endpoint. The service owner asked for one interface before the teams change their runners.
+REQ-013,Add retry detail to deployment view,Closed,12,release-ops,Platform,2,2027-02-06,2027-04-03,The current screen is usable but easy to miss.
+REQ-014,Document staging promotion steps,Open,9,release-ops,Platform,1,2027-03-11,2027-03-09,Needs a small wording pass before review.
+REQ-015,Clarify release approval message,Open,3,product,Cedar,8,2027-01-06,2027-03-06,Waiting for an example from a service owner.
+REQ-016,Clarify release approval message,In Progress,19,support,Beacon,8,2027-03-18,2027-04-07,This came from the weekly operations notes.
+REQ-017,Clean up old environment labels,Open,21,product,Growth,5,2027-01-23,2027-04-08,Please check this against the staging workflow.
+REQ-018,Export recent release activity,Open,18,release-ops,Growth,2,2027-01-10,2027-03-10,Needs a small wording pass before review.
+REQ-019,Allow a second reviewer on a release,Done,6,product,Cedar,5,2027-03-19,2027-04-11,Please check this against the staging workflow.
+REQ-020,Add retry detail to deployment view,Open,0,service-team,Growth,2,2027-01-11,2027-04-05,The current screen is usable but easy to miss.
+REQ-021,Add retry detail to deployment view,Open,17,product,Platform,3,2027-02-04,2027-04-02,The current screen is usable but easy to miss.
+REQ-022,Clarify release approval message,In Progress,14,service-team,Beacon,,2027-02-18,2027-04-08,This came from the weekly operations notes.
+REQ-023,Add retry detail to deployment view,Done,7,release-ops,Growth,1,2027-02-12,2027-03-09,This came from the weekly operations notes.
+REQ-024,Support a dry run for scheduled releases,Closed,16,release-ops,Platform,2,2027-02-05,2027-04-07,Waiting for an example from a service owner.
+REQ-025,Document staging promotion steps,Done,7,quality,Platform,1,2027-01-25,2027-03-08,Please check this against the staging workflow.
+REQ-026,Correct timestamp on release history,Open,13,product,Cedar,1,2027-01-27,2027-03-06,Waiting for an example from a service owner.
+REQ-027,Coordinate shared deployment migration window,Open,12,service-team,Atlas,3,2027-01-06,2027-04-03,Please confirm whether the Atlas or Beacon release group will own the first migration window.
+REQ-028,Improve rollback status text,Done,12,product,Growth,2,2027-01-24,2027-03-11,No customer deadline recorded.
+REQ-029,Add retry detail to deployment view,In Progress,5,service-team,Beacon,5,2027-02-27,2027-04-06,Needs a small wording pass before review.
+REQ-030,Improve rollback status text,Closed,13,quality,Beacon,1,2027-02-16,2027-04-02,The current screen is usable but easy to miss.
+REQ-031,Improve permission error copy,Open,16,service-team,Platform,5,2027-02-07,2027-04-05,Please check this against the staging workflow.
+REQ-032,Correct timestamp on release history,In Progress,11,product,Beacon,5,2027-03-10,2027-03-05,Needs a small wording pass before review.
+REQ-033,Clarify release approval message,Done,0,service-team,Atlas,,2027-03-21,2027-04-06,This came from the weekly operations notes.
+REQ-034,Add retry detail to deployment view,Open,1,service-team,Platform,1,2027-01-14,2027-03-01,The current screen is usable but easy to miss.
+REQ-035,Improve permission error copy,Done,21,product,Growth,8,2027-03-14,2027-03-09,Please check this against the staging workflow.
+REQ-036,Clean up old environment labels,Open,9,release-ops,Growth,8,2027-02-22,2027-04-12,Needs a small wording pass before review.
+REQ-037,Show failed check links,Closed,19,service-team,Platform,5,2027-01-26,2027-04-07,Please check this against the staging workflow.
+REQ-038,Allow a second reviewer on a release,Open,6,quality,Cedar,1,2027-02-13,2027-03-06,Waiting for an example from a service owner.
+REQ-039,Add a release summary to the weekly report,In Progress,1,release-ops,Beacon,8,2027-02-03,2027-04-10,This came from the weekly operations notes.
+REQ-040,Add retry detail to deployment view,Open,1,product,Cedar,5,2027-03-05,2027-03-05,The current screen is usable but easy to miss.
+REQ-041,Clean up old environment labels,Open,18,product,Beacon,5,2027-03-01,2027-04-10,The current screen is usable but easy to miss.
+REQ-042,Add a release summary to the weekly report,In Progress,12,support,Beacon,2,2027-01-01,2027-03-12,No customer deadline recorded.
+REQ-043,Add deployment audit history export,In Progress,17,quality,Atlas,3,2027-02-27,2027-03-08,Reviewers need to find release records after the deployment; the current export is incomplete.
+REQ-044,Allow a second reviewer on a release,In Progress,10,release-ops,Beacon,,2027-01-25,2027-03-01,This came from the weekly operations notes.
+REQ-045,Document staging promotion steps,Open,1,quality,Cedar,2,2027-02-08,2027-03-08,The current screen is usable but easy to miss.
+REQ-046,Record the initiating user on a release,Open,8,release-ops,Platform,1,2027-02-13,2027-04-03,No customer deadline recorded.
+REQ-047,Make release notes easier to scan,Done,8,release-ops,Platform,2,2027-02-24,2027-03-03,The current screen is usable but easy to miss.
+REQ-048,Allow a second reviewer on a release,Waiting,18,support,Beacon,3,2027-01-04,2027-03-04,Please check this against the staging workflow.
+REQ-049,Record the initiating user on a release,Open,9,product,Cedar,3,2027-01-04,2027-04-02,This came from the weekly operations notes.
+REQ-050,Make release notes easier to scan,Open,13,quality,Atlas,5,2027-01-13,2027-04-10,This came from the weekly operations notes.
+REQ-051,Clarify release approval message,In Progress,5,release-ops,Cedar,2,2027-03-13,2027-03-06,The current screen is usable but easy to miss.
+REQ-052,Clarify release approval message,Waiting,14,service-team,Atlas,8,2027-01-23,2027-03-10,This came from the weekly operations notes.
+REQ-053,Add retry detail to deployment view,Open,20,support,Growth,5,2027-02-15,2027-03-03,This came from the weekly operations notes.
+REQ-054,Add filter for service name,Closed,16,service-team,Growth,2,2027-03-13,2027-03-02,No customer deadline recorded.
+REQ-055,Clean up old environment labels,Done,21,relase-ops,Growth,,2027-03-14,2027-04-03,Please check this against the staging workflow; requester spelling came from the source export.
+REQ-056,Add retry detail to deployment view,In Progress,19,support,Cedar,8,2027-02-04,2027-04-06,Waiting for an example from a service owner.
+REQ-057,Show failed check links,Open,1,quality,Platform,5,2027-01-21,2027-03-05,The current screen is usable but easy to miss.
+REQ-058,Clarify release approval message,Closed,1,product,Cedar,5,2027-01-19,2027-03-07,Waiting for an example from a service owner.
+REQ-059,Document staging promotion steps,Closed,20,support,Platform,8,2027-02-19,2027-04-05,The current screen is usable but easy to miss.
+REQ-060,Improve permission error copy,Open,1,release-ops,Beacon,3,2027-02-11,2027-03-12,Needs a small wording pass before review.
+REQ-061,Document staging promotion steps,Open,12,service-team,Cedar,8,2027-01-16,2027-04-02,Waiting for an example from a service owner.
+REQ-062,Export recent release activity,Closed,13,quality,Beacon,1,2027-01-21,2027-04-04,This came from the weekly operations notes.
+REQ-063,Export recent release activity,Open,0,release-ops,Atlas,5,2027-02-07,2027-03-02,No customer deadline recorded.
+REQ-064,Refresh service ownership list,Done,11,product,Growth,3,2027-01-05,2027-04-07,The current screen is usable but easy to miss.
+REQ-065,Improve permission error copy,Open,2,support,Cedar,3,2027-01-14,2027-04-02,Needs a small wording pass before review.
+REQ-066,Refresh service ownership list,Closed,3,service-team,Beacon,,2027-01-15,2027-04-12,Needs a small wording pass before review.
+REQ-067,Clarify release approval message,Waiting,6,quality,Beacon,1,2027-02-08,2027-04-01,Waiting for an example from a service owner.
+REQ-068,Add feature flag controls to release console,Open,96,product,Growth,8,2027-03-08,2027-03-07,Several requesters asked for a simple toggle during a rollout.
+REQ-069,Support a dry run for scheduled releases,In Progress,3,product,Beacon,5,2027-03-01,2027-03-05,Please check this against the staging workflow.
+REQ-070,Record the initiating user on a release,Waiting,21,quality,Cedar,3,2027-01-24,2027-03-10,Needs a small wording pass before review.
+REQ-071,Improve rollback status text,In Progress,15,support,Atlas,3,2027-03-19,2027-04-01,Please check this against the staging workflow.
+REQ-072,Record the initiating user on a release,Open,16,service-team,Cedar,1,2027-03-14,2027-04-09,The current screen is usable but easy to miss.
+REQ-073,Make release notes easier to scan,Done,4,service-team,Cedar,2,2027-01-02,2027-04-08,The current screen is usable but easy to miss.
+REQ-074,Add filter for service name,Open,1,support,Platform,1,2027-02-12,2027-03-12,No customer deadline recorded.
+REQ-075,Add retry detail to deployment view,Closed,15,product,Atlas,1,2027-03-02,2027-03-12,This came from the weekly operations notes.
+REQ-076,Allow a second reviewer on a release,Open,5,quality,Growth,3,2027-02-21,2027-03-05,No customer deadline recorded.
+REQ-077,Add a release summary to the weekly report,Open,13,release-ops,Platform,,2027-02-14,2027-03-01,This came from the weekly operations notes.
+REQ-078,Document staging promotion steps,Open,4,product,Atlas,2,2027-02-18,2027-04-09,The current screen is usable but easy to miss.
+REQ-079,Improve permission error copy,Open,8,service-team,Growth,8,2027-01-23,2027-04-11,No customer deadline recorded.
+REQ-080,Clean up old environment labels,Open,2,quality,Beacon,2,2027-02-07,2027-03-12,The current screen is usable but easy to miss.
+REQ-081,Allow a second reviewer on a release,Open,12,product,Atlas,3,2027-02-23,2027-03-02,Waiting for an example from a service owner.
+REQ-082,Show failed check links,Open,0,support,Growth,5,2027-02-22,2027-04-03,The current screen is usable but easy to miss.
+REQ-083,Add filter for service name,Done,1,quality,Platform,5,2027-03-18,2027-04-07,Waiting for an example from a service owner.
+REQ-084,Correct timestamp on release history,Done,17,support,Platform,3,2027-03-13,2027-03-07,The current screen is usable but easy to miss.
+REQ-085,Document staging promotion steps,Open,13,product,Platform,3,2027-01-11,2027-04-11,The current screen is usable but easy to miss.
+REQ-086,Document rollback steps for service owners,Open,14,support,Cedar,2,2027-02-11,2027-03-06,The current instructions omit the final verification step.
+REQ-087,Document staging promotion steps,Closed,7,support,Cedar,2,2027-01-14,2027-04-06,Needs a small wording pass before review.
+REQ-088,Add filter for service name,In Progress,14,service-team,Atlas,,2027-03-08,2027-03-11,Please check this against the staging workflow.
+REQ-089,Improve permission error copy,Cancelled,18,quality,Growth,3,2027-03-15,2027-03-02,No customer deadline recorded.
+REQ-090,Allow a second reviewer on a release,In Progress,5,service-team,Platform,2,2027-03-13,2027-04-11,Please check this against the staging workflow.
+REQ-091,Record the initiating user on a release,Waiting,15,product,Beacon,2,2027-03-11,2027-04-02,This came from the weekly operations notes.
+REQ-092,Show failed check links,Open,11,service-team,Beacon,2,2027-03-25,2027-03-02,Needs a small wording pass before review.
+REQ-093,Support a dry run for scheduled releases,Open,11,product,Growth,8,2027-02-07,2027-04-10,Please check this against the staging workflow.
+REQ-094,Add a release summary to the weekly report,Done,18,product,Platform,1,2027-02-09,2027-03-05,Needs a small wording pass before review.
+REQ-095,Add filter for service name,In Progress,2,service-team,Cedar,3,2027-02-03,2027-04-07,The current screen is usable but easy to miss.
+REQ-096,Document staging promotion steps,Done,1,product,Beacon,3,2027-01-16,2027-04-03,Please check this against the staging workflow.
+REQ-097,Clarify release approval message,Closed,19,product,Platform,2,2027-03-18,2027-03-06,Needs a small wording pass before review.
+REQ-098,Record the initiating user on a release,Closed,8,release-ops,Growth,8,2027-03-18,2027-04-03,Please check this against the staging workflow.
+REQ-099,Make release notes easier to scan,Waiting,6,service-team,Beacon,,2027-03-07,2027-03-02,Needs a small wording pass before review.
+REQ-100,Allow a second reviewer on a release,Closed,15,support,Growth,3,2027-03-13,2027-03-06,This came from the weekly operations notes.

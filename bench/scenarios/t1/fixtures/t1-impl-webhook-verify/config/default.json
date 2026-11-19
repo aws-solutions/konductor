@@ -1,0 +1,5 @@
+{
+  "port": 8080,
+  "ledgerLabel": "harbor-main",
+  "maxBodyBytes": 262144
+}

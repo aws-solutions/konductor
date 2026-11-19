@@ -147,7 +147,11 @@ function assemble(id) {
   const draft = readJson(path.join(w, 'task-draft.json'));
   const exists = (f) => fs.existsSync(work(f));
   const disposition = exists(`${id}.disposition.json`) ? readJson(work(`${id}.disposition.json`)) : {};
-  const mapping = exists(`${id}.map.json`) ? readJson(work(`${id}.map.json`)) : { targetSkills: [], targetSop: null, targetAgent: null };
+  const mapped = exists(`${id}.map.json`) ? readJson(work(`${id}.map.json`)) : { targetSkills: [], targetSop: null, targetAgent: null };
+  // A negative control has no target by definition: what the mapper proposed becomes the loads that must not happen.
+  const negative = b.controlKind === 'negative';
+  const mapping = negative ? { targetSkills: [], targetSop: null, targetAgent: null } : mapped;
+  if (negative) b.mustNotLoad = [...mapped.targetSkills, ...(mapped.targetSop ? [mapped.targetSop] : [])];
   const rev = exists(`${id}.review.json`) ? readJson(work(`${id}.review.json`)) : null;
   // Authors guess seconds of work; an agent needs minutes to read a folder of logs. shortcut: fixed floor, raise it from pilot timings.
   const softSec = Math.max(draft.limits.softSec, b.softSec || 600);

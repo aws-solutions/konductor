@@ -40,6 +40,7 @@ Estimate (plan section 9): wave 1 = 5 tasks, 90 credits (stop at 180); wave 2 = 
 | t6-neg-glossary-rename | review | glm-5 | 1.74 | 1 |  |
 | t6-neg-release-notes-csv | author | deepseek-3.2 | 5.06 | 2 |  |
 | t6-neg-release-notes-csv | fix1 | deepseek-3.2 | 4.94 | 2 | review fix round (resumed session) |
+| t6-neg-release-notes-csv | review | minimax-m2.5 | 1.65 | 2 |  |
 | t6-plan-mvp-cut | author | deepseek-3.2 | 1.25 | 1 | cut off by the host; credits from the session file |
 | t6-plan-mvp-cut | fix1 | deepseek-3.2 | 3.94 | 1 | review fix round (resumed session) |
 | t6-plan-mvp-cut | map | glm-5 | 0.96 | 1 |  |
@@ -60,9 +61,12 @@ Estimate (plan section 9): wave 1 = 5 tasks, 90 credits (stop at 180); wave 2 = 
 | t6-req-expense-approvals | map | glm-5 | 0.96 | 1 |  |
 | t6-req-expense-approvals | resume1 | deepseek-3.2 | 10.56 | 1 | resumed the cut-off session |
 | t6-req-expense-approvals | review | minimax-m2.5 | 3.51 | 1 |  |
-| t6-req-fe-address-form | author | deepseek-3.2 | 1.23 | 2 |  |
-| t6-req-fe-address-form | resume1 | deepseek-3.2 | 0.00 | 2 | resumed the cut-off session |
-| t6-req-fe-address-form | resume2 | deepseek-3.2 | 0.00 | 2 |  |
+| t6-req-fe-address-form | author | gpt-5.6-luna | 4.12 | 2 |  |
+| t6-req-fe-address-form | dsauthor | deepseek-3.2 | 1.23 | 2 |  |
+| t6-req-fe-address-form | dsresume1 | deepseek-3.2 | 0.00 | 2 |  |
+| t6-req-fe-address-form | dsresume2 | deepseek-3.2 | 10.37 | 2 |  |
+| t6-req-fe-address-form | map | glm-5 | 0.96 | 2 |  |
+| t6-req-fe-address-form | review | glm-5 | 2.65 | 2 |  |
 | t6-req-field-inspections | author | gpt-5.6-luna | 2.92 | 2 |  |
 | t6-req-field-inspections | map | glm-5 | 0.70 | 2 |  |
 | t6-req-field-inspections | review | glm-5 | 2.28 | 2 |  |
@@ -75,12 +79,14 @@ Estimate (plan section 9): wave 1 = 5 tasks, 90 credits (stop at 180); wave 2 = 
 | t6-req-tpm-cutover | map | glm-5 | 0.95 | 2 |  |
 | t6-req-tpm-cutover | review | minimax-m2.5 | 4.25 | 2 |  |
 | t6-req-volunteer-shifts | author | deepseek-3.2 | 25.52 | 2 |  |
+| t6-req-volunteer-shifts | fix1 | deepseek-3.2 | 12.46 | 2 | review fix round (resumed session) |
 | t6-req-volunteer-shifts | map | glm-5 | 0.97 | 2 |  |
-| t6-req-volunteer-shifts | review | minimax-m2.5 | 3.41 | 2 |  |
+| t6-req-volunteer-shifts | review | gpt-5.6-luna | 3.41 | 2 |  |
+| t6-req-volunteer-shifts | review2 | gpt-5.6-luna | 0.89 | 2 |  |
 | t6-twin-clinic-costs | author | gpt-5.6-luna | 1.68 | 2 |  |
 | t6-twin-clinic-costs | review | glm-5 | 1.73 | 2 |  |
 
-Wave 1: 63.4 credits. Wave 2: 185.1 credits.
+Wave 1: 63.4 credits. Wave 2: 218.2 credits.
 
 The five first wave-1 author calls were cut off by the host (memory pause) and then resumed in the same session. Credits of a running call are added when it finishes.
 
@@ -103,3 +109,13 @@ Cross-family reviewers passed every leak check. The lead's own read found more, 
 | t6-idea-feature-bets | lead, reviewer (ambiguity) | fix round removed "watch for duplicates and double counting" and the field name deduplicated_customers; recommendation and rounding tolerance loosened |
 | t6-idea-pricing-test | lead | fix round replaced JSON field names that named the traps (campaign days, net paid, corrected range) with neutral ones |
 | t6-twin-clinic-costs | lead | twin of t6-req-clinic-reminders on the same fixture (no copy); no target units, `mustNotLoad` from the real task's `mustLoad` |
+| t6-req-tpm-cutover | lead | trimmed overbroad topics; fix round anchored the wrong-value patterns and checks the input files by name |
+| t6-req-fe-address-form | lead | the deepseek-3.2 draft (steps ds*, three calls) had overbroad topics (for example "de", "which", "must") and a reference at 82; re-authored from the same brief by gpt-5.6-luna, reviewed by glm-5 |
+| t6-req-volunteer-shifts | reviewers, lead | minimax-m2.5 found every fact in the fixture; fix round 1 removed most; a second review (gpt-5.6-luna) found the coordinator data list and "MT" in templates; the lead removed them, relaxed the F1 and F6 patterns, fixed the JSON check quoting and set tests `min` to 13 |
+| t6-neg-release-notes-csv | lead | fix round removed "make sure dates are consistent and handle any special characters"; reference and the CSV quoting test made to agree |
+
+## Blindness audit (2026-11-19)
+
+All 72 call streams were scanned for paths outside each call's own scratch folder and HOME. None touched a skill, SOP
+or agent file or the konductor tree; the only outside paths were `/var/tmp` (the kiro-cli binary) and the call's own
+HOME `tmp/`. No prompt or fixture names an internal tool, host path or the owner.

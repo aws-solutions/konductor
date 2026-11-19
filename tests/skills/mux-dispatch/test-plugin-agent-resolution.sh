@@ -29,7 +29,10 @@ CLAUDE_RECORD="$WORKDIR/claude-agent.txt"
 
 cat > "$MOCK_BIN/claude" <<MOCKEOF
 #!/usr/bin/env bash
-[[ "\$1" == "--agent" ]] && printf '%s' "\$2" > "${CLAUDE_RECORD}"
+while [[ \$# -gt 0 ]]; do
+  if [[ "\$1" == "--agent" ]]; then printf '%s' "\$2" > "${CLAUDE_RECORD}"; break; fi
+  shift
+done
 exit 0
 MOCKEOF
 

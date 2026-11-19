@@ -1,0 +1,132 @@
+{
+  "outputFile": "launch/wallet-rollout-plan.md",
+  "items": [
+    {
+      "id": "schema-before-writer",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "expan|schema|migrat|column"
+        ],
+        "none": [
+          "writer|mandatory|enforce"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "writer|write|region_code|mandatory|enforce"
+        ],
+        "none": [
+          "^\\s*(expand|add|create)\\b"
+        ]
+      }
+    },
+    {
+      "id": "api-before-client",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "edge",
+          "api|route"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "client|wallet flag|canary"
+        ],
+        "none": [
+          "edge"
+        ]
+      }
+    },
+    {
+      "id": "steps-limit",
+      "type": "maxLen",
+      "path": "steps",
+      "max": 14,
+      "min": 1
+    },
+    {
+      "id": "traffic-steps-have-gates",
+      "type": "none",
+      "path": "steps",
+      "match": {
+        "all": [
+          "\"percent\":([1-9]|[1-9][0-9]|100)\\b",
+          "\"gate\":null"
+        ]
+      }
+    },
+    {
+      "id": "no-step-in-freeze",
+      "type": "none",
+      "path": "steps",
+      "match": {
+        "field": "start",
+        "timeIn": [
+          "2026-06-12T18:00:00Z",
+          "2026-06-15T06:00:00Z"
+        ]
+      }
+    },
+    {
+      "id": "gate-metrics-catalogued",
+      "type": "inSet",
+      "path": "steps",
+      "field": "gate.metric",
+      "fromFile": "docs/metrics-catalogue.md",
+      "pattern": "^\\|\\s*([a-z_]+)\\s*\\|",
+      "min": 1
+    },
+    {
+      "id": "rollback-metric-catalogued",
+      "type": "inSet",
+      "path": "rollback.trigger",
+      "field": "metric",
+      "fromFile": "docs/metrics-catalogue.md",
+      "pattern": "^\\|\\s*([a-z_]+)\\s*\\|",
+      "min": 1
+    },
+    {
+      "id": "owners-are-teams",
+      "type": "inSet",
+      "path": "ownerList",
+      "field": "team",
+      "fromFile": "team-list.md",
+      "pattern": "^\\|\\s*([^|]+?)\\s*\\|",
+      "min": 1
+    },
+    {
+      "id": "deciders-are-raci-roles",
+      "type": "inSet",
+      "path": "goNoGo",
+      "field": "decider",
+      "fromFile": "raci.md",
+      "pattern": "^\\|[^|]*\\|\\s*([^|]+?)\\s*\\|",
+      "min": 1
+    },
+    {
+      "id": "no-bank-traffic-before-certification",
+      "type": "none",
+      "path": "steps",
+      "weight": 2,
+      "match": {
+        "field": "action",
+        "all": [
+          "solmere"
+        ],
+        "timeField": "start",
+        "timeIn": [
+          "2000-01-01T00:00:00Z",
+          "2026-06-10T08:59:59Z"
+        ]
+      }
+    }
+  ]
+}

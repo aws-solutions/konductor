@@ -1,0 +1,181 @@
+id,team,title,status,due_date,points,updated,comment
+CND-026,Cinder,Publish schema mapping,Closed,2027-09-02,1,2027-07-06,Waiting on a small wording pass.
+DLT-030,Delta,Review release note,In progress,2027-08-08,3,2027-06-26,Waiting on a small wording pass.
+BCN-030,Beacon,Validate migration guide,In progress,2027-08-25,3,2027-06-28,Reviewed in the weekly sync.
+ATL-001,Atlas,Refine access check,Open,2027-06-25,1,2027-07-05,
+DLT-002,Delta,Refine migration guide,Done,2027-08-11,3,2027-09-12,Estimate is unchanged.
+CND-012,Cinder,Document release note,Closed,2027-08-14,5,2027-06-15,
+ATL-010,Atlas,Add queue rule,Open,2027-06-21,3,2027-09-20,
+DLT-015,Delta,Document service handoff,Review,2027-09-20,3,2027-08-08,
+BCN-009,Beacon,Publish queue rule,Done,2027-08-12,2,2027-05-04,
+BCN-028,Beacon,Document test fixture,Review,2027-07-23,3,2027-09-09,Estimate is unchanged.
+CND-025,Cinder,Align queue rule,Done,2027-08-19,8,2027-05-24,Reviewed in the weekly sync.
+ATL-015,Atlas,Publish service handoff,Review,2027-07-03,1,2027-06-09,
+CND-041,Cinder,Validate release note,Open,2027-08-01,8,2027-06-11,Waiting on a small wording pass.
+BCN-022,Beacon,Document client sample,In progress,2027-07-19,5,2027-08-27,Reviewed in the weekly sync.
+ATL-022,Atlas,Review schema mapping,Review,2027-06-29,3,2027-08-08,
+DLT-018,Delta,Validate migration guide,Open,2027-09-15,2,2027-08-23,Reviewed in the weekly sync.
+BCN-032,Beacon,Document dashboard panel,Open,2027-08-30,3,2027-06-10,
+ATL-031,Atlas,Publish dashboard panel,Done,2027-06-17,3,2027-09-20,
+DLT-019,Delta,Document migration guide,Open,2027-08-09,3,2027-07-19,
+CND-010,Cinder,Publish client sample,Open,2027-07-29,1,2027-07-17,
+CND-003,Cinder,Publish client sample,Done,2027-08-04,3,2027-07-05,
+ATL-040,Atlas,Update test fixture,Blocked,2027-07-26,8,2027-05-18,
+BCN-024,Beacon,Align dashboard panel,Open,2027-08-05,5,2027-07-08,Reviewed in the weekly sync.
+DLT-031,Delta,Add access check,Closed,2027-09-09,8,2027-06-29,
+DLT-006,Delta,Add test fixture,Review,2027-08-18,2,2027-07-11,
+BCN-015,Beacon,Refine client sample,Review,2027-07-26,2,2027-09-04,Waiting on a small wording pass.
+DLT-012,Delta,Update service handoff,Closed,2027-08-04,1,2027-06-26,
+CND-035,Cinder,Review client sample,In progress,2027-07-14,3,2027-05-15,
+DLT-029,Delta,Update service handoff,Open,2027-09-03,3,2027-05-17,Reviewed in the weekly sync.
+DLT-023,Delta,Publish service handoff,Blocked,2027-09-03,5,2027-05-20,Reviewed in the weekly sync.
+ATL-044,Atlas,Review schema mapping,Open,2027-06-25,3,2027-09-03,
+BCN-008,Beacon,Refine client sample,Done,2027-08-11,2,2027-07-14,
+ATL-030,Atlas,Update migration guide,Open,2027-08-10,1,2027-08-31,
+BCN-014,Beacon,Document client sample,Open,2027-08-01,5,2027-09-16,
+CND-023,Cinder,Update access check,Done,2027-09-05,8,2027-06-29,Waiting on a small wording pass.
+CND-031,Cinder,Add schema mapping,Open,2027-08-29,3,2027-08-11,
+CND-007,Cinder,Update service handoff,Review,2027-07-14,5,2027-06-02,Reviewed in the weekly sync.
+DLT-016,Delta,Review test fixture,In progress,2027-09-03,2,2027-09-04,Waiting on a small wording pass.
+BCN-002,Beacon,Review queue rule,Done,2027-07-10,8,2027-05-18,
+DLT-005,Delta,Update test fixture,Open,2027-08-09,1,2027-05-22,Reviewed in the weekly sync.
+DLT-011,Delta,Document test fixture,Blocked,2027-08-22,3,2027-09-20,
+ATL-007,Atlas,Refine client sample,Open,2027-07-20,3,2027-07-12,
+ATL-020,Atlas,Align event copy,Done,2027-07-31,3,2027-06-29,Estimate is unchanged.
+BCN-017,Beacon,Align service handoff,Cancelled,2027-07-19,3,2027-06-20,Estimate is unchanged.
+CND-009,Cinder,Update release note,Review,2027-08-05,8,2027-08-22,
+BCN-016,Beacon,Update release note,Done,2027-08-24,5,2027-08-26,Estimate is unchanged.
+CND-036,Cinder,Align service handoff,Closed,2027-08-31,3,2027-07-15,Reviewed in the weekly sync.
+DLT-027,Delta,Document client sample,Done,2027-08-12,1,2027-09-08,Estimate is unchanged.
+BCN-018,Beacon,Review client sample,Review,2027-08-07,1,2027-06-17,
+CND-022,Cinder,Validate migration guide,Done,2027-08-09,3,2027-09-03,
+BCN-019,Beacon,Review dashboard panel,Done,2027-07-06,3,2027-05-12,
+BCN-005,Beacon,Document access check,Closed,2027-08-04,2,2027-07-22,
+CND-032,Cinder,Publish event copy,Review,2027-07-12,5,2027-08-29,Waiting on a small wording pass.
+DLT-042,Delta,Update service handoff,Open,2027-08-24,2,2027-07-04,Waiting on a small wording pass.
+ATL-043,Atlas,Review client sample,In progress,2027-07-11,5,2027-08-26,
+CND-043,Cinder,Align dashboard panel,Closed,2027-07-18,3,2027-07-05,Waiting on a small wording pass.
+DLT-021,Delta,Review release note,Cancelled,2027-08-11,5,2027-07-08,
+CND-034,Cinder,Add client sample,Open,2027-07-14,3,2027-09-13,Estimate is unchanged.
+BCN-041,Beacon,Validate dashboard panel,In progress,2027-07-19,1,2027-08-03,Estimate is unchanged.
+DLT-033,Delta,Add test fixture,Closed,2027-08-24,1,2027-05-12,
+ATL-017,Atlas,Update client sample,Open,2027-08-01,5,2027-07-04,
+DLT-026,Delta,Add test fixture,Open,2027-09-17,8,2027-07-02,Waiting on a small wording pass.
+CND-037,Cinder,Validate queue rule,Open,2027-07-29,2,2027-06-09,Waiting on a small wording pass.
+DLT-001,Delta,Validate access check,Cancelled,2027-09-07,5,2027-08-22,Estimate is unchanged.
+BCN-012,Beacon,Validate access check,In progress,2027-07-25,5,2027-09-23,Waiting on a small wording pass.
+DLT-025,Delta,Publish service handoff,In progress,2027-08-28,3,2027-05-22,Waiting on a small wording pass.
+ATL-009,Atlas,Document client sample,Cancelled,2027-07-12,3,2027-07-20,Estimate is unchanged.
+DLT-039,Delta,Document release note,Review,2027-09-05,2,2027-07-14,Waiting on a small wording pass.
+DLT-009,Delta,Refine migration guide,Done,2027-09-12,3,2027-08-12,
+CND-011,Cinder,Publish client sample,In progress,2027-07-15,8,2027-07-12,Waiting on a small wording pass.
+DLT-007,Delta,Update event copy,Done,2027-08-11,5,2027-05-04,
+DLT-014,Delta,Update release note,Review,2027-08-03,8,2027-05-22,Waiting on a small wording pass.
+BCN-035,Beacon,Refine test fixture,Open,2027-08-12,8,2027-09-24,Waiting on a small wording pass.
+ATL-021,Atlas,Publish service handoff,In progress,2027-07-29,8,2027-07-21,
+ATL-023,Atlas,Refine migration guide,Open,2027-08-13,3,2027-05-17,Estimate is unchanged.
+ATL-032,Atlas,Align service handoff,Open,2027-06-19,3,2027-08-14,Estimate is unchanged.
+ATL-016,Atlas,Validate test fixture,Closed,2027-06-25,1,2027-06-13,
+BCN-007,Beacon,Validate event copy,Blocked,2027-07-06,3,2027-05-20,Waiting on a small wording pass.
+DLT-037,Delta,Publish migration guide,Review,2027-08-18,3,2027-08-24,Waiting on a small wording pass.
+BCN-042,Beacon,Validate release note,In progress,2027-08-21,3,2027-09-09,Waiting on a small wording pass.
+CND-033,Cinder,Align client sample,Open,2027-07-19,3,2027-08-07,Estimate is unchanged.
+BCN-045,Beacon,Validate queue rule,Done,2027-08-08,2,2027-07-08,Waiting on a small wording pass.
+BCN-027,Beacon,Publish release note,In progress,2027-08-06,5,2027-06-05,
+DLT-041,Delta,Publish client sample,Open,2027-09-10,2,2027-06-25,Waiting on a small wording pass.
+ATL-028,Atlas,Add service handoff,Open,2027-08-02,5,2027-06-30,
+CND-008,Cinder,Review migration guide,In progress,2027-07-24,5,2027-05-29,
+CND-001,Cinder,Update client sample,In progress,2027-08-30,3,2027-05-15,Waiting on a small wording pass.
+ATL-029,Atlas,Review service handoff,Open,2027-07-28,8,2027-08-28,
+ATL-003,Atlas,Update client sample,Closed,2027-07-10,3,2027-07-13,Reviewed in the weekly sync.
+DLT-044,Delta,Publish queue rule,Open,2027-08-01,5,2027-06-21,Waiting on a small wording pass.
+DLT-024,Delta,Update test fixture,Done,2027-08-28,8,2027-05-15,Reviewed in the weekly sync.
+DLT-010,Delta,Align event copy,Done,2027-09-18,5,2027-05-05,
+CND-013,Cinder,Validate access check,Done,2027-08-15,5,2027-06-23,
+CND-044,Cinder,Align client sample,Open,2027-09-05,3,2027-08-11,
+CND-030,Cinder,Document migration guide,Open,2027-09-01,2,2027-09-15,
+BCN-034,Beacon,Publish access check,Review,2027-07-28,3,2027-05-22,
+ATL-026,Atlas,Publish schema mapping,Open,2027-07-16,2,2027-07-05,Estimate is unchanged.
+CND-045,Cinder,Add test fixture,Done,2027-08-26,3,2027-08-04,Reviewed in the weekly sync.
+BCN-026,Beacon,Validate schema mapping,Open,2027-07-08,3,2027-09-17,
+ATL-002,Atlas,Align access check,Open,2027-07-28,2,2027-06-30,Reviewed in the weekly sync.
+BCN-044,Beacon,Add service handoff,Closed,2027-08-21,1,2027-08-03,Waiting on a small wording pass.
+ATL-014,Atlas,Review schema mapping,In progress,2027-08-02,3,2027-06-23,
+BCN-021,Beacon,Add service handoff,Done,2027-07-25,1,2027-07-28,
+CND-040,Cinder,Align migration guide,Done,2027-08-30,3,2027-06-01,Waiting on a small wording pass.
+CND-028,Cinder,Refine client sample,Open,2027-08-15,3,2027-06-29,
+BCN-036,Beacon,Update schema mapping,Open,2027-07-08,1,2027-05-16,
+BCN-020,Beacon,Refine client sample,Open,2027-08-12,3,2027-07-05,
+BCN-029,Beacon,Publish client sample,Review,2027-08-23,5,2027-08-15,Waiting on a small wording pass.
+DLT-022,Delta,Review schema mapping,Closed,2027-08-23,1,2027-09-04,
+DLT-008,Delta,Add event copy,Done,2027-08-23,1,2027-06-10,
+CND-019,Cinder,Review schema mapping,Done,2027-08-04,8,2027-09-07,
+ATL-041,Atlas,Align migration guide,In progress,2027-07-06,3,2027-05-13,Reviewed in the weekly sync.
+BCN-006,Beacon,Update schema mapping,Done,2027-08-02,5,2027-08-13,
+CND-029,Cinder,Document service handoff,In progress,2027-07-30,3,2027-08-22,
+BCN-023,Beacon,Update service handoff,Closed,2027-08-26,1,2027-06-12,Estimate is unchanged.
+ATL-008,Atlas,Publish schema mapping,Closed,2027-07-21,3,2027-05-24,Estimate is unchanged.
+ATL-033,Atlas,Publish queue rule,Closed,2027-08-11,3,2027-08-20,Waiting on a small wording pass.
+ATL-039,Atlas,Publish test fixture,Review,2027-07-23,3,2027-06-15,
+ATL-042,Atlas,Align schema mapping,Done,2027-07-18,3,2027-05-28,
+ATL-011,Atlas,Document client sample,Blocked,2027-08-06,3,2027-05-18,Reviewed in the weekly sync.
+ATL-036,Atlas,Update access check,Done,2027-07-12,3,2027-09-02,Estimate is unchanged.
+DLT-020,Delta,Update dashboard panel,Review,2027-08-07,1,2027-06-30,Reviewed in the weekly sync.
+ATL-034,Atlas,Refine test fixture,Done,2027-06-20,3,2027-06-11,
+ATL-027,Atlas,Add queue rule,Open,2027-07-10,3,2027-05-31,Reviewed in the weekly sync.
+BCN-001,Beacon,Add schema mapping,In progress,2027-08-10,1,2027-08-20,
+DLT-045,Delta,Document client sample,Open,2027-09-25,5,2027-09-03,
+ATL-024,Atlas,Add service handoff,Closed,2027-07-06,2,2027-07-18,
+BCN-037,Beacon,Refine release note,Open,2027-08-01,2,2027-06-26,Waiting on a small wording pass.
+DLT-032,Delta,Refine migration guide,In progress,2027-08-22,3,2027-08-01,Waiting on a small wording pass.
+BCN-043,Beacon,Add service handoff,Closed,2027-07-11,8,2027-05-05,Reviewed in the weekly sync.
+CND-014,Cinder,Align event copy,Cancelled,2027-08-28,1,2027-08-15,Reviewed in the weekly sync.
+ATL-012,Atlas,Review event copy,Open,2027-07-23,8,2027-08-06,Waiting on a small wording pass.
+CND-015,Cinder,Align release note,Review,2027-07-15,5,2027-07-15,Estimate is unchanged.
+CND-017,Cinder,Validate release note,Open,2027-08-18,1,2027-08-07,Reviewed in the weekly sync.
+CND-038,Cinder,Review test fixture,In progress,2027-07-24,5,2027-08-17,Estimate is unchanged.
+CND-004,Cinder,Refine dashboard panel,In progress,2027-08-10,5,2027-06-02,
+CND-024,Cinder,Validate release note,Closed,2027-07-16,3,2027-07-02,Estimate is unchanged.
+CND-021,Cinder,Validate access check,Blocked,2027-08-05,8,2027-05-18,Estimate is unchanged.
+BCN-011,Beacon,Update event copy,Open,2027-07-21,3,2027-08-22,
+ATL-035,Atlas,Align queue rule,Open,2027-06-16,3,2027-09-10,Waiting on a small wording pass.
+BCN-033,Beacon,Add migration guide,Closed,2027-07-09,1,2027-09-16,Estimate is unchanged.
+DLT-036,Delta,Validate access check,Done,2027-08-30,1,2027-09-10,
+CND-005,Cinder,Refine queue rule,Done,2027-08-27,3,2027-06-07,Estimate is unchanged.
+ATL-018,Atlas,Review queue rule,Cancelled,2027-07-10,5,2027-05-24,Duplicate request; replaced by ATL-019.
+ATL-019,Atlas,Validate service handoff,In progress,2027-07-08,5,2027-06-07,Carry-over from the previous request.
+CND-039,Cinder,Add access check,In progress,2027-07-23,3,2027-05-09,
+BCN-039,Beacon,Publish event copy,Open,2027-07-03,3,2027-05-20,
+ATL-037,Atlas,Document dashboard panel,In progress,2027-08-14,5,2027-05-25,Waiting on a small wording pass.
+BCN-013,Beacon,Validate access check,Closed,2027-08-21,1,2027-08-31,
+CND-042,Cinder,Align dashboard panel,In progress,2027-08-21,3,2027-07-19,
+DLT-013,Delta,Align dashboard panel,Closed,2027-08-25,1,2027-08-30,Waiting on a small wording pass.
+DLT-003,Delta,Review client sample,Closed,2027-08-12,5,2027-07-15,Estimate is unchanged.
+BCN-031,Beacon,Publish queue rule,Blocked,2027-08-29,3,2027-07-01,Waiting on a small wording pass.
+ATL-025,Atlas,Refine access check,Done,2027-08-12,5,2027-06-28,
+DLT-043,Delta,Validate service handoff,In progress,2027-09-18,2,2027-05-28,
+CND-027,Cinder,Refine service handoff,Done,2027-08-17,8,2027-08-11,Estimate is unchanged.
+CND-020,Cinder,Refine release note,Open,2027-08-14,3,2027-06-23,
+ATL-013,Atlas,Add event copy,Review,2027-07-31,8,2027-05-06,
+BCN-040,Beacon,Add test fixture,Open,2027-07-26,1,2027-09-07,Reviewed in the weekly sync.
+BCN-038,Beacon,Align service handoff,Open,2027-08-14,5,2027-07-08,Reviewed in the weekly sync.
+ATL-006,Atlas,Publish test fixture,Cancelled,2027-08-15,8,2027-07-10,Estimate is unchanged.
+ATL-005,Atlas,Align dashboard panel,Open,2027-08-04,1,2027-09-02,
+BCN-004,Beacon,Publish service handoff,Closed,2027-08-25,3,2027-08-04,
+DLT-038,Delta,Align migration guide,In progress,2027-08-31,3,2027-07-30,
+ATL-038,Atlas,Publish event copy,Cancelled,2027-08-05,3,2027-08-16,
+DLT-035,Delta,Add service handoff,Review,2027-08-03,3,2027-05-07,Reviewed in the weekly sync.
+DLT-040,Delta,Align client sample,In progress,2027-09-21,2,2027-08-10,
+CND-018,Cinder,Publish migration guide,Closed,2027-07-31,3,2027-06-25,
+ATL-004,Atlas,Update access check,Open,2027-08-10,3,2027-06-07,
+BCN-025,Beacon,Review release note,Closed,2027-08-12,3,2027-06-26,Waiting on a small wording pass.
+DLT-034,Delta,Add dashboard panel,Done,2027-08-25,8,2027-09-13,Estimate is unchanged.
+DLT-017,Delta,Refine dashboard panel,Done,2027-09-13,3,2027-09-19,
+DLT-028,Delta,Validate release note,Done,2027-09-25,1,2027-07-26,Reviewed in the weekly sync.
+CND-002,Cinder,Document migration guide,Done,2027-08-24,5,2027-06-13,
+BCN-010,Beacon,Document client sample,In progress,2027-08-14,2,2027-07-26,
+CND-016,Cinder,Update event copy,In progress,2027-07-20,3,2027-07-04,
+ATL-045,Atlas,Update release note,Cancelled,2027-07-02,3,2027-05-12,Waiting on a small wording pass.
+DLT-004,Delta,Refine migration guide,Open,2027-08-18,3,2027-05-08,Waiting on a small wording pass.
+BCN-003,Beacon,Refine migration guide,In progress,2027-08-12,3,2027-06-25,Estimate is unchanged.
+CND-006,Cinder,Validate schema mapping,Done,2027-07-12,5,2027-09-18,

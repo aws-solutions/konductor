@@ -1,0 +1,22 @@
+{
+  "id": "t7-status-slip",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/kubernetes/sig-release",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "ticket export (CSV, 200 to 260 tickets) for a 5-team product launch, plus roadmap.md, team-capacity.csv, holidays.csv, last week's status note and a short README explaining the export columns",
+  "scenario": "A director writes: the payments-and-checkout launch slipped, write the status for leadership this week. The export has columns such as id, title, epic, team, assignee, status, estimate_points, sprint, depends_on, created, due. Sprints are two weeks. The roadmap names a launch date that is no longer reachable.",
+  "seeds": "(1) a buried critical-path dependency: a small, unassigned or low-priority ticket in another team (for example a certificate, vendor sandbox or schema-migration ticket) that the longest dependency chain to launch runs through, reachable only by following depends_on two or three hops; (2) a date conflict: a ticket whose due date is earlier than the due date of a ticket it depends on; (3) one person whose assigned open points in the next sprint exceed their capacity after holidays by a clear margin; (4) scope creep: tickets added to a launch epic after the scope-lock date in roadmap.md, with their total points; (5) one decoy: a ticket marked blocked whose blocker is already done, so it is not a real risk. Last week's status note says green and misses all of this. Also put in the data, for a later finance task on the same export: a few tickets with a blank estimate, one ticket that was closed and then reopened (a status-history or reopened column shows it), and one assignee whose name appears in two spellings (case or a trailing space).",
+  "block": "status",
+  "output": "status/leadership-update.md",
+  "shape": "{\"overall\": \"green|amber|red\", \"risks\": [{\"tickets\": [ids], \"kind\": \"critical-path|date-conflict|over-allocation|scope-creep|other\", \"summary\": str, \"owner\": str}], \"critical_path\": [ticket ids from first to launch], \"revised_launch_date\": \"YYYY-MM-DD\", \"reasoning\": {\"remaining_points_on_critical_path\": n, \"team_velocity_points_per_sprint\": n, \"sprints_needed\": n}, \"capacity_by_sprint\": {\"<sprint name>\": points}, \"scope_added_after_lock_points\": n}",
+  "expert": false,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19"
+}

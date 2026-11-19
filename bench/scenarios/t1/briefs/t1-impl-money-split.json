@@ -1,0 +1,16 @@
+{
+  "id": "t1-impl-money-split",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 40",
+  "source": {
+    "url": "https://github.com/dinerojs/dinero.js",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Node.js 24 billing library with a small command-line tool (no dependencies): money values in integer minor units, an invoice module, formatters, tests, CI config and docs. About 35 files. Inspiration (idea only): public money libraries that allocate an amount across parties by ratios without losing or inventing a cent. Build a task where the owner asks to add payment allocation across several open invoices and to split a shared cost by weights, with wrinkles of your own design (largest remainder placement with a documented tie rule, zero and negative weights, currencies with different minor unit sizes, a refusal to allocate across currencies, and an allocation that is stable when the same inputs come in a different order)."
+}
