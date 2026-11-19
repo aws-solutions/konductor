@@ -41,6 +41,8 @@ def test_e2e_commit_step_guards_staging_and_push():
     guard = step6.index("Without one, MUST NOT run `git add`, `git commit` or `git push`")
     assert guard < step6.index("git add -A"), "the guard must come before staging"
     assert "MUST NOT push when the checked-out branch is the repository's default branch" in step6
+    # symbolic-ref prints "origin/main"; strip the remote so it matches the branch name.
+    assert "symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##'" in step6
     gate = text.split("## Quality Gate", 1)[1]
     assert "committed or pushed without that confirmation" in gate
 

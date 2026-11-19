@@ -318,7 +318,7 @@ Delegate to `k-developer`.
 **MUST DO:**
 
 - Before staging anything, confirm the user authorized this pass: a yes to Step 3's question, or a `scope_confirmed=true` that counts under Step 3's rule. Without one, MUST NOT run `git add`, `git commit` or `git push`; leave the files uncommitted and say so in the summary.
-- MUST NOT push when the checked-out branch is the repository's default branch (`git -C "{project_dir}" symbolic-ref --short refs/remotes/origin/HEAD`, or `main`, `mainline` or `master` when that is unset). Commit locally and record in the summary that the push was skipped.
+- MUST NOT push when the checked-out branch is the repository's default branch (`git -C "{project_dir}" symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##'`, compared with `git -C "{project_dir}" branch --show-current`; or `main`, `mainline` or `master` when that is unset). Commit locally and record in the summary that the push was skipped.
 - Confirm `{project_dir}` is inside a git working tree (`git -C "{project_dir}" rev-parse --is-inside-work-tree`). If it is not, record in the summary that the generated tests were not committed because no git repository is present, and skip the rest of this step — this SOP does not initialize a repository.
 - Run `git -C "{project_dir}" status --porcelain`. If it reports no changes, skip the commit — a pass that generated no new or modified files has nothing to commit — and proceed to Step 7.
 - Otherwise, stage everything under `{project_dir}` and commit on the branch currently checked out:
