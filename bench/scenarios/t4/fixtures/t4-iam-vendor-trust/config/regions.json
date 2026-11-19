@@ -1,0 +1,5 @@
+{
+  "primary": "us-east-1",
+  "failover": "us-west-2",
+  "logRetentionDays": 30
+}

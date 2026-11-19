@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "MonitoringVendorAssumeRole",
+    "Effect": "Allow",
+    "Principal": { "AWS": "arn:aws:iam::222233334444:role/TelemetryReader" },
+    "Action": "sts:AssumeRole",
+    "Resource": "*",
+    "Condition": { "StringEquals": { "sts:ExternalId": "monitoring-ext-8d21" } }
+  }]
+}

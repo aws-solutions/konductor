@@ -1,0 +1,138 @@
+{
+  "edits": [
+    "prompt rewritten (the draft listed every fix: external ids, the org condition, which session actions to allow and deny, the exact monitoring scope)",
+    "checks: text checks that required one action name replaced by checks on the two worst grants",
+    "limits raised from 8/16 to 1200/2400 s",
+    "expertKey added (judge-only; evaluator-checked items left out)"
+  ],
+  "prompt": "Before we onboard another outside service, I want the roles we already give outsiders tightened. The trust and permission policies are under infra/roles/: monitoring, backup, partner CI, and our own cross-account deploy role. The onboarding records in docs/integrations/ (one page per party) and config/accounts.json are the source of truth for who may assume each role and under what conditions; do not change them. Make each trust policy accept exactly who its page says, under the conditions its page gives, and nothing else. The monitoring vendor only reads metrics and logs for a dashboard, so cut its permission policy down to that. Leave the other permission policies alone. Keep every file valid IAM policy JSON, keep npm test, npm run lint and scripts/check-iam.js working, and add no dependencies.",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 90,
+      "weight": 8,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/roles/monitoring-permissions.json",
+      "pattern": "secretsmanager|NotAction",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/roles/monitoring-trust.json",
+      "pattern": "\"AWS\"\\s*:\\s*\"\\*\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/integrations",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config/accounts.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "backend-development",
+      "infra-validation",
+      "verification"
+    ]
+  },
+  "twinIdea": "Refactor the Node.js scripts in this repo to use ES modules instead of CommonJS.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "external-id-why",
+        "text": "Explains that the external id protects against a vendor being tricked into using our role for another customer, so it is required for third parties and not needed for our own deploy account.",
+        "source": "AWS IAM User Guide, Access to AWS accounts owned by third parties, https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "notaction-trap",
+        "text": "Spots that the monitoring policy allowed everything except the listed read actions (a NotAction allow) and says why that inverted the intent.",
+        "source": "Parliament, https://github.com/duo-labs/parliament (BSD-3-Clause)"
+      },
+      {
+        "id": "org-condition",
+        "text": "Explains that the organization condition keeps the deploy role usable only from inside our organization even if an account id is reused or misconfigured.",
+        "source": "AWS IAM User Guide, The confused deputy problem, https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "onboarding-template",
+        "text": "Suggests a reusable pattern or check for the new vendor (named principal, external id, read-only scope, review date) so the next onboarding does not repeat these gaps.",
+        "source": "AWS IAM User Guide, Security best practices in IAM, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "session-tags",
+        "text": "Notes which roles may carry session tags and why the others should not, since tags can drive access decisions elsewhere.",
+        "source": "AWS IAM User Guide, What is ABAC for AWS, https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html (AWS documentation; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Restricted the trust policies to the right accounts.",
+      "Added external IDs.",
+      "Removed secret access from monitoring.",
+      "Applied least privilege to all roles."
+    ]
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names deliverables (tighten role policies, update trust documents) but does not prescribe a methodology like TDD, threat modeling, or a checklist."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All hidden tests rely only on values explicitly stated in the docs (account IDs, role names, external IDs, organization ID) or behaviors the prompt directly specifies (allow AssumeRole and TagSession, deny SetSourceIdentity, read-only CloudWatch/Logs)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no hints about defects; the docs are authoritative integration records, and the existing tests check unrelated utility functions."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt listed every fix. The lead rewrote it to point at the onboarding pages as the source of truth; 17 of 90 hidden tests pass on the fixture."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Every hidden test checks a behavior the prompt explicitly requires or follows directly from documented values; a careful engineer who reads the docs and follows AWS IAM patterns can pass all tests."
+      }
+    ]
+  }
+}
