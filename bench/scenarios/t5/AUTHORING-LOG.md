@@ -17,9 +17,13 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t5-qa-ledger-gaps | author, second round (discarded) | deepseek-3.2 | 10.27 | same failure after a continuation prompt; task re-authored by another family |
 | t5-qa-ledger-gaps | author | gpt-5.6-luna | 3.46 | |
 | t5-qa-cart-weak-tests, t5-qa-ledger-gaps | edit | (worker) | 0.00 | prompts named the exact boundaries to test; reduced to module level |
-| t5-qa-security-tests | author | gpt-5.6-luna | 4.08 | stream shows reads of other tasks' scratch files (no isolation available); stray sibling folder removed |
-| t5-qa-security-tests | edit | (worker) | 0.00 | test entry was a file that required test-cases/; moved to a real test/ folder; prompt reduced to module level |
 | t5-qa-security-tests | author | gpt-5.6-luna | 4.08 | the stream shows reads of other tasks' scratch files (no isolation available); a stray sibling folder was removed |
 | t5-qa-security-tests | edit | (worker) | 0.00 | the test entry was a file that required test-cases/; moved to a real test/ folder; prompt reduced to module level |
 | t5-qa-cart-weak-tests | map | glm-5 | 0.16 | |
 | t5-qa-cart-weak-tests | review | qwen3-coder-next | 0.28 | |
+| t5-qa-checkout-strategy | map | glm-5 | 0.16 | |
+| t5-qa-checkout-strategy | review | glm-5 | 9.46 | |
+| t5-qa-ledger-gaps | map | glm-5 | 0.16 | |
+| t5-qa-ledger-gaps | review | qwen3-coder-next | 0.80 | |
+| t5-qa-security-tests | map | glm-5 | 0.16 | |
+| t5-qa-security-tests | review | glm-5 | 5.74 | |

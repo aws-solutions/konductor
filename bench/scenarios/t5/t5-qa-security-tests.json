@@ -64,12 +64,20 @@
       "weight": 1
     }
   ],
-  "targetSkills": [],
+  "targetSkills": [
+    "security-test-generation",
+    "backend-development",
+    "verification"
+  ],
   "targetSop": null,
   "targetAgent": null,
   "controlKind": "none",
   "loadCheck": {
-    "mustLoad": [],
+    "mustLoad": [
+      "security-test-generation",
+      "backend-development",
+      "verification"
+    ],
     "mustNotLoad": []
   },
   "effectSubset": false,
@@ -86,6 +94,37 @@
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
     }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for regression tests for access control and input handling but does not name specific methods or reveal how to catch each mutant. It lists areas to cover (sessions, tokens, roles, permissions, document access, download handler, input validation, HTML export, login limiter) which guides scope without leaking the specific defects."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear: build security tests for the listed areas. The module exports are discoverable (safeStorageName, requireRole, canRead, validateDocumentInput, renderDocumentExport, recordSuccess/recordFailure) and the test format/runner is specified. No hidden names or formats are required beyond what the fixture exposes."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's existing tests only exercise happy-path admin requests and do not reveal the boundary conditions (expiry timing, near-match roles, ownership checks, traversal encoding, exact limits, HTML escaping, limiter state). The docs mention '401 for expired session' and '403 when user does not own document' but do not reveal the exact comparison (< vs <=), role matching semantics, or input boundary values."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow test suite that only checks 'request fails' without testing exact boundaries would miss many mutants. For example, m01 requires testing at exact expiry time (not just 'after expiry'), m07 requires testing at exact MAX_TITLE_LENGTH (boundary), m02 requires testing near-match role names like 'administrator'. The notes explicitly warn about this and the mutants enforce precise boundaries."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All mutants represent realistic security defects that a thorough security test suite would catch. Each is documented in mutants.json with a clear note explaining the bug. No equivalent mutants found - each represents a real vulnerability (off-by-one in expiry, weak role matching, dropped ownership check, path traversal, type coercion, missing escaping, state not cleared). The fixture code is complete and testable without external dependencies."
+      }
+    ]
   },
   "pilot": null,
   "lockedAt": null

@@ -21,6 +21,9 @@ const DIR = __dirname;
 const AUTH = process.env.T5_AUTH;
 const FAMILY = { 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'alibaba', 'minimax-m2.5': 'minimax' };
 const AUTHOR_FILES = new Set(['hidden', 'solution', 'kit', 'task-draft.json', 'review.json', 'fixture']);
+// Owner rule (PR 299): these SOPs need the user's own yes for the scope and for committing, so a task that targets one says so in the user's words.
+const SOP_NEEDS_YES = new Set(['k-e2e-test-generation', 'k-light-ui-testing', 'k-test-coverage-review']);
+const YES_SENTENCE = 'Yes, that scope is confirmed, and committing the work on the branch I am on is fine.';
 const today = () => new Date().toISOString().slice(0, 10);
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const brief = (id) => readJson(path.join(DIR, 'briefs', `${id}.json`));
@@ -81,19 +84,28 @@ function review(id) {
   return out;
 }
 
+// A reviewer's verdict, with the worker's disposition for a failed check ({ check: { verdict, note } }): the reviewer's words stay in the note.
+function reviewed(v, disposition) {
+  const d = disposition[v.check];
+  if (v.verdict !== 'fail' || !d) return { check: v.check, verdict: v.verdict, note: v.note };
+  return { check: v.check, verdict: d.verdict, note: `${d.note} (reviewer: ${v.note})` };
+}
+
 function assemble(id) {
   const w = work(id);
   const b = brief(id);
   const draft = readJson(path.join(w, 'task-draft.json'));
   const exists = (f) => fs.existsSync(work(f));
+  const disposition = exists(`${id}.disposition.json`) ? readJson(work(`${id}.disposition.json`)) : {};
   const mapping = exists(`${id}.map.json`) ? readJson(work(`${id}.map.json`)) : { targetSkills: [], targetSop: null, targetAgent: null };
   const rev = exists(`${id}.review.json`) ? readJson(work(`${id}.review.json`)) : null;
   // Authors guess seconds of work; an agent needs minutes to read a repository and write tests. shortcut: fixed floor, raise it from pilot timings.
   const softSec = Math.max(draft.limits.softSec, b.softSec || 600);
   const limits = { softSec, hardSec: softSec * 2 };
+  const prompt = SOP_NEEDS_YES.has(mapping.targetSop) && !draft.prompt.includes(YES_SENTENCE) ? `${draft.prompt} ${YES_SENTENCE}` : draft.prompt;
   const task = {
     id, class: 'hard', version: 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
-    questions: b.questions || 'allowed', prompt: draft.prompt, fixture: id, hidden: id,
+    questions: b.questions || 'allowed', prompt, fixture: id, hidden: id,
     timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: draft.rubric,
     ...(draft.findingsKey ? { findingsKey: draft.findingsKey } : {}),
     targetSkills: mapping.targetSkills, targetSop: mapping.targetSop, targetAgent: mapping.targetAgent,
@@ -101,7 +113,7 @@ function assemble(id) {
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: b.mustNotLoad || [] },
     effectSubset: false, tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source },
-    ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.map((v) => ({ check: v.check, verdict: v.verdict, note: v.note })) } } : {}),
+    ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.map((v) => reviewed(v, disposition)) } } : {}),
     pilot: null, lockedAt: null,
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);

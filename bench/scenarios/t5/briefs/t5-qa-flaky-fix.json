@@ -4,8 +4,8 @@
   "phases2": [
     "bugfix"
   ],
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
   "stack": "node",
   "kind": "mutants",
   "extra": "flaky",
@@ -18,5 +18,7 @@
     "use": "idea"
   },
   "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js job and reminder service (scheduler, recurring rules by calendar day and time zone, a notification outbox written to a temp directory, a rate limiter, a small HTTP-free API layer, config, docs, CI config). Its test suite is intermittently red in CI and green locally. The causes are in how tests handle time, time zones, shared files and state, timers and randomness. Inspiration (a general observation only, no text used): large test fleets show that most flaky tests come from a handful of causes (clock, ordering, shared state, async waits, randomness).\n\nThe request is from a QA engineer: CI fails about one run in five with different tests each time; make the suite reliable without hiding failures: no skipped tests, no retries, no loosened assertions.",
-  "id": "t5-qa-flaky-fix"
+  "id": "t5-qa-flaky-fix",
+  "authorNote": "deepseek-3.2 author run ended in the middle of a malformed tool call (25.89 credits); re-authored by gpt-5.6-luna",
+  "softSec": 900
 }
