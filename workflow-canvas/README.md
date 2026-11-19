@@ -301,6 +301,45 @@ launch code `e2e-launch-code-0123456789`, and run the tests within 60 seconds
 of it listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
+### Run the page against the Rust server
+
+`konductor flow view <name>` is the real server. It prints a launch address, `http://127.0.0.1:<port>/#<code>`, and
+serves the page from the folder named by `KONDUCTOR_CANVAS_DIR` (build it with `npm run build`, which makes `dist/`).
+To use the dev server or the e2e tests with it, give the origin to `WC_API_TARGET`:
+
+```bash
+npm run build
+KONDUCTOR_CANVAS_DIR=$PWD/dist konductor flow view hello --harness claude
+# in another terminal:
+WC_API_TARGET=http://127.0.0.1:<port> npm run dev
+```
+
+Open `http://127.0.0.1:5173/#<code>` with the code that `flow view` printed. The code works once, for 60 seconds. A
+workflow that you save with changes needs `konductor flow trust <name>` again before a run, and the canvas shows the
+command. For tests, `--harness fake` with `KONDUCTOR_FAKE_SCRIPT` replays scripted replies, and then
+`KONDUCTOR_LAUNCH_CODE` sets the launch code, as `STUB_LAUNCH_CODE` does for the stub. The e2e tests need the code
+`e2e-launch-code-0123456789` and a trusted workflow, so run `konductor flow trust <name> --yes` first.
+
+To run the HTTP tests of the stub against the real server, set `WC_SERVER_BIN` to the `konductor` binary:
+
+```bash
+WC_SERVER_BIN=/path/to/konductor npx vitest run stub-api
+```
+
+Each test then starts `flow view` on a temporary project with the sample workflow, its prompt files and a fake harness.
+The fixtures of the stub are put into the real server: an `untrusted` root has no trust record, a `busy` one has a
+process that holds the workspace lock, a blocked stage is a fake reply that ends it badly, and a missing harness is
+one that is not on the `PATH`. Of the 953 tests, 835 pass and 118 are skipped (`test-support/real-server-skips.ts` names
+each opt-in skip and why). The skips are 11 tests that read the stub's clock or ids, expect the stub's harness
+`kiro-cli`, or compare message prose; 3 tests of blocked reasons that the first release cannot produce; 7 tests of a
+root with no file, because `flow view` of a name with no file is a usage error; 3 tests of the stub's reusable launch
+code; and 44 tests of what the real server does not have yet: `listAgents` (2), `getRunEvents` (17), `listRuns` (13) and
+the `stage_fields` answer of the workflow view (12). 15 more tests need an engine feature that has not landed:
+13 need the data-between-stages keys (slice 2: declared params and outputs) and 2 need the check keys (slice 3a), and the
+slice that lands removes each skip. 35 more tests are of the workflow library (`GET /api/library`, `GET
+/api/library/{name}` and `POST /api/library/{name}/copy`), which the real server does not serve yet (follow-up 28). Without
+the variable all 953 run on the stub.
+
 ### The shared corpus
 
 `api/corpus/` holds workflow files, `<case>.yml`, with the diagnostics and the view that a check must give, in
