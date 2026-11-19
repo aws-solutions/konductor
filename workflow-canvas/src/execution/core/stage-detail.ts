@@ -8,8 +8,9 @@ import type { FollowedStage } from './run-follow';
 export type ReasonSentence = (code: string) => string | undefined;
 
 /**
- * The word for where a stage is. A pending stage of a finished run will not
- * start, so it is not run rather than queued, as on the canvas.
+ * The word for where a stage is. Running, Passed and Blocked name the
+ * spec's stage states `running`, `passed` and `blocked`. A `pending` stage is
+ * Queued, or Not run once the run has finished, as it will not start.
  */
 export function stageStateWord(
   status: FollowedStage['status'],
