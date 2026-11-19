@@ -1,0 +1,10 @@
+# Queue snapshot; timestamps are UTC.
+ticket_id,commit,approval_status,approved_at,deadline,target_branch,requested_by
+REL-104,a1e0034,approved,2027-04-24 11:10,2027-04-28 17:00,release/27.05,N. Patel
+REL-112,a7d4e1c,proposed,2027-04-25 09:30,2027-04-28 17:00,release/27.05,Mira Sol
+REL-118,b4e2f90,approved,2027-04-29 09:15,2027-04-28 17:00,release/27.05,Jon Bell
+REL-121,f0d112a,merged,2027-04-26 15:00,2027-04-28 17:00,release/27.05,Ruth Ives
+REL-128,aa9102b,rejected,2027-04-23 13:00,2027-04-28 17:00,release/27.05,Lina Ortiz
+REL-139,cc1009d,approved,2027-04-27 16:40,2027-04-28 17:00,release/27.05,Pavel Chen
+REL-147,d012a8e,merged,2027-04-21 10:20,2027-04-28 17:00,release/27.05,Asha Nair
+REL-153,bca8801,cancelled,2027-04-20 08:00,2027-04-28 17:00,release/27.05,Mira Sol

@@ -43,6 +43,12 @@ test('cites with where checks the citing element only', () => {
   assert.ok(!g({ op: 'cites', path: 'risks', field: 'tickets', ids: ['CHK-40'], where: { kind: 'critical-path' } }).ok);
 });
 
+test('an object is read as the list of its values', () => {
+  const plan = { sprints: { S1: ['A-1', 'A-2'], S2: ['A-3'] } };
+  assert.ok(gradeAssertion(plan, { id: 'x', op: 'includes', path: 'sprints', ids: ['A-3', 'A-1'] }).ok);
+  assert.ok(gradeAssertion(plan, { id: 'x', op: 'order', path: 'sprints', ids: ['A-1', 'A-3'] }).ok);
+});
+
 test('absent fails when a decoy is named', () => {
   assert.ok(!g({ op: 'absent', path: 'risks', field: 'tickets', ids: ['CHK-40'] }).ok);
   assert.ok(g({ op: 'absent', path: 'risks', field: 'tickets', ids: ['CHK-41'] }).ok);

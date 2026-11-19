@@ -23,5 +23,6 @@
     "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
     "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
-  ]
+  ],
+  "dropped": "after one fix round (plan 4.6): duplicate ticket ids, a must-have whose own dependencies are unestimated yet counted as planned, tickets both pulled in and not fitting"
 }

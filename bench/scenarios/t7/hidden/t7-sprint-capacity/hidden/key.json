@@ -1,0 +1,108 @@
+{
+  "output": "plan/next-three-sprints.md",
+  "block": "sprint-plan",
+  "assertions": [
+    {
+      "id": "cap-s1",
+      "desc": "S1 capacity applies workdays, focus and on-call",
+      "op": "number",
+      "path": "capacity_by_sprint.2027-S1",
+      "value": 35.23,
+      "tol": 0.5
+    },
+    {
+      "id": "cap-s2",
+      "desc": "S2 capacity applies both holidays and on-call",
+      "op": "number",
+      "path": "capacity_by_sprint.2027-S2",
+      "value": 22.49,
+      "tol": 0.5
+    },
+    {
+      "id": "cap-s3",
+      "desc": "S3 capacity applies its holiday and on-call",
+      "op": "number",
+      "path": "capacity_by_sprint.2027-S3",
+      "value": 34.785,
+      "tol": 0.5
+    },
+    {
+      "id": "planned-scope",
+      "desc": "Every estimated beta must-have and its open prerequisites are planned in some sprint",
+      "op": "includes",
+      "path": "sprints",
+      "ids": [
+        "T-011",
+        "T-023",
+        "T-037",
+        "T-049",
+        "T-061",
+        "T-083",
+        "T-108",
+        "T-113",
+        "T-119"
+      ]
+    },
+    {
+      "id": "dependency-closure",
+      "desc": "Both open prerequisites are named",
+      "op": "includes",
+      "path": "pulled_in_dependencies",
+      "ids": [
+        "T-037",
+        "T-068"
+      ]
+    },
+    {
+      "id": "unfit-payment",
+      "desc": "Payment checkout is called out as not fitting",
+      "op": "includes",
+      "path": "not_fitting",
+      "ids": [
+        "T-074"
+      ]
+    },
+    {
+      "id": "unestimated",
+      "desc": "Blank estimate is called out",
+      "op": "includes",
+      "path": "unestimated",
+      "ids": [
+        "T-096"
+      ]
+    },
+    {
+      "id": "specialist-overload",
+      "desc": "The sole payment specialist overload is explicit",
+      "op": "cites",
+      "path": "over_allocated",
+      "field": "person",
+      "ids": [
+        "Gale Park"
+      ],
+      "where": {
+        "sprint": "2027-S1",
+        "assigned": 11.0,
+        "capacity": 3.6
+      }
+    },
+    {
+      "id": "decoy-dependency",
+      "desc": "An unrelated copy task is not called a dependency",
+      "op": "absent",
+      "path": "pulled_in_dependencies",
+      "ids": [
+        "T-044"
+      ]
+    },
+    {
+      "id": "decoy-closed",
+      "desc": "A completed historical row is not planned",
+      "op": "absent",
+      "path": "sprints",
+      "ids": [
+        "T-104"
+      ]
+    }
+  ]
+}

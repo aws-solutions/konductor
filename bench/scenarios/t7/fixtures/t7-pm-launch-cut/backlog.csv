@@ -1,0 +1,73 @@
+id,title,status,priority,estimate_points,value_score,dependencies,customer_evidence,owner,notes
+F-001,Improve schedule views,Backlog,Low,3,3,,Interview-01,Mei,Existing behavior should remain unchanged.
+F-002,Update list sorting,Backlog,Medium,8,2,,Interview-01,Nora,Existing behavior should remain unchanged.
+F-003,Update schedule views,Ready,Medium,8,4,,,Mei,No customer date attached.
+F-004,Saved workspace views,Ready,High,5,7,,Interview-03,Sora,Several teams asked to return to the same operating view.
+F-005,Add workspace labels,Closed,Medium,3,7,,Usage review,Sora,Sizing to be revisited after design review.
+F-006,Streamline export history,Closed,Low,8,6,,Usage review,Sora,Requested in the spring planning sweep.
+F-007,Support template cloning,In Progress,Medium,8,7,,Usage review,Nora,Sizing to be revisited after design review.
+F-008,Update workspace labels,Ready,Low,2,8,,Interview-01,Sora,Existing behavior should remain unchanged.
+F-009,Add saved searches,Backlog,High,8,2,,,Mei,Existing behavior should remain unchanged.
+F-010,Batch location import,Ready,Medium,8,8,,Interview-02; Interview-06,Ilan,Import flow needs a clear error report for partial rows.
+F-011,Update billing notes,In Progress,Low,3,4,,Interview-01,Sora,Small wording changes are still expected.
+F-012,Extend notification rules,Backlog,Medium,2,8,,Usage review,Sora,Requested in the spring planning sweep.
+F-013,Support status chips,Cancelled,Medium,5,5,,Support thread,Mei,Sizing to be revisited after design review.
+F-014,Signed partner export bundle,Backlog,Medium,8,6,,Account review,Sora,Export package includes the agreed signature page and delivery manifest.
+F-015,Add queue filters,Closed,Medium,8,2,,Interview-01,Nora,No customer date attached.
+F-016,Update team mentions,Ready,Low,13,3,,Support thread,Ilan,Requested in the spring planning sweep.
+F-017,Add workspace labels,Backlog,Low,3,6,F-016,Usage review,Sora,Sizing to be revisited after design review.
+F-018,Add team mentions,Ready,Medium,2,8,,,Sora,Existing behavior should remain unchanged.
+F-019,Extend region aliases,Backlog,Medium,8,2,,Support thread,Sora,No customer date attached.
+F-020,Streamline team mentions,In Progress,Medium,13,5,,Interview-01,Mei,Small wording changes are still expected.
+F-021,Audit trail filters,Ready,High,5,7,,Interview-03,Nora,"Keep the first release to actor, date, and action filters."
+F-022,Streamline schedule views,Ready,Medium,8,2,,Usage review,Nora,Requested in the spring planning sweep.
+F-023,Improve team mentions,Ready,Low,5,4,,,Sora,Requested in the spring planning sweep.
+F-024,Add queue filters,Ready,Medium,2,8,,Support thread,Ilan,No customer date attached.
+F-025,Improve saved searches,Cancelled,Low,5,4,,Usage review,Nora,No customer date attached.
+F-026,Refresh team mentions,Backlog,Low,5,2,,,Nora,Requested in the spring planning sweep.
+F-027,Extend region aliases,Backlog,Low,8,2,,Account review,Mei,Existing behavior should remain unchanged.
+F-028,Streamline notification rules,Ready,High,5,7,,Usage review,Sora,No customer date attached.
+F-029,Update template cloning,Ready,Low,8,4,F-028,Usage review,Mei,No customer date attached.
+F-030,Improve saved searches,Cancelled,Low,3,8,,Usage review,Nora,No customer date attached.
+F-031,Event schema versioning,Ready,Low,3,3,,Interview-04,Mei,Version labels should be visible in the event reference.
+F-032,Improve workspace labels,Backlog,Medium,13,3,,,Ilan,Existing behavior should remain unchanged.
+F-033,Refresh activity badges,Ready,Medium,5,3,,Interview-01,Nora,Requested in the spring planning sweep.
+F-034,Extend saved searches,Ready,High,5,7,,Interview-01,Nora,Small wording changes are still expected.
+F-035,Add saved searches,Backlog,High,2,7,,,Ilan,Requested in the spring planning sweep.
+F-036,Add activity badges,Backlog,Medium,3,5,,Interview-01,Ilan,Small wording changes are still expected.
+F-037,Refine record hints,Ready,Medium,3,5,,,Ilan,Existing behavior should remain unchanged.
+F-038,Role-based approval rules,In Progress,High,8,8,,Interview-01,Nora,"The first slice covers approve, reject, and delegate actions."
+F-039,Extend saved searches,Cancelled,High,5,7,,Interview-01,Ilan,Requested in the spring planning sweep.
+F-040,Update workspace labels,In Progress,Low,8,4,,Usage review,Sora,Sizing to be revisited after design review.
+F-041,Improve status chips,Ready,High,8,7,,Usage review,Nora,Sizing to be revisited after design review.
+F-042,Improve queue filters,In Progress,Medium,3,6,,Usage review,Nora,Sizing to be revisited after design review.
+F-043,Improve schedule views,Backlog,High,13,4,,Account review,Sora,Small wording changes are still expected.
+F-044,Executive vanity wallboard,Ready,High,13,10,,,Ilan,Leadership asked for a large-screen version for the office lobby.
+F-045,Extend template cloning,Backlog,High,8,5,,Account review,Nora,Requested in the spring planning sweep.
+F-046,Improve list sorting,Backlog,Medium,3,8,,Usage review,Sora,No customer date attached.
+F-047,Streamline list sorting,In Progress,Low,5,3,F-046,Account review,Sora,Sizing to be revisited after design review.
+F-048,Extend saved searches,Ready,High,13,3,,,Ilan,Existing behavior should remain unchanged.
+F-049,Refresh export history,Ready,High,3,8,,Interview-01,Sora,Existing behavior should remain unchanged.
+F-050,Streamline list sorting,In Progress,Medium,8,2,,,Mei,Sizing to be revisited after design review.
+F-051,Add export history,Closed,Low,2,8,,Usage review,Nora,Sizing to be revisited after design review.
+F-052,Regional health dashboard,Backlog,High,13,10,F-031,Interview-03,Nora,Show service health by region with a simple week-over-week view.
+F-053,Improve queue filters,Closed,Low,8,4,,Usage review,Sora,No customer date attached.
+F-054,Extend account notes,Backlog,High,5,6,,Interview-01,Ilan,Small wording changes are still expected.
+F-055,Streamline billing notes,Backlog,Low,3,3,,Usage review,Mei,Sizing to be revisited after design review.
+F-056,Refresh status chips,Backlog,Medium,5,5,,Support thread,Sora,Requested in the spring planning sweep.
+F-057,Offline mobile approvals,Ready,High,8,9,,Interview-05,Nora,Mobile flow should work without a signal and reconcile later.
+F-058,Support notification rules,In Progress,Medium,5,8,,Account review,Mei,Sizing to be revisited after design review.
+F-059,Update workspace labels,Backlog,High,13,2,,Account review,Ilan,No customer date attached.
+F-060,Streamline list sorting,Closed,Low,5,6,,,Ilan,No customer date attached.
+F-061,Refine schedule views,In Progress,Medium,8,7,,,Sora,Small wording changes are still expected.
+F-062,Extend status chips,Backlog,High,13,5,,Interview-01,Ilan,Sizing to be revisited after design review.
+F-063,Launch adoption snapshot,Ready,High,8,8,,Launch brief,Sora,A compact adoption snapshot is needed for the conference follow-up.
+F-064,Extend notification rules,Backlog,Medium,2,2,,Account review,Mei,Sizing to be revisited after design review.
+F-065,Refresh schedule views,In Progress,Medium,5,2,,,Nora,Small wording changes are still expected.
+F-066,Add schedule views,Ready,Low,13,6,,Usage review,Nora,Requested in the spring planning sweep.
+F-067,Improve saved searches,Closed,Medium,8,3,,Support thread,Ilan,No customer date attached.
+F-068,Support activity badges,Closed,Medium,5,4,,,Ilan,Requested in the spring planning sweep.
+F-069,Support record hints,Backlog,High,8,5,F-068,Account review,Mei,No customer date attached.
+F-070,Refine workspace labels,Ready,High,5,4,,Usage review,Nora,Requested in the spring planning sweep.
+F-071,Improve account notes,Ready,Medium,13,2,,Usage review,Nora,Existing behavior should remain unchanged.
+F-072,Improve team mentions,Ready,Medium,13,2,,Usage review,Mei,Small wording changes are still expected.

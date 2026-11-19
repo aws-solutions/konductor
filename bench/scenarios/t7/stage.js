@@ -170,6 +170,8 @@ function assemble(id) {
   if (b.controlKind !== 'twin') put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
   fs.mkdirSync(path.join(DIR, 'hidden', id), { recursive: true });
   put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id, 'hidden'));
+  // The grader files always come from lib/, so a fix to the grader reaches every task (t7.test.js checks the copies).
+  for (const f of GRADER_FILES) fs.copyFileSync(path.join(DIR, 'lib', f), path.join(DIR, 'hidden', id, 'hidden', f));
   put(path.join(w, 'solution'), path.join(DIR, 'solutions', id));
   put(path.join(w, 'authoring'), path.join(DIR, 'authoring', id));
   return { id, assertions: key.assertions.length };

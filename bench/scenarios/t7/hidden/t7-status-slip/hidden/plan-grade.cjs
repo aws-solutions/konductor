@@ -17,7 +17,7 @@
 //   equals     the value at `path` equals `value` (strings ignore case and outer spaces); `oneOf` takes a list
 //   precision  of the elements of the list at `path`, at least `min` (a share, default 0.5) name one of `ids`,
 //              and there are at most `maxCount` of them (so a long list does not win)
-// Paths are dot-separated keys; a key matches an object key ignoring case, and a number indexes a list.
+// A `path` that holds an object is read as the list of its values. Paths are dot-separated keys; a key matches an object key ignoring case, and a number indexes a list.
 // Ids match on a token edge, ignoring case: "PAY-21" does not match "PAY-212".
 
 const fs = require('node:fs');
@@ -53,7 +53,8 @@ function getPath(obj, dotPath) {
 const textOf = (v) => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
 const names = (v, id) => new RegExp(`(?<![a-z0-9])${escapeRe(norm(id))}(?![a-z0-9])`).test(norm(textOf(v)));
 const elementText = (el, field) => (field && el && typeof el === 'object' && !Array.isArray(el) ? getPath(el, field) : el);
-const list = (v) => (Array.isArray(v) ? v : []);
+// A list, or the values of an object (a plan keyed by sprint is a list of sprints).
+const list = (v) => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []);
 const hitsIn = (el, field, ids) => ids.filter((id) => names(elementText(el, field), id));
 const toDay = (v) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v ?? '').trim());
