@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { parseStream } = require('../stream.js');
+const { installedSkills } = require('../startup.js');
 const sandbox = require('../sandbox.js');
 const { ALLOW } = require('../env.js');
 const { ensureEmptyClaudeRules } = require('../isolation-gates.js');
@@ -319,6 +320,7 @@ function trialInstall(prepared, ctx) {
   try {
     installInto(home, { arm: { vanilla: false, agent: 'konductor' }, prepared, ctx, config: ctx.config, outDir: null });
     prepared.skillInfo = skills.claudeSkillInfo(path.join(home, '.claude'), prepared.exportDir);
+    prepared.skillsInstalled = installedSkills(home, 'claude-code');
     Object.assign(prepared, listingOf(home, { vanilla: false }, ctx));
     return [];
   } finally {

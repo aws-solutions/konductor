@@ -72,3 +72,20 @@ test('Claude Code with --strict-mcp-config loads no MCP server and lists the dec
   assert.equal(loose.agent, 'default');
   assert.deepEqual(loose.mcpServers.map((s) => s.name), ['builder']);
 });
+
+test('startup.json records the konductor skills each runtime serves, and the cap variant a dir arm was built as', (t) => {
+  const d = scratch(t);
+  put(path.join(d.home, '.konductor/skills/alpha/SKILL.md'), 'x');
+  put(path.join(d.home, '.claude/skills/beta/SKILL.md'), 'x');
+  put(path.join(d.home, '.claude/skills/gamma/SKILL.md'), 'x');
+  put(path.join(d.home, '.claude/skills/sop-k-plan/SKILL.md'), 'x');
+  put(path.join(d.home, '.kiro/skills/sop-k-plan/SKILL.md'), 'x');
+  put(path.join(d.home, '.kiro/skills/sop-k-verify/SKILL.md'), 'x');
+  assert.deepEqual(startupRecord({ runtime: 'kiro-cli', arm: { vanilla: false, agent: 'konductor' }, ...d }).konductorSkills, { skills: 1, sops: 2 });
+  assert.deepEqual(startupRecord({ runtime: 'claude-code', arm: { vanilla: false, agent: 'konductor' }, ...d }).konductorSkills, { skills: 2, sops: 1 });
+  const root = path.join(d.home, '..', 'variant');
+  put(path.join(root, 'variant.json'), { variantId: 'noskills', armName: 'konductor-noskills', base: { commitSha: 'abc' }, ops: [{ op: 'preset', id: 'noskills' }], variantHash: 'h' });
+  const r = startupRecord({ runtime: 'kiro-cli', arm: { vanilla: false, agent: 'konductor', dir: path.join(root, 'tree') }, ...d });
+  assert.deepEqual(r.variant, { variantId: 'noskills', armName: 'konductor-noskills', base: 'abc', ops: ['preset noskills'], variantHash: 'h' });
+  assert.equal(startupRecord({ runtime: 'kiro-cli', arm: { vanilla: true }, ...d }).variant, null);
+});

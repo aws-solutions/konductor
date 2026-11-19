@@ -358,7 +358,7 @@ test('preflight table shows a dir arm by its content hash and a git arm by its c
     const prepared = new Map([['p', { mcpSha256: 'a'.repeat(64), cached: false }], ['w', { mcpSha256: 'b'.repeat(64), cached: true }]]);
     const table = preflightTable(arms, prepared, new Map());
     const lines = table.split('\n');
-    assert.match(lines[0], /arm\s+ref\s+commit\s+mcp sha256\s+state/);
+    assert.match(lines[0], /arm\s+ref\s+commit\s+mcp sha256\s+skills\s+state/);
     assert.ok(lines[2].includes(featSha.slice(0, 10)) && lines[2].includes('feat/x') && lines[2].includes('ready (built)'));
     assert.ok(lines[3].includes(`dir:${arms[2].contentHash.slice(0, 10)}`) && lines[3].includes('ready (cached)') && lines[3].startsWith('w@'));
   } finally { rm(repo, path.dirname(wt)); }

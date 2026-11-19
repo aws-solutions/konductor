@@ -39,8 +39,8 @@ test('--prepare-only with vanilla only prints the table, exits 0, needs no login
   try {
     const r = run(s, ['--arms', 'vanilla']);
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /arm\s+ref\s+commit\s+mcp sha256\s+state/);
-    assert.match(r.stdout, /vanilla\s+-\s+-\s+-\s+ready/);
+    assert.match(r.stdout, /arm\s+ref\s+commit\s+mcp sha256\s+skills\s+state/);
+    assert.match(r.stdout, /vanilla\s+-\s+-\s+-\s+0\s+ready/);
     assert.equal(fs.existsSync(s.out), false, 'no run directory is created');
     assert.deepEqual(fs.readdirSync(path.join(s.root, 'home')), [], 'the HOME it was given stays empty');
     assert.doesNotMatch(r.stderr + r.stdout, /planned run|auth database|list-models/);
@@ -65,7 +65,7 @@ test('with --allow-partial the table marks the unbuildable arm FAILED and the ex
   try {
     const r = run(s, ['--arms', 'vanilla,old=main', '--allow-partial']);
     assert.equal(r.status, 1);
-    assert.match(r.stdout, /old@[0-9a-f]{7}\s+main\s+[0-9a-f]{10}\s+-\s+FAILED/);
+    assert.match(r.stdout, /old@[0-9a-f]{7}\s+main\s+[0-9a-f]{10}\s+-\s+-\s+FAILED/);
     assert.match(r.stdout, /vanilla\s.*ready/);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
@@ -101,7 +101,7 @@ test('--prepare-only covers Claude Code arms without credentials or a claude bin
   try {
     const van = run(s, ['--arms', 'cc-vanilla']);
     assert.equal(van.status, 0, van.stderr);
-    assert.match(van.stdout, /cc-vanilla\s+-\s+-\s+-\s+ready/);
+    assert.match(van.stdout, /cc-vanilla\s+-\s+-\s+-\s+0\s+ready/);
     const old = run(s, ['--arms', 'cc-old=main']);
     assert.equal(old.status, 1);
     assert.match(old.stderr, /arm cc-old could not be prepared.*no cli\/konductor-rs\/Cargo\.toml.*predates/s);

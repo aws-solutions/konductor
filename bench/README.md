@@ -1072,9 +1072,15 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   recommendation per skill and harness: HARMS, RELOCATE, PRUNE, FIX, KEEP or NEEDS DATA, plus a TRIM flag. Free, read-only, never a deletion.
   How to evaluate skills and decide keep, fix, trim, relocate or prune: [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md).
   A skill counts as exposed in a run when the agent that started the run lists it (its own installed skill filter, else the base tree's listing for that agent), or an agent the stream shows the run spawning lists it, or the run loaded it. Each run keeps the entry agent's own `installed-agent.json` (`--arm-agent k-developer` saves k-developer's, not konductor's). Runs saved before that fix hold konductor's file for every entry agent; `prune-report` ignores that file when its name differs from the entry agent, uses the base tree's listing instead, and counts those runs in `usage.runs.staleInstalledAgent` with a warning.
-- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
+- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
+  `--preset noskills` builds the `konductor-noskills` arm (B4): every `skills/` dir is removed and every agent's skill lists
+  (`skillNames`, `claudeCli.skills`) are emptied; prompts, SOPs, context files and subagents stay. Use the same tree on both harnesses:
+  `--arms konductor-noskills=dir:PATH` (Kiro CLI: the skills MCP server indexes 0 skills) and `cc-konductor-noskills=dir:PATH`
+  (Claude Code: no konductor skill under `~/.claude/skills`; the `sop-*` SOP wrappers stay). The `--prepare-only` table's `skills`
+  column shows the konductor skills each arm installs and, in brackets, its SOP wrappers (for example `0 (+19 sop)` against
+  `78 (+19 sop)` for the full arm), and each run's `startup.json` records the same as `konductorSkills` with the arm's `variant`.
 - `cap scenarios --cap ID,ID [--n 8] [--dry-run]` drafts 8 to 30 task scenarios per skill into `DIR/scenarios/<id>.json` and `.md` for review. `--dry-run` writes the prompt only: no model call, no login, no credits.
 - `cap scenarios --cap ID --mode trigger [--n 10] [--seed-queries FILE] [--dry-run]` drafts tasks for a skill that rarely loads: `--n` (8 to 10, default 10) tasks that should make the agent load it on its own and as many near misses that should not, into `DIR/scenarios/<id>.trigger.json` and `.md`.
   It follows skill-creator's trigger eval method (Description Optimization, step 1): realistic, concrete requests in varied phrasings that never name the skill, and near misses that share its words but belong elsewhere rather than unrelated requests.

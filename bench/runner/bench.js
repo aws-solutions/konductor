@@ -244,7 +244,7 @@ const USAGE = `Usage:
        exists, only listed lint findings are tolerated: a new finding fails, and so does a listed one that no longer occurs. --update-baseline writes
        the file (all findings if absent; afterwards it only removes stale waivers, adding needs --force); it is never run for you)
   node bench/runner/bench.js cap variant --scratch DIR [--base REF] [--drop ID,ID] [--replace ID=FILE] [--overlay ID=DIR] [--add ID=FILE --to-agent A,B]
-       [--preset skills-only|bare] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
+       [--preset skills-only|bare|noskills] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
        [--cargo-online] [--repo-root DIR] [--bench-dir DIR] [--json]
        (builds a dir: arm from git archive of the base ref with the capability dropped, replaced or added, and prints the arm string for the run command.
        --overlay skill:NAME=DIR replaces SKILL.md and adds references/** from DIR in one step (a section moved out of a skill); it never overwrites a reference file.
