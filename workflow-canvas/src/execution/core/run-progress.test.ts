@@ -45,7 +45,13 @@ describe('runProgress', () => {
         status: 'blocked',
         reason: 'CHECK_FAILED',
       },
-      { seq: 4, type: 'run_finished', status: 'halted', exit_code: 1 },
+      {
+        seq: 4,
+        type: 'run_finished',
+        at: '1970-01-01T00:16:49Z',
+        status: 'halted',
+        exit_code: 1,
+      },
     ]);
 
     expect(
@@ -71,6 +77,28 @@ describe('runProgress', () => {
     );
 
     expect(progress.elapsedMs).toBe(5_000);
+  });
+
+  it('stops the elapsed time at the at of run_finished when the timing has no end', () => {
+    const finished = runOf([
+      ...DRAFT_PASSED,
+      {
+        seq: 3,
+        type: 'run_finished',
+        at: '1970-01-01T00:16:47Z',
+        status: 'passed',
+        exit_code: 0,
+      },
+    ]);
+
+    // START is 00:16:40, so the run took 7 seconds.
+    const progress = runProgress(
+      finished,
+      { startedAt: START },
+      clockAt(500_000),
+    );
+    expect(progress.outcome).toBe('passed');
+    expect(progress.elapsedMs).toBe(7_000);
   });
 
   it('reads the clock while the run goes on', () => {

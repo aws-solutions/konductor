@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { timestampMs } from './timestamp';
 
 /*
  * The event shapes of `GET /api/runs/{id}/events` in `api/openapi.yaml`,
@@ -30,6 +31,8 @@ export interface ConsoleEvent {
 export interface RunFinishedEvent {
   readonly seq: number;
   readonly type: 'run_finished';
+  /** When the run ended, as `2026-10-24T04:12:05Z`. */
+  readonly at: string;
   readonly status: 'passed' | 'halted';
   readonly exit_code: number;
 }
@@ -82,6 +85,11 @@ export interface FollowedRun {
   readonly stages: readonly FollowedStage[];
   /** Set once the `run_finished` event is read. */
   readonly outcome?: RunOutcome;
+  /**
+   * When the run ended, in milliseconds since the epoch: the `at` of its
+   * `run_finished`. Set with `outcome`, unless that `at` could not be read.
+   */
+  readonly finishedAt?: number;
   /** The `seq` to send as `after` next time. */
   readonly next: number;
   /** The stage of each held console line, oldest first, for the cap. */
@@ -168,9 +176,11 @@ function applyOne(run: FollowedRun, event: RunEvent): FollowedRun {
   }
   if (isConsole(event)) return addLine(run, event);
   if (isRunFinished(event)) {
+    const finishedAt = timestampMs(event.at);
     return {
       ...run,
       outcome: { status: event.status, exitCode: event.exit_code },
+      ...(finishedAt === undefined ? {} : { finishedAt }),
     };
   }
   return run;

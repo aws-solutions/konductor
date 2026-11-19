@@ -28,7 +28,9 @@ export interface RunProgress {
 
 /**
  * Where `run` is. The elapsed time runs from the start to the end of the run,
- * or to `clock()` while it goes on, and is never below zero.
+ * or to `clock()` while it goes on, and is never below zero. The end is the
+ * `at` of the `run_finished` event once it is read, so a page that follows
+ * only events stops the clock too, or else `timing.finishedAt`.
  */
 export function runProgress(
   run: FollowedRun,
@@ -37,7 +39,7 @@ export function runProgress(
 ): RunProgress {
   const running = run.stages.find((stage) => stage.status === 'running');
   const blocked = run.stages.find((stage) => stage.status === 'blocked');
-  const end = timing.finishedAt ?? clock();
+  const end = run.finishedAt ?? timing.finishedAt ?? clock();
   return {
     passed: run.stages.filter((stage) => stage.status === 'passed').length,
     total: run.stages.length,
