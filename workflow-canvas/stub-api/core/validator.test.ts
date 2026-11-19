@@ -46,6 +46,73 @@ function stageWith(...lines: string[]): string {
     .join('')}`;
 }
 
+describe('the kind and the lines of a stage', () => {
+  const rangesOf = (text: string) =>
+    checkWorkflowText(text, 'hello').view?.stages.map((stage) => [
+      stage.kind,
+      stage.range.line,
+      stage.range.end_line,
+    ]);
+
+  it('runs from the first key to the end of the last value', () => {
+    expect(rangesOf(stageWith('prompt: Say it.'))).toEqual([['agent', 7, 9]]);
+  });
+
+  it('leaves out a comment and blank lines after the stage', () => {
+    const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer\n\n  # next\n\n  - name: b\n    agent: k-developer\n\n`;
+    expect(rangesOf(text)).toEqual([
+      ['agent', 7, 8],
+      ['agent', 12, 13],
+    ]);
+  });
+
+  it('covers every line of a block scalar prompt', () => {
+    const text = stageWith('prompt: |', '  one', '  two');
+    expect(rangesOf(text)).toEqual([['agent', 7, 11]]);
+  });
+
+  it('keeps the blank lines of a |+ block scalar, before the next stage', () => {
+    const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer\n    prompt: |+\n      one\n\n\n  - name: b\n    agent: k-developer\n`;
+    expect(rangesOf(text)).toEqual([
+      ['agent', 7, 12],
+      ['agent', 13, 14],
+    ]);
+  });
+
+  it.each(['|-', '|'])(
+    'ends a %s block scalar at its last line of text',
+    (indicator) => {
+      const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer\n    prompt: ${indicator}\n      one\n\n  - name: b\n    agent: k-developer\n`;
+      expect(rangesOf(text)).toEqual([
+        ['agent', 7, 10],
+        ['agent', 12, 13],
+      ]);
+    },
+  );
+
+  it('keeps a comment after a plain last value on its line', () => {
+    const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer # tail\n\n  - name: b\n    agent: k-developer\n`;
+    expect(rangesOf(text)).toEqual([
+      ['agent', 7, 8],
+      ['agent', 10, 11],
+    ]);
+  });
+
+  it('counts CRLF line ends and a last line with no line end', () => {
+    const text =
+      `${HEAD}stages:\n  - name: a\n    agent: k-developer`.replaceAll(
+        '\n',
+        '\r\n',
+      );
+    expect(rangesOf(text)).toEqual([['agent', 7, 8]]);
+  });
+
+  it('is one line for a stage written on one line', () => {
+    const text = `${HEAD}stages:\n  - { name: a, agent: k-developer }\n`;
+    expect(rangesOf(text)).toEqual([['agent', 7, 7]]);
+  });
+});
+
 describe('a valid workflow', () => {
   it('has no diagnostics and a view with the keys of the file', () => {
     expect(checkWorkflowText(VALID, 'hello')).toEqual({
@@ -71,13 +138,17 @@ describe('a valid workflow', () => {
         stages: [
           {
             name: 'draft',
+            kind: 'agent',
             agent: 'k-developer',
             prompt: 'Write the greeting to README.md.',
+            range: { line: 14, end_line: 16 },
           },
           {
             name: 'review',
+            kind: 'agent',
             agent: 'k-quality-assurance',
             prompt_file: 'review.md',
+            range: { line: 17, end_line: 19 },
           },
         ],
       },
@@ -91,7 +162,14 @@ describe('a valid workflow', () => {
       version: '0.1.0',
       name: 'hello',
       intent: { outcome: 'Say hello' },
-      stages: [{ name: 'write', agent: 'k-developer' }],
+      stages: [
+        {
+          name: 'write',
+          kind: 'agent',
+          agent: 'k-developer',
+          range: { line: 6, end_line: 7 },
+        },
+      ],
     });
   });
 

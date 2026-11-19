@@ -10,11 +10,13 @@ export interface Position {
  * CRLF or a lone CR, and a column counts code points. A lookup is a search.
  */
 export class SourceMap {
+  readonly text: string;
   private readonly lineStarts: number[] = [0];
   // pairsBefore[i] is how many surrogate pairs end before offset i.
   private readonly pairsBefore: Uint32Array;
 
   constructor(text: string) {
+    this.text = text;
     this.pairsBefore = new Uint32Array(text.length + 1);
     for (let i = 0; i < text.length; i++) {
       const pair = isLowHalf(text, i) && isHighHalf(text, i - 1);

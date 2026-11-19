@@ -146,7 +146,8 @@ function expectValid(text: string, stages: StageView[], label: string) {
     result.diagnostics.map((d) => d.code),
     label,
   ).toEqual([]);
-  expect(result.view?.stages, label).toEqual(stages);
+  const read = result.view?.stages.map(({ name, agent }) => ({ name, agent }));
+  expect(read, label).toEqual(stages);
 }
 
 describe('withStages in every layout of the list', () => {

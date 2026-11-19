@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { isMap, isScalar, isSeq, type YAMLMap } from 'yaml';
+import { isMap, isScalar, isSeq, Scalar, type YAMLMap } from 'yaml';
 import {
   codePointLength,
   FORMAT,
@@ -36,6 +36,7 @@ import type {
   Check,
   CheckResult,
   Intent,
+  LineRange,
   Param,
   Stage,
   WorkflowView,
@@ -58,6 +59,7 @@ const NAME_RULE =
 interface Context {
   reporter: Reporter;
   workflowName: string;
+  source: SourceMap;
 }
 
 /**
@@ -68,8 +70,9 @@ export function checkWorkflowText(
   text: string,
   workflowName: string,
 ): CheckResult {
-  const reporter = new Reporter(`${workflowName}.yml`, new SourceMap(text));
-  const view = readWorkflow(text, { reporter, workflowName });
+  const source = new SourceMap(text);
+  const reporter = new Reporter(`${workflowName}.yml`, source);
+  const view = readWorkflow(text, { reporter, workflowName, source });
   const diagnostics = reporter.diagnostics();
   const errors = diagnostics.length;
   const checkedView = errors === 0 && view ? view : null;
@@ -520,7 +523,37 @@ function readStage(
   const agentEntry = entries.get('agent');
   const agent = agentEntry && readName(agentEntry, [...path, 'agent'], ctx);
   const prompts = readPrompts(entries, path, ctx);
-  return name && agent ? { name, agent, ...prompts } : undefined;
+  if (!name || !agent) return undefined;
+  const range = lineRangeOf(item, ctx.source);
+  return { name, kind: 'agent', agent, ...prompts, range };
+}
+
+// From the line of the stage's first key to the last line that holds its text.
+// A block scalar ends where its value ends, so the blank lines that `|+` keeps
+// stay in the range.
+function lineRangeOf(item: YAMLMap, source: SourceMap): LineRange {
+  const [start, end] = spanOf(item);
+  const block = lastBlockScalarEnd(item);
+  let last = block ?? end;
+  if (block === undefined) {
+    const text = source.text;
+    while (last > start && /\s/.test(text.charAt(last - 1))) last--;
+  }
+  return {
+    line: source.position(start).line,
+    end_line: source.position(Math.max(start, last - 1)).line,
+  };
+}
+
+// The end of the last value of a block-style stage, when that value is a
+// block scalar.
+function lastBlockScalarEnd(item: YAMLMap): number | undefined {
+  if (item.flow) return undefined;
+  const value = item.items.at(-1)?.value;
+  if (!isScalar(value) || !value.range) return undefined;
+  const isBlock =
+    value.type === Scalar.BLOCK_LITERAL || value.type === Scalar.BLOCK_FOLDED;
+  return isBlock ? value.range[1] : undefined;
 }
 
 // A stage has exactly one key that names its kind. A kind of a later slice
