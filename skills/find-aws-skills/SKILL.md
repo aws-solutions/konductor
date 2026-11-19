@@ -1,10 +1,6 @@
 ---
 name: find-aws-skills
-description: >
-  Discovers and retrieves additional AWS skills for specialized tasks not covered by the default
-  bundled skills. Searches the AWS MCP server when a user's request involves an AWS service or
-  workflow without a matching default skill. Use when the user asks about an AWS service or
-  workflow and no bundled skill covers it.
+description: Searches the AWS MCP server for an AWS service skill and loads it. Use for AWS service guidance such as a DynamoDB data model, S3, IAM, CloudFormation or CDK, even when a local skill covers part of the task.
 ---
 
 # Find AWS Skills
@@ -51,7 +47,9 @@ If the search returns no results, no result is relevant, or skill retrieval fail
 give the user a friendly message explaining what happened and offer options:
 
 1. Retry with a different search phrase
-2. Proceed with direct AWS API calls via `aws___run_script` (sandboxed Python)
+2. Proceed with direct AWS API calls via `aws___run_script` (sandboxed Python). Offer this only
+   when your tools include `aws___run_script`; otherwise leave it out.
 3. Let the user guide you on how they'd like to proceed
 
-Do not silently fall back to direct AWS API calls via `aws___run_script`. Wait for the user's confirmation first.
+When you have `aws___run_script`, do not silently fall back to direct AWS API calls through it.
+Wait for the user's confirmation first.

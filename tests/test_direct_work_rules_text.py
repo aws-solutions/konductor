@@ -67,10 +67,9 @@ def test_every_skill_direct_work_names_is_declared_by_konductor():
         "infra-validation",
     } <= named
     spec = _spec("konductor")
-    kiro = set(spec["dependencies"]["skills"]["skillNames"])
-    claude = set(spec["clientConfig"]["claudeCli"]["skills"])
-    assert named <= kiro, sorted(named - kiro)
-    assert named <= claude, sorted(named - claude)
+    declared = set(spec["dependencies"]["skills"]["skillNames"])
+    assert named <= declared, sorted(named - declared)
+    assert "Skill" in spec["clientConfig"]["claudeCli"]["tools"]
 
 
 def _direct_work():
@@ -103,12 +102,17 @@ def _konductor_loaded_files():
     return files
 
 
-def test_bundle_reference_block_counts_konductor_skills_as_24():
+def test_bundle_reference_block_counts_konductor_skills_from_the_spec():
+    spec = _spec("konductor")
+    claude_skills = set(spec["dependencies"]["skills"]["skillNames"]) | set(spec["clientConfig"]["claudeCli"]["skills"])
+    count = len(claude_skills - {"humanize-writing"})
     for rel in ("docs/index.html", "docs/site/user-guide.html"):
         body = (ROOT / rel).read_text(encoding="utf-8")
-        assert "konductor skills (24)" in body, rel
+        assert f"konductor skills ({count})" in body, rel
         assert "konductor skills (22)" not in body, rel
-        assert "Kiro CLI has the other 23 plus humanize-writing" in body, rel
+        assert (
+            f"claude-teams-behavior, which is Claude Code only and not one of the {count}"
+        ) in body, rel
 
 
 def test_maker_side_checks_have_triggers_in_direct_work():
@@ -228,3 +232,43 @@ def test_direct_work_treats_a_skill_miss_as_the_signal_to_spawn():
     direct = (ROOT / "context" / "k-direct-work.md").read_text(encoding="utf-8")
     assert "that miss is the answer" in direct
     assert direct.index(SOP_CLAUSE) < direct.index("spawn a specialist in two cases only")
+
+
+FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --local --includes --get-regexp '^filter\\.'"
+EXTENSION_CHECK = "git --no-pager -c core.fsmonitor= config --local --type=bool --get extensions.worktreeConfig"
+WORKTREE_FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --worktree --includes --get-regexp '^filter\\.'"
+
+
+def _read_only_shell_row():
+    text = (ROOT / "context" / "k-orchestrator-routing-rules.md").read_text(encoding="utf-8")
+    return next(line for line in text.splitlines() if line.startswith("| Read-only shell commands"))
+
+
+def test_read_only_git_skips_working_tree_reads_when_a_filter_driver_is_set():
+    row = _read_only_shell_row()
+    assert "a `filter.<driver>` with its `clean` or `process` program" in row
+    assert "`git config --local --includes --get-regexp '^filter\\.'`" in row
+    assert "`git config --local --type=bool --get extensions.worktreeConfig`" in row
+    assert "`git config --worktree --includes --get-regexp '^filter\\.'`" in row
+    assert (
+        "before `git status`, `git diff` against the working tree (including `--stat` and `HEAD`), "
+        "`git blame`, or `git ls-files -m` (`--modified`), run `" + FILTER_CHECK + "` and `" + EXTENSION_CHECK + "`, "
+        "and only if the second prints `true`, `" + WORKTREE_FILTER_CHECK + "`"
+    ) in row
+    assert (
+        "If a filter read prints anything, or the extension read prints anything other than "
+        "`true` or `false` (an error included), do not run those four"
+    ) in row
+    assert "use `git diff --cached`, `git log`, `git show`, and the file tools instead" in row
+    assert "tell the user the repository config defines a filter driver or could not be checked" in row
+    assert "the only `-c` allowed" in row
+
+
+def test_read_only_git_skips_submodule_working_trees():
+    row = _read_only_shell_row()
+    assert "including one in a submodule's own config" in row
+    assert "`--ignore-submodules=dirty` to `git status` and `git diff`" in row
+    assert (
+        "`git --no-pager -c core.fsmonitor= diff --no-ext-diff --no-textconv --submodule=short "
+        "--ignore-submodules=dirty`"
+    ) in row

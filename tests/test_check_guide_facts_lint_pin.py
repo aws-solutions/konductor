@@ -306,6 +306,18 @@ def test_version_claim_wrapped_across_doc_comment_lines_fails_the_guide_check(re
     assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
 
 
+def test_roster_table_without_a_preloaded_column_fails_once_per_table(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "docs/user-guide/reference.md",
+        "\n| Agent | Model | Skills |\n| --- | --- | --- |\n"
+        "| `k-browser` | `claude-sonnet-5.5` | 5 |\n"
+        "| `k-media-analyzer` | `claude-sonnet-5.5` | 2 |\n",
+    )
+    assert result.returncode != 0
+    assert result.stdout.count("reference.md: roster table has no Preloaded column") == 1
+
+
 def test_notes_describe_the_existence_check_the_code_runs():
     """A visible command missing from cli/README.md fails the check; the guide
     must not say that any command in cli.rs, hidden or not, passes."""

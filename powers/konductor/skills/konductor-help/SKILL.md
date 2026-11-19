@@ -70,10 +70,11 @@ list or hardcoded SOP count.
 
 ## MCP setup
 
-The `k-architect` and `k-developer` agent files carry the `aws-mcp` entry
-from their `dependencies.mcpRegistry`, so those two agents launch AWS MCP
-themselves. It needs `uvx` and AWS credentials; without them the server fails
-to start and the agents work without it. Kiro does not configure the other
+The `konductor`, `k-architect` and `k-developer` agent files carry the
+`aws-mcp` entry from their `dependencies.mcpRegistry`, so those three agents
+launch AWS MCP themselves. It needs `uvx`; without it the server fails to start and the
+agents work without it. It starts with `--skip-auth`, so documentation search
+and skills work without AWS credentials. Kiro does not configure the other
 `dependencies.mcpRegistry` entries automatically. Users configure them in
 `.kiro/settings/mcp.json` or `~/.kiro/settings/mcp.json`.
 

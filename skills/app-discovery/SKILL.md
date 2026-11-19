@@ -1,7 +1,7 @@
 ---
 name: app-discovery
 version: 1.0.0
-description: Navigates a deployed web application, discovers all pages and interactive elements, and produces a structured discovery report. Use when a test plan or spec needs a map of a live web app's pages, controls and form rules, or the user asks to crawl an app before writing E2E tests. Loads dom-inspection to extract form validation rules, error selectors, and conditional visibility. Used as input to k-light-ui-testing and k-e2e-test-generation workflows.
+description: Navigates a deployed web application and maps its pages and interactive elements into a discovery report. Use when a test plan or spec needs a map of a live web app's pages, controls and form rules, or the user asks to crawl an app before writing E2E tests. Loads dom-inspection for form rules and conditional visibility.
 tags: [discovery, browser, dom, testing, playwright, app-inspection]
 ---
 
@@ -87,7 +87,7 @@ For every form on each page, apply the `dom-inspection` skill:
 - Capture error message selectors and exact error text
 - Identify conditional field visibility and cross-field business rules
 
-See `skills/dom-inspection/SKILL.md` for the full inspection protocol and output schema.
+See `skills/dom-inspection/SKILL.md` for the Inspection Protocol and the Report Schema.
 
 ### Phase 6: Cleanup
 
@@ -119,7 +119,7 @@ Produce a discovery report with this structure:
 | ... | ... | ... | ... | ... | ... |
 
 **Forms:**
-{dom-inspection output per form — see dom-inspection skill for schema}
+{dom-inspection output per form, using the Report Schema in dom-inspection's SKILL.md}
 
 **Failed paths:** {list of URLs or actions that failed, with reason}
 ```

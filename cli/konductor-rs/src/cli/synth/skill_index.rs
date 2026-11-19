@@ -3,7 +3,8 @@
 // synth/skill_index.rs: builds the "Your skills" block synth appends to
 // each Kiro agent's prompt: a rule for when to load one of the agent's
 // own declared skills, how to load it, and the list of those skills.
-// Claude Code gets no block; it lists and loads skills natively.
+// Claude Code agents get a "Skills you can load" block from claude.rs
+// instead, listing only the declared skills they do not preload.
 
 use super::model::{is_orchestrator, SkillDef};
 use crate::cli::skills_server::{GET_SKILL_TOOL, MCP_SERVER_NAME};
@@ -22,7 +23,7 @@ Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SK
 
 // A skill whose "MUST USE" sentence starts with this marker (constraints)
 // claims every task, which contradicts the load-what-the-task-needs rule above, so it is
-// left out of the index. A "MUST USE for <task>" skill (git-merge) stays.
+// left out of the index. A "MUST USE for <task>" skill stays.
 const EVERY_TASK_MARKER: &str = "MUST USE for every ";
 /// The one every-task skill synth expects; any other match gets a warning.
 const EXPECTED_EVERY_TASK_SKILL: &str = "constraints";
