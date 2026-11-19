@@ -1,0 +1,170 @@
+{
+  "id": "t1-nfr-ndjson-stream",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "The nightly log report is too slow and uses far too much memory on a 2 GB NDJSON export. Please update this repo without adding dependencies or changing the existing report fields for valid data. Keep the public `logjob.analyze(path)` function and the command `python3 -m logjob --input INPUT --output OUTPUT`; the command should create missing output directories.\n\nA valid line is a JSON object with a nonempty string `endpoint`, an integer `latency_ms` from 0 through 60000, and an HTTP integer `status` from 100 through 599. Blank lines, invalid JSON, nonobjects, and objects with invalid fields are malformed: skip them and report their number as top-level `malformed_lines`; report valid lines as `total_records`. Each endpoint needs `count`, `error_count` for statuses 500 and above, `p50_ms`, and `p95_ms`. Percentiles use nearest rank, `max(1, ceil(p * n))`, and must remain exact without retaining or sorting every record. Plain `.ndjson` and `.ndjson.gz` input must work. For `data/sample.ndjson`, keep the valid endpoint values unchanged and produce `total_records: 7`, `malformed_lines: 2`, `/api/items` as count 3, errors 1, p50 20, p95 30, and `/api/search` as count 4, errors 1, p50 15, p95 100. Read the file in one pass, and keep peak tracemalloc memory below 8 MiB on 100,000 generated valid lines across four endpoints. Preserve the standard-library-only setup and existing tests.",
+  "fixture": "t1-nfr-ndjson-stream",
+  "hidden": "t1-nfr-ndjson-stream",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "python3 -c \"import sys; assert sys.version_info[:2] == (3, 12)\" && node --test --test-timeout=15000 hidden/py_bridge.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -m unittest discover -s tests -p 'test_*.py'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "tests/test_streaming.py",
+      "pattern": "def test_",
+      "min": 2,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "stream|gzip|percentile",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "logjob/aggregation.py",
+      "pattern": "array\\(\\\"Q\\\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "pyproject.toml",
+      "pattern": "dependencies|install_requires",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 2,
+      "id": "measurement-report",
+      "criterion": "The final message gives the generated workload and an observed peak-memory measurement instead of only claiming that the limit was met (code cannot check this because it cannot assess statements in the final message)."
+    },
+    {
+      "weight": 1,
+      "id": "tradeoff-report",
+      "criterion": "The final message names the bounded-latency trade-off and states what unusual input cardinality or percentile case was left outside the change (code cannot check this because the implementation cannot show what the engineer chose not to address)."
+    }
+  ],
+  "targetSkills": [
+    "verification",
+    "backend-development",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "expertKey": {
+    "items": [
+      {
+        "id": "cause",
+        "text": "The engineer attributes the improvement to eliminating retained Record objects and per-endpoint value arrays, rather than vaguely calling it an optimization.",
+        "source": "https://github.com/ICRAR/ijson (BSD-3-Clause; idea only, paraphrased)"
+      },
+      {
+        "id": "measurement",
+        "text": "The engineer reports the generated record count and serialized input size together with observed current and peak tracemalloc readings from a separate measurement run.",
+        "source": "https://github.com/ICRAR/ijson (BSD-3-Clause; idea only, paraphrased)"
+      },
+      {
+        "id": "exactness",
+        "text": "The engineer explains why the integer latency bound makes a histogram an exact representation and how its memory cost compares with the old value lists.",
+        "source": "https://github.com/ICRAR/ijson (BSD-3-Clause; idea only, paraphrased)"
+      },
+      {
+        "id": "tradeoff",
+        "text": "The engineer calls out that memory scales with endpoint cardinality and deliberately does not claim an unbounded-cardinality exact-quantile solution.",
+        "source": "https://github.com/ICRAR/ijson (BSD-3-Clause; idea only, paraphrased)"
+      },
+      {
+        "id": "scope",
+        "text": "The engineer records the baseline comparison and explains why a local bounded workload was used instead of pretending to have run a full 2 GB export.",
+        "source": "https://github.com/ICRAR/ijson (BSD-3-Clause; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Made the parser faster and all checks pass.",
+      "Changed the data structures for performance.",
+      "Optimized the job for large files.",
+      "The implementation is backward compatible.",
+      "No trade-offs were necessary."
+    ]
+  },
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "backend-development",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/ICRAR/ijson",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the problem (memory/performance), constraints (standard library only, no dependencies, keep public API), and expected output format without revealing implementation details like histogram arrays or the specific streaming approach."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt explicitly specifies all requirements: malformed line handling, percentile algorithm (nearest rank with max(1, ceil(p*n))), latency bounds (0-60000), status range (100-599), gzip support, memory limit (8 MiB for 100k lines), and exact expected values for the sample file."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture does not reveal the hidden tests. The sample.ndjson and existing tests show basic functionality but don't hint at the memory constraint solution, gzip handling, or nearest-rank percentile requirement. The fixture's _percentile function uses interpolation, the opposite of what hidden tests require."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive approach (just adding malformed_lines counter) fails 9/14 hidden tests. Tests catch: wrong percentile algorithm (interpolation vs nearest-rank), missing gzip support, memory violations (tracemalloc verifies actual usage), and missing one-pass streaming (mock verifies open call count)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are achievable with standard library only. The histogram approach (array('Q') with 60001 slots per endpoint) is a well-known bounded-memory quantile technique. Tests have reasonable timeouts (10s per test, 15s for node bridge). No timing-dependent or flaky tests observed."
+      }
+    ]
+  }
+}

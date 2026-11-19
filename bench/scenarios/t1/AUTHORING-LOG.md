@@ -35,6 +35,8 @@ Author families (2026-11-19, after five of six deepseek-3.2 drafts failed): the 
 
 Blindness audit (`audit.js`): every author, map and review stream is scanned for tool calls that read a konductor `skills/`, `agent-sops/`, `agents/` or `context/` path, for reads of another batch's scratch dir, and for attached account memories. The 42 streams up to 2026-11-19 22:30 UTC: none.
 
+`t1-ref-schema-migrate`: the reviewer found the request did not say whether a whitespace-only address is blank, which a hidden test relies on; the worker added that sentence to the request (review verdict `fixed`).
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -110,3 +112,10 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-impl-flag-rollout | author | minimax-m2.5 | 17.55 |
 | t1-impl-flag-rollout | map | glm-5 | 0.16 |
 | t1-impl-flag-rollout | review | gpt-5.6-luna | 1.22 |
+| t1-bug-money-rounding | author | qwen3-coder-next | 2.00 (estimate: stopped at the 90-tool-call cap before the call reported; qwen3-coder-next is billed at 0.05x) |
+| t1-ref-schema-migrate | author | gpt-5.6-luna | 2.73 |
+| t1-ref-schema-migrate | map | glm-5 | 0.16 |
+| t1-ref-schema-migrate | review | glm-5 | 5.21 |
+| t1-nfr-ndjson-stream | author | gpt-5.6-luna | 3.27 |
+| t1-nfr-ndjson-stream | map | glm-5 | 0.17 |
+| t1-nfr-ndjson-stream | review | glm-5 | 6.19 |
