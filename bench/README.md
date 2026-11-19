@@ -1165,8 +1165,10 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   - proxy asks a model what it would do without starting an agent. On kiro-cli it writes `find_skills` arguments, an offline copy of the tool
     returns the candidates, and a second call picks; retrieval failures (the wording never reaches the skill) and judgment failures are
     counted apart. On opencode the skill index is in the prompt. It cannot see task context or delegation hops: a miss is informative, a hit is not proof.
+    `--dry-run` prints the most model calls it would make (two per query and repeat on kiro-cli, one on opencode) and a credit estimate, and calls nothing.
   - live runs real trigger tasks and stops at the first load or delegation (`--stop-on first-load`, default) within 4 tool calls. A killed run
     has no metered credits at all (metering arrives at the end of a turn), so live spend is unobserved; give `--budget-credits` and `--run-credit-limit`.
+    `--dry-run` prints the `run` command and starts nothing.
   - Agreement of the two on a sample (`--crosscheck F` or `--crosscheck-run DIR`) is Cohen's kappa; below 0.6 or under 12 queries every proxy
     report says "proxy not validated".
 - Forced load: `run --arm-prefix name=FILE` puts the file's text in front of the task prompt of one arm (recorded as sha256 and size); use
