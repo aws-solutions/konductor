@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FunctionWork",
+      "Effect": "Allow",
+      "Action": ["lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:InvokeFunction"],
+      "Resource": "arn:aws:lambda:us-east-2:111122223333:function:team-*"
+    },
+    {
+      "Sid": "ExecutionRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "*"
+    },
+    {
+      "Sid": "OwnKeys",
+      "Effect": "Allow",
+      "Action": ["iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys", "iam:UpdateAccessKey"],
+      "Resource": "arn:aws:iam::111122223333:user/*"
+    },
+    {
+      "Sid": "LogRead",
+      "Effect": "Allow",
+      "Action": ["logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents"],
+      "Resource": "arn:aws:logs:us-east-2:111122223333:log-group:/platform/*"
+    },
+    {
+      "Sid": "PolicyMaintenance",
+      "Effect": "Allow",
+      "Action": ["iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion", "iam:AttachUserPolicy", "iam:PutUserPolicy", "iam:UpdateAssumeRolePolicy"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BroadServiceAccess",
+      "Effect": "Allow",
+      "NotAction": "iam:*",
+      "Resource": "*"
+    }
+  ]
+}

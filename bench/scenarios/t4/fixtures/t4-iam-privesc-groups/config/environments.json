@@ -1,0 +1,4 @@
+{
+  "sandbox": { "account": "111122223333", "region": "us-east-2", "retentionDays": 14 },
+  "staging": { "account": "111122223334", "region": "us-west-2", "retentionDays": 30 }
+}
