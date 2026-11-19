@@ -1,7 +1,7 @@
 ---
 name: playwright-test-implementation
-description: 'Authors Playwright functional test specs: selector strategy, authenticated sessions via global-setup.ts and storageState, and Cloudscape locator patterns. Use when writing or reviewing Playwright specs against a discovered web app, wiring up global-setup.ts, or fixing flaky selectors on a Cloudscape UI.'
-version: 1.0.0
+description: 'Use when writing or reviewing Playwright specs for a discovered web app, or fixing flaky selectors. Covers selectors, global-setup.ts and storageState sessions, Cloudscape locators.'
+version: 1.0.1
 tags: [skill, playwright, e2e-testing, implementation, quality-assurance]
 ---
 

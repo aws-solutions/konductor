@@ -1,7 +1,7 @@
 ---
 name: trade-off-evaluator
-description: 'Scores design trade-offs across cost, latency, complexity, scalability, and operability, producing a comparison matrix and a recommendation. Use when a design decision has multiple options or an engineer asks to evaluate trade-offs. Trigger phrases: "evaluate the trade-offs between X and Y", "which is better: SQS or EventBridge for this use case".'
-version: 1.0.0
+description: 'Scores design options on cost, latency, complexity, scalability and operability. Use when a decision has several options. Triggers: "evaluate the trade-offs between X and Y", "SQS or EventBridge".'
+version: 1.0.1
 tags: [skill, design, trade-offs, evaluation, decision, architecture]
 ---
 

@@ -1,0 +1,11 @@
+{
+  "targetSkills": ["design-evaluation", "design-impact-review", "doc-accuracy-analyzer"],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": "k-architect",
+  "loadCheck": {
+    "mustLoad": ["design-evaluation", "k-existing-design-review"],
+    "mustNotLoad": ["code-review", "backend-review"]
+  },
+  "twinIdea": "Implement the zero-downtime re-index sequence in code after the design is approved.",
+  "why": "Design-evaluation scores production readiness across 10 dimensions and lists missing artifacts; k-existing-design-review is the SOP for pre-implementation design reviews; design-impact-review traces cross-artifact impacts of the alias swap change; doc-accuracy-analyzer validates claims against the capacity/traffic data files that a shallow review would miss."
+}

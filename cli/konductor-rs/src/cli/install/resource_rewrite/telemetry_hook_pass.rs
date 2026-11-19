@@ -245,6 +245,20 @@ pub(crate) const V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME: &str =
 
 const V3_ORCHESTRATION_HOOK_NAME: &str = "konductor-orchestration-session-start";
 
+/// The `"name"` of every hook entry Konductor writes into the V3 hook
+/// document at `relative`, or an empty slice for any other path.
+/// `uninstall.rs` names them when it keeps a changed hook document.
+pub(crate) fn v3_hook_entry_names(relative: &str) -> &'static [&'static str] {
+    match relative {
+        V3_STANDALONE_HOOKS_RELATIVE_PATH => &[
+            V3_STANDALONE_HOOK_SESSION_START_NAME,
+            V3_STANDALONE_HOOK_DELEGATION_NAME,
+        ],
+        V3_ORCHESTRATION_HOOKS_RELATIVE_PATH => &[V3_ORCHESTRATION_HOOK_NAME],
+        _ => &[],
+    }
+}
+
 fn build_v3_orchestration_hook_document(
     quoted_exe: &str,
     install_root: &Path,

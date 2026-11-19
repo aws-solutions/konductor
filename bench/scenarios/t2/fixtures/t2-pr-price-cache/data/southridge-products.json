@@ -1,0 +1,5 @@
+[
+  {"id":"pencil","name":"Graphite pencil","active":true,"category":"stationery"},
+  {"id":"notebook","name":"Field notebook","active":true,"category":"stationery"},
+  {"id":"packing-tape","name":"Packing tape","active":true,"category":"warehouse"}
+]
