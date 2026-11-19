@@ -557,7 +557,9 @@ not per individual commit.
   matches what Konductor installed. This also removes an agent file you edited after the upgrade,
   since the backup still matches. `uninstall` never deletes a `.bak` file; it lists each matching
   backup by full path and suggests removing them by hand. The `--json` output adds `kept_changed`,
-  `kept_changed_paths` and `kept_backups`.
+  `kept_changed_paths` and `kept_backups`. Under `--dry-run --json`, `would_delete` holds only real
+  removals and a new `would_keep` array lists the kept files, with `would_delete_count` and
+  `would_keep_count`.
 
 ### Security
 

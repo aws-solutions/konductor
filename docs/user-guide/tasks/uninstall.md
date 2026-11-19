@@ -35,8 +35,9 @@ Project files under .konductor/ would be left in place.
 `--dry-run` touches the filesystem in no way at all. It marks each path whose content changed
 since install, a file you hand-edited, as `(changed since install; kept)`, and a Kiro agent file
 that `kiro-cli agent upgrade` rewrote as `(rewritten by Kiro; removed)`. It also lists the Kiro
-agent backups a real run would leave. Under `--json` each path carries a `"diverged"` and a
-`"kept"` boolean, and `kept_backups` lists the backups.
+agent backups a real run would leave. Under `--json`, `would_delete` holds only the files a real
+run removes and `would_keep` the changed files it keeps, each with a count
+(`would_delete_count`, `would_keep_count`), and `kept_backups` lists the backups.
 
 ### Then remove it
 
