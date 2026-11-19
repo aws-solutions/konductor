@@ -70,6 +70,23 @@ test('capture the Execution tab after the run passed', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'execution-tab-finished');
 });
 
+test('capture the Execution tab after a stage was blocked', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('halted', ['passed', 'blocked'], 'OUTPUT_MISSING'),
+  );
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
+
+  await canvas.runButton.click();
+  await canvas.expectBadges(['Done', 'Done', 'Blocked', 'Halted']);
+  await canvas.page.getByTestId('blocked-stage').waitFor();
+
+  await saveFullPageScreenshot(canvas.page, 'execution-tab-blocked');
+});
+
 // The Execution tab in the dark mode, while the first stage runs.
 test('capture the Execution tab in the dark mode during a run', async ({
   canvas,
