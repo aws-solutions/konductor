@@ -1,0 +1,13 @@
+{
+  "name": "lantern-order-service",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Small serverless order processing service",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

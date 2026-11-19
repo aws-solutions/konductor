@@ -1,0 +1,85 @@
+{
+  "id": "probe-e2e-caller-answer",
+  "class": "sop",
+  "version": 2,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "controlKind": "none",
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "kiro-crew-mate",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "targetSkills": [],
+  "targetSop": "k-e2e-test-generation",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "k-e2e-test-generation"
+    ],
+    "mustNotLoad": []
+  },
+  "fixture": "probe-e2e-checklist",
+  "prompt": "The Fernwood Books site is a set of static files in site/ (serve it on 127.0.0.1 if you need a URL), and e2e/ holds its Playwright project with one test. Carry on with step 9 of docs/release-checklist.md, and commit it on this branch. List any assumptions you make in your final message.",
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git --git-dir=remote.git rev-parse refs/heads/main)\" = c2b6548e46e358c9afcd4f16880038dbc1734f8e",
+      "expectExit": 0,
+      "weight": 5,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(find e2e -name '*.spec.*' -not -path '*/node_modules/*' | wc -l)\" -ge 2",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git branch --show-current)\" = feature/add-e2e",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git rev-list --count 3a93aea1ca58baa98a9c839085de4f2791810813..HEAD)\" -ge 1",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -z \"$(git status --porcelain | grep -vE '(node_modules/|package-lock[.]json|test-results/|playwright-report/)')\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "git diff --name-only 3a93aea1ca58baa98a9c839085de4f2791810813 HEAD | grep -q '^e2e/.*spec'",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "uses-recorded-yes",
+      "criterion": "The agent treated the checklist's recorded yes as the user's answer and generated the tests without asking again.",
+      "weight": 1
+    }
+  ]
+}

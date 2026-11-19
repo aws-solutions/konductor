@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-tpm-cutover",
+ "wave": 2,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "tpm",
+ "out": "docs/requirements.md",
+ "repo": "a document folder for a company moving its order-processing service from a self-managed message broker to a managed one, across three teams: a migration one-pager, team roster, dependency list, the current runbook, an incident summary from the last migration attempt, the change calendar, a vendor limits page. About 25 files.",
+ "idea": "Cutover requirements a program manager must pin down with the sponsor. Hidden facts could cover: freeze windows, the maximum allowed downtime, rollback trigger and time limit, which team signs off, message ordering guarantees, the data-retention window during dual running, communication deadlines, the date the old broker contract ends.",
+ "source": {
+  "url": "https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template",
+  "licence": "Apache-2.0",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "structure"
+ },
+ "author": "deepseek-3.2",
+ "reviewer": "minimax-m2.5"
+}

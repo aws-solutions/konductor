@@ -1,0 +1,7 @@
+{
+  "currency": "USD",
+  "taxRegion": "US",
+  "settlementTimeZone": "UTC",
+  "paymentTimeoutMs": 800,
+  "mailFrom": "orders@example.test"
+}

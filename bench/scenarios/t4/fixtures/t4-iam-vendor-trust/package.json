@@ -1,0 +1,12 @@
+{
+  "name": "northstar-integrations",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Configuration and checks for external service integrations",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test",
+    "check:iam": "node scripts/check-iam.js",
+    "lint": "node --check scripts/check-iam.js && node --check scripts/read-config.js"
+  }
+}

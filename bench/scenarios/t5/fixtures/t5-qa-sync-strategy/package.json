@@ -1,0 +1,8 @@
+{
+  "name": "customer-sync",
+  "version": "2.4.1",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "start": "node src/index.js" }
+}

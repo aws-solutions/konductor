@@ -1,0 +1,6 @@
+{
+  "retentionDays": 35,
+  "partSizeBytes": 5242880,
+  "maxRecordsPerQuery": 500,
+  "owner": "batch-platform"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "t4-iam-bucket-policy-oac",
+  "wave": 2,
+  "phase": "security",
+  "role": "security",
+  "kind": "policy",
+  "stack": "node",
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/RhinoSecurityLabs/cloudgoat",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: security and IAM. Role: security engineer. Repo kind: the infra and docs repo of a marketing and downloads site: bucket policies under infra/buckets/ (site assets, customer downloads, access logs), a CDN config file naming two distributions (staging and prod) with their ids and the account id, Node.js 24 deploy scripts without dependencies, CI, docs, tests. Today the downloads bucket policy grants s3:GetObject to Principal \"*\" for the whole bucket (it was public before the CDN existed), the assets bucket allows s3:ListBucket and s3:GetObject publicly, no policy denies non-TLS requests, and the logs bucket lets any principal in the account write. The request: the site now sits behind the CDN; lock the three buckets so readers only get objects through the CDN, keep the deploy role and log delivery working, and make sure nothing can be read over plain HTTP. Traps: the CDN reads as the service principal cloudfront.amazonaws.com with an aws:SourceArn condition naming each stage's own distribution ARN (a lazy fix uses a wildcard distribution, or forgets one stage, or lets the staging distribution read prod); the deploy role in the same account must still put, delete and list in the assets bucket; the log delivery service principal needs s3:PutObject on the logs prefix only, with an aws:SourceAccount condition; the TLS deny must not block the CDN; objects under downloads/private/ must not be readable even through the CDN. Hidden tests evaluate the three bucket policies with the provided evaluator (decide with the resource layer, plus the deploy role's identity policy from the fixture) for allowed and denied requests: anonymous, each stage's CDN, a CDN distribution in another account, the deploy role, another role, log delivery with right and wrong source account, and insecure transport."
+}

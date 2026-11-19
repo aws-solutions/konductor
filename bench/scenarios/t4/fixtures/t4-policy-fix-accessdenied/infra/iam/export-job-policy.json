@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WorkerCloudAccess",
+      "Effect": "Allow",
+      "Action": ["s3:*", "dynamodb:*", "kms:*"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "OldIndexRoute",
+      "Effect": "Deny",
+      "Action": "dynamodb:Query",
+      "Resource": "arn:aws:dynamodb:us-test-1:111122223333:table/LedgerRecords/index/by_day"
+    },
+    {
+      "Sid": "OldKeyRoute",
+      "Effect": "Deny",
+      "Action": ["kms:GenerateDataKey", "kms:Decrypt"],
+      "Resource": "arn:aws:kms:us-test-1:111122223333:key/12345678-1234-4abc-8def-1234567890ab"
+    },
+    {
+      "Sid": "MultipartRoute",
+      "Effect": "Deny",
+      "Action": ["s3:PutObject", "s3:UploadPart"],
+      "Resource": "arn:aws:s3:::nightly-exports-example/exports/*"
+    }
+  ]
+}

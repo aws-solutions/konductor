@@ -1,0 +1,21 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "security"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "mutants",
+  "size": "30 to 45",
+  "nmut": 10,
+  "source": {
+    "url": "https://github.com/OWASP/CheatSheetSeries",
+    "licence": "CC-BY-SA-4.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js internal documents API written as plain handler functions (no web framework): sessions and token checks with expiry, role checks, per-owner access to documents, a file download handler that reads from a storage folder, input validation and size limits, HTML escaping of titles in an export, a login attempt limiter, audit logging. The existing tests only cover the happy path with a valid admin user. The behaviours that matter and are untested: access to another user's document, a token expired by one second, a role that is almost but not admin, path traversal in the download name (dot segments, encoded and absolute forms), oversized or wrongly typed input, markup in titles, lockout after the limit and its reset. Inspiration (a security-testing checklist idea only, nothing copied): public web security cheat sheets list these failure classes.\n\nThe request is from a QA engineer: a pen test last quarter found two holes and the team wants a regression suite for the access control and input handling under test/ that would catch them coming back. Source must not change.",
+  "id": "t5-qa-security-tests"
+}

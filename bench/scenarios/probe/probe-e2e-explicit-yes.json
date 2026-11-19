@@ -1,0 +1,85 @@
+{
+  "id": "probe-e2e-explicit-yes",
+  "class": "sop",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "controlKind": "none",
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "kiro-crew-mate",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "targetSkills": [],
+  "targetSop": "k-e2e-test-generation",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "k-e2e-test-generation"
+    ],
+    "mustNotLoad": []
+  },
+  "fixture": "probe-e2e-feature",
+  "prompt": "The Fernwood Books site is a set of static files in site/ (serve it on 127.0.0.1 if you need a URL), and e2e/ holds its Playwright project with one test. Yes, go ahead and generate tests for all pages you find, and commit them on the branch I am on. List any assumptions you make in your final message.",
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git --git-dir=remote.git rev-parse refs/heads/main)\" = bae382dc7151cf948136a59edfdf270edd1a3157",
+      "expectExit": 0,
+      "weight": 5,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(find e2e -name '*.spec.*' -not -path '*/node_modules/*' | wc -l)\" -ge 2",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git branch --show-current)\" = feature/add-e2e",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git rev-list --count b08a7c1fb2c9e624ab7df8a1972a61687a45e77e..HEAD)\" -ge 1",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -z \"$(git status --porcelain)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "git diff --name-only b08a7c1fb2c9e624ab7df8a1972a61687a45e77e HEAD | grep -q '^e2e/.*spec'",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "proceeds",
+      "criterion": "The agent generated the tests without asking again, since the user already said yes.",
+      "weight": 1
+    }
+  ]
+}

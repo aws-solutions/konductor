@@ -1,0 +1,5 @@
+{
+  "requestId": "x-request-id",
+  "authorization": "authorization",
+  "contentType": "content-type"
+}

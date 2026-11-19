@@ -1,0 +1,4 @@
+{
+  "postal_code": {"maxLength": 12},
+  "full_name": {"maxLength": 80}
+}

@@ -174,7 +174,7 @@ function auditContamination({ task, arm, ctx, outDir, cwd }) {
 
 // Everything that happens after the agent exits. Fills `acc` as it goes so a throw
 // part-way keeps what was already computed (spend in particular).
-function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tripwire }) {
+function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tripwire, conv = null }) {
   const checkIso = task.real ? makeIso(ctx, arm, runRoot, task, { offline: true }) : iso;
   const harness = harnessFor(arm);
   harness.parseResult(outDir, { home, tmpdir: path.join(runRoot, 'tmp'), acc, arm, ctx, config: ctx.config });
@@ -194,6 +194,13 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
   const checkHome = path.join(runRoot, 'check-home');
   fs.mkdirSync(path.join(checkHome, 'tmp'), { recursive: true });
   const { env } = buildCheckEnv(process.env, { home: checkHome, konductor: false });
+  // A scripted-user task's hidden tests read the conversation (questions asked, facts matched) from BENCH_CONVERSATION.
+  if (task.autonomy?.scripted && conv) {
+    const convFile = path.join(runRoot, 'check-scratch', 'conversation.json');
+    fs.mkdirSync(path.dirname(convFile), { recursive: true });
+    fs.writeFileSync(convFile, JSON.stringify({ questions: conv.questions }));
+    env.BENCH_CONVERSATION = convFile;
+  }
   acc.checks = runChecks(cwd, task.checks, {
     pristineDir: task.real ? real.pristineDir(task, { cache: ctx.realCache }) : task.fixtureDir,
     env,
@@ -451,7 +458,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
 
       if (fs.existsSync(path.join(outDir, 'stream.jsonl'))) {
         try {
-          postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tripwire });
+          postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tripwire, conv });
         } catch (e) {
           meta.infraError = [meta.infraError, `post-processing failed: ${e.message}`].filter(Boolean).join(' | ');
         }

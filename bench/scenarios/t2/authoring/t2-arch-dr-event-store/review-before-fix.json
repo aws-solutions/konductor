@@ -1,0 +1,31 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "The prompt asks for a review checking behavior, operations, migration, and dependencies against the packet. It does not name a method, reveal problem locations, count problems, or hint at specific issues."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "The prompt clearly specifies the ADR to review, the supporting packet, the output file (REVIEW.md), the finding format (location as section number, severity, issue, fix), and the focus on issues affecting approval or implementation."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Finding the issues requires cross-referencing the ADR against multiple packet documents (product-requirements, recovery-targets, reporting-contract, current-architecture). The arithmetic error in section 3.4 must be caught by actual calculation. The incomplete options table looks polished. A shallow read would miss most items."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items have clear evidence in the fixture. K3's arithmetic (174.7M / 2.5M = ~70 min) is verifiable. K2 cites the product requirement for immediate visibility. K4 cites the deletion contract. K5 requires knowing the current system has outbox+audit from current-architecture.md. Severities are defensible."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, or file names reveal the planted problems. The fixture documents present requirements and constraints neutrally without highlighting the gaps the agent must discover."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

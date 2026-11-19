@@ -1,0 +1,17 @@
+{
+  "metricAlarms": [
+    "arn:aws:cloudwatch:us-east-1:111122223333:alarm:api-latency",
+    "arn:aws:cloudwatch:us-west-2:111122223333:alarm:worker-errors",
+    "arn:aws:cloudwatch:us-east-1:111122223333:alarm:queue-depth"
+  ],
+  "logGroups": [
+    "arn:aws:logs:us-east-1:111122223333:log-group:/northstar/api:*",
+    "arn:aws:logs:us-west-2:111122223333:log-group:/northstar/worker:*",
+    "arn:aws:logs:us-east-1:111122223333:log-group:/northstar/batch:*"
+  ],
+  "secret": "arn:aws:secretsmanager:us-east-1:111122223333:secret:dashboard-token",
+  "artifact": "arn:aws:s3:::northstar-example-artifacts/build.zip",
+  "instance": "arn:aws:ec2:us-east-1:111122223333:instance/i-example123",
+  "role": "arn:aws:iam::111122223333:role/OtherRole",
+  "key": "arn:aws:kms:us-east-1:111122223333:key/example-key"
+}

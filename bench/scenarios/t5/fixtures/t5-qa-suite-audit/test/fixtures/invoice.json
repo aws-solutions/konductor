@@ -1,0 +1,15 @@
+{
+  "id": "inv_snapshot",
+  "customerId": "cus_snapshot",
+  "planId": "scale",
+  "cycleStart": "2025-07-01",
+  "dueDate": "2025-08-01",
+  "lines": [
+    {
+      "description": "Scale subscription",
+      "amountCents": 7500
+    }
+  ],
+  "totalCents": 7500,
+  "status": "open"
+}

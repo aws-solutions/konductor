@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "BackupVendorAssumeRole",
+    "Effect": "Allow",
+    "Principal": { "AWS": "arn:aws:iam::333344445555:root" },
+    "Action": "sts:AssumeRole",
+    "Resource": "*"
+  }]
+}

@@ -1,0 +1,14 @@
+{
+  "accountId": "111122223333",
+  "region": "us-test-1",
+  "bucketName": "nightly-exports-example",
+  "bucketArn": "arn:aws:s3:::nightly-exports-example",
+  "prefix": "exports/",
+  "tableName": "LedgerRecords",
+  "tableArn": "arn:aws:dynamodb:us-test-1:111122223333:table/LedgerRecords",
+  "indexName": "by_day",
+  "indexArn": "arn:aws:dynamodb:us-test-1:111122223333:table/LedgerRecords/index/by_day",
+  "kmsKeyId": "arn:aws:kms:us-test-1:111122223333:key/12345678-1234-4abc-8def-1234567890ab",
+  "kmsKeyArn": "arn:aws:kms:us-test-1:111122223333:key/12345678-1234-4abc-8def-1234567890ab",
+  "roleArn": "arn:aws:iam::111122223333:role/nightly-export-job"
+}

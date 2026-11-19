@@ -1,0 +1,8 @@
+[ledger]
+currency = "USD"
+days_in_year = 365
+statement_timezone = "UTC"
+
+[export]
+delimiter = ","
+encoding = "utf-8"

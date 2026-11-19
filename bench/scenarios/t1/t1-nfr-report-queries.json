@@ -1,0 +1,123 @@
+{
+  "id": "t1-nfr-report-queries",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "The monthly report job is now too slow and uses too much memory on production-sized data. Please improve the existing implementation without changing the report contract. The command remains `python3 -m reportjob.cli --db PATH --month YYYY-MM --format csv|json --output PATH`, and `-` still means standard output. Keep `ReportBuilder.iter_rows(month)`, `ReportBuilder.build(month)`, `ReportDatabase`, `write_csv(rows, output)`, and `write_json(rows, output)` usable. `ReportDatabase` must also accept an optional sqlite3 connection for callers that instrument database work. A report may use no more than 3 SQL statements for a month, regardless of the number of customers. Rendering 12,000 order rows through either formatter must stay below 8 MiB of peak tracemalloc memory. Rows must retain the existing six columns, ordering, CSV and JSON encoding, and trailing newlines, including byte-for-byte identical output to `fixtures/expected/january.csv` and `fixtures/expected/january.json` for the sample data. Keep empty months working, reject malformed month values instead of producing a report, add focused tests and document the change. Do not add dependencies.",
+  "fixture": "t1-nfr-report-queries",
+  "hidden": "t1-nfr-report-queries",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "python3 -c \"import sys; assert sys.version_info[:2] == (3, 12)\" && node --test --test-timeout=15000 hidden/py_bridge.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -m unittest discover -s tests -p 'test_*.py'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "tests/test_streaming_report.py",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "joined query|streamed.*JSON",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -z \"$(find . -maxdepth 2 -type d -name 'site-packages' -o -name 'node_modules')\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/performance.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verification-report",
+      "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "verification",
+    "test-coverage-analysis"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "test-coverage-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/sqlalchemy/sqlalchemy",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the performance problem and constraints without prescribing implementation methods. The notes section with technical details is for the reviewer, not included in the agent prompt."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt specifies exact requirements: byte-for-byte output matching, 3 SQL statement limit, 8 MiB memory limit, YYYY-MM month validation, and preserved API contracts. The data-model.md clarifies row ordering. All critical behaviors are stated."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture tests show basic usage but don't reveal streaming, query budget, or memory requirements. The problematic N+1 query pattern is visible in the code, but the solution (single join query with streaming) must be deduced from constraints, not copied from hints."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive fix (adding only the connection parameter) would pass 2 of 14 hidden tests. The query budget tests catch N+1 patterns. The memory tests catch list() materialization. The CLI test catches missing validation. Multiple orthogonal constraints require real fixes."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are stated in the prompt. The connection parameter requirement is explicit ('ReportDatabase must also accept an optional sqlite3 connection'). The 3-statement limit, 8 MiB limit, and byte-for-byte output requirements are all clearly specified."
+      }
+    ]
+  }
+}

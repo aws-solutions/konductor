@@ -1,0 +1,44 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SupportMetadataRead",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::111122223333:role/support-readonly"
+      },
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:Query"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example"
+    },
+    {
+      "Sid": "SupportCannotReadObjects",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::111122223333:role/support-readonly"
+      },
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::ledger-tenant-documents-example",
+        "arn:aws:s3:::ledger-tenant-documents-example/*"
+      ]
+    },
+    {
+      "Sid": "SupportCannotWriteMetadata",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::111122223333:role/support-readonly"
+      },
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:TransactWriteItems"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example"
+    }
+  ]
+}

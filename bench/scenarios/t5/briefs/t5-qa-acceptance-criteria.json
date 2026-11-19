@@ -1,0 +1,22 @@
+{
+  "phase": "requirements",
+  "role": "qa",
+  "phases2": [
+    "testing"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "docs",
+  "kind": "scripted",
+  "size": "8 to 14",
+  "questions": "scripted",
+  "source": {
+    "url": "https://github.com/cucumber/cucumber-js",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "voice": "a QA lead talking to a product owner (the user) who can answer questions",
+  "brief": "Phase: requirements. Role: QA engineer. Scripted user. Repo kind: a very small documents-only repository (a README, a one-page feature note docs/FEATURE-NOTE.md for a 'refund request' feature of a web shop, a glossary, two existing acceptance criteria files for other features, a template) with 8 to 14 files, no code. The feature note is deliberately vague: 'customers can request a refund'. A person answering questions (the scripted user) knows hidden facts that the criteria must contain: for example the refund window, partial refunds for bundles, what happens to a coupon used on the order, who approves above a threshold, what the customer is told and when, the audit log requirement, and one fact that contradicts the glossary. The agent should ask, then write docs/ACCEPTANCE.md with testable criteria that include the facts.\n\nThe request is from the QA lead (the user): 'I need acceptance criteria for the refund feature so we can start test cases; the note is thin, ask me what you need'.",
+  "id": "t5-qa-acceptance-criteria"
+}

@@ -1,0 +1,185 @@
+{
+  "id": "t4-threat-model-webhooks",
+  "version": 1,
+  "class": "review",
+  "phase": "design-review",
+  "phases2": [],
+  "role": "security",
+  "questions": "allowed",
+  "prompt": "Before we start building Harborline, I want a threat model of the design. Read what is in docs/ (the design, the API page, the decisions and the diagram) and the small prototype, and write it up in docs/threat-model.md: what can go wrong, how bad it is, and what we should change in the design before we build. Explain the findings and fixes in normal Markdown. End the document with one fenced json block holding an array of finding objects, each with exactly these fields: component (the component name as the design spells it), threat, severity (critical, high, medium or low) and mitigation. Keep the list to what really matters; I would rather have the important problems right than a long list. Do not change any existing file and do not add dependencies.",
+  "fixture": "t4-threat-model-webhooks",
+  "hidden": "t4-threat-model-webhooks",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "npm test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/threat-model.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/threat-model.md",
+      "pattern": "constant[- ]?time|timing[- ]safe",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/design.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/threat-model.md",
+      "pattern": "\\\"component\\\"\\s*:",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "review-quality",
+      "criterion": "The prose connects each finding to the actual data flow and gives a mitigation that an implementation team could act on (code cannot check this because it cannot judge whether the explanation is technically useful and grounded in the design).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "trust-boundaries",
+        "text": "Names the trust boundaries the data crosses (partner to receiver, receiver to store, forwarder to customer callback, operators to admin API) and ties each finding to one of them.",
+        "source": "OWASP Threat Modeling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Threat_Modeling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "sign-metadata",
+        "text": "The signature must cover the event id and timestamp as well as the body, so a replay window check cannot be bypassed by changing unsigned metadata.",
+        "source": "Standard Webhooks specification, https://github.com/standard-webhooks/standard-webhooks (Apache-2.0)"
+      },
+      {
+        "id": "secret-rotation-overlap",
+        "text": "Partner signing secrets need rotation with an overlap period in which two secrets verify, so rotation does not drop live traffic.",
+        "source": "Standard Webhooks specification, https://github.com/standard-webhooks/standard-webhooks (Apache-2.0)"
+      },
+      {
+        "id": "dns-rebinding",
+        "text": "Callback checks must resolve the host and pin the checked address for the connection (and re-check on every redirect), otherwise a URL that passes at registration can later point inside the network.",
+        "source": "OWASP Server Side Request Forgery Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "outbound-amplification",
+        "text": "Retries and fan-out can be abused to flood a third party that a tenant registers as its callback; per-destination rate and retry caps are needed, not only per-tenant ones.",
+        "source": "OWASP Server Side Request Forgery Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "idempotent-delivery",
+        "text": "Delivery is at least once, so receivers need a stable event id to drop duplicates; the design should give customers that id and say so.",
+        "source": "Standard Webhooks specification, https://github.com/standard-webhooks/standard-webhooks (Apache-2.0)"
+      },
+      {
+        "id": "tenant-scoped-storage-and-queries",
+        "text": "Tenant isolation must hold in storage and admin reads too (every query and admin action scoped by the authenticated tenant), not only at the receiving endpoint.",
+        "source": "OWASP Multi-Tenant Security Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "security-event-logging",
+        "text": "Verification failures, admin actions and callback changes are logged as security events with who and when, without secrets or payload bodies, and alert on spikes.",
+        "source": "OWASP Logging Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Logging_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "residual-risk",
+        "text": "States what stays open after the mitigations (accepted risks, assumptions such as trusting the edge gateway) rather than claiming the design becomes safe.",
+        "source": "OWASP Threat Modeling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Threat_Modeling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Use HTTPS everywhere and validate all input.",
+      "Add authentication and authorization to the API.",
+      "Encrypt the database and enable logging.",
+      "Add a rate limiter to prevent abuse.",
+      "Follow security best practices and do regular penetration tests."
+    ]
+  },
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "threat-modeling"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-architect",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "threat-modeling"
+    ],
+    "mustNotLoad": [
+      "code-review",
+      "backend-review",
+      "frontend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Threat_Modeling_Cheat_Sheet.md",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a security review but does not name a specific threat modeling framework (STRIDE, PASTA, etc.) or prescribe a method; it only names the deliverable format."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt names all 8 components explicitly, specifies the JSON schema fields, and defines severity values. The fixture docs clearly describe the design flaws (tenant from body, shared admin key, callback URLs without validation, timing-unsafe comparison, no replay protection, unencrypted storage, 30-day retention not enforced)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The prototype verify.js uses === for HMAC comparison, design.md describes taking tenant from body, shared admin key, callback URLs without validation, and logs with full payloads. These are facts the agent must analyze, not explicit 'fix this bug' comments."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt listed all eight components, the three decoys by name and the threat areas, which hands over most of the key. The lead rewrote the prompt to ask for a threat model of the design with the output shape only."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required findings are derivable from reading the design: timing-unsafe HMAC comparison (verify.js shows ===), tenant from body (design.md states receiver uses tenantId from body), callback SSRF (design.md says URL passed as-is with redirect following), shared admin key (design.md states one shared key), logs with secrets (design.md says logs include parsed events and startup config), no size/retry limits (design.md describes shared queue), no encryption/deletion (design.md describes standard database, retention is manual query)."
+      }
+    ]
+  }
+}

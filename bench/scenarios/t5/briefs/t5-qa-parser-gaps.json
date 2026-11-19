@@ -1,0 +1,19 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "mutants",
+  "size": "25 to 35",
+  "nmut": 10,
+  "source": {
+    "url": "https://github.com/stryker-mutator/stryker-js",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js library, no dependencies, that parses and validates a small configuration and data-exchange format: a tokenizer, a parser for quoted strings with escapes, numbers with units (for example '10ms', '2.5MB'), lists and nested sections, a validator with line and column in error messages, a pretty-printer that round-trips, a CLI wrapper, docs, CI config. The existing suite looks thorough (many cases, high coverage) but each test uses well-formed, short inputs. The behaviours that really matter and are thin: escape handling at the end of a string, empty input and empty sections, the largest and smallest accepted numbers and unit conversion rounding, error positions after a multi-line string, duplicate keys, deep nesting limit exactly at the limit, round-trip of values that need quoting. Inspiration (a testing idea only, nothing copied): public mutation-testing tools show that parsers are often covered by lines but not by boundaries.\n\nThe request is from a QA lead who just found a bug in production in input the suite 'covers': the tests under test/ should be trusted for the parser and printer. They do not say how.",
+  "id": "t5-qa-parser-gaps"
+}
