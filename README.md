@@ -40,7 +40,8 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
   reviewed, pass one fresh reviewer; a standalone design, plan or requirements document passes its
   checker skill; a one-file change of at most 50 lines passes by build, test and lint, reported with the diff stat. Code touching auth, secrets,
   data or infrastructure, every threat model, and a document that designs authentication,
-  authorization or credential handling get the reviewer. Failed checks get one fix and one re-review.
+  authorization or credential handling, exposes a service or data across a network boundary, or
+  handles personal or sensitive data get the reviewer. Failed checks get one fix and one re-review.
 - 🧠 **Expertise built in.** 79 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or

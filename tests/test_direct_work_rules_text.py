@@ -131,8 +131,9 @@ def test_stack_skills_load_only_when_the_project_uses_the_stack():
 
 DOCUMENT_TRIGGER = (
     "a threat model, and a document that designs authentication, authorization, or how credentials "
-    "are stored or handled, always gets the gate review, but a data model, schema, or deployment "
-    "configuration alone does not call for one;"
+    "are stored or handled, that exposes a service or data across a network boundary, or that "
+    "handles personal or sensitive data, always gets the gate review, but a data model, schema, or "
+    "deployment configuration that does none of these does not call for one;"
 )
 DOCUMENT_SELF_CHECK = (
     "a document phase without the gate review must still run the document's checker skill on it "
@@ -140,14 +141,16 @@ DOCUMENT_SELF_CHECK = (
 )
 
 
-def test_only_threat_models_and_auth_or_credential_designs_always_get_the_gate_review():
+def test_threat_models_and_auth_network_or_sensitive_data_designs_always_get_the_gate_review():
     direct = _direct_work()
     assert DOCUMENT_TRIGGER in direct
     assert "a document that touches auth, secrets, data, or infrastructure" not in direct
+    assert "deployment configuration alone does not call for one" not in direct
     readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
     assert (
         "Code touching auth, secrets, data or infrastructure, every threat model, and a document that "
-        "designs authentication, authorization or credential handling get the reviewer."
+        "designs authentication, authorization or credential handling, exposes a service or data "
+        "across a network boundary, or handles personal or sensitive data get the reviewer."
     ) in readme
     assert "Anything touching auth, secrets" not in readme
 
