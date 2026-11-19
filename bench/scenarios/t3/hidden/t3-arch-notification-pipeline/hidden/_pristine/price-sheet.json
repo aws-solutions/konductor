@@ -1,0 +1,12 @@
+{
+  "currency": "USD",
+  "month_hours": 720,
+  "queue_request_usd_per_million": 0.10,
+  "transfer_usd_per_gb": 0.03,
+  "worker_usd_per_hour": 0.11,
+  "gb_definition": 1000000000,
+  "billing_notes": {
+    "request_unit": "one publish, receive, or acknowledgement request",
+    "transfer_basis": "payload bytes copied across the managed delivery boundary"
+  }
+}

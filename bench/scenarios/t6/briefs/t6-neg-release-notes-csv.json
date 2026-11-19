@@ -1,0 +1,13 @@
+{
+ "id": "t6-neg-release-notes-csv",
+ "wave": 2,
+ "kind": "negative",
+ "phase": "planning",
+ "role": "pm",
+ "out": "docs/release-notes.csv",
+ "repo": "a small product docs folder for a mobile banking app: release notes markdown with about 20 entries across 6 versions, a style guide, a changelog policy, FAQ. About 20 files.",
+ "idea": "A small, clear request that needs no questions and no special method: convert docs/release-notes.md into docs/release-notes.csv with columns version, date, type, summary (one row per bullet; type is the heading the bullet sits under). Seed traps: a bullet with a comma and quotes, a version with a date written differently, a bullet that wraps over two lines.",
+ "source": "original",
+ "author": "deepseek-3.2",
+ "reviewer": "minimax-m2.5"
+}

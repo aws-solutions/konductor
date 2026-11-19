@@ -1,0 +1,5 @@
+event_name,source,retention_days,customer_visible
+account.updated,activity-service,180,no
+member.removed,activity-service,180,no
+appointment.changed,activity-service,365,yes
+support.session.opened,security-service,400,no

@@ -1,0 +1,5 @@
+[
+  "What peak throughput should we size for, and what delivery guarantee, duplicate-handling, and retry window should the webhook promise?",
+  "What signing scheme and key rotation rule should apply, and how should endpoint verification establish ownership before activation?",
+  "What ordering contract should customers receive, and what data residency rule applies when customer and endpoint regions differ?"
+]

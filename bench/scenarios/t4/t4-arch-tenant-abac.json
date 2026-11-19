@@ -1,0 +1,163 @@
+{
+  "id": "t4-arch-tenant-abac",
+  "version": 1,
+  "class": "complex",
+  "phase": "security",
+  "phases2": [],
+  "role": "architect",
+  "questions": "allowed",
+  "prompt": "We are close to the account limit on roles because every tenant gets its own generated role policy (infra/tenants/, about 40 of them). Please design the shared access model that replaces them, and write it as infra/shared/tenant-access-policy.json for tenants, infra/shared/support-policy.json for our support staff, and docs/access-model.md explaining the choice, the session tags it depends on, and what the code must keep true. The resource names and the support principal are in infra/config/access-config.json. Each request runs with session tags tenant and tier taken from the verified token. The rules: a tenant may read, write, delete and list only its own documents under tenants/<tenant-id>/ and use only its own metadata partition, and must never reach another tenant even by guessing ids; premium tenants may also write their exports under exports/<tenant-id>/; a request with no tenant tag must be refused outright by these policies, even if some other policy would allow it; support staff may read and query any tenant's metadata but must be refused every document access and every metadata write, again even if another policy would allow it. Do not change the bucket, the table, the account or the existing code and tests, and add no dependencies. Keep both files valid IAM policy JSON.",
+  "fixture": "t4-arch-tenant-abac",
+  "hidden": "t4-arch-tenant-abac",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 87,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/access-model.md",
+      "pattern": "\\btier\\b",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const d=JSON.parse(require('fs').readFileSync('infra/shared/tenant-access-policy.json','utf8'));const wide=[].concat(d.Statement).some(s=>s.Effect==='Allow'&&[].concat(s.Action||[]).some(a=>a==='*'||/^[a-z0-9-]+:[*]$/.test(a)));process.exit(wide?1:0)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "R1",
+      "criterion": "The access-model document clearly connects verified-token session tags to the storage boundaries and explains the support boundary (code cannot check this because it cannot judge whether the prose gives operators enough implementation guidance).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "quota-driver",
+        "text": "Ties the choice to the role limit and to operations: one policy instead of one per tenant means no stamping, no drift between tenant copies, and onboarding without IAM changes.",
+        "source": "AWS IAM User Guide, IAM and AWS STS quotas, https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "tag-integrity",
+        "text": "States that the design is only as safe as the session tags: tenant and tier must come from the verified token, callers must not be able to set or change them, and tag changes need review.",
+        "source": "AWS IAM User Guide, What is ABAC for AWS, https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "missing-tag",
+        "text": "Explains why a missing tenant tag must fail closed (a variable with no value must never widen access).",
+        "source": "AWS IAM User Guide, What is ABAC for AWS, https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "multi-value-keys",
+        "text": "Explains why requests that carry several partition keys or several prefixes need a rule that all of them belong to the tenant, not just one.",
+        "source": "OWASP Multi-Tenant Security Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "support-separation",
+        "text": "Keeps support access as a separate, read-only path with an audit trail and says why it must not reach documents.",
+        "source": "OWASP Multi-Tenant Security Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "testing-isolation",
+        "text": "Proposes an automated check that tries cross-tenant access with many tenant ids, so isolation stays proven after changes.",
+        "source": "OWASP Multi-Tenant Security Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Use ABAC with tags for multi-tenancy.",
+      "Use one shared role instead of many roles.",
+      "Tenants can only access their own data.",
+      "Support has read-only access."
+    ]
+  },
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-architect",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "backend-development",
+      "frontend-development",
+      "dynamodb-design"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the deliverables (policy documents and access model) without prescribing a specific methodology or named process for how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "Same fix as floor: the refusal rule is stated in the prompt."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, leftover solution files, or test fixtures in the fixture reveal the exact policy structure. The tenant policies show the per-tenant pattern to be replaced but not the ABAC solution."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer marked ceiling fail with 11 of 87 tests passing on a shallow answer, which is the intended trap set; its suggested fix was to name the mechanisms in the prompt, which would leak the method. The lead stated the requirements instead."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "Reviewer said the tests need explicit denies the prompt never asked for. The prompt now says a missing tag and support document or write access must be refused even if another policy allows them; an identity policy with deny statements passes (the tests need no Principal element)."
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SharedObjectStoreAccess",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::ledger-tenant-documents-example",
+        "arn:aws:s3:::ledger-tenant-documents-example/*"
+      ],
+      "Condition": { "StringNotEquals": { "aws:PrincipalTag/tenant": "tenant-17" } }
+    },
+    {
+      "Sid": "SharedMetadataAccess",
+      "Effect": "Allow",
+      "Action": "dynamodb:*",
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
+      "Condition": { "StringNotEquals": { "aws:PrincipalTag/tenant": "tenant-17" } }
+    }
+  ]
+}

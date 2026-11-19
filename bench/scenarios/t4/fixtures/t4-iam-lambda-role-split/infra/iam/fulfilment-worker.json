@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:111122223333:table/staging-legacy-data",
+        "arn:aws:dynamodb:us-west-2:111122223333:table/prod-legacy-data",
+        "arn:aws:sqs:us-east-1:111122223333:staging-legacy-events",
+        "arn:aws:sqs:us-west-2:111122223333:prod-legacy-events",
+        "arn:aws:s3:::lantern-staging-legacy-files-111122223333/*",
+        "arn:aws:s3:::lantern-prod-legacy-files-111122223333/*",
+        "arn:aws:secretsmanager:us-east-1:111122223333:secret:staging/legacy-service-abc123",
+        "arn:aws:secretsmanager:us-west-2:111122223333:secret:prod/legacy-service-abc123",
+        "arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/staging-legacy-runner:*",
+        "arn:aws:logs:us-west-2:111122223333:log-group:/aws/lambda/prod-legacy-runner:*",
+        "arn:aws:iam::111122223333:role/staging-legacy-runner",
+        "arn:aws:iam::111122223333:role/prod-legacy-runner"
+      ]
+    }
+  ]
+}

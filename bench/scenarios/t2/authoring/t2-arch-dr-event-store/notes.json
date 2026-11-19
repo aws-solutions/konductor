@@ -1,0 +1,3 @@
+{
+  "notes": "The quick path will accept the event-sourcing rationale and miss conflicts between the ADR and the packet. The recovery arithmetic, customer visibility contract, deletion behavior, and reporting replacement require cross-file reading. The options comparison is intentionally incomplete even though its table looks polished. The snapshot section sounds specific while leaving important operating choices open."
+}

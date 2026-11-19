@@ -1,0 +1,7 @@
+metric,value,unit,notes
+peak_ingress,6000,messages_per_second,short busy window used for capacity sizing
+baseline_ingress,1800,messages_per_second,ordinary production rate
+peak_hours_per_day,2,hours,recurs every production day
+baseline_hours_per_day,22,hours,remaining time in each day
+payload_size,2048,bytes,maximum notification payload after encoding
+month_days,30,days,month used for the budget estimate

@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-data-export",
+ "wave": 2,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "pm",
+ "out": "docs/requirements.md",
+ "repo": "a document folder for a B2B scheduling SaaS that must let customers export their account data: the support ticket export about data requests (CSV), the data model overview, the privacy notice, a legal team email, the admin roles page, an enterprise customer's security questionnaire, infra limits page. About 25 files.",
+ "idea": "Requirements for a self-service data export, inspired by the data portability right in public EU law (idea only). Hidden facts could cover: who may request it, formats, what is excluded, delivery deadline, download link expiry, size limits, audit logging, which plans get it.",
+ "source": {
+  "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+  "licence": "EU legal text, reuse authorised with source acknowledged (Commission Decision 2011/833/EU)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

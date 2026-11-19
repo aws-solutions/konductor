@@ -1,0 +1,6 @@
+{
+  "submit": "Check availability",
+  "loading": "Checking dates…",
+  "unavailable": "Those dates are no longer available",
+  "genericError": "We could not complete the request"
+}

@@ -1,0 +1,6 @@
+{
+  "algorithm": "HMAC-SHA256",
+  "key": "published-test-vector-key",
+  "message": "sample message",
+  "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

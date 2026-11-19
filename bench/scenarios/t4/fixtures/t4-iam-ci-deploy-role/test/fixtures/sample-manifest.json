@@ -1,0 +1,4 @@
+{
+  "release": "fixture-release",
+  "files": ["index.html", "assets/app.css"]
+}

@@ -1,0 +1,215 @@
+{
+  "outputFile": "incidents/notification-backlog.md",
+  "items": [
+    {
+      "id": "cause-summary",
+      "type": "text",
+      "path": "rootCause.summary",
+      "weight": 3,
+      "all": [
+        "recipient.*(array|list)|payload.*(array|list)|(array|list).*recipient",
+        "string|shape|type|schema",
+        "retr(y|ied|ies|ying)|attempt|dead.?letter|redeliver",
+        "partition|block|lag|stuck|backlog|head.of.line"
+      ],
+      "none": [
+        "(caused by|due to|because of|result of) (the )?broker[- ]?disk|disk (usage|space|full) (caused|triggered)"
+      ]
+    },
+    {
+      "id": "cause-evidence",
+      "type": "evidence",
+      "path": "rootCause.evidence",
+      "weight": 2,
+      "groups": [
+        {
+          "file": "deploy/deploy-history\\.md$",
+          "all": [
+            "schema\\s*4\\.8",
+            "recipient.*(list|array)"
+          ]
+        },
+        {
+          "file": "logs/consumer-a\\.log$",
+          "all": [
+            "decode_error|PayloadShapeError",
+            "recipient",
+            "expected=string",
+            "actual=array"
+          ]
+        },
+        {
+          "file": "config/consumer-config\\.yaml$",
+          "all": [
+            "max_attempts:\\s*0"
+          ]
+        }
+      ],
+      "min": 2
+    },
+    {
+      "id": "cause-evidence-precision",
+      "type": "evidencePrecision",
+      "path": "rootCause.evidence",
+      "weight": 2,
+      "relevant": [
+        "schema\\s*4\\.8|recipient.*(list|array)",
+        "payloadshape|decode_error|expected=string|actual=array",
+        "max_attempts|dead_letter|retry",
+        "partition.*(blocked|lag)|blocked_offset"
+      ],
+      "min": 0.5
+    },
+    {
+      "id": "timeline-rollout",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "schema|producer|release"
+        ],
+        "timeNear": {
+          "time": "2025-04-17T13:58:00Z",
+          "tolMin": 5
+        }
+      }
+    },
+    {
+      "id": "timeline-first-symptom",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "recipient",
+          "list|array|accepted|event"
+        ],
+        "timeNear": {
+          "time": "2025-04-17T14:07:00Z",
+          "tolMin": 5
+        }
+      }
+    },
+    {
+      "id": "timeline-consumer-failure",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "decode|reject|error",
+          "array|string|payload"
+        ],
+        "timeNear": {
+          "time": "2025-04-17T14:07:00Z",
+          "tolMin": 5
+        }
+      }
+    },
+    {
+      "id": "timeline-mitigation",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "retry|attempt",
+          "dead.?letter|limit|cap"
+        ],
+        "timeNear": {
+          "time": "2025-04-17T16:51:00Z",
+          "tolMin": 5
+        }
+      }
+    },
+    {
+      "id": "timeline-recovery",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "resum|recover|low lag|normal|drain|clear|caught up"
+        ],
+        "timeNear": {
+          "time": "2025-04-17T17:19:00Z",
+          "tolMin": 5
+        }
+      }
+    },
+    {
+      "id": "timeline-bounded",
+      "type": "maxLen",
+      "path": "timeline",
+      "max": 15,
+      "min": 4
+    },
+    {
+      "id": "impact-delayed",
+      "type": "number",
+      "path": "impact.delayedNotifications",
+      "value": 2865,
+      "tolPct": 5
+    },
+    {
+      "id": "impact-delay",
+      "type": "number",
+      "path": "impact.longestDelayMinutes",
+      "value": 192,
+      "tolPct": 5
+    },
+    {
+      "id": "impact-duration",
+      "type": "number",
+      "path": "impact.incidentDurationMinutes",
+      "value": 192,
+      "tolPct": 5
+    },
+    {
+      "id": "impact-lag",
+      "type": "number",
+      "path": "impact.peakConsumerLag",
+      "value": 3185,
+      "tolPct": 5
+    },
+    {
+      "id": "action-retry-safety",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "finite|limit|cap|maximum",
+          "dead.?letter|DLQ|route"
+        ]
+      }
+    },
+    {
+      "id": "action-contract-guard",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "contract|schema|shape|type",
+          "validat|test|canary"
+        ]
+      }
+    },
+    {
+      "id": "action-alert-guard",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "alert|page|monitor|dashboard",
+          "retry|lag|oldest|partition"
+        ]
+      }
+    },
+    {
+      "id": "actions-bounded",
+      "type": "maxLen",
+      "path": "actionItems",
+      "max": 10,
+      "min": 3
+    }
+  ]
+}

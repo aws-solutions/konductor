@@ -1,0 +1,5 @@
+{
+  "format": "json",
+  "retentionDays": 30,
+  "fields": ["timestamp", "requestId", "level", "message"]
+}

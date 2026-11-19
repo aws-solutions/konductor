@@ -1,0 +1,284 @@
+{
+  "id": "t5-qa-sync-strategy",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "architecture"
+  ],
+  "questions": "allowed",
+  "prompt": "We migrate customer data to the new store on a weekend two weeks from now, and I own the sync service that does it. I have limited time and want a plan for what to test and in what order, not a tour of every file. Read the repository, including the source, the existing tests and the docs, then write docs/TEST-STRATEGY.md: where the real risk is, how severe it is, the test that should cover each risk, an order we can work through in the two weeks, and what could go wrong if we skip the rest. This is planning only; do not change application code, fixtures, generated files or existing tests. End the document with one fenced `json` block holding an array of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "fixture": "t5-qa-sync-strategy",
+  "hidden": "t5-qa-sync-strategy",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 findings.test.js",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/TEST-STRATEGY.md",
+      "pattern": "\"location\"\\s*:",
+      "min": 6,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/mapping/generated/legacy-field-map.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decision-quality",
+      "criterion": "The plan makes a defensible migration-weekend decision rule and ties skipped work to concrete customer or operator consequences (code cannot check this because code cannot judge the quality of the trade-off)",
+      "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are judgment about test design, not a pattern in the text)"
+    }
+  ],
+  "findingsKey": [
+    {
+      "id": "checkpoint-before-commit",
+      "location": [
+        "src/migration/batch-runner.js",
+        "migrateBatches"
+      ],
+      "severity": "critical",
+      "fix": [
+        "checkpoint",
+        "commit",
+        "crash",
+        "atomic",
+        "resume"
+      ]
+    },
+    {
+      "id": "mapper-silent-coercion",
+      "location": [
+        "src/mapping/field-mapper.js",
+        "mapCustomer"
+      ],
+      "severity": "high",
+      "fix": [
+        "precision",
+        "truncat",
+        "coerc",
+        "lossy",
+        "round-trip",
+        "overflow"
+      ]
+    },
+    {
+      "id": "tie-order-dependence",
+      "location": [
+        "src/conflicts/resolve-conflict.js",
+        "resolveConflict"
+      ],
+      "severity": "high",
+      "fix": [
+        "tie",
+        "deterministic",
+        "order",
+        "stable"
+      ]
+    },
+    {
+      "id": "retry-reapplies-change",
+      "location": [
+        "src/capture/apply-change.js",
+        "applyChange"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempot",
+        "dedup",
+        "exactly once",
+        "change id",
+        "duplicate"
+      ]
+    },
+    {
+      "id": "count-only-verification",
+      "location": [
+        "src/verification/verify-migration.js",
+        "verifyMigration"
+      ],
+      "severity": "high",
+      "fix": [
+        "content",
+        "field-level",
+        "checksum",
+        "hash",
+        "per-record",
+        "row-level"
+      ]
+    },
+    {
+      "id": "timezone-naive-ordering",
+      "location": [
+        "src/conflicts/timestamps.js",
+        "compareTimestamps"
+      ],
+      "severity": "high",
+      "fix": [
+        "timezone",
+        "time zone",
+        "utc",
+        "offset"
+      ]
+    },
+    {
+      "id": "dead-letter-loses-reason",
+      "location": [
+        "src/queue/dead-letter-queue.js",
+        "DeadLetterQueue"
+      ],
+      "severity": "medium",
+      "fix": [
+        "reason",
+        "error message",
+        "preserve",
+        "diagnostic"
+      ]
+    },
+    {
+      "id": "resume-path-unexercised",
+      "location": [
+        "src/migration/resume.js",
+        "resumeMigration"
+      ],
+      "severity": "critical",
+      "fix": [
+        "resume",
+        "restart",
+        "cursor",
+        "end-to-end",
+        "integration"
+      ]
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "rehearsal",
+        "text": "Plans a full rehearsal or shadow run on production-shaped data with realistic volume, skew and dirty records, and uses it to time the weekend window.",
+        "source": "Stripe, Online migrations at scale, https://stripe.com/blog/online-migrations (vendor copyright; idea only)"
+      },
+      {
+        "id": "done-criteria",
+        "text": "Defines what 'migrated correctly' means (per-record content comparison, counts by status, sampling plus full checksums) and the go or no-go and rollback criteria before the weekend.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "rerun-safety",
+        "text": "Tests that the whole migration and each batch can be stopped, rerun and resumed without duplicates or gaps, including a kill at a random point.",
+        "source": "Stripe, Online migrations at scale, https://stripe.com/blog/online-migrations (vendor copyright; idea only)"
+      },
+      {
+        "id": "data-shape",
+        "text": "Covers data the happy-path fixtures lack: nulls, very long values, odd encodings, records changed during the copy, and records deleted at the source.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "test-levels",
+        "text": "Chooses a level per risk (unit for mapping, integration with a real store for checkpoints and conflicts, end-to-end for resume) and says which tests need real infrastructure.",
+        "source": "Google Testing Blog, Test Sizes, https://testing.googleblog.com/2010/12/test-sizes.html (copyright Google; idea only)"
+      },
+      {
+        "id": "order-and-exit",
+        "text": "Orders the two weeks by blast radius and dependency, with a minimum set that must pass, and states the cost of skipping the rest.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "monitoring",
+        "text": "Plans monitoring and a stop switch for the migration weekend itself (lag, error rate, dead-letter growth).",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Says 'increase unit test coverage' for every module in turn.",
+      "Lists only the mapping and CLI because they are the most visible code.",
+      "Proposes a big end-to-end test run once, the week before, with no rehearsal or exit criteria.",
+      "Gives no order and no statement of what is skipped."
+    ]
+  },
+  "targetSkills": [
+    "e2e-test-strategy",
+    "test-coverage-analysis",
+    "risk-management"
+  ],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "e2e-test-strategy",
+      "test-coverage-analysis",
+      "risk-management"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/wstg",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt requests a test strategy document with specific structure (risk, severity, tests, ordering) but does not name methods, tools, or reveal the hidden findings. The agent must discover issues through code reading."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear: produce docs/TEST-STRATEGY.md with a JSON block containing location, severity, and fix fields. The grader uses flexible matching (location on token edge, severity within one level, keyword matching), accommodating reasonable variation in responses."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No revealing comments (checked for TODO/FIXME/BUG), docs describe general architecture without exposing issues, existing tests are happy-path only. All 8 seeded findings require careful code inspection to identify (e.g., checkpoint-before-commit race, retry idempotency, count-only verification)."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Appropriately challenging. A superficial list would fail: the grader requires location matching to specific files, severity within one level, fix keywords matching seeded issues, and penalizes overly long lists (precision term). Naive approaches would miss critical race conditions and idempotency issues."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All seeded findings are discoverable by reading code: checkpoint written before batch commit in batch-runner.js, retry without dedup in apply-change.js, count-only verification in verify-migration.js, timezone-naive comparison in timestamps.js, lost error context in dead-letter-queue.js, non-deterministic tie-breaking in resolve-conflict.js, silent coercion in field-mapper.js/type-converters.js. No flaky or timing-dependent tests."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

@@ -1,0 +1,173 @@
+{
+  "id": "t6-idea-pricing-test",
+  "class": "design",
+  "version": 1,
+  "phase": "ideation",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "I need a launch framing for the April pricing-page test in this folder. The first slide says Variant B won, but the decision is still open. Read the brief, daily exports, assignment summary, refund data, calendar, and analysis notes, then write docs/framing.md. Keep the recommendation grounded in the files: state the decision, the issues that affect whether the result can be rolled out, the adjusted result, the options and your choice, and the next step with the measure and baseline. End the document with one fenced JSON block using exactly these top-level fields: decision (string), issues (array of {name,evidence,impact}), raw_result, adjusted_result, options (array of {name,assessment}), and next_step. Use raw_result={metric,control={paid,assigned,rate},variant_b={paid,assigned,rate},difference_pp}. Use adjusted_result={metric,low_pp,high_pp,basis}. Use next_step={action,measure,baseline={control_rate,variant_b_rate},release_rule}. Put the key counts and calculations in the JSON so the result can be checked. Do not change the source files.",
+  "fixture": "t6-idea-pricing-test",
+  "hidden": "t6-idea-pricing-test",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 13,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/framing.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "```json[\\s\\S]*\\\"decision\\\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/framing.md",
+      "pattern": "refund|campaign|assign",
+      "min": 3,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/framing.md",
+      "pattern": "I cannot|not enough information",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); if (!fs.existsSync('data/assignment-summary.csv') || !fs.existsSync('data/refund-summary.csv')) process.exit(1)\"",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-framing",
+      "criterion": "The prose clearly separates what the test establishes from what it cannot establish, and makes the recommendation easy for a product decision-maker to use (code cannot check this because it cannot judge explanatory clarity).",
+      "weight": 1
+    },
+    {
+      "id": "evidence-discipline",
+      "criterion": "The framing uses focused, traceable evidence rather than padding the answer with unrelated observations (code cannot check this because it cannot assess relevance and judgement across the source documents).",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "hypothesis-first",
+        "text": "States the hypothesis the pricing change was meant to test and judges the result against it, rather than against whichever metric moved.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "sample-and-duration",
+        "text": "Says whether the test had enough users and ran long enough for the expected change, and sets sample size and duration before the repeat test starts.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "other-outcomes",
+        "text": "Names outcomes the test did not measure that the change could harm (for example satisfaction, support contacts or longer-term retention) and how to watch them after release.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "significance",
+        "text": "Checks whether the difference is statistically significant, or says the evidence is inconclusive, before calling a winner.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Variant B won on paid conversion, so roll it out.",
+      "Roll out Variant B to half of users and see what happens.",
+      "The test is flawed, so drop the pricing change entirely.",
+      "Average the two results and ship the better one."
+    ]
+  },
+  "targetSkills": [
+    "decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing"
+    ],
+    "mustNotLoad": [
+      "skill:socratic-elicitation",
+      "skill:deliberation-panel"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://www.gov.uk/guidance/ab-testing-comparative-studies",
+      "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "fixed",
+        "note": "Reviewed after the fix round, in which the lead had the JSON field names that named the traps (campaign days, net paid, corrected range) replaced by neutral ones. Reviewer: Prompt specifies JSON output format but does not tell agent how to analyze; the three issues (assignment mismatch, campaign overlap, refunds) must be "
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Request clearly defines output format and required sections; hidden tests check specific values present in fixture files (5584, 5256, 22, 58, 359, 351) that a competent reader would find."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Task requires multi-file synthesis: identifying three distinct issues, computing adjusted results with/without campaign dates, and making a grounded recommendation. A quick answer copying the slide fails."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required data is in fixture files; no scripted user or hidden facts to unlock. Reference scores 100, confirming task is achievable with available information."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture has raw data but not the analysis; analyst-slide-notes and old-analysis-draft show premature 'Variant B wins' conclusion but decision-log shows decision is open, requiring real analytical work."
+      }
+    ]
+  }
+}

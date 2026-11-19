@@ -1,0 +1,4 @@
+month,failed_invoices,successful_recovery_7d,closed_without_recovery,manual_paid_in_grace,auto_retry_attempts,source_note
+2025-05,431,88,339,4,0,old monthly reconciliation
+2025-06,517,115,402,4,0,provider export matched to ledger
+2025-06 corrected,517,115,402,4,0,manual payments are separated from processor retries

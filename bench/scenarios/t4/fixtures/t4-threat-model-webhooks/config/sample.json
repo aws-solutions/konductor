@@ -1,0 +1,13 @@
+{
+  "serviceName": "harborline-relay-local",
+  "port": 8080,
+  "adminApiKey": "admin-example-key-not-for-use",
+  "partnerKeys": {
+    "ledger-demo": "partner-key-example-111122223333"
+  },
+  "retentionDays": 30,
+  "delivery": {
+    "initialDelaySeconds": 5,
+    "maximumAttempts": 8
+  }
+}

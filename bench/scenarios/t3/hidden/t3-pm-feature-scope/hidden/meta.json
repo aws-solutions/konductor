@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/export-approach.md"],
+  "acceptableOptions": ["B", "C", "hybrid"],
+  "temptingOption": "A",
+  "notes": "Trap: Option A (synchronous) looks best on cost (~$85/month) but fails p99 timeout (34s > 29s); p99 time calculation requires combining render time (0.4s/100k rows from TRAFFIC_ANALYSIS.md) with upload time to get 34s total."
+}

@@ -1,0 +1,20 @@
+{
+  "phase": "testing",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "mutants",
+  "size": "25 to 40",
+  "nmut": 10,
+  "source": {
+    "url": "https://github.com/cucumber/cucumber-js",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "voice": "a frontend developer who owns the repo, talking to a colleague",
+  "brief": "Phase: testing. Role: frontend developer. Repo kind: a plain JavaScript (CommonJS, no browser, no dependencies) front-end logic package for a booking widget: a date-range picker state machine, form validation with messages, price formatting for several locales and currencies using Intl, a debounce and a retry helper driven by an injectable clock, a small store with subscriptions, view-model functions that return plain objects for rendering, docs, CI config. No DOM is available, so tests work on the view-models and state machines directly. The existing suite checks the happy path. The behaviours that matter: picker transitions at month and year edges and with a disabled-date range inside the selection, validation messages for empty, too-long and wrong-format values, rounding and zero-decimal currencies, the debounce firing once and cancel, retry stopping after its limit, unsubscribe during a notification. Inspiration (a testing idea only, nothing copied): behaviour-driven front-end test suites that exercise view logic without a browser.\n\nThe request is from a frontend developer: 'the widget logic has bitten us twice this month; add tests under test/ I can rely on'. The source must not change.",
+  "id": "t5-fe-widget-logic-tests"
+}

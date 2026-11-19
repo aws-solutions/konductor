@@ -1,0 +1,16 @@
+alerts:
+  - name: OrdersDbReplicationLag
+    metric: replication_lag_seconds
+    warning: 30
+    critical: 120
+    unit: seconds
+  - name: OrdersDbStorageWait
+    metric: storage_io_await_ms
+    warning: 50
+    critical: 500
+    unit: milliseconds
+  - name: OrdersApiPoolPressure
+    metric: db_connection_pool_in_use
+    warning: 32
+    critical: 40
+    unit: connections

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Contact - Fernwood Books</title></head>
+<body>
+<nav><a href="index.html">Home</a> <a href="about.html">About</a> <a href="contact.html">Contact</a></nav>
+<h1>Contact us</h1>
+<form id="contact" novalidate>
+  <label>Name <input id="name" name="name" required></label><span class="err" id="name-err" hidden>Name is required</span>
+  <label>Email <input id="email" name="email" type="email" required></label><span class="err" id="email-err" hidden>Enter a valid email</span>
+  <label>Message <textarea id="message" name="message" required></textarea></label><span class="err" id="message-err" hidden>Message is required</span>
+  <button type="submit">Send</button>
+</form>
+<p id="thanks" hidden>Thanks, we will reply soon.</p>
+<script>
+document.getElementById('contact').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var ok = true;
+  [['name', function (v) { return v.trim() !== ''; }], ['email', function (v) { return /^[^@\s]+@[^@\s]+$/.test(v); }], ['message', function (v) { return v.trim() !== ''; }]].forEach(function (f) {
+    var good = f[1](document.getElementById(f[0]).value);
+    document.getElementById(f[0] + '-err').hidden = good;
+    ok = ok && good;
+  });
+  document.getElementById('thanks').hidden = !ok;
+});
+</script>
+</body></html>

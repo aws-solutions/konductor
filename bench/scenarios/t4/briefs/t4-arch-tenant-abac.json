@@ -1,0 +1,13 @@
+{
+  "id": "t4-arch-tenant-abac",
+  "wave": 2,
+  "phase": "security",
+  "role": "architect",
+  "kind": "policy",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "25 to 45",
+  "source": { "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md", "licence": "CC-BY-SA-4.0", "licenceCheckedAt": "2026-11-19", "use": "idea" },
+  "brief": "Phase: security. Role: architect. Repo kind: a multi-tenant document service that today uses one role per tenant (40 near-identical tenant policies under infra/tenants/, a Node.js 24 script without dependencies that stamps them out, and an ops note that the account is near its role limit). Documents live in one bucket under tenants/<tenant-id>/; tenant metadata lives in one table whose partition key is the tenant id. The API code assumes a role per request with session tags tenant and tier taken from the verified token. A design doc draft lists the requirements: premium tenants may also write under exports/<tenant-id>/; support staff may read any tenant's metadata items but never documents; no tenant may read or list another tenant's data even when it guesses ids. The request: design the shared access model that replaces the per-tenant roles; write the tenant policy at infra/shared/tenant-access-policy.json, the support policy at infra/shared/support-policy.json, and docs/access-model.md explaining the choice, the session tags it relies on, and what must stay true in the code. Traps: policy variables from principal tags in resource ARNs, and dynamodb:LeadingKeys with ForAllValues; an explicit deny when the tenant tag is missing, so a missing variable can never widen access; the export prefix gated on the tier tag; ListBucket limited with an s3:prefix condition; support read-only on metadata and denied on documents. Hidden tests with the provided evaluator over many tenant ids: own documents and items allowed; other tenants' documents, items and listings denied; requests without the tag denied; exports only for premium and only under their own id; support allowed GetItem and Query on metadata and denied on documents and writes; both policies lint clean; the doc names the tags tenant and tier."
+}

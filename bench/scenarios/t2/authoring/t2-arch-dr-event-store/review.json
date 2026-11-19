@@ -1,0 +1,7 @@
+{ "verdicts": [
+  { "check": "leak", "verdict": "pass", "note": "The prompt asks for a review of behavior, operations, migration, and dependencies against contracts and targets. It does not hint at specific problems, name a checklist, or give the number of issues." },
+  { "check": "ambiguity", "verdict": "pass", "note": "The prompt clearly specifies reviewing the ADR at fixture/docs/adr/0007-event-sourced-orders.md, writing findings to REVIEW.md, and using section numbers as locations with severity levels." },
+  { "check": "ceiling", "verdict": "pass", "note": "Finding the issues requires cross-file reading between the ADR and multiple packet documents (product-requirements, recovery-targets, reporting-contract, current-architecture). A quick skim would miss the arithmetic error, the read-your-writes conflict, and the reporting contract gaps." },
+  { "check": "floor", "verdict": "pass", "note": "All key items are grounded in the fixture. Each section referenced in the key exists in the ADR, and the supporting documents contain the contradictory contracts. The recovery math error (k3) is verifiable arithmetic." },
+  { "check": "hidden-answer", "verdict": "pass", "note": "No comments, tests, or file names point at planted problems. The incident document mentions stale reads but as a past operational issue, not as a hint about the ADR's design flaw." }
+], "keyProblems": [], "suggestedFixes": [] }

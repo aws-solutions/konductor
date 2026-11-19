@@ -1,0 +1,71 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "security"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "findings",
+  "size": "40 to 55",
+  "nkey": 8,
+  "ntrap": 3,
+  "ndecoy": 2,
+  "source": {
+    "url": "https://github.com/OWASP/wstg",
+    "licence": "CC-BY-SA-4.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "keyExtra": "Locations are source file paths (for example `src/payments/webhook.js`) so that matching is unambiguous; give each key item a distinct file.",
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js checkout backend (orders, inventory reservation, a payment provider adapter with webhooks and retries, promo codes, refunds, email notifications, a nightly settlement job, admin scripts, a generated tax table, docs, CI config, an existing small suite and about 40 commits of git-style history described in docs/CHANGELOG.md). The task is NOT to write tests; it is to plan them. The agent must write docs/TEST-PLAN.md for the coming rework: where the real risk is, how bad each is, and the test to add for each, with a JSON list at the end. Seed 8 real risk areas found only by reading code (for example: float money arithmetic in one path, a webhook handler that is not idempotent or accepts replays, an inventory read-then-write race, a retry wrapper that can double-charge on timeout, an error swallowed by an empty catch, a cut-off time computed in server local time, partial-refund rounding, a feature flag default that disables a guard). Add decoys: a large generated tax table and a messy legacy admin script that are low risk.\n\nThe request is from a QA lead starting a rework next sprint with limited time: 'tell me what to test first and why'.",
+  "questionsNote": "",
+  "id": "t5-qa-checkout-strategy",
+  "outputFile": "docs/TEST-PLAN.md",
+  "expertKey": {
+    "items": [
+      {
+        "id": "risk-ranking",
+        "text": "Ranks work by likelihood times impact (money moved, customer harm, hard to undo), and says why the large generated tax table and the messy admin script rank low.",
+        "source": "OWASP Web Security Testing Guide, https://owasp.org/www-project-web-security-testing-guide/ (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "test-levels",
+        "text": "Chooses a test level per risk (unit for arithmetic, integration with a fake payment provider for retries and webhooks, a concurrency test for stock) instead of one level for everything.",
+        "source": "Martin Fowler, The Practical Test Pyramid, https://martinfowler.com/articles/practical-test-pyramid.html (copyright Ham Vocke / Thoughtworks; idea only); Google Testing Blog, Test Sizes, https://testing.googleblog.com/2010/12/test-sizes.html (copyright Google; idea only)"
+      },
+      {
+        "id": "provider-fake",
+        "text": "Plans a controllable fake or recorded stand-in for the payment provider and for the clock, so failure timing, duplicate deliveries and cut-off times can be reproduced.",
+        "source": "Stripe, Designing robust and predictable APIs with idempotency, https://stripe.com/blog/idempotency (vendor copyright; idea only)"
+      },
+      {
+        "id": "failure-injection",
+        "text": "Includes tests that force failures on purpose (timeout after the provider charged, duplicate and out-of-order webhook, crash between two writes), not only happy-path and validation cases.",
+        "source": "Stripe, Designing robust and predictable APIs with idempotency, https://stripe.com/blog/idempotency (vendor copyright; idea only)"
+      },
+      {
+        "id": "business-logic",
+        "text": "Treats business-rule abuse as a test target: replaying a promo code, refunding more than paid, reserving stock without paying.",
+        "source": "OWASP Web Security Testing Guide, https://owasp.org/www-project-web-security-testing-guide/ (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "order-and-exit",
+        "text": "Gives an order of work that fits the limited time and states what the remaining untested areas mean for the rework, with a minimum set that must be green before release.",
+        "source": "Martin Fowler, The Practical Test Pyramid, https://martinfowler.com/articles/practical-test-pyramid.html (copyright Ham Vocke / Thoughtworks; idea only)"
+      },
+      {
+        "id": "observe",
+        "text": "Names production signals (alerts on duplicate charges, stuck reservations, settlement mismatches) as a complement where a test cannot reach.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Lists every module and says 'add unit tests' for each, ranked by file size or by how messy the code looks.",
+      "Recommends raising line coverage to a target percentage without saying which behaviour to check.",
+      "Gives severity labels with no reason and no test level, and puts the generated tax table first.",
+      "Writes a generic test pyramid essay with no tie to this code."
+    ]
+  }
+}

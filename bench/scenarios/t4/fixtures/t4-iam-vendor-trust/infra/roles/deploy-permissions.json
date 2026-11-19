@@ -1,0 +1,9 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "DeploymentReadAndUpdate",
+    "Effect": "Allow",
+    "Action": ["cloudformation:DescribeStacks", "cloudformation:UpdateStack", "iam:PassRole"],
+    "Resource": "*"
+  }]
+}

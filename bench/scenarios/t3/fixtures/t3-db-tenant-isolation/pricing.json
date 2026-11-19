@@ -1,0 +1,8 @@
+{
+  "currency": "USD",
+  "storage_usd_per_gb_month": 0.12,
+  "compute_unit_usd_month": 180,
+  "requests_usd_per_million": 2.5,
+  "database_usd_month": 0.004,
+  "monthly_budget_usd": 600
+}

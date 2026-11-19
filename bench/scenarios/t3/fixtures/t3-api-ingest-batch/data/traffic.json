@@ -1,0 +1,6 @@
+{
+  "active_devices": 40000,
+  "reading_interval_seconds": 10,
+  "reading_bytes": 380,
+  "planning_month_days": 30
+}

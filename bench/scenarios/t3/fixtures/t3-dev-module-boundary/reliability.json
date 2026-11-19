@@ -1,0 +1,5 @@
+{
+  "retry_rpo_max_minutes": 5,
+  "service_rto_max_minutes": 30,
+  "measurement_note": "RPO is the maximum accepted loss of retry state after a process or host failure. RTO is the maximum time to resume dispatch after restoring the service."
+}

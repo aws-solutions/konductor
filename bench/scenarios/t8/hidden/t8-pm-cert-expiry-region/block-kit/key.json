@@ -1,0 +1,238 @@
+{
+  "outputFile": "postmortems/eu-login-outage.md",
+  "items": [
+    {
+      "id": "root-cause-summary",
+      "type": "text",
+      "path": "rootCause.summary",
+      "all": [
+        "expired|expiration|not-after",
+        "mTLS|mutual TLS|client certificate"
+      ],
+      "none": [
+        "rel-8421",
+        "(caused|triggered|introduced) by (the )?(auth(-service)? )?(deploy|release|rollout)"
+      ],
+      "weight": 3
+    },
+    {
+      "id": "root-cause-evidence-chain",
+      "type": "evidence",
+      "path": "rootCause.evidence",
+      "groups": [
+        {
+          "file": "certs/certificate-inventory\\.csv",
+          "all": [
+            "eu-west-1",
+            "2025-02-14T11:00:00Z",
+            "A7E4-91C2"
+          ]
+        },
+        {
+          "file": "logs/gateway-eu\\.log",
+          "all": [
+            "mtls=failed",
+            "certificate has expired",
+            "auth-eu",
+            "A7E4-91C2"
+          ]
+        },
+        {
+          "file": "logs/auth-eu\\.log",
+          "all": [
+            "client_certificate_expired",
+            "result=rejected",
+            "auth-eu"
+          ]
+        }
+      ],
+      "min": 3,
+      "weight": 3
+    },
+    {
+      "id": "root-cause-evidence-precision",
+      "type": "evidencePrecision",
+      "path": "rootCause.evidence",
+      "relevant": [
+        "not_after|certificate has expired|client_certificate_expired|mtls=failed"
+      ],
+      "min": 0.5,
+      "weight": 2
+    },
+    {
+      "id": "timeline-deployment",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "deploy|rel-8421|release",
+          "both|eu.*us|us.*eu|all regions|two regions|each region"
+        ],
+        "timeNear": {
+          "time": "2025-02-14T10:49:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-first-symptom",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "502|handshake|login"
+        ],
+        "timeNear": {
+          "time": "2025-02-14T11:00:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-alert",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "alert|success.rate"
+        ],
+        "timeNear": {
+          "time": "2025-02-14T11:04:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-rollback-no-effect",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "roll(ed)? ?back|revert",
+          "continu|no (change|effect|improvement)|did not|didn.t|still|persist"
+        ],
+        "timeNear": {
+          "time": "2025-02-14T11:26:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-mitigation",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "route|rerout|shift|drain|failover|mitigat|steer",
+          "us|traffic|region"
+        ],
+        "timeNear": {
+          "time": "2025-02-14T11:40:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-recovery",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "recover|normal|success.rate"
+        ],
+        "timeNear": {
+          "time": "2025-02-14T11:42:00Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-bounded",
+      "type": "maxLen",
+      "path": "timeline",
+      "max": 15,
+      "min": 4
+    },
+    {
+      "id": "impact-duration",
+      "type": "number",
+      "path": "impact.duration_minutes",
+      "value": 40,
+      "tol": 2,
+      "weight": 2
+    },
+    {
+      "id": "impact-failed-logins",
+      "type": "number",
+      "path": "impact.failed_login_attempts",
+      "value": 17465,
+      "tolPct": 5,
+      "weight": 2
+    },
+    {
+      "id": "impact-peak-tls-errors",
+      "type": "number",
+      "path": "impact.peak_tls_handshake_errors",
+      "value": 448,
+      "tolPct": 5,
+      "weight": 2
+    },
+    {
+      "id": "action-fix-certificate",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "certificate|credential|mTLS|mutual TLS",
+          "renew|replace|rotate|expiration|not-after"
+        ]
+      },
+      "min": 1,
+      "weight": 2
+    },
+    {
+      "id": "action-expiry-guard",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "alert|monitor|check|inventory",
+          "expiry|expiration|renewal|days|failed"
+        ]
+      },
+      "min": 1,
+      "weight": 2
+    },
+    {
+      "id": "action-regional-failover",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "failover|route",
+          "regional|region|traffic|recovery"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "actions-bounded",
+      "type": "maxLen",
+      "path": "actionItems",
+      "max": 10,
+      "min": 2
+    },
+    {
+      "id": "summary-does-not-blame-release",
+      "type": "text",
+      "path": "rootCause.summary",
+      "none": [
+        "rel-8421",
+        "(caused|triggered|introduced) by (the )?(auth(-service)? )?(deploy|release|rollout)"
+      ]
+    }
+  ]
+}

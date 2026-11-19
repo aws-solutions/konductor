@@ -1,0 +1,18 @@
+{
+ "id": "t6-idea-onboarding-dropoff",
+ "wave": 2,
+ "kind": "doc",
+ "phase": "ideation",
+ "role": "pm",
+ "out": "docs/framing.md",
+ "repo": "a document folder for a personal finance app whose sign-up completion fell: a head of growth's request to 'redesign onboarding', a funnel export CSV by step and week, email delivery logs summary, app store review excerpts, a release log, a tracking plan. About 25 files.",
+ "idea": "Framing a drop in a funnel: the data must show the fall is at email verification and concentrated on one email provider after a sending-domain change, plus a tracking outage week that looks like a drop but is not. JSON block scored by a hidden script: main problem, evidence numbers, options including doing nothing, recommendation, success measure with baseline.",
+ "source": {
+  "url": "https://www.gov.uk/service-manual/measuring-success",
+  "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

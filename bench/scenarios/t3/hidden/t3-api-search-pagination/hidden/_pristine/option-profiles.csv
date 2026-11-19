@@ -1,0 +1,3 @@
+option_id,latency_source,latency_value,throughput_rps,capacity_items,rpo_seconds,rto_minutes
+offset-sql,deep_offset_p99_ms,1,2400,60000000,45,12
+cursor-index,absolute_ms,180,2200,80000000,30,10

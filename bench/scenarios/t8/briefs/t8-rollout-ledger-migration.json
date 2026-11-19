@@ -1,0 +1,66 @@
+{
+  "id": "t8-rollout-ledger-migration",
+  "kind": "doc",
+  "phase": "release-ops",
+  "role": "sre",
+  "phases2": [
+    "planning"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "size": "15 to 30",
+  "loglines": 1500,
+  "source": {
+    "url": "https://sre.google/workbook/canarying-releases/",
+    "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outFile": "releases/ledger-v3-rollout.md",
+  "blockFields": "`steps` (ordered list of `{ \"id\", \"action\", \"percent\" (share of traffic or hosts after the step, 0 to 100, or null when the step moves no traffic), \"start\" (ISO 8601 UTC planned start), \"gate\": { \"metric\", \"op\" (\"<\" or \">\"), \"threshold\", \"windowMin\" } or null }`), `rollback` (object: `trigger`: `{ \"metric\", \"op\", \"threshold\", \"windowMin\" }`, and `steps`: list of strings), plus any other fields you need, stated in the request.",
+  "kindExtra": "Seed 5 to 7 constraints in the fixture, each stated once in a place a careful reader finds (a change calendar with a freeze window, a metrics catalogue file listing every metric name that exists, a capacity note, a dependency between two services, a schema change that old code cannot read, an on-call rota with a gap). Key shape: `order` items (a small canary before any 100% step; the schema expand step before the code that writes the new column; the contract step last), `every` items on `steps` (each traffic step has a gate; no step starts inside the freeze window, via `none` with `timeIn` on `start`), `inSet` items (every gate metric and the rollback trigger metric are names in the metrics catalogue file, read with `fromFile` and a `pattern`), `number` or `text` items for constraint values (for example the canary share at most the capacity note allows), and a `maxLen` on `steps` (max 14). 12 to 16 items.",
+  "nItems": "12 to 16",
+  "brief": "Phase: release and ops. Role: SRE. Folder: the release folder of a payments ledger service (12 hosts in one fleet behind a load balancer, a primary database with two replicas). Version 3 adds a column the new code writes and reads; version 2 code fails on rows where the old column is null. The folder holds the release notes, the migration scripts, the service dashboard's metrics catalogue (every metric name that exists), last month's deploy history with durations and outcomes, the change calendar of the coming two weeks (with a freeze for a month-end close), the capacity note (how many hosts can be out at once), an on-call rota, and 1,500 lines of recent canary logs from the last release. The agent must write the rollout plan for next week as a document ending with the JSON block. Seeded constraints a careful reader must respect; a quick plan that says \"canary 10%, then 100%, roll back on errors\" fails several of them.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "expand-contract",
+        "text": "Explains why each schema step is safe for the code version running at that moment, and how rows written during the rollout are handled by the backfill.",
+        "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "canary-compare",
+        "text": "Judges the canary against a control group on the same metrics over enough traffic and time, not against fixed absolute numbers alone.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "data-rollback",
+        "text": "States what a rollback does to rows already written by the new version and which step cannot be undone, and keeps the old version able to read them.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "gates-before",
+        "text": "Fixes gate metrics and thresholds before the rollout starts, tied to user or money impact, and names who decides go or stop.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "timing",
+        "text": "Says what happens when a gate fails late, close to the freeze: where the stop point is, and who decides to wait for the contingency window instead of pushing on.",
+        "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "flag",
+        "text": "Decouples deploy from release with a flag or kill switch so the new write path can be turned off without a redeploy.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Deploy to staging, test, then deploy to production.",
+      "Roll back if anything looks wrong, with no metric or threshold.",
+      "Run the migration and the code deploy in the same step.",
+      "Canary 10% for five minutes, then go to 100%."
+    ]
+  },
+  "reauthoredFrom": "deepseek-3.2"
+}

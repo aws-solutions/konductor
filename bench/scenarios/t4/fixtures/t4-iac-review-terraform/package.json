@@ -1,0 +1,13 @@
+{
+  "name": "webapp-infrastructure",
+  "version": "1.0.0",
+  "description": "Terraform infrastructure for WebApp",
+  "main": "test-helper.js",
+  "scripts": {
+    "test": "node test-helper.js",
+    "check-files": "node test-helper.js"
+  },
+  "keywords": ["terraform", "aws", "infrastructure"],
+  "author": "Platform Team",
+  "license": "MIT"
+}

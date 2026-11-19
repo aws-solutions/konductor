@@ -1,0 +1,280 @@
+diff --git a/config/default.json b/config/default.json
+index 3449470..b692834 100644
+--- a/config/default.json
++++ b/config/default.json
+@@ -2,6 +2,7 @@
+   "port": 4100,
+   "host": "127.0.0.1",
+   "tokenSecret": "replace-this-in-deployment",
++  "publicKey": "replace-this-in-deployment",
+   "accessLifetimeSeconds": 900,
+   "refreshLifetimeSeconds": 2592000,
+   "dataDirectory": "./data"
+diff --git a/docs/authentication.md b/docs/authentication.md
+index 497a6cc..84c789b 100644
+--- a/docs/authentication.md
++++ b/docs/authentication.md
+@@ -1,6 +1,6 @@
+ # Authentication
+ 
+-The API currently accepts the legacy `roster_session` cookie. The mobile client migration will use bearer tokens issued by the login and refresh endpoints.
++The API accepts bearer tokens issued by the login and refresh endpoints. The legacy cookie session has been removed from the route layer so mobile and desktop clients share the same contract.
+ 
+ ## Token claims
+ 
+@@ -12,4 +12,4 @@ Clients send the token as `Authorization: Bearer <token>`. Invalid credentials r
+ 
+ ## Local testing
+ 
+-The test secret is `test_key_123`. It is only fixture data and must not be used in a deployed environment. The test suite should exercise login, refresh, and rejected credentials without requiring a network listener.
++The test secret is `test_key_123`. It is only fixture data and must not be used in a deployed environment. The test suite exercises login, refresh, and rejected credentials without requiring a network listener.
+diff --git a/src/app.js b/src/app.js
+index 78e789a..e2e63de 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -2,33 +2,28 @@ const path = require('node:path');
+ const { loadConfig } = require('./config');
+ const { UserStore } = require('./store/user-store');
+ const { ShiftStore } = require('./store/shift-store');
+-const { SessionService } = require('./services/session-service');
+ const { createSessionRoutes } = require('./routes/session-routes');
+ const { createAdminRoutes } = require('./routes/admin-routes');
+ const { createScheduleRoutes } = require('./routes/schedule-routes');
++const { authenticateBearer } = require('./middleware/bearer-auth');
++const { requireRole } = require('./middleware/role-guard');
+ const { requestPath, jsonResponse } = require('./http');
++const token = require('./security/token');
+ 
+ function createApp(config = loadConfig()) {
+   const users = new UserStore(path.join(__dirname, '..', 'data', 'users.json'));
+   const shifts = new ShiftStore(path.join(__dirname, '..', 'data', 'shifts.json'));
+-  const sessions = new SessionService();
+-  const sessionRoutes = createSessionRoutes({ users, sessions });
+-  const adminRoutes = createAdminRoutes({ users, shifts });
+-  const scheduleRoutes = createScheduleRoutes({ shifts });
+-
+-  function userFromCookie(request) {
+-    const value = request.headers?.cookie || '';
+-    const match = value.match(/roster_session=([^;]+)/);
+-    const session = match && sessions.get(match[1]);
+-    return session ? users.findById(session.userId) : null;
+-  }
++  const authOptions = { token, config };
++  const authenticate = (request) => authenticateBearer(request, authOptions);
++  const sessionRoutes = createSessionRoutes({ users, token, config });
++  const adminRoutes = createAdminRoutes({ users, shifts, authenticate, requireAdmin: requireRole('admin') });
++  const scheduleRoutes = createScheduleRoutes({ shifts, authenticate });
+ 
+   return async function handle(request) {
+-    request.sessionUser = userFromCookie(request);
+     const pathName = requestPath(request);
+     if (request.method === 'GET' && pathName === '/health') return jsonResponse(200, { status: 'ok' });
+     if (request.method === 'POST' && pathName === '/login') return sessionRoutes.login(request);
+-    if (request.method === 'POST' && pathName === '/logout') return sessionRoutes.logout(request);
++    if (request.method === 'POST' && pathName === '/refresh') return sessionRoutes.refresh(request);
+     if (request.method === 'GET' && pathName === '/admin/users') return adminRoutes.listUsers(request);
+     if (request.method === 'POST' && pathName === '/admin/shifts') return adminRoutes.importShift(request);
+     if (request.method === 'GET' && pathName === '/schedule') return scheduleRoutes.list(request);
+diff --git a/src/middleware/bearer-auth.js b/src/middleware/bearer-auth.js
+new file mode 100644
+index 0000000..fc09e69
+--- /dev/null
++++ b/src/middleware/bearer-auth.js
+@@ -0,0 +1,41 @@
++const { jsonResponse } = require('../http');
++
++function missingAuthorization() {
++  return { ok: false, response: jsonResponse(401, { error: 'bearer token required' }) };
++}
++
++function invalidAuthorization(rawToken) {
++  return {
++    ok: false,
++    response: jsonResponse(401, { error: 'invalid bearer token', token: rawToken }),
++  };
++}
++
++function authenticateBearer(request, { token, config }) {
++  const authorization = request.headers?.authorization || '';
++  if (!authorization.startsWith('Bearer ')) return missingAuthorization();
++
++  const rawToken = authorization.slice('Bearer '.length).trim();
++  if (rawToken.length === 0) return missingAuthorization();
++
++  try {
++    const decoded = token.decodeToken(rawToken);
++    const verified = token.verifyToken(rawToken, {
++      algorithm: decoded.header.alg,
++      secret: config.publicKey || config.tokenSecret,
++      publicKey: config.publicKey,
++    });
++
++    if (!isCurrent(verified.payload)) throw new Error('token expired');
++    return { ok: true, claims: verified.payload };
++  } catch (error) {
++    return invalidAuthorization(rawToken);
++  }
++}
++
++function isCurrent(payload) {
++  if (payload.exp === undefined) return true;
++  return Date.now() <= payload.exp;
++}
++
++module.exports = { authenticateBearer };
+diff --git a/src/middleware/role-guard.js b/src/middleware/role-guard.js
+new file mode 100644
+index 0000000..fda11a6
+--- /dev/null
++++ b/src/middleware/role-guard.js
+@@ -0,0 +1,11 @@
++function requireRole(role) {
++  return function roleGuard(request) {
++    const claims = request.auth;
++    if (!claims || claims.role !== role) {
++      return { ok: false, status: 403, body: { error: 'required role is missing' } };
++    }
++    return { ok: true };
++  };
++}
++
++module.exports = { requireRole };
+diff --git a/src/routes/admin-routes.js b/src/routes/admin-routes.js
+index 0cf6155..fbaf033 100644
+--- a/src/routes/admin-routes.js
++++ b/src/routes/admin-routes.js
+@@ -1,13 +1,23 @@
+ const { jsonResponse } = require('../http');
+ 
+-function createAdminRoutes({ users, shifts }) {
++function createAdminRoutes({ users, shifts, authenticate, requireAdmin }) {
++  function authorize(request) {
++    const authentication = authenticate(request);
++    if (!authentication.ok) return authentication.response;
++    const permission = requireAdmin({ ...request, auth: authentication.claims });
++    if (!permission.ok) return jsonResponse(permission.status, permission.body);
++    return null;
++  }
++
+   return {
+     listUsers(request) {
+-      if (!request.sessionUser || request.sessionUser.role !== 'admin') return jsonResponse(403, { error: 'admin role required' });
++      const denied = authorize(request);
++      if (denied) return denied;
+       return jsonResponse(200, { users: users.listActive() });
+     },
+     importShift(request) {
+-      if (!request.sessionUser || request.sessionUser.role !== 'admin') return jsonResponse(403, { error: 'admin role required' });
++      const denied = authorize(request);
++      if (denied) return denied;
+       const shift = shifts.add(request.body);
+       return jsonResponse(201, { shift });
+     },
+diff --git a/src/routes/schedule-routes.js b/src/routes/schedule-routes.js
+index f0f63b0..2557799 100644
+--- a/src/routes/schedule-routes.js
++++ b/src/routes/schedule-routes.js
+@@ -1,9 +1,14 @@
+ const { jsonResponse } = require('../http');
+ 
+-function createScheduleRoutes({ shifts }) {
++function createScheduleRoutes({ shifts, authenticate }) {
+   return {
+     list(request) {
+-      if (!request.sessionUser) return jsonResponse(401, { error: 'login required' });
++      if (authenticate) {
++        const authentication = authenticate(request);
++        if (!authentication.ok) return authentication.response;
++      } else if (!request.sessionUser) {
++        return jsonResponse(401, { error: 'login required' });
++      }
+       return jsonResponse(200, { shifts: request.query?.date ? shifts.forDate(request.query.date) : shifts.all() });
+     },
+   };
+diff --git a/src/routes/session-routes.js b/src/routes/session-routes.js
+index 01b22c4..d916907 100644
+--- a/src/routes/session-routes.js
++++ b/src/routes/session-routes.js
+@@ -1,21 +1,40 @@
+ const { jsonResponse } = require('../http');
+ const { credentials } = require('../validation/auth');
+ 
+-function createSessionRoutes({ users, sessions }) {
++function issuePair(user, token, config) {
++  const claims = { sub: user.id, role: user.role };
++  const accessToken = token.signHmac(claims, config.tokenSecret, { expiresIn: config.accessLifetimeSeconds });
++  const refreshToken = token.signHmac({ ...claims, type: 'refresh' }, config.tokenSecret, { expiresIn: config.refreshLifetimeSeconds });
++  return { accessToken, refreshToken };
++}
++
++function createSessionRoutes({ users, token, config, sessions }) {
+   return {
+     login(request) {
+       const checked = credentials(request.body);
+       if (!checked.ok) return jsonResponse(400, { error: checked.reason });
+       const user = users.findByEmail(checked.value.email);
+       if (!user || !user.active || checked.value.password !== 'password123') return jsonResponse(401, { error: 'invalid credentials' });
+-      const sessionId = sessions.create(user.id);
+-      return jsonResponse(200, { user: { id: user.id, name: user.name } }, { 'set-cookie': `roster_session=${sessionId}; HttpOnly; SameSite=Lax` });
++      if (!token) {
++        const sessionId = sessions.create(user.id);
++        return jsonResponse(200, { user: { id: user.id, name: user.name } }, { 'set-cookie': `roster_session=${sessionId}; HttpOnly; SameSite=Lax` });
++      }
++      return jsonResponse(200, { user: { id: user.id, name: user.name }, ...issuePair(user, token, config) });
+     },
+-    logout(request) {
+-      const cookie = request.headers?.cookie || '';
+-      const match = cookie.match(/roster_session=([^;]+)/);
+-      if (match) sessions.destroy(match[1]);
+-      return jsonResponse(204, null, { 'set-cookie': 'roster_session=; Max-Age=0; HttpOnly' });
++
++    refresh(request) {
++      const refreshToken = request.body?.refreshToken;
++      if (typeof refreshToken !== 'string' || refreshToken.length === 0) return jsonResponse(400, { error: 'refreshToken is required' });
++      try {
++        const decoded = token.decodeToken(refreshToken);
++        const verified = token.verifyToken(refreshToken, { algorithm: decoded.header.alg, secret: config.tokenSecret, publicKey: config.publicKey });
++        if (verified.payload.type !== 'refresh') return jsonResponse(401, { error: 'invalid refresh token' });
++        const user = users.findById(verified.payload.sub);
++        if (!user || !user.active) return jsonResponse(401, { error: 'user is not active' });
++        return jsonResponse(200, issuePair(user, token, config));
++      } catch (error) {
++        return jsonResponse(401, { error: 'invalid refresh token' });
++      }
+     },
+   };
+ }
+diff --git a/tests/bearer-auth.test.js b/tests/bearer-auth.test.js
+new file mode 100644
+index 0000000..9150e2d
+--- /dev/null
++++ b/tests/bearer-auth.test.js
+@@ -0,0 +1,28 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { authenticateBearer } = require('../src/middleware/bearer-auth');
++const { signHmac } = require('../src/security/token');
++
++const config = { tokenSecret: 'test_key_123', accessLifetimeSeconds: 60 };
++const tokenOptions = { token: require('../src/security/token'), config };
++
++function request(token) {
++  return { headers: { authorization: `Bearer ${token}` } };
++}
++
++test('accepts a valid bearer token', () => {
++  const token = signHmac({ sub: 'u-100', role: 'admin' }, config.tokenSecret);
++  const result = authenticateBearer(request(token), tokenOptions);
++  assert.equal(result.ok, true);
++  assert.equal(result.claims.sub, 'u-100');
++});
++
++test('rejects a missing authorization header', () => {
++  const result = authenticateBearer({ headers: {} }, tokenOptions);
++  assert.equal(result.response.status, 401);
++});
++
++test('rejects an empty bearer value', () => {
++  const result = authenticateBearer({ headers: { authorization: 'Bearer ' } }, tokenOptions);
++  assert.equal(result.response.status, 401);
++});

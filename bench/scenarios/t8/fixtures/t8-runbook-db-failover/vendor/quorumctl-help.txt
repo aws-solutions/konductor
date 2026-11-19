@@ -1,0 +1,21 @@
+QuorumCtl 3.4.1 - open-source replication manager
+
+Usage: quorumctl <subcommand> [flags]
+
+Subcommands:
+  status       Show cluster membership, lease holder, and replica lag
+  inspect      Show node health, WAL position, and storage checks
+  fence        Revoke a node lease and stop database service on a node
+  promote      Promote an eligible replica after safety checks
+  verify       Run cluster and write-path checks
+  reconfigure  Change the client service endpoint
+
+Examples:
+  quorumctl status --cluster orders-prod
+  quorumctl inspect --node orders-db-b
+  quorumctl fence --cluster orders-prod --node orders-db-a --confirm
+  quorumctl promote --cluster orders-prod --node orders-db-b --confirm
+  quorumctl verify --cluster orders-prod --writes
+  quorumctl reconfigure --service orders-api --endpoint orders-db-b
+
+The manager refuses promotion of a node marked delayed or promotion_ineligible. A fence is not complete until status shows the old lease as revoked.

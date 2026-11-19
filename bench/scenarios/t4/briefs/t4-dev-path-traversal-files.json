@@ -1,0 +1,18 @@
+{
+  "id": "t4-dev-path-traversal-files",
+  "wave": 2,
+  "phase": "security",
+  "role": "developer",
+  "kind": "code",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "30 to 50",
+  "source": {
+    "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/File_Upload_Cheat_Sheet.md",
+    "licence": "CC-BY-SA-4.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: security. Role: developer. Repo kind: a Node.js 24 document-sharing service (no dependencies, node:http) with handlers to upload a file into the caller's folder, download by path, list a folder, and import a simple archive (an in-repo minimal archive format with a reader, so no dependency) that unpacks into the folder. The handler functions are exported and take a storage root, the caller's user id and the request input, so tests can call them directly. The request quotes a bug bounty report: a researcher read another user's files and wrote outside their own folder; no detail. Defects to seed: download joins the user's root with the query path without normalizing (../, percent-encoded dots, backslashes after decoding, absolute paths); the containment check uses a plain string startsWith, so /data/users/ann matches /data/users/anna; symlinks inside a user folder are followed out of it; archive import writes entries whose names hold ../ or start with / (zip slip); upload accepts names with control characters or path separators and silently overwrites an existing file without the overwrite flag; list errors include other users' folder names. The request: close these holes without breaking normal use (nested folders, unicode names, names with several dots like report..final.pdf). Hidden tests call the exported handlers with attack and normal inputs against a temp storage root and check the file system state and the responses."
+}

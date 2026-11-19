@@ -1,0 +1,44 @@
+# Changelog
+
+This file records the small changes that shaped the current checkout service.
+
+- 2024-01-08 3.0.0: moved checkout into the service package.
+- 2024-01-12 3.0.1: added the order state field.
+- 2024-01-18 3.0.2: added inventory repository adapter.
+- 2024-01-24 3.0.3: added stock import for local development.
+- 2024-02-02 3.1.0: added payment provider adapter.
+- 2024-02-07 3.1.1: recorded provider charge identifiers.
+- 2024-02-13 3.1.2: added provider refund calls.
+- 2024-02-19 3.1.3: moved prices into the order pricing module.
+- 2024-02-26 3.1.4: added percent promotion codes.
+- 2024-03-04 3.2.0: added flat shipping promotions.
+- 2024-03-11 3.2.1: added receipt email adapter.
+- 2024-03-18 3.2.2: made mail delivery asynchronous.
+- 2024-03-25 3.2.3: added payment callback endpoint.
+- 2024-04-01 3.2.4: switched callback verification to HMAC.
+- 2024-04-08 3.3.0: added settlement command.
+- 2024-04-15 3.3.1: added the finance batch cutoff.
+- 2024-04-22 3.3.2: added settlement configuration.
+- 2024-04-29 3.3.3: added tax region lookup.
+- 2024-05-06 3.3.4: imported the first generated tax export.
+- 2024-05-13 3.4.0: added partial refund requests.
+- 2024-05-20 3.4.1: included order identifiers on refunds.
+- 2024-05-27 3.4.2: added a second payment attempt for transient failures.
+- 2024-06-03 3.4.3: added a wait hook around provider attempts.
+- 2024-06-10 3.4.4: added feature flag loading.
+- 2024-06-17 3.5.0: added the inventory guard flag.
+- 2024-06-24 3.5.1: added admin payment reconciliation.
+- 2024-07-01 3.5.2: added coupon CSV import.
+- 2024-07-08 3.5.3: added the settlement report command.
+- 2024-07-15 3.5.4: refreshed the generated tax table.
+- 2024-07-22 3.6.0: switched local development to Node 24.
+- 2024-07-29 3.6.1: moved order totals to number values.
+- 2024-08-05 3.6.2: added callback failure state handling.
+- 2024-08-12 3.6.3: added provider timeout settings.
+- 2024-08-19 3.6.4: changed settlement to use configurable cutoff minutes.
+- 2024-08-26 3.7.0: added generated data validation.
+- 2024-09-02 3.7.1: added the nightly finance workflow.
+- 2024-09-09 3.7.2: cleaned up old admin import output.
+- 2024-09-16 3.8.0: enabled the new refund flow in staging.
+- 2024-09-23 3.8.1: added callback logging fields.
+- 2024-09-30 3.8.2: updated the CI runtime and test fixtures.

@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-clinic-reminders",
+ "wave": 1,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "pm",
+ "out": "docs/requirements.md",
+ "repo": "a document folder for a small chain of physiotherapy clinics that wants automatic appointment reminders by text message: current booking process notes, a no-show report CSV, clinic list with addresses, a vendor quote, an intake form, front-desk interview notes, a privacy policy page, meeting notes. About 25 files.",
+ "idea": "Discovery-style stakeholder interviews: the person asking knows constraints (legal, operational, patient-facing) that never got written down. Hidden facts could cover: quiet hours, how far ahead and how many reminders, what the message may contain (privacy), languages, opt-out handling, what happens on reply, which clinics go first and when. The fixture must make each gap visible to a careful reader (for example, clinics in two time zones, patients who speak another language in the intake data) without stating the answer.",
+ "source": {
+  "url": "https://github.com/18F/methods",
+  "licence": "CC0-1.0 (US federal work, public domain)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

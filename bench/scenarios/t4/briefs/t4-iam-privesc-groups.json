@@ -1,0 +1,18 @@
+{
+  "id": "t4-iam-privesc-groups",
+  "wave": 2,
+  "phase": "security",
+  "role": "security",
+  "kind": "policy",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/salesforce/cloudsplaining",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: security and IAM. Role: security engineer. Repo kind: an account-baseline repo: IAM group policies for developers, data analysts and on-call under iam/groups/, a permissions boundary file, a small Node.js 24 script (no dependencies) that validates the files and prints a summary, CI, docs describing in plain job terms what each group needs, tests. The developer group policy looks scoped but lets a developer raise their own rights: iam:CreatePolicyVersion and iam:SetDefaultPolicyVersion on any policy; iam:PassRole on \"*\" together with lambda:CreateFunction and lambda:InvokeFunction; iam:AttachUserPolicy and iam:PutUserPolicy on any user; iam:UpdateAssumeRolePolicy; and a NotAction allow meant to exclude IAM that also lets organizations and sts actions through. The on-call policy can create access keys and login profiles for any user. The request: an audit found that developers can make themselves admin; close every way a member of a group can raise their own or anyone's rights, while each group keeps the work the docs describe (developers create and update their own team's functions with the existing team execution role, rotate their own access keys, read logs; on-call restarts services and reads metrics; analysts query the data lake). Hidden tests with the provided evaluator (decide with identity and boundary layers where the docs say the boundary applies): each documented task stays allowed for its group, with concrete ARNs and the caller's aws:username; each escalation request is denied (policy version changes, passing an admin role, attaching or putting user policies, editing trust policies, creating keys for other users, organizations and sts escalation); every file lints clean."
+}

@@ -1,0 +1,313 @@
+diff --git a/docs/webhook-contract.md b/docs/webhook-contract.md
+index 6ee2f8d..03c6df8 100644
+--- a/docs/webhook-contract.md
++++ b/docs/webhook-contract.md
+@@ -7,3 +7,8 @@ body receives a 400 response; a valid envelope that cannot be processed gets a
+ 
+ The notification body contains the normalized event and the original delivery
+ identifier. Customers may configure the destination in their tenant settings.
++The generic receiver supports both source-control and billing provider paths.
++
++A normalized event uses the provider's delivery identifier when one is present
++in the payload or request envelope. Event kinds are retained as sent by the
++provider, with a provider default for older payloads.
+diff --git a/src/config.js b/src/config.js
+index d22b19a..fa91b7f 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -6,6 +6,7 @@ const file = path.join(root, 'config', 'default.json');
+ const disk = JSON.parse(fs.readFileSync(file, 'utf8'));
+ 
+ export function loadConfig(env = process.env) {
++  const webhookSecret = env.WEBHOOK_SECRET || 'test_key_123';
+   return {
+     port: Number(env.PORT || disk.port),
+     maxBodyBytes: disk.maxBodyBytes,
+@@ -13,7 +14,7 @@ export function loadConfig(env = process.env) {
+     notifyMaxRedirects: disk.notifyMaxRedirects,
+     deliveryWindowSeconds: disk.deliveryWindowSeconds,
+     publicKeyId: disk.publicKeyId,
+-    webhookSecret: env.WEBHOOK_SECRET || 'test_key_123',
++    webhookSecret,
+     notifyUrl: env.NOTIFY_URL || '',
+     logLevel: env.LOG_LEVEL || 'info'
+   };
+diff --git a/src/index.js b/src/index.js
+index e1dfd39..ba3f450 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -5,5 +5,6 @@ import { startServer } from './server.js';
+ 
+ const config = loadConfig();
+ const logger = makeLogger(config.logLevel);
++logger.info('configured provider key', { id: config.publicKeyId });
+ startServer(config, logger, makeDeliveryStore());
+ logger.info(`relay gateway listening on ${config.port}`);
+diff --git a/src/logger.js b/src/logger.js
+index c8559cf..5c3a187 100644
+--- a/src/logger.js
++++ b/src/logger.js
+@@ -1,8 +1,12 @@
+ const levels = { debug: 10, info: 20, warn: 30, error: 40 };
+ 
++function methodFor(sink, name) {
++  return name === 'debug' ? sink.log : sink[name];
++}
++
+ export function makeLogger(level = 'info', sink = console) {
+   const threshold = levels[level] ?? levels.info;
+   return Object.fromEntries(Object.entries(levels).map(([name, value]) => [name, (...args) => {
+-    if (value >= threshold) sink[name === 'debug' ? 'log' : name](...args);
++    if (value >= threshold) methodFor(sink, name)(...args);
+   }]));
+ }
+diff --git a/src/notify/callback.js b/src/notify/callback.js
+index 9ff9fb0..2d98ef6 100644
+--- a/src/notify/callback.js
++++ b/src/notify/callback.js
+@@ -1,12 +1,47 @@
+ import { request } from '../http-client.js';
+ 
+-export async function notify(url, event, timeoutMs = 2500) {
++function callbackHeaders() {
++  return {
++    'content-type': 'application/json',
++    'user-agent': 'relay-gateway/2.4'
++  };
++}
++
++export async function notify(url, event, timeoutMs = 2500, logger = console) {
+   if (!url) return { skipped: true };
+   const response = await request(url, {
+     method: 'POST',
+     timeoutMs,
+-    headers: { 'content-type': 'application/json' },
+-    body: JSON.stringify(event)
++    headers: callbackHeaders(),
++    body: JSON.stringify(event),
++    redirect: 'follow'
+   });
++  if (!response.ok) logger.warn('notification returned non-success', response.status);
+   return { skipped: false, status: response.status };
+ }
++
++export function notificationBody(event) {
++  return JSON.stringify({
++    id: event.id,
++    provider: event.provider,
++    kind: event.kind,
++    payload: event.payload
++  });
++}
++
++export function notificationHeaders() {
++  return { ...callbackHeaders(), accept: 'application/json' };
++}
++
++export function notificationResult(response) {
++  return {
++    ok: response.status >= 200 && response.status < 300,
++    status: response.status,
++    retryable: response.status === 408 || response.status >= 500
++  };
++}
++
++export function destinationName(url) {
++  try { return new URL(url).hostname; }
++  catch { return 'invalid'; }
++}
+diff --git a/src/router.js b/src/router.js
+index 49e1fed..d064568 100644
+--- a/src/router.js
++++ b/src/router.js
+@@ -11,7 +11,7 @@ export async function route(request, context) {
+   if (result.event) {
+     result.event.id ||= nextId();
+     context.store.add(result.event);
+-    await notify(context.config.notifyUrl, result.event, context.config.notifyTimeoutMs);
++    await notify(context.config.notifyUrl, result.event, context.config.notifyTimeoutMs, context.logger);
+   }
+   return { status: result.status, body: result.body || { accepted: true } };
+ }
+diff --git a/src/webhooks/receiver.js b/src/webhooks/receiver.js
+index 095aa77..4cf892b 100644
+--- a/src/webhooks/receiver.js
++++ b/src/webhooks/receiver.js
+@@ -3,15 +3,62 @@ import { normalizeEvent } from './normalize.js';
+ import { validSignature } from './signatures.js';
+ import { parseJson } from '../util/json.js';
+ 
++function headerValue(headers, name) {
++  return headers[name] || headers[name.toLowerCase()] || '';
++}
++
++function envelopeFrom(body, headers) {
++  return {
++    ...body,
++    id: body.id || headerValue(headers, 'x-delivery-id'),
++    kind: eventKind(body.provider || 'source', body)
++  };
++}
++
+ export function receiveWebhook({ provider, rawBody, headers, secret, logger }) {
+   const parsed = parseJson(rawBody);
+   if (parsed.error) return { status: 400, body: { error: 'invalid json' } };
+   const body = parsed.value;
+-  const provided = headers[`x-${provider}-signature`];
+-  if (!validSignature(secret, JSON.stringify(body), provided)) {
+-    logger.warn('invalid webhook signature', { signature: provided });
++  const signatureHeader = `x-${provider}-signature`;
++  const provided = headerValue(headers, signatureHeader);
++  const signedText = JSON.stringify(body);
++  const signatureContext = {
++    provider,
++    bodyLength: rawBody.length,
++    headerName: signatureHeader
++  };
++  const signatureValid = validSignature(secret, signedText, provided);
++  if (!signatureValid) {
++    const diagnostic = { ...signatureContext, header: provided };
++    logger.warn('invalid webhook signature', diagnostic);
+     return { status: 401, body: { error: 'invalid signature' } };
+   }
+-  const envelope = { ...body, kind: eventKind(provider, body) };
+-  return { status: 202, event: normalizeEvent(provider, envelope) };
++  const envelope = envelopeFrom({ ...body, provider }, headers);
++  const event = normalizeEvent(provider, envelope);
++  return { status: 202, event };
++}
++
++function responseForInvalid(message, status = 400) {
++  return { status, body: { error: message } };
++}
++
++function payloadFor(body) {
++  return body && typeof body === 'object' && !Array.isArray(body) ? body : null;
++}
++
++export function webhookSummary(result) {
++  if (!result.event) return { accepted: false, status: result.status };
++  return {
++    accepted: true,
++    status: result.status,
++    provider: result.event.provider,
++    kind: result.event.kind
++  };
++}
++
++export function validateWebhookShape(rawBody) {
++  const parsed = parseJson(rawBody);
++  if (parsed.error) return responseForInvalid('invalid json');
++  if (!payloadFor(parsed.value)) return responseForInvalid('invalid payload');
++  return { status: 200, body: { valid: true } };
+ }
+diff --git a/src/webhooks/signatures.js b/src/webhooks/signatures.js
+index a021b90..2b5f98b 100644
+--- a/src/webhooks/signatures.js
++++ b/src/webhooks/signatures.js
+@@ -1,10 +1,34 @@
+ import { createHmac } from 'node:crypto';
+ 
+-export function signatureFor(secret, body) {
++function digest(secret, body) {
+   return createHmac('sha256', secret).update(body).digest('hex');
+ }
+ 
++export function signatureFor(secret, body) {
++  return `sha256=${digest(secret, body)}`;
++}
++
+ export function validSignature(secret, body, provided) {
+-  const expected = `sha256=${signatureFor(secret, body)}`;
++  if (typeof provided !== 'string') return false;
++  const expected = signatureFor(secret, body);
+   return expected === provided;
+ }
++
++export function signatureParts(header) {
++  const [scheme, value] = String(header || '').split('=', 2);
++  return { scheme, value };
++}
++
++export function isSupportedScheme(header) {
++  return signatureParts(header).scheme === 'sha256';
++}
++
++export function hasDigest(header) {
++  const { value } = signatureParts(header);
++  return Boolean(value && /^[a-f0-9]{64}$/i.test(value));
++}
++
++export function describeSignature(header) {
++  const parts = signatureParts(header);
++  return { scheme: parts.scheme || 'unknown', present: Boolean(parts.value) };
++}
+diff --git a/tests/signature-test.js b/tests/signature-test.js
+index 0681f3a..0768007 100644
+--- a/tests/signature-test.js
++++ b/tests/signature-test.js
+@@ -1,10 +1,20 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import { signatureFor, validSignature } from '../src/webhooks/signatures.js';
++import { signatureFor, validSignature, signatureParts } from '../src/webhooks/signatures.js';
+ 
+ test('signature helper accepts its own digest', () => {
+   const body = '{"kind":"push"}';
+-  const provided = `sha256=${signatureFor('secret', body)}`;
++  const provided = signatureFor('secret', body);
+   assert.equal(validSignature('secret', body, provided), true);
+   assert.equal(validSignature('wrong', body, provided), false);
+ });
++
++test('signature parts preserve the scheme', () => {
++  assert.deepEqual(signatureParts('sha256=abcd'), { scheme: 'sha256', value: 'abcd' });
++});
++
++test('signature helpers describe the envelope', () => {
++  const header = 'sha256=' + 'a'.repeat(64);
++  assert.equal(signatureParts(header).scheme, 'sha256');
++  assert.equal((signatureParts(header).value || '').length, 64);
++});
+diff --git a/tests/webhook-receiver-test.js b/tests/webhook-receiver-test.js
+index 2e19fde..feb2d38 100644
+--- a/tests/webhook-receiver-test.js
++++ b/tests/webhook-receiver-test.js
+@@ -3,9 +3,36 @@ import assert from 'node:assert/strict';
+ import { receiveWebhook } from '../src/webhooks/receiver.js';
+ import { signatureFor } from '../src/webhooks/signatures.js';
+ 
++function request(rawBody, extra = {}) {
++  return {
++    provider: 'source', rawBody,
++    headers: { 'x-source-signature': signatureFor('secret', rawBody), ...extra },
++    secret: 'secret', logger: { warn() {} }
++  };
++}
++
+ test('receiver accepts signed JSON', () => {
+   const rawBody = '{"id":"delivery-1","payload":{"branch":"main"}}';
+-  const result = receiveWebhook({ provider: 'source', rawBody, headers: { 'x-source-signature': `sha256=${signatureFor('secret', rawBody)}` }, secret: 'secret', logger: { warn() {} } });
++  const result = receiveWebhook(request(rawBody));
+   assert.equal(result.status, 202);
+   assert.equal(result.event.id, 'delivery-1');
+ });
++
++test('receiver takes an id from the delivery header', () => {
++  const rawBody = '{"payload":{"amount":4}}';
++  const result = receiveWebhook(request(rawBody, { 'x-delivery-id': 'header-delivery' }));
++  assert.equal(result.event.id, 'header-delivery');
++});
++
++import { validateWebhookShape, webhookSummary } from '../src/webhooks/receiver.js';
++
++test('receiver reports malformed JSON', () => {
++  assert.equal(validateWebhookShape('{').status, 400);
++  assert.equal(validateWebhookShape('[]').body.error, 'invalid payload');
++});
++
++test('receiver summary exposes normalized fields', () => {
++  const rawBody = '{"kind":"push","payload":{}}';
++  const result = receiveWebhook(request(rawBody));
++  assert.deepEqual(webhookSummary(result), { accepted: true, status: 202, provider: 'source', kind: 'push' });
++});

@@ -1,0 +1,116 @@
+{
+  "id": "t5-qa-cart-twin-config",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I maintain the shop checkout in this repository. Shipping currently uses hard-coded cents, and I need it to read config/shipping.json. The file is a JSON object with a default object and a countries object keyed by country code. The default object uses freeShippingThresholdCents and standardShippingCents; each value must be a non-negative integer. A country entry can override either or both of those values. Update calculateShipping(subtotalCents, options) so options.country selects a country entry, while an unknown country uses the default settings. Orders at or above the selected threshold are free; smaller orders use the selected standard rate. Keep the existing explicit shipping options and calculateOrderTotal behavior working. If config/shipping.json is absent, empty, or an empty object, retain the current defaults of 5000 cents and 799 cents. Reject malformed JSON, wrong shapes, and invalid setting values with a clear ValidationError whose message identifies an invalid shipping configuration. Keep the checkout free of third-party dependencies and preserve current totals.",
+  "fixture": "t5-qa-cart-twin-config",
+  "hidden": "t5-qa-cart-twin-config",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 15,
+      "weight": 70,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const p=require('./package.json'); if (Object.keys(p.dependencies||{}).length || Object.keys(p.devDependencies||{}).length) process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "config/shipping.json",
+      "weight": 10,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/shipping.js",
+      "pattern": "shipping\\.json",
+      "weight": 10,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "twin",
+  "twinOf": "t5-qa-cart-weak-tests",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": [
+      "test-coverage-analysis",
+      "k-test-coverage-review"
+    ]
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes the desired behavior without naming methods, tools, or specific implementation approaches. It uses terms like 'freeShippingThresholdCents' and 'standardShippingCents' as config file keys, which is appropriate domain vocabulary."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the config file structure (default object, countries object, partial overrides), the behavior (threshold inclusive for free shipping), the fallback (missing/empty file uses 5000/799 cents), and the error handling (ValidationError with clear message). The hidden tests align with these requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no mentions of shipping.json or country-based shipping. The existing shipping.js uses the same default values (5000, 799) which the request specifies as fallbacks. The errors.js already exports ValidationError. No answers are leaked."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy implementation that ignores the config file would fail 12 of 15 hidden tests. A naive implementation that only reads the file once at module load would fail the tests that swap config files dynamically. The error validation tests catch implementations that skip input validation."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable: read a JSON file, validate its structure, merge defaults with country overrides, and preserve existing explicit options behavior. No timing-dependent or flaky tests. The ValidationError class already exists in the fixture."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

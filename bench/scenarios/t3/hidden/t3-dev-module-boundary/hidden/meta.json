@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/design.md"],
+  "acceptableOptions": ["database_retry_table", "external_retry_queue"],
+  "temptingOption": "in_memory_delay_queue",
+  "notes": "The in-memory option exceeds the retry memory allowance because peak pending count and payload size are combined across traffic.json and option-matrix.json, while the other hard limits remain within bounds."
+}

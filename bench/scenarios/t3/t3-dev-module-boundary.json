@@ -1,0 +1,157 @@
+{
+  "id": "t3-dev-module-boundary",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the production requirements and option data in `fixture/` and design retry handling for outbound webhooks. Write the architecture decision record to `solution/docs/design.md`, including the selected option, the alternatives, calculations, and tradeoffs. The document must contain a fenced block whose info string is exactly `decision`; its JSON must contain exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to an option id, `options` to the option ids considered, and set `limits` to an object whose entries are named hard limits with `{ \"limit\": number, \"value\": number }`, using the computed value for the chosen option. Set `monthly_cost_usd` to the chosen option's monthly cost computed from the supplied price sheet.",
+  "fixture": "t3-dev-module-boundary",
+  "timeoutSec": 900,
+  "hidden": "t3-dev-module-boundary",
+  "phase": "architecture",
+  "role": "developer",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 19
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tradeoffs",
+      "criterion": "Explains why the selected durable design is preferable for this service, including operational ownership and the cost, latency, throughput, recovery, and memory tradeoffs against both alternatives. (not code-checkable: Automated checks can verify numbers and option ids but cannot judge whether the tradeoff explanation is technically relevant, balanced, and persuasive.)",
+      "weight": 1
+    },
+    {
+      "id": "architecture-reasoning",
+      "criterion": "Connects the workload shape and failure behavior to an implementable retry design, including bounded scheduling, durable state, and recovery behavior. (not code-checkable: Tests cannot reliably assess whether the proposed architecture follows from the requirements or whether the operational reasoning is complete.)",
+      "weight": 1
+    },
+    {
+      "id": "document-quality",
+      "criterion": "Presents a clear, concise ADR with a traceable decision, calculations, assumptions, and follow-up safeguards that another developer could implement. (not code-checkable: A script can check structure and arithmetic but cannot evaluate readability, clarity, or practical usefulness to a human developer.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-writing",
+    "cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "cost-estimation"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt asks to design retry handling without naming which option to choose or hinting at the trap; it only specifies the output format and constraints."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits are clearly specified in JSON and prose; the memory calculation method (peak_records_times_payload_mb vs base_plus_batch_payload_mb) is unambiguous given the option definitions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files provide options, limits, and prices without stating which to choose; the trap (in-memory exceeds memory) requires calculation, not direct disclosure."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Cheapest option (in-memory) fails the memory limit; choosing the correct option requires multi-file analysis and limit checking, not a trivial pick."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All necessary numbers are present; unit conventions (decimal KB/MB) are stated; the solution correctly derives memory and cost from provided data."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the in-memory delay queue option cannot be chosen because its memory requirement (120,000 peak pending × 8 KB = 960 MB) exceeds the retry_memory_limit_mb hard limit of 312 MB.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Calculates monthly cost for the chosen option using the pricing.json rates: database_retry_table costs 104.54 USD/month (2 compute units at $52, 1.2 GB storage at $0.22/GB, 3 GB backup at $0.08/GB, 8M requests at $0.005/M); external_retry_queue costs 104.42 USD/month (2 worker units at $52, 1 GB storage at $0.30/GB, 8M requests at $0.015/M).",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "Explains that the 16 KB maximum_payload_kb from traffic.json is a distractor that does not constrain option choice since all three options support at least 16 KB payloads.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "Verifies that the chosen option satisfies all hard limits: memory under 312 MB, dispatch latency under 60 seconds (database: 42s, external: 18s), and throughput at least 100/s (database: 180/s, external: 350/s).",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Discusses the operational tradeoff between database_retry_table (lower cost by $0.12/month, simpler ownership if the service already owns a database) and external_retry_queue (lower latency 18s vs 42s, higher throughput 350/s vs 180/s, managed service reduces operational complexity).",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Addresses failure mode: the in-memory option would lose all retry state on process crash or container restart, violating the RPO requirement of max 5 minutes, whereas both database and external queue options persist state.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Notes that the 512 batch_records for database_retry_table and 256 batch_records for external_retry_queue are in-memory batch sizes for dispatch, not peak storage, and that the memory_model determines how to calculate actual memory consumption.",
+        "source": "original"
+      },
+      {
+        "id": "e8",
+        "text": "States that if peak pending retries dropped below ~39,000 records, the in-memory option would fit within the memory limit, changing the decision calculus.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "picks the in-memory delay queue as the cheapest option ($0/month) without checking whether it satisfies the memory limit",
+      "calculates memory incorrectly as 120,000 × 8 bytes instead of 120,000 × 8 KB, concluding that in-memory fits",
+      "rejects the external_retry_queue because its 256 batch_records is smaller than the database's 512, confusing batch size with capacity",
+      "chooses database_retry_table solely because it has better RPO (1 min) and RTO (18 min) than required, without checking throughput",
+      "picks external_retry_queue as the only valid option without recognizing database_retry_table also satisfies all constraints"
+    ]
+  }
+}

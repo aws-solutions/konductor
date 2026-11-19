@@ -1,0 +1,53 @@
+{
+  "currency": "USD",
+  "billing": {
+    "hours_per_month": 730,
+    "seconds_per_hour": 3600,
+    "million_units": 1000000
+  },
+  "common_monthly": {
+    "storage_gb": 100,
+    "backup_gb": 200
+  },
+  "prices": {
+    "on_demand_write_per_million": 0.8,
+    "on_demand_read_per_million": 0.12,
+    "provisioned_wcu_hour": 0.0018,
+    "provisioned_rcu_hour": 0.0003,
+    "relational_node_hour": 2.75,
+    "storage_gb_month": 0.25,
+    "backup_gb_month": 0.1
+  },
+  "options": {
+    "kv-on-demand": {
+      "peak_write_capacity_wps": 25000,
+      "write_distribution_shards": 1,
+      "read_latency_base_ms": 12,
+      "hot_read_penalty_ms": 1,
+      "replication_interval_seconds": 60,
+      "recovery_minutes": 4
+    },
+    "kv-provisioned-autoscaling": {
+      "peak_write_capacity_wps": 30000,
+      "write_distribution_shards": 2,
+      "read_latency_base_ms": 9,
+      "hot_read_penalty_ms": 2,
+      "replication_interval_seconds": 45,
+      "recovery_minutes": 4,
+      "steady_wcu": 3000,
+      "steady_hours": 700,
+      "launch_wcu": 30000,
+      "launch_hours": 30,
+      "steady_rcu": 5000
+    },
+    "relational-cluster": {
+      "peak_write_capacity_wps": 40000,
+      "write_distribution_shards": 4,
+      "read_latency_base_ms": 7,
+      "hot_read_penalty_ms": 1,
+      "replication_interval_seconds": 30,
+      "recovery_minutes": 3,
+      "nodes": 4
+    }
+  }
+}

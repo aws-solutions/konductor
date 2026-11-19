@@ -1,0 +1,107 @@
+{
+  "id": "t5-qa-ledger-gaps",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "prompt": "An auditor asked how sure we are that a change to the interest code would be noticed, and all I could say was that coverage is 95%. I do not think that is a good answer. Please strengthen the test suite for this ledger library, for the code that moves or counts money: interest, fees, overdrafts, posting and reversal, statements and the CSV export. Add new test files named test_*.py under tests/ (you may also extend the existing ones) and keep `python3 -m unittest discover -s tests` passing, using Python 3.12 and the standard library only. Do not change anything under ledger/ or the CLI, the docs or the configuration; the work is limited to tests under tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "fixture": "t5-qa-ledger-gaps",
+  "hidden": "t5-qa-ledger-gaps",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests && test \"$(cat tests/*.py | grep -cE '^[[:space:]]*def test_')\" -ge 22",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "ledger/interest.py",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clarity",
+      "criterion": "The added cases clearly state the expected result for each boundary and invalid-input behavior (code cannot check this because readable intent is not observable from pass or fail results alone).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "test-coverage-analysis",
+    "verification"
+  ],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "test-coverage-analysis",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/boxed/mutmut",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks the agent to 'add new test files' and 'extend existing ones' without specifying exact test methods, patterns, or tools. It does not reveal implementation strategies."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear: strengthen test coverage for interest/fees/overdrafts/postings/reversal/statements/CSV export. The hidden tests are defined in mutation-kit/mutants.json with documented behaviors (half-up rounding, 365-day year, inclusive statement endpoints, overdraft limit boundary, idempotent posting, already-reversed guard, CSV column order). The existing tests and documentation align."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no comments, docs, stubs, or names that reveal the hidden tests or their expected outcomes. The mutation-kit mutants.json documents each mutation but that is in hidden/, not fixture/. The fixture's test file names and code structure give no hint of the specific edge cases the hidden tests cover."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The reviewer's own text shows the lazy answer (the right count of tests without the documented behaviours) kills 1 of 10 mutants, so it scores low. (reviewer: A naive solution adding only the 8 edge-case tests from solution/tests/test_edge_cases.py raises the test count to 22 (the check's threshold), but the check also requires mutation-test kills. With only those 8 tests, only 1 of 10 mutants is killed. A 'lazy' agent writing just 22 tests without covering the documented behaviors (half-up rounding, 365-day year, inclusive endpoints, overdraft limit, idempotent posting, already-reversed check, CSV column order) would pass the count but fail mutation coverage.)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable with the provided structure. All required functions are exported from ledger/__init__.py, and the standard library is sufficient. The mutation-kit runner confirms tests pass on the real code before checking mutations. The Python 3.12 and standard library constraint is clear."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

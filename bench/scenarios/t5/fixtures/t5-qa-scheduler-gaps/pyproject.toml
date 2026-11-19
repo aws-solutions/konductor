@@ -1,0 +1,9 @@
+[project]
+name = "calendar-workbench"
+version = "1.4.0"
+description = "A small standard-library job scheduler"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+calendar-workbench = "schedulerlib.cli:main"

@@ -1,0 +1,4 @@
+clinic_id,clinic_name,address,city,state,postal_code,local_timezone,main_phone
+CG,Cedar Grove Rehab,18 Willow Court,Maple Crossing,MA,01840,America/New_York,555-0141
+HP,Harbor Point Therapy,440 Lake Avenue,Port Mason,IL,60618,America/Chicago,555-0142
+NG,Northgate Mobility,"7 Northgate Plaza, Suite 2",Redwood Falls,CO,80216,America/Denver,555-0143

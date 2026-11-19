@@ -1,0 +1,92 @@
+{
+  "region": "us-east-1",
+  "currency": "USD",
+  "effective_date": "2024-10-01",
+  "services": {
+    "sqs_standard": {
+      "name": "Amazon SQS Standard Queue",
+      "pricing_model": "per_request",
+      "unit": "million_requests",
+      "price": 0.50,
+      "free_tier": {
+        "included": 1000000,
+        "unit": "requests"
+      },
+      "notes": [
+        "Each 64KB chunk counts as one request",
+        "Messages larger than 64KB use multiple chunks",
+        "Common operations: SendMessage, ReceiveMessage, DeleteMessage"
+      ]
+    },
+    "sqs_fifo": {
+      "name": "Amazon SQS FIFO Queue",
+      "pricing_model": "per_request",
+      "unit": "million_requests",
+      "price": 0.45,
+      "free_tier": {
+        "included": 1000000,
+        "unit": "requests"
+      },
+      "limits": {
+        "throughput_per_group": {
+          "value": 300,
+          "unit": "messages_per_second",
+          "description": "Maximum throughput per message group"
+        }
+      },
+      "notes": [
+        "Each 64KB chunk counts as one request",
+        "Supports exactly-once processing",
+        "Limited to 300 messages/second per message group"
+      ]
+    },
+    "kinesis_streams": {
+      "name": "Amazon Kinesis Data Streams",
+      "pricing_model": "mixed",
+      "components": [
+        {
+          "name": "shard_hours",
+          "description": "Provisioned shard capacity",
+          "unit": "shard_hour",
+          "price": 0.02,
+          "capacity_per_shard": {
+            "write": 1000,
+            "unit": "records_per_second",
+            "data_write": 1,
+            "data_unit": "MB_per_second"
+          }
+        },
+        {
+          "name": "put_payload_units",
+          "description": "Data ingestion",
+          "unit": "million_units",
+          "price": 0.014,
+          "unit_size_kb": 25,
+          "notes": "Each PUT payload unit represents 25KB"
+        },
+        {
+          "name": "data_retention",
+          "description": "Extended data retention (beyond 24h)",
+          "unit": "GB_month",
+          "price": 0.02,
+          "included": 24,
+          "included_unit": "hours"
+        }
+      ],
+      "free_tier": {
+        "shard_hours": 100,
+        "put_units": 1000000
+      },
+      "notes": [
+        "Minimum 1 shard required",
+        "Each shard supports 1MB/sec write, 2MB/sec read",
+        "PUT payload units rounded up to nearest 25KB multiple"
+      ]
+    }
+  },
+  "common_parameters": {
+    "chunk_size_kb": 64,
+    "month_days": 30,
+    "day_hours": 24
+  }
+}

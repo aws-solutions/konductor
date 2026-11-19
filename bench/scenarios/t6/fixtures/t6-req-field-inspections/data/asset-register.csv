@@ -1,0 +1,9 @@
+asset_tag,asset_type,site,status,route,installed_year
+PS-018,PS,Low Valley,active,North,1998
+HY-044,HY,North Loop,active,North,2011
+IN-007,IN,West Intake,active,West,1986
+CL-003,CL,South Works,active,South,2004
+MG-021,MG,East Meter Yard,active,South,2018
+RV-004,RV,Reservoir 04,active,West,1979
+TMP-19,PS,Quarry Gate,temporary,West,2024
+HY-101,HY,Old Mill,retired,North,1967

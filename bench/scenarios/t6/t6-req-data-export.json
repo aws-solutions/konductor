@@ -1,0 +1,228 @@
+{
+  "id": "t6-req-data-export",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "scripted",
+  "prompt": "We need a clear product requirements document for a self-service account data export in Northstar, for Product, Legal, Support, and Engineering to review. Read the material in this folder and turn it into implementable requirements covering scope, access, delivery, limits, security, and unresolved points. Keep decisions tied to the source material and call out assumptions where the material is incomplete. Put the result at docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "who may request",
+          "who can request",
+          "requester",
+          "account data export permission",
+          "support agent"
+        ],
+        "answer": "Only an account owner or a user granted the Account Data Export permission may submit an export request; Support agents cannot submit one for a customer."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "archive format",
+          "file format",
+          "zip",
+          "csv and json",
+          "timestamp representation"
+        ],
+        "answer": "Deliver a ZIP archive with CSV data files and a JSON manifest. All exported date-times must use UTC with a trailing Z."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "excluded data",
+          "must be excluded",
+          "omit",
+          "payment card",
+          "internal notes",
+          "deleted appointment"
+        ],
+        "answer": "Exclude payment card numbers, Northstar internal support notes, and records deleted before the request. Customer-visible appointment records, including cancelled appointments, remain in scope."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "completion deadline",
+          "turnaround",
+          "how long to complete",
+          "ready by",
+          "job start"
+        ],
+        "answer": "Start processing within 15 minutes of a valid request and make the completed package available within 72 hours."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "download link expiry",
+          "link expiry",
+          "signed link",
+          "expire",
+          "link lifetime"
+        ],
+        "answer": "The signed download link expires 7 days after the package becomes ready; after that, the customer must submit a new request."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "archive size",
+          "size limit",
+          "maximum package",
+          "too large",
+          "compressed size"
+        ],
+        "answer": "The compressed archive limit is 2 GB. If a package would exceed that limit, route the customer to Support rather than splitting it automatically."
+      },
+      {
+        "id": "F7",
+        "topics": [
+          "which plans",
+          "plan eligibility",
+          "starter plan",
+          "pro plan",
+          "enterprise plan"
+        ],
+        "answer": "Self-service export is available on Pro and Enterprise plans, not Starter."
+      },
+      {
+        "id": "F8",
+        "topics": [
+          "audit trail",
+          "audit log",
+          "export events",
+          "event names",
+          "audit retention",
+          "retention"
+        ],
+        "answer": "Write export.requested, export.ready, export.downloaded, and export.expired to the immutable audit log, retained for 400 days."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-data-export",
+  "hidden": "t6-req-data-export",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); const t=fs.readFileSync('docs/requirements.md','utf8'); const f=String.fromCharCode(96).repeat(3); const i=t.lastIndexOf(f+'json'); if(i<0) process.exit(1); const j=JSON.parse(t.slice(t.indexOf('\\n',i)+1,t.lastIndexOf(f)).trim()); if(!Array.isArray(j.requirements)||j.requirements.length<5||j.requirements.some(r=>!r.id)) process.exit(1);\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "assumptions",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "open point",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "Q1",
+      "criterion": "Requirements distinguish customer-visible scope from Northstar-only material and explain the resulting product behavior (code cannot check this because semantic scope and rationale require human review)",
+      "weight": 2
+    },
+    {
+      "id": "Q2",
+      "criterion": "Assumptions and open points are honest about decisions that the source folder does not settle (code cannot check this because it cannot judge whether uncertainty was represented faithfully)",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": "k-product-manager",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "agent:k-product-manager"
+    ],
+    "mustNotLoad": [
+      "skill:kiro-requirements-generation",
+      "skill:user-story-writing"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+      "licence": "EU legal text, reuse authorised with source acknowledged (Commission Decision 2011/833/EU)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the desired outcome (requirements document with specific sections and format) without prescribing methods, frameworks, or processes."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly specifies scope areas (scope, access, delivery, limits, security, unresolved points), output path, and JSON structure; hidden tests check for factual claims from scripted facts and grounded fixture content."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Eight facts must be discovered through questions; fixture has intentional gaps (no authority, no SLA, no audit vocabulary, plan eligibility unclear) that require synthesis and inquiry."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All fact topics are discoverable through natural questions (who can request, file format, exclusions, deadlines, expiry, size limits, plan eligibility, audit); reference scores 100%."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture documents contain gaps and explicitly state what they do NOT define; all key numbers (15 min, 72 hrs, 7 days, 2 GB, 400 days) are only in scripted facts, not in fixture."
+      }
+    ]
+  }
+}

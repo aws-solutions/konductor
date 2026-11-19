@@ -1,0 +1,39 @@
+{
+  "storage": {
+    "primary_ssd_gb_month": 0.115,
+    "dr_ssd_gb_month": 0.125,
+    "backup_s3_gb_month": 0.023,
+    "snapshot_gb_month": 0.05
+  },
+  "compute": {
+    "database_instance_hour": 0.68,
+    "app_instance_hour": 0.384,
+    "minimal_instance_hour": 0.0416
+  },
+  "network": {
+    "cross_region_gb": 0.02,
+    "intra_region_gb": 0.01,
+    "vpc_peering_gb": 0.01
+  },
+  "managed_services": {
+    "database_replication_monthly": 2500,
+    "monitoring_monthly": 800,
+    "dr_orchestration_monthly": 1200
+  },
+  "operational": {
+    "backup_software_license_monthly": 450,
+    "testing_credits_monthly": 300,
+    "support_contract_monthly": 750
+  },
+  "cost_factors": {
+    "database_size_gb": 8192,
+    "monthly_data_transfer_tb": 82,
+    "backup_retention_days": 30,
+    "snapshot_retention_days": 7
+  },
+  "distractor_note": "These are list prices; actual negotiated rates may be 15-20% lower for annual commitments.",
+  "superseded_pricing": {
+    "database_instance_hour": 0.72,
+    "note": "Superseded by AWS December 2023 price reduction"
+  }
+}

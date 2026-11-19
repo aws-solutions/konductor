@@ -5,6 +5,7 @@
 // Pipeline glue for T1 task authoring. One subcommand per step after the author call:
 //   map <id>       a third model family tags the finished task from skill descriptions (catalog.json) only
 //   review <id>    a model of another family reviews the finished task
+//   fix <id>       one fix round: the author repairs its files from the review's findings
 //   log-author <id>  appends the author call's credits to the log
 //   assemble <id>  writes the task into bench/scenarios/t1/ (task file, fixtures/, hidden/, solutions/)
 // Needs T1_AUTH: a directory with run.sh (usage: run.sh <model> <cwd> <promptfile> <outprefix>; it runs kiro-cli in a scratch
@@ -89,6 +90,21 @@ function logAuthor(id, step = 'author') {
   return { credits };
 }
 
+function fix(id) {
+  const b = brief(id);
+  const rev = readJson(path.join(AUTH, 'work', `${id}.review.json`));
+  const fails = rev.verdicts.filter((v) => v.verdict === 'fail').map((v) => `- ${v.check}: ${v.note}`);
+  const problems = [...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
+  const w = path.join(AUTH, 'work', id);
+  fs.rmSync(`${w}.v1`, { recursive: true, force: true });
+  fs.cpSync(w, `${w}.v1`, { recursive: true });
+  const extra = `\n\n## Fix round\n\nThe files you wrote are in the current directory. A reviewer ran them and found these problems:\n\n${problems}\n\nFix them in place and delete any stray or abandoned files (a solution overlay must contain only files that belong in the finished change; hidden tests must find the code they import without help from the environment, for example by adding the source folder to sys.path or requiring it by relative path). Then verify again from a scratch folder: existing tests pass on fixture plus solution, every hidden test and every check passes on fixture plus solution, and at most 20% of hidden tests pass on the plain fixture. Finish within about 30 tool calls. Keep the same task id and the same file layout.`;
+  const prompt = require('./render-prompt.js').render(id) + extra;
+  const { credits } = call(b.author, w, prompt, `${id}.fix`);
+  logCall(id, 'fix', b.author, credits);
+  return { credits };
+}
+
 function assemble(id) {
   const w = path.join(AUTH, 'work', id);
   const b = brief(id);
@@ -132,10 +148,10 @@ function assemble(id) {
 if (require.main === module) {
   const [cmd, id] = process.argv.slice(2);
   if (!AUTH) { console.error('set T1_AUTH'); process.exit(2); }
-  const fn = { map, review, assemble, 'log-author': logAuthor }[cmd];
+  const fn = { map, review, assemble, fix, 'log-author': logAuthor }[cmd];
   if (!fn || !id) { console.error('usage: stage.js map|review|assemble|log-author <id>'); process.exit(2); }
   const r = fn(id);
   if (r) console.log(JSON.stringify(r, null, 1));
 }
 
-module.exports = { map, review, assemble, streamInfo };
+module.exports = { map, review, assemble, fix, streamInfo };

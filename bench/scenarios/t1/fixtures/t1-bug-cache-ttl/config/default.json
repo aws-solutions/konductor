@@ -1,0 +1,10 @@
+{
+  "cache": {
+    "ttlMs": 300000,
+    "maxSize": 256,
+    "sweepIntervalMs": 60000
+  },
+  "service": {
+    "name": "profile-permission-service"
+  }
+}

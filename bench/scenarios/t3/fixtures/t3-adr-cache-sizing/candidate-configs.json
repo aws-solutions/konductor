@@ -1,0 +1,25 @@
+{
+  "candidates": [
+    {
+      "id": "balanced-105",
+      "node_id": "cache-105",
+      "shards": 2,
+      "replicas_per_shard": 1,
+      "description": "Two primary shards with one same-sized replica for each shard"
+    },
+    {
+      "id": "wide-209",
+      "node_id": "cache-209",
+      "shards": 1,
+      "replicas_per_shard": 1,
+      "description": "One wide primary shard with one same-sized replica"
+    },
+    {
+      "id": "minimal-105",
+      "node_id": "cache-105",
+      "shards": 1,
+      "replicas_per_shard": 1,
+      "description": "One primary shard with one same-sized replica"
+    }
+  ]
+}

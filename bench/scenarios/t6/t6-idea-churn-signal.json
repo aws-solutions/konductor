@@ -1,0 +1,179 @@
+{
+  "id": "t6-idea-churn-signal",
+  "class": "design",
+  "version": 1,
+  "phase": "ideation",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "Leena wants a short framing note before we build a cancellation save offer. Read the folder and use the June snapshot to identify the main subscriber-loss problem, the evidence behind it, and the important limits of that evidence. Compare at least three paths, including making no change, then recommend what product should test first and define a measurable starting point. Put the note at docs/framing.md. End the note with one fenced JSON block using exactly these top-level fields: problem (the main problem in a string), evidence (an array of evidence objects with metrics and values), options (an array of at least three option objects), recommendation (an object with the chosen option and rationale), success_measure (an object with metric, baseline, target, and window), and caveats (an array of evidence limits).",
+  "fixture": "t6-idea-churn-signal",
+  "hidden": "t6-idea-churn-signal",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 15,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/framing.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "exports",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -s docs/framing.md && grep -Eiq 'failed|payment' docs/framing.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "\"problem\"\\s*:",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/framing.md",
+      "pattern": "\"name\"\\s*:",
+      "min": 3,
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-framing",
+      "criterion": "The note makes a focused, decision-useful distinction between involuntary payment loss and voluntary cancellation, rather than treating every retention idea as equivalent (code cannot check this because it cannot judge the quality of the problem framing).",
+      "weight": 2
+    },
+    {
+      "id": "evidence-discipline",
+      "criterion": "The note uses the folder's evidence cautiously, separates counts from shares and events from subscribers, and makes the recommendation proportionate to the evidence (code cannot check this because it cannot assess analytical judgment and readable explanation).",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "program-decision-docs",
+    "decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-product-manager",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:program-decision-docs",
+      "skill:decision-writing",
+      "agent:k-product-manager"
+    ],
+    "mustNotLoad": [
+      "skill:e2e-test-strategy",
+      "skill:sprint-planning"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/18F/methods",
+      "licence": "CC0-1.0 (US federal work, public domain)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "fixed",
+        "note": "Reviewer passed it; the lead found the last prompt sentence named the distinctions to keep (payment failures vs cancellations, events vs subscribers) and the fix round removed it."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The fixture provides clear data files with metric definitions, and the tests check for specific numbers and concepts that are documented in the fixture (612, 402, 156, 517, 214 survey responses, 65.7% share)."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires synthesizing multiple data sources, distinguishing event counts from subscriber counts, identifying the payment-retry policy gap, and recognizing the survey selection bias. The 15 tests check nuanced analytical judgments, not simple lookups."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required facts are available in the fixture: product_metrics.csv has the key numbers, policies/billing-and-access.md explains no automatic retry, policies/cancellation-survey.md explains the survey scope, and the data clearly distinguishes payment failure from voluntary cancellation."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains the raw data but requires analysis to draw the right conclusions. The prompt and task notes give hints about what to look for, but the agent must still correctly interpret the data relationships and avoid common analytical mistakes."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats the requested save offer as a proposed solution and restates the ask as a problem to solve (how to keep subscribers the business is losing), including what is not part of the problem.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-problem",
+        "text": "Puts a value on the problem (for example revenue or subscribers lost per month to failed payments) so the cost of each option can be weighed against it.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "hypothesis",
+        "text": "States the recommended test as a hypothesis: the change, the outcome it should move, and the assumption behind it, so the result can confirm or refute it.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "segments",
+        "text": "Looks at the loss by segment (plan, tenure, payment method or provider) rather than one overall average, or names segmentation as the next analysis.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "stop-is-allowed",
+        "text": "Says what result would mean stopping or not building the save offer, and treats stopping as a valid outcome rather than a failure.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "mixed-sources",
+        "text": "Combines analytics with qualitative evidence (interviews, support tickets) and says where they agree or conflict, rather than relying on one source.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Build the cancellation save offer with a discount for anyone who clicks cancel.",
+      "Price is the main reason people leave, because the survey says so.",
+      "Run an A/B test of discount sizes and pick the winner.",
+      "Improve onboarding and engagement to reduce churn in general."
+    ]
+  }
+}

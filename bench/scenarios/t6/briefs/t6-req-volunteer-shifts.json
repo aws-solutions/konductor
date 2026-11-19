@@ -1,0 +1,13 @@
+{
+ "id": "t6-req-volunteer-shifts",
+ "wave": 2,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "pm",
+ "out": "docs/requirements.md",
+ "repo": "a document folder for a food bank moving volunteer shift sign-up off a shared spreadsheet: the spreadsheet export (CSV), volunteer handbook excerpt, site list, coordinator notes, a safeguarding policy, a newsletter, a vendor shortlist. About 22 files.",
+ "idea": "Requirements with safeguarding and operational rules. Hidden facts could cover: minimum age and guardian consent, roles needing a background check, shift caps per site, cancellation notice, reminders, group bookings, languages, data the coordinator must not see.",
+ "source": "original",
+ "author": "deepseek-3.2",
+ "reviewer": "minimax-m2.5"
+}

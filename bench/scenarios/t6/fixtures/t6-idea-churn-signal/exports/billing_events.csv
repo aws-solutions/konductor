@@ -1,0 +1,29 @@
+event_id,occurred_at,subscriber_id,event_type,invoice_state,amount_cents,attempt_number,source
+be-7001,2025-06-01T08:12:00,p-00431,card_failed,open,5900,1,processor
+be-7002,2025-06-01T09:04:00,p-00431,card_updated,open,5900,1,app
+be-7003,2025-06-02T08:12:00,p-00431,invoice_closed,unpaid,5900,1,billing_service
+be-7004,2025-06-02T10:31:00,p-00712,card_failed,open,8900,1,processor
+be-7005,2025-06-03T14:21:00,p-00712,manual_payment,paid,8900,1,support
+be-7006,2025-06-03T17:21:00,p-00984,card_failed,open,5900,1,processor
+be-7007,2025-06-04T17:21:00,p-00984,invoice_closed,unpaid,5900,1,billing_service
+be-7008,2025-06-05T07:54:00,p-01031,card_failed,open,11900,1,processor
+be-7009,2025-06-05T08:01:00,p-01031,card_failed,open,11900,2,processor
+be-7010,2025-06-06T08:01:00,p-01031,manual_payment,paid,11900,1,support
+be-7011,2025-06-07T11:20:00,p-01345,card_failed,open,5900,1,processor
+be-7012,2025-06-10T11:20:00,p-01345,invoice_closed,unpaid,5900,1,billing_service
+be-7013,2025-06-10T13:07:00,p-01776,card_failed,open,8900,1,processor
+be-7014,2025-06-11T13:07:00,p-01776,invoice_closed,unpaid,8900,1,billing_service
+be-7015,2025-06-12T16:44:00,p-02122,card_failed,open,5900,1,processor
+be-7016,2025-06-13T16:44:00,p-02122,manual_payment,paid,5900,1,support
+be-7017,2025-06-15T09:02:00,p-02318,card_failed,open,8900,1,processor
+be-7018,2025-06-18T09:02:00,p-02318,invoice_closed,unpaid,8900,1,billing_service
+be-7019,2025-06-20T12:18:00,p-02901,card_failed,open,5900,1,processor
+be-7020,2025-06-21T12:18:00,p-02901,card_updated,paid,5900,1,app
+be-7021,2025-06-22T12:18:00,p-03110,card_failed,open,11900,1,processor
+be-7022,2025-06-25T12:18:00,p-03110,invoice_closed,unpaid,11900,1,billing_service
+be-7023,2025-06-24T08:41:00,p-03554,cancel_requested,paid,5900,1,app
+be-7024,2025-06-24T08:45:00,p-03554,subscription_ended,paid,5900,1,billing_service
+be-7025,2025-06-26T15:11:00,p-04142,cancel_requested,paid,8900,1,app
+be-7026,2025-06-26T15:12:00,p-04142,subscription_ended,paid,8900,1,billing_service
+# Extracted rows are examples. June totals are in payment_provider_summary.csv and product_metrics.csv.
+# A processor retry would have attempt_number 2 or higher with source=processor; those do not appear in the June total.

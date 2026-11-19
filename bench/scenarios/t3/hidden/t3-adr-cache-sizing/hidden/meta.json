@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/adr/0001-cache.md"],
+  "acceptableOptions": ["balanced-105", "wide-209"],
+  "temptingOption": "minimal-105",
+  "notes": "The low-cost minimal-105 shape has a replica but only 78.75 GB of post-reservation primary memory against the 118 GB peak, with the inputs split across candidate-configs.json, price-sheet.json, traffic-profile.md, and operating-model.md."
+}

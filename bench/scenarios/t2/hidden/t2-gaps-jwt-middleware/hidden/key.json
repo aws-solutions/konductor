@@ -1,0 +1,98 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/middleware/bearer-auth.js",
+      "line": 23,
+      "endLine": 27,
+      "severity": "critical",
+      "fix": [
+        "allowlist",
+        "pin",
+        "algorithm",
+        "verification key"
+      ],
+      "finding": "The verifier accepts the token-selected algorithm while using a shared verification key, allowing an attacker to present an HS256 token signed with the RSA public key and forge claims."
+    },
+    {
+      "id": "k2",
+      "file": "src/middleware/bearer-auth.js",
+      "line": 36,
+      "endLine": 38,
+      "severity": "high",
+      "fix": [
+        "seconds",
+        "NumericDate",
+        "divide",
+        "1000"
+      ],
+      "finding": "The expiry claim is in epoch seconds but is compared directly with Date.now() milliseconds, so normal access tokens remain valid after their intended expiry."
+    },
+    {
+      "id": "k3",
+      "file": "src/routes/session-routes.js",
+      "line": 28,
+      "endLine": 34,
+      "severity": "high",
+      "fix": [
+        "rotate",
+        "revoke",
+        "single-use",
+        "jti"
+      ],
+      "finding": "Refreshing only verifies the presented token and issues another pair without recording or invalidating the old refresh token, so a stolen refresh token can be replayed indefinitely until expiry."
+    },
+    {
+      "id": "k4",
+      "file": "src/middleware/role-guard.js",
+      "line": 3,
+      "endLine": 5,
+      "severity": "high",
+      "fix": [
+        "user store",
+        "current role",
+        "lookup",
+        "load user"
+      ],
+      "finding": "The admin decision trusts the role claim in the bearer token instead of loading the user's current role, so a removed admin can retain access with an old token."
+    },
+    {
+      "id": "k5",
+      "file": "src/middleware/bearer-auth.js",
+      "line": 7,
+      "endLine": 10,
+      "severity": "medium",
+      "fix": [
+        "remove token",
+        "redact",
+        "generic error",
+        "do not echo"
+      ],
+      "finding": "The 401 response includes the raw bearer token, leaking a reusable credential into clients, logs, or error telemetry that records response bodies."
+    },
+    {
+      "id": "k6",
+      "file": "tests/bearer-auth.test.js",
+      "line": 13,
+      "endLine": 18,
+      "severity": "low",
+      "fix": [
+        "expired",
+        "tampered",
+        "negative cases",
+        "invalid token"
+      ],
+      "finding": "The new authentication tests cover valid, missing, and empty input but never exercise an expired or signature-tampered token, leaving the two critical rejection paths unprotected by regression tests."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/routes/admin-routes.js",
+      "line": 5,
+      "endLine": 6,
+      "why": "The shared authorization helper deliberately authenticates before checking the role, and it returns the middleware's 401 response unchanged."
+    }
+  ]
+}

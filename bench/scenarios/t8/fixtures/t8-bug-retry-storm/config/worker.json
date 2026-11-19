@@ -1,0 +1,11 @@
+{
+  "service": "order-sync",
+  "environment": "production",
+  "partnerBaseUrl": "https://partner.internal",
+  "maxAttempts": 4,
+  "baseDelayMs": 250,
+  "maxDelayMs": 8000,
+  "jitterRatio": 0.2,
+  "breakerFailureThreshold": 5,
+  "breakerCooldownMs": 30000
+}
