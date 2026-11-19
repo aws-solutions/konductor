@@ -64,17 +64,13 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "system-design-patterns",
-    "trade-off-evaluator",
-    "decision-writing"
+    "system-design-patterns"
   ],
   "targetSop": null,
   "targetAgent": "k-architect",
   "loadCheck": {
     "mustLoad": [
       "system-design-patterns",
-      "trade-off-evaluator",
-      "decision-writing",
       "k-architect"
     ],
     "mustNotLoad": []
