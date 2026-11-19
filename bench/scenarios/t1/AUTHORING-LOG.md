@@ -96,3 +96,13 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-bug-http-retry | author | gpt-5.6-luna | 2.47 |
 | t1-bug-http-retry | map | glm-5 | 0.16 |
 | t1-bug-http-retry | review | glm-5 | 8.05 |
+| t1-ref-dataclasses | author | deepseek-3.2 | 25.00 (estimate: stopped at the 90-tool-call cap before the call reported; deepseek calls cost about 0.3 credits a tool call) |
+| t1-impl-money-split | author | gpt-5.6-luna | 2.21 |
+| t1-impl-money-split | map | glm-5 | 0.16 |
+| t1-impl-money-split | review | glm-5 | 7.95 |
+| t1-nfr-bounded-fanout | author | qwen3-coder-next | 2.00 (estimate: stopped at the 90-tool-call cap before the call reported; qwen3-coder-next is billed at 0.05x) |
+| t1-bug-event-listeners | author | gpt-5.6-luna | 2.88 |
+| t1-bug-event-listeners | map | glm-5 | 0.16 |
+| t1-bug-event-listeners | review | glm-5 | 8.64 |
+| t1-ref-dep-upgrade | author | gpt-5.6-luna | 2.97 |
+| t1-ref-dep-upgrade | map | glm-5 | 0.16 |

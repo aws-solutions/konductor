@@ -1,0 +1,4 @@
+[
+  { "id": "ada", "role": "admin" },
+  { "id": "lin", "role": "viewer" }
+]
