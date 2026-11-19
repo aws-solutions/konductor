@@ -1,0 +1,61 @@
+{
+  "id": "t3-nfr-latency-budget",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the checkout non-functional requirements and architecture inputs in `fixture/`, then record the latency decision in `docs/latency.md`. Compare the available option ids, account for the serial and parallel portions of the request, and choose an option that satisfies every hard limit. Include the per-hop p99 table and explain the tradeoff between parallelising pricing and inventory and paying for the pricing cache. The document must contain a fenced block whose info string is `decision` and whose JSON has exactly these keys: `chosen` (the option id), `options` (the array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (the chosen option's monthly cost from the price sheet). Include one limits entry for every hard limit in the inputs, use your computed value for the chosen option, and report numbers in the units used by the inputs.",
+  "fixture": "t3-nfr-latency-budget",
+  "timeoutSec": 900,
+  "hidden": "t3-nfr-latency-budget",
+  "phase": "nfr",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 1
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/latency.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tradeoff",
+      "criterion": "Explains why the selected execution order is preferable to the serial and cache alternatives under the latency and spending constraints. (not code-checkable: Tests can verify computed values and limits, but cannot judge whether the comparison explains the architectural tradeoff clearly.)",
+      "weight": 1
+    },
+    {
+      "id": "operational-reasoning",
+      "criterion": "Connects the per-hop measurements, parallel branch, payment dependency, and rollout verification into a credible latency decision. (not code-checkable: Automated checks can recalculate the estimate but cannot assess the quality or completeness of the reasoning around dependency behavior and measurement uncertainty.)",
+      "weight": 1
+    },
+    {
+      "id": "readability",
+      "criterion": "Presents the decision, per-hop table, constraints, and cost comparison in a form that another architect can review without reconstructing the inputs. (not code-checkable: Code can inspect the structured block, but it cannot reliably evaluate prose organization or whether the explanation is easy for a human reviewer to follow.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1
+}

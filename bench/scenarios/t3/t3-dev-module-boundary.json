@@ -1,0 +1,106 @@
+{
+  "id": "t3-dev-module-boundary",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the production requirements and option data in `fixture/` and design retry handling for outbound webhooks. Write the architecture decision record to `solution/docs/design.md`, including the selected option, the alternatives, calculations, and tradeoffs. The document must contain a fenced block whose info string is exactly `decision`; its JSON must contain exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to an option id, `options` to the option ids considered, and set `limits` to an object whose entries are named hard limits with `{ \"limit\": number, \"value\": number }`, using the computed value for the chosen option. Set `monthly_cost_usd` to the chosen option's monthly cost computed from the supplied price sheet.",
+  "fixture": "t3-dev-module-boundary",
+  "timeoutSec": 900,
+  "hidden": "t3-dev-module-boundary",
+  "phase": "architecture",
+  "role": "developer",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 19
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tradeoffs",
+      "criterion": "Explains why the selected durable design is preferable for this service, including operational ownership and the cost, latency, throughput, recovery, and memory tradeoffs against both alternatives. (not code-checkable: Automated checks can verify numbers and option ids but cannot judge whether the tradeoff explanation is technically relevant, balanced, and persuasive.)",
+      "weight": 1
+    },
+    {
+      "id": "architecture-reasoning",
+      "criterion": "Connects the workload shape and failure behavior to an implementable retry design, including bounded scheduling, durable state, and recovery behavior. (not code-checkable: Tests cannot reliably assess whether the proposed architecture follows from the requirements or whether the operational reasoning is complete.)",
+      "weight": 1
+    },
+    {
+      "id": "document-quality",
+      "criterion": "Presents a clear, concise ADR with a traceable decision, calculations, assumptions, and follow-up safeguards that another developer could implement. (not code-checkable: A script can check structure and arithmetic but cannot evaluate readability, clarity, or practical usefulness to a human developer.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "skill:decision-writing",
+    "skill:cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing",
+      "skill:cost-estimation"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt asks to design retry handling without naming which option to choose or hinting at the trap; it only specifies the output format and constraints."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits are clearly specified in JSON and prose; the memory calculation method (peak_records_times_payload_mb vs base_plus_batch_payload_mb) is unambiguous given the option definitions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files provide options, limits, and prices without stating which to choose; the trap (in-memory exceeds memory) requires calculation, not direct disclosure."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Cheapest option (in-memory) fails the memory limit; choosing the correct option requires multi-file analysis and limit checking, not a trivial pick."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All necessary numbers are present; unit conventions (decimal KB/MB) are stated; the solution correctly derives memory and cost from provided data."
+      }
+    ]
+  }
+}
