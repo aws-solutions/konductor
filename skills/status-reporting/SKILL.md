@@ -1,7 +1,7 @@
 ---
 name: status-reporting
-description: Generates program status reports for stakeholders. Use for weekly updates, executive summaries, or milestone reviews.
-version: 1.0.0
+description: 'Writes stakeholder status reports with a RAG rating per workstream. Use when turning done, late and blocked work into a weekly update or executive summary.'
+version: 1.0.1
 tags: [skill, tpm, status, reporting, stakeholder, executive]
 ---
 

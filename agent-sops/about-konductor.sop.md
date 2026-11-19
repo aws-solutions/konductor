@@ -4,8 +4,8 @@
 
 Onboards a new or lost user: install the CLI, talk to the orchestrator in
 plain language, and let it delegate. Use when a user asks "what is this",
-"how do I install it", "what can I ask it", or wants a tour before starting
-real work.
+"how do I install it", "what can I ask it", or wants a tour; not for real
+work.
 
 ## Parameters
 
