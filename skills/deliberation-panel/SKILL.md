@@ -1,7 +1,7 @@
 ---
 name: deliberation-panel
-description: Use for a high-stakes decision between several options, once the user agrees to the cost (about 2-3 minutes and several subagent calls). Pass consent_confirmed=true only after presenting the derived axes. Argues decision-specific axes independently, cross-examines them anonymously, and returns a scored recommendation. To draw information out of a person, use `socratic-elicitation` instead.
-version: 1.1.0
+description: 'Use for a high-stakes choice between options, once the user accepts the cost (2-3 min, several subagents; consent_confirmed=true only after the user agrees). Returns a scored pick. To question a person, use `socratic-elicitation`.'
+version: 1.1.1
 tags:
   [skill, deliberation, tradeoff, decision, design, research, viability, panel]
 ---

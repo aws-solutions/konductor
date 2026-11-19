@@ -183,8 +183,8 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 | | Dispatch mechanism |
 | --- | --- |
 | `konductor` | Kiro CLI's `subagent` tool or Claude Code's `Agent(...)` tool, spawning specialists inline |
-| `konductor-mux-orchestrator` | `skills/mux-dispatch/` shell scripts — a pane per specialist, polling `/tmp/konductor-mux/*.done` |
-| `konductor-cmux-orchestrator` | `skills/cmux-dispatch/cmux-dispatch.sh` — a surface per specialist, polling `/tmp/konductor-cmux/*.done` |
+| `konductor-mux-orchestrator` | `skills/mux-dispatch/` shell scripts — a pane per specialist, polling each dispatch's `.done` under the registry (default `/tmp/konductor-mux`) |
+| `konductor-cmux-orchestrator` | `skills/cmux-dispatch/cmux-dispatch.sh` — a surface per specialist, polling each dispatch's `.done` under the registry (default `/tmp/konductor-cmux`) |
 
 Functionally the same three SOPs run either way.
 
