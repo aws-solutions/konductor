@@ -179,14 +179,21 @@ test('kiro-cli arms are not refused --effort, --stop-on, --max-tool-calls or --r
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
-test('a Claude Code arm refuses an autonomy task with the full text, and the flag check comes first', () => {
+test('a Claude Code arm accepts an autonomy task, and the flag check still comes first', () => {
   const s = setup({ autonomy: true });
   try {
     const r = run(s, ['--arms', 'cc-vanilla']);
-    assert.equal(refusal(r), 'multi-turn (autonomy) tasks are not supported on the Claude Code harness yet: t1; the resume flags have not been verified. Choose other tasks with --tasks');
+    assert.doesNotMatch(r.stderr, /multi-turn/);
     const both = run(s, ['--arms', 'cc-vanilla', '--stop-on', 'end_turn']);
     assert.match(refusal(both), /^--stop-on does not apply to Claude Code arms/);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
+test('only a harness that cannot resume a session carries the multi-turn refusal note', () => {
+  const { registry } = require('../lib/harness/index.js');
+  for (const [id, d] of Object.entries(registry)) assert.equal(d.supports.multiTurn, d.multiTurnNote === null, id);
+  assert.equal(registry['claude-code'].supports.multiTurn, true);
+  assert.equal(registry.strands.supports.multiTurn, false);
 });
 
 test('opencode and kiro-cli arms are not refused an autonomy task by the flag checks', () => {
