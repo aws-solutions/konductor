@@ -452,6 +452,21 @@ not per individual commit.
 
 ### Fixed
 
+- Three skill descriptions now say what each skill takes in and puts out, so the model can tell
+  them from their neighbors. `requirements-extraction` is for handing finished requirements and
+  stories to an architect, once stories exist. `trade-off-evaluator` is for a side-by-side
+  comparison of options for a design decision, with a pick. `status-reporting` turns done, late and blocked work
+  into a weekly update with a RAG rating. The `about-konductor` SOP overview says it is not for
+  real work. Together the three descriptions are 11 characters shorter, so the Claude Code
+  skill listing shrinks. The descriptions keep the nouns a skill search is likely to use
+  ("decision", "comparison") and leave out the words of requests they exclude, because
+  `find_skills` matches any part of a description.
+- `konductor` now declares the 46 role skills the specialists use (such as `dynamodb-design`,
+  `code-review`, `program-planning` and `e2e-test-strategy`), so the single-writer `konductor` on
+  Kiro CLI can see and load them instead of writing without them. Claude Code could already load
+  them. The adversarial-review pass skills and `historical-issues-registry` stay with the
+  specialists, as that SOP requires. Cost: about 2,000 tokens more in the Kiro `konductor` prompt
+  and about 300 more in the Claude Code one. The guide's skill counts and "Declared by" columns are updated to match.
 - `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
   `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
   to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
