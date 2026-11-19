@@ -513,7 +513,7 @@ function renderMarkdown({ rows, decision, args }) {
   const arms = [...new Set(rows.map((r) => r.arm))].sort();
   L.push('# Constraints probe report', '');
   L.push(`Runs read: ${rows.length}. Usable: ${used.length}. Arms: ${arms.join(', ') || 'none'}. Canary token: ${args.token ? 'given, exact match' : 'not given, token-shaped match only'}.`);
-  L.push(`Scoring is from stream.jsonl with session files as a secondary source. Rates are applied/usable with Wilson 95% intervals. Checks quality is ${args.weights ? `the checks component only, ${args.weights.checksMode === 'fraction' ? 'passed / total' : 'all-or-nothing'}` : 'not computed (no --scoring)'}.`, '');
+  L.push(`Scoring is from stream.jsonl with session files as a secondary source. Rates are applied/usable with Wilson 95% intervals. Checks quality is ${args.weights ? `the checks component only, ${args.weights.checksMode === 'all' ? 'all-or-nothing' : 'weighted share of substance checks'}` : 'not computed (no --scoring)'}.`, '');
 
   L.push('## Cells: arm x position x probe', '');
   for (const probe of PROBES) {
