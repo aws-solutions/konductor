@@ -5,7 +5,7 @@ const path = require('path');
 const { readDecision, near, meets } = require('./decision-lib.js');
 
 // Read fixture data for calculations
-const pricingData = fs.readFileSync(path.join(__dirname, '../../fixture/pricing.csv'), 'utf8')
+const pricingData = fs.readFileSync(path.join(__dirname, '../fixture/pricing.csv'), 'utf8')
   .split('\n')
   .slice(1)
   .filter(line => line.trim())
@@ -28,7 +28,7 @@ const MAX_MONTHLY_COST = 600;
 const totalStorageGB = (TOTAL_ROWS * BYTES_PER_ROW) / (1024 * 1024 * 1024);
 const storageCost = totalStorageGB * storageCostPerGB;
 
-const DECISION_PATH = path.join(__dirname, '../../docs/decision.md');
+const DECISION_PATH = path.join(__dirname, '../docs/decision.md');
 
 test('decision block exists and is valid JSON', () => {
   const decision = readDecision(DECISION_PATH);

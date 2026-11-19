@@ -1,0 +1,115 @@
+{
+  "id": "t3-db-order-history",
+  "class": "design",
+  "target": null,
+  "prompt": "Design the SQLite schema for ShopFast's order history database. We need to support 900 million order lines with the query patterns described in the requirements. The schema must fit within a 2.5 TB storage volume and stay under $300/month in storage costs.\n\nDeliver two files:\n1. `db/schema.sql` - The complete SQLite schema with tables, indexes, and constraints\n2. `docs/decision.md` - Your design rationale, tradeoffs considered, and final decision\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the id of your chosen option\n- \"options\": array of option ids you considered  \n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the inputs\n- \"monthly_cost_usd\": the monthly cost of your chosen option calculated from the price sheet\n\nBase your calculations on the numbers in the fixture files. Consider both storage efficiency and query performance. Validate that your schema avoids full table scans for the main query patterns.",
+  "fixture": "t3-db-order-history",
+  "timeoutSec": 900,
+  "hidden": "t3-db-order-history",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 35
+    },
+    {
+      "type": "file_exists",
+      "path": "db/schema.sql"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The decision.md shows clear reasoning about tradeoffs between storage, performance, and cost. (not code-checkable: Code cannot evaluate the quality of architectural reasoning or whether tradeoffs were properly considered.)",
+      "weight": 1
+    },
+    {
+      "id": "explanation-clarity",
+      "criterion": "The design rationale explains why the chosen option works within constraints and what tradeoffs were accepted. (not code-checkable: Code cannot assess whether explanations are clear, logical, or helpful for stakeholders.)",
+      "weight": 1
+    },
+    {
+      "id": "query-pattern-coverage",
+      "criterion": "The schema design discussion shows understanding of which query patterns are optimized vs. which are acceptable to leave suboptimal. (not code-checkable: While code can test index usage, it cannot evaluate whether the reasoning about query pattern prioritization is sound.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://www.sqlite.org/queryplanner.html",
+      "licence": "Public domain (SQLite blessing)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "skill:trade-off-evaluator",
+    "skill:decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:trade-off-evaluator",
+      "skill:decision-writing"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt asks to design a SQLite schema with storage efficiency and query performance considerations without naming a specific solution, framework, or method."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Hard limits (2.5 TB storage, $300/month budget, 15,000 IOPS, 500 MB/s throughput) are clearly stated in constraints.txt and pricing.csv; query patterns are defined in query-patterns.sql."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fail",
+        "note": "fixture/constraints.txt explicitly states 'The tempting option is indexing every column separately (7+ indexes)' and that it 'uses approximately 3.1 TB total storage' which 'exceeds the 2.5 TB Standard volume limit'. This directly names and explains the trap."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Solution requires genuine architectural reasoning: calculating storage overhead, comparing options, analyzing cost vs performance tradeoffs, and validating with EXPLAIN QUERY PLAN. Quick picks fail the hard storage limit."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers (900M rows, 2.5 KB/row, 2.5 TB limit, $300 budget, pricing) are provided in fixture files. Deliverable format (db/schema.sql, docs/decision.md with JSON) is explicitly specified."
+      }
+    ]
+  }
+}

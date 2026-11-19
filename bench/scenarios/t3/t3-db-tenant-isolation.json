@@ -13,7 +13,7 @@
     {
       "type": "tests",
       "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
-      "min": 2
+      "min": 21
     },
     {
       "type": "file_exists",

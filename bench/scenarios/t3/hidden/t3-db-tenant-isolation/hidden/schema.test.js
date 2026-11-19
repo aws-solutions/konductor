@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { Database } = require('better-sqlite3');
+const { DatabaseSync: Database } = require('node:sqlite');
 
 // Skip if better-sqlite3 is not available, but the test framework will handle it
 let db;
@@ -14,12 +14,12 @@ try {
 }
 
 test('schema file exists', () => {
-  const schemaPath = path.join(__dirname, '../../db/schema.sql');
+  const schemaPath = path.join(__dirname, '../db/schema.sql');
   assert(fs.existsSync(schemaPath), 'schema.sql file should exist');
 });
 
 test('schema contains tenant_id column in tickets table', () => {
-  const schema = fs.readFileSync(path.join(__dirname, '../../db/schema.sql'), 'utf8');
+  const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
   assert(
     /CREATE TABLE tickets.*tenant_id.*INTEGER/i.test(schema),
     'tickets table should have tenant_id column'
@@ -27,7 +27,7 @@ test('schema contains tenant_id column in tickets table', () => {
 });
 
 test('schema has composite indexes with tenant_id first', () => {
-  const schema = fs.readFileSync(path.join(__dirname, '../../db/schema.sql'), 'utf8');
+  const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
   
   // Check for indexes that should have tenant_id first
   const indexPatterns = [
@@ -44,7 +44,7 @@ test('schema has composite indexes with tenant_id first', () => {
 });
 
 test('schema allows tenant reuse of ticket_key', () => {
-  const schema = fs.readFileSync(path.join(__dirname, '../../db/schema.sql'), 'utf8');
+  const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
   
   // Should NOT have a global unique index on ticket_key alone
   const globalUniquePattern = /CREATE UNIQUE INDEX.*tickets.*ticket_key\)/i;
@@ -67,7 +67,7 @@ test('schema can be loaded and has required tables', async () => {
   const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
   
   // Execute schema
-  db.exec(schema);
+  db = new Database(':memory:'); db.exec(schema);
   
   // Check tables exist
   const tables = db.prepare(`
@@ -85,7 +85,7 @@ test('schema supports data insertion for multiple tenants', async () => {
   if (!db) return; // Skip if SQLite not available
   
   const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
-  db.exec(schema);
+  db = new Database(':memory:'); db.exec(schema);
   
   // Insert test data
   db.exec(`
@@ -113,7 +113,7 @@ test('queries use tenant_id indexes', async () => {
   if (!db) return; // Skip if SQLite not available
   
   const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
-  db.exec(schema);
+  db = new Database(':memory:'); db.exec(schema);
   
   // Insert sample data
   db.exec(`
@@ -144,7 +144,7 @@ test('schema prevents cross-tenant data access', async () => {
   if (!db) return; // Skip if SQLite not available
   
   const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
-  db.exec(schema);
+  db = new Database(':memory:'); db.exec(schema);
   
   // Insert data for two tenants
   db.exec(`

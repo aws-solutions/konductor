@@ -27,3 +27,7 @@
 | t3-dev-module-boundary | author | gpt-5.6-luna | 0.00 |
 | t3-dev-module-boundary | map | glm-5 | 0.61 |
 | t3-dev-module-boundary | review | glm-5 | 2.83 |
+| t3-db-tenant-isolation | author | deepseek-3.2 | 0.00 |
+| t3-db-order-history | author | deepseek-3.2 | 13.08 |
+| t3-db-order-history | map | glm-5 | 0.62 |
+| t3-db-order-history | review | minimax-m2.5 | 3.45 |
