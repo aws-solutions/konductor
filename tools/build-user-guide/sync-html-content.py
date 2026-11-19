@@ -367,7 +367,8 @@ EDITS = [
      'per-agent permission settings. No ask rule is written for a Claude '
      'Code plugin install (add them yourself), when the settings file cannot be written (install '
      'still succeeds and ends by printing the rules to add by hand), or for a tool one of your own '
-     'deny or allow entries already covers. Calls to these tools need a person to approve them; '
+     'deny rules covers or one of your allow entries names exactly (a broad allow such as '
+     'mcp__aws-mcp__* does not count). Calls to these tools need a person to approve them; '
      'run that work from konductor. Add deny rules for anything a dispatched agent must never '
      'do."]'),
     ("ag-access rows",
