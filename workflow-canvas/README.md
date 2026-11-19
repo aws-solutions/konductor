@@ -8,7 +8,8 @@ The page has Design and Run views, picked with a switch in the page
 header. The Design view loads the workflow
 from the API and draws it: the intent, each stage in list order (name, agent
 and harness) and the end, joined by run-order edges. You can pick the agent of
-a stage, rename it, add a stage, delete one and save the file. It shows a
+a stage, rename it, add a stage, delete one and save the file. A save changes
+only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
 draw. The Run view draws the saved workflow and runs it: a Run button
 starts a run, and each node shows its live state until the run ends. The
@@ -396,9 +397,11 @@ The rest wraps the core, so the rules can be tested without a browser:
 The tab has the graph on the left, with **Add stage** above it and the save
 line and **Save** in its header, and **Properties** on the right. Properties
 shows the selected stage (the first one when the page opens): its `name` and
-its `agent`, and **Delete stage**. A stage is only a `name` and an `agent`, and
-the stages run in the order they are listed, so there is no other field and no
-way to link or reorder them yet.
+its `agent`, and **Delete stage**. These are the two keys of a stage that the
+Designer edits. A stage may also have a `prompt` or a `prompt_file`, which the
+page does not show or edit and which a save keeps. The stages run in the order
+they are listed, and there is no way to link or reorder them yet. There is no
+raw YAML editor.
 
 - **Add stage** adds a stage at the end, named `agent-1` (the first free
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
@@ -426,13 +429,38 @@ Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
-Only the block of stages changes: the `name`, `intent`, `version` and the
-comments outside the block stay as they were. A stage that is unchanged keeps
-its own lines and the comments in front of it; the comments written inside a
-stage that is changed or deleted go with it. If the stages are not a block at the top level of the file (for
-example `stages: [...]`), the whole file is written from the view, in the plain
-layout, which drops its comments and `version`; an info note above the graph
-says so before you save.
+The writer (`stage-text.ts`) changes only the bytes of the values it edits. A
+stage whose `name` or `agent` changed keeps every other byte of its item: its
+other keys, such as `prompt` and `prompt_file`, its comments and its layout. A
+deleted stage takes its item and the comments in front of it, and a new stage
+is written after the others, with its dashes where theirs are. Every byte
+outside the block of stages stays as it was, so `format`, `version`, `params`,
+the comments and the line endings are kept. The writer knows which stage of the
+file each stage of the draft was, also after a save, so a rename is an edit of
+that stage and not a new one.
+
+The page never rewrites a file whole. It refuses a change it cannot write in
+place, says why, and keeps Save off with the reason in its tooltip, as plain
+text:
+
+- When the stages are not a list of items under a top-level `stages:` key, as
+  in `stages: [...]`, or the page cannot tell where each stage starts, no
+  change can be saved, and a note above the graph says so before any change.
+- When a stage that changed is not written with one key to a line under its
+  dash, as in `- {name: a, agent: b}`, a warning says that this change cannot
+  be saved. A change to another stage of the same file is saved.
+- When the `name` or `agent` that changed is not one value on the line of its
+  key (a value on the next line, a block scalar, a tag or an anchor, a quoted
+  value that goes on to the next line, a double-quoted value with an escape
+  that JSON does not read), or does not read as the value the server gave, the
+  same warning says so.
+
+A double-quoted value with a YAML escape that JSON cannot read, such as `\x41`
+or `\e`, is refused for an in-place edit, since the page cannot tell its text.
+A value that the page writes in double quotes has U+007F, U+0080 to U+009F,
+U+2028 and U+2029 as `\u` escapes. YAML does not take U+007F to U+009F raw,
+and a YAML 1.1 reader such as libyaml takes U+0085, U+2028 and U+2029 for line
+breaks.
 
 - **Checking.** A moment (400 ms) after the last change, the text is checked
   with `POST /api/validate`. What it finds shows under the field it is about,
@@ -457,7 +485,11 @@ says so before you save.
   the server and replaces the draft. The stages cannot be changed while the file
   loads. After the load, a note keeps **Copy my version** for the text that was
   replaced. It stays while the person goes on to edit, until the file is loaded
-  again or a save works, so the draft is never lost without a way back to it.
+  again or a save works, so a draft the page can write is never lost without a
+  way back to it. A draft with a change the page cannot write in place has no
+  text to copy: the alert offers no **Copy my version** for it, and the load
+  replaces it with nothing kept. Note such a change down before loading the
+  file again.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
   a stage can be selected, but the name is read-only and Add stage, Delete
   stage, the agent list and Save are off. A note above the graph says why, and
@@ -694,6 +726,10 @@ a refused call). The editing tests also cover saves that go wrong: a refusal
 with findings and one with none, a lost session, an answer that is lost or
 cannot be read (the file holds the text, or does not), and a conflict whose
 draft can be copied, and a graph that grows by added stages and is fitted again.
+They edit the `hello-plan` example of the workflow engine
+(`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
+stub) and check that no other byte changes, and keep Save off for a file whose
+stages are in brackets.
 A test that says a save "writes nothing" counts the `PUT` requests that the page
 sent; the file is checked only where a request reaches the stub. The HTML report
 is written to `playwright-report/`; open it with `npx playwright show-report`.
@@ -730,8 +766,9 @@ stage runs in the dark theme (`execution-tab-dark.png`). The Design view is
 also saved with unsaved edits (`designer-editing.png`, and
 `designer-editing-dark.png` in the dark theme), after a save
 (`designer-saved.png`), with a problem the server found
-(`designer-problems.png`) and when the file changed on disk
-(`designer-conflict.png`). Pull request
+(`designer-problems.png`), when the file changed on disk
+(`designer-conflict.png`) and with a change it cannot write in place
+(`designer-not-in-place.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.
 
