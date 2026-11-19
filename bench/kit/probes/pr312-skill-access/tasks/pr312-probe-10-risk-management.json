@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-10-risk-management",
+  "class": "design",
+  "target": null,
+  "prompt": "We launch a new payment screen in six weeks with two engineers and one outside vendor API. In out.md, list the risks of this launch with how likely each is, how bad it would be, who owns it and what we do about it.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

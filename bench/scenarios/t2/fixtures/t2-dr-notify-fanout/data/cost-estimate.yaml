@@ -1,0 +1,67 @@
+# Cost Estimate for Notification Fanout Service
+# Based on projected traffic of 1,500 notifications/second peak
+# Date: 2024-03-01
+
+monthly_costs:
+  infrastructure:
+    eks_cluster: 300.00
+    worker_nodes: 1200.00  # 6 nodes * $200/month
+    kafka_cluster: 800.00
+    monitoring: 200.00
+    storage_s3: 150.00
+    total_infra: 2650.00
+    
+  vendor_costs:
+    sendgrid:
+      base_fee: 89.95
+      per_email: 0.0001
+      projected_volume: 216000000  # 1,500/sec * 60 * 60 * 24 * 30% email mix
+      cost: 89.95 + (216000000 * 0.0001) = 21689.95
+      
+    ses:
+      backup_only: true
+      projected_volume: 10800000  # 5% of emails as backup
+      cost: 10800000 * 0.0001 = 1080.00
+      
+    push_services:
+      apns: 0.00  # Included in developer program
+      fcm: 0.00   # Free tier
+      
+    total_vendor: 22769.95
+    
+  data_transfer:
+    internet_egress: 250.00
+    intra_aws: 50.00
+    total_transfer: 300.00
+    
+  total_monthly: 2650.00 + 22769.95 + 300.00 = 25719.95
+    
+annual_projections:
+  q1_2024: 25000.00  # Ramp-up period
+  q2_2024: 25719.95
+  q3_2024: 28000.00  # 10% growth
+  q4_2024: 30800.00  # 10% growth
+  total_year: 109519.95
+  
+assumptions:
+  - 30% of notifications are email, 60% push, 10% in-app
+  - Email cost based on SendGrid Pro plan
+  - Infrastructure costs assume 50% average utilization
+  - Does not include development or maintenance labor costs
+  - Assumes 20% month-over-month traffic growth
+  
+budget_constraints:
+  max_monthly_infrastructure: 5000.00
+  max_monthly_vendor: 30000.00
+  total_annual_budget: 150000.00
+  
+retention_costs:
+  s3_storage_30_days: 150.00  # Already included in infrastructure
+  cloudwatch_logs_7_days: 75.00
+  kafka_retention_7_days: 200.00
+  
+optimization_opportunities:
+  - Use SES for bulk emails instead of SendGrid (50% cost reduction)
+  - Implement notification batching for non-urgent emails
+  - Right-size EKS cluster based on actual usage
+  - Use spot instances for stateless workers

@@ -31,6 +31,7 @@ New tasks may add these top-level fields (all optional; old tasks keep working).
 - `version`; `phase` and `phases2` (secondary phases, labels only); `role`.
 - `questions`: `allowed`, `scripted` or `forbidden`. `scripted` needs `scriptedUser` (`facts` with the `topics` that unlock each `answer`, and a `defaultReply`).
 - `findingsKey`: seeded items a review, design or planning output must find.
+- `expertKey`: judge-only key of a design-review task: `items` (`id`, `text`, `source`: the public source and its licence) are the risks, trade-offs, constraints and failure modes a good review raises, beyond the seeded findings; `weakAnswers` (3 to 5) are what a shallow review says. A judge marks an item addressed only with a quote from the output; the score is addressed / all items, inside the rubric share. The agent never sees it.
 - `targetSkills`, `targetSop`, `targetAgent`: the units the task exercises. They replace `target`; a task sets either `target` or these, never both. The loader maps an old `target` by looking it up in the repo's `skills/`, `agent-sops/` and `agents/` (a `skill:`, `sop:` or `agent:` prefix decides it directly) and puts the result in `task.targets`. Read `task.targets`, not `target`.
 - `controlKind`: `none`, `twin` (needs `twinOf`, another task's id) or `negative`.
 - `loadCheck`: `mustLoad` (units that must load before the first file write) and `mustNotLoad`. No unit may be in both.

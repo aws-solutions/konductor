@@ -14,7 +14,8 @@ const { parseArgs } = require('../bench.js');
 const { FLAGS, BOOLEAN_FLAGS, checkArgs, COMMANDS } = require('../lib/cli-flags.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
-const COMMAND_NAMES = ['run', 'judge', 'report', 'report-2x2', 'compare', 'contrast', 'pr-plan', 'recheck', 'backfill', 'skills', 'calibrate', 'list-arms', 'cap', 'explain', 'trace', 'refs-report', 'probe-report', 'canary-report', 'plant-report', 'plant-trace', 'plant-policy-test', 'gc', 'archive'];
+const COMMAND_NAMES = ['run', 'judge', 'report', 'report-2x2', 'compare', 'contrast', 'pr-plan', 'recheck', 'backfill', 'skills', 'calibrate', 'list-arms', 'cap', 'explain', 'trace', 'refs-report', 'probe-report', 'canary-report', 'plant-report', 'plant-trace', 'plant-policy-test', 'gc', 'archive', 'scenarios'];
+const SCENARIO_SUBS = ['lint', 'coverage', 'prereg'];
 const CAP_SUBS = ['list', 'audit', 'variant', 'plan', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
 
 function sandbox() {
@@ -77,7 +78,7 @@ test('no command prints usage and exits 0; an unknown command exits 2', () => {
 test('an unknown flag exits 2 and lists the known flags of that command, for every command', () => {
   const s = sandbox();
   try {
-    const calls = [...COMMAND_NAMES.filter((c) => c !== 'calibrate' && c !== 'cap').map((c) => [c]), ['calibrate', 'export'], ['calibrate', 'score'], ...CAP_SUBS.map((c) => ['cap', c])];
+    const calls = [...COMMAND_NAMES.filter((c) => !['calibrate', 'cap', 'scenarios'].includes(c)).map((c) => [c]), ['calibrate', 'export'], ['calibrate', 'score'], ...CAP_SUBS.map((c) => ['cap', c]), ...SCENARIO_SUBS.map((c) => ['scenarios', c])];
     for (const call of calls) {
       const r = s.cli([...call, '--bogus-flag']);
       const label = call.join(' ');
@@ -169,7 +170,7 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
   for (const b of blocks) {
-    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export-reference|export|score)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select)|[a-z0-9-]+)/);
+    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export-reference|export|score)|scenarios (?:lint|coverage|prereg)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select)|[a-z0-9-]+)/);
     const key = m[1];
     const flags = new Set([...b.matchAll(/--([a-z][a-z0-9-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);

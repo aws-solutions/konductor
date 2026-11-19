@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-08-cost-estimation",
+  "class": "design",
+  "target": null,
+  "prompt": "We plan a service with a load balancer, three small servers, a database and 2 TB of storage in one AWS region. In out.md, estimate what it will cost per month and say which numbers you assumed.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

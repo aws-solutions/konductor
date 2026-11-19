@@ -1,0 +1,3 @@
+# Agreed base set of the full bench suite: tests that fail on feat/bench-pilot-nk with TMPDIR under /tmp.
+# One test name per line. The set is empty. See DEBT D-44 and D-45.
+# Command: node --test --test-concurrency=1 "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"

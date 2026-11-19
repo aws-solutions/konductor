@@ -201,10 +201,14 @@ const env = (o) => envSetup({ ...o, baseEnv: o.ctx?.awsCreds ? { ...(o.baseEnv ?
 
 // The prompt goes on stdin (`claude -p` reads it there when no prompt argument is given), not in argv: an agent that
 // runs `pkill -f <text from its task>` would otherwise match, and kill, its own claude process.
+// A later turn of a conversation (autonomy and scripted-user tasks) resumes the session with `--resume <session id>`
+// (`claude --help`: "Resume a conversation by session ID") and sends the scripted reply on stdin. Every other flag is
+// the same, so the arm, model, effort and tools do not change between turns. The per-turn budget applies to each turn.
 function buildCommand({ arm, task, config, ctx, resume = null }) {
-  if (resume) throw new Error('multi-turn (autonomy) tasks are not supported on the Claude Code harness yet; the resume flags have not been verified');
+  if (resume && !resume.sessionId) throw new Error('cannot resume a Claude Code conversation: the first turn recorded no session id');
   const args = [
     '-p',
+    ...(resume ? ['--resume', resume.sessionId] : []),
     '--output-format', 'stream-json', '--verbose',
     '--model', config.model,
     '--max-budget-usd', String(ctx.runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD),
@@ -218,7 +222,7 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
   args.push('--strict-mcp-config');
   // Last: the tool list is variadic.
   args.push('--allowedTools', ...ALLOWED_TOOLS);
-  return { file: ctx.claude.bin, args, stdin: promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
+  return { file: ctx.claude.bin, args, stdin: resume ? resume.prompt : promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
 }
 
 // ---- Arm ----

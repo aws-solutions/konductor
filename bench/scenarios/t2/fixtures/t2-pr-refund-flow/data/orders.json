@@ -1,0 +1,4 @@
+[
+  { "id": "ord_100", "merchantId": "m_green", "customerId": "cus_7", "totalMinor": 4200, "capturedMinor": 4200, "status": "captured" },
+  { "id": "ord_101", "merchantId": "m_blue", "customerId": "cus_9", "totalMinor": 1599, "capturedMinor": 0, "status": "authorized" }
+]

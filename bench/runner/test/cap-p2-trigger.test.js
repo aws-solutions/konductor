@@ -212,7 +212,7 @@ test('cap trigger refuses a capability the proxy cannot model, a missing capabil
     fs.mkdirSync(env.HOME);
     const run = (...a) => spawnSync(process.execPath, [BENCH_JS, 'cap', 'trigger', '--repo-root', r.repo, '--bench-dir', bench, '--base', 'v1.2.0', '--model-cmd', 'node -e 0', ...a], { encoding: 'utf8', env });
     assert.match(run('--mode', 'proxy').stderr, /--cap is required/);
-    assert.match(run('--cap', 'skill:alpha').stderr, /--mode takes proxy or live/);
+    assert.match(run('--cap', 'skill:alpha').stderr, /--mode takes proxy, live or runs/);
     assert.match(run('--cap', 'skill:alpha', '--mode', 'proxy').stderr, /has no trigger queries/);
     assert.match(run('--cap', 'sop:k-plan', '--mode', 'proxy', '--queries', path.join(root, 'none.json')).stderr, /cannot read the drafts file|live mode/);
     assert.match(run('--cap', 'agent:konductor', '--mode', 'proxy', '--queries', path.join(root, 'none.json')).stderr, /needs live mode/);
@@ -245,6 +245,30 @@ test('a proxy run over a draft with a command model writes the report files and 
     assert.equal(j.mode, 'proxy');
     assert.equal(j.rows.length, 2);
     assert.ok(fs.existsSync(path.join(out, 'trigger-skill-alpha-kiro-cli-proxy.md')));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('proxy mode honours --dry-run: it prints the call estimate and never starts the model', () => {
+  const root = scratch();
+  try {
+    const r = makeCapRepo(root, { tag: 'v1.2.0' });
+    const bench = makeCapBench(root);
+    const env = { PATH: process.env.PATH, HOME: path.join(root, 'h') };
+    fs.mkdirSync(env.HOME);
+    const draft = path.join(root, 'draft.json');
+    write(draft, JSON.stringify({ capId: 'skill:alpha', queries: [
+      { id: 'd01', text: 'Please look over this service for input handling problems', expect: 'load', rationale: 'r' },
+      { id: 'd02', text: 'Write me a limerick about pandas', expect: 'none', rationale: 'r' },
+    ] }));
+    const called = path.join(root, 'model-was-called');
+    const model = path.join(root, 'model.js');
+    write(model, `require('fs').writeFileSync(${JSON.stringify(called)}, 'x');process.stdout.write('{}');\n`);
+    const out = path.join(root, 'out');
+    const res = spawnSync(process.execPath, [BENCH_JS, 'cap', 'trigger', '--cap', 'skill:alpha', '--mode', 'proxy', '--queries', draft, '--model-cmd', `node ${model}`, '--out', out, '--repo-root', r.repo, '--bench-dir', bench, '--base', 'v1.2.0', '--reps', '3', '--dry-run'], { encoding: 'utf8', env });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /dry run: proxy mode would make up to 12 model call\(s\) \(2 queries x 3 rep\(s\)\), about 1\.2 credits/);
+    assert.equal(fs.existsSync(called), false, 'the model command must not run');
+    assert.equal(fs.existsSync(path.join(out, 'trigger-skill-alpha-kiro-cli-proxy.json')), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

@@ -27,19 +27,28 @@ const ARM_LABEL = 'forced-load';
 const FORCED_LOAD_MIN = 0.9;
 const FAMILY_ALPHA = 0.05;
 
-const TOOL_OF = {
-  'kiro-cli': 'the get_skill tool of the skills server',
-  opencode: 'the skill tool',
-};
+// How each kind of unit is loaded on each harness. A skill is loaded with the skills tool. A SOP on Kiro CLI reaches the agent as a
+// prompt the user invokes, so a forced load reads the installed `<name>.sop.md`; opencode serves a SOP as the skill `sop-<name>`.
+// An agent is not loaded but used: the task is handed to it with the subagent tool (`task` on opencode).
+const KINDS = ['skill', 'sop', 'agent'];
 
-/** The first-turn instruction for one harness. Plain text, no dashes, the skill named once in quotes. */
-function forcedPrefix({ name, harness = 'kiro-cli' }) {
+/**
+ * The first-turn instruction for one harness and kind of unit. Plain text, no dashes, the unit named once in quotes.
+ * shortcut: Kiro CLI's SOP read is a file read of `<name>.sop.md`, which load-check.js does not yet see (it reads SKILL.md
+ * files and skill calls), so a forced SOP shows in the run's stream but not in its loadCheck; see DEBT.md.
+ */
+function forcedPrefix({ name, harness = 'kiro-cli', kind = 'skill' }) {
   if (!HARNESSES.includes(harness)) throw new Error(`forced load supports ${HARNESSES.join(' and ')} (got "${harness}")`);
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(String(name))) throw new Error(`"${name}" is not a skill name`);
-  return [
-    `Before you do anything else, load the skill named "${name}" with ${TOOL_OF[harness]} and read it.`,
-    'Then do the task below, following that skill wherever it applies.',
-  ].join(' ');
+  if (!KINDS.includes(kind)) throw new Error(`forced load takes a ${KINDS.join(', ')} (got "${kind}"); context files are always loaded`);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(String(name))) throw new Error(`"${name}" is not a ${kind} name`);
+  if (kind === 'agent') {
+    const tool = harness === 'opencode' ? 'the task tool' : 'the subagent tool';
+    return [`Before you do anything else, hand the whole task below to the agent named "${name}" with ${tool}.`, 'Then use its answer to finish the task, and say what you took from it.'].join(' ');
+  }
+  const how = kind === 'sop'
+    ? (harness === 'opencode' ? `load the skill named "sop-${name}" with the skill tool and read it` : `read the SOP named "${name}", the installed file "${name}.sop.md", with your file tool`)
+    : `load the skill named "${name}" with ${harness === 'opencode' ? 'the skill tool' : 'the get_skill tool of the skills server'} and read it`;
+  return [`Before you do anything else, ${how}.`, `Then do the task below, following that ${kind} wherever it applies.`].join(' ');
 }
 
 // Neutral sentences for the delete arm's instruction, longest first. None names a skill or a tool, or asks for a load.
@@ -209,5 +218,5 @@ function renderForced(decisions) {
 
 module.exports = {
   forcedPrefix, forcedFiller, prefixHash, checkMode, checkHeldMin, forcedWanted, familyStatus, forcedSummary, forcedFailure, renderForced,
-  FORCED_ARMS, FORCED_WAVE, FORCED_LOAD_MIN, ARM_LABEL, HARNESSES, MODES, FAMILY_ALPHA,
+  FORCED_ARMS, FORCED_WAVE, FORCED_LOAD_MIN, ARM_LABEL, HARNESSES, MODES, FAMILY_ALPHA, KINDS,
 };

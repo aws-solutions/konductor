@@ -1,0 +1,8 @@
+{
+  "name": "marketplace-payments",
+  "version": "2.7.0",
+  "description": "Small marketplace payment ledger and settlement service",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "start": "node src/index.js" }
+}

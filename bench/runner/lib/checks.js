@@ -8,7 +8,7 @@ const { evalCheck } = require('./check-matcher.js');
 
 function runCheck(root, check, opts = {}) {
   const base = { type: check.type };
-  for (const k of ['path', 'pattern', 'cmd', 'min', 'labels', 'allowAdditions', 'manifest', 'group']) if (check[k] !== undefined) base[k] = check[k];
+  for (const k of ['path', 'pattern', 'cmd', 'min', 'labels', 'allowAdditions', 'manifest', 'group', 'weight', 'kind']) if (check[k] !== undefined) base[k] = check[k];
   try {
     const { passed, detail, tests, regression } = evalCheck(root, check, opts);
     return { ...base, passed, detail, ...(tests ? { tests } : {}), ...(regression ? { regression } : {}) };
