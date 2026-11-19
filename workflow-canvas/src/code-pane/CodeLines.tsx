@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useLayoutEffect, useRef } from 'react';
+import { endScrollTop, isAtEnd } from './follow-end';
 import './code-pane.css';
 
 /** One numbered line of text. */
@@ -24,12 +26,17 @@ function isMarked(n: number, range: LineRange | undefined): boolean {
  * The lines of `marked` are drawn as marked. Only the first carries
  * `aria-current`, as one item of a list is current; the caller says which
  * lines the range holds in the note that `describedBy` names.
+ * With `followEnd`, the box stays on its last line as lines arrive, until the
+ * person scrolls up, and follows again once they scroll back to the bottom.
+ * It jumps there with no animation, so it does not move against a reduced
+ * motion setting.
  */
 export function CodeLines({
   lines,
   label,
   describedBy,
   marked,
+  followEnd = false,
 }: {
   lines: readonly CodeLine[];
   /** The name of the box for a screen reader. */
@@ -37,9 +44,23 @@ export function CodeLines({
   /** The id of the element that says more about the box. */
   describedBy?: string;
   marked?: LineRange;
+  /** Keep the box on its last line while the person has not scrolled up. */
+  followEnd?: boolean;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (followEnd && element && following.current) {
+      element.scrollTop = endScrollTop(element);
+    }
+  }, [followEnd, lines]);
   return (
     <div
+      ref={box}
+      onScroll={(event) => {
+        following.current = isAtEnd(event.currentTarget);
+      }}
       className="wf-code-scroll"
       role="region"
       tabIndex={0}
