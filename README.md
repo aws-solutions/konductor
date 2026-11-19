@@ -263,12 +263,13 @@ Code). Full details, including each agent's tools, are in the
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
 checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
 dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. The
-exception on Claude Code is `aws___run_script`. `konductor install --harness claude` puts an ask
-rule for it in the settings file it installs into, and a pane that file applies to cannot call it.
-That is every pane for the default `$HOME` install (`~/.claude/settings.json`), but only panes
-running in the target project for a `--target` install (`<target>/.claude/settings.json`). A
-Claude Code plugin install writes no rule: add `mcp__plugin_konductor_aws-mcp__aws___run_script`
-to `permissions.ask` yourself (see
+exception on Claude Code is the three AWS MCP tools that act on AWS: `aws___run_script`,
+`aws___get_presigned_url` and `aws___get_tasks`. `konductor install --harness claude` puts an ask
+rule for each in the settings file it installs into, and a pane that file applies to cannot call
+them. That is every pane for the default `$HOME` install (`~/.claude/settings.json`), but only
+panes running in the target project for a `--target` install (`<target>/.claude/settings.json`).
+A Claude Code plugin install writes no rule: add `mcp__plugin_konductor_aws-mcp__<tool>` for each
+of the three to `permissions.ask` yourself (see
 [Install from the Claude plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md)
 and [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine)).
 Use them only in a workspace and with AWS credentials you are willing to let an agent act on. With

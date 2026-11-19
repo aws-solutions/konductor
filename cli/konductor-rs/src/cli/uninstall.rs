@@ -2855,7 +2855,11 @@ mod tests {
                 .unwrap();
         assert_eq!(
             settings["permissions"]["ask"],
-            serde_json::json!(["mcp__aws-mcp__aws___run_script"])
+            serde_json::json!([
+                "mcp__aws-mcp__aws___get_presigned_url",
+                "mcp__aws-mcp__aws___get_tasks",
+                "mcp__aws-mcp__aws___run_script"
+            ])
         );
         assert_eq!(
             settings["permissions"]["allow"],

@@ -90,9 +90,11 @@ effect on a plugin agent.
 
 A plugin cannot ship permission rules, so this install path does not add the
 rules `konductor install --harness claude` writes. To have Claude Code ask
-before every `aws___run_script` call, which runs agent-written Python with your
-AWS credentials, add `mcp__plugin_konductor_aws-mcp__aws___run_script` to
-`permissions.ask` in your `settings.json`. To pre-approve the five read-only
+before every call to the three tools that act on AWS with your credentials,
+add `mcp__plugin_konductor_aws-mcp__aws___run_script`,
+`mcp__plugin_konductor_aws-mcp__aws___get_presigned_url` and
+`mcp__plugin_konductor_aws-mcp__aws___get_tasks` to `permissions.ask` in your
+`settings.json`. `aws___run_script` runs agent-written Python. To pre-approve the five read-only
 tools as Kiro CLI does, add `mcp__plugin_konductor_aws-mcp__<tool>` to
 `permissions.allow` for `aws___search_documentation`, `aws___retrieve_skill`,
 `aws___read_documentation`, `aws___list_regions` and

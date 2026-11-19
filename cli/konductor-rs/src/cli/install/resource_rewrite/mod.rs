@@ -39,7 +39,7 @@ pub(super) use claude_settings::apply_claude_settings_grant_and_hooks;
 pub(super) use claude_settings::apply_claude_settings_hooks_only;
 pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
 pub(super) use claude_settings::{
-    apply_claude_settings_mcp_rules, mcp_tool_rule, McpPermissionRules, AWS_MCP_ASK_TOOLS,
+    apply_claude_settings_mcp_rules, aws_mcp_ask_tools, mcp_tool_rule, McpPermissionRules,
     AWS_MCP_SERVER_NAME,
 };
 pub(crate) use claude_settings::{

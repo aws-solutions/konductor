@@ -33,7 +33,7 @@ Install also wires a session-start hook for `konductor`, a `SessionStart` block 
 
 Install also copies the context files to `.konductor/context/` under the install target, where the hook reads the routing rules and the coordinator digest. No agent loads them from there, and `uninstall` removes them.
 
-Install also adds permission rules for the AWS MCP server to `~/.claude/settings.json` (or `<target>/.claude/settings.json` with `--target`): `mcp__aws-mcp__aws___run_script` under `permissions.ask`, and the five read-only tools Kiro CLI pre-approves under `permissions.allow`. It only appends, keeps any of your entries that already cover a rule, and `uninstall` leaves the rules in place. See [Tool grant](#optional-integrations) below.
+Install also adds permission rules for the AWS MCP server to `~/.claude/settings.json` (or `<target>/.claude/settings.json` with `--target`): an ask rule under `permissions.ask` for each of the three tools that act on AWS (`mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and `mcp__aws-mcp__aws___get_tasks`), and the five read-only tools Kiro CLI pre-approves under `permissions.allow`. It only appends, keeps any of your entries that already cover a rule, and `uninstall` leaves the rules in place. See [Tool grant](#optional-integrations) below.
 
 Agent files land in `~/.claude/agents/`:
 
@@ -240,10 +240,11 @@ the server exposes: the five AWS knowledge/documentation tools (`aws___search_do
 `aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
 which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
 `konductor` gets none of the AWS-API-acting tools on Claude Code.
-`konductor install --harness claude` puts `mcp__aws-mcp__aws___run_script` in
-`permissions.ask`, so Claude Code asks before every call in an interactive session. In a `-p`
-run, which cannot ask, the call is denied, so a mux or cmux pane cannot run it when that settings
-file applies to the pane: always for a `$HOME` install, and with `--target` only in that project.
+`konductor install --harness claude` puts an ask rule for each of the three AWS-API-acting tools
+in `permissions.ask`: every server tool outside the five read-only ones. Claude Code asks before
+every call to them in an interactive session. In a `-p` run, which cannot ask, the call is denied,
+so a mux or cmux pane cannot run them when that settings file applies to the pane: always for a
+`$HOME` install, and with `--target` only in that project.
 It also puts the five read-only tools in `permissions.allow`, so they run without asking, as on
 Kiro CLI. Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
 (boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM

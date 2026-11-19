@@ -252,26 +252,30 @@ When a `--harness claude` install includes an agent that uses the `aws-mcp` serv
 `<target>/.claude/settings.json` (`~/.claude/settings.json` for the default `$HOME` target).
 An agent uses the server when its frontmatter lists it under `mcpServers` or its `tools`
 grants `mcp__aws-mcp` or any `mcp__aws-mcp__<tool>`, so a custom synth without
-`--claude-bundled-mcp-servers aws-mcp` still gets the ask rule. CRLF frontmatter is read
+`--claude-bundled-mcp-servers aws-mcp` still gets the ask rules. CRLF frontmatter is read
 the same way. An agent file whose frontmatter cannot be read (missing, unclosed or not
 YAML) is skipped with a `konductor install: warning:` naming the file.
 
-- `mcp__aws-mcp__aws___run_script` in `permissions.ask`, so Claude Code asks before every
-  call. That tool runs agent-written Python with your AWS credentials. Claude Code checks
-  ask rules before allow rules, so it still asks under a broad `mcp__aws-mcp__*` allow.
+- An ask rule in `permissions.ask` for every `aws-mcp` tool outside the five read-only
+  ones: `mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and
+  `mcp__aws-mcp__aws___get_tasks`. Claude Code asks before every call to them. They act on
+  AWS with your credentials (`aws___run_script` runs agent-written Python). Install takes the
+  server's tools from a fixed list of the eight that `mcp-proxy-for-aws-cli` 1.7.0 lists, not
+  from a live call. Claude Code checks ask rules before allow rules, so it still asks under a
+  broad `mcp__aws-mcp__*` allow.
 - The union of those agents' Kiro `allowedTools` for `aws-mcp` in `permissions.allow`, as
   `mcp__aws-mcp__<tool>`, so Claude Code pre-approves the same read-only tools Kiro CLI
   does. `synth` records them in `dist/claude/agents/_mcp_allowed_tools.json`. A dist
-  without that file (synthed by an older konductor) gets only the ask rule, and install
+  without that file (synthed by an older konductor) gets only the ask rules, and install
   says so. Only single named tools are recorded: `synth` leaves out a whole-server
   (`@aws-mcp`) or wildcard (`@aws-mcp/*`) entry, or any name that is not letters, digits,
   `_` and `-`, and prints a `konductor: warning:` naming the agent and entry. A wildcard
-  allow would also cover `aws___run_script`. Install still rejects a sidecar with such a
+  allow would also cover the ask-gated tools. Install still rejects a sidecar with such a
   name.
 
 The merge only appends. It never removes or reorders your entries, and a reinstall that
 adds nothing leaves the file untouched. If one of your entries already covers a rule (a
-`deny` rule, an exact `allow` of `aws___run_script`, or an `ask` rule covering a read-only
+`deny` rule, an exact `allow` of an ask-gated tool, or an `ask` rule covering a read-only
 tool), install keeps yours, leaves that rule out and prints one line naming your entry. A
 symlinked `.claude` or `settings.json` is refused with a warning. `uninstall` leaves the
 rules in place, like the rest of `settings.json`.
@@ -280,13 +284,14 @@ Under `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, each pane 
 `claude -p --dangerously-skip-permissions`. Claude Code's
 [permission modes](https://code.claude.com/docs/en/permission-modes) docs say an explicit ask
 rule is still enforced in `bypassPermissions`, and that a `-p` run denies a call that would
-prompt. So a dispatched pane cannot call `aws___run_script` when the settings file holding the
-rule applies to it: every pane for the default `$HOME` install, and only panes running in the
+prompt. So a dispatched pane cannot call the ask-gated tools when the settings file holding the
+rules applies to it: every pane for the default `$HOME` install, and only panes running in the
 target project for a `--target` install. Plugin installs get no rule (see below). Run work that
-needs it from `konductor`, where you can approve each call.
+needs them from `konductor`, where you can approve each call.
 
 The Claude Code plugin cannot ship permission rules. Plugin users add
-`mcp__plugin_konductor_aws-mcp__aws___run_script` to `permissions.ask` themselves (see
+`mcp__plugin_konductor_aws-mcp__<tool>` for each ask-gated tool to `permissions.ask`
+themselves (see
 [Install from the Claude plugin marketplace](../docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
 
 ### `--version <v>` and `--force`: content-version tracking

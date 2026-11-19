@@ -446,17 +446,47 @@ pub(super) fn apply_claude_settings_grant(
 //
 // `ClaudeInstallStrategy` merges these into `<target_dir>/.claude/settings.json`
 // when an installed agent declares the `aws-mcp` server: an `ask` rule for
-// each `AWS_MCP_ASK_TOOLS` tool, and `allow` rules matching the agents' Kiro
+// each `aws_mcp_ask_tools` tool, and `allow` rules matching the agents' Kiro
 // `allowedTools`. Claude Code evaluates deny, then ask, then allow, so the
-// ask rule prompts even under a broad `mcp__aws-mcp__*` allow. Unlike the
+// ask rules prompt even under a broad `mcp__aws-mcp__*` allow. Unlike the
 // `konductor-skills` grant, a conflicting user entry skips only the entry it
 // covers. Uninstall leaves the entries in place, like the grant.
 
 pub(in crate::cli::install) const AWS_MCP_SERVER_NAME: &str = "aws-mcp";
 
-/// AWS MCP tools that must prompt before every call. `aws___run_script`
-/// runs agent-written Python with the user's AWS credentials.
-pub(in crate::cli::install) const AWS_MCP_ASK_TOOLS: &[&str] = &["aws___run_script"];
+/// Every tool the `aws-mcp` server lists (`tools/list` of
+/// `mcp-proxy-for-aws-cli` 1.7.0, the version the agent specs pin). Fixed
+/// here so install never depends on a live call to the server.
+pub(in crate::cli::install) const AWS_MCP_KNOWN_TOOLS: &[&str] = &[
+    "aws___get_presigned_url",
+    "aws___get_regional_availability",
+    "aws___get_tasks",
+    "aws___list_regions",
+    "aws___read_documentation",
+    "aws___retrieve_skill",
+    "aws___run_script",
+    "aws___search_documentation",
+];
+
+/// The read-only `aws-mcp` tools, the only ones install may pre-approve.
+pub(in crate::cli::install) const AWS_MCP_READ_ONLY_TOOLS: &[&str] = &[
+    "aws___get_regional_availability",
+    "aws___list_regions",
+    "aws___read_documentation",
+    "aws___retrieve_skill",
+    "aws___search_documentation",
+];
+
+/// The `aws-mcp` tools that must prompt before every call: every known tool
+/// outside `AWS_MCP_READ_ONLY_TOOLS`. They act on AWS with the user's
+/// credentials (`aws___run_script` runs agent-written Python).
+pub(in crate::cli::install) fn aws_mcp_ask_tools() -> Vec<&'static str> {
+    AWS_MCP_KNOWN_TOOLS
+        .iter()
+        .copied()
+        .filter(|tool| !AWS_MCP_READ_ONLY_TOOLS.contains(tool))
+        .collect()
+}
 
 /// Full `mcp__<server>__<tool>` rules for one MCP server.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -2013,6 +2043,11 @@ mod tests {
         "aws___retrieve_skill",
         "aws___search_documentation",
     ];
+    const ASK_TOOLS: &[&str] = &[
+        "aws___get_presigned_url",
+        "aws___get_tasks",
+        "aws___run_script",
+    ];
 
     fn aws_rules() -> McpPermissionRules {
         McpPermissionRules {
@@ -2021,10 +2056,43 @@ mod tests {
                 .iter()
                 .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
                 .collect(),
-            ask: AWS_MCP_ASK_TOOLS
+            ask: aws_mcp_ask_tools()
                 .iter()
                 .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
                 .collect(),
+        }
+    }
+
+    fn aws_ask_rules() -> Vec<serde_json::Value> {
+        aws_rules()
+            .ask
+            .into_iter()
+            .map(serde_json::Value::String)
+            .collect()
+    }
+
+    #[test]
+    fn aws_mcp_tool_sets_are_pinned() {
+        assert_eq!(AWS_MCP_KNOWN_TOOLS.len(), 8);
+        assert_eq!(AWS_MCP_READ_ONLY_TOOLS, READ_TOOLS);
+        assert_eq!(aws_mcp_ask_tools(), ASK_TOOLS);
+    }
+
+    #[test]
+    fn every_known_aws_mcp_tool_outside_the_read_only_set_is_ask_gated() {
+        let ask = aws_mcp_ask_tools();
+        for tool in AWS_MCP_KNOWN_TOOLS {
+            assert_ne!(
+                AWS_MCP_READ_ONLY_TOOLS.contains(tool),
+                ask.contains(tool),
+                "{tool} must be either pre-approved or ask-gated, never both or neither"
+            );
+        }
+        for tool in AWS_MCP_READ_ONLY_TOOLS {
+            assert!(
+                AWS_MCP_KNOWN_TOOLS.contains(tool),
+                "{tool} is not a known tool"
+            );
         }
     }
 
@@ -2059,7 +2127,7 @@ mod tests {
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
         assert_eq!(
             parsed["permissions"]["ask"],
-            serde_json::json!([RUN_SCRIPT])
+            serde_json::Value::Array(aws_ask_rules())
         );
         assert_eq!(
             parsed["permissions"]["allow"],
@@ -2100,9 +2168,11 @@ mod tests {
             parsed["permissions"]["deny"],
             serde_json::json!(["Read(./.env)"])
         );
+        let mut expected_ask = vec![serde_json::json!("Bash(git push:*)")];
+        expected_ask.extend(aws_ask_rules());
         assert_eq!(
             parsed["permissions"]["ask"],
-            serde_json::json!(["Bash(git push:*)", RUN_SCRIPT])
+            serde_json::Value::Array(expected_ask)
         );
         let mut expected_allow = vec![serde_json::json!("Bash(npm test)")];
         expected_allow.extend(aws_allow_rules());
@@ -2167,7 +2237,14 @@ mod tests {
             }]
         );
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
-        assert!(parsed["permissions"].get("ask").is_none());
+        let other_ask_rules: Vec<serde_json::Value> = aws_ask_rules()
+            .into_iter()
+            .filter(|rule| rule != RUN_SCRIPT)
+            .collect();
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::Value::Array(other_ask_rules)
+        );
         assert_eq!(parsed["permissions"]["allow"][0], RUN_SCRIPT);
         fs::remove_dir_all(&dir).ok();
     }
@@ -2185,7 +2262,7 @@ mod tests {
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
         assert_eq!(
             parsed["permissions"]["ask"],
-            serde_json::json!([RUN_SCRIPT])
+            serde_json::Value::Array(aws_ask_rules())
         );
         assert_eq!(parsed["permissions"]["allow"][0], "mcp__aws-mcp__*");
         fs::remove_dir_all(&dir).ok();
@@ -2208,7 +2285,7 @@ mod tests {
                 .unwrap_or_else(|err| panic!("deny {deny} must not fail the merge: {err}"));
 
             let expected_skips = if covers_reads {
-                1 + READ_TOOLS.len()
+                ASK_TOOLS.len() + READ_TOOLS.len()
             } else {
                 1
             };
@@ -2219,10 +2296,18 @@ mod tests {
                 .all(|skip| skip.list == "deny" && skip.user_entry == deny));
             let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
             assert_eq!(parsed["permissions"]["deny"], serde_json::json!([deny]));
-            assert!(parsed["permissions"].get("ask").is_none(), "deny {deny}");
             if covers_reads {
+                assert!(parsed["permissions"].get("ask").is_none(), "deny {deny}");
                 assert!(parsed["permissions"].get("allow").is_none(), "deny {deny}");
             } else {
+                let other_ask_rules: Vec<serde_json::Value> = aws_ask_rules()
+                    .into_iter()
+                    .filter(|rule| rule != deny)
+                    .collect();
+                assert_eq!(
+                    parsed["permissions"]["ask"],
+                    serde_json::Value::Array(other_ask_rules)
+                );
                 assert_eq!(
                     parsed["permissions"]["allow"],
                     serde_json::Value::Array(aws_allow_rules())
@@ -2247,9 +2332,11 @@ mod tests {
             .iter()
             .all(|skip| skip.list == "ask" && skip.user_entry == "mcp__aws-mcp__*"));
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        let mut expected_ask = vec![serde_json::json!("mcp__aws-mcp__*")];
+        expected_ask.extend(aws_ask_rules());
         assert_eq!(
             parsed["permissions"]["ask"],
-            serde_json::json!(["mcp__aws-mcp__*", RUN_SCRIPT])
+            serde_json::Value::Array(expected_ask)
         );
         assert!(parsed["permissions"].get("allow").is_none());
         fs::remove_dir_all(&dir).ok();

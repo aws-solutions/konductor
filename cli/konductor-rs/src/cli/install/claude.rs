@@ -29,7 +29,8 @@
 // When a staged agent declares the `aws-mcp` server or grants one of its
 // tools in frontmatter `tools`, install merges Claude Code permission rules
 // into `<target_dir>/.claude/settings.json`:
-// `permissions.ask` for `aws___run_script`, and `permissions.allow` for the
+// `permissions.ask` for every tool outside the read-only set
+// (`aws_mcp_ask_tools`), and `permissions.allow` for the
 // agents' Kiro `allowedTools`, read from synth's `_mcp_allowed_tools.json`.
 //
 // `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
@@ -48,8 +49,8 @@ use super::kiro_cli::{
 use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
 use super::resource_rewrite::{
-    apply_claude_settings_hooks_only, apply_claude_settings_mcp_rules, mcp_tool_rule,
-    McpPermissionRules, AWS_MCP_ASK_TOOLS, AWS_MCP_SERVER_NAME, CLAUDE_SETTINGS_RELATIVE_PATH,
+    apply_claude_settings_hooks_only, apply_claude_settings_mcp_rules, aws_mcp_ask_tools,
+    mcp_tool_rule, McpPermissionRules, AWS_MCP_SERVER_NAME, CLAUDE_SETTINGS_RELATIVE_PATH,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -249,8 +250,8 @@ impl InstallStrategy for ClaudeInstallStrategy {
             if aws_mcp.sidecar_missing {
                 eprintln!(
                     "konductor install: {} not found (synthed by an older konductor); wrote \
-                     only the aws___run_script ask rule to {}; re-run konductor synth to add \
-                     the AWS MCP allow rules",
+                     only the AWS MCP ask rules to {}; re-run konductor synth to add the AWS \
+                     MCP allow rules",
                     harness_dir
                         .join(AGENTS_CONTENT_TYPE_DIR)
                         .join(MCP_ALLOWED_TOOLS_SIDECAR_FILE)
@@ -408,7 +409,7 @@ type McpAllowedTools = BTreeMap<String, BTreeMap<String, Vec<String>>>;
 /// Builds the rules from the staged agents under `<harness_dir>/agents/`.
 /// Empty when no agent's frontmatter uses `aws-mcp` (see
 /// `agent_uses_mcp_server`). Otherwise `ask`
-/// holds the `AWS_MCP_ASK_TOOLS` rules and `allow` the union of those
+/// holds the `aws_mcp_ask_tools` rules and `allow` the union of those
 /// agents' sidecar tools, minus any ask tool.
 fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan, String> {
     let agents_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
@@ -439,7 +440,8 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
             sidecar_missing: false,
         });
     }
-    rules.ask = AWS_MCP_ASK_TOOLS
+    let ask_tools = aws_mcp_ask_tools();
+    rules.ask = ask_tools
         .iter()
         .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
         .collect();
@@ -455,7 +457,7 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
         .filter_map(|agent| sidecar.get(agent)?.get(AWS_MCP_SERVER_NAME))
         .flatten()
         .map(String::as_str)
-        .filter(|tool| !AWS_MCP_ASK_TOOLS.contains(tool))
+        .filter(|tool| !ask_tools.contains(tool))
         .collect();
     rules.allow = allowed
         .into_iter()
@@ -1879,7 +1881,11 @@ mod tests {
 
     const AWS_AGENT_MD: &[u8] =
         b"---\nname: k-x\nmcpServers:\n- aws-mcp:\n    command: uvx\n---\n\nBody\n";
-    const RUN_SCRIPT_RULE: &str = "mcp__aws-mcp__aws___run_script";
+    const ASK_RULES: [&str; 3] = [
+        "mcp__aws-mcp__aws___get_presigned_url",
+        "mcp__aws-mcp__aws___get_tasks",
+        "mcp__aws-mcp__aws___run_script",
+    ];
 
     fn seed_mcp_allowed_tools_sidecar(repo_root: &Path, sidecar: serde_json::Value) {
         let dir = repo_root
@@ -1932,10 +1938,7 @@ mod tests {
         install(&target_dir, &repo_root).expect("install must succeed");
 
         let settings = read_project_settings(&target_dir);
-        assert_eq!(
-            settings["permissions"]["ask"],
-            serde_json::json!([RUN_SCRIPT_RULE])
-        );
+        assert_eq!(settings["permissions"]["ask"], serde_json::json!(ASK_RULES));
         assert_eq!(
             settings["permissions"]["allow"],
             serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
@@ -1957,7 +1960,7 @@ mod tests {
     }
 
     #[test]
-    fn install_without_the_sidecar_writes_only_the_ask_rule() {
+    fn install_without_the_sidecar_writes_only_the_ask_rules() {
         let target_dir = scratch_dir("aws-rules-no-sidecar-target");
         let repo_root = scratch_dir("aws-rules-no-sidecar-repo");
         seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
@@ -1965,10 +1968,7 @@ mod tests {
         install(&target_dir, &repo_root).expect("install must succeed");
 
         let settings = read_project_settings(&target_dir);
-        assert_eq!(
-            settings["permissions"]["ask"],
-            serde_json::json!([RUN_SCRIPT_RULE])
-        );
+        assert_eq!(settings["permissions"]["ask"], serde_json::json!(ASK_RULES));
         assert!(settings["permissions"].get("allow").is_none());
 
         fs::remove_dir_all(&target_dir).ok();
@@ -2123,7 +2123,7 @@ mod tests {
     }
 
     #[test]
-    fn install_writes_the_ask_rule_for_a_tools_only_aws_mcp_grant() {
+    fn install_writes_the_ask_rules_for_a_tools_only_aws_mcp_grant() {
         let target_dir = scratch_dir("aws-rules-tools-only-target");
         let repo_root = scratch_dir("aws-rules-tools-only-repo");
         seed_synthed_agent(
@@ -2136,7 +2136,7 @@ mod tests {
 
         assert_eq!(
             read_project_settings(&target_dir)["permissions"]["ask"],
-            serde_json::json!([RUN_SCRIPT_RULE])
+            serde_json::json!(ASK_RULES)
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -2158,7 +2158,7 @@ mod tests {
 
         assert_eq!(
             read_project_settings(&target_dir)["permissions"]["ask"],
-            serde_json::json!([RUN_SCRIPT_RULE])
+            serde_json::json!(ASK_RULES)
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -2167,6 +2167,8 @@ mod tests {
 
     /// The allow rules come from the real agent specs: the union of the
     /// aws-mcp agents' Kiro `allowedTools`, none of which may be an ask tool.
+    /// A spec that starts allowing a new tool fails here until the tool is
+    /// classified in `AWS_MCP_KNOWN_TOOLS`.
     #[test]
     fn real_agent_specs_allow_five_read_only_aws_mcp_tools_and_never_an_ask_tool() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -2181,7 +2183,7 @@ mod tests {
                 .as_ref()
                 .map(|kiro| kiro.allowed_tools.clone())
                 .unwrap_or_default();
-            for ask_tool in AWS_MCP_ASK_TOOLS {
+            for ask_tool in aws_mcp_ask_tools() {
                 assert!(
                     !kiro_allowed.contains(&format!("@{AWS_MCP_SERVER_NAME}/{ask_tool}")),
                     "agent '{}' allows the ask-only tool {ask_tool}",
