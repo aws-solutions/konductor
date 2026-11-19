@@ -11,6 +11,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[path = "../src/cli/synth/orchestrator_names.rs"]
+mod orchestrator_names;
+use orchestrator_names::ORCHESTRATOR_NAMES;
+
 const SKILLS_HEADING: &str = "## Your skills";
 const ORCHESTRATOR_MARKER: &str = "Your loaded orchestration rules decide";
 const ROUTING_PHRASE: &str = "route it to that specialist instead of doing it yourself";
@@ -195,7 +199,7 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
             }
             assert_eq!(
                 block.contains(ORCHESTRATOR_MARKER),
-                name.starts_with("konductor"),
+                ORCHESTRATOR_NAMES.contains(&name.as_str()),
                 "{harness}/{name}: orchestrator paragraph"
             );
             for line in block.lines().filter(|l| l.starts_with("- ")) {

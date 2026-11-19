@@ -24,7 +24,7 @@ Do NOT use for private or authenticated resources that require credentialed acce
 
 ## Tools
 
-Use `WebFetch` to retrieve content from a known URL. When no URL is known, use `WebSearch` to find relevant public and internal sources, then `WebFetch` the pages identified.
+Use `WebFetch` to retrieve content from a known URL. When no URL is known, use `WebSearch` to find relevant public sources, then `WebFetch` the pages identified.
 
 ## Search Strategy
 
@@ -58,9 +58,9 @@ Always prefer Tier 1–2 sources. Use Tier 3–4 only to supplement or when high
 Example:
 
 ```
-### Finding: S3 Event Notifications support SQS FIFO queues (since Nov 2023)
+### Finding: S3 Event Notifications can't target SQS FIFO queues directly; route them through EventBridge
 - **Source:** https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html
-- **Version:** Current (verified May 2025)
+- **Version:** Current (verified Nov 2026)
 - **Confidence:** High (official AWS docs)
 ```
 

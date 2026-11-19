@@ -16,8 +16,12 @@ from pathlib import Path
 REPO = "aws-solutions/konductor"
 SHIPPED = {"LICENSE.txt", "NOTICE.txt"}
 # `](target)` and `](<target>)` for markdown links and images, and `[label]: target`
-# reference definitions.
-MD_LINK = re.compile(r"(\]\(<)([^>\n]+)(?=>)|(\]\()([^)<\s]+)|^(\[[^\]\n]+\]:[ \t]*)(\S+)", re.M)
+# and `[label]: <target>` reference definitions.
+MD_LINK = re.compile(
+    r"(\]\(<)([^>\n]+)(?=>)|(\]\()([^)<\s]+)"
+    r"|^(\[[^\]\n]+\]:[ \t]*<)([^>\n]+)(?=>)|^(\[[^\]\n]+\]:[ \t]*)([^<\s]\S*)",
+    re.M,
+)
 # src, href and srcset attributes of inline HTML, in either quote style.
 HTML_ATTR = re.compile(r"""(\b(?:src|href|srcset)=)(["'])(.*?)\2""", re.S)
 ABSOLUTE = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|#|/)", re.I)
