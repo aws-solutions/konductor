@@ -1986,6 +1986,78 @@ mod tests {
         }
     }
 
+    /// On a `$HOME` install the telemetry hooks and the aws-mcp rules share
+    /// `~/.claude/settings.json`. Both must land, and the manifest must
+    /// track the file once, with the hash of its final content.
+    #[test]
+    fn claude_home_install_shares_settings_json_between_hooks_and_aws_mcp_rules() {
+        let home = HomeGuard::new("claude-home-shared-settings-home");
+        let target = home.scratch.clone();
+        let repo_root = scratch_dir("claude-home-shared-settings-repo");
+        let agents_dir = repo_root
+            .join("dist")
+            .join(claude::CLAUDE_HARNESS_DIR)
+            .join("agents");
+        fs::create_dir_all(&agents_dir).unwrap();
+        fs::write(
+            agents_dir.join("k-x.md"),
+            b"---\nname: k-x\nmcpServers:\n- aws-mcp:\n    command: uvx\n---\n\nBody\n",
+        )
+        .unwrap();
+        fs::write(
+            agents_dir.join("_mcp_allowed_tools.json"),
+            br#"{"k-x": {"aws-mcp": ["aws___list_regions"]}}"#,
+        )
+        .unwrap();
+
+        claude::ClaudeInstallStrategy
+            .install_from_local(
+                &target,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        let settings_path = target.join(".claude/settings.json");
+        let bytes = fs::read(&settings_path).unwrap();
+        let settings: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        for event in ["SessionStart", "SubagentStart"] {
+            assert!(
+                settings["hooks"][event]
+                    .to_string()
+                    .contains("__telemetry-hook"),
+                "{event} telemetry hook missing: {settings}"
+            );
+        }
+        assert_eq!(
+            settings["permissions"]["ask"],
+            serde_json::json!([
+                "mcp__aws-mcp__aws___get_presigned_url",
+                "mcp__aws-mcp__aws___get_tasks",
+                "mcp__aws-mcp__aws___run_script"
+            ])
+        );
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        assert!(!target.join(".claude/settings.local.json").exists());
+
+        let manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        let entries: Vec<&manifest::ManifestFile> = manifest
+            .get("claude")
+            .unwrap()
+            .files
+            .iter()
+            .filter(|file| file.path == ".claude/settings.json")
+            .collect();
+        assert_eq!(entries.len(), 1, "{entries:?}");
+        assert_eq!(entries[0].sha256, Some(artifact::sha256_hex(&bytes)));
+
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     #[test]
     fn install_no_telemetry_clears_an_earlier_opt_in() {
         let _home = HomeGuard::new("no-telemetry-clears-opt-in-home");
