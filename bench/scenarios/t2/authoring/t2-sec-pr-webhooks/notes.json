@@ -1,0 +1,3 @@
+{
+  "notes": "The main traps: signature verification uses parsed JSON not raw body (cross-file: docs say 'raw body'), plain string equality for HMAC comparison (vs timingSafeEqual in other handlers), missing timestamp validation (docs specify 5-minute window), delivery IDs have no time window (docs require 'configured window'), hard-coded secret fallback, and secret leaked in debug logs. Quick reviews might miss that the timestamp header is read but never validated, or that delivery ID 'tracking' exists but without expiration. The PUBLIC_KEY_ID in security.js is a decoy - it's public information."
+}

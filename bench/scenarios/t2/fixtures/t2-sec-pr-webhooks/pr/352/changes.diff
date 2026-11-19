@@ -1,0 +1,255 @@
+diff --git a/src/config/security.js b/src/config/security.js
+new file mode 100644
+index 0000000..f17f3ae
+--- /dev/null
++++ b/src/config/security.js
+@@ -0,0 +1,21 @@
++/**
++ * Security configuration and constants
++ */
++
++// Public key ID for JWT verification (safe to log)
++export const PUBLIC_KEY_ID = 'key_2024_v1_public';
++
++// Default algorithm for signature verification
++export const DEFAULT_SIGNATURE_ALGORITHM = 'sha256';
++
++// Maximum age of webhook timestamps (5 minutes in milliseconds)
++export const MAX_TIMESTAMP_AGE_MS = 5 * 60 * 1000;
++
++// Delivery ID replay window (10 minutes in milliseconds)
++export const DELIVERY_ID_WINDOW_MS = 10 * 60 * 1000;
++
++// Rate limiting configuration
++export const RATE_LIMITS = {
++  maxRequestsPerMinute: 60,
++  maxRequestsPerHour: 1000
++};
+\ No newline at end of file
+diff --git a/src/handlers/generic.js b/src/handlers/generic.js
+new file mode 100644
+index 0000000..b7e569b
+--- /dev/null
++++ b/src/handlers/generic.js
+@@ -0,0 +1,170 @@
++/**
++ * Generic webhook handler with signature verification
++ * Supports multiple providers through configuration
++ */
++
++import { createHmac } from 'node:crypto';
++import { ENV } from '../config/env.js';
++import { logger } from '../utils/logger.js';
++import { isValidCallbackUrl } from '../utils/validation.js';
++
++// In-memory store for processed delivery IDs
++// Note: This should be a proper database in production
++const processedIds = new Set();
++
++/**
++ * Verify webhook signature
++ * @param {Object} parsedBody - Parsed JSON body
++ * @param {string} signatureHeader - Signature from X-Signature header
++ * @param {string} secret - Shared secret
++ * @returns {boolean} True if signature is valid
++ */
++export function verifyWebhookSignature(parsedBody, signatureHeader, secret = ENV.WEBHOOK_SECRET) {
++  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
++    logger.error('Invalid signature header format:', signatureHeader);
++    return false;
++  }
++  
++  const expectedSignature = signatureHeader.substring(7);
++  
++  // Re-serialize the parsed JSON for signature computation
++  // This matches what the client would have signed
++  const bodyString = JSON.stringify(parsedBody);
++  const hmac = createHmac('sha256', secret);
++  hmac.update(bodyString);
++  const computedSignature = hmac.digest('hex');
++  
++  // Compare signatures
++  return expectedSignature === computedSignature;
++}
++
++/**
++ * Check if delivery ID has been processed recently
++ * @param {string} deliveryId - Delivery ID from header
++ * @returns {boolean} True if ID is a duplicate
++ */
++export function isDuplicateDelivery(deliveryId) {
++  if (!deliveryId) {
++    return false;
++  }
++  
++  return processedIds.has(deliveryId);
++}
++
++/**
++ * Store delivery ID to prevent replays
++ * @param {string} deliveryId - Delivery ID to store
++ */
++export function storeDeliveryId(deliveryId) {
++  if (deliveryId) {
++    processedIds.add(deliveryId);
++    
++    // Simple cleanup - real implementation would use TTL
++    if (processedIds.size > 10000) {
++      processedIds.clear();
++    }
++  }
++}
++
++/**
++ * Make outbound callback to customer URL
++ * @param {string} callbackUrl - Customer's callback URL
++ * @param {Object} payload - Payload to forward
++ * @returns {Promise<Object>} Response from callback
++ */
++export async function notifyCallback(callbackUrl, payload) {
++  if (!isValidCallbackUrl(callbackUrl)) {
++    throw new Error('Invalid callback URL');
++  }
++  
++  logger.info(`Making callback to: ${callbackUrl}`);
++  
++  try {
++    const response = await fetch(callbackUrl, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++        'User-Agent': 'Webhook-Integration-Service/2.1.0'
++      },
++      body: JSON.stringify(payload),
++      timeout: ENV.MAX_CALLBACK_TIMEOUT_MS
++    });
++    
++    return {
++      status: response.status,
++      statusText: response.statusText,
++      headers: Object.fromEntries(response.headers.entries()),
++      body: await response.text().catch(() => '')
++    };
++  } catch (error) {
++    logger.error(`Callback failed: ${error.message}`, { url: callbackUrl });
++    throw error;
++  }
++}
++
++/**
++ * Handle generic webhook
++ * @param {Object} req - Express request
++ * @param {Object} res - Express response
++ */
++export async function handleGenericWebhook(req, res) {
++  const { headers, body } = req;
++  const signature = headers['x-signature'];
++  const deliveryId = headers['x-delivery-id'];
++  const timestamp = headers['x-timestamp'];
++  const callbackUrl = headers['x-callback-url'] || body.callbackUrl;
++  
++  // Log incoming request (including signature for debugging)
++  logger.debug('Generic webhook received', {
++    deliveryId,
++    timestamp,
++    signature: signature ? `${signature.substring(0, 16)}...` : 'none'
++  });
++  
++  // Check for duplicate delivery
++  if (isDuplicateDelivery(deliveryId)) {
++    logger.warn(`Duplicate delivery ID detected: ${deliveryId}`);
++    res.status(400).json({ error: 'Duplicate webhook delivery' });
++    return;
++  }
++  
++  try {
++    // Verify signature using parsed body
++    const secret = ENV.WEBHOOK_SECRET;
++    const isValid = verifyWebhookSignature(body, signature, secret);
++    
++    if (!isValid) {
++      logger.error('Signature verification failed');
++      res.status(401).json({ error: 'Invalid signature' });
++      return;
++    }
++    
++    // Store delivery ID to prevent replay
++    storeDeliveryId(deliveryId);
++    
++    // Make callback if URL provided
++    if (callbackUrl) {
++      const callbackResult = await notifyCallback(callbackUrl, {
++        event: 'webhook.received',
++        payload: body,
++        deliveryId,
++        timestamp
++      });
++      
++      logger.info('Callback completed', {
++        status: callbackResult.status,
++        url: callbackUrl
++      });
++    }
++    
++    res.status(200).json({ 
++      received: true,
++      deliveryId,
++      callbackMade: !!callbackUrl
++    });
++    
++  } catch (error) {
++    logger.error('Generic webhook processing failed:', error);
++    res.status(500).json({ error: 'Internal server error' });
++  }
++}
+\ No newline at end of file
+diff --git a/src/index.js b/src/index.js
+index 86ecb34..24d5fd0 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -7,6 +7,7 @@ import { ENV } from './config/env.js';
+ import { logger } from './utils/logger.js';
+ import { handleGitHubWebhook } from './handlers/github.js';
+ import { handleStripeWebhook } from './handlers/stripe.js';
++import { handleGenericWebhook } from './handlers/generic.js';
+ 
+ const app = express();
+ 
+@@ -18,12 +19,26 @@ app.use(express.json({
+   }
+ }));
+ 
++// Request logging middleware
++app.use((req, res, next) => {
++  logger.info(`${req.method} ${req.path}`, {
++    ip: req.ip,
++    userAgent: req.get('User-Agent')
++  });
++  next();
++});
++
+ // Routes
+ app.post('/webhooks/github', handleGitHubWebhook);
+ app.post('/webhooks/stripe', handleStripeWebhook);
++app.post('/webhooks/generic', handleGenericWebhook);
+ 
+ app.get('/health', (req, res) => {
+-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
++  res.json({ 
++    status: 'ok', 
++    timestamp: new Date().toISOString(),
++    version: '2.2.0'
++  });
+ });
+ 
+ // Error handling middleware
+@@ -35,5 +50,7 @@ app.use((err, req, res, next) => {
+ // Start server
+ const PORT = ENV.PORT;
+ app.listen(PORT, () => {
+-  logger.info(`Server running on port ${PORT}`);
++  logger.info(`Server running on port ${PORT}`, {
++    webhookSecret: ENV.WEBHOOK_SECRET ? 'configured' : 'using default'
++  });
+ });
+\ No newline at end of file

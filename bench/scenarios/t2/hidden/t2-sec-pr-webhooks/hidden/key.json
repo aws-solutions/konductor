@@ -1,0 +1,118 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/handlers/generic.js",
+      "line": 30,
+      "endLine": 35,
+      "severity": "high",
+      "fix": [
+        "raw body",
+        "request body",
+        "buffer",
+        "original"
+      ],
+      "finding": "Signature verification uses re-serialized parsed JSON instead of the raw request body, which can cause verification failures if the client signed a different JSON serialization."
+    },
+    {
+      "id": "k2",
+      "file": "src/handlers/generic.js",
+      "line": 38,
+      "endLine": 38,
+      "severity": "medium",
+      "fix": [
+        "timingSafeEqual",
+        "constant time",
+        "secure compare"
+      ],
+      "finding": "Signature comparison uses plain string equality (===) which is vulnerable to timing attacks that could leak the expected signature."
+    },
+    {
+      "id": "k3",
+      "file": "src/handlers/generic.js",
+      "line": 49,
+      "endLine": 65,
+      "severity": "high",
+      "fix": [
+        "timestamp",
+        "time window",
+        "expiry",
+        "ttl"
+      ],
+      "finding": "Delivery ID tracking has no time window - IDs are stored indefinitely in memory, violating the replay protection requirement in docs/security.md for a configured window."
+    },
+    {
+      "id": "k4",
+      "file": "src/handlers/generic.js",
+      "line": 100,
+      "endLine": 115,
+      "severity": "critical",
+      "fix": [
+        "timestamp validation",
+        "X-Timestamp",
+        "5 minutes",
+        "age check"
+      ],
+      "finding": "The handler ignores the X-Timestamp header and never validates timestamp age, allowing replay attacks beyond the 5-minute window specified in docs/provider-spec.md."
+    },
+    {
+      "id": "k5",
+      "file": "src/config/env.js",
+      "line": 8,
+      "endLine": 8,
+      "severity": "high",
+      "fix": [
+        "required",
+        "throw error",
+        "exit",
+        "no default"
+      ],
+      "finding": "WEBHOOK_SECRET falls back to a hard-coded default when the environment variable is missing, which would use the same weak secret in production if misconfigured."
+    },
+    {
+      "id": "k6",
+      "file": "src/handlers/generic.js",
+      "line": 120,
+      "endLine": 124,
+      "severity": "medium",
+      "fix": [
+        "redact",
+        "mask",
+        "omit",
+        "not log"
+      ],
+      "finding": "The debug log prints the signature header which contains the HMAC, potentially leaking it in logs if LOG_LEVEL=debug is enabled in production."
+    },
+    {
+      "id": "k7",
+      "file": "src/index.js",
+      "line": 52,
+      "endLine": 56,
+      "severity": "low",
+      "fix": [
+        "not log",
+        "redact",
+        "omit",
+        "mask"
+      ],
+      "finding": "The server startup log prints whether the webhook secret is configured, which could indicate to an attacker whether the default secret is being used."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/config/security.js",
+      "line": 5,
+      "endLine": 5,
+      "why": "PUBLIC_KEY_ID is a public identifier for JWT verification keys, not a secret, so it's safe to log or expose in configuration."
+    },
+    {
+      "id": "d2",
+      "file": "src/handlers/generic.js",
+      "line": 90,
+      "endLine": 95,
+      "why": "The fetch timeout uses MAX_CALLBACK_TIMEOUT_MS from environment configuration, which is correct - timeouts should be configurable based on deployment needs."
+    }
+  ]
+}
