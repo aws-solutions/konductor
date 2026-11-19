@@ -1,0 +1,8 @@
+option_id,description,monthly_cost_usd,implementation_effort_weeks,maintenance_cost_usd_month
+base,Current sequential flow,0,0,0
+parallel,Parallel pricing and inventory,0,2,50
+cache,Pricing service cache,800,3,100
+cache_parallel,Cache plus parallel inventory,800,4,150
+load_balancer,Add load balancer for pricing,300,1,75
+db_upgrade,Upgrade inventory database,600,4,200
+cdn,Add CDN for static assets,400,2,80

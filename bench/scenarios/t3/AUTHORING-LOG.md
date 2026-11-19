@@ -73,3 +73,10 @@
 | t3-db-tenant-isolation | review | glm-5 | 3.37 |
 | t3-dev-module-boundary | expertKey | glm-5 | 1.21 |
 | t3-db-tenant-isolation | expertKey | glm-5 | 1.42 |
+| t3-nfr-latency-budget | author | deepseek-3.2 | 7.22 |
+| t3-db-audit-retention-twin | author(twin) | gpt-5.6-luna | 1.89 |
+| t3-nfr-latency-budget | map | glm-5 | 0.95 |
+| t3-db-audit-retention-twin | review | qwen3-coder-next | 0.46 |
+| t3-nfr-latency-budget | review | minimax-m2.5 | 1.35 |
+| t3-db-audit-retention-twin | expertKey | glm-5 | 1.22 |
+| t3-nfr-latency-budget | expertKey | glm-5 | 1.53 |
