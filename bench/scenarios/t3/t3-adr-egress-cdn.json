@@ -103,5 +103,51 @@
         "note": "Tests check all hard limits and calculations; all needed numbers are in fixture and format requirements are clear."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the superseded 120 TB monthly estimate from the pilot must not be used, and uses the 180 TB production forecast from traffic.json and requirements.md instead.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Calculates the tiered egress cost correctly by applying each tier rate only to its incremental range (e.g., first 10 TB at first-tier rate, next 40 TB at second-tier rate, etc.), not by applying the highest tier rate to the entire volume.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Rejects object-direct because its measured 1,400 ms p95 start time exceeds the 800 ms hard limit, noting that the low first-tier rate ($0.012/GB) is irrelevant when the option fails a non-negotiable performance constraint.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Weighs cdn-payg's lower monthly cost (USD 6,820) against its thin headroom (780 ms vs. 800 ms limit, 1.6 Gbps vs. 1.5 Gbps requirement), explaining why the cheaper option is riskier operationally.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Verifies the committed plan cost (USD 8,600 including overage and delivery charges) stays within the USD 9,500 budget ceiling and notes the margin for variance.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Notes that the 2.8 Gbps lab burst mentioned in operations.md is planning context only and does not substitute for the sustained 1.5 Gbps requirement measured over 15 minutes.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "States the reversibility condition: revisit the 150 TB commitment if rolling three-month volume falls materially below the commit level, or if measured headroom degrades.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Picks object-direct because its first-tier rate of $0.012/GB is the cheapest, without calculating the full tiered cost or checking the 1,400 ms start time against the 800 ms limit.",
+      "Calculates cdn-committed cost as 150 TB × commit rate without accounting for the 30 TB overage at the higher $0.045/GB rate.",
+      "Selects cdn-payg because it is cheapest and 'meets all limits,' ignoring the 20 ms latency headroom and 0.1 Gbps throughput margin as operational risk.",
+      "Uses the 120 TB pilot estimate from the README warning instead of the 180 TB production forecast, producing an incorrect cost calculation.",
+      "Applies the overage rate ($0.045/GB) to the entire 180 TB for cdn-committed instead of only the 30 TB above the 150 TB commit."
+    ]
   }
 }
