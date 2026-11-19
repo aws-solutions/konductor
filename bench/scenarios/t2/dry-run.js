@@ -4,9 +4,9 @@
 
 // Free dry run of one T2 task: scores the reference solution, an empty stub and a dump that flags every changed line
 // (or every subsection of a design document)
-// three times each with the runner's own check code, and reports whether the scores repeat. The dump is reported, not gated.
+// three times each with the runner's own check code, and reports whether the scores repeat.
 // Usage: node dry-run.js <task-id>   (prints JSON; exit 1 when a gate fails)
-// Gates: reference >= 95, stub <= 20, every check passes the reference, identical results over 3 repeats.
+// Gates: reference >= 95, stub <= 20, dump <= 55, every check passes the reference, identical results over 3 repeats.
 // Score = (0.5 x hidden-test share + 0.2 x substance-check share) / 0.7 x 100: the default weights with the
 // rubric left out, as a run with no judge is scored.
 
@@ -86,6 +86,8 @@ const gates = {
   referenceAllChecks: out.reference.checks.every((c) => c.startsWith('pass')),
   stub: out.stub.score <= 20,
   repeatable: kinds.every((k) => out[k].repeatable),
+  // A list that names every changed line or every subsection must not pass for a review.
+  ...(out.dump ? { dump: out.dump.score <= 55 } : {}),
 };
 console.log(JSON.stringify({ id, ...out, gates }, null, 1));
 process.exit(Object.values(gates).every(Boolean) ? 0 : 1);
