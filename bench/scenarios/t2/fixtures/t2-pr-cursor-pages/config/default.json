@@ -1,0 +1,7 @@
+{
+  "port": 4100,
+  "host": "127.0.0.1",
+  "defaultPageSize": 20,
+  "maxPageSize": 100,
+  "dataDirectory": "src/data"
+}

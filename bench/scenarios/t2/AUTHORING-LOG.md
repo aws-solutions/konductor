@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 163.32 credits over 57 calls.
+Total captured: 167.59 credits over 60 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -63,3 +63,6 @@ Total captured: 163.32 credits over 57 calls.
 | 2026-11-19T21:42:02.582Z | t2-dr-data-erasure | expert | gpt-5.6-luna | 14 | 0.42 | ok |
 | 2026-11-19T21:42:29Z | t2-dr-data-erasure | map | glm-5 | 24 | 0.51 | ok |
 | 2026-11-19T21:43:11Z | t2-dr-data-erasure | review | qwen3-coder-next | 42 | 0.17 | ok |
+| 2026-11-19T21:45:22Z | t2-pr-cursor-pages | author | gpt-5.6-luna | 131 | 2.66 | ok |
+| 2026-11-19T21:45:40Z | t2-pr-cursor-pages | map | glm-5 | 16 | 0.52 | ok |
+| 2026-11-19T21:46:18Z | t2-pr-cursor-pages | review | glm-5 | 38 | 1.08 | ok |
