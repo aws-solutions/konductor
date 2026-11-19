@@ -106,3 +106,7 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-bug-event-listeners | review | glm-5 | 8.64 |
 | t1-ref-dep-upgrade | author | gpt-5.6-luna | 2.97 |
 | t1-ref-dep-upgrade | map | glm-5 | 0.16 |
+| t1-ref-dep-upgrade | review | glm-5 | 10.95 |
+| t1-impl-flag-rollout | author | minimax-m2.5 | 17.55 |
+| t1-impl-flag-rollout | map | glm-5 | 0.16 |
+| t1-impl-flag-rollout | review | gpt-5.6-luna | 1.22 |

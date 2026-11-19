@@ -1,0 +1,12 @@
+{
+  "title": "March returns",
+  "columns": [
+    { "key": "region", "label": "Region" },
+    { "key": "units", "label": "Units" },
+    { "key": "reason", "label": "Reason" }
+  ],
+  "rows": [
+    { "region": "North", "units": 2, "reason": "Damaged" },
+    { "region": "South", "units": 1, "reason": "Wrong size" }
+  ]
+}
