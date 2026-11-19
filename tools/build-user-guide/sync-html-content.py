@@ -101,8 +101,27 @@ EDITS = [
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
      ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.',
      'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
-     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
+     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect and k-developer request the eight known aws-mcp tools by name (such as mcp__aws-mcp__aws___search_documentation), and k-browser requests mcp__playwright-mcp__*, rather than launching the servers themselves. On Kiro CLI the same two agents list the same eight by name (such as @aws-mcp/aws___search_documentation).'
      ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'),
+    # ---- k-architect and k-developer name the known aws-mcp tools -----------
+    ("concepts: k-architect per-runtime tool lists",
+     'lists tools as ' + _mono('["@builtin", "subagent", "@aws-mcp"]')
+     + ', while the Claude Code configuration lists '
+     + _mono('["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite", "mcp__aws-mcp__*"]')
+     + '.',
+     'lists tools as ' + _mono('@builtin') + ' plus the eight known aws-mcp tools by name (such as '
+     + _mono('@aws-mcp/aws___search_documentation') + '), while the Claude Code configuration lists '
+     + _mono('["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite", "Skill"]')
+     + ' plus the same eight (such as ' + _mono('mcp__aws-mcp__aws___search_documentation') + ').'),
+    ("install claude: aws-mcp tools by name",
+     ' via the glob ' + _mono('mcp__aws-mcp__*') + '.',
+     ' by name, the eight known ones, such as '
+     + _mono('mcp__aws-mcp__aws___search_documentation')
+     + ', so a tool the hosted server adds later is not granted until it is classified.'),
+    ("runtime differences: MCP servers row",
+     'requested via tool globs (mcp__aws-mcp__*); you configure the server yourself',
+     'requested by tool name (mcp__aws-mcp__aws___search_documentation and the other known aws-mcp '
+     'tools) or glob (mcp__playwright-mcp__*); you configure the server yourself'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',

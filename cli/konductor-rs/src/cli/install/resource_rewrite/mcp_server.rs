@@ -1025,7 +1025,7 @@ mod tests {
         let skills_dir = dir.join("skills");
         let bin_dir = dir.join(".konductor").join("bin");
         // Pre-existing tools/allowedTools entries (e.g. k-developer's
-        // own `@aws-mcp` grant) must survive -- this pass appends,
+        // own `@aws-mcp/<tool>` grants) must survive -- this pass appends,
         // never overwrites the array.
         let mut value = serde_json::json!({
             "resources": ["skill://skills/constraints/SKILL.md"],

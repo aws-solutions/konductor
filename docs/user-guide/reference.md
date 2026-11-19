@@ -424,8 +424,9 @@ Every agent declares `context/k-core-rules.md`. The three orchestrators also dec
 | `aws-mcp` | `konductor`, `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1`, `--skip-auth` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
-In Claude Code `k-architect`, `k-developer` and `k-browser` request the corresponding tools via the
-globs `mcp__aws-mcp__*` and `mcp__playwright-mcp__*` rather than launching the servers themselves.
+In Claude Code `k-architect` and `k-developer` request the eight known `aws-mcp` tools by name
+(`mcp__aws-mcp__<tool>`), and `k-browser` requests `mcp__playwright-mcp__*`, rather than launching
+the servers themselves. On Kiro CLI the same two agents list the same eight as `@aws-mcp/<tool>`.
 `konductor` requests only five read-only `aws-mcp` tools: `aws___retrieve_skill`,
 `aws___search_documentation`, `aws___read_documentation`, `aws___list_regions` and
 `aws___get_regional_availability`.

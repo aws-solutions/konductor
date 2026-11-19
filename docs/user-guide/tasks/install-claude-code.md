@@ -216,9 +216,9 @@ the upstream source of truth for the package (`mcp-proxy-for-aws-cli`) and args.
 its own `aws-mcp` server key rather than the toolkit README's `aws` key, for continuity with
 AWS's own getting-started docs, OAuth commands, and existing configs.
 
-**AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
-server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
-AWS-API-acting ones (see Tool grant below). `konductor` requests only five read-only tools:
+**AWS documentation lookups:** `k-architect` and `k-developer` request the eight known `aws-mcp`
+tools by name (`mcp__aws-mcp__<tool>`), including the AWS-API-acting ones (see Tool grant
+below). `konductor` requests only five read-only tools:
 `aws___retrieve_skill`, `aws___search_documentation`, `aws___read_documentation`,
 `aws___list_regions` and `aws___get_regional_availability`. Each
 agent's rendered `.md` file carries an `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
@@ -234,11 +234,14 @@ The server starts with `--skip-auth`, so documentation search and skills work wi
 credentials; configure credentials (`~/.aws/credentials` or environment variables) only for calls
 that act on an AWS account.
 
-**Tool grant: the whole server for `k-architect` and `k-developer`.** These two grant every tool
-the server exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,
-`aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
-`aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
-which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
+**Tool grant: eight named tools for `k-architect` and `k-developer`.** These two grant the
+server's eight known tools by name: the five AWS knowledge/documentation tools
+(`aws___search_documentation`, `aws___retrieve_skill`, `aws___read_documentation`,
+`aws___list_regions`, `aws___get_regional_availability`) and the three AWS-API-acting tools
+(`aws___run_script`, which runs sandboxed Python with AWS API access; `aws___get_presigned_url`;
+`aws___get_tasks`). The list is the server's tools as of when it was last checked against
+`mcp-proxy-for-aws-cli` 1.7.0. The proxy relays the hosted server's tool list, so AWS can add
+tools; a new one stays unavailable to these agents until Konductor classifies it.
 `konductor` gets none of the AWS-API-acting tools on Claude Code.
 `konductor install --harness claude` puts an ask rule for each of the three AWS-API-acting tools
 in `permissions.ask`: every server tool outside the five read-only ones. Claude Code asks before

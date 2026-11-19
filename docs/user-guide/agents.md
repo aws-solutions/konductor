@@ -335,7 +335,7 @@ The most capable agent in the package, on the strongest model.
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code), the same model every agent runs |
 | **SOPs** (3) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` |
 | **Skills** | **37** — the largest share of any agent. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
-| **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |
+| **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`. Both runtimes grant the server's 8 known tools by name (`@aws-mcp/<tool>` in Kiro CLI's `tools`, `mcp__aws-mcp__<tool>` in Claude Code's), including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`. A tool the hosted server adds later is not granted until it is classified. Kiro CLI's `allowedTools` pre-approves five of them (documentation search, documentation read, skill retrieval, region list, regional availability) |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
@@ -440,7 +440,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
 | Cross-agent delegation | only `konductor` holds `subagent` on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
-| MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
+| MCP servers | declared and launched from `dependencies.mcpRegistry` | requested by tool name (`mcp__aws-mcp__<tool>`) or glob (`mcp__playwright-mcp__*`); you configure the server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
 | `k-browser` / `k-media-analyzer` | reads pre-approved; writes and shell ask first | write and shell granted |

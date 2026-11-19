@@ -593,7 +593,13 @@ not per individual commit.
   (`mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and
   `mcp__aws-mcp__aws___get_tasks`) when an installed agent uses the `aws-mcp` server, so
   Claude Code asks before every call to them. Install takes the server's eight tools from a
-  fixed list, not a live call. An agent uses it when its frontmatter lists
+  fixed list, not a live call: the tools the server listed through `mcp-proxy-for-aws-cli`
+  1.7.0 when the list was last checked. The proxy relays the hosted server's list, so the server
+  can add tools. `k-architect` and `k-developer` now grant those eight by name on both Claude
+  Code (`mcp__aws-mcp__<tool>`) and Kiro CLI (`@aws-mcp/<tool>`) instead of the whole server
+  (`mcp__aws-mcp__*`, `@aws-mcp`), so a tool the server adds later stays unavailable to them
+  until it is classified, and a test checks every agent spec's named tools against the list.
+  An agent uses the server when its frontmatter lists
   it under `mcpServers` or its `tools` grants `mcp__aws-mcp` or a tool under it, and CRLF
   frontmatter is read too; an agent file whose frontmatter cannot be read is skipped with a
   warning naming the file. These tools act on AWS with your credentials; `aws___run_script`

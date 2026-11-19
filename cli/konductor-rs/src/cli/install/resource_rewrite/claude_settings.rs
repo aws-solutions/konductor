@@ -456,9 +456,12 @@ pub(super) fn apply_claude_settings_grant(
 
 pub(crate) const AWS_MCP_SERVER_NAME: &str = "aws-mcp";
 
-/// Every tool the `aws-mcp` server lists (`tools/list` of
-/// `mcp-proxy-for-aws-cli` 1.7.0, the version the agent specs pin). Fixed
-/// here so install never depends on a live call to the server.
+/// Every tool the `aws-mcp` server listed (`tools/list` through
+/// `mcp-proxy-for-aws-cli` 1.7.0) when this list was last checked. The proxy
+/// relays the hosted server's list, so the server can add tools. The agents
+/// are granted only these tools by name, so a new one stays unavailable to
+/// them until it is classified here. Fixed so install never depends on a live
+/// call to the server.
 pub(in crate::cli::install) const AWS_MCP_KNOWN_TOOLS: &[&str] = &[
     "aws___get_presigned_url",
     "aws___get_regional_availability",
@@ -2224,6 +2227,80 @@ mod tests {
                 "{tool} is not a known tool"
             );
         }
+    }
+
+    /// The hosted server can add tools, so no spec may grant the whole
+    /// server: a new tool must stay unavailable until it is classified.
+    #[test]
+    fn real_agent_specs_grant_only_known_aws_mcp_tools_by_name() {
+        use std::collections::{BTreeMap, BTreeSet};
+
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let model = crate::cli::synth::parse_canonical::parse_canonical(&repo_root)
+            .expect("the repo's own specs must parse");
+        let claude_prefix = format!("mcp__{AWS_MCP_SERVER_NAME}__");
+        let kiro_prefix = format!("@{AWS_MCP_SERVER_NAME}/");
+        let whole_server = [
+            format!("mcp__{AWS_MCP_SERVER_NAME}"),
+            format!("{claude_prefix}*"),
+            format!("@{AWS_MCP_SERVER_NAME}"),
+            format!("{kiro_prefix}*"),
+        ];
+
+        let mut named_by_agent = BTreeMap::new();
+        for agent in &model.agents {
+            let claude = agent.client_config.claude_cli.as_ref();
+            let kiro = agent.client_config.kiro_cli.as_ref();
+            let claude_tools: &[String] = claude.and_then(|c| c.tools.as_deref()).unwrap_or(&[]);
+            let kiro_tools: &[String] = kiro.map(|k| k.tools.as_slice()).unwrap_or(&[]);
+            let every_entry = claude_tools
+                .iter()
+                .chain(claude.map(|c| &c.allowed_tools).into_iter().flatten())
+                .chain(kiro_tools)
+                .chain(kiro.map(|k| &k.allowed_tools).into_iter().flatten());
+            for entry in every_entry {
+                assert!(
+                    !whole_server.contains(entry),
+                    "agent '{}' grants the whole aws-mcp server with {entry}",
+                    agent.name
+                );
+            }
+
+            let claude_named: BTreeSet<&str> = claude_tools
+                .iter()
+                .filter_map(|tool| tool.strip_prefix(&claude_prefix))
+                .collect();
+            let kiro_named: BTreeSet<&str> = kiro_tools
+                .iter()
+                .filter_map(|tool| tool.strip_prefix(&kiro_prefix))
+                .collect();
+            assert_eq!(
+                claude_named, kiro_named,
+                "agent '{}' names different aws-mcp tools on Claude Code and Kiro CLI",
+                agent.name
+            );
+            for tool in &claude_named {
+                assert!(
+                    AWS_MCP_KNOWN_TOOLS.contains(tool),
+                    "agent '{}' names {tool}, which is not in AWS_MCP_KNOWN_TOOLS",
+                    agent.name
+                );
+            }
+            if !claude_named.is_empty() {
+                named_by_agent.insert(agent.name.as_str(), claude_named);
+            }
+        }
+
+        let known: BTreeSet<&str> = AWS_MCP_KNOWN_TOOLS.iter().copied().collect();
+        let read_only: BTreeSet<&str> = AWS_MCP_READ_ONLY_TOOLS.iter().copied().collect();
+        assert_eq!(
+            named_by_agent,
+            BTreeMap::from([
+                ("k-architect", known.clone()),
+                ("k-developer", known),
+                ("konductor", read_only),
+            ])
+        );
     }
 
     fn aws_allow_rules() -> Vec<serde_json::Value> {

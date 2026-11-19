@@ -260,9 +260,12 @@ YAML) is skipped with a `konductor install: warning:` naming the file.
   ones: `mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and
   `mcp__aws-mcp__aws___get_tasks`. Claude Code asks before every call to them. They act on
   AWS with your credentials (`aws___run_script` runs agent-written Python). Install takes the
-  server's tools from a fixed list of the eight that `mcp-proxy-for-aws-cli` 1.7.0 lists, not
-  from a live call. Claude Code checks ask rules before allow rules, so it still asks under a
-  broad `mcp__aws-mcp__*` allow.
+  server's tools from a fixed list, not from a live call: the eight the server listed through
+  `mcp-proxy-for-aws-cli` 1.7.0 when the list was last checked. The proxy relays the hosted
+  server's list, so the server can add tools. `k-architect` and `k-developer` are granted only
+  the listed tools by name, so a new one stays unavailable to them until it is classified.
+  Claude Code checks ask rules before allow rules, so it still asks under a broad
+  `mcp__aws-mcp__*` allow.
 - The union of those agents' Kiro `allowedTools` for `aws-mcp` in `permissions.allow`, as
   `mcp__aws-mcp__<tool>`, so Claude Code pre-approves the same read-only tools Kiro CLI
   does. Only the five read-only tools (`aws___retrieve_skill`, `aws___search_documentation`,
