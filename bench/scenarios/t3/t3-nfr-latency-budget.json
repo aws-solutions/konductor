@@ -1,0 +1,170 @@
+{
+  "id": "t3-nfr-latency-budget",
+  "class": "design",
+  "target": null,
+  "prompt": "We need to optimize our e-commerce checkout system to meet latency requirements within budget. The checkout request flows through gateway, auth, pricing, inventory, and payment services sequentially. Current measurements show the end-to-end p99 latency exceeds our target.\n\nPlease review the documentation in the fixture directory and propose an optimization strategy. Your analysis should identify which optimization option to implement, considering both performance improvements and cost constraints.\n\nCreate a deliverable document at `docs/latency.md` that explains your recommendation with supporting calculations. The document must include a fenced code block with info string `decision` containing JSON with these exact keys:\n\n- \"chosen\": the id of the selected option\n- \"options\": array of option ids you considered  \n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements, where value is your computed figure for the chosen option\n- \"monthly_cost_usd\": the monthly cost of your chosen option computed from the price sheet\n\nMake sure your recommendation meets all hard limits including the p99 latency target and stays within the monthly budget. Show your work for latency calculations and cost analysis.",
+  "fixture": "t3-nfr-latency-budget",
+  "timeoutSec": 900,
+  "hidden": "t3-nfr-latency-budget",
+  "phase": "nfr",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
+      "min": 16
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/latency.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of reasoning about tradeoffs between latency improvement and cost (not code-checkable: Tests can verify numerical correctness and limit compliance, but cannot assess whether the agent provided clear, logical reasoning about why certain options were rejected and why the chosen option represents the best balance of performance improvement versus cost.)",
+      "weight": 1
+    },
+    {
+      "id": "explanation_clarity",
+      "criterion": "Clarity of explanation showing how parallel processing reduces latency (not code-checkable: While tests can verify the computed latency numbers are correct, they cannot evaluate whether the agent clearly explained the architectural insight that pricing and inventory services have no data dependency and can run in parallel, nor whether they properly articulated the latency calculation (max instead of sum) for parallel execution.)",
+      "weight": 1
+    },
+    {
+      "id": "budget_analysis",
+      "criterion": "Comprehensive budget analysis showing total cost calculation (not code-checkable: Tests can verify the final monthly cost and budget compliance, but cannot assess whether the agent explicitly calculated and explained the total cost (baseline + optimization) and showed how it fits within the budget ceiling, including recognition that the $1,000 is a total ceiling, not additional budget.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-19",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 25,
+      "alt": 94,
+      "date": "2026-11-19"
+    }
+  },
+  "version": 1,
+  "targetSkills": [
+    "cost-estimation",
+    "trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "cost-estimation",
+      "trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt describes the problem (sequential services, latency exceeds target, budget constraint) but does not name or hint at 'parallel processing' as the solution method."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements clearly specify p99 ≤ 600ms and $1,000 total ceiling; fixture documents clarify the $1,000 includes baseline $900, leaving $100 for optimizations. No ambiguous limits."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture mentions parallel processing as an optimization opportunity but does not explicitly state it as the answer. The trap (base breaks latency, cache breaks budget) is embedded in the data, requiring calculation to discover."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The 'parallel' option is indeed correct and meets limits, but agents must verify it actually satisfies the latency constraint; 'base' at $0 is a trap (breaks latency), requiring actual analysis to avoid."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers (latencies, costs, limits) are present in fixture files; the required JSON format is explicitly specified in the prompt; tests verify format correctness."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that the base option (current sequential flow) at 720 ms total latency exceeds the 600 ms p99 limit and therefore cannot be selected despite having zero cost",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e2",
+        "text": "correctly calculates parallel latency as max(pricing, inventory) not sum, yielding 570 ms total (40+60+190+280) which meets the 600 ms requirement",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e3",
+        "text": "recognizes that the $1,000 budget is a total ceiling including the existing $900 baseline, leaving only $100 for any optimization",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e4",
+        "text": "identifies that the cache option at $900/month (from cost-options.csv plus maintenance) would push total cost to $1,800, exceeding the $1,000 ceiling",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e5",
+        "text": "explains that pricing and inventory services can run in parallel because they have no data dependency on each other",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "notes that the parallel option has a $50/month maintenance cost per cost-options.csv, making total cost $950/month which still fits under the $1,000 ceiling",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e7",
+        "text": "discusses operational risks of parallel execution such as race conditions, partial failure handling, and timeout management",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e8",
+        "text": "addresses reversibility by mentioning that parallel processing can be disabled via feature flags if issues arise in production",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "picks the base option because it has zero cost without calculating whether the 720 ms latency meets the 600 ms requirement",
+      "selects the cache option as the best latency improvement without checking that its $900 cost plus $900 baseline exceeds the $1,000 budget",
+      "ignores the maintenance cost column in cost-options.csv and reports the parallel option as having zero total monthly cost",
+      "chooses cache_parallel for maximum latency reduction without recognizing it also breaks the budget ceiling",
+      "calculates parallel latency as sum rather than max, incorrectly concluding that parallel processing does not help"
+    ]
+  }
+}

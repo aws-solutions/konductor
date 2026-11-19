@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/retention-figures.md"],
+  "acceptableOptions": [],
+  "temptingOption": "Write an architecture recommendation or schema instead of extracting the figures.",
+  "notes": "The task is a factual extraction from the supplied documents, including the legacy policy and the separate archival age threshold."
+}

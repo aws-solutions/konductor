@@ -1,0 +1,7 @@
+{ "verdicts": [
+  { "check": "leak", "verdict": "pass", "note": "The prompt asks for a code review without naming a method, checklist, or hinting at specific problems. It does not reveal the number of issues or their locations." },
+  { "check": "ambiguity", "verdict": "pass", "note": "The prompt clearly states to review PR 933, read the project and PR materials, and write findings to REVIEW.md with a specific JSON format including location, severity, issue, and fix." },
+  { "check": "ceiling", "verdict": "pass", "note": "The repeated-row bug (k1) is subtle and requires understanding cursor construction vs query comparison. The maxPageSize issue (k4) spans handler, config, and docs. The compatibility issues (k5, k6) require comparing the diff to the API doc. A shallow review would miss several items." },
+  { "check": "floor", "verdict": "pass", "note": "All key items are findable from the fixture. Each item has clear code evidence at the specified lines. Severity assignments are reasonable for the impact described." },
+  { "check": "hidden-answer", "verdict": "pass", "note": "No comments, test names, or file names point at the planted problems. The test file tests cursor encoding but does not reveal the >= bug or ordering issue." }
+], "keyProblems": [], "suggestedFixes": [] }

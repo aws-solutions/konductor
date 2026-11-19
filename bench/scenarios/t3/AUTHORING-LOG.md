@@ -73,3 +73,36 @@
 | t3-db-tenant-isolation | review | glm-5 | 3.37 |
 | t3-dev-module-boundary | expertKey | glm-5 | 1.21 |
 | t3-db-tenant-isolation | expertKey | glm-5 | 1.42 |
+| t3-nfr-latency-budget | author | deepseek-3.2 | 7.22 |
+| t3-db-audit-retention-twin | author(twin) | gpt-5.6-luna | 1.89 |
+| t3-nfr-latency-budget | map | glm-5 | 0.95 |
+| t3-db-audit-retention-twin | review | qwen3-coder-next | 0.46 |
+| t3-nfr-latency-budget | review | minimax-m2.5 | 1.35 |
+| t3-db-audit-retention-twin | expertKey | glm-5 | 1.22 |
+| t3-nfr-latency-budget | expertKey | glm-5 | 1.53 |
+| t3-adr-cache-sizing-twin | author(twin) | deepseek-3.2 | 4.36 |
+| t3-adr-cache-sizing-twin | author(twin) | deepseek-3.2 | 4.36 |
+| t3-sre-log-retention | author | deepseek-3.2 | 9.51 |
+| t3-adr-cache-sizing-twin | review | minimax-m2.5 | 0.00 |
+| t3-sre-log-retention | map | glm-5 | 0.62 |
+| t3-adr-cache-sizing-twin | author(twin) | deepseek-3.2 | 4.36 |
+| t3-sre-log-retention | review | minimax-m2.5 | 1.70 |
+| t3-adr-cache-sizing-twin | review | glm-5 | 2.96 |
+| t3-sre-log-retention | expertKey | glm-5 | 1.32 |
+| t3-adr-cache-sizing-twin | expertKey | glm-5 | 2.04 |
+| t3-nfr-capacity-autoscale | author | deepseek-3.2 | 7.05 |
+| t3-nfr-capacity-autoscale | map | glm-5 | 0.63 |
+| t3-nfr-capacity-autoscale | review | minimax-m2.5 | 4.40 |
+| t3-nfr-capacity-autoscale | expertKey | glm-5 | 1.27 |
+| t3-tpm-migration-cutover | author | gpt-5.6-luna | 2.02 |
+| t3-tpm-migration-cutover | map | glm-5 | 0.62 |
+| t3-tpm-migration-cutover | review | qwen3-coder-next | 0.40 |
+| t3-tpm-migration-cutover | expertKey | glm-5 | 2.57 |
+| t3-nfr-latency-budget | lazy+alt answers | glm-5 | 2.08 |
+| t3-sre-log-retention | lazy+alt answers | glm-5 | 1.70 |
+| t3-nfr-capacity-autoscale | lazy+alt answers | glm-5 | 2.29 |
+| t3-tpm-migration-cutover | lazy+alt answers | glm-5 | 1.51 |
+| t3-db-audit-retention-twin | lazy+alt answers | glm-5 | 2.27 |
+| t3-adr-cache-sizing-twin | lazy+alt answers | glm-5 | 1.41 |
+
+Notes (2026-11-19): the lazy answers of the two twins were written by hand (a model-written lazy answer came out fully correct for a lookup task). The four decision tasks load `hidden/gate.js` with `node --require`, which fails every non-structural test when the chosen option is not an acceptable one. The dry-run score is the hidden-test fraction. Twin tests were rewritten to accept any table layout.

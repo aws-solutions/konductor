@@ -1,0 +1,160 @@
+diff --git a/docs/api.md b/docs/api.md
+index a05196e..99a7927 100644
+--- a/docs/api.md
++++ b/docs/api.md
+@@ -6,18 +6,18 @@ All endpoints use JSON and are rooted at `/v1`. Clients should send an `Accept:
+ 
+ `GET /v1/issues`
+ 
+-The endpoint accepts `status`, `assignee`, `limit`, and `offset` query parameters. `limit` is a positive integer, defaults to 20, and must not exceed 100. `offset` is a zero-based integer used by existing clients.
++The endpoint accepts `status`, `assignee`, `limit`, and `cursor` query parameters. `limit` is a positive integer and defaults to 20. A cursor from the previous response continues the list.
+ 
+ The response has this shape:
+ 
+ ```json
+ {
+-  "issues": [{ "id": "ISS-1001", "title": "..." }],
+-  "nextOffset": 20
++  "data": [{ "id": "ISS-1001", "title": "..." }],
++  "page": { "nextCursor": "..." }
+ }
+ ```
+ 
+-`nextOffset` is omitted on the final page. The `offset` parameter remains supported during the client migration window through 2026-06-30. New clients may use cursor pagination when it is available. An unrecognized pagination parameter is ignored.
++`nextCursor` is omitted on the final page. New clients should pass it back unchanged to request the next page.
+ 
+ ## Get an issue
+ 
+diff --git a/src/api/issues.js b/src/api/issues.js
+index affbe8a..972c43b 100644
+--- a/src/api/issues.js
++++ b/src/api/issues.js
+@@ -1,7 +1,7 @@
+ 'use strict';
+ 
+ const { notFound } = require('../errors');
+-const { pageByOffset, parseOffset } = require('../pagination/offset');
++const { encodeCursor, decodeCursor } = require('../pagination/cursor');
+ 
+ function createIssueHandlers(store, config) {
+   return {
+@@ -12,7 +12,16 @@ function createIssueHandlers(store, config) {
+         status: searchParams.get('status') || undefined,
+         assigneeId: searchParams.get('assignee') || undefined,
+       });
+-      return pageByOffset(items, parseOffset(searchParams.get('offset') || undefined), limit);
++      items.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
++      const indexed = items.map((issue, rowOffset) => ({ ...issue, _rowOffset: rowOffset }));
++      const start = decodeCursor(searchParams.get('cursor'));
++      const page = indexed.filter((issue) => issue._rowOffset >= start).slice(0, limit);
++      const last = page[page.length - 1];
++      const nextCursor = last && start + page.length < indexed.length ? encodeCursor(last._rowOffset) : undefined;
++      return {
++        data: page.map(({ _rowOffset, ...issue }) => issue),
++        page: { nextCursor },
++      };
+     },
+     get(id) {
+       const issue = store.findIssue(id);
+diff --git a/src/pagination/cursor.js b/src/pagination/cursor.js
+new file mode 100644
+index 0000000..4d6b878
+--- /dev/null
++++ b/src/pagination/cursor.js
+@@ -0,0 +1,13 @@
++'use strict';
++
++function encodeCursor(rowOffset) {
++  return Buffer.from(String(rowOffset), 'utf8').toString('base64');
++}
++
++function decodeCursor(value) {
++  if (!value) return 0;
++  const offset = Number.parseInt(Buffer.from(value, 'base64').toString('utf8'), 10);
++  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
++}
++
++module.exports = { encodeCursor, decodeCursor };
+diff --git a/tests/cursor-token.test.js b/tests/cursor-token.test.js
+new file mode 100644
+index 0000000..f36c8fc
+--- /dev/null
++++ b/tests/cursor-token.test.js
+@@ -0,0 +1,33 @@
++'use strict';
++
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { encodeCursor, decodeCursor } = require('../src/pagination/cursor');
++
++test('cursor tokens round-trip a page position', () => {
++  const token = encodeCursor(17);
++  assert.equal(decodeCursor(token), 17);
++});
++
++test('the first page uses an empty cursor', () => {
++  assert.equal(decodeCursor(''), 0);
++});
++
++test('missing cursor starts at the beginning', () => {
++  assert.equal(decodeCursor(undefined), 0);
++});
++
++test('negative positions are not accepted', () => {
++  assert.equal(decodeCursor(encodeCursor(-1)), 0);
++});
++
++test('non-numeric tokens start at the beginning', () => {
++  const token = Buffer.from('not-a-position').toString('base64');
++  assert.equal(decodeCursor(token), 0);
++});
++
++test('cursor encoding remains a string for large positions', () => {
++  const token = encodeCursor(999999);
++  assert.equal(typeof token, 'string');
++  assert.equal(decodeCursor(token), 999999);
++});
+diff --git a/tests/issues.test.js b/tests/issues.test.js
+index ee02e75..cc6a423 100644
+--- a/tests/issues.test.js
++++ b/tests/issues.test.js
+@@ -9,14 +9,14 @@ const config = { defaultPageSize: 20, maxPageSize: 100 };
+ 
+ test('issue list filters by status', () => {
+   const result = createIssueHandlers(fixtureStore(), config).list(new URLSearchParams('status=open'));
+-  assert.deepEqual(result.items.map((issue) => issue.id), ['ISS-1', 'ISS-2']);
+-  assert.equal(result.nextOffset, undefined);
++  assert.deepEqual(result.data.map((issue) => issue.id), ['ISS-1', 'ISS-2']);
++  assert.equal(result.page.nextCursor, undefined);
+ });
+ 
+-test('issue list supports offsets', () => {
+-  const result = createIssueHandlers(fixtureStore(), config).list(new URLSearchParams('offset=1&limit=1'));
+-  assert.deepEqual(result.items.map((issue) => issue.id), ['ISS-2']);
+-  assert.equal(result.nextOffset, 2);
++test('issue list returns a cursor for a following page', () => {
++  const result = createIssueHandlers(fixtureStore(), config).list(new URLSearchParams('cursor=&limit=1'));
++  assert.deepEqual(result.data.map((issue) => issue.id), ['ISS-1']);
++  assert.equal(typeof result.page.nextCursor, 'string');
+ });
+ 
+ test('unknown issue throws a not found error', () => {
+diff --git a/tests/router.test.js b/tests/router.test.js
+index fb7d9ec..c086431 100644
+--- a/tests/router.test.js
++++ b/tests/router.test.js
+@@ -26,5 +26,13 @@ test('router returns a JSON issue list', async () => {
+   const response = fakeResponse();
+   await createRouter(fixtureStore(), { defaultPageSize: 20, maxPageSize: 100 })(fakeRequest('GET', '/v1/issues'), response);
+   assert.equal(response.statusCode, 200);
+-  assert.equal(JSON.parse(response.payload).items.length, 3);
++  assert.equal(JSON.parse(response.payload).data.length, 3);
++});
++
++test('router keeps issue filters on cursor pages', async () => {
++  const response = fakeResponse();
++  await createRouter(fixtureStore(), { defaultPageSize: 20, maxPageSize: 100 })(fakeRequest('GET', '/v1/issues?status=closed&limit=1'), response);
++  const body = JSON.parse(response.payload);
++  assert.deepEqual(body.data.map((issue) => issue.id), ['ISS-3']);
++  assert.deepEqual(Object.keys(body), ['data', 'page']);
+ });

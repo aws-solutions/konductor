@@ -1,0 +1,17 @@
+{
+  "currency": "USD",
+  "monthly_budget_usd": 5000,
+  "items": {
+    "target_cluster": 2400,
+    "replication_service": 1200,
+    "observability": 300,
+    "migration_support": 400,
+    "snapshot_storage": 500,
+    "dual_write_runtime": 2800
+  },
+  "option_items": {
+    "big_bang_copy": ["target_cluster", "observability", "snapshot_storage"],
+    "continuous_replication": ["target_cluster", "replication_service", "observability", "migration_support"],
+    "dual_write": ["target_cluster", "replication_service", "observability", "dual_write_runtime"]
+  }
+}

@@ -1,0 +1,3 @@
+{
+  "notes": "The design sounds complete because it has states, retries, rollout controls, and a polished operational story. A quick review may accept the queue acknowledgement as proof of completion and miss copies owned by systems outside the worker. The deadline, warehouse, backup, and vendor facts require comparing the design with the legal, inventory, retention, architecture, and vendor files. The evidence section contains a subtle data-minimization issue that requires reading the legal requirements."
+}
