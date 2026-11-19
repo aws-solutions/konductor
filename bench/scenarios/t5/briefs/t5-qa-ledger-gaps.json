@@ -2,8 +2,8 @@
   "phase": "testing",
   "role": "qa",
   "phases2": [],
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "python",
   "kind": "mutants",
   "size": "25 to 40",
@@ -15,5 +15,6 @@
     "use": "idea"
   },
   "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Python 3.12 library for a small bookkeeping system: accounts, double-entry postings with Decimal money, interest accrual, monthly fees, overdraft limits, statement generation for a period, idempotent posting by transaction id, reversals, a CSV export, a CLI entry, docs and CI config. The existing unittest suite has many tests and covers most lines, but checks mostly totals on easy numbers. The real risk sits in: rounding mode and scale of interest, period boundaries (first and last instant of a statement period), overdraft exactly at the limit, repeated posting with the same id, reversal of an already reversed entry, and sign handling of fees. Inspiration (a testing idea only, nothing copied): Python mutation testing tools show how decent-looking suites let small code changes through.\n\nThe request is from a QA lead: an auditor asked how sure they are that a change to the interest code would be caught, and the answer was 'coverage is 95%'. They want the suite strengthened under tests/ without touching the library code.",
-  "id": "t5-qa-ledger-gaps"
+  "id": "t5-qa-ledger-gaps",
+  "authorNote": "deepseek-3.2 author runs ended mid tool call twice (16.65 credits); re-authored by gpt-5.6-luna"
 }

@@ -1,0 +1,98 @@
+{
+  "id": "t5-qa-ledger-gaps",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "prompt": "Please strengthen the ledger test suite for an auditor who is asking whether an interest change would really be noticed. Add focused cases under tests/ in files named test_*.py and keep `python3 -m unittest discover -s tests` passing. Cover Decimal interest rounding as documented, its cents scale and annual-day calculation, statement transactions at the first and last instant, a debit exactly at the overdraft limit, posting the same transaction id twice, reversing an already reversed entry, negative fee input and fee direction, and debit/credit columns in CSV output. Keep the checks fast and compatible with Python 3.12 and the standard library. Do not change anything under the ledger/ library package, the CLI, documentation, configuration, or existing behavior. The work should be limited to new or changed tests under tests/.",
+  "fixture": "t5-qa-ledger-gaps",
+  "hidden": "t5-qa-ledger-gaps",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -m unittest discover -s tests",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "tests/test_edge_cases.py",
+      "pattern": "^[ \\t]*def test_[A-Za-z0-9_]+",
+      "min": 8,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "tests/test_edge_cases.py",
+      "pattern": "calculate_interest|ROUND_HALF_UP|quantize|Decimal",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "tests/test_edge_cases.py",
+      "pattern": "overdraft|revers|transaction.*id|fee|statement.*endpoint|CSV",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "ledger/interest.py",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "tests/test_edge_cases.py",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clarity",
+      "criterion": "The added cases clearly state the expected result for each boundary and invalid-input behavior (code cannot check this because readable intent is not observable from pass or fail results alone).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/boxed/mutmut",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}

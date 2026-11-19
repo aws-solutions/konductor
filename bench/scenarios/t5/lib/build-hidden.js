@@ -6,7 +6,7 @@
 // Usage: node build-hidden.js <hiddenDir> mutants
 //   copies mutants.js and mutation.test.js; the author supplies <hiddenDir>/mutation-kit/{mutants.json,pristine,mutants}.
 // Usage: node build-hidden.js <hiddenDir> findings <outputFile>
-//   copies findings.test.js and findings-key.js and writes findings-kit/key.json from ../../<id>.json's findingsKey.
+//   copies findings.test.js and findings-key.js and writes findings-kit/key.json from the findingsKey argument (the task's key).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -14,7 +14,7 @@ const path = require('node:path');
 const here = __dirname;
 const ROOT = path.resolve(here, '../../../..');
 
-function main([hidden, kind, outputFile]) {
+function main([hidden, kind, outputFile], findingsKey) {
   if (kind === 'mutants') {
     fs.mkdirSync(path.join(hidden, 'mutation-kit'), { recursive: true });
     fs.copyFileSync(path.join(here, 'mutants.js'), path.join(hidden, 'mutation-kit/mutants.js'));
@@ -22,8 +22,6 @@ function main([hidden, kind, outputFile]) {
     return;
   }
   if (kind === 'findings') {
-    const taskFile = path.join(hidden, '..', '..', `${path.basename(hidden)}.json`);
-    const { findingsKey } = JSON.parse(fs.readFileSync(taskFile, 'utf8'));
     const kit = path.join(hidden, 'findings-kit');
     fs.mkdirSync(kit, { recursive: true });
     fs.copyFileSync(path.join(ROOT, 'bench/runner/lib/findings-key.js'), path.join(kit, 'findings-key.js'));

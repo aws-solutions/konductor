@@ -1,0 +1,8 @@
+{
+  "name": "northstar-checkout",
+  "version": "3.8.2",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "settle": "node src/jobs/settlement.js", "lint": "node scripts/check-style.js" }
+}

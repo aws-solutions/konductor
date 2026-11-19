@@ -1,0 +1,85 @@
+{
+  "runner": "node",
+  "testCmd": "node --test --test-timeout=4000 test",
+  "pristine": [
+    "src/cart.js",
+    "src/discounts.js",
+    "src/coupons.js",
+    "src/tax.js",
+    "src/shipping.js",
+    "src/order-total.js",
+    "src/store.js"
+  ],
+  "mutants": [
+    {
+      "id": "m01",
+      "files": [
+        "src/discounts.js"
+      ],
+      "note": "reverses percentage and fixed discounts"
+    },
+    {
+      "id": "m02",
+      "files": [
+        "src/cart.js"
+      ],
+      "note": "allows the quantity boundary above the documented maximum"
+    },
+    {
+      "id": "m03",
+      "files": [
+        "src/coupons.js"
+      ],
+      "note": "expires a coupon at the exact expiry timestamp"
+    },
+    {
+      "id": "m04",
+      "files": [
+        "src/shipping.js"
+      ],
+      "note": "charges shipping at the free-shipping threshold"
+    },
+    {
+      "id": "m05",
+      "files": [
+        "src/tax.js"
+      ],
+      "note": "drops the fractional cent instead of rounding tax"
+    },
+    {
+      "id": "m06",
+      "files": [
+        "src/store.js"
+      ],
+      "note": "clear keeps the old cart lines"
+    },
+    {
+      "id": "m07",
+      "files": [
+        "src/order-total.js"
+      ],
+      "note": "skips the empty-cart total guard"
+    },
+    {
+      "id": "m08",
+      "files": [
+        "src/discounts.js"
+      ],
+      "note": "rounds percentage discounts down"
+    },
+    {
+      "id": "m09",
+      "files": [
+        "src/coupons.js"
+      ],
+      "note": "returns null for an unknown coupon"
+    },
+    {
+      "id": "m10",
+      "files": [
+        "src/order-total.js"
+      ],
+      "note": "calculates tax before applying the discount"
+    }
+  ]
+}

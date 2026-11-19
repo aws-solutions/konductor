@@ -1,0 +1,91 @@
+{
+  "id": "t5-qa-cart-weak-tests",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "prompt": "Please make the tests in `test/` trustworthy for the cart and checkout pricing code. We had a wrong charge reach a customer even though the suite reports high coverage. Put the focused cases in `test/qa-edge-cases.test.js`. Cover discount order and stacking, percentage rounding, tax and total amounts in cents, quantity limits, coupon expiry, the exact free-shipping threshold, empty and one-line carts, invalid coupon input, and cart state across calls. Use the existing Node.js 24 CommonJS setup and keep the suite runnable with `node --test`. Do not change anything under `src/`, and do not change package files, data, documentation, CI, or runtime behavior. Add only test files or test-file changes under `test/`; do not add dependencies, generated output, or temporary files.",
+  "fixture": "t5-qa-cart-weak-tests",
+  "hidden": "t5-qa-cart-weak-tests",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "test/qa-edge-cases.test.js",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/qa-edge-cases.test.js",
+      "pattern": "test\\(",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "test/qa-edge-cases.test.js",
+      "pattern": "expiresAtMs|freeShippingThresholdCents|discountedSubtotalCents",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "test/qa-edge-cases.test.js",
+      "pattern": "skip|todo",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-case-names",
+      "criterion": "Test names explain the customer-facing rule each case protects (code cannot check this because executable checks can count cases but cannot judge whether their descriptions are clear).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/stryker-mutator/stryker-js",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}
