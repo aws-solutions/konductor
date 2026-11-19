@@ -1,0 +1,20 @@
+name,type,unit,owner,description,status
+http_requests_total,counter,requests,edge,Completed requests by route and status,active
+http_request_error_rate,gauge,ratio,edge,Five-minute share of requests returning 5xx,active
+http_request_duration_p95_ms,gauge,milliseconds,edge,95th percentile request duration,active
+process_cpu_utilization,gauge,ratio,platform,Process CPU utilization across API pods,active
+db_pool_in_use_ratio,gauge,ratio,data,Connections in use divided by pool capacity,active
+db_pool_wait_seconds,gauge,seconds,data,Time callers wait for a database connection,active
+worker_queue_depth,gauge,messages,jobs,Messages waiting for a worker,active
+worker_queue_age_seconds,gauge,seconds,jobs,Age of the oldest queued message,active
+worker_error_rate,gauge,ratio,jobs,Share of worker jobs ending in error,active
+cache_hit_ratio,gauge,ratio,edge,Share of cache lookups served locally,active
+auth_login_failure_rate,gauge,ratio,identity,Failed login attempts per login attempt,active
+payment_provider_latency_ms,gauge,milliseconds,billing,Provider response latency,active
+search_index_lag_seconds,gauge,seconds,search,Difference between source and indexed event time,active
+disk_free_ratio,gauge,ratio,platform,Free space on a service volume,active
+deployment_failure_total,counter,deployments,release,Deployments that did not reach healthy state,active
+tls_cert_days_remaining,gauge,days,platform,Days until an edge certificate expires,active
+upstream_healthcheck_failures,gauge,checks,edge,Failed synthetic checks to the public API,active
+request_timeout_rate,gauge,ratio,edge,Requests exceeding the configured client timeout,active
+legacy_db_connection_count,gauge,connections,data,Retained for historical dashboard imports,retired

@@ -1,0 +1,13 @@
+# Existing alerts before the reliability review
+- name: payments-api-high-cpu
+  expression: payments_api_cpu_utilization_ratio > 0.85 for 10m
+  severity: page
+  owner: checkout
+- name: payments-api-error-rate
+  expression: rate(payments_api_requests_server_error_total[5m]) / rate(payments_api_requests_total[5m]) > 0.01
+  severity: page
+  owner: checkout
+- name: payments-api-memory
+  expression: payments_api_memory_working_set_bytes > 90%
+  severity: ticket
+  owner: platform

@@ -1,0 +1,17 @@
+metric,kind,labels,meaning
+payments_api_requests_total,counter,"traffic_class,status_class",All API requests accepted by the edge
+payments_api_requests_success_total,counter,traffic_class,Requests completed with a 2xx response
+payments_api_requests_good_total,counter,traffic_class,Requests completed with a 2xx or 4xx response
+payments_api_requests_client_error_total,counter,traffic_class,Requests completed with a 4xx response
+payments_api_requests_server_error_total,counter,traffic_class,Requests completed with a 5xx response
+payments_api_request_duration_ms_count,counter,traffic_class,Requests included in the API latency histogram
+payments_api_request_duration_ms_under_800_total,counter,traffic_class,Requests at or below 800 milliseconds
+payments_api_request_duration_ms_under_1200_total,counter,traffic_class,Requests at or below 1200 milliseconds
+payments_api_request_duration_ms_bucket,histogram,"traffic_class,le",API request duration histogram buckets
+payments_api_cpu_utilization_ratio,gauge,service,Process CPU utilization ratio
+payments_api_memory_working_set_bytes,gauge,service,Working set memory
+payments_api_dependency_pool_in_use,gauge,service,Card-network connection pool slots in use
+payments_api_dependency_pool_wait_total,counter,service,Requests that waited for a card-network connection
+payments_api_retry_total,counter,service,Retries issued to the card-network client
+payments_api_healthcheck_total,counter,traffic_class,Load-balancer and health-check requests
+payments_api_synthetic_total,counter,traffic_class,Synthetic checkout probes

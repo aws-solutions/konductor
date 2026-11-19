@@ -1,0 +1,11 @@
+service: payments-api
+region: us-central
+client:
+  upstream: card-network
+  pool_max: 24
+  connect_timeout_ms: 450
+  request_timeout_ms: 2500
+telemetry:
+  request_counter: payments_api_requests_total
+  success_counter: payments_api_requests_success_total
+  latency_histogram: payments_api_request_duration_ms_bucket

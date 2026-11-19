@@ -6,8 +6,8 @@
   "phases2": [
     "release-ops"
   ],
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "ops",
   "size": "15 to 30",
   "loglines": 2000,
@@ -25,17 +25,17 @@
     "items": [
       {
         "id": "user-sli",
-        "text": "Defines the indicators from user-facing request outcomes and excludes health checks and synthetic traffic.",
+        "text": "Says which traffic is left out and why, and how the indicator is computed from the raw counts so someone else can reproduce the number.",
         "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
         "id": "target-from-data",
-        "text": "Sets targets from measured history and the dependency's promise, and explains why the product wish cannot be met.",
+        "text": "Explains to the product team, in budget minutes and the dependency's own promise, why the wished-for target cannot be met.",
         "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
         "id": "multiwindow",
-        "text": "Uses budget burn rate over two windows per alert, a fast burn that pages and a slow burn that opens a ticket.",
+        "text": "Explains how the chosen burn rates and windows trade time to detect against false pages, with the budget spent before each alert fires.",
         "source": "Google SRE workbook, Alerting on SLOs, https://sre.google/workbook/alerting-on-slos/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
@@ -60,5 +60,6 @@
       "Average latency under 200 ms.",
       "Keep the CPU over 80% page."
     ]
-  }
+  },
+  "authorSwitchedFrom": "deepseek-3.2"
 }

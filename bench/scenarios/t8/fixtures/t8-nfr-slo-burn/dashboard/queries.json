@@ -1,0 +1,6 @@
+{
+  "availability_panel": "sum(rate(payments_api_requests_success_total[5m])) / sum(rate(payments_api_requests_total[5m]))",
+  "latency_panel": "histogram_quantile(0.99, sum by (le) (rate(payments_api_request_duration_ms_bucket[5m])))",
+  "traffic_filter": "traffic_class=real_user",
+  "notes": "Dashboard defaults have historically differed from the weekly CSV export."
+}

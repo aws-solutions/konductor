@@ -1,0 +1,134 @@
+groups:
+  - name: northstar-edge
+    service: web-api
+    rules:
+      - name: ApiHigh5xxRate
+        expr: http_request_error_rate > 0.05
+        for: 5m
+        severity: page
+        route: web-primary
+        runbook: runbooks/api-errors.md
+        owner: edge
+      - name: ApiLatencyP95
+        expr: http_request_duration_p95_ms > 850
+        for: 5m
+        severity: page
+        route: web-primary
+        runbook: runbooks/api-latency.md
+        owner: edge
+      - name: ApiCpuSaturation
+        expr: process_cpu_utilization > 0.82
+        for: 0m
+        severity: page
+        route: web-primary
+        runbook: runbooks/api-latency.md
+        owner: platform
+      - name: Api5xxBurst
+        expr: http_request_error_rate > 0.05
+        for: 5m
+        severity: page
+        route: web-primary
+        runbook: runbooks/api-errors.md
+        owner: edge
+      - name: ApiNoTraffic
+        expr: http_requests_total == 0
+        for: 0m
+        severity: page
+        route: web-primary
+        runbook: ""
+        owner: edge
+      - name: RequestTimeoutRate
+        expr: request_timeout_rate > 0.015
+        for: 2m
+        severity: page
+        route: web-primary
+        runbook: runbooks/api-latency.md
+        owner: edge
+      - name: HealthCheckDown
+        expr: upstream_healthcheck_failures > 2
+        for: 2m
+        severity: page
+        route: web-primary
+        runbook: runbooks/health-checks.md
+        owner: edge
+      - name: LoginFailureSpike
+        expr: auth_login_failure_rate > 0.20
+        for: 10m
+        severity: ticket
+        route: identity-queue
+        runbook: runbooks/login-failures.md
+        owner: identity
+      - name: PaymentProviderLatency
+        expr: payment_provider_latency_ms > 1800
+        for: 10m
+        severity: ticket
+        route: billing-queue
+        runbook: runbooks/payment-provider.md
+        owner: billing
+
+  - name: northstar-data
+    service: data-plane
+    rules:
+      - name: DbConnectionPoolExhaustion
+        expr: db_pool_used_ratio > 0.90
+        for: 3m
+        severity: page
+        route: data-primary
+        runbook: runbooks/db-connections.md
+        owner: data
+      - name: QueueDepthSpike
+        expr: worker_queue_depth > 500
+        for: 0m
+        severity: page
+        route: jobs-primary
+        runbook: runbooks/queue-backlog.md
+        owner: jobs
+      - name: QueueAgeHigh
+        expr: worker_queue_age_seconds > 900
+        for: 10m
+        severity: page
+        route: jobs-primary
+        runbook: runbooks/queue-backlog.md
+        owner: jobs
+      - name: WorkerErrorRate
+        expr: worker_error_rate > 0.08
+        for: 10m
+        severity: page
+        route: jobs-primary
+        runbook: runbooks/worker-errors.md
+        owner: jobs
+      - name: CacheHitRateLow
+        expr: cache_hit_ratio < 0.70
+        for: 15m
+        severity: ticket
+        route: edge-queue
+        runbook: runbooks/cache.md
+        owner: edge
+      - name: SearchIndexLag
+        expr: search_index_lag_seconds > 1200
+        for: 15m
+        severity: ticket
+        route: search-queue
+        runbook: runbooks/search-lag.md
+        owner: search
+      - name: DiskSpaceLow
+        expr: disk_free_ratio < 0.15
+        for: 15m
+        severity: ticket
+        route: platform-queue
+        runbook: runbooks/disk-space.md
+        owner: platform
+      - name: DeploymentFailure
+        expr: deployment_failure_total > 0
+        for: 0m
+        severity: page
+        route: release-primary
+        runbook: runbooks/deploy-failure.md
+        owner: release
+      - name: TLSCertificateExpiry
+        expr: tls_cert_days_remaining < 21
+        for: 1h
+        severity: ticket
+        route: platform-queue
+        runbook: runbooks/certificates.md
+        owner: platform
