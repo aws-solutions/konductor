@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '../support/editing-fixtures';
-import { answerRunsWith, runReply } from '../support/run-routes';
+import {
+  answerRunsWith,
+  refuseRunsWith,
+  runReply,
+} from '../support/run-routes';
 import { overwriteWorkflow, SAMPLE_TEXT } from '../support/stub-workflow';
 import { saveFullPageScreenshot } from '../support/screenshots';
 import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
@@ -85,6 +89,24 @@ test('capture the Execution tab after a stage was blocked', async ({
   await canvas.page.getByTestId('blocked-stage').waitFor();
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-blocked');
+});
+
+// With the dialog open, an arm64 host draws the dimmed page in the tiles next
+// to the dialog one level of colour off, so the committed PNG is the one that
+// CI draws (see Screenshots in the README).
+test('capture the Execution tab when a Run needs trust', async ({ canvas }) => {
+  await refuseRunsWith(canvas.page, 409, {
+    error: 'The workflow is not trusted yet.',
+    code: 'trust_required',
+    fix: 'Run `konductor flow trust hello` in a terminal, then try again.',
+  });
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
+
+  await canvas.runButton.click();
+  await canvas.page.getByTestId('trust-command').waitFor();
+
+  await saveFullPageScreenshot(canvas.page, 'execution-trust-required');
 });
 
 // The Execution tab in the dark mode, while the first stage runs.
