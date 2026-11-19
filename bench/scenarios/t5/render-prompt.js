@@ -21,6 +21,7 @@ const fill = (text, vars) => text.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in vars
 
 function render(id) {
   const b = JSON.parse(read(`briefs/${id}.json`));
+  if (b.kind === 'twin') return fill(read('prompts/author-twin.md'), { BRIEF: b.brief, ID: b.id });
   const s = STACKS[b.stack];
   const mutants = b.kind === 'mutants' || b.extra === 'flaky';
   const scripted = b.kind === 'scripted';

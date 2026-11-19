@@ -57,6 +57,11 @@
       "id": "prioritization",
       "criterion": "The plan makes a defensible time-based priority choice and explains the customer or operational consequence for the highest risks (code cannot check this because it cannot judge the quality of the reasoning).",
       "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are judgment about test design, not a pattern in the text)"
     }
   ],
   "findingsKey": [
@@ -188,6 +193,51 @@
       "weight": 2
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "risk-ranking",
+        "text": "Ranks work by likelihood times impact (money moved, customer harm, hard to undo), and says why the large generated tax table and the messy admin script rank low.",
+        "source": "OWASP Web Security Testing Guide, https://owasp.org/www-project-web-security-testing-guide/ (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "test-levels",
+        "text": "Chooses a test level per risk (unit for arithmetic, integration with a fake payment provider for retries and webhooks, a concurrency test for stock) instead of one level for everything.",
+        "source": "Martin Fowler, The Practical Test Pyramid, https://martinfowler.com/articles/practical-test-pyramid.html (copyright Ham Vocke / Thoughtworks; idea only); Google Testing Blog, Test Sizes, https://testing.googleblog.com/2010/12/test-sizes.html (copyright Google; idea only)"
+      },
+      {
+        "id": "provider-fake",
+        "text": "Plans a controllable fake or recorded stand-in for the payment provider and for the clock, so failure timing, duplicate deliveries and cut-off times can be reproduced.",
+        "source": "Stripe, Designing robust and predictable APIs with idempotency, https://stripe.com/blog/idempotency (vendor copyright; idea only)"
+      },
+      {
+        "id": "failure-injection",
+        "text": "Includes tests that force failures on purpose (timeout after the provider charged, duplicate and out-of-order webhook, crash between two writes), not only happy-path and validation cases.",
+        "source": "Stripe, Designing robust and predictable APIs with idempotency, https://stripe.com/blog/idempotency (vendor copyright; idea only)"
+      },
+      {
+        "id": "business-logic",
+        "text": "Treats business-rule abuse as a test target: replaying a promo code, refunding more than paid, reserving stock without paying.",
+        "source": "OWASP Web Security Testing Guide, https://owasp.org/www-project-web-security-testing-guide/ (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "order-and-exit",
+        "text": "Gives an order of work that fits the limited time and states what the remaining untested areas mean for the rework, with a minimum set that must be green before release.",
+        "source": "Martin Fowler, The Practical Test Pyramid, https://martinfowler.com/articles/practical-test-pyramid.html (copyright Ham Vocke / Thoughtworks; idea only)"
+      },
+      {
+        "id": "observe",
+        "text": "Names production signals (alerts on duplicate charges, stuck reservations, settlement mismatches) as a complement where a test cannot reach.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Lists every module and says 'add unit tests' for each, ranked by file size or by how messy the code looks.",
+      "Recommends raising line coverage to a target percentage without saying which behaviour to check.",
+      "Gives severity labels with no reason and no test level, and puts the generated tax table first.",
+      "Writes a generic test pyramid essay with no tie to this code."
+    ]
+  },
   "targetSkills": [
     "test-coverage-analysis",
     "risk-management"

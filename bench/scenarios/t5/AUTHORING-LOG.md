@@ -34,3 +34,7 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t5-qa-flaky-fix | review | glm-5 | 7.69 | |
 | t5-qa-parser-gaps | map | glm-5 | 0.16 | |
 | t5-qa-parser-gaps | review | glm-5 | 7.97 | |
+| t5-qa-sync-strategy | map | glm-5 | 0.16 | |
+| t5-qa-sync-strategy | review | glm-5 | 7.62 | |
+| t5-dev-legacy-characterize | map | glm-5 | 0.16 | |
+| t5-dev-legacy-characterize | review | glm-5 | 7.84 | |
