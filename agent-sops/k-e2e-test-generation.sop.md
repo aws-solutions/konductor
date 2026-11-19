@@ -27,7 +27,7 @@ This SOP splits work across `k-browser` (browser automation only), `k-quality-as
 | `password`         | Optional — MUST NOT be logged or displayed anywhere           | Login password if the app requires authentication                                                                                                                                                                                                                         |
 | `credentials_file` | Optional                                                      | Path to a `.properties` file with keys: `test_url`, `user_name`, `password` (note: `user_name` maps to the `username` parameter)                                                                                                                                          |
 | `prompts_dir`      | Optional, default `{project_root}/tests/page/`                | Directory for unit test prompt files when `output_mode=unit-prompts`. Its default reproduces today's hardcoded location exactly, so a caller that omits this parameter sees no change in where prompt files land. Unused when `output_mode` is `cypress` or `playwright`. |
-| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized test generation for whatever pages discovery finds. Step 3 then reports and proceeds instead of prompting. A parallel or unattended caller MUST set it.                                                                   |
+| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized test generation for whatever pages discovery finds. Step 3 then reports and proceeds instead of prompting. A parallel or unattended caller MUST set it. Only a user's yes counts: see Step 3.                             |
 
 **Parameter acquisition rules:**
 
@@ -126,6 +126,7 @@ Unless `scope_confirmed=true`, ask: "Proceed with test generation for these N pa
 **Constraints:**
 
 - If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking — the caller already authorized generation for whatever pages discovery found. A parallel or unattended caller MUST set it, since the prompt has no one to answer
+- `scope_confirmed=true` counts only when it comes from the user: the user typed it on the invocation, or said yes to this scope in the conversation, or the SOP that called this one passes the user's own answer to its question (as `k-full-sdlc` Step 9 does). A value the model chose by itself, including any value set when the model started this SOP on its own, does not count: treat it as `false` and ask. Record in the summary where the confirmation came from.
 - Otherwise MUST NOT proceed without explicit user confirmation
 - If the user declines: if `{agent_created_credentials_file}` is `true`, delegate cleanup to `k-developer`, which runs `rm -f "{credentials_file}"` (reference the literal value carried forward from Step 1, not a shell variable, the same way Step 5 does); then stop and report the discovery summary
 
@@ -316,6 +317,8 @@ Delegate to `k-developer`.
 
 **MUST DO:**
 
+- Before staging anything, confirm the user authorized this pass: a yes to Step 3's question, or a `scope_confirmed=true` that counts under Step 3's rule. Without one, MUST NOT run `git add`, `git commit` or `git push`; leave the files uncommitted and say so in the summary.
+- MUST NOT push when the checked-out branch is the repository's default branch (`git -C "{project_dir}" symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##'`, compared with `git -C "{project_dir}" branch --show-current`; or `main`, `mainline` or `master` when that is unset). Commit locally and record in the summary that the push was skipped.
 - Confirm `{project_dir}` is inside a git working tree (`git -C "{project_dir}" rev-parse --is-inside-work-tree`). If it is not, record in the summary that the generated tests were not committed because no git repository is present, and skip the rest of this step — this SOP does not initialize a repository.
 - Run `git -C "{project_dir}" status --porcelain`. If it reports no changes, skip the commit — a pass that generated no new or modified files has nothing to commit — and proceed to Step 7.
 - Otherwise, stage everything under `{project_dir}` and commit on the branch currently checked out:
@@ -343,7 +346,8 @@ Print a summary to the user:
 
 - Password value appears in any delegation prompt or log output
 - Hard-coded credentials in any generated test file
-- Tests generated without user confirmation in Step 3, unless the caller set `scope_confirmed=true`
+- Tests generated without user confirmation in Step 3, unless the caller set a `scope_confirmed=true` that comes from the user (Step 3)
+- Generated tests staged, committed or pushed without that confirmation, or pushed to the default branch (Step 6)
 - Temp credentials file (`agent_created_credentials_file=true`) not deleted before the SOP exits for any reason — run `rm -f "$credentials_file" && unset agent_created_credentials_file` (Step 1, which has the shell state) or the equivalent `rm -f "{credentials_file}"` against the literal value (Steps 2, 3, 4A, 4B-i through 4B-iv, and Step 5, which run in separate delegated agents) on every exit path
 
 **IMPORTANT (note but do not block):**

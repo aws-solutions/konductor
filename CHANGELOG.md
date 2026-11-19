@@ -438,6 +438,11 @@ not per individual commit.
 
 ### Fixed
 
+- `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
+  `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
+  to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
+  without that yes, or to push the default branch. Orchestrators never add the flag to a SOP
+  command unless the user gave it.
 - The `adversarial-code-review` description says "Use for a second pass after code review"
   (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
   activation condition. The trigger itself is unchanged.
