@@ -1,0 +1,181 @@
+{
+  "outputFile": "runbooks/orders-db-failover.md",
+  "items": [
+    {
+      "id": "step-count",
+      "type": "maxLen",
+      "path": "steps",
+      "min": 6,
+      "max": 16,
+      "weight": 1
+    },
+    {
+      "id": "lag-before-promote",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "lag|replay|caught.?up|behind",
+          "orders-db-b|candidate|replica"
+        ]
+      },
+      "then": {
+        "field": "command",
+        "all": [
+          "promote"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "fence-before-promote",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "command",
+        "all": [
+          "fence|stop|shutdown|isolate|power",
+          "orders-db-a"
+        ]
+      },
+      "then": {
+        "field": "command",
+        "all": [
+          "promote"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "promote-before-repoint",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "command",
+        "all": [
+          "promote"
+        ]
+      },
+      "then": {
+        "field": "command",
+        "all": [
+          "reconfigure|dns|endpoint|record|repoint"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "repoint-before-write-check",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "command",
+        "all": [
+          "reconfigure|dns|endpoint|record|repoint"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "write",
+          "verif|check|confirm|test|insert"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "never-promote-delayed-copy",
+      "type": "none",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "promote",
+          "orders-db-c"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "status-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+status",
+          "orders-prod"
+        ]
+      }
+    },
+    {
+      "id": "fence-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+fence",
+          "orders-db-a",
+          "--confirm"
+        ]
+      }
+    },
+    {
+      "id": "promote-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+promote",
+          "orders-db-b",
+          "--confirm"
+        ]
+      }
+    },
+    {
+      "id": "reconfigure-command-is-real",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+reconfigure",
+          "orders-api",
+          "orders-db-b"
+        ]
+      }
+    },
+    {
+      "id": "abort-metric-is-catalogued",
+      "type": "inSet",
+      "path": "abort",
+      "field": "metric",
+      "fromFile": "metrics/catalog.csv",
+      "pattern": "^([^,]+),"
+    },
+    {
+      "id": "abort-threshold-is-rpo",
+      "type": "every",
+      "path": "abort",
+      "weight": 2,
+      "match": {
+        "field": "threshold",
+        "num": {
+          "gt": 0,
+          "lte": 120
+        }
+      }
+    },
+    {
+      "id": "escalation-roles-are-on-rota",
+      "type": "inSet",
+      "path": "escalate",
+      "field": "",
+      "fromFile": "rota/paging.md",
+      "pattern": "^- (.+)$"
+    }
+  ]
+}

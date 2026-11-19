@@ -1,0 +1,23 @@
+{
+  "id": "t7-status-slip-twin",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/kubernetes/sig-release",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "controlKind": "twin",
+  "twinOf": "t7-status-slip",
+  "kind": "the SAME fixture as t7-status-slip (it is copied in; do not write a new one)",
+  "scenario": "Finance asks for plain numbers from the same export: story points closed per assignee in the last two sprints, open ticket count per epic, and the total open points. No status, no risks, no opinions.",
+  "seeds": "(1) the export has a few tickets with blank estimates that must count as zero points, (2) a reopened ticket that was closed then reopened must not count as closed, (3) an assignee name appears in two spellings (case or trailing space) and must be merged.",
+  "block": "numbers",
+  "output": "reports/finance-numbers.md",
+  "shape": "{\"closed_points_by_assignee\": {\"<name>\": n}, \"open_tickets_by_epic\": {\"<epic>\": n}, \"total_open_points\": n}",
+  "expert": false,
+  "reviewer": "glm-5",
+  "date": "2026-11-19"
+}

@@ -5,8 +5,8 @@
   "role": "developer",
   "kind": "code",
   "stack": "node",
-  "author": "deepseek-3.2",
-  "reviewer": "gpt-5.6-luna",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
   "size": "30 to 50",
   "source": {
     "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/File_Upload_Cheat_Sheet.md",

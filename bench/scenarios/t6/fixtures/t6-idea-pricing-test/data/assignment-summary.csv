@@ -1,0 +1,3 @@
+experiment,variant,assigned_users,share,expected_share,seven_day_assignment_check,p_value
+PRC-25-04,A,5584,0.5151,0.5000,pass,0.0016
+PRC-25-04,B,5256,0.4849,0.5000,pass,0.0016

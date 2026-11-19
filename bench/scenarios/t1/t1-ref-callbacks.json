@@ -1,0 +1,135 @@
+{
+  "id": "t1-ref-callbacks",
+  "class": "hard",
+  "version": 1,
+  "phase": "refactor",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please migrate parcel-sieve's internal file pipeline to async functions for the Node 24 release without breaking existing callers. Keep the CommonJS entry point at src/index.js and its exports: runPipeline, processFile, retry, and FileStore. Each exported operation must still accept an optional Node-style error-first callback and must also return a promise. A callback must run exactly once, including on errors, and callback-mode failures must not create unhandled rejections. runPipeline(inputDir, outputDir, options, callback) must keep sorted .txt discovery, the { processed, files } summary, the options.concurrency limit (default 2), options.retries, and the beforeWrite, onFileStart, and onFileDone hooks. Its files array must remain in input-name order even when hooks finish out of order. processFile must keep returning { source, output }. retry(operation, options, callback) must keep options.retries as additional attempts and support the existing error-first operation shape. FileStore must keep readText(file), writeJson(file, value), and ensureDir(dir) in both forms. Keep the JSON format, CLI flags (--input, --output, --concurrency, --retries), stdout wording, and exit codes 0 for success, 1 for processing errors, and 2 for usage errors. Update the project notes for the migration and preserve the no-dependency setup.",
+  "fixture": "t1-ref-callbacks",
+  "hidden": "t1-ref-callbacks",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 16,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/async-api.test.js",
+      "pattern": "^test\\(",
+      "min": 1,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\\\"dependencies\\\"\\s*:",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "async functions|promise",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "both forms|also return a promise",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "src/bridge.js",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verification",
+      "criterion": "The final report accurately states which test and command checks were run and does not claim verification that did not happen (code cannot check this because it evaluates repository contents, not the agent's report).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "verification",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "verification",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/caolan/async",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the desired API behavior (promises + callbacks, once semantics) and existing signatures without prescribing implementation methods. It does not name the bridge.js pattern or tell the agent how to structure the solution."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies all API shapes, callback/promise behavior, concurrency semantics, result ordering, CLI flags, and exit codes. The hidden tests check these documented behaviors without relying on unstated requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture tests only use callback mode and do not show the promise API or bridge pattern. The docs describe the existing callback-only API. No code or comments reveal the hidden test behaviors (promise support, once callback semantics, concurrency enforcement via hooks, result ordering under out-of-order hooks)."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive implementation that just wraps callbacks in Promises without proper once-semantics would fail the 'callback called once' tests. A serial implementation would fail the concurrency test. Returning results in hook-completion order would fail the ordering test. The tests catch shortcuts: plain fixture passes 1/16 hidden tests, showing meaningful difficulty."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable: the reference solution passes all 16 hidden tests and all 7 checks. The requirements are internally consistent and build on the existing callback infrastructure. No contradictory constraints, flaky tests, or timing-dependent behaviors were observed."
+      }
+    ]
+  }
+}

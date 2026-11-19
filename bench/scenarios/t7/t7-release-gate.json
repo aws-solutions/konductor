@@ -1,0 +1,150 @@
+{
+  "id": "t7-release-gate",
+  "class": "design",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need the release call for Thursday, 2027-05-06 while the release lead is out. Please review the issue export, cherry-pick queue, branch CI summary, release calendar, triage record, and notes draft in this folder. Tell me plainly whether we are go or no-go, what must be fixed or verified, who owns each blocker, and the earliest defensible release date if Thursday does not hold. Write the requester-facing answer to release/go-no-go.md. Include one fenced JSON block whose info string is release-decision. Its object must have decision (only go or no-go), blockers (a list of objects with tickets, summary, and owner), failing_jobs (list), flaky_jobs (list), late_cherry_picks (list), notes_corrections (list), and earliest_release_date (YYYY-MM-DD). The tooling reads that block, so keep those key names and allowed values exactly as stated.",
+  "fixture": "t7-release-gate",
+  "hidden": "t7-release-gate",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "release/go-no-go.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "release_blockers.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "release/go-no-go.md",
+      "pattern": "```\\s*release-decision",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The prose gives the go or no-go call first and states the practical condition for changing it (code cannot check this because it only reads the structured block).",
+      "weight": 2
+    },
+    {
+      "id": "director-reasoning",
+      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs (code cannot check this because it cannot assess the explanation).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "branch-evidence",
+        "text": "Distinguish what is closed on main from what is actually present on the release branch, and require branch-level evidence before calling the release ready.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "signal-separation",
+        "text": "Separate a consistently failing required signal from an intermittent one, and give each the evidence and owner needed for a release decision.",
+        "source": "Kubernetes release-blocking jobs, https://github.com/kubernetes/sig-release/blob/master/release-blocking-jobs.md (Apache-2.0)"
+      },
+      {
+        "id": "freeze-discipline",
+        "text": "Treat the freeze and cherry-pick deadlines as real constraints, call out the late approval, and make any exception explicit rather than silently accepting it.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "repeatable-validation",
+        "text": "Require a repeatable validation result on the candidate branch after changes, not just an issue status or an approval record.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "truthful-notes",
+        "text": "Keep release notes aligned with behavior that will ship, and remove a feature promise whose change was backed out.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "conditional-date",
+        "text": "Give the next calendar slot as a conditional date with the checks and deadline that must be met, rather than presenting schedule recovery as certain.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Go: the issue export shows the main work is closed and the calendar says Thursday.",
+      "No-go because there are several release-blocker labels, without distinguishing their triage status.",
+      "The CI is mostly green, so ship and investigate the flaky job afterward.",
+      "Move the release to next week and update the notes, without naming owners or branch checks."
+    ]
+  },
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/sig-release",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name specific methods, frameworks, or processes. It asks for a release decision based on evidence from multiple files without hinting at the specific tickets or traps (REL-112 missing cherry-pick, REL-118 late approval, REL-131 CI correlation, REL-145/153 demoted decoys)."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly specifies what to review (issue export, cherry-pick queue, branch CI summary, release calendar, triage record, notes draft) and what output format is required. The README.md clarifies conventions: Closed means closed on main only, release_branch_present is authoritative, triage disposition distinguishes active from demoted. The key date 2027-05-13 is the next calendar slot after the planned 2027-05-06 release."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No file reveals the answer directly. The triage_notes.csv demotes REL-145 and REL-153, which is evidence to be found (not a spoiler). The CI signal summary shows failure patterns but requires correlating commits to tickets. The calendar shows the next slot but does not state which date to pick. All blockers require multi-file reasoning."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that trusts status columns and calendar dates, counts all release-blocker labels without checking triage, and ignores CI signal detail passes only 1/14 tests (flaky_jobs). The task demands cross-referencing status, branch presence, cherry-pick deadlines, CI patterns, triage disposition, and notes alignment."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the fixture: REL-112 is closed on main but release_branch_present=no (blocker), REL-118 has approved_at after the 2027-04-28 17:00 deadline (late cherry-pick, blocker), REL-131's main_commit c9f1e2a matches linux-integration's first_failure_commit (blocker), REL-145/153 are demoted in triage_notes.csv (not blockers), REL-127 is Reverted but appears in release_notes_draft.md (notes correction), 2027-05-13 is the next calendar slot after 2027-05-06. Owners are named in release_blockers.csv: Mira Sol (REL-112), Jon Bell (REL-118), Asha Nair (REL-131). linux-integration has 50% pass rate and fails every run after c9f1e2a; windows-smoke is 85% intermittent."
+      }
+    ]
+  }
+}

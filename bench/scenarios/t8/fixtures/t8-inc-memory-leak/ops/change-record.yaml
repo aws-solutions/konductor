@@ -1,0 +1,7 @@
+time: 2025-04-10T12:40:00Z
+service: search-api
+change: rollback
+from_version: 3.8.0
+to_version: 3.7.4
+query_cache_enabled: false
+operator: release-bot

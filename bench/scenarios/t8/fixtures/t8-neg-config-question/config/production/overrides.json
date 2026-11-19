@@ -1,0 +1,7 @@
+{
+  "services": {
+    "catalog": {
+      "logLevel": "debug"
+    }
+  }
+}

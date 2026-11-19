@@ -1,0 +1,10 @@
+{
+  "name": "parcel-sieve",
+  "version": "1.4.0",
+  "description": "Turn small text batches into inspectable JSON records",
+  "main": "src/index.js",
+  "bin": {"parcel-sieve": "bin/sieve.js"},
+  "scripts": {"test": "node --test", "lint": "node --check src/index.js"},
+  "engines": {"node": ">=24"},
+  "license": "MIT"
+}

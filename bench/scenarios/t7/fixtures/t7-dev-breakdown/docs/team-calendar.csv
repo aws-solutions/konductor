@@ -1,0 +1,5 @@
+sprint,start,end,available_engineer_days,holiday,notes
+Harbor-11,2027-04-12,2027-04-23,34,,two engineers, normal pairing
+Harbor-12,2027-04-26,2027-05-07,32,2027-04-30,one public holiday
+Harbor-13,2027-05-10,2027-05-21,34,,release hardening
+Harbor-14,2027-05-24,2027-06-04,32,2027-05-31,one public holiday

@@ -29,8 +29,10 @@ function render(id) {
   const s = STACKS[b.stack];
   const hidden = typeof s.hidden === 'function' ? s.hidden() : s.hidden;
   const brief = `${b.brief}\n\nPublic inspiration: ${b.source.url} (licence ${b.source.licence}). Use the idea only.`;
+  const economy = b.economy ? '\n\nScope limit: keep the fixture near the low end of the file range, keep the hidden tests and the solution compact, write each file once, verify at most twice, and finish within about 45 tool calls. A call that runs long is stopped.' : '';
+  const expert = b.phase === 'nfr' ? '\n\nThis task also needs an `expertKey` in `task-draft.json`: `{ "items": [ { "id", "text" } ], "weakAnswers": [ ... ] }` with 4 to 5 items and 3 to 5 weak answers. Items are what a careful engineer would also say or show in the final message beyond what the hidden tests already check (causes found, how the limits were measured, trade-offs, what was left out), each one a sentence a reviewer can look for. weakAnswers are what a shallow answer would say. Do not repeat anything a hidden test checks.' : '';
   const fill = { BRIEF: brief, SIZE: b.size, STACK: s.stack, HIDDEN: hidden, TESTCMD: s.testCmd, ID: b.id };
-  return read('prompts/author.md').replace(/\{\{(\w+)\}\}/g, (_, k) => fill[k]);
+  return read('prompts/author.md').replace(/\{\{(\w+)\}\}/g, (_, k) => fill[k]) + economy + expert;
 }
 
 if (require.main === module) process.stdout.write(render(process.argv[2]));

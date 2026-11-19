@@ -5,8 +5,8 @@
   "role": "security",
   "kind": "policy",
   "stack": "node",
-  "author": "deepseek-3.2",
-  "reviewer": "gpt-5.6-luna",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
   "size": "25 to 40",
   "source": {
     "url": "https://github.com/salesforce/cloudsplaining",

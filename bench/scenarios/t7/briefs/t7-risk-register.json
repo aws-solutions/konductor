@@ -1,0 +1,28 @@
+{
+  "id": "t7-risk-register",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "deepseek-3.2",
+  "source": {
+    "url": "https://github.com/golang/go",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a program folder for a mobile app re-platform: roadmap.md, a ticket export (JSON, 150 to 220 tickets), a vendor contract summary with dates, an org chart with owners and a meeting-notes folder (6 to 10 short notes)",
+  "scenario": "A director asks: what could stop us shipping in September, and who owns each one? I need this for the steering review.",
+  "seeds": "(1) a single person is the only assignee on every ticket of one critical component (key-person risk); (2) the vendor contract notes an API deprecation date that falls before the launch; (3) an unowned ticket on the critical chain; (4) scope creep: a meeting note quietly adds a requirement that has no ticket yet; (5) a code freeze in the roadmap that collides with a public holiday week; (6) a decoy: a scary-sounding risk in one meeting note that a later note says is resolved.",
+  "block": "risks",
+  "output": "docs/risk-register.md",
+  "shape": "{\"risks\": [{\"id\": str, \"tickets\": [ids], \"kind\": \"key-person|vendor|unowned|scope|schedule|other\", \"likelihood\": \"low|medium|high\", \"impact\": \"low|medium|high\", \"owner\": str, \"mitigation\": str, \"trigger_date\": \"YYYY-MM-DD or null\"}], \"top_three\": [risk ids]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "minimax-m2.5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+    "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
+    "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+  ],
+  "dropped": "first draft unusable and not given a fix round: most assertions check only that a kind value appears, and several match ordinary words (dark mode, vulnerability, first names) as ids; authoring/ held three competing key scripts; replaced by t7-risk-owners"
+}

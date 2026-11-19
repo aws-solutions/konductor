@@ -1,0 +1,17 @@
+{
+  "id": "t1-impl-cursor-paging",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "python",
+  "size": "20 to 30",
+  "source": {
+    "url": "https://github.com/encode/django-rest-framework",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Python 3.12 JSON API on the standard library (http.server and sqlite3) for a ticketing tool, with a router, a repository layer, handlers, tests, CI config and docs. About 25 files. Inspiration (idea only): public REST frameworks that offer cursor pagination: an opaque cursor, stable ordering, a next link, and a page size limit. Build a task where the owner asks to replace offset paging on the list endpoint with cursor paging while old clients keep working for a release, with wrinkles of your own design (ties on the sort key, rows inserted or deleted between pages, an opaque cursor that rejects tampering, a maximum page size, and a response shape documented in the existing API doc).",
+  "economy": true
+}

@@ -1,0 +1,5 @@
+{
+  "primary": "eu-central-2",
+  "failover": "eu-west-3",
+  "timeZone": "UTC"
+}

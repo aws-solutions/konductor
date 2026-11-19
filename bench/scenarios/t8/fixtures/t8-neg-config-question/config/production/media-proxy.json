@@ -1,0 +1,14 @@
+{
+  "service": "media-proxy",
+  "environment": "production",
+  "replicas": 2,
+  "resources": {
+    "cpu": "450m",
+    "memory": "640Mi"
+  },
+  "logLevel": "info",
+  "featureFlags": {
+    "requestTracing": false,
+    "newCheckout": false
+  }
+}

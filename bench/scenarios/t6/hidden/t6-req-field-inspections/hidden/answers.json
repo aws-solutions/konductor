@@ -1,0 +1,8 @@
+[
+  "Most routes lose connectivity for up to 8 hours, so the app must support 8 hours of offline work and queue submissions and photos until it reconnects.",
+  "There are 12 rugged tablets shared across crews. At sign-out, a worker must choose the tablet's asset tag, and the app must not require a personal device.",
+  "Attach at most 4 photos per inspection item, keep the original resolution, and warn or block before capturing identifiable people or vehicle plates.",
+  "If two tablets edit the same inspection while offline, keep both versions and flag the record for field-lead resolution; never silently overwrite either submission.",
+  "An inspection is not complete until the inspector attests on the tablet and the field lead approves it within 2 business days. The lead's approval is the export gate.",
+  "Stop the inspection and notify the field lead for any chlorine smell, exposed electrical conductor, or unstable ground. The app must offer a safety-stop status without requiring a reading or photo."
+]

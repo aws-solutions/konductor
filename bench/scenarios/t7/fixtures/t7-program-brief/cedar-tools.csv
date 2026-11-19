@@ -1,0 +1,4 @@
+tool,version,owner_team,environments,audit_retention_days,auth_mode,status,notes
+LaunchPad,2.9,Cedar,staging|production,30,SSO,active,Most jobs are manually approved.
+Greenway,3.0,Cedar,staging,180,OIDC,active,Used by two newer services.
+QuickDrop,0.6,Cedar,production,1,token,retiring,Keep the row until the final archive.

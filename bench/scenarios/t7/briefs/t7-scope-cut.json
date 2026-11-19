@@ -1,0 +1,27 @@
+{
+  "id": "t7-scope-cut",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/kubernetes/sig-release",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "ticket export (CSV, 140 to 200 tickets) with created dates and labels, a roadmap doc with a scope-lock date and the launch date, a capacity sheet and three short requests from product added after lock",
+  "scenario": "A director writes: product added work after we locked scope and we are not moving the date. Tell me what we cut to keep it, and what the added work cost us.",
+  "seeds": "(1) the added work is spread across epics and must be found by created date against the lock date, not by a label (some added tickets lack the label); (2) total added points vs remaining slack gives the exact amount to cut; (3) one cut candidate looks optional but a must-have depends on it; (4) one added ticket is contractual (a customer commitment in the requests doc) and cannot be cut; (5) a decoy: tickets created after lock that are bug splits of pre-lock work with zero net new points (their parent was re-estimated down).",
+  "block": "replan",
+  "output": "plan/scope-replan.md",
+  "shape": "{\"added_after_lock\": [ids], \"added_points\": n, \"slack_points\": n, \"points_to_cut\": n, \"cut\": [ids], \"keep_despite_optional\": [ids], \"cannot_cut\": [ids], \"date\": \"YYYY-MM-DD\"}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+    "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
+    "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+  ]
+}

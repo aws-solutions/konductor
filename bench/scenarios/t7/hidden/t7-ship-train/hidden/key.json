@@ -1,0 +1,79 @@
+{
+  "output": "docs/storage-engine-forecast.md",
+  "block": "forecast",
+  "assertions": [
+    {
+      "id": "release-likely",
+      "desc": "Most likely train is the first train whose branch follows the forecast completion.",
+      "op": "equals",
+      "path": "likely_release",
+      "value": "2027.06"
+    },
+    {
+      "id": "release-committed",
+      "desc": "Customer promise accounts for the stabilisation train.",
+      "op": "equals",
+      "path": "committed_release",
+      "value": "2027.07"
+    },
+    {
+      "id": "likely-branch",
+      "desc": "The likely train's branch date is reported, rather than its release date.",
+      "op": "date",
+      "path": "likely_branch_date",
+      "value": "2027-05-07",
+      "tolDays": 0
+    },
+    {
+      "id": "commit-date",
+      "desc": "The committed customer release date comes from the following train.",
+      "op": "date",
+      "path": "committed_release_date",
+      "value": "2027-07-30",
+      "tolDays": 0
+    },
+    {
+      "id": "scope-points",
+      "desc": "Open Storage Engine work is sized with the documented blank-estimate rule.",
+      "op": "number",
+      "path": "remaining_points",
+      "value": 110,
+      "tol": 0
+    },
+    {
+      "id": "ordinary-throughput",
+      "desc": "Forward throughput uses comparable ordinary sprints.",
+      "op": "number",
+      "path": "throughput_points_per_sprint",
+      "value": 30,
+      "tol": 1
+    },
+    {
+      "id": "sprint-count",
+      "desc": "The forecast states the rounded-up sprint count.",
+      "op": "number",
+      "path": "sprints_needed",
+      "value": 4,
+      "tol": 0
+    },
+    {
+      "id": "scope-decoy-excluded",
+      "desc": "The storage-named ticket from another initiative is identified as excluded.",
+      "op": "includes",
+      "path": "excluded_tickets",
+      "ids": [
+        "WORK-1063"
+      ]
+    },
+    {
+      "id": "scope-kept",
+      "desc": "Unestimated Storage Engine tickets are sized, not excluded from scope.",
+      "op": "excludes",
+      "path": "excluded_tickets",
+      "ids": [
+        "WORK-1008",
+        "WORK-1048"
+      ]
+    }
+  ]
+}

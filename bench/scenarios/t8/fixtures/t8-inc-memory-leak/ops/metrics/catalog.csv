@@ -1,0 +1,7 @@
+metric,unit,description
+memory_mb,MiB,container working set
+request_rate,requests_per_second,requests accepted by the API
+error_count,requests,five-minute API failures
+restarts,count,cumulative container restarts
+distinct_queries,count,unique full query strings observed since process start
+cache_entries,count,entries retained by the response cache

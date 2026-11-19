@@ -133,6 +133,32 @@ def test_assembled_tree_has_no_repo_root_plugin_layout_leftovers(assembled):
     assert (assembled / ".claude-plugin" / "plugin.json").is_file()
 
 
+def test_assembled_tree_ships_the_listing_icon(assembled):
+    """The directory listing icon is the committed brand PNG, copied as is."""
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    # The directory reads the icon from plugin.json, as a path from the plugin root.
+    assert plugin["icon"] == "./icon.png"
+    assert not (assembled / ".claude-plugin" / "icon.png").exists()
+    icon = assembled / plugin["icon"]
+    data = icon.read_bytes()
+    assert data == (REPO_ROOT / "docs" / "assets" / "konductor-icon.png").read_bytes()
+    # The directory accepts a square PNG of 512 to 2048 px under 2 MB.
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    assert width == height
+    assert 512 <= width <= 2048
+    assert len(data) < 2 * 1024 * 1024
+
+
+
+def test_assembled_plugin_json_sets_the_support_link(assembled):
+    """The directory reads supportUrl from plugin.json; it matches the README's Support section."""
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert plugin["supportUrl"] == "https://github.com/aws-solutions/konductor/issues"
+    assert plugin["supportUrl"] in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+
 def test_assembled_tree_ships_the_telemetry_hook(assembled):
     """The telemetry hook, its hooks.json, and the schema copy land in the
     flat tree, and the SubagentStart matcher covers every assembled agent."""
@@ -155,6 +181,28 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
         assert matcher.search(f"{plugin['name']}:{agent_file.stem}"), agent_file.name
         assert not matcher.search(agent_file.stem), agent_file.name
     assert not matcher.search("Explore")
+
+
+def test_assembled_tree_ships_the_dispatch_env_hook(assembled):
+    """The dispatch-environment hook lands in the flat tree and runs
+    synchronously on every session start, and plugin.json declares the
+    option it reads."""
+    assert (assembled / "hooks" / "konductor-dispatch-env.sh").read_bytes() == (
+        REPO_ROOT / "scripts" / "claude-plugin-dispatch-env-hook.sh"
+    ).read_bytes()
+    hooks = json.loads((assembled / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    entry = hooks["SessionStart"][1]
+    assert entry["matcher"] == "startup|resume|clear|compact"
+    handler = entry["hooks"][0]
+    assert "async" not in handler
+    assert handler["command"] == 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh"'
+
+    option = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))[
+        "userConfig"
+    ]["dispatch_permission_mode"]
+    assert option["type"] == "string"
+    assert option["default"] == "interactive"
+    assert "options" not in option
 
 
 def test_assembled_agents_carry_no_ignored_mcp_servers_block(assembled):

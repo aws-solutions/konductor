@@ -1,0 +1,5 @@
+date,window_utc,requests,distinct_queries,p95_ms,notes
+2025-04-07,00:00-23:59,1842200,612400,184,normal weekday
+2025-04-08,00:00-23:59,1918700,645900,189,normal weekday
+2025-04-09,00:00-23:59,3375400,1286100,271,product launch campaign
+2025-04-10,00:00-23:59,2498800,894300,238,launch tail

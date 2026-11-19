@@ -1,0 +1,7 @@
+metric,unit,source,description
+replication_lag_seconds,seconds,quorum-replicator,Seconds between primary commit and replica apply
+storage_io_await_ms,milliseconds,orders-db,Block device average wait time
+db_connection_pool_in_use,connections,orders-api,Active client connections in the application pool
+orders_write_success_rate,percent,orders-api,Successful order write percentage
+orders_read_latency_ms,milliseconds,orders-api,Order read request latency
+quorum_lease_age_seconds,seconds,quorum-replicator,Age of the current cluster lease

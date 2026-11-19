@@ -1,0 +1,190 @@
+{
+  "output": "status/leadership-update.md",
+  "block": "status",
+  "assertions": [
+    {
+      "id": "overall-red",
+      "desc": "The slipped launch is called red",
+      "op": "equals",
+      "path": "overall",
+      "value": "red"
+    },
+    {
+      "id": "risk-list-precision",
+      "desc": "Risk list stays focused on seeded issues",
+      "op": "precision",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PLT-014",
+        "PAY-021",
+        "CHK-017",
+        "CHK-026",
+        "PAY-028",
+        "PAY-031",
+        "PAY-034",
+        "CHK-037",
+        "RISK-023"
+      ],
+      "min": 0.6,
+      "maxCount": 8
+    },
+    {
+      "id": "critical-risk-cites-path",
+      "desc": "A risk names the first prerequisite on the critical chain",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PLT-014"
+      ]
+    },
+    {
+      "id": "critical-path-order",
+      "desc": "The critical chain runs from prerequisite to launch",
+      "op": "order",
+      "path": "critical_path",
+      "ids": [
+        "PLT-014",
+        "PAY-021",
+        "CHK-017",
+        "CHK-026"
+      ]
+    },
+    {
+      "id": "critical-path-points",
+      "desc": "Remaining points on the chain are reported",
+      "op": "number",
+      "path": "reasoning.remaining_points_on_critical_path",
+      "value": 24,
+      "tol": 0.1
+    },
+    {
+      "id": "velocity",
+      "desc": "The stated team velocity matches the roadmap",
+      "op": "number",
+      "path": "reasoning.team_velocity_points_per_sprint",
+      "value": 18,
+      "tol": 0.1
+    },
+    {
+      "id": "sprints-needed",
+      "desc": "The required sprint count is reported",
+      "op": "number",
+      "path": "reasoning.sprints_needed",
+      "value": 2.5,
+      "tol": 0.5
+    },
+    {
+      "id": "revised-launch",
+      "desc": "The revised date follows the sprint calendar",
+      "op": "date",
+      "path": "revised_launch_date",
+      "value": "2027-07-25",
+      "tolDays": 7
+    },
+    {
+      "id": "next-sprint-capacity",
+      "desc": "Adjusted next-sprint capacity is reported",
+      "op": "number",
+      "path": "capacity_by_sprint.S28",
+      "value": 23.58,
+      "tol": 0.1
+    },
+    {
+      "id": "date-conflict-cited",
+      "desc": "The due-date inversion is named",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PAY-028",
+        "PAY-021"
+      ],
+      "min": 2
+    },
+    {
+      "id": "date-conflict-kind",
+      "desc": "The inversion has the date-conflict kind",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PAY-028",
+        "PAY-021"
+      ],
+      "min": 2,
+      "where": {
+        "kind": "date-conflict"
+      }
+    },
+    {
+      "id": "over-allocation-cited",
+      "desc": "The overloaded person's work is named",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PAY-031"
+      ]
+    },
+    {
+      "id": "over-allocation-owner",
+      "desc": "The overloaded owner is identified",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PAY-031"
+      ],
+      "where": {
+        "owner": "Jon Bell"
+      }
+    },
+    {
+      "id": "scope-cited",
+      "desc": "Late-added launch work is named",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PAY-034",
+        "CHK-037",
+        "RISK-023"
+      ]
+    },
+    {
+      "id": "scope-total",
+      "desc": "Late-added points are summed",
+      "op": "number",
+      "path": "scope_added_after_lock_points",
+      "value": 10,
+      "tol": 0.1
+    },
+    {
+      "id": "scope-kind",
+      "desc": "Late-added work has the scope-creep kind",
+      "op": "cites",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "PAY-034",
+        "CHK-037",
+        "RISK-023"
+      ],
+      "where": {
+        "kind": "scope-creep"
+      }
+    },
+    {
+      "id": "done-blocker-decoy-absent",
+      "desc": "The blocked item with a done dependency is not escalated",
+      "op": "absent",
+      "path": "risks",
+      "field": "tickets",
+      "ids": [
+        "CHK-040"
+      ]
+    }
+  ]
+}

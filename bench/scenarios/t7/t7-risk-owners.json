@@ -1,0 +1,157 @@
+{
+  "id": "t7-risk-owners",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need a steering-review view of what could stop the mobile re-platform from shipping on 2027-09-24, and who owns each issue. Please inspect this folder, reconcile the roadmap, ticket export, capacity, provider agreement, org chart, and meeting notes, then write the director-facing answer to docs/risk-register.md. Put the concise bottom line and reasoning in normal Markdown. Our tooling reads one fenced JSON block with the info string risks. Its shape is {\"risks\":[{\"id\":str,\"tickets\":[ids],\"kind\":\"key-person\"|\"vendor\"|\"unowned\"|\"scope\"|\"schedule\"|\"other\",\"likelihood\":\"low\"|\"medium\"|\"high\",\"impact\":\"low\"|\"medium\"|\"high\",\"owner\":str,\"mitigation\":str,\"trigger_date\":\"YYYY-MM-DD\"|null}],\"top_three\":[risk ids]}. Use the ticket IDs that support each risk, name a real accountable owner, and include practical mitigations and dates where the source material supports them.",
+  "fixture": "t7-risk-owners",
+  "hidden": "t7-risk-owners",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/risk-register.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "ticket-export.json",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/risk-register.md",
+      "pattern": "```\\s*risks",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line-first",
+      "criterion": "The prose gives the director a clear September shipping bottom line first and separates confirmed facts from assumptions or decisions still needed (code cannot check this because it cannot judge narrative priority or epistemic clarity).",
+      "weight": 2
+    },
+    {
+      "id": "actionable-steering",
+      "criterion": "The prose turns the risks into concrete steering decisions, escalation points, or next actions rather than merely restating ticket titles (code cannot check this because it cannot evaluate the usefulness of the written explanation).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "release-evidence",
+        "text": "State what evidence must be collected before the go/no-go decision, including a device or candidate-build check and a rollback or fallback path.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "freeze-governance",
+        "text": "Explain how the team should handle work that reaches the freeze boundary, including an explicit exception decision rather than silently moving the launch date.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "scope-decision",
+        "text": "Call for a written product decision on the newly requested behavior, with acceptance evidence and a clear choice between scheduling it or removing it from the launch promise.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "provider-compatibility",
+        "text": "Require compatibility proof against the provider's replacement response before retirement, while retaining a bounded fallback or rollback plan.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "ownership-transfer",
+        "text": "Treat the single-person dependency as a continuity problem and name a concrete knowledge-transfer or pairing checkpoint, not only a request to work faster.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "decision-record",
+        "text": "Record the steering decisions, owners, and dates in a reviewable decision trail so later status updates can show what changed and why.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Treat every open ticket as equally urgent and conclude that the project is fine because the roadmap still says September.",
+      "List a generic staffing concern without naming the single-person component or the unowned work item.",
+      "Mention the provider migration but use the launch date instead of the provider's earlier endpoint retirement date.",
+      "Repeat the scary push-entitlement note even though the later meeting note closes it.",
+      "Recommend adding the new customer behavior without saying whether it is accepted, scheduled, or removed from launch scope."
+    ]
+  },
+  "targetSkills": [
+    "risk-management",
+    "status-reporting"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "risk-management",
+      "status-reporting"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/golang/go",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a steering-review view and risk register without naming specific methods (key-person analysis, dependency tracing) or hinting at seeded traps (unowned ticket MOB-089, vendor date mismatch). The JSON schema specifies allowed risk kinds but does not reveal which apply."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is unambiguous: identify risks to the September 24 launch, name accountable owners from the org chart, and cite supporting tickets. All key dates (vendor v1 retirement 2027-08-20, freeze 2027-09-06, MOB-089 due 2027-08-13) are explicitly stated in fixture files. The convention that blank assignee means unowned is documented in README.md."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file flags the traps. The ticket export shows MOB-089 with blank assignee but does not label it as a risk. The meeting notes mention the push-entitlement issue but the 2027-08-11 note explicitly closes it. The scope addition is described in meeting notes without a ticket number. The key-person pattern requires tracing 7 Session Bridge tickets to discover the single assignee."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that treats every open ticket as equal urgency and trusts the roadmap date passes only 1/15 tests (resolved-decoy-absent). The task requires multi-file reconciliation: tracing dependency chains, identifying single-owner components, comparing vendor dates to launch dates, and recognizing the freeze-holiday collision."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from fixture data: (1) MOB-089 has blank assignee, due 2027-08-13, depends on MOB-063 - confirms unowned chain risk; (2) Vendor contract states v1 retirement on 2027-08-20, MOB-052 is the compatibility ticket - confirms vendor risk with correct trigger date; (3) Session Bridge chain MOB-014 through MOB-158 all assignee='Priya Nair' - confirms key-person risk. The 2027-09-06 freeze date is confirmed as a Monday public holiday in capacity.csv."
+      }
+    ]
+  }
+}

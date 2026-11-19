@@ -1,0 +1,91 @@
+ticket_id,title,initiative,status,points,sprint,updated,links,depends_on,comments,owner
+ARC-101,Schema adapter,Relay,New,8,S-07,2027-07-08,,,Small follow-up from the weekly review.,Sol
+ARC-102,Retry rules,Relay,Done,3,S-08,2027-07-11,,,No customer-visible wording needed.,Priya
+ARC-103,Export review,Relay,Done,13,S-09,2027-07-14,,,,Mira
+ARC-104,Routing service,Harbor,Done,5,S-10,2027-07-17,,,One empty estimate was retained from the export.,Jon
+ARC-105,Session rules,Relay,Done,2,S-11,2027-07-20,,,,Tess
+ARC-106,Export rules,Relay,In Progress,8,S-12,2027-07-23,,,Small follow-up from the weekly review.,Jon
+ARC-107,Schema service,Relay,Done,,S-13,2027-07-26,,,Acceptance notes are in the linked design.,Sol
+ARC-108,Cache polish,Relay,Done,13,S-07,2027-07-29,,,One empty estimate was retained from the export.,Jon
+ARC-109,Ledger review,Relay,Done,5,S-08,2027-08-01,,,One empty estimate was retained from the export.,Jon
+ARC-110,Schema rules,Relay,Done,2,S-09,2027-08-04,,,One empty estimate was retained from the export.,Sol
+ARC-111,Session review,Relay,Done,8,S-10,2027-08-07,,,No customer-visible wording needed.,Jon
+ARC-112,Ledger review,Relay,Done,3,S-11,2027-08-10,,,,Jon
+ARC-113,Session adapter,Relay,Done,13,S-12,2027-08-13,,,Acceptance notes are in the linked design.,Tess
+ARC-114,Cache rules,Relay,Done,5,S-13,2027-08-16,,,One empty estimate was retained from the export.,Sol
+ARC-115,Ledger adapter,Relay,Done,2,S-07,2027-08-19,,,Small follow-up from the weekly review.,Sol
+ARC-116,Handoff polish,Relay,Done,8,S-08,2027-08-22,,,Small follow-up from the weekly review.,Sol
+ARC-117,Session handoff adapter,Relay,In Progress,8,S-09,2027-08-25,blocks BEAM-224,,The receiving contract is still being exercised.,Jon
+ARC-118,Routing service,Relay,In Progress,13,S-10,2027-08-28,,,,Mira
+ARC-119,Session rules,Relay,Done,5,S-11,2027-07-05,,,Waiting for the usual test fixture refresh.,Sol
+ARC-120,Cache rules,Relay,Done,2,S-12,2027-07-08,,,One empty estimate was retained from the export.,Tess
+ARC-121,Retry service,Relay,Done,8,S-13,2027-07-11,,,Small follow-up from the weekly review.,Mira
+ARC-122,Retry review,Relay,Done,3,S-07,2027-07-14,,,,Priya
+ARC-123,Export rules,Relay,Ready,13,S-08,2027-07-17,,,,Mira
+ARC-124,Mapping service,Relay,Done,5,S-09,2027-07-20,,,,Tess
+ARC-125,Retry service,Relay,Done,2,S-10,2027-07-23,,,One empty estimate was retained from the export.,Tess
+ARC-126,Cache rules,Relay,Done,8,S-11,2027-07-26,,,No customer-visible wording needed.,Jon
+ARC-127,Handoff review,Relay,Done,3,S-12,2027-07-29,,,,Priya
+ARC-128,Ledger polish,Relay,Done,13,S-13,2027-08-01,,,No customer-visible wording needed.,Jon
+ARC-129,Ledger adapter,Relay,In progress,5,S-07,2027-08-04,,,No customer-visible wording needed.,Tess
+ARC-130,Cache adapter,Harbor,Done,2,S-08,2027-08-07,,,No customer-visible wording needed.,Mira
+ARC-131,Export adapter,Relay,Done,8,S-09,2027-08-10,,,One empty estimate was retained from the export.,Jon
+ARC-132,Cache adapter,Relay,Done,3,S-10,2027-08-13,,,One empty estimate was retained from the export.,Mira
+ARC-133,Schema review,Relay,Done,13,S-11,2027-08-16,,,Waiting for the usual test fixture refresh.,Priya
+ARC-134,Ledger rules,Relay,Done,5,S-12,2027-08-19,,,Waiting for the usual test fixture refresh.,Jon
+ARC-135,Routing service,Relay,Ready,2,S-13,2027-08-22,,,,Jon
+ARC-136,Guard polish,Relay,Done,8,S-07,2027-08-25,,,,Tess
+ARC-137,Mapping adapter,Relay,Done,3,S-08,2027-08-28,,,No customer-visible wording needed.,Mira
+ARC-138,Cache service,Relay,Done,13,S-09,2027-07-05,,,Small follow-up from the weekly review.,Priya
+ARC-139,Retry adapter,Relay,Done,5,S-10,2027-07-08,,,Acceptance notes are in the linked design.,Jon
+ARC-140,Mapping polish,Relay,New,2,S-11,2027-07-11,,,One empty estimate was retained from the export.,Priya
+ARC-141,Schema adapter,Relay,Done,8,S-12,2027-07-14,,,Waiting for the usual test fixture refresh.,Priya
+ARC-142,Retry service,Relay,Done,3,S-13,2027-07-17,,,No customer-visible wording needed.,Jon
+ARC-143,Schema mapping review,Relay,Ready,5,S-10,2027-07-20,,,Review sample is ready for the next pass.,Tess
+ARC-144,Retry review,Relay,Done,5,S-08,2027-07-23,,,,Jon
+ARC-145,Routing service,Relay,Done,2,S-09,2027-07-26,,,No customer-visible wording needed.,Sol
+ARC-146,Retry adapter,Relay,Done,8,S-10,2027-07-29,,,Small follow-up from the weekly review.,Priya
+ARC-147,Routing service,Relay,Done,3,S-11,2027-08-01,,,Small follow-up from the weekly review.,Jon
+ARC-148,Schema adapter,Relay,Done,13,S-12,2027-08-04,,,,Priya
+ARC-149,Handoff rules,Relay,Done,5,S-13,2027-08-07,,,,Sol
+ARC-150,Cache rules,Relay,Done,2,S-07,2027-08-10,,,No customer-visible wording needed.,Mira
+ARC-151,Handoff adapter,Relay,Done,8,S-08,2027-08-13,,,Small follow-up from the weekly review.,Priya
+ARC-152,Ledger adapter,Relay,New,3,S-09,2027-08-16,,,One empty estimate was retained from the export.,Tess
+ARC-153,Schema review,Relay,Done,13,S-10,2027-08-19,,,No customer-visible wording needed.,Tess
+ARC-154,Session service,Relay,Done,5,S-11,2027-08-22,,,Small follow-up from the weekly review.,Sol
+ARC-155,Routing polish,Relay,Done,2,S-12,2027-08-25,,,Small follow-up from the weekly review.,Jon
+ARC-156,Routing adapter,Harbor,Done,8,S-13,2027-08-28,,,No customer-visible wording needed.,Jon
+ARC-157,Schema adapter,Relay,In Progress,3,S-07,2027-07-05,,,Waiting for the usual test fixture refresh.,Sol
+ARC-158,Retry service,Relay,Done,13,S-08,2027-07-08,,,Waiting for the usual test fixture refresh.,Priya
+ARC-159,Guard review,Relay,Done,5,S-09,2027-07-11,,,Acceptance notes are in the linked design.,Jon
+ARC-160,Routing rules,Relay,Done,2,S-10,2027-07-14,,,Waiting for the usual test fixture refresh.,Jon
+ARC-161,Guard review,Relay,Done,8,S-11,2027-07-17,,,Acceptance notes are in the linked design.,Jon
+ARC-162,Retry rules,Relay,Done,3,S-12,2027-07-20,,,Small follow-up from the weekly review.,Priya
+ARC-163,Schema service,Relay,Done,13,S-13,2027-07-23,,,One empty estimate was retained from the export.,Jon
+ARC-164,Cache review,Relay,Done,5,S-07,2027-07-26,,,Acceptance notes are in the linked design.,Mira
+ARC-165,Export polish,Relay,Done,2,S-08,2027-07-29,,,Acceptance notes are in the linked design.,Priya
+ARC-166,Routing review,Relay,Done,8,S-09,2027-08-01,,,Small follow-up from the weekly review.,Priya
+ARC-167,Schema service,Relay,Done,3,S-10,2027-08-04,,,Waiting for the usual test fixture refresh.,Priya
+ARC-168,Retry guard service,Relay,In Progress,5,S-10,2027-08-07,,,The last edge case is under test.,Mira
+ARC-169,Guard rules,Harbor,In Progress,5,S-12,2027-08-10,,,One empty estimate was retained from the export.,Tess
+ARC-170,Retry adapter,Relay,Done,2,S-13,2027-08-13,,,Acceptance notes are in the linked design.,Sol
+ARC-171,Handoff rules,Relay,Done,8,S-07,2027-08-16,,,No customer-visible wording needed.,Tess
+ARC-172,Guard rules,Relay,Done,3,S-08,2027-08-19,,,No customer-visible wording needed.,Sol
+ARC-173,Cache rules,Relay,Done,13,S-09,2027-08-22,,,Waiting for the usual test fixture refresh.,Mira
+ARC-174,Ledger adapter,Relay,Ready,5,S-10,2027-08-25,,,Small follow-up from the weekly review.,Jon
+ARC-175,Handoff service,Relay,Done,2,S-11,2027-08-28,,,Acceptance notes are in the linked design.,Mira
+ARC-176,Guard rules,Relay,Done,8,S-12,2027-07-05,,,Acceptance notes are in the linked design.,Tess
+ARC-177,Mapping review,Relay,Done,3,S-13,2027-07-08,,,Acceptance notes are in the linked design.,Tess
+ARC-178,Session polish,Relay,Done,13,S-07,2027-07-11,,,No customer-visible wording needed.,Priya
+ARC-179,Guard service,Relay,Done,5,S-08,2027-07-14,,,No customer-visible wording needed.,Priya
+ARC-180,Cache review,Relay,Done,2,S-09,2027-07-17,,,,Sol
+ARC-181,Schema polish,Relay,Done,8,S-10,2027-07-20,,,Small follow-up from the weekly review.,Mira
+ARC-182,Guard rules,Harbor,Done,3,S-11,2027-07-23,,,Acceptance notes are in the linked design.,Mira
+ARC-183,Routing rules,Relay,Done,13,S-12,2027-07-26,,,One empty estimate was retained from the export.,Sol
+ARC-184,Export review,Relay,Done,5,S-13,2027-07-29,,,,Priya
+ARC-185,Routing rules,Relay,Done,2,S-07,2027-08-01,,,Small follow-up from the weekly review.,Sol
+ARC-186,Export service,Relay,Ready,8,S-08,2027-08-04,,,Small follow-up from the weekly review.,Priya
+ARC-187,Guard review,Relay,Done,3,S-09,2027-08-07,,,Waiting for the usual test fixture refresh.,Mira
+ARC-188,Mapping rules,Relay,Done,13,S-10,2027-08-10,,,Small follow-up from the weekly review.,Mira
+ARC-189,Handoff rules,Relay,Done,5,S-11,2027-08-13,,,One empty estimate was retained from the export.,Priya
+ARC-190,Retry adapter,Relay,Done,2,S-12,2027-08-16,,,One empty estimate was retained from the export.,Tess

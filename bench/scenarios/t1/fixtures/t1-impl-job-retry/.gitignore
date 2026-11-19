@@ -1,0 +1,4 @@
+data/runtime/
+*.local.json
+coverage/
+.DS_Store

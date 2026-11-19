@@ -1,0 +1,14 @@
+{
+  "service": "api-gateway",
+  "environment": "production",
+  "replicas": 4,
+  "resources": {
+    "cpu": "500m",
+    "memory": "512Mi"
+  },
+  "logLevel": "info",
+  "featureFlags": {
+    "requestTracing": true,
+    "newCheckout": false
+  }
+}

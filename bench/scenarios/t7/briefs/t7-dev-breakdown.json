@@ -1,0 +1,28 @@
+{
+  "id": "t7-dev-breakdown",
+  "phase": "planning",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/golang/go",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a small but real Node.js service repository (40 to 80 files: source, tests, migrations, CI config, README, docs) plus a feature request in docs/requests/ and the team estimate guide",
+  "scenario": "A tech lead asks the developer: how long will adding multi-currency prices take, and in what order should we do it? Break it into tickets the team can pick up; no code yet.",
+  "seeds": "(1) a second place that formats money (an email template or CSV export) that a quick read misses; (2) a database migration must land and backfill before the API change; (3) a cache keyed by product id that must include currency or it serves wrong prices; (4) an existing test helper hard-codes the currency and will make many tests fail; (5) a decoy module named pricing-legacy that is dead code and needs no change.",
+  "block": "breakdown",
+  "output": "docs/multi-currency-plan.md",
+  "shape": "{\"tickets\": [{\"id\": str, \"title\": str, \"files\": [paths], \"depends_on\": [ticket ids], \"estimate_days\": n}], \"order\": [ticket ids], \"files_to_change\": [paths], \"total_estimate_days\": n, \"risks\": [str]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)",
+    "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
+    "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+  ],
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
+}

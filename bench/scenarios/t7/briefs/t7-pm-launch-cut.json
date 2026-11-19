@@ -1,0 +1,27 @@
+{
+  "id": "t7-pm-launch-cut",
+  "phase": "planning",
+  "role": "pm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/rust-lang/rfcs",
+    "licence": "MIT OR Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a product backlog (CSV, 60 to 90 features with estimates, value notes and dependencies), customer interview notes (5 to 8 short files), a sales commitments doc and a team capacity sheet",
+  "scenario": "A head of product asks the PM: we have eight weeks to the conference launch. Decide what is in, what is out, and why, so engineering can start Monday.",
+  "seeds": "(1) a must-have hidden in a sales commitment that is not marked priority in the backlog; (2) a high-value feature that needs a low-value one first (dependency closure); (3) total estimate of the obvious picks exceeds capacity; (4) two interview notes ask for opposite things and only one maps to the target segment named in the launch brief; (5) a decoy: a feature with loud internal demand and no customer evidence.",
+  "block": "launch-scope",
+  "output": "docs/launch-scope.md",
+  "shape": "{\"in\": [feature ids], \"out\": [feature ids], \"capacity_points\": n, \"planned_points\": n, \"must_haves\": [ids], \"dependencies_pulled_in\": [ids], \"open_questions\": [str]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
+    "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
+    "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+  ]
+}

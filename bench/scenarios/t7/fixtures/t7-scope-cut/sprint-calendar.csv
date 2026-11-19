@@ -1,0 +1,4 @@
+sprint,start_weekday,start,end,end_weekday,working_day_note
+S12,Monday,2027-05-10,2027-05-21,Friday,ten weekdays before local holiday adjustments
+S13,Monday,2027-05-24,2027-06-04,Friday,ten weekdays with one organization holiday
+S14,Monday,2027-06-07,2027-06-18,Friday,ten weekdays with one organization holiday

@@ -1,0 +1,23 @@
+{
+  "id": "t7-program-rollup",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/openstack/releases",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "three team exports (CSV, 80 to 110 tickets each) with cross-team links in different formats (one team uses \"blocks\", one \"depends_on\", one free text \"needs X-123\"), a program milestone doc and each team's own one-paragraph status",
+  "scenario": "A director asks for one program status across the three teams for the exec review, with the real state rather than what each team says.",
+  "seeds": "(1) each team reports green on its own, but a cross-team chain makes the program amber or red; (2) the link formats differ, and one critical link is only in free text; (3) a duplicate ticket counted in two teams' points; (4) one team's velocity in its status paragraph contradicts its own export; (5) a decoy: a red-looking ticket in one team that is off the program path.",
+  "block": "program-status",
+  "output": "status/program-rollup.md",
+  "shape": "{\"overall\": \"green|amber|red\", \"teams\": {\"<team>\": {\"reported\": \"green|amber|red\", \"actual\": \"green|amber|red\", \"remaining_points\": n}}, \"critical_path\": [ids], \"cross_team_blockers\": [{\"tickets\": [ids], \"summary\": str}], \"duplicates\": [[ids]], \"milestone_at_risk\": str, \"forecast_date\": \"YYYY-MM-DD\"}",
+  "expert": false,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
+}

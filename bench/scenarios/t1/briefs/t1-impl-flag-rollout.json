@@ -1,0 +1,17 @@
+{
+  "id": "t1-impl-flag-rollout",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "python",
+  "size": "20 to 30",
+  "source": {
+    "url": "https://github.com/Unleash/unleash-client-python",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Python 3.12 library (standard library only) that evaluates feature flags from a JSON file for a web service, with a loader, an evaluator, a context object, tests, CI config and docs. About 25 files. Inspiration (idea only): public feature-flag clients with percentage rollout that buckets a user by hashing the user id with the flag name so a user keeps the same answer. Build a task where the owner asks for percentage rollout with overrides, with wrinkles of your own design (a stable hash that does not depend on Python's per-process hash seed, rollout that only grows when the percentage rises, an allowlist and denylist that win over the percentage, missing user ids, and a dry-run report of how many of a sample of ids are on).",
+  "economy": true
+}

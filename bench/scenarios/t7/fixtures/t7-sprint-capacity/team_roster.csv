@@ -1,0 +1,10 @@
+person,skill,focus_factor,base_points_per_workday
+Ari Vega,frontend,0.34,1
+Bram Cole,backend,0.45,1
+Cleo Neri,data,0.50,1
+Dara Ives,platform,0.90,1
+Emi Shah,qa,0.70,1
+Fynn Ruiz,security,0.50,1
+Gale Park,payments,0.40,1
+Hana Lo,frontend,0.10,1
+Ivo Marin,backend,0.10,1

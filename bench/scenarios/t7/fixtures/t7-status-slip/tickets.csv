@@ -1,0 +1,221 @@
+id,title,epic,team,assignee,status,priority,estimate_points,sprint,depends_on,created,due,reopened,status_history,comments
+PAY-001,Update service alert,Merchant Console,Payments,Asha Iyer,To Do,High,2,S27,,2027-04-11,2027-06-13,false,Created,
+PAY-002,Review edge-case behavior,Account Recovery,Payments,Priya Shah,Done,Medium,5,S29,,2027-04-26,2027-06-18,false,Created,
+PAY-003,Refresh validation copy,Order History,Payments,Asha Iyer,To Do,Medium,1,S27,,2027-05-27,2027-08-09,false,Created,
+PAY-004,Add audit field,Reliability Follow-ups,Payments,Jon Bell,Cancelled,High,1,S30,,2027-04-04,2027-05-15,false,Created,QA sample attached
+PAY-005,Refresh validation copy,Order History,Payments,Jon Bell,To Do,High,8,S29,,2027-05-03,2027-07-16,false,Created,
+PAY-006,Add audit field,Order History,Payments,Jon Bell,Cancelled,Low,5,S30,,2027-04-28,2027-06-21,false,Created,
+PAY-007,Tune retry handling,Merchant Console,Payments,Asha Iyer ,In Progress,Medium,5,S30,,2027-05-21,2027-07-21,true,Created; Done; Reopened,Returned after a late test result
+PAY-008,Add audit field,Account Recovery,Payments,Jon Bell,To Do,High,3,S30,,2027-05-09,2027-06-18,false,Created,Waiting on the next export refresh
+PAY-009,Add audit field,Order History,Payments,Jon Bell,In Progress,Low,1,S30,,2027-05-17,2027-06-14,false,Created; In Progress,Waiting on the next export refresh
+PAY-010,Add audit field,Merchant Console,Payments,Jon Bell,Done,Low,1,S30,,2027-04-13,2027-05-04,false,Created,Needs product copy review
+PAY-011,Tune retry handling,Order History,Payments,Asha Iyer,To Do,High,3,S27,,2027-05-27,2027-08-03,false,Created,
+PAY-012,Tidy event mapping,Order History,Payments,Ari Mendez,To Do,Low,1,S30,,2027-05-10,2027-07-06,false,Created,Needs product copy review
+PAY-013,Add audit field,Reliability Follow-ups,Payments,Jon Bell,In Progress,High,3,S27,,2027-05-23,2027-06-14,false,Created; In Progress,Needs product copy review
+PAY-014,Tidy event mapping,Reliability Follow-ups,Payments,Asha Iyer,To Do,High,3,S30,,2027-05-17,2027-07-16,false,Created,QA sample attached
+PAY-015,Refresh validation copy,Merchant Console,Payments,Priya Shah,To Do,High,2,S29,,2027-04-19,2027-06-27,false,Created,Needs product copy review
+PAY-016,Tune retry handling,Account Recovery,Payments,Asha Iyer,Cancelled,High,2,S29,,2027-04-25,2027-06-27,false,Created,Waiting on the next export refresh
+PAY-017,Refresh validation copy,Account Recovery,Payments,Ari Mendez,Done,High,8,S30,,2027-04-22,2027-05-13,false,Created,QA sample attached
+PAY-018,Tune retry handling,Account Recovery,Payments,Asha Iyer,Done,High,2,S30,,2027-05-04,2027-05-28,false,Created,Waiting on the next export refresh
+PAY-019,Improve list filtering,Account Recovery,Payments,Priya Shah,To Do,Low,,S30,,2027-04-12,2027-05-13,false,Created,QA sample attached
+PAY-020,Update service alert,Reliability Follow-ups,Payments,Ari Mendez,Cancelled,High,1,S29,,2027-05-01,2027-05-24,false,Created,Carry-over from the previous sprint
+PAY-021,Finalize gateway settlement contract,Payments and Checkout Launch,Payments,Priya Shah,To Do,High,5,S28,PLT-014,2027-05-21,2027-06-28,false,Created,
+PAY-022,Tune retry handling,Reliability Follow-ups,Payments,Asha Iyer,To Do,Low,2,S27,,2027-04-01,2027-05-13,false,Created,QA sample attached
+PAY-023,Document support response,Reliability Follow-ups,Payments,Jon Bell,To Do,Medium,1,S29,,2027-04-12,2027-05-19,false,Created,Waiting on the next export refresh
+PAY-024,Tune retry handling,Order History,Payments,Asha Iyer,In Progress,Medium,2,S29,,2027-04-06,2027-06-10,false,Created; In Progress,
+PAY-025,Tidy event mapping,Order History,Payments,Priya Shah,In Progress,High,5,S30,,2027-04-30,2027-05-22,false,Created; In Progress,Needs product copy review
+PAY-026,Improve list filtering,Reliability Follow-ups,Payments,Jon Bell,To Do,High,8,S27,,2027-04-18,2027-06-29,false,Created,Carry-over from the previous sprint
+PAY-027,Review edge-case behavior,Reliability Follow-ups,Payments,Priya Shah,Done,Medium,2,S30,,2027-04-19,2027-05-28,false,Created,Waiting on the next export refresh
+PAY-028,Reconcile retry behavior,Payments and Checkout Launch,Payments,Asha Iyer,To Do,Medium,3,S28,PAY-021,2027-05-24,2027-06-26,false,Created,
+PAY-029,Refresh validation copy,Reliability Follow-ups,Payments,Priya Shah,In Progress,Low,8,S30,,2027-04-28,2027-06-23,false,Created; In Progress,Waiting on the next export refresh
+PAY-030,Update service alert,Account Recovery,Payments,Ari Mendez,In Progress,Medium,8,S29,,2027-05-11,2027-06-11,false,Created; In Progress,
+PAY-031,Update transaction retry rules,Payments Core,Payments,Jon Bell,To Do,High,13,S28,,2027-06-19,2027-07-01,false,Created,
+PAY-032,Add audit field,Reliability Follow-ups,Payments,Ari Mendez,Done,High,2,S27,,2027-04-03,2027-04-29,false,Created,Waiting on the next export refresh
+PAY-033,Update service alert,Reliability Follow-ups,Payments,Priya Shah,Done,Medium,1,S30,,2027-04-18,2027-05-10,false,Created,QA sample attached
+PAY-034,Add dispute export fields,Payments and Checkout Launch,Payments,Ari Mendez,To Do,Low,3,S30,,2027-06-04,2027-07-25,false,Created,Export fields requested by operations
+PAY-035,Refresh validation copy,Order History,Payments,Ari Mendez,To Do,Low,8,S27,,2027-04-13,2027-06-17,false,Created,Waiting on the next export refresh
+PAY-036,Update service alert,Order History,Payments,Jon Bell,Done,Low,3,S27,,2027-05-22,2027-07-23,false,Created,Waiting on the next export refresh
+PAY-037,Tune retry handling,Account Recovery,Payments,Priya Shah,Done,High,3,S30,,2027-05-08,2027-07-08,false,Created,
+PAY-038,Refresh validation copy,Account Recovery,Payments,Jon Bell,Cancelled,Low,,S29,,2027-04-20,2027-06-22,false,Created,QA sample attached
+PAY-039,Improve list filtering,Order History,Payments,Priya Shah,To Do,High,5,S27,,2027-04-17,2027-05-30,false,Created,Needs product copy review
+PAY-040,Tidy event mapping,Order History,Payments,Jon Bell,Cancelled,Low,5,S27,,2027-04-16,2027-05-20,false,Created,Waiting on the next export refresh
+PAY-041,Tidy event mapping,Reliability Follow-ups,Payments,Asha Iyer,In Progress,Medium,8,S30,,2027-05-17,2027-07-16,false,Created; In Progress,Needs product copy review
+PAY-042,Add audit field,Merchant Console,Payments,Priya Shah,Done,Medium,2,S30,,2027-05-25,2027-07-23,false,Created,QA sample attached
+PAY-043,Update service alert,Reliability Follow-ups,Payments,Asha Iyer,To Do,Low,3,S27,,2027-04-25,2027-06-24,false,Created,Needs product copy review
+PAY-044,Refresh validation copy,Account Recovery,Payments,Asha Iyer,To Do,Low,8,S27,,2027-05-05,2027-06-01,false,Created,Needs product copy review
+CHK-001,Refresh validation copy,Account Recovery,Checkout,Luca Park,Done,Low,1,S29,,2027-05-21,2027-08-04,false,Created,
+CHK-002,Tidy event mapping,Order History,Checkout,Tessa Yu,To Do,Medium,5,S27,,2027-05-09,2027-07-05,false,Created,Waiting on the next export refresh
+CHK-003,Document support response,Account Recovery,Checkout,Luca Park,To Do,High,8,S29,,2027-04-04,2027-05-27,false,Created,Waiting on the next export refresh
+CHK-004,Update service alert,Reliability Follow-ups,Checkout,Nia Cole,In Progress,Medium,3,S30,,2027-05-06,2027-07-07,false,Created; In Progress,Needs product copy review
+CHK-005,Review edge-case behavior,Reliability Follow-ups,Checkout,Luca Park,To Do,Low,3,S27,,2027-04-08,2027-06-04,false,Created,QA sample attached
+CHK-006,Review edge-case behavior,Reliability Follow-ups,Checkout,Omar Reed,To Do,Medium,5,S29,,2027-04-09,2027-06-05,false,Created,Waiting on the next export refresh
+CHK-007,Review edge-case behavior,Order History,Checkout,Tessa Yu,In Progress,High,5,S27,,2027-05-24,2027-07-05,false,Created; In Progress,QA sample attached
+CHK-008,Add audit field,Order History,Checkout,Tessa Yu,Done,Low,1,S29,,2027-05-02,2027-06-24,false,Created,Needs product copy review
+CHK-009,Review edge-case behavior,Reliability Follow-ups,Checkout,Tessa Yu,To Do,Low,5,S30,,2027-04-05,2027-06-18,false,Created,Carry-over from the previous sprint
+CHK-010,Improve list filtering,Account Recovery,Checkout,Nia Cole,To Do,Low,2,S30,,2027-05-14,2027-06-24,false,Created,Carry-over from the previous sprint
+CHK-011,Refresh validation copy,Merchant Console,Checkout,Luca Park,To Do,Low,1,S27,,2027-04-15,2027-06-22,false,Created,Waiting on the next export refresh
+CHK-012,Document support response,Account Recovery,Checkout,Nia Cole,Done,Low,3,S30,,2027-04-14,2027-06-07,false,Created,Carry-over from the previous sprint
+CHK-013,Tune retry handling,Merchant Console,Checkout,Omar Reed,In Progress,Medium,3,S29,,2027-04-17,2027-05-27,false,Created; In Progress,
+CHK-014,Refresh validation copy,Merchant Console,Checkout,Tessa Yu,Done,Medium,3,S29,,2027-04-08,2027-05-17,false,Created,Needs product copy review
+CHK-015,Improve list filtering,Order History,Checkout,Omar Reed,In Progress,Low,2,S29,,2027-05-06,2027-07-12,false,Created; In Progress,Needs product copy review
+CHK-016,Refresh validation copy,Merchant Console,Checkout,Tessa Yu,To Do,Low,1,S27,,2027-05-23,2027-08-03,false,Created,
+CHK-017,Connect payment orchestration,Payments and Checkout Launch,Checkout,Luca Park,To Do,High,8,S28,PAY-021,2027-05-24,2027-07-02,false,Created,
+CHK-018,Document support response,Merchant Console,Checkout,Omar Reed,Done,Low,3,S30,,2027-05-09,2027-07-02,false,Created,Waiting on the next export refresh
+CHK-019,Update service alert,Order History,Checkout,Omar Reed,Cancelled,High,,S29,,2027-04-07,2027-06-10,false,Created,Carry-over from the previous sprint
+CHK-020,Improve list filtering,Account Recovery,Checkout,Luca Park,To Do,Low,2,S30,,2027-05-12,2027-06-02,false,Created,Carry-over from the previous sprint
+CHK-021,Update service alert,Merchant Console,Checkout,Omar Reed,To Do,Low,8,S27,,2027-05-02,2027-07-13,false,Created,
+CHK-022,Add audit field,Merchant Console,Checkout,Tessa Yu,In Progress,Medium,1,S27,,2027-04-30,2027-06-04,false,Created; In Progress,QA sample attached
+CHK-023,Tune retry handling,Reliability Follow-ups,Checkout,Tessa Yu,To Do,Low,1,S27,,2027-04-07,2027-06-10,false,Created,QA sample attached
+CHK-024,Review edge-case behavior,Order History,Checkout,Tessa Yu,To Do,High,1,S29,,2027-05-19,2027-07-19,false,Created,Carry-over from the previous sprint
+CHK-025,Improve list filtering,Reliability Follow-ups,Checkout,Luca Park,Done,Low,2,S27,,2027-04-18,2027-06-28,false,Created,Carry-over from the previous sprint
+CHK-026,Approve launch readiness,Payments and Checkout Launch,Checkout,Nia Cole,To Do,High,8,S29,CHK-017,2027-05-27,2027-07-16,false,Created,
+CHK-027,Document support response,Reliability Follow-ups,Checkout,Omar Reed,In Progress,Medium,2,S30,,2027-04-06,2027-06-02,false,Created; In Progress,Needs product copy review
+CHK-028,Improve list filtering,Account Recovery,Checkout,Tessa Yu,To Do,Medium,3,S27,,2027-04-27,2027-06-14,false,Created,QA sample attached
+CHK-029,Add audit field,Reliability Follow-ups,Checkout,Tessa Yu,Done,High,2,S27,,2027-05-21,2027-07-24,false,Created,
+CHK-030,Update service alert,Reliability Follow-ups,Checkout,Tessa Yu,Done,Low,1,S27,,2027-04-07,2027-05-13,false,Created,QA sample attached
+CHK-031,Tidy event mapping,Reliability Follow-ups,Checkout,Omar Reed,Done,High,1,S30,,2027-04-13,2027-05-18,false,Created,
+CHK-032,Tune retry handling,Order History,Checkout,Nia Cole,In Progress,High,5,S29,,2027-05-07,2027-07-10,false,Created; In Progress,Needs product copy review
+CHK-033,Add audit field,Account Recovery,Checkout,Tessa Yu,Done,Low,3,S27,,2027-04-16,2027-05-27,false,Created,QA sample attached
+CHK-034,Review edge-case behavior,Reliability Follow-ups,Checkout,Tessa Yu,In Progress,Low,5,S27,,2027-05-19,2027-08-02,false,Created; In Progress,
+CHK-035,Tidy event mapping,Order History,Checkout,Nia Cole,Done,Medium,8,S30,,2027-04-17,2027-05-11,false,Created,Waiting on the next export refresh
+CHK-036,Review edge-case behavior,Account Recovery,Checkout,Nia Cole,Done,High,8,S30,,2027-05-03,2027-07-05,false,Created,QA sample attached
+CHK-037,Add alternative wallet acceptance,Payments and Checkout Launch,Checkout,Omar Reed,To Do,Medium,5,S30,,2027-06-03,2027-07-24,false,Created,Product example included in the release review
+CHK-038,Document support response,Merchant Console,Checkout,Omar Reed,In Progress,Low,,S27,,2027-05-21,2027-06-15,false,Created; In Progress,
+CHK-039,Tidy event mapping,Order History,Checkout,Omar Reed,In Progress,Medium,3,S29,,2027-04-03,2027-05-03,false,Created; In Progress,
+CHK-040,Refresh checkout copy,Checkout Experience,Checkout,Tessa Yu,Blocked,Low,2,S29,CHK-041,2027-06-10,2027-07-05,false,Created,
+CHK-041,Approve copy changes,Checkout Experience,Checkout,Tessa Yu,Done,Low,1,S27,,2027-06-01,2027-06-10,false,Created,Approved in the prior sprint
+CHK-042,Review edge-case behavior,Account Recovery,Checkout,Nia Cole,In Progress,High,3,S29,,2027-04-03,2027-05-12,false,Created; In Progress,Needs product copy review
+CHK-043,Refresh validation copy,Reliability Follow-ups,Checkout,Tessa Yu,To Do,Low,8,S27,,2027-05-07,2027-07-09,false,Created,Waiting on the next export refresh
+CHK-044,Review edge-case behavior,Merchant Console,Checkout,Tessa Yu,To Do,Medium,8,S29,,2027-05-23,2027-07-10,false,Created,
+PLT-001,Review edge-case behavior,Order History,Platform,Dev Patel,In Progress,Medium,2,S27,,2027-04-08,2027-06-10,false,Created; In Progress,QA sample attached
+PLT-002,Update service alert,Order History,Platform,Dev Patel,In Progress,Medium,2,S30,,2027-05-24,2027-07-10,false,Created; In Progress,Carry-over from the previous sprint
+PLT-003,Tidy event mapping,Order History,Platform,Hana Moss,To Do,Low,5,S30,,2027-04-14,2027-05-10,false,Created,Carry-over from the previous sprint
+PLT-004,Add audit field,Order History,Platform,Dev Patel,Done,High,5,S30,,2027-04-23,2027-05-29,false,Created,Waiting on the next export refresh
+PLT-005,Add audit field,Reliability Follow-ups,Platform,Cora Lin,In Progress,High,8,S30,,2027-04-26,2027-07-10,false,Created; In Progress,Carry-over from the previous sprint
+PLT-006,Improve list filtering,Order History,Platform,Cora Lin,To Do,Low,3,S27,,2027-05-23,2027-07-08,false,Created,
+PLT-007,Add audit field,Merchant Console,Platform,Hana Moss,Done,Low,3,S27,,2027-04-07,2027-05-15,false,Created,Carry-over from the previous sprint
+PLT-008,Refresh validation copy,Order History,Platform,Ben Ortiz,To Do,Medium,1,S27,,2027-05-25,2027-07-03,false,Created,
+PLT-009,Improve list filtering,Merchant Console,Platform,Cora Lin,In Progress,Low,3,S30,,2027-05-12,2027-06-08,false,Created; In Progress,Carry-over from the previous sprint
+PLT-010,Add audit field,Merchant Console,Platform,Hana Moss,In Progress,Low,8,S30,,2027-05-27,2027-07-06,false,Created; In Progress,
+PLT-011,Refresh validation copy,Reliability Follow-ups,Platform,Cora Lin,Done,Low,3,S30,,2027-04-06,2027-04-30,false,Created,QA sample attached
+PLT-012,Review edge-case behavior,Account Recovery,Platform,Hana Moss,To Do,Low,5,S27,,2027-05-13,2027-07-06,false,Created,Waiting on the next export refresh
+PLT-013,Review edge-case behavior,Merchant Console,Platform,Dev Patel,In Progress,Medium,2,S27,,2027-04-28,2027-07-08,false,Created; In Progress,Waiting on the next export refresh
+PLT-014,Provision gateway certificate,Merchant Console,Platform,,In Progress,Low,3,S28,,2027-05-20,2027-06-23,false,Created; In Progress,Vendor confirmation is in the shared thread
+PLT-015,Update service alert,Reliability Follow-ups,Platform,Cora Lin,In Progress,Medium,2,S30,,2027-05-18,2027-07-23,false,Created; In Progress,
+PLT-016,Refresh validation copy,Account Recovery,Platform,Hana Moss,In Progress,Low,2,S29,,2027-04-28,2027-06-14,false,Created; In Progress,QA sample attached
+PLT-017,Add audit field,Merchant Console,Platform,Hana Moss,In Progress,Low,8,S27,,2027-04-30,2027-05-31,false,Created; In Progress,Waiting on the next export refresh
+PLT-018,Review edge-case behavior,Order History,Platform,Cora Lin,To Do,Low,8,S27,,2027-05-23,2027-06-20,false,Created,Waiting on the next export refresh
+PLT-019,Document support response,Merchant Console,Platform,Ben Ortiz,In Progress,High,,S30,,2027-04-05,2027-05-17,false,Created; In Progress,
+PLT-020,Refresh validation copy,Order History,Platform,Dev Patel,Cancelled,Medium,1,S27,,2027-04-21,2027-06-28,false,Created,
+PLT-021,Update service alert,Order History,Platform,Ben Ortiz,Done,Low,2,S30,,2027-05-25,2027-07-15,false,Created,Carry-over from the previous sprint
+PLT-022,Tune retry handling,Reliability Follow-ups,Platform,Hana Moss,To Do,Medium,8,S27,,2027-04-24,2027-05-17,false,Created,
+PLT-023,Refresh validation copy,Order History,Platform,Cora Lin,In Progress,High,8,S27,,2027-04-08,2027-05-12,false,Created; In Progress,QA sample attached
+PLT-024,Document support response,Order History,Platform,Dev Patel,To Do,Medium,3,S27,,2027-04-06,2027-06-12,false,Created,Needs product copy review
+PLT-025,Document support response,Merchant Console,Platform,Ben Ortiz,Cancelled,High,1,S29,,2027-04-22,2027-07-06,false,Created,
+PLT-026,Tidy event mapping,Merchant Console,Platform,Ben Ortiz,Cancelled,Low,8,S30,,2027-04-10,2027-05-28,false,Created,QA sample attached
+PLT-027,Update service alert,Merchant Console,Platform,Ben Ortiz,Cancelled,High,5,S29,,2027-04-03,2027-05-30,false,Created,QA sample attached
+PLT-028,Tidy event mapping,Merchant Console,Platform,Dev Patel,To Do,Medium,5,S30,,2027-04-12,2027-05-27,false,Created,Carry-over from the previous sprint
+PLT-029,Improve list filtering,Order History,Platform,Dev Patel,To Do,High,5,S29,,2027-05-01,2027-05-31,false,Created,
+PLT-030,Document support response,Order History,Platform,Ben Ortiz,Done,Low,3,S29,,2027-04-30,2027-05-30,false,Created,Waiting on the next export refresh
+PLT-031,Update service alert,Reliability Follow-ups,Platform,Dev Patel,In Progress,Medium,8,S30,,2027-04-09,2027-06-14,false,Created; In Progress,Carry-over from the previous sprint
+PLT-032,Publish production runbook,Payments and Checkout Launch,Platform,Ben Ortiz,To Do,Medium,3,S29,,2027-05-26,2027-07-12,false,Created,
+PLT-033,Review edge-case behavior,Merchant Console,Platform,Cora Lin,In Progress,High,2,S27,,2027-04-30,2027-06-15,false,Created; In Progress,Carry-over from the previous sprint
+PLT-034,Tidy event mapping,Account Recovery,Platform,Hana Moss,In Progress,High,3,S30,,2027-05-22,2027-07-30,false,Created; In Progress,Waiting on the next export refresh
+PLT-035,Review edge-case behavior,Account Recovery,Platform,Dev Patel,To Do,Low,5,S27,,2027-04-24,2027-07-04,false,Created,Carry-over from the previous sprint
+PLT-036,Improve list filtering,Order History,Platform,Cora Lin,In Progress,Medium,2,S30,,2027-05-17,2027-06-08,false,Created; In Progress,
+PLT-037,Update service alert,Reliability Follow-ups,Platform,Dev Patel,To Do,Low,8,S27,,2027-05-12,2027-07-06,false,Created,Carry-over from the previous sprint
+PLT-038,Add audit field,Merchant Console,Platform,Ben Ortiz,In Progress,Low,,S29,,2027-04-21,2027-05-31,false,Created; In Progress,Carry-over from the previous sprint
+PLT-039,Document support response,Order History,Platform,Hana Moss,In Progress,Medium,5,S29,,2027-04-28,2027-07-04,false,Created; In Progress,
+PLT-040,Refresh validation copy,Account Recovery,Platform,Dev Patel,To Do,Medium,3,S27,,2027-05-13,2027-06-30,false,Created,QA sample attached
+PLT-041,Refresh validation copy,Order History,Platform,Dev Patel,To Do,High,5,S29,,2027-04-20,2027-06-23,false,Created,Carry-over from the previous sprint
+PLT-042,Tune retry handling,Account Recovery,Platform,Cora Lin,In Progress,Low,8,S27,,2027-04-01,2027-06-03,false,Created; In Progress,QA sample attached
+PLT-043,Refresh validation copy,Account Recovery,Platform,Dev Patel,Done,Medium,8,S29,,2027-05-22,2027-07-26,false,Created,Needs product copy review
+PLT-044,Tune retry handling,Merchant Console,Platform,Cora Lin,Done,Low,2,S27,,2027-05-24,2027-06-27,false,Created,Waiting on the next export refresh
+RISK-001,Tidy event mapping,Account Recovery,Risk,Inez Fox,Cancelled,Medium,1,S30,,2027-05-26,2027-07-14,false,Created,Carry-over from the previous sprint
+RISK-002,Add audit field,Reliability Follow-ups,Risk,Gia Stone,To Do,Medium,8,S30,,2027-04-06,2027-06-18,false,Created,
+RISK-003,Document support response,Order History,Risk,Finn Ward,To Do,High,1,S29,,2027-04-04,2027-06-14,false,Created,Carry-over from the previous sprint
+RISK-004,Add audit field,Reliability Follow-ups,Risk,Finn Ward,Done,High,8,S30,,2027-05-03,2027-06-04,false,Created,Waiting on the next export refresh
+RISK-005,Tidy event mapping,Reliability Follow-ups,Risk,Eve Grant,Cancelled,Medium,2,S27,,2027-05-09,2027-07-16,false,Created,Needs product copy review
+RISK-006,Add audit field,Account Recovery,Risk,Finn Ward,In Progress,Medium,1,S27,,2027-05-20,2027-07-28,false,Created; In Progress,Needs product copy review
+RISK-007,Review edge-case behavior,Merchant Console,Risk,Gia Stone,Done,Medium,5,S27,,2027-04-10,2027-06-22,false,Created,
+RISK-008,Refresh validation copy,Reliability Follow-ups,Risk,Finn Ward,To Do,Low,3,S30,,2027-05-26,2027-07-29,false,Created,Needs product copy review
+RISK-009,Tune retry handling,Merchant Console,Risk,Eve Grant,Cancelled,High,8,S29,,2027-05-09,2027-06-01,false,Created,Waiting on the next export refresh
+RISK-010,Improve list filtering,Merchant Console,Risk,Finn Ward,In Progress,Low,1,S30,,2027-05-09,2027-07-18,false,Created; In Progress,Needs product copy review
+RISK-011,Tune retry handling,Reliability Follow-ups,Risk,Eve Grant,To Do,Medium,8,S29,,2027-04-18,2027-05-30,false,Created,
+RISK-012,Set launch transaction limits,Payments and Checkout Launch,Risk,Eve Grant,To Do,Medium,3,S29,,2027-05-25,2027-07-08,false,Created,
+RISK-013,Improve list filtering,Merchant Console,Risk,Eve Grant,To Do,Low,8,S30,,2027-05-22,2027-06-14,false,Created,
+RISK-014,Tidy event mapping,Reliability Follow-ups,Risk,Finn Ward,Done,Medium,3,S30,,2027-04-22,2027-07-01,false,Created,Needs product copy review
+RISK-015,Improve list filtering,Reliability Follow-ups,Risk,Eve Grant,Done,High,3,S29,,2027-05-11,2027-06-15,false,Created,Waiting on the next export refresh
+RISK-016,Tune retry handling,Merchant Console,Risk,Inez Fox,Done,Low,8,S27,,2027-05-17,2027-07-02,false,Created,Carry-over from the previous sprint
+RISK-017,Improve list filtering,Order History,Risk,Finn Ward,To Do,Medium,1,S30,,2027-04-26,2027-06-10,false,Created,Waiting on the next export refresh
+RISK-018,Update service alert,Merchant Console,Risk,Gia Stone,To Do,High,3,S29,,2027-04-22,2027-06-09,false,Created,Waiting on the next export refresh
+RISK-019,Document support response,Merchant Console,Risk,Finn Ward,To Do,High,,S27,,2027-04-26,2027-06-29,false,Created,Needs product copy review
+RISK-020,Update service alert,Order History,Risk,Gia Stone,To Do,Medium,1,S27,,2027-05-05,2027-06-23,false,Created,Carry-over from the previous sprint
+RISK-021,Review edge-case behavior,Reliability Follow-ups,Risk,Gia Stone,To Do,High,2,S30,,2027-04-12,2027-05-11,false,Created,Carry-over from the previous sprint
+RISK-022,Review edge-case behavior,Order History,Risk,Eve Grant,In Progress,Medium,2,S27,,2027-04-21,2027-07-05,false,Created; In Progress,Waiting on the next export refresh
+RISK-023,Add merchant fraud review,Payments and Checkout Launch,Risk,Gia Stone,To Do,Medium,2,S30,,2027-06-05,2027-07-26,false,Created,Review item from merchant feedback
+RISK-024,Review edge-case behavior,Order History,Risk,Gia Stone,To Do,Low,3,S27,,2027-05-09,2027-07-23,false,Created,QA sample attached
+RISK-025,Tidy event mapping,Reliability Follow-ups,Risk,Inez Fox,To Do,High,5,S29,,2027-04-11,2027-05-19,false,Created,QA sample attached
+RISK-026,Review edge-case behavior,Account Recovery,Risk,Inez Fox,To Do,High,8,S30,,2027-05-13,2027-07-02,false,Created,Waiting on the next export refresh
+RISK-027,Tune retry handling,Order History,Risk,Gia Stone,Cancelled,Medium,8,S30,,2027-05-16,2027-06-24,false,Created,Carry-over from the previous sprint
+RISK-028,Add audit field,Merchant Console,Risk,Gia Stone,To Do,High,3,S29,,2027-05-05,2027-06-10,false,Created,QA sample attached
+RISK-029,Document support response,Order History,Risk,Eve Grant,In Progress,Medium,2,S29,,2027-05-03,2027-07-03,false,Created; In Progress,Needs product copy review
+RISK-030,Tune retry handling,Merchant Console,Risk,Gia Stone,Done,High,3,S30,,2027-05-03,2027-07-17,false,Created,
+RISK-031,Improve list filtering,Account Recovery,Risk,Eve Grant,Done,Low,5,S30,,2027-05-02,2027-06-23,false,Created,
+RISK-032,Update service alert,Reliability Follow-ups,Risk,Eve Grant,Done,Medium,8,S27,,2027-04-14,2027-05-13,false,Created,Carry-over from the previous sprint
+RISK-033,Tune retry handling,Merchant Console,Risk,Gia Stone,In Progress,Low,2,S27,,2027-04-04,2027-05-15,false,Created; In Progress,
+RISK-034,Update service alert,Account Recovery,Risk,Eve Grant,Done,Medium,8,S29,,2027-04-03,2027-05-20,false,Created,
+RISK-035,Update service alert,Merchant Console,Risk,Finn Ward,To Do,High,8,S30,,2027-05-20,2027-06-11,false,Created,Waiting on the next export refresh
+RISK-036,Update service alert,Order History,Risk,Finn Ward,Done,Low,2,S29,,2027-05-11,2027-06-25,false,Created,Needs product copy review
+RISK-037,Tune retry handling,Reliability Follow-ups,Risk,Inez Fox,To Do,High,2,S29,,2027-05-05,2027-07-07,false,Created,
+RISK-038,Review edge-case behavior,Order History,Risk,Inez Fox,Done,Medium,,S27,,2027-05-27,2027-08-03,false,Created,Waiting on the next export refresh
+RISK-039,Tune retry handling,Order History,Risk,Finn Ward,To Do,Low,3,S27,,2027-04-03,2027-06-04,false,Created,
+RISK-040,Tidy event mapping,Account Recovery,Risk,Eve Grant,To Do,Low,8,S29,,2027-04-02,2027-05-09,false,Created,QA sample attached
+RISK-041,Tune retry handling,Order History,Risk,Inez Fox,To Do,Medium,2,S27,,2027-05-09,2027-06-03,false,Created,Needs product copy review
+RISK-042,Review edge-case behavior,Reliability Follow-ups,Risk,Gia Stone,In Progress,Medium,8,S30,,2027-04-23,2027-07-05,false,Created; In Progress,Needs product copy review
+RISK-043,Tune retry handling,Order History,Risk,Inez Fox,Done,High,2,S30,,2027-04-25,2027-06-25,false,Created,Needs product copy review
+RISK-044,Tune retry handling,Account Recovery,Risk,Eve Grant,Done,High,2,S27,,2027-04-03,2027-05-23,false,Created,Carry-over from the previous sprint
+SUP-001,Document support response,Reliability Follow-ups,Support,Kai Dunn,Done,Low,2,S29,,2027-05-06,2027-06-04,false,Created,Carry-over from the previous sprint
+SUP-002,Tune retry handling,Order History,Support,Kai Dunn,In Progress,Medium,3,S27,,2027-05-20,2027-06-27,false,Created; In Progress,Needs product copy review
+SUP-003,Improve list filtering,Reliability Follow-ups,Support,Kai Dunn,In Progress,Low,2,S30,,2027-04-12,2027-06-13,false,Created; In Progress,Carry-over from the previous sprint
+SUP-004,Document support response,Reliability Follow-ups,Support,Lana Price,To Do,High,1,S30,,2027-05-13,2027-06-30,false,Created,
+SUP-005,Refresh validation copy,Reliability Follow-ups,Support,Jules Ray,Cancelled,Low,5,S27,,2027-05-22,2027-07-04,false,Created,
+SUP-006,Add audit field,Order History,Support,Jules Ray,Done,High,3,S27,,2027-04-13,2027-05-13,false,Created,
+SUP-007,Add audit field,Reliability Follow-ups,Support,Milo Kent,In Progress,Low,3,S27,,2027-04-23,2027-06-09,false,Created; In Progress,Needs product copy review
+SUP-008,Document support response,Reliability Follow-ups,Support,Milo Kent,Done,Medium,3,S30,,2027-04-08,2027-06-09,false,Created,Needs product copy review
+SUP-009,Tidy event mapping,Merchant Console,Support,Milo Kent,In Progress,Low,5,S30,,2027-04-04,2027-05-25,false,Created; In Progress,
+SUP-010,Update service alert,Reliability Follow-ups,Support,Milo Kent,To Do,Medium,8,S30,,2027-04-02,2027-05-23,false,Created,Needs product copy review
+SUP-011,Review edge-case behavior,Reliability Follow-ups,Support,Kai Dunn,Done,High,2,S30,,2027-04-03,2027-04-30,false,Created,Carry-over from the previous sprint
+SUP-012,Review edge-case behavior,Order History,Support,Kai Dunn,To Do,Medium,8,S29,,2027-04-18,2027-06-23,false,Created,Needs product copy review
+SUP-013,Add audit field,Merchant Console,Support,Kai Dunn,In Progress,Medium,5,S30,,2027-04-25,2027-07-08,false,Created; In Progress,
+SUP-014,Tidy event mapping,Order History,Support,Lana Price,In Progress,Medium,3,S30,,2027-04-16,2027-05-26,false,Created; In Progress,Waiting on the next export refresh
+SUP-015,Update service alert,Merchant Console,Support,Jules Ray,To Do,Medium,1,S29,,2027-05-16,2027-07-30,false,Created,Carry-over from the previous sprint
+SUP-016,Document support response,Account Recovery,Support,Milo Kent,To Do,Medium,8,S29,,2027-04-02,2027-06-08,false,Created,Waiting on the next export refresh
+SUP-017,Review edge-case behavior,Merchant Console,Support,Lana Price,Done,High,8,S29,,2027-04-08,2027-05-28,false,Created,Waiting on the next export refresh
+SUP-018,Document support response,Order History,Support,Milo Kent,In Progress,Medium,2,S29,,2027-04-08,2027-05-11,false,Created; In Progress,Waiting on the next export refresh
+SUP-019,Improve list filtering,Account Recovery,Support,Lana Price,In Progress,High,,S27,,2027-05-07,2027-06-05,false,Created; In Progress,Carry-over from the previous sprint
+SUP-020,Improve list filtering,Merchant Console,Support,Jules Ray,To Do,Low,3,S30,,2027-05-14,2027-06-11,false,Created,Carry-over from the previous sprint
+SUP-021,Tune retry handling,Merchant Console,Support,Jules Ray,In Progress,Medium,3,S29,,2027-05-03,2027-06-02,false,Created; In Progress,QA sample attached
+SUP-022,Review edge-case behavior,Account Recovery,Support,Milo Kent,Cancelled,Medium,5,S27,,2027-05-24,2027-07-12,false,Created,
+SUP-023,Tune retry handling,Account Recovery,Support,Milo Kent,To Do,Medium,5,S27,,2027-05-07,2027-05-29,false,Created,Waiting on the next export refresh
+SUP-024,Tidy event mapping,Order History,Support,Lana Price,Done,Medium,3,S30,,2027-04-25,2027-06-01,false,Created,Carry-over from the previous sprint
+SUP-025,Document support response,Reliability Follow-ups,Support,Milo Kent,Done,Medium,3,S30,,2027-04-09,2027-05-15,false,Created,
+SUP-026,Add audit field,Order History,Support,Lana Price,Done,Medium,8,S29,,2027-04-28,2027-05-24,false,Created,Needs product copy review
+SUP-027,Improve list filtering,Account Recovery,Support,Kai Dunn,In Progress,Medium,8,S29,,2027-05-01,2027-05-27,false,Created; In Progress,QA sample attached
+SUP-028,Review edge-case behavior,Reliability Follow-ups,Support,Lana Price,To Do,High,8,S29,,2027-04-11,2027-05-11,false,Created,QA sample attached
+SUP-029,Tune retry handling,Order History,Support,Milo Kent,In Progress,High,5,S29,,2027-04-10,2027-05-17,false,Created; In Progress,QA sample attached
+SUP-030,Tidy event mapping,Account Recovery,Support,Lana Price,Done,High,1,S30,,2027-05-14,2027-07-18,false,Created,QA sample attached
+SUP-031,Add audit field,Merchant Console,Support,Kai Dunn,Done,High,3,S27,,2027-04-23,2027-06-16,false,Created,Waiting on the next export refresh
+SUP-032,Review edge-case behavior,Order History,Support,Lana Price,In Progress,Low,1,S29,,2027-04-24,2027-06-15,false,Created; In Progress,
+SUP-033,Improve list filtering,Account Recovery,Support,Milo Kent,Done,Low,8,S29,,2027-05-03,2027-07-10,false,Created,Needs product copy review
+SUP-034,Improve list filtering,Merchant Console,Support,Jules Ray,To Do,Medium,3,S30,,2027-04-12,2027-05-13,false,Created,Needs product copy review
+SUP-035,Tune retry handling,Reliability Follow-ups,Support,Jules Ray,To Do,Low,3,S29,,2027-04-29,2027-05-30,false,Created,
+SUP-036,Tidy event mapping,Account Recovery,Support,Jules Ray,In Progress,Low,5,S29,,2027-04-16,2027-05-30,false,Created; In Progress,Carry-over from the previous sprint
+SUP-037,Tune retry handling,Order History,Support,Kai Dunn,In Progress,Medium,3,S29,,2027-05-08,2027-05-31,false,Created; In Progress,Waiting on the next export refresh
+SUP-038,Add audit field,Merchant Console,Support,Jules Ray,Done,Medium,,S29,,2027-04-17,2027-07-01,false,Created,Carry-over from the previous sprint
+SUP-039,Tidy event mapping,Merchant Console,Support,Milo Kent,In Progress,High,3,S29,,2027-04-01,2027-04-25,false,Created; In Progress,Needs product copy review
+SUP-040,Add audit field,Reliability Follow-ups,Support,Lana Price,To Do,Low,2,S27,,2027-04-04,2027-05-03,false,Created,Waiting on the next export refresh
+SUP-041,Document support response,Reliability Follow-ups,Support,Kai Dunn,To Do,High,8,S29,,2027-05-13,2027-07-13,false,Created,Carry-over from the previous sprint
+SUP-042,Tune retry handling,Account Recovery,Support,Lana Price,In Progress,Medium,5,S30,,2027-04-12,2027-06-17,false,Created; In Progress,Carry-over from the previous sprint
+SUP-043,Review edge-case behavior,Reliability Follow-ups,Support,Lana Price,To Do,Low,1,S29,,2027-04-02,2027-06-13,false,Created,Waiting on the next export refresh
+SUP-044,Tidy event mapping,Account Recovery,Support,Kai Dunn,In Progress,High,3,S30,,2027-04-08,2027-05-27,false,Created; In Progress,Carry-over from the previous sprint

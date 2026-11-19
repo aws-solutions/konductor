@@ -150,30 +150,17 @@ Choosing among the three orchestrators:
 
 Two are declared in the agent specs.
 
-**AWS documentation lookups** — `konductor`, `k-architect` and `k-developer`. Install `uvx` and add
-`aws-mcp` to `.kiro/settings/mcp.json` for one project or `~/.kiro/settings/mcp.json` for all
-projects, since Kiro CLI does not start MCP servers from the agent specs:
-
-```json
-{
-  "mcpServers": {
-    "aws-mcp": {
-      "command": "uvx",
-      "args": [
-        "mcp-proxy-for-aws-cli==1.7.0",
-        "https://aws-mcp.us-east-1.api.aws/mcp",
-        "--metadata",
-        "AWS_REGION=us-east-1",
-        "--skip-auth"
-      ]
-    }
-  }
-}
-```
+**AWS documentation lookups** for `konductor`, `k-architect` and `k-developer`. Install `uvx`.
+Their agent files carry an `aws-mcp` entry in `mcpServers`, launched via
+`uvx mcp-proxy-for-aws-cli==1.7.0` with `--skip-auth`, so you do not add it to your own MCP config.
+Without `uvx` the server fails to start and the agents still work, just without AWS lookups. The
+first start downloads the proxy through `uvx`, which can delay the agent's first reply.
 
 With `--skip-auth`, documentation search and skills work without AWS credentials. Configure
 credentials in `~/.aws/credentials` or environment variables only for calls that act on an AWS
-account.
+account. `konductor` gets only the five read-only tools. For `k-architect` and `k-developer`,
+knowledge tools are pre-approved and AWS API tools ask first. Use the `aws:ViaAWSMCPService` and
+`aws:CalledViaAWSMCP` IAM condition keys to limit agent-initiated calls.
 
 **Browser automation** — `k-browser`. Install the browser binary:
 

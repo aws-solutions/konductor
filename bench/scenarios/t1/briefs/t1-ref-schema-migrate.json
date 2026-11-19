@@ -1,0 +1,16 @@
+{
+  "id": "t1-ref-schema-migrate",
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/knex/knex",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor, migration and dependency upgrade. Role: developer. Repo kind: a Node.js 24 service using the built-in node:sqlite module (about 35 files: a data layer, handlers, a migrations folder with numbered scripts and a runner, seed data, tests, CI config, docs). Inspiration (idea only): public migration tools: ordered scripts, a version table, up and down steps, data backfills. Build a task where the owner asks to split a `customers` table's address columns into a separate `addresses` table, with wrinkles of your own design (a backfill that must handle customers with no address and with duplicate addresses, the app code and queries moved over, a down migration that restores the old shape, running twice must be safe, and the existing 12 migrations must not be edited)."
+}

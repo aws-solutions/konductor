@@ -1,0 +1,25 @@
+sprint,start_date,end_date,company_holidays,comment
+S-27-01,2027-01-04,2027-01-17,,two-week sprint
+S-27-02,2027-01-18,2027-01-31,,two-week sprint
+S-27-03,2027-02-01,2027-02-14,,two-week sprint
+S-27-04,2027-02-15,2027-02-28,2027-02-15,two-week sprint
+S-27-05,2027-03-01,2027-03-14,,two-week sprint
+S-27-06,2027-03-15,2027-03-28,,two-week sprint
+S-27-07,2027-03-29,2027-04-11,2027-04-02,two-week sprint
+S-27-08,2027-04-12,2027-04-25,,two-week sprint
+S-27-09,2027-04-26,2027-05-09,,two-week sprint
+S-27-10,2027-05-10,2027-05-23,,two-week sprint
+S-27-11,2027-05-24,2027-06-06,,two-week sprint
+S-27-12,2027-06-07,2027-06-20,,two-week sprint
+S-27-13,2027-06-21,2027-07-04,,two-week sprint
+S-27-14,2027-07-05,2027-07-18,,two-week sprint
+S-27-15,2027-07-19,2027-08-01,,two-week sprint
+S-27-16,2027-08-02,2027-08-15,,two-week sprint
+S-27-17,2027-08-16,2027-08-29,,two-week sprint
+S-27-18,2027-08-30,2027-09-12,,two-week sprint
+S-27-19,2027-09-13,2027-09-26,,two-week sprint
+S-27-20,2027-09-27,2027-10-10,,two-week sprint
+S-27-21,2027-10-11,2027-10-24,,two-week sprint
+S-27-22,2027-10-25,2027-11-07,,two-week sprint
+S-27-23,2027-11-08,2027-11-21,,two-week sprint
+S-27-24,2027-11-22,2027-12-05,,two-week sprint

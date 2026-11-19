@@ -1,0 +1,64 @@
+{
+  "id": "t8-nfr-slo-burn",
+  "kind": "doc",
+  "phase": "nfr",
+  "role": "sre",
+  "phases2": [
+    "release-ops"
+  ],
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "ops",
+  "size": "15 to 30",
+  "loglines": 2000,
+  "source": {
+    "url": "https://sre.google/workbook/alerting-on-slos/",
+    "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outFile": "slo/payments-api-slo.md",
+  "blockFields": "`slis` (list of `{ \"name\", \"good\" (the metric or query counting good events), \"valid\" (the metric or query counting valid events) }`), `measured` (object: `availability28d` as a percentage with two decimals, `latencyP99Ms` over the 28 days), `slos` (list of `{ \"sli\", \"target\" (percentage), \"windowDays\" }`), `alerts` (list of `{ \"name\", \"sli\", \"burnRate\", \"longWindowMin\", \"shortWindowMin\", \"action\" (\"page\" or \"ticket\") }`).",
+  "kindExtra": "Seed: 28 days of per-minute request counts by status class and latency buckets for one API (CSV), with health-check and synthetic traffic mixed in (labelled in a column) that must be excluded; one known bad day; a dependency's published SLO in a vendor note that caps what this API can promise; the metrics catalogue. Key shape: `number` items for the measured availability (tolerance 0.05 points) and p99 (tolerance 5%), computed over real user traffic only (a second wrong value for all traffic must fail, so make the synthetic share large enough to move the number); `every` items on `slis` that good and valid are built from metric names in the catalogue (`inSet`); a `some` item on `slos` with a target at or below the dependency cap and at or below the measured value; `some` items on `alerts` for a fast burn page (burn rate at least 10, long window at most 60 minutes, a short window) and a slow burn ticket (burn rate at most 6, long window at least 360 minutes); a `none` item for alerts on CPU or memory. 12 to 16 items.",
+  "brief": "Phase: NFR and performance. Role: SRE. Folder: the ops folder of a payments API: 28 days of traffic and latency data, the metrics catalogue, the current alerts (CPU and error-rate pages that fire a lot), a vendor note on the card network dependency, the product team's wish (\"five nines\"), and an incident list. The request: set the API's availability and latency objectives from the data, and replace the noisy alerts with ones tied to those objectives.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "user-sli",
+        "text": "Defines the indicators from user-facing request outcomes and excludes health checks and synthetic traffic.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "target-from-data",
+        "text": "Sets targets from measured history and the dependency's promise, and explains why the product wish cannot be met.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "multiwindow",
+        "text": "Uses budget burn rate over two windows per alert, a fast burn that pages and a slow burn that opens a ticket.",
+        "source": "Google SRE workbook, Alerting on SLOs, https://sre.google/workbook/alerting-on-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "budget-policy",
+        "text": "States what the team does when the error budget is spent (for example slow feature releases) and who agrees to it.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "latency-good",
+        "text": "Expresses latency as the share of requests under a threshold, not an average.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "low-traffic",
+        "text": "Notes how quiet hours or low traffic affect the alerts and what is done about it.",
+        "source": "Google SRE workbook, Alerting on SLOs, https://sre.google/workbook/alerting-on-slos/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Set the target to 99.999% because the product team asked.",
+      "Alert when the error rate is over 1% for five minutes.",
+      "Average latency under 200 ms.",
+      "Keep the CPU over 80% page."
+    ]
+  }
+}

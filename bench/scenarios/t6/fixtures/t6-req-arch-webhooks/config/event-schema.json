@@ -1,0 +1,7 @@
+{
+  "eventType": "string",
+  "accountId": "opaque string",
+  "occurredAt": "RFC 3339 timestamp",
+  "data": "object",
+  "source": "ledgerline"
+}

@@ -1,0 +1,7 @@
+name: atlas-login-global
+strategy: latency_with_health_override
+normal_backends:
+  - edge-eu
+  - edge-us
+health_override_after_failures: 3
+recovery_hold_seconds: 120

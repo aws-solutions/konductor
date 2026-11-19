@@ -1,0 +1,16 @@
+{
+  "id": "t1-impl-job-retry",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 40",
+  "source": {
+    "url": "https://github.com/sindresorhus/p-retry",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Node.js 24 background worker for an internal order-fulfilment tool (no dependencies): a job queue with handlers, a runner loop, structured logging, config file, tests, CI config, docs. About 35 files. Inspiration (idea only): public retry libraries that retry a failing async operation with exponential backoff, jitter, a retry limit, an abort signal and a hook that decides which errors are worth retrying. Build a task where the owner asks for per-job-type retry policy in the existing runner, with wrinkles of your own design (failures that must never be retried, a job that moves to a dead-letter list after the last attempt with the reason kept, backoff tests that run on an injected clock and random source, attempt counts persisted in the job record, and shutdown that does not lose a job waiting for its retry)."
+}

@@ -1,0 +1,7 @@
+field,meaning,owner,last_checked
+signup_started,first account form submitted,Analytics,2025-02-11
+signup_completed,account record created,Identity,2025-02-11
+profile_completed,minimum profile saved,Profile,2025-02-11
+verification_email_sent,email service accepted a verification message,Messaging,2025-02-11
+email_verified,backend accepted the token,Identity,2025-02-11
+onboarding_completed,first plan saved,Plans,2025-02-11

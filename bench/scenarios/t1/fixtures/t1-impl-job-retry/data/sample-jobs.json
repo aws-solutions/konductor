@@ -1,0 +1,6 @@
+{
+  "pending": [
+    { "id": "sample-001", "type": "inventory.sync", "payload": { "warehouse": "west" }, "attempts": 0 }
+  ],
+  "deadLetter": []
+}

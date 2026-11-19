@@ -2,6 +2,8 @@
 
 ## Overview
 
+Multi-skill code review of changed backend, frontend and infra files: runs the matching review skill per file, removes false positives, writes one report.
+
 This SOP runs a comprehensive multi-skill code review across backend, frontend, and infrastructure files. It discovers changed files, categorizes them, runs the appropriate review skill per category, critiques findings to eliminate false positives, and consolidates into a single prioritized report.
 
 ## Parameters

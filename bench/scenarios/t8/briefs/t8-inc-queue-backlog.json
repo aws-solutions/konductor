@@ -1,0 +1,22 @@
+{
+  "id": "t8-inc-queue-backlog",
+  "kind": "doc",
+  "phase": "release-ops",
+  "role": "sre",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "size": "18 to 35",
+  "loglines": 4000,
+  "source": {
+    "url": "https://sre.google/sre-book/addressing-cascading-failures/",
+    "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outFile": "incidents/notification-backlog.md",
+  "blockFields": "`rootCause` (object: `summary`, a short text naming the cause and the change or condition that triggered it; `evidence`, a list of `path:line` strings citing the log, config or deploy lines that prove it), `timeline` (list of `{ \"time\", \"event\" }`, times ISO 8601 UTC), `impact` (object of 2 to 4 named numbers that you define in the request, for example a duration in minutes and a count of failed requests, with units stated), `actionItems` (list of `{ \"text\", \"owner\" }`).",
+  "kindExtra": "Key shape for this task: one `text` item on `rootCause.summary` with two or more `all` patterns and a `none` pattern for the decoy; one `evidence` item with 2 or 3 groups (each a regex matching the text of the seeded proving lines, for example the config line and the first error of the true chain); one `evidencePrecision` item (min 0.5, `relevant` matching the true chain only); 4 to 6 `some` items on `timeline` with `timeNear`; one `maxLen` on `timeline` (max 15); 2 to 4 `number` items on `impact`; 2 to 4 `some` items on `actionItems` (a fix of the cause, a guard that would catch it earlier); one `maxLen` on `actionItems` (max 10).",
+  "brief": "Phase: release, ops and incident. Role: SRE. Folder: the ops folder of a delivery app's notification pipeline (an API that enqueues events, a message broker, three consumer workers, a push gateway). For several hours customers got delivery notifications late or not at all. The folder holds worker and broker logs for the day, a per-minute metrics CSV (enqueue rate, consumer lag, processed per second, retries, dead-letter count, broker disk), the deploy history, the consumer config diff, the alert definitions, and runbooks. Seed exactly one root cause that the logs prove by a chain of lines across at least two files, and one red herring that looks causal (it happens near the start, is loud, or is the newest change) but the evidence rules out. Spread the true signals: the first symptom, the trigger, the mitigation and the recovery are in different files. Suggested seed: one malformed event (a payload field the new producer version started to send as a list) makes a consumer fail, the retry policy has no cap and no dead-letter routing for that error class, so the same message is retried forever and blocks its partition while lag grows; red herring: a broker disk usage alert that fired at the same time and resolved on its own. The request: the team lead wants the incident written up, with the impact numbers they can give to support (how many notifications were delayed, the longest delay) and what to change.",
+  "reauthoredFrom": "deepseek-3.2"
+}

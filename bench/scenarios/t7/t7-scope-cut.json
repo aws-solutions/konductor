@@ -1,0 +1,155 @@
+{
+  "id": "t7-scope-cut",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "Product added work after we locked the release scope, and we are not moving the launch date. Read the ticket export, roadmap, capacity sheet, sprint calendar, and product request notes in this folder. Leadership has accepted product's additions, so the room has to come from work we already had. Tell me plainly what we should remove, what the added work cost us, and why the proposed trade is safe. Put the deliverable in plan/scope-replan.md. Include one fenced JSON block whose info string is replan. The JSON object must have exactly these keys: added_after_lock (array of ticket-id strings), added_points (number), slack_points (number), points_to_cut (number), cut (array of ticket-id strings), keep_despite_optional (array of ticket-id strings), cannot_cut (array of ticket-id strings), and date (an ISO YYYY-MM-DD string). Keep the launch date in the date field and explain the figures in the surrounding prose.",
+  "fixture": "t7-scope-cut",
+  "hidden": "t7-scope-cut",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "plan/scope-replan.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tickets.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "plan/scope-replan.md",
+      "pattern": "```\\s*replan",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "director-bottom-line",
+      "criterion": "The prose leads with the fixed-date decision and gives the requester a clear, actionable tradeoff rather than making them infer it (code cannot check this because it only validates structured values)",
+      "weight": 2
+    },
+    {
+      "id": "reasoning-and-boundaries",
+      "criterion": "The prose shows how the capacity and cut totals were obtained and states the dependency and customer-commitment boundaries behind the recommendation (code cannot check this because it cannot evaluate explanatory reasoning)",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "fixed-date-trade",
+        "text": "State the fixed launch date and the scope trade in the same decision, so stakeholders can see what is being protected and what is changing.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "trace-request",
+        "text": "Tie each requested change back to the dated product request and the ticket record instead of treating a free-form label as the full history.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "capacity-assumptions",
+        "text": "Make the holiday adjustment and the meaning of remaining slack visible so the director can challenge the forecast without reconstructing the spreadsheet.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "dependency-boundary",
+        "text": "Explain why an apparently deferrable item remains in scope when removing it would strand work that the release still needs.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "commitment-boundary",
+        "text": "Protect the customer promise explicitly and identify the consequence for any later change discussion rather than silently trading it away.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "replan-record",
+        "text": "Leave a concise decision record that names the changed scope, the preserved date, and the assumptions that should be revisited if estimates move.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Count only tickets carrying an added-work label and miss the unlabeled requests.",
+      "Treat every ticket created after the lock as new points, including the two offset bug splits.",
+      "Cut the customer-committed export permission or include it in a generic optional-work list.",
+      "Cut the permission summary because it looks optional without checking the must-have dependency.",
+      "Say the date is safe because the roadmap says so without calculating slack and the required reduction."
+    ]
+  },
+  "targetSkills": [
+    "program-decision-docs"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "program-decision-docs"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/sig-release",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a scope replan without naming specific methods, frameworks, or hinting at the seeded traps (bug splits, dependency-protected stretch item, customer commitment). The JSON schema is explicitly specified but that's a format requirement, not a method leak."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All conventions are clearly stated: active statuses (Open, In Progress, Review), created date meaning, blank points = zero, dependency in depends_on column, parent comment records split estimates, holiday_points_lost is already in points. The customer commitment is stated in product-requests.md. All key values (29, 17, 12, 2027-06-18) follow directly from applying these conventions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file reveals traps or answers directly. The dependency between PRJ-1102 (must-have) and PRJ-1046 (stretch) requires reading the depends_on column and connecting it to the labels. The customer commitment appears in product-requests.md which is an input, not a hidden flag. The bug split offsets require reading parent comments, which is documented behavior."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that counts all post-lock active tickets (including bug splits), cuts the first stretch item found, and misses the customer commitment passes 6/15 tests (40%), below the 50% threshold. The task requires correctly: excluding bug splits (trap), finding dependency-protected stretch items (trap), reading product requests for customer commitment (trap), and calculating holiday-adjusted slack correctly."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the fixture: (1) Added tickets: 6 tickets created after 2027-05-07 with active status and no pre-lock parent with split comment = 29 points. (2) Slack: S12(44-0-37) + S13(48-4-41) + S14(45-2-36) = 17 points. (3) Cut: 29-17=12 points, exactly covered by PRJ-1114(5) + PRJ-1162(7). (4) PRJ-1046 protected by PRJ-1102 must-have dependency. (5) PRJ-1008 is customer commitment per product-requests.md. Tolerances are zero but values are integers derived from straightforward calculations."
+      }
+    ]
+  }
+}

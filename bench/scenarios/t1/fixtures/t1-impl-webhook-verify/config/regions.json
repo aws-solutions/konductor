@@ -1,0 +1,5 @@
+{
+  "us-east": {"currency": "usd", "timezone": "America/New_York"},
+  "eu-west": {"currency": "eur", "timezone": "Europe/Dublin"},
+  "ap-south": {"currency": "inr", "timezone": "Asia/Kolkata"}
+}
