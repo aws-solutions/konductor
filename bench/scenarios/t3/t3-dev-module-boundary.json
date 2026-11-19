@@ -102,5 +102,56 @@
         "note": "All necessary numbers are present; unit conventions (decimal KB/MB) are stated; the solution correctly derives memory and cost from provided data."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the in-memory delay queue option cannot be chosen because its memory requirement (120,000 peak pending × 8 KB = 960 MB) exceeds the retry_memory_limit_mb hard limit of 312 MB.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Calculates monthly cost for the chosen option using the pricing.json rates: database_retry_table costs 104.54 USD/month (2 compute units at $52, 1.2 GB storage at $0.22/GB, 3 GB backup at $0.08/GB, 8M requests at $0.005/M); external_retry_queue costs 104.42 USD/month (2 worker units at $52, 1 GB storage at $0.30/GB, 8M requests at $0.015/M).",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "Explains that the 16 KB maximum_payload_kb from traffic.json is a distractor that does not constrain option choice since all three options support at least 16 KB payloads.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "Verifies that the chosen option satisfies all hard limits: memory under 312 MB, dispatch latency under 60 seconds (database: 42s, external: 18s), and throughput at least 100/s (database: 180/s, external: 350/s).",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Discusses the operational tradeoff between database_retry_table (lower cost by $0.12/month, simpler ownership if the service already owns a database) and external_retry_queue (lower latency 18s vs 42s, higher throughput 350/s vs 180/s, managed service reduces operational complexity).",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Addresses failure mode: the in-memory option would lose all retry state on process crash or container restart, violating the RPO requirement of max 5 minutes, whereas both database and external queue options persist state.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Notes that the 512 batch_records for database_retry_table and 256 batch_records for external_retry_queue are in-memory batch sizes for dispatch, not peak storage, and that the memory_model determines how to calculate actual memory consumption.",
+        "source": "original"
+      },
+      {
+        "id": "e8",
+        "text": "States that if peak pending retries dropped below ~39,000 records, the in-memory option would fit within the memory limit, changing the decision calculus.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "picks the in-memory delay queue as the cheapest option ($0/month) without checking whether it satisfies the memory limit",
+      "calculates memory incorrectly as 120,000 × 8 bytes instead of 120,000 × 8 KB, concluding that in-memory fits",
+      "rejects the external_retry_queue because its 256 batch_records is smaller than the database's 512, confusing batch size with capacity",
+      "chooses database_retry_table solely because it has better RPO (1 min) and RTO (18 min) than required, without checking throughput",
+      "picks external_retry_queue as the only valid option without recognizing database_retry_table also satisfies all constraints"
+    ]
   }
 }
