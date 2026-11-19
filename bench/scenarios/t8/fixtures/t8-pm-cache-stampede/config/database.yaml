@@ -1,0 +1,6 @@
+service: catalog-db
+primary: catalog-primary
+read_replica: read-1
+max_connections: 240
+pool_wait_timeout_ms: 2000
+replication_lag_alert_ms: 1000

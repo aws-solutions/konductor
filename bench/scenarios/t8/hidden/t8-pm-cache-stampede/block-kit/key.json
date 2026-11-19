@@ -1,0 +1,228 @@
+{
+  "outputFile": "postmortems/catalog-db-overload.md",
+  "items": [
+    {
+      "id": "cause-summary",
+      "type": "text",
+      "path": "rootCause.summary",
+      "all": [
+        "cache",
+        "ttl|time-to-live|expiration",
+        "jitter|synchron|same time|simultaneous"
+      ],
+      "none": [
+        "(caused by|due to|because of|result of) (the )?(analytics|reporting|rollup)"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "cause-evidence",
+      "type": "evidence",
+      "path": "rootCause.evidence",
+      "groups": [
+        {
+          "file": "config/config-review\\.diff$",
+          "all": [
+            "default_ttl_seconds\\s*:\\s*1800"
+          ]
+        },
+        {
+          "file": "deploy/deploy-history\\.jsonl$",
+          "all": [
+            "warmup completed",
+            "keys=38400|keys=38,400"
+          ]
+        },
+        {
+          "file": "logs/cache\\.log$",
+          "all": [
+            "expiration wave",
+            "expired_keys=38194|expired_keys=38,194",
+            "ttl_seconds=1800"
+          ]
+        }
+      ],
+      "min": 2,
+      "weight": 2
+    },
+    {
+      "id": "evidence-precision",
+      "type": "evidencePrecision",
+      "path": "rootCause.evidence",
+      "relevant": [
+        "default_ttl_seconds|jitter_seconds",
+        "warmup completed",
+        "expiration wave",
+        "cache=miss burst",
+        "connection_limit_reached"
+      ],
+      "min": 0.5
+    },
+    {
+      "id": "timeline-warmup",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "warm|reload|policy|deploy|config"
+        ],
+        "timeNear": {
+          "time": "2025-03-18T14:42:00.000Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-first-wave",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "expir|page errors?|cache (hit|miss)|miss"
+        ],
+        "timeNear": {
+          "time": "2025-03-18T15:12:00.000Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-second-wave",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "expir|database|connection|miss|error|wave"
+        ],
+        "timeNear": {
+          "time": "2025-03-18T15:42:00.000Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-third-wave",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "expir|database|connection|miss|error|wave"
+        ],
+        "timeNear": {
+          "time": "2025-03-18T16:12:00.000Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-mitigation",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "jitter|ttl|revert|roll(ed)? ?back|backoff|policy|config"
+        ],
+        "timeNear": {
+          "time": "2025-03-18T16:19:00.000Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-recovery",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "recover|healthy|normal|stable|resolved"
+        ],
+        "timeNear": {
+          "time": "2025-03-18T16:22:00.000Z",
+          "tolMin": 3
+        }
+      }
+    },
+    {
+      "id": "timeline-bounded",
+      "type": "maxLen",
+      "path": "timeline",
+      "max": 15,
+      "min": 4
+    },
+    {
+      "id": "impact-failed-pages",
+      "type": "number",
+      "path": "impact.failedPageRequests",
+      "value": 3960,
+      "tolPct": 5,
+      "weight": 2
+    },
+    {
+      "id": "impact-cpu",
+      "type": "number",
+      "path": "impact.peakDbCpuPercent",
+      "value": 99.2,
+      "tolPct": 1
+    },
+    {
+      "id": "impact-connections",
+      "type": "number",
+      "path": "impact.peakDbConnections",
+      "value": 240,
+      "tolPct": 5
+    },
+    {
+      "id": "impact-duration",
+      "type": "number",
+      "path": "impact.affectedMinutes",
+      "value": 12,
+      "tolPct": 10
+    },
+    {
+      "id": "action-fix-expiry",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "jitter",
+          "ttl|expiry|expiration",
+          "cache"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "action-early-guard",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "alert|monitor|page",
+          "cache hit|hit ratio|miss|expir|database cpu|connections|waiters"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "action-canary",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "canary|stag|review|validat|lint|check",
+          "ttl|jitter|expir|warm|reload|policy|config"
+        ]
+      }
+    },
+    {
+      "id": "actions-bounded",
+      "type": "maxLen",
+      "path": "actionItems",
+      "max": 10,
+      "min": 2
+    }
+  ]
+}

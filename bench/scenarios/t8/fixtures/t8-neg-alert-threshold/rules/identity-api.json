@@ -1,0 +1,27 @@
+{
+  "service": "identity-api",
+  "owner": "accounts-platform",
+  "schemaVersion": 3,
+  "rules": [
+    {
+      "name": "IdentityAuthFailures",
+      "kind": "ratio",
+      "metric": "auth_attempts_total",
+      "threshold": 0.08,
+      "operator": ">",
+      "duration": "5m",
+      "labels": {"severity": "warning", "team": "identity"},
+      "annotations": {"summary": "Authentication failures increased", "description": "The failed authentication ratio is above its normal range."}
+    },
+    {
+      "name": "IdentityDependencyDown",
+      "kind": "threshold",
+      "metric": "dependency_health",
+      "threshold": 1,
+      "operator": "<",
+      "duration": "4m",
+      "labels": {"severity": "critical", "team": "identity"},
+      "annotations": {"summary": "An identity dependency is unavailable", "description": "A required identity dependency is reporting unhealthy."}
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "service": "checkout-api",
+  "owner": "payments-platform",
+  "schemaVersion": 3,
+  "rules": [
+    {
+      "name": "CheckoutLatencyHigh",
+      "kind": "threshold",
+      "metric": "http_request_duration_seconds_p95",
+      "threshold": 0.8,
+      "operator": ">",
+      "duration": "10m",
+      "labels": {
+        "severity": "warning",
+        "team": "checkout"
+      },
+      "annotations": {
+        "summary": "Checkout requests are taking longer than expected",
+        "description": "The checkout p95 latency has exceeded the warning level."
+      }
+    },
+    {
+      "name": "CheckoutErrorRateHigh",
+      "kind": "ratio",
+      "metric": "http_requests_total",
+      "threshold": 0.03,
+      "operator": ">",
+      "duration": "8m",
+      "labels": {
+        "severity": "critical",
+        "team": "checkout"
+      },
+      "annotations": {
+        "summary": "Checkout errors are elevated",
+        "description": "The checkout error ratio needs attention."
+      }
+    },
+    {
+      "name": "CheckoutTrafficAbsent",
+      "kind": "absence",
+      "metric": "http_requests_total",
+      "threshold": 0,
+      "operator": "==",
+      "duration": "12m",
+      "labels": {
+        "severity": "warning",
+        "team": "checkout"
+      },
+      "annotations": {
+        "summary": "Checkout traffic has stopped",
+        "description": "No checkout requests have been observed in the evaluation window."
+      }
+    }
+  ]
+}

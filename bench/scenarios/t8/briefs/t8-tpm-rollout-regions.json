@@ -6,8 +6,8 @@
   "phases2": [
     "planning"
   ],
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "ops",
   "size": "15 to 30",
   "loglines": 800,
@@ -25,7 +25,7 @@
     "items": [
       {
         "id": "critical-path",
-        "text": "Orders the work by cross-team dependencies and names the critical path and its owner.",
+        "text": "Names the critical path and its owner, and says which work can run in parallel across teams.",
         "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
       },
       {
@@ -40,7 +40,7 @@
       },
       {
         "id": "calendar",
-        "text": "Keeps launches out of holidays, support gaps and partner blackout dates.",
+        "text": "Says what moves when a holiday, support gap or partner date shifts a stage, and keeps a buffer before each blackout.",
         "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
@@ -65,5 +65,6 @@
       "Monitor closely after launch.",
       "A timeline with no owners or criteria."
     ]
-  }
+  },
+  "reauthoredFrom": "deepseek-3.2"
 }

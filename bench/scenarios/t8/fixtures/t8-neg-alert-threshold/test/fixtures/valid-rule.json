@@ -1,0 +1,10 @@
+{
+  "name": "ExampleRule",
+  "kind": "threshold",
+  "metric": "example_metric",
+  "threshold": 4,
+  "operator": ">",
+  "duration": "5m",
+  "labels": {"severity": "warning"},
+  "annotations": {"summary": "Example"}
+}
