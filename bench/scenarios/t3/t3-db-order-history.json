@@ -111,5 +111,56 @@
         "note": "All required numbers (900M rows, 2.5 KB/row, 2.5 TB limit, $300 budget, pricing) are provided in fixture files. Deliverable format (db/schema.sql, docs/decision.md with JSON) is explicitly specified."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that indexing every column separately (7+ single-column indexes) results in approximately 3.1 TB total storage, which exceeds the 2.5 TB Standard volume limit and would force a Premium volume upgrade.",
+        "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Calculates monthly cost using the correct pricing: $50/month Standard volume base fee (not the Premium $150/month), plus storage/IOPS/throughput usage charges, staying within the $300/month budget.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e3",
+        "text": "Explains why composite indexes (e.g., (customer_id, order_date DESC), (warehouse_id, status, order_date)) are more storage-efficient than single-column indexes while serving multiple query patterns.",
+        "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Addresses the data growth constraint: 3 million new order lines per day means storage planning must account for growth within the retention period, not just the initial 900M rows.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Identifies that Option 2 (composite-optimized) at 2.5 TB exactly matches the storage limit, leaving no headroom for growth, which is a risk if data volume increases unexpectedly.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e6",
+        "text": "Notes that the superseded $0.12/GB-month storage pricing must not be used in cost calculations; current pricing is $0.10/GB-month.",
+        "source": "original"
+      },
+      {
+        "id": "e7",
+        "text": "Discusses the trade-off between Option 2 (composite-optimized) and Option 3 (two-table-normalized): Option 3's join overhead for customer queries vs Option 2's tighter storage margin.",
+        "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "Explains what would change the decision: if Premium volume were approved (higher budget), Option 1 could be reconsidered for simpler index management at the cost of higher storage.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Picks Option 1 (single-column-all) without calculating that 3.1 TB exceeds the 2.5 TB storage limit.",
+      "Selects the cheapest option from pricing-guide.md without verifying it meets the storage constraint.",
+      "Proposes indexing every column because it 'simplifies query optimization' without checking total index storage.",
+      "Calculates cost using the old $0.12/GB-month pricing instead of current $0.10/GB-month rate.",
+      "Recommends Option 2 without noting that 2.5 TB leaves zero headroom for the 3M rows/day growth."
+    ]
   }
 }
