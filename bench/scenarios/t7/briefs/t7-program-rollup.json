@@ -2,7 +2,7 @@
   "id": "t7-program-rollup",
   "phase": "planning",
   "role": "tpm",
-  "author": "gpt-5.6-luna",
+  "author": "qwen3-coder-next",
   "source": {
     "url": "https://github.com/openstack/releases",
     "licence": "Apache-2.0",
@@ -19,5 +19,14 @@
   "controlKind": "none",
   "reviewer": "glm-5",
   "date": "2026-11-19",
-  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass",
+  "history": [
+    {
+      "version": 1,
+      "author": "gpt-5.6-luna",
+      "reviewer": "glm-5"
+    }
+  ],
+  "version": 2,
+  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
 }

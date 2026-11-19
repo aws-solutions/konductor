@@ -104,6 +104,20 @@ test('every brief renders a prompt with no placeholder left', () => {
   }
 });
 
+test('pilotOf records the dry-run scores and the gate decision', () => {
+  const { pilotOf } = require('../record-dry.js');
+  const res = { repeat: 3, deterministic: true, pass: false, reference: { score: 100 }, stub: { score: 7.14 }, answers: { lazy: { score: 52.3 }, alt: { score: 90 } } };
+  const p = pilotOf(res, '2026-11-19');
+  assert.deepStrictEqual(p.scores.dryRun, { repeats: 3, deterministic: true, reference: 100, stub: 7.1, lazy: 52.3, alt: 90 });
+  assert.strictEqual(p.decision, 'fix');
+});
+
+test('the answer gates: lazy at most 40, alternative at least 80', () => {
+  const { ANSWER_GATES } = require('../../t1/dry-run.js');
+  assert.ok(ANSWER_GATES.lazy(40) && !ANSWER_GATES.lazy(40.1));
+  assert.ok(ANSWER_GATES.alt(80) && !ANSWER_GATES.alt(79.9));
+});
+
 const tasks = fs.readdirSync(DIR).filter((f) => /^t7-.*\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')));
 
 test('every assembled task has its grader copies, key and reference', () => {

@@ -2,7 +2,7 @@
   "id": "t7-dep-conflicts",
   "phase": "planning",
   "role": "tpm",
-  "author": "gpt-5.6-luna",
+  "author": "qwen3-coder-next",
   "source": {
     "url": "https://github.com/kubernetes/enhancements",
     "licence": "Apache-2.0",
@@ -18,5 +18,14 @@
   "expert": false,
   "controlKind": "none",
   "reviewer": "glm-5",
-  "date": "2026-11-19"
+  "date": "2026-11-19",
+  "history": [
+    {
+      "version": 1,
+      "author": "gpt-5.6-luna",
+      "reviewer": "glm-5"
+    }
+  ],
+  "version": 2,
+  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
 }

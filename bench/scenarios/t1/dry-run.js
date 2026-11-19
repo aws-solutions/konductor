@@ -9,7 +9,8 @@
 //
 // Layout under bench/scenarios/t1/: <id>.json, fixtures/<id>/, hidden/<id>/ (copied over the workspace root, so a
 // task's tests sit in hidden/<id>/hidden/), solutions/<id>/ (overlay on the fixture; solutions/<id>/DELETE.txt lists
-// paths to remove). The stub is the untouched fixture: an agent that changed nothing.
+// paths to remove). The stub is the untouched fixture: an agent that changed nothing. Optional answers/<id>/lazy/ and
+// answers/<id>/alt/ are overlays scored the same way; the lazy one must score 40 or less, the alternative 80 or more.
 // Score of a code-only run: the hidden-test share (weight 0.5) and the weighted share of substance checks (0.2),
 // renormalised, as the bench's scoring does when no judge scores the rubric.
 
@@ -44,15 +45,19 @@ function copyTree(src, dest) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
-// A workspace: the fixture, plus the reference overlay when `reference` is set.
+// A workspace: the fixture, plus an overlay (the reference solution, or a scored answer) when `overlay` names a dir.
 // `dir` is the batch directory; a task may name another task's fixture (a near-miss twin shares its real task's).
 const fixtureOf = (dir, task) => path.join(dir, 'fixtures', task.fixture || task.id);
 
-function workspace(root, task, reference, dir) {
-  const ws = path.join(root, reference ? 'ref' : 'stub');
+// Gates for the scored answers in answers/<id>/<kind>/ (lead, 2026-11-19): a lazy answer must not pass, an
+// alternative correct answer (other wording and structure than the reference) must.
+const ANSWER_GATES = { lazy: (s) => s <= 40, alt: (s) => s >= 80 };
+
+function workspace(root, task, overlay, dir, name) {
+  const ws = path.join(root, name);
   copyTree(fixtureOf(dir, task), ws);
-  if (reference) {
-    const sol = path.join(dir, 'solutions', task.id);
+  if (overlay) {
+    const sol = overlay;
     const del = path.join(sol, 'DELETE.txt');
     if (fs.existsSync(del)) {
       for (const p of fs.readFileSync(del, 'utf8').split('\n').filter(Boolean)) fs.rmSync(path.join(ws, p), { recursive: true, force: true });
@@ -103,8 +108,12 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
     if (py.executable) env.PATH = [linkPython(root, py.executable, py.version), env.PATH].join(path.delimiter);
     const hiddenDir = path.join(dir, 'hidden', id);
     const out = { id, repeat, reference: null, stub: null, deterministic: true, canary: null };
-    for (const [mode, ref] of [['reference', true], ['stub', false]]) {
-      const ws = workspace(root, task, ref, dir);
+    const answersDir = path.join(dir, 'answers', id);
+    const answers = Object.keys(ANSWER_GATES).filter((k) => fs.existsSync(path.join(answersDir, k)));
+    const modes = [['reference', path.join(dir, 'solutions', id)], ['stub', null], ...answers.map((k) => [k, path.join(answersDir, k)])];
+    for (const [mode, overlay] of modes) {
+      const ref = mode === 'reference';
+      const ws = workspace(root, task, overlay, dir, mode);
       const runs = [];
       for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, hiddenDir, dir, env, path.join(root, 'scratch')));
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
@@ -114,7 +123,8 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
         out.canary = canary(task, hiddenDir, ws, env, path.join(root, 'scratch'), base.tests);
       }
     }
-    out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic && out.canary.ok;
+    out.answers = Object.fromEntries(answers.map((k) => [k, { score: out[k].score, pass: ANSWER_GATES[k](out[k].score) }]));
+    out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic && out.canary.ok && Object.values(out.answers).every((a) => a.pass);
     return out;
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -128,8 +138,8 @@ if (require.main === module) {
   const dir = args.includes('--dir') ? path.resolve(args[args.indexOf('--dir') + 1]) : DIR;
   const res = dryRun(id, { repeat, dir });
   const brief = (m) => ({ score: Number(m.score.toFixed(1)), hidden: m.hidden, checks: m.checks });
-  console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), deterministic: res.deterministic, canary: res.canary, pass: res.pass }, null, 2));
+  console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), answers: res.answers, deterministic: res.deterministic, canary: res.canary, pass: res.pass }, null, 2));
   if (!res.pass) process.exitCode = 1;
 }
 
-module.exports = { scoreOf, dryRun };
+module.exports = { scoreOf, dryRun, ANSWER_GATES };

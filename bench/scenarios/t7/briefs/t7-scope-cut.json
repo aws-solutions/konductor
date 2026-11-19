@@ -2,7 +2,7 @@
   "id": "t7-scope-cut",
   "phase": "planning",
   "role": "tpm",
-  "author": "gpt-5.6-luna",
+  "author": "minimax-m2.5",
   "source": {
     "url": "https://github.com/kubernetes/sig-release",
     "licence": "Apache-2.0",
@@ -17,11 +17,20 @@
   "shape": "{\"added_after_lock\": [ids], \"added_points\": n, \"slack_points\": n, \"points_to_cut\": n, \"cut\": [ids], \"keep_despite_optional\": [ids], \"cannot_cut\": [ids], \"date\": \"YYYY-MM-DD\"}",
   "expert": true,
   "controlKind": "none",
-  "reviewer": "glm-5",
+  "reviewer": "gpt-5.6-luna",
   "date": "2026-11-19",
   "expertSources": [
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)",
     "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
-  ]
+  ],
+  "history": [
+    {
+      "version": 1,
+      "author": "gpt-5.6-luna",
+      "reviewer": "glm-5"
+    }
+  ],
+  "version": 2,
+  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
 }

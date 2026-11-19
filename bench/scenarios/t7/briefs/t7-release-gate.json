@@ -2,7 +2,7 @@
   "id": "t7-release-gate",
   "phase": "release-ops",
   "role": "tpm",
-  "author": "gpt-5.6-luna",
+  "author": "qwen3-coder-next",
   "source": {
     "url": "https://github.com/kubernetes/sig-release",
     "licence": "Apache-2.0",
@@ -23,5 +23,14 @@
     "Kubernetes release-blocking jobs, https://github.com/kubernetes/sig-release/blob/master/release-blocking-jobs.md (Apache-2.0)",
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
-  ]
+  ],
+  "history": [
+    {
+      "version": 1,
+      "author": "gpt-5.6-luna",
+      "reviewer": "glm-5"
+    }
+  ],
+  "version": 2,
+  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
 }

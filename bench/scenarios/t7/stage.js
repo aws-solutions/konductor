@@ -8,7 +8,7 @@
 //   fix <id> FILE  the same author gets one fix round in work/<id>/, with the instructions in FILE
 //   map <id>       a third model family tags the finished task from skill, SOP and agent descriptions only (catalog.json)
 //   review <id>    a model of another family reviews the finished task
-//   assemble <id>  writes the task into bench/scenarios/t7/ (task file, fixtures/, hidden/, solutions/)
+//   assemble <id>  writes the task into bench/scenarios/t7/ (task file, fixtures/, hidden/, solutions/, answers/)
 // Needs T7_AUTH: a directory with run.sh (usage: run.sh <model> <cwd> <promptfile> <outprefix>; it runs kiro-cli in a scratch
 // home with no steering, rules, MCP or skills) and catalog.json (t1/catalog-descriptions.js). Every model call appends its
 // credits to AUTHORING-LOG.md. The mapping prompt is T1's (`../t1/prompts/map.md`), so both batches tag the same way.
@@ -123,7 +123,7 @@ function buildTask(b, draft, key, mapping, rev, date = today()) {
   return {
     id: b.id,
     class: 'design',
-    version: 1,
+    version: b.version || 1,
     phase: b.phase,
     role: b.role,
     questions: 'allowed',
@@ -172,6 +172,11 @@ function assemble(id) {
   for (const f of GRADER_FILES) fs.copyFileSync(path.join(DIR, 'lib', f), path.join(DIR, 'hidden', id, 'hidden', f));
   put(path.join(w, 'solution'), path.join(DIR, 'solutions', id));
   put(path.join(w, 'authoring'), path.join(DIR, 'authoring', id));
+  // Scored answers for the dry run (dry-answers.js): the author's lazy answer and the reviewer's alternative correct one.
+  const answers = { lazy: path.join(w, 'lazy'), alt: path.join(work(`${id}-review`), 'alt') };
+  for (const [kind, from] of Object.entries(answers)) {
+    if (fs.existsSync(from)) put(from, path.join(DIR, 'answers', id, kind));
+  }
   return { id, assertions: key.assertions.length };
 }
 
