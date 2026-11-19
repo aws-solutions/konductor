@@ -1,0 +1,9 @@
+{
+  "name": "atlas-cli",
+  "version": "2.4.0",
+  "description": "A small local data inspection command line tool",
+  "type": "commonjs",
+  "bin": { "atlas": "bin/atlas.js" },
+  "scripts": { "test": "node --test", "check": "node bin/atlas.js check data/sample.json" },
+  "engines": { "node": ">=24" }
+}

@@ -82,3 +82,6 @@ Drafts of both are kept outside the repo (scratch), not in the tree.
 | t1-ref-callbacks | author | gpt-5.6-luna | 2.74 |
 | t1-ref-callbacks | map | glm-5 | 0.16 |
 | t1-ref-callbacks | review | glm-5 | 8.28 |
+| t1-nfr-startup-lazy | author | gpt-5.6-luna | 2.57 |
+| t1-nfr-startup-lazy | map | glm-5 | 0.17 |
+| t1-nfr-startup-lazy | review | glm-5 | 5.43 |

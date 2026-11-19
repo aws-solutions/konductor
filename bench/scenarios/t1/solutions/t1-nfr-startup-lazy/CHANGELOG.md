@@ -1,0 +1,16 @@
+# Changelog
+
+## 2.4.1 - 2025-02-20
+
+- Reduced startup work by loading command code only when its command is selected.
+- Kept configuration validation ahead of command execution.
+
+## 2.4.0 - 2025-02-14
+
+- Added the report command and a stable report heading.
+- Improved messages for missing input files.
+
+## 2.3.0 - 2024-10-02
+
+- Added JSON inspection and line statistics.
+- Kept the command output friendly to shell scripts.

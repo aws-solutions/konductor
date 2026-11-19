@@ -1,0 +1,2 @@
+Atlas keeps this sample deliberately plain.
+It is used in documentation examples.

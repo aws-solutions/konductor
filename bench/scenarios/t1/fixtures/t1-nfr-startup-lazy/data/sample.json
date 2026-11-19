@@ -1,0 +1,5 @@
+{
+  "name": "sample",
+  "items": ["one", "two", "three"],
+  "active": true
+}
