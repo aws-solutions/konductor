@@ -18,7 +18,7 @@
 - **Period:** 1 Jan 2023 - 31 Dec 2025
 - **Restrictions:** 
   - No international travel
-  - Maximum £75/day per person for subsistence
+  - Maximum £75/day per person for subsistence (2023 agreement; renewal under negotiation)
   - Equipment purchases require pre-approval
   - No alcohol expenses
 - **Budget:** £850,000
@@ -29,7 +29,7 @@
 - **Period:** 1 Apr 2022 - 31 Mar 2026
 - **Restrictions:**
   - UK travel only
-  - No hotel accommodation over £120/night
+  - No hotel accommodation over £120/night (2022 agreement; renewal under negotiation)
   - Training costs limited to 15% of project budget
   - No venue hire over £500 without prior approval
 - **Budget:** £650,000

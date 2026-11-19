@@ -148,5 +148,70 @@
       "Train customers and support staff to type part numbers correctly.",
       "Add more synonyms to the search."
     ]
+  },
+  "t6-idea-pricing-test": {
+    "items": [
+      {
+        "id": "hypothesis-first",
+        "text": "States the hypothesis the pricing change was meant to test and judges the result against it, rather than against whichever metric moved.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "sample-and-duration",
+        "text": "Says whether the test had enough users and ran long enough for the expected change, and sets sample size and duration before the repeat test starts.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "other-outcomes",
+        "text": "Names outcomes the test did not measure that the change could harm (for example satisfaction, support contacts or longer-term retention) and how to watch them after release.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "significance",
+        "text": "Checks whether the difference is statistically significant, or says the evidence is inconclusive, before calling a winner.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Variant B won on paid conversion, so roll it out.",
+      "Roll out Variant B to half of users and see what happens.",
+      "The test is flawed, so drop the pricing change entirely.",
+      "Average the two results and ship the better one."
+    ]
+  },
+  "t6-idea-feature-bets": {
+    "items": [
+      {
+        "id": "cost-vs-value",
+        "text": "Weighs what each option costs to build and run against the value it brings, not the value side alone.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "objectives",
+        "text": "Ties the choice to the quarter's objectives and the measurable results those objectives name.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "success-measure",
+        "text": "Says how the chosen feature's success will be measured after release, with a current baseline and a target.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "mixed-sources",
+        "text": "Combines usage data with what customers and support say, and notes where the sources disagree.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "revisit",
+        "text": "Says when the choice will be revisited and what would make the team switch to another option.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Build the feature with the most requests.",
+      "Build all three features in parallel.",
+      "Pick the option with the biggest revenue number in the sales sheet.",
+      "Ask customers to vote on the next feature."
+    ]
   }
 }

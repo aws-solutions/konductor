@@ -1,0 +1,181 @@
+{
+  "id": "t6-idea-feature-bets",
+  "class": "design",
+  "version": 1,
+  "phase": "ideation",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "Hey, need your help figuring out which feature we should build next quarter. We've got three options from customer requests: 1) Export CSV with customer IDs and revenue data, 2) Sales notes integration for calendar events, and 3) Support ticket linking. There's a bunch of docs in this folder - customer requests, sales pipeline data, support ticket analysis, usage stats, competitive notes, and our quarterly goals memo. Look through everything and give me a clear recommendation with your reasoning. Put your analysis in docs/framing.md. At the end, include a JSON block with this exact structure: an 'options' array with three objects (each with 'name', plus appropriate fields like 'customers', 'monthly_revenue', 'revenue_impact', 'monthly_cost_savings', 'annual_cost_savings', and 'notes'), a 'recommendation' string with the chosen feature name, and a 'reason' string explaining why.",
+  "fixture": "t6-idea-feature-bets",
+  "hidden": "t6-idea-feature-bets",
+  "timeoutSec": 3600,
+  "limits": {
+    "softSec": 1800,
+    "hardSec": 3600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 21,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/framing.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "```json\\s*[\\s\\S]*?```",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/framing.md",
+      "pattern": "TODO|FIXME|XXX|\\[\\s*\\?\\s*\\]",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/framing.md",
+      "pattern": "Acme Corp|export.*CSV|sales.*notes|support.*ticket",
+      "min": 3,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -c docs/framing.md 2>&1 | grep -v 'experimental' || true",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clarity",
+      "criterion": "Analysis clearly explains the traps found (duplicate requests, double counting) and how they affect the decision (code cannot check this because it requires understanding of narrative flow and explanation quality)",
+      "weight": 2
+    },
+    {
+      "id": "strategic",
+      "criterion": "Recommendation connects to business goals beyond just the numbers, showing understanding of strategic context (code cannot check this because it requires evaluating qualitative alignment with company objectives)",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "cost-vs-value",
+        "text": "Weighs what each option costs to build and run against the value it brings, not the value side alone.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "objectives",
+        "text": "Ties the choice to the quarter's objectives and the measurable results those objectives name.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "success-measure",
+        "text": "Says how the chosen feature's success will be measured after release, with a current baseline and a target.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "mixed-sources",
+        "text": "Combines usage data with what customers and support say, and notes where the sources disagree.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "revisit",
+        "text": "Says when the choice will be revisited and what would make the team switch to another option.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Build the feature with the most requests.",
+      "Build all three features in parallel.",
+      "Pick the option with the biggest revenue number in the sales sheet.",
+      "Ask customers to vote on the next feature."
+    ]
+  },
+  "targetSkills": [
+    "trade-off-evaluator",
+    "program-decision-docs"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:trade-off-evaluator",
+      "skill:program-decision-docs"
+    ],
+    "mustNotLoad": [
+      "skill:decision-writing",
+      "skill:decision-research"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://www.gov.uk/service-manual/measuring-success",
+      "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "fixed",
+        "note": "Reviewer passed it; the lead found the prompt named the traps (\"watch for duplicates and double counting\", a field called deduplicated_customers); the fix round removed both."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "Fix round: any recommendation naming support tickets is accepted and numeric checks allow 2 percent rounding. Earlier: Hidden tests require exact recommendation string 'Support Tickets Integration' but prompt describes feature as 'Support ticket linking' - a reasonable alternati"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Task requires analyzing data to discover three traps (duplicate requests, double counting, Q3 goal alignment). While fixture contains all data needed, deriving the correct specific numbers requires analysis. A quick answer would take raw numbers at face value and fail hidden tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All facts are discoverable from fixture data: feature-requests-export.csv has customer IDs for deduplication, sales notes revenue files show the double counting, quarterly-goals-q3.md has the 20% reduction goal. The solution's ASKS.json shows reasonable questions an agent would ask. Reference passes all hidden tests."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture data contains raw numbers but nothing telling the agent to deduplicate, detect double counting, or align with Q3 goals. The hidden tests (answer key) are in the hidden/ directory, not accessible to the agent under test."
+      }
+    ]
+  }
+}
