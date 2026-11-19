@@ -59,16 +59,16 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:trade-off-evaluator",
-    "skill:cost-estimation"
+    "trade-off-evaluator",
+    "cost-estimation"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:trade-off-evaluator",
-      "skill:cost-estimation",
-      "skill:decision-writing"
+      "trade-off-evaluator",
+      "cost-estimation",
+      "decision-writing"
     ],
     "mustNotLoad": []
   },

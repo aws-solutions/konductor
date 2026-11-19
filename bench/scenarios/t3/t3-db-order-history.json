@@ -68,15 +68,15 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:trade-off-evaluator",
-    "skill:decision-writing"
+    "trade-off-evaluator",
+    "decision-writing"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:trade-off-evaluator",
-      "skill:decision-writing"
+      "trade-off-evaluator",
+      "decision-writing"
     ],
     "mustNotLoad": []
   },

@@ -68,16 +68,16 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:decision-writing",
-    "skill:smithy-modeling"
+    "decision-writing",
+    "smithy-modeling"
   ],
   "targetSop": null,
-  "targetAgent": "agent:k-architect",
+  "targetAgent": "k-architect",
   "loadCheck": {
     "mustLoad": [
-      "skill:decision-writing",
-      "skill:smithy-modeling",
-      "agent:k-architect"
+      "decision-writing",
+      "smithy-modeling",
+      "k-architect"
     ],
     "mustNotLoad": []
   },

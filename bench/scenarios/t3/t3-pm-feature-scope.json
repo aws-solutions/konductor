@@ -64,17 +64,17 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:decision-writing",
-    "skill:cost-estimation",
-    "skill:trade-off-evaluator"
+    "decision-writing",
+    "cost-estimation",
+    "trade-off-evaluator"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:decision-writing",
-      "skill:cost-estimation",
-      "skill:trade-off-evaluator"
+      "decision-writing",
+      "cost-estimation",
+      "trade-off-evaluator"
     ],
     "mustNotLoad": []
   },

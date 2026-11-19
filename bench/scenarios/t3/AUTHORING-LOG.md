@@ -65,3 +65,11 @@
 | t3-dev-lib-choice | review | minimax-m2.5 | 4.08 |
 | t3-api-search-pagination | expertKey | glm-5 | 1.73 |
 | t3-dev-lib-choice | expertKey | glm-5 | 2.29 |
+| t3-arch-notification-pipeline | expertKey | glm-5 | 1.46 |
+| t3-db-tenant-isolation | author | gpt-5.6-luna | 2.54 |
+| t3-db-audit-retention | expertKey | glm-5 | 1.29 |
+| t3-db-tenant-isolation | map | glm-5 | 0.62 |
+| t3-db-order-history | expertKey | glm-5 | 1.09 |
+| t3-db-tenant-isolation | review | glm-5 | 3.37 |
+| t3-dev-module-boundary | expertKey | glm-5 | 1.21 |
+| t3-db-tenant-isolation | expertKey | glm-5 | 1.42 |

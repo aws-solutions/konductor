@@ -59,13 +59,13 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:trade-off-evaluator"
+    "trade-off-evaluator"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:trade-off-evaluator"
+      "trade-off-evaluator"
     ],
     "mustNotLoad": []
   },

@@ -59,16 +59,16 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:cost-estimation",
-    "skill:trade-off-evaluator"
+    "cost-estimation",
+    "trade-off-evaluator"
   ],
   "targetSop": null,
-  "targetAgent": "agent:k-architect",
+  "targetAgent": "k-architect",
   "loadCheck": {
     "mustLoad": [
-      "skill:cost-estimation",
-      "skill:trade-off-evaluator",
-      "agent:k-architect"
+      "cost-estimation",
+      "trade-off-evaluator",
+      "k-architect"
     ],
     "mustNotLoad": []
   },

@@ -69,17 +69,17 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:decision-research",
-    "skill:decision-writing",
-    "skill:cost-estimation"
+    "decision-research",
+    "decision-writing",
+    "cost-estimation"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:decision-research",
-      "skill:decision-writing",
-      "skill:cost-estimation"
+      "decision-research",
+      "decision-writing",
+      "cost-estimation"
     ],
     "mustNotLoad": []
   },

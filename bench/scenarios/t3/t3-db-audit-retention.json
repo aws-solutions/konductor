@@ -63,15 +63,15 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:system-design-patterns",
-    "skill:decision-writing"
+    "system-design-patterns",
+    "decision-writing"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:system-design-patterns",
-      "skill:decision-writing"
+      "system-design-patterns",
+      "decision-writing"
     ],
     "mustNotLoad": []
   },

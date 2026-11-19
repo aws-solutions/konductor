@@ -64,18 +64,18 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:system-design-patterns",
-    "skill:trade-off-evaluator",
-    "skill:decision-writing"
+    "system-design-patterns",
+    "trade-off-evaluator",
+    "decision-writing"
   ],
   "targetSop": null,
-  "targetAgent": "agent:k-architect",
+  "targetAgent": "k-architect",
   "loadCheck": {
     "mustLoad": [
-      "skill:system-design-patterns",
-      "skill:trade-off-evaluator",
-      "skill:decision-writing",
-      "agent:k-architect"
+      "system-design-patterns",
+      "trade-off-evaluator",
+      "decision-writing",
+      "k-architect"
     ],
     "mustNotLoad": []
   },

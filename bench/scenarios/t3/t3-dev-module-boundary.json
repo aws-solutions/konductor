@@ -59,15 +59,15 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:decision-writing",
-    "skill:cost-estimation"
+    "decision-writing",
+    "cost-estimation"
   ],
   "targetSop": null,
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:decision-writing",
-      "skill:cost-estimation"
+      "decision-writing",
+      "cost-estimation"
     ],
     "mustNotLoad": []
   },

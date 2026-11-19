@@ -68,16 +68,16 @@
   "pilot": null,
   "version": 1,
   "targetSkills": [
-    "skill:smithy-modeling",
-    "skill:trade-off-evaluator"
+    "smithy-modeling",
+    "trade-off-evaluator"
   ],
-  "targetSop": "sop:k-design-doc-creation",
+  "targetSop": "k-design-doc-creation",
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
-      "skill:smithy-modeling",
-      "skill:trade-off-evaluator",
-      "sop:k-design-doc-creation"
+      "smithy-modeling",
+      "trade-off-evaluator",
+      "k-design-doc-creation"
     ],
     "mustNotLoad": []
   },
