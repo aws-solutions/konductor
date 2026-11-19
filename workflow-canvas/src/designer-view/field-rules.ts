@@ -142,15 +142,23 @@ export function fieldHint(rule: StageFieldRule): string {
 }
 
 /**
- * The agents to offer: those of the list, with `current` first when it is
- * not one of them, so choosing another does not lose it.
+ * The agents to offer: those of the list, with the stage's `original` agent
+ * and its `current` one first when the list does not have them, each once.
+ * `original` is the agent the stage had when it was loaded, so a person who
+ * picks another agent can still pick it again.
  */
 export function agentOptions(
   agents: readonly AgentOption[],
   current: string | undefined,
+  original?: string,
 ): readonly AgentOption[] {
-  if (current === undefined || agents.some((agent) => agent.id === current)) {
-    return agents;
-  }
-  return [{ id: current, summary: 'Not in the list of agents.' }, ...agents];
+  const listed = new Set(agents.map((agent) => agent.id));
+  const extra = [...new Set([original, current])].filter(
+    (id): id is string => id !== undefined && !listed.has(id),
+  );
+  if (extra.length === 0) return agents;
+  return [
+    ...extra.map((id) => ({ id, summary: 'Not in the list of agents.' })),
+    ...agents,
+  ];
 }

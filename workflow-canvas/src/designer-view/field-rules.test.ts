@@ -205,6 +205,19 @@ describe('agentOptions', () => {
     expect(agentOptions(agents, undefined)).toBe(agents);
   });
 
+  it('keeps the original agent on offer after another is picked', () => {
+    expect(
+      agentOptions(agents, 'k-developer', 'my-agent').map((agent) => agent.id),
+    ).toEqual(['my-agent', 'k-architect', 'k-developer']);
+  });
+
+  it('lists an original agent that is on the list once', () => {
+    expect(agentOptions(agents, 'k-architect', 'k-developer')).toBe(agents);
+    expect(
+      agentOptions(agents, 'my-agent', 'my-agent').map((agent) => agent.id),
+    ).toEqual(['my-agent', 'k-architect', 'k-developer']);
+  });
+
   it('puts a current agent that is not on the list first', () => {
     expect(agentOptions(agents, 'my-agent').map((agent) => agent.id)).toEqual([
       'my-agent',
