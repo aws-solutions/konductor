@@ -40,7 +40,8 @@ has no canvas server yet.
 
 The golden files of the stage prompt are in `core/tests/golden/`. They hold the exact text, with no final newline.
 
-`examples/hello-plan.yml` is the example that the tests check.
+`examples/hello-plan.yml` is the example that the tests check. `tests/corpus.rs` checks the workflow files in
+`workflow-canvas/api/corpus/`, which the stub's tests read too.
 
 ## Keys and slices
 
