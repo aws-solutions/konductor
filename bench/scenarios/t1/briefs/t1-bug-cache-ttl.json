@@ -1,0 +1,16 @@
+{
+  "id": "t1-bug-cache-ttl",
+  "phase": "bugfix",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "node",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/isaacs/node-lru-cache",
+    "licence": "Blue Oak Model License 1.0.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: bug fix. Role: developer. Repo kind: a Node.js 24 backend service with no dependencies that serves user profile and permission lookups through its own small in-memory cache layer (TTL entries, a size limit, a background sweep, hit and miss counters), a data access layer, handlers, tests, CI config and docs. Size: about 30 files. Inspiration (a bug class only, nothing copied): public cache libraries have repeatedly fixed defects where an entry that is overwritten or refreshed keeps its old expiry or its old size accounting, so users see stale data and the size limit drifts. Build a task where the owner reports the symptoms the way a support engineer would (stale profile data after an update that comes back after a while, memory that keeps growing, hit counts that do not add up), with no diagnosis. The code should hold two or three separate defects that interact, one of them subtle, so that fixing only the first visible one leaves the symptoms partly in place. The existing visible tests must pass today and must not point at the defects."
+}

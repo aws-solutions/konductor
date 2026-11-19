@@ -20,6 +20,7 @@ const ASSUMPTION_RE = /\bassum(?:e|ed|es|ing|ption|ptions)\b|\bi (?:went with|ch
 
 function normalizeAutonomy(a) {
   return {
+    scripted: a.scripted === true,
     clarifications: a.clarifications || [],
     maxInterjections: a.maxInterjections ?? DEFAULT_MAX_INTERJECTIONS,
     defaultAnswer: a.defaultAnswer ?? DEFAULT_ANSWER,
@@ -30,6 +31,23 @@ function normalizeAutonomy(a) {
 function clip(text, max) {
   const s = String(text ?? '');
   return s.length <= max ? s : `${s.slice(0, max - 3)}...`;
+}
+
+const escapeRegExp = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The autonomy block of a `questions: scripted` task (schema v3 `scriptedUser`): each hidden fact is a clarification whose
+ * keywords are its topics, matched as case-insensitive substrings of the agent's question (not as patterns), and the default
+ * reply answers anything else. A fact is given once. The cap leaves room for one question per fact and two more.
+ */
+function scriptedToAutonomy(scriptedUser) {
+  const facts = scriptedUser.facts ?? [];
+  return {
+    scripted: true,
+    clarifications: facts.map((f) => ({ id: f.id, topic: f.topics.join(', '), keywords: f.topics.map(escapeRegExp), answer: f.answer })),
+    defaultAnswer: scriptedUser.defaultReply,
+    maxInterjections: Math.max(DEFAULT_MAX_INTERJECTIONS, facts.length + 2),
+  };
 }
 
 // A pattern that does not compile never matches: the validator rejects it up front, and a run must not die on it.
@@ -130,11 +148,21 @@ function autonomyFields({ task, conv, checks, finalText, aggregateGroup }) {
   const invariantTests = aggregateGroup(checks, 'invariant');
   if (!conv || conv.turns === 0) {
     return {
+      ...(task.autonomy.scripted ? { factsUnlocked: [], factsLocked: task.autonomy.clarifications.map((c) => c.id) } : {}),
       turns: 0, interjections: 0, questions: [], questionsAsked: 0, unmatchedQuestions: 0, askedFirstTurn: null, interjectionCapHit: false,
       autonomous: null, intendedTests, invariantTests, completedWithoutHelp: null, assumptionsStated: null,
     };
   }
   const s = conv.oracle.state;
+  if (task.autonomy.scripted) {
+    // Questions are expected on a scripted task, so "autonomous" and the no-help fields do not apply; the facts the agent drew out do.
+    const ids = (task.autonomy.clarifications ?? []).map((c) => c.id);
+    return {
+      turns: conv.turns, interjections: s.interjections, questions: conv.questions, questionsAsked: conv.questions.length, unmatchedQuestions: s.unmatched,
+      askedFirstTurn: conv.askedFirstTurn, interjectionCapHit: s.capHit, autonomous: null, intendedTests, invariantTests, completedWithoutHelp: null,
+      assumptionsStated: assumptionsStated(finalText), factsUnlocked: ids.filter((id) => s.answered.has(id)), factsLocked: ids.filter((id) => !s.answered.has(id)),
+    };
+  }
   const autonomous = s.interjections === 0 && !s.capHit;
   return {
     turns: conv.turns,
@@ -153,6 +181,6 @@ function autonomyFields({ task, conv, checks, finalText, aggregateGroup }) {
 }
 
 module.exports = {
-  turnStreamTexts, normalizeAutonomy, createOracle, newConversation, autonomyFields, completedWithoutHelp, assumptionsStated, clip,
+  turnStreamTexts, normalizeAutonomy, scriptedToAutonomy, createOracle, newConversation, autonomyFields, completedWithoutHelp, assumptionsStated, clip,
   CAP_MESSAGE, DEFAULT_ANSWER, DEFAULT_MAX_INTERJECTIONS, QUESTION_CHARS, REPLY_CHARS,
 };

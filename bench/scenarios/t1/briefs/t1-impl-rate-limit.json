@@ -1,0 +1,16 @@
+{
+  "id": "t1-impl-rate-limit",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/express-rate-limit/express-rate-limit",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a small Node.js 24 HTTP JSON API service for a team's internal booking tool, built on node:http with no dependencies, with a router, handlers, a service layer, an in-memory store, config loading and structured logging. Size: about 35 files. Inspiration (an idea only, nothing copied): per-client request limiting in public web middleware, which counts requests per client key inside a time window, answers 429 with a Retry-After header when the limit is passed, and reports remaining quota in response headers. Build a task where the owner asks for per-API-key limiting with different limits per plan, shared across the service's several routes, with a few real-world wrinkles of your own design (for example keys that arrive in two different headers, routes that must be exempt, a clock the tests can control, bounded memory for keys that stop calling, and settings read from the service's existing config file)."
+}

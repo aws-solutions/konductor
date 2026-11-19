@@ -46,6 +46,8 @@ const { profileCredentials } = require('./aws-creds.js');
 const { writeRunConfig, readRunConfigs } = require('./run-configs.js');
 const { preloadSchemas } = require('./schema.js');
 const { snapshotTaskInputs } = require('./task-inputs.js');
+const { requirePrereg } = require('../../scenarios/prereg.js');
+const { planLevel } = require('../../scenarios/levels.js');
 const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
@@ -213,7 +215,8 @@ async function cmdRun(opts, deps = {}) {
   const extraDirs = mergeExtraDirs(suiteExtraDirs(opts.suite, benchDir, suitesDir), list(opts['extra-tasks']));
   const tasksAll = loadTasks(benchDir, { extraDirs });
   const suite = loadSuite(opts.suite, tasksAll, benchDir, suitesDir);
-  const taskIds = opts.tasks ? list(opts.tasks) : suite.taskIds;
+  const levelPlan = planLevel(opts, { candidates: suite.taskIds.map((id) => tasksAll.get(id)).filter(Boolean), extraDirs });
+  const taskIds = levelPlan ? levelPlan.sel.ids : opts.tasks ? list(opts.tasks) : suite.taskIds;
   const timeoutOverride = timeoutSecOpt(opts);
   const tasks = taskIds.map((id) => {
     const t = tasksAll.get(id);
@@ -221,6 +224,7 @@ async function cmdRun(opts, deps = {}) {
     return timeoutOverride === null ? t : { ...t, timeoutSec: timeoutOverride };
   });
   if (!tasks.length) throw new Error('no tasks selected');
+  if (opts.prereg !== undefined) requirePrereg(opts, { taskIds: tasks.map((t) => t.id), extraDirs });
   // Real tasks read their base tree from a local cache filled beforehand; stop here, not after the arms are built.
   const prepareOnly = Boolean(opts['prepare-only']);
   const realTasks = prepareOnly ? [] : tasks.filter((t) => t.real);
@@ -483,6 +487,7 @@ async function cmdRun(opts, deps = {}) {
       python: pythonPin,
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
+      level: levelPlan?.record ?? null,
       ...config, ...ctx.envInfo,
       isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors, ctx.skillListings),

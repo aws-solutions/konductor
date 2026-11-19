@@ -212,7 +212,7 @@ test('cap trigger refuses a capability the proxy cannot model, a missing capabil
     fs.mkdirSync(env.HOME);
     const run = (...a) => spawnSync(process.execPath, [BENCH_JS, 'cap', 'trigger', '--repo-root', r.repo, '--bench-dir', bench, '--base', 'v1.2.0', '--model-cmd', 'node -e 0', ...a], { encoding: 'utf8', env });
     assert.match(run('--mode', 'proxy').stderr, /--cap is required/);
-    assert.match(run('--cap', 'skill:alpha').stderr, /--mode takes proxy or live/);
+    assert.match(run('--cap', 'skill:alpha').stderr, /--mode takes proxy, live or runs/);
     assert.match(run('--cap', 'skill:alpha', '--mode', 'proxy').stderr, /has no trigger queries/);
     assert.match(run('--cap', 'sop:k-plan', '--mode', 'proxy', '--queries', path.join(root, 'none.json')).stderr, /cannot read the drafts file|live mode/);
     assert.match(run('--cap', 'agent:konductor', '--mode', 'proxy', '--queries', path.join(root, 'none.json')).stderr, /needs live mode/);

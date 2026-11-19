@@ -6,6 +6,7 @@ const path = require('node:path');
 const { validate, loadSchema } = require('./schema.js');
 const real = require('./real.js');
 const { v3Errors, targetsOf, catalogOfRepo } = require('./task-v3.js');
+const { scriptedToAutonomy } = require('./autonomy.js');
 
 const BENCH_DIR = path.join(__dirname, '..', '..');
 
@@ -65,6 +66,8 @@ function readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots, hiddenRoot, a
     if (tasks.has(task.id)) throw new Error(`duplicate task id ${task.id} (${file})`);
     // The v3 target fields, mapped from an old `target` when the file has none (N1). Read this, not `target`.
     task.targets = targetsOf(task, catalog());
+    // A scripted-user task (schema v3) is played as a conversation: the hidden facts become the autonomy block of the oracle.
+    if (task.questions === 'scripted' && task.scriptedUser) task.autonomy = scriptedToAutonomy(task.scriptedUser);
     if (task.real !== undefined) {
       if (!allowReal) throw new Error(`task ${task.id}: real tasks cannot come from an extra tasks directory`);
       // The base tree comes from the real-repository cache and is built on first use, so loading never needs the cache.
