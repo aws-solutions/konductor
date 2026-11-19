@@ -78,7 +78,14 @@ pub(crate) struct Record {
     /// isn't re-parsed every run.
     #[serde(default)]
     pub konductor_agent: Option<String>,
+    /// `PARSER_VERSION` that produced the record; an older one is re-parsed
+    /// while its source file still exists.
+    #[serde(default)]
+    pub parser_version: u32,
 }
+
+/// Bump whenever a collector change should re-read files already cached.
+pub(crate) const PARSER_VERSION: u32 = 1;
 
 impl Record {
     fn new(harness: Harness, path: &Path, mtime: u64, size: u64, session_id: String) -> Self {
@@ -98,6 +105,7 @@ impl Record {
             subagent_runs: None,
             models: Vec::new(),
             konductor_agent: None,
+            parser_version: PARSER_VERSION,
         }
     }
 
@@ -121,6 +129,7 @@ impl Record {
             subagent_runs: None,
             models: Vec::new(),
             konductor_agent: None,
+            parser_version: self.parser_version,
         }
     }
 

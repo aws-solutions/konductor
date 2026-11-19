@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use collect::{Harness, Record};
+use collect::{Harness, Record, Status, PARSER_VERSION};
 
 const CACHE_REL: &str = ".konductor/usage/records.jsonl";
 
@@ -20,6 +20,10 @@ const CACHE_REL: &str = ".konductor/usage/records.jsonl";
 /// the Claude Code marketplace plugin, whose agents are recorded as
 /// `<plugin>:<agent>`.
 fn konductor_agent_names(home: &Path) -> BTreeMap<String, String> {
+    konductor_agent_names_in(home, &env_dir("CLAUDE_CONFIG_DIR", home, ".claude"))
+}
+
+fn konductor_agent_names_in(home: &Path, claude_dir: &Path) -> BTreeMap<String, String> {
     let mut roots: Vec<PathBuf> = super::install::index::read_index_at_home(Some(home))
         .ok()
         .flatten()
@@ -38,7 +42,6 @@ fn konductor_agent_names(home: &Path) -> BTreeMap<String, String> {
         .flat_map(|r| super::telemetry_hook::installed_agent_names(r))
         .map(|n| (n.clone(), n))
         .collect();
-    let claude_dir = env_dir("CLAUDE_CONFIG_DIR", home, ".claude");
     for (plugin, agent) in plugin_agent_names(&claude_dir.join("plugins")) {
         names.insert(format!("{plugin}:{agent}"), agent);
     }
@@ -178,6 +181,8 @@ fn sources_in(claude_dir: &Path, kiro_dir: &Path) -> Vec<Source> {
 
 struct ScanOutcome {
     unreadable: usize,
+    /// Konductor files whose re-parse failed; their earlier record is kept.
+    reparse_failed: usize,
 }
 
 /// Parses each in-window source whose (mtime, size) changed since it was
@@ -192,7 +197,7 @@ fn refresh(
     cache.retain(|_, r| {
         r.konductor_agent.is_some() || !r.agent.as_ref().is_some_and(|a| agents.contains_key(a))
     });
-    let mut unreadable = 0;
+    let (mut unreadable, mut reparse_failed) = (0, 0);
     for src in sources {
         let Ok(meta) = std::fs::metadata(&src.path) else {
             unreadable += 1;
@@ -208,7 +213,9 @@ fn refresh(
         }
         let key = src.path.to_string_lossy().into_owned();
         let prev = cache.get(&key);
-        if prev.is_some_and(|p| p.mtime == mtime && p.size == meta.len()) {
+        if prev.is_some_and(|p| {
+            p.mtime == mtime && p.size == meta.len() && p.parser_version == PARSER_VERSION
+        }) {
             continue;
         }
         // A resumed or rewritten file keeps the attribution it had, even
@@ -219,6 +226,12 @@ fn refresh(
             Harness::KiroCliV2 => collect::collect_kiro_v2(&src.path, mtime, meta.len()),
             Harness::KiroV3 => collect::collect_kiro_v3(&src.path, mtime, meta.len()),
         };
+        // A read mid-rewrite, or a format this parser can't read, must not
+        // wipe a good record. Keep it unchanged so the next run retries.
+        if rec.status == Status::Unparsed && prev.is_some_and(|p| p.konductor_agent.is_some()) {
+            reparse_failed += 1;
+            continue;
+        }
         // Attribution is fixed at parse time, so renaming or uninstalling
         // an agent later doesn't drop its history. Usage from
         // non-Konductor sessions is never stored.
@@ -240,33 +253,62 @@ fn refresh(
     // A stub only exists to skip re-parsing its file; once the harness
     // deletes the file there is nothing left to skip.
     cache.retain(|path, r| r.konductor_agent.is_some() || Path::new(path).exists());
-    ScanOutcome { unreadable }
-}
-
-fn load_cache(path: &Path) -> HashMap<String, Record> {
-    let Ok(text) = std::fs::read_to_string(path) else {
-        return HashMap::new();
-    };
-    text.lines()
-        .filter_map(|l| serde_json::from_str::<Record>(l).ok())
-        .map(|r| (r.path.clone(), r))
-        .collect()
-}
-
-fn save_cache(path: &Path, cache: &HashMap<String, Record>) -> std::io::Result<()> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
+    ScanOutcome {
+        unreadable,
+        reparse_failed,
     }
-    let mut keys: Vec<&String> = cache.keys().collect();
+}
+
+/// The record cache, plus any lines it couldn't read. Those are written
+/// back verbatim: they may hold history whose source files are gone, so
+/// they're kept rather than silently dropped on the next save.
+#[derive(Default)]
+struct Cache {
+    records: HashMap<String, Record>,
+    unreadable_lines: Vec<String>,
+}
+
+fn load_cache(path: &Path) -> Cache {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Cache::default();
+    };
+    let mut cache = Cache::default();
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        match serde_json::from_str::<Record>(line) {
+            Ok(r) => {
+                cache.records.insert(r.path.clone(), r);
+            }
+            Err(_) => cache.unreadable_lines.push(line.to_string()),
+        }
+    }
+    cache
+}
+
+/// Owner-only: records hold repo paths and session timing.
+const CACHE_FILE_MODE: u32 = 0o600;
+const CACHE_DIR_MODE: u32 = 0o700;
+
+fn save_cache(path: &Path, cache: &Cache) -> std::io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt as _, PermissionsExt as _};
+    if let Some(dir) = path.parent() {
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(CACHE_DIR_MODE)
+            .create(dir)?;
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(CACHE_DIR_MODE))?;
+    }
+    let mut keys: Vec<&String> = cache.records.keys().collect();
     keys.sort();
     let mut out = String::new();
     for k in keys {
-        if let Ok(line) = serde_json::to_string(&cache[k]) {
-            out.push_str(&line);
-            out.push('\n');
-        }
+        out.push_str(&serde_json::to_string(&cache.records[k]).map_err(std::io::Error::other)?);
+        out.push('\n');
     }
-    super::atomic_write::write_atomic(path, out.as_bytes())
+    for line in &cache.unreadable_lines {
+        out.push_str(line);
+        out.push('\n');
+    }
+    super::atomic_write::write_atomic_with_mode(path, out.as_bytes(), CACHE_FILE_MODE)
 }
 
 #[cfg(test)]
@@ -380,6 +422,137 @@ mod tests {
         let r = &cache[&f.to_string_lossy().into_owned()];
         assert_eq!(r.konductor_agent.as_deref(), Some("k-dev"));
         assert_eq!(r.models[0].output_tokens, Some(2));
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn failed_reparse_keeps_the_earlier_konductor_record() {
+        let d = tmp("refresh-reparse-fail");
+        let f = d.join("projects/p/s.jsonl");
+        put(&f, KONDUCTOR_LINE);
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        put(
+            &f,
+            &format!("{KONDUCTOR_LINE}\n{{\"type\":\"assistant\",\"usage\":"),
+        );
+        let outcome = refresh(&mut cache, &claude_source(&f), 0, &agents());
+        assert_eq!(outcome.reparse_failed, 1);
+        let r = &cache[&f.to_string_lossy().into_owned()];
+        assert_eq!(r.status, Status::Ok);
+        assert_eq!(r.konductor_agent.as_deref(), Some("k-dev"));
+        assert_eq!(r.models[0].output_tokens, Some(2));
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn records_from_an_older_parser_are_reparsed() {
+        let d = tmp("refresh-parser-version");
+        let f = d.join("projects/p/s.jsonl");
+        put(&f, KONDUCTOR_LINE);
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        let key = f.to_string_lossy().into_owned();
+        let r = cache.get_mut(&key).unwrap();
+        r.session_id = "sentinel".into();
+        r.parser_version = PARSER_VERSION - 1;
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        assert_eq!(cache[&key].session_id, "s");
+        assert_eq!(cache[&key].parser_version, PARSER_VERSION);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn cache_round_trips_keeps_unreadable_lines_and_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let d = tmp("cache-round-trip");
+        let path = d.join("usage/records.jsonl");
+        let mut cache = Cache::default();
+        for key in ["/b", "/a"] {
+            let mut r = rec("k-dev", true);
+            r.path = key.to_string();
+            cache.records.insert(key.to_string(), r);
+        }
+        cache
+            .unreadable_lines
+            .push("{ from a future version".to_string());
+        save_cache(&path, &cache).unwrap();
+
+        let text = std::fs::read_to_string(&path).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert!(
+            lines[0].contains("\"path\":\"/a\"") && lines[1].contains("\"path\":\"/b\""),
+            "sorted by path"
+        );
+        assert_eq!(lines[2], "{ from a future version");
+
+        let loaded = load_cache(&path);
+        assert_eq!(loaded.records.len(), 2);
+        assert_eq!(loaded.records["/a"], cache.records["/a"]);
+        assert_eq!(
+            loaded.unreadable_lines,
+            vec!["{ from a future version".to_string()]
+        );
+
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&path), 0o600);
+        assert_eq!(mode(&d.join("usage")), 0o700);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn agent_names_merge_indexed_installs_home_and_plugin() {
+        let d = tmp("agent-names");
+        let (home, other, claude) = (d.join("home"), d.join("repo"), d.join("claude"));
+        let manifest = |agent_path: &str| {
+            serde_json::json!({"schema_version": 2, "strategies": [{
+                "strategy": "claude", "installed_at": "2026-01-01T00:00:00Z", "destination": ".",
+                "source": "test", "status": "complete",
+                "files": [{"path": agent_path, "sha256": "0".repeat(64), "provenance": "replaced_ours"}]
+            }]})
+            .to_string()
+        };
+        put(
+            &home.join(".konductor/manifest"),
+            &manifest(".kiro/agents/konductor.json"),
+        );
+        put(
+            &other.join(".konductor/manifest"),
+            &manifest(".claude/agents/k-developer.md"),
+        );
+        let index = serde_json::json!({"schema_version": 2, "installs": [{
+            "target_dir": other, "strategies": ["claude"], "installed_at": "2026-01-01T00:00:00Z", "status": "complete"
+        }]});
+        put(&home.join(".konductor/installs"), &index.to_string());
+        let install = claude.join("plugins/cache/konductor/konductor/1.0.0");
+        put(&install.join("agents/k-researcher.md"), "");
+        let installed =
+            serde_json::json!({"plugins": {"konductor@konductor": [{"installPath": install}]}});
+        put(
+            &claude.join("plugins/installed_plugins.json"),
+            &installed.to_string(),
+        );
+
+        let names = konductor_agent_names_in(&home, &claude);
+        assert_eq!(
+            names.get("konductor").map(String::as_str),
+            Some("konductor"),
+            "$HOME fallback"
+        );
+        assert_eq!(
+            names.get("k-developer").map(String::as_str),
+            Some("k-developer"),
+            "indexed install"
+        );
+        assert_eq!(
+            names.get("konductor:k-researcher").map(String::as_str),
+            Some("k-researcher"),
+            "plugin"
+        );
+        assert!(
+            !names.contains_key("k-researcher"),
+            "plugin agents only match in <plugin>:<agent> form"
+        );
         std::fs::remove_dir_all(&d).ok();
     }
 
