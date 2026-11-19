@@ -53,7 +53,7 @@ function render(id) {
   const b = JSON.parse(read(`briefs/${id}.json`));
   const brief = `${b.brief}\n\nPublic inspiration: ${b.source.url} (licence ${b.source.licence}). Use the idea only; copy no text or code.`;
   if (b.kind === 'twin') return read('prompts/author-twin.md').replace(/\{\{(\w+)\}\}/g, (_, k) => ({ BRIEF: brief, ID: b.id, OUTPUT: b.output })[k]);
-  const fill = { BRIEF: brief, ID: b.id, ITEMCOUNT: '6 to 8', ...KINDS[b.kind](b) };
+  const fill = { BRIEF: brief, ID: b.id, ITEMCOUNT: '6 to 8', EXPERT: b.kind === 'design' ? read('prompts/expert-key.md').trimEnd() : '', ...KINDS[b.kind](b) };
   return read('prompts/author.md').replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (!(k in fill)) throw new Error(`no value for {{${k}}}`);
     return fill[k];

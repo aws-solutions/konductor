@@ -72,6 +72,7 @@ function build(id, work) {
     rubric: draft.rubric,
     tiers: ['full'],
     ...(twin ? {} : { findingsKey: key.items.map((it) => ({ id: it.id, finding: it.finding, weight: 1 })) }),
+    ...(fs.existsSync(path.join(work, 'expert-key.json')) ? { expertKey: readJson(path.join(work, 'expert-key.json')) } : {}),
     targetSkills: map?.targetSkills ?? [],
     targetSop: map?.targetSop ?? null,
     targetAgent: map?.targetAgent ?? null,

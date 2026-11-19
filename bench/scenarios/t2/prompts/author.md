@@ -27,6 +27,7 @@ Write these into the current directory:
    - `finding`: one sentence saying what is wrong and why it matters, for the human reviewer of this task.
    {{DECOYRULE}}
 3. `solution/REVIEW.md`: the reference review, written as a strong reviewer would: short prose on the overall verdict and the most important risks, then the findings. It must end with ONE fenced `json` block holding a list of objects `{ "location", "severity", "issue", "fix" }`, one per planted item and nothing else, with `location` written as {{LOCFORMAT}}.
+{{EXPERT}}
 4. `task-draft.json`, one JSON object with exactly these keys:
    - `id`: `{{ID}}`
    - `prompt`: the request, in the voice of the lead who owns the work. Plain words, 80 to 220 words. Say what is being reviewed, what they worry about or why it matters now, and where the change or document is. It must say: write the review to `REVIEW.md` at the top of the project, and end it with a fenced json list of findings, each with `location` ({{LOCFORMAT}}), `severity` (critical, high, medium, low or nit), `issue` and `fix`. Do NOT name any review method, checklist, framework or process (no "threat model", "STRIDE", "OWASP", "checklist", "step by step", "be thorough", "consider security, performance..."). Do NOT hint at any planted problem or its area. Do NOT give a count of problems. Do NOT tell the agent to ask or not to ask questions. Do not mention hidden keys, scoring or benchmarks.
