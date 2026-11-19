@@ -34,8 +34,8 @@ function showText({ first, last }: LineWindow): string {
 
 type Direction = -1 | 1;
 
-// The window the person moved to, kept only while the file and the stage it
-// was moved from stay the same.
+// The window the person moved to. It is kept only while `from` is the same:
+// the file, its line count, and the stage and its range.
 interface Moved {
   readonly from: string;
   readonly window: LineWindow;
@@ -63,7 +63,13 @@ export function YamlPane({
   const lines = textLines(text);
   const total = lines.length;
   const start = lineWindow(total, stage?.range);
-  const from = `${total}:${stage?.range.line}:${stage?.range.end_line}`;
+  const from = JSON.stringify([
+    file,
+    total,
+    stage?.name,
+    stage?.range.line,
+    stage?.range.end_line,
+  ]);
   const [moved, setMoved] = useState<Moved | undefined>();
   const window = moved?.from === from ? moved.window : start;
   const { first, last } = window;
