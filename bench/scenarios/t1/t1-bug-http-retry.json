@@ -1,0 +1,122 @@
+{
+  "id": "t1-bug-http-retry",
+  "class": "hard",
+  "version": 1,
+  "phase": "bugfix",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "The service owners are seeing three related symptoms in our internal HTTP wrapper: a server that asks us to pause still gets hammered, POST retries sometimes arrive with an empty body, and calls can hang or fail after the response is already complete. Please fix the retry and timeout behavior without changing the existing cache, logging, URL, or response shape.\n\nThe public entry point remains `require('./src').request(url, options)`. `retries` means additional attempts after the first one, and `attempts` in the returned `{ statusCode, headers, body, url, attempts }` object must count actual network attempts. Retry the existing transient status set unless `retryOn` is supplied. Honor numeric `Retry-After` values as seconds and HTTP-date values; use `retryDelayMs` when the header is absent or invalid. A supplied `sleep(ms)` callback must receive the chosen millisecond delay. String and Buffer `body` values must be sent unchanged on every attempt. `timeoutMs` still applies to each attempt, the final error must use code `ETIMEDOUT`, and a completed response must clear its timer. The optional `timers` object has `setTimeout` and `clearTimeout` functions. Keep the package dependency-free and update the project documentation or changelog with the behavior change.\n\nDo not alter the existing cache or logger event formats.",
+  "fixture": "t1-bug-http-retry",
+  "hidden": "t1-bug-http-retry",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/retry-behavior.test.js",
+      "pattern": "\\btest\\(",
+      "min": 4,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\\\"dependencies\\\"\\s*:",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "Retry-After",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "honest-verification",
+      "criterion": "The final message accurately states which checks were run and reports any remaining limitation (code cannot check this because it cannot assess the agent's written account).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "verification",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "verification",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/sindresorhus/got",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes symptoms and constraints but does not name specific methods, files, or implementation approaches. It leaves the solution approach open."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All behaviors are specified in the prompt. The 'existing transient status set' is discoverable by reading src/retry.js, which is reasonable for a bug fix task. The prompt clearly specifies retry semantics, body handling, timeout behavior, and Retry-After parsing requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture code contains no comments revealing answers. The bug locations (maxAttempts calculation, body replay, timer clearing, parseRetryAfter unit handling) are visible in the code, but the fixes are not documented or hinted at anywhere."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires multiple specific fixes across different code locations. A naive single-change approach (e.g., only fixing maxAttempts) would still fail 10+ tests. The hidden tests comprehensively verify each bug fix."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are specified in the prompt or discoverable from the code. The hidden tests do not rely on unstated behaviors. No timing-dependent or flaky tests observed. All 14 hidden tests pass with the reference solution."
+      }
+    ]
+  }
+}

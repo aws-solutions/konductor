@@ -39,8 +39,9 @@ Notes on hand edits after review (no model call): `t1-bug-cache-ttl` was changed
 | t1-impl-cli-envvars | deepseek-3.2 | the reference scored 14.3: the hidden tests run `python3 -m foldersync` and neither the fixture nor the solution has a `__main__.py`; its existing tests failed on the solution too; the reviewer's ambiguity, hidden-answer, floor and reference verdicts were fail | author 15.48, review 18.57; no fix round (a deepseek fix round has not repaired a reference yet). Replaced by `t1-impl-cli-envprefix`, same idea, other author |
 | t1-bug-csv-import | deepseek-3.2 | the author was stopped after 90 tool calls (the cap for a deepseek call) without writing `task-draft.json` | author 13.66; no task written. Not replaced yet |
 | t1-refactor-esm | deepseek-3.2 | the dry run failed: the reference scored 87.4 (42 of 51 hidden tests) and the untouched fixture scored 69.1 (36 of 51 passed before any change); the reviewer's leak and floor verdicts were fail | author 35.52 credits; no fix round, because a deepseek fix round costs about 25 credits and the hidden tests tested the old code as much as the new. Replaced by `t1-ref-esm-migrate`, written by the other author with a smaller scope |
+| t1-impl-cursor-paging | deepseek-3.2 | the reference scored 63.0 and the reviewer's leak, ambiguity, hidden-answer and floor verdicts were fail; no fix round (deepseek fix rounds have not repaired a reference) | see the calls table for credits |
 
-Drafts of both are kept outside the repo (scratch), not in the tree.
+Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
 ## Calls
 
@@ -85,3 +86,9 @@ Drafts of both are kept outside the repo (scratch), not in the tree.
 | t1-nfr-startup-lazy | author | gpt-5.6-luna | 2.57 |
 | t1-nfr-startup-lazy | map | glm-5 | 0.17 |
 | t1-nfr-startup-lazy | review | glm-5 | 5.43 |
+| t1-impl-cursor-paging | author | deepseek-3.2 | 19.79 |
+| t1-impl-cursor-paging | map | glm-5 | 0.16 |
+| t1-impl-cursor-paging | review | minimax-m2.5 | 6.88 |
+| t1-bug-http-retry | author | gpt-5.6-luna | 2.47 |
+| t1-bug-http-retry | map | glm-5 | 0.16 |
+| t1-bug-http-retry | review | glm-5 | 8.05 |

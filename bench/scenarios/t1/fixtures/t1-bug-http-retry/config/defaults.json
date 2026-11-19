@@ -1,0 +1,6 @@
+{
+  "timeoutMs": 1000,
+  "retries": 0,
+  "retryDelayMs": 100,
+  "cacheTtlMs": 0
+}
