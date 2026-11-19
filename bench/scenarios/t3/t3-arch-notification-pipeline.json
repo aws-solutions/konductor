@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
       "min": 17
     },
     {
@@ -57,5 +57,51 @@
     "source": "original"
   },
   "pilot": null,
-  "version": 1
+  "version": 1,
+  "targetSkills": [
+    "skill:cost-estimation",
+    "skill:trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": "agent:k-architect",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:cost-estimation",
+      "skill:trade-off-evaluator",
+      "agent:k-architect"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt references options.json by name for candidate enumeration but does not hint at the correct answer or a specific method."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits are clearly stated with units; the traffic schedule, service quotas, and pricing inputs have unambiguous numeric values and definitions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture provides all inputs but requires cross-file synthesis to discover that single-queue-pool fails the throughput constraint."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires genuine multi-file analysis, limit calculation, and cost estimation; picking the cheapest option incorrectly fails the throughput check."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers (peak rate, quota, pricing, hours, multipliers) are present in the fixture files with clear definitions."
+      }
+    ]
+  }
 }
