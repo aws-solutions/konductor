@@ -308,8 +308,8 @@ fn close_skill_names(requested: &str, candidates: &[String]) -> Vec<String> {
             let shorter = wanted_len.min(have_len);
             let substring = shorter >= MIN_SUBSTRING_NAME_LEN
                 && (have.contains(&wanted) || wanted.contains(&have));
-            // No floor under this budget: a floor of 2 made any pair of two-
-            // or three-character names close to each other.
+            // No floor under this budget: a floor of 2 would make any pair of
+            // two- or three-character names close to each other.
             let typo = distance <= longer / 3;
             let close = substring || typo;
             close.then_some((distance, candidate))
