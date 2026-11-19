@@ -1,0 +1,94 @@
+{
+  "edits": [
+    "prompt rewritten (traps removed)",
+    "checks: the text checks on one file replaced by one check that no function policy holds a wildcard action or resource",
+    "limits raised from 15/30 to 1200/2400 s"
+  ],
+  "prompt": "All five functions of the order service still share one execution role, and its policy (infra/iam/shared-role-policy.json) can do nearly anything. Please give each function its own least-privilege policy instead, in these files: infra/iam/create-order.json, infra/iam/payment-webhook.json, infra/iam/fulfilment-worker.json, infra/iam/nightly-report.json and infra/iam/admin-export.json. Each has to work in both staging and prod (the names per stage are in config/stages.js) and keep its logging working. Read the handlers to see what each one really calls: every handler exports handler(event, context, { client }), and the FakeCloudClient in src/cloud/fake-client.js records each client.request(action, resource, details) in calls. Do not change the handlers, the stage config, the existing tests, the dependencies or shared-role-policy.json. Keep the files valid IAM policy JSON.",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 57,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');const bad=v=>[].concat(v||[]).some(x=>x==='*'||/^[a-z0-9-]+:\\\\*$/.test(x));let ok=true;for(const n of ['create-order','payment-webhook','fulfilment-worker','nightly-report','admin-export']){const d=JSON.parse(fs.readFileSync('infra/iam/'+n+'.json','utf8'));for(const s of [].concat(d.Statement))if(bad(s.Action)||bad(s.Resource))ok=false;}process.exit(ok?0:1)\"",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "infra/iam/shared-role-policy.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "backend-development",
+      "infra-validation"
+    ]
+  },
+  "twinIdea": "Refactor the Lambda handlers to use a different logging library while keeping the same IAM roles unchanged.",
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the deliverable (least-privilege IAM policies) without naming any specific methodology, framework, or process like STRIDE, TDD, or a checklist."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt explicitly names all five target files, specifies the exact actions via handler code (client.request calls), and defines resource ARNs via stages.js. All hidden tests rely only on information clearly visible in the fixture."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, docs, or test files reveal the answer. The fixture policy files contain broadly scoped legacy policies, not the solution. The handler code and stages.js define what's needed, but the agent must derive the least-privilege policies."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt listed the traps (one secret, the worker queue actions and the dead-letter path, the index, the prefixes). The lead rewrote the prompt to state the files, the stages and the interfaces only."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests verify reasonable requirements stated in the prompt: allow actual calls, deny legacy resources, deny cross-function access. A careful engineer reading handlers and stages.js can derive correct policies without guessing."
+      }
+    ]
+  }
+}

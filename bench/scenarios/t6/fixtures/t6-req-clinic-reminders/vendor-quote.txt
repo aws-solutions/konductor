@@ -1,0 +1,11 @@
+MotionSpring SMS estimate
+Prepared by Rowan Ellis, BrightRelay, 2025-01-06
+
+One-time setup: $1,250
+Monthly platform fee: $180 for up to 2,000 outbound messages
+Outbound message unit price above allowance: $0.06
+Inbound replies: optional add-on, price to be confirmed
+
+Includes sender-number provisioning, delivery dashboard, and API documentation. The estimate assumes the customer supplies approved copy and handles consent. It does not state a retention period, supported languages, quiet hours, or who monitors replies.
+
+Quote valid for 30 days from the prepared date. This is an estimate, not a signed order.

@@ -42,9 +42,9 @@ that measure the fix (t4-dev-sql-report-filters) or split so one forgotten path 
 
 | wave | credits |
 | --- | --- |
-| 1 | 129.09 |
-| 2 | 17.97 |
-| all | 147.06 |
+| 1 | 146.42 |
+| 2 | 39.15 |
+| all | 185.57 |
 
 ## Calls
 
@@ -73,3 +73,9 @@ Times are UTC on 2026-11-19. Credits are what each call reported in its stream.
 | 18:40 | t4-iac-review-terraform | review | gpt-5.6-luna | 1 | 56 | 1.24 |  |
 | 18:45 | t4-dev-sql-report-filters | fix | deepseek-3.2 | 1 | 1648 | 26.09 |  |
 | 18:47 | t4-iam-ci-deploy-role-twin | review | gpt-5.6-luna | 2 | 74 | 1.15 |  |
+| 18:53 | t4-iam-lambda-role-split | author | gpt-5.6-luna | 2 | 152 | 2.41 |  |
+| 18:54 | t4-iam-lambda-role-split | map | glm-5 | 2 | 61 | 0.75 |  |
+| 18:57 | t4-iam-lambda-role-split | review | glm-5 | 2 | 192 | 8.55 |  |
+| 19:02 | t4-iac-review-terraform | fix | deepseek-3.2 | 1 | 1041 | 17.32 |  |
+| 19:05 | t4-iam-vendor-trust | author | gpt-5.6-luna | 2 | 467 | 8.73 |  |
+| 19:05 | t4-iam-vendor-trust | map | glm-5 | 2 | 29 | 0.75 |  |

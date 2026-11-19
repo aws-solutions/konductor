@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": [
+        "arn:aws:sqs:us-east-1:111122223333:staging-fulfilment",
+        "arn:aws:sqs:us-west-2:111122223333:prod-fulfilment"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": [
+        "arn:aws:sqs:us-east-1:111122223333:staging-fulfilment-dlq",
+        "arn:aws:sqs:us-west-2:111122223333:prod-fulfilment-dlq"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "dynamodb:UpdateItem",
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:111122223333:table/staging-shipments",
+        "arn:aws:dynamodb:us-west-2:111122223333:table/prod-shipments"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/staging-fulfilment-worker:*",
+        "arn:aws:logs:us-west-2:111122223333:log-group:/aws/lambda/prod-fulfilment-worker:*"
+      ]
+    }
+  ]
+}

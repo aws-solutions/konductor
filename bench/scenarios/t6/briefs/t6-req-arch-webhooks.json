@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-arch-webhooks",
+ "wave": 2,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "architect",
+ "out": "docs/requirements.md",
+ "repo": "a small repo for a payments platform that wants outbound webhooks: the current events module (a few Node.js files), an API reference, customer feature requests, an architecture overview, an SLO page, a security standard. About 30 files.",
+ "idea": "Turning a vague 'add webhooks' ask into requirements an architect can design against. Hidden facts could cover: peak event rate, delivery guarantee and idempotency, retry window, payload size cap, signing and key rotation, ordering, data residency for some customers, endpoint verification.",
+ "source": {
+  "url": "https://github.com/standard-webhooks/standard-webhooks",
+  "licence": "Apache-2.0",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

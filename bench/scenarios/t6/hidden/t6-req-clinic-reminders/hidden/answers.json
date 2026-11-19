@@ -1,0 +1,9 @@
+[
+  "Use a quiet period of 20:00 to 08:00 in each clinic's local time, including weekends.",
+  "Send exactly two reminders, 72 hours and 24 hours before the appointment. If the booking is made inside 24 hours, send one immediately.",
+  "The message may contain the patient's first name and clinic name only. Do not include the provider, treatment type, or diagnosis.",
+  "Launch with English and Spanish templates. For any other language preference, use English until an approved translation is available.",
+  "STOP, END, or UNSUBSCRIBE must immediately suppress future reminder texts for that phone number and be recorded in the patient record.",
+  "An ordinary, non-opt-out reply creates a front-desk task for review within 60 minutes during open hours, or by the next opening after hours.",
+  "Start Cedar Grove and Harbor Point on March 3, 2025. Add Northgate on March 17, 2025 after a two-week operational check with no unresolved critical issue."
+]

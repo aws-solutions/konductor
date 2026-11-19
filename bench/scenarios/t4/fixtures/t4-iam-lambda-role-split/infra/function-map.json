@@ -1,0 +1,7 @@
+{
+  "create-order": "src/handlers/create-order.js",
+  "payment-webhook": "src/handlers/payment-webhook.js",
+  "fulfilment-worker": "src/handlers/fulfilment-worker.js",
+  "nightly-report": "src/handlers/nightly-report.js",
+  "admin-export": "src/handlers/admin-export.js"
+}

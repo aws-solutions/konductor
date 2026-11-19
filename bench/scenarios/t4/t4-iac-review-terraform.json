@@ -1,0 +1,127 @@
+{
+  "id": "t4-iac-review-terraform",
+  "version": 1,
+  "class": "review",
+  "phase": "code-review",
+  "phases2": [],
+  "role": "security",
+  "questions": "allowed",
+  "prompt": "Could you review PR #142 before it merges? It adds our reporting feature to the Terraform repo: a reporting database, an export bucket, a static website bucket and a role for the reporting tasks. The PR description is review/PR-142.md, and the PR is already applied in this tree, so the files it lists are the changed ones. I want to know what in it is risky and what to change before it goes to production. Write the review in REVIEW.md and end it with one fenced json block: a list of findings, each with file, line (a number, approximate is fine), severity (critical, high, medium or low), issue and fix. Do not change any other file.",
+  "fixture": "t4-iac-review-terraform",
+  "hidden": "t4-iac-review-terraform",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "REVIEW.md",
+      "pattern": "\"severity\"\\s*:",
+      "min": 5,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "modules",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "npm test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clarity",
+      "criterion": "Findings are clearly explained with specific file references and actionable fixes (code cannot check this because it requires judgment of explanation quality)",
+      "weight": 2
+    },
+    {
+      "id": "prioritization",
+      "criterion": "Critical and high severity issues are correctly identified and prioritized (code cannot check this because severity assessment requires security expertise)",
+      "weight": 3
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "code-review",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "code-review"
+    ],
+    "mustNotLoad": [
+      "backend-review",
+      "frontend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/bridgecrewio/checkov",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "gpt",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a security review and specifies the review format, but it names no particular threat method, framework, or work process."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The REVIEW.md location, fenced JSON fields, approximate line numbers, severity vocabulary, and intended public decoys are clear from the prompt and fixture."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Fix round (author) removed the answer comments and made decoy and padding tests fail on an empty answer (0 of 14 pass on the fixture). The lead removed the security notes that listed two of the defects."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "No hidden test requires information unavailable to a careful engineer: the relevant values, paths, intended exceptions, and requested output fields are present in the fixture and PR diff. The severity thresholds are defensible for the exposed database, credentials, IAM, KMS, storage, and audit issues."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fixed",
+        "note": "Comments such as Should be true, seeded issue and Overly permissive were removed in the fix round; the lead removed the defect list from docs/reporting.md and the hand-written diff, which did not apply to the tree."
+      }
+    ]
+  }
+}

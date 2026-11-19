@@ -1,0 +1,8 @@
+{
+  "service": "lantern-order-service",
+  "stages": [
+    "staging",
+    "prod"
+  ],
+  "runtime": "nodejs24.x"
+}
