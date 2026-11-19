@@ -223,7 +223,7 @@ test('buildCommand: the verified launch shape, tool list last, no max-turns, bud
   const noHooks = cc.buildCommand({ arm: CC_KONDUCTOR, task: { prompt: 'p' }, config, ctx: { claude: { bin: '/x', supportsHookEvents: false } } });
   assert.equal(noHooks.args.includes('--include-hook-events'), false);
   assert.equal(noHooks.args[noHooks.args.indexOf('--max-budget-usd') + 1], String(cc.DEFAULT_RUN_BUDGET_USD));
-  assert.throws(() => cc.buildCommand({ arm: CC_VANILLA, task: { prompt: 'p' }, config, ctx, resume: { prompt: 'x' } }), /not supported/);
+  assert.throws(() => cc.buildCommand({ arm: CC_VANILLA, task: { prompt: 'p' }, config, ctx, resume: { prompt: 'x' } }), /no session id/);
 });
 
 test('buildCommand keeps the task text out of argv, so pkill -f on a task path cannot match the claude process', () => {

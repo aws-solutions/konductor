@@ -152,9 +152,35 @@ function parseId(id) {
   return split(id);
 }
 
+// The stand-in for a dropped agent. The routing rules and the orchestrator's subagent list still name the agent, so it stays
+// installed under its own name and description, and does nothing: it hands the brief back and the caller does the work itself.
+const STUB_PROMPT = 'You are a stub that stands in for a specialist agent that has been removed from this install. Do no work and use no tools. Reply with one short paragraph: this agent is not available, so the caller should do the work itself, followed by the brief you were given, unchanged.';
+
+/**
+ * The drop-one arm of an agent (plan 7b). Dropping the spec would leave the routing text naming an agent that does not exist, so
+ * the agent is replaced by a stub: same name and description, the stub prompt, and no skills, SOPs, context files or subagents.
+ * The entry agent cannot be stubbed: nothing would start.
+ */
+function opStubAgent(tree, id, name) {
+  if (name === ORCHESTRATOR) throw new Error(`cannot drop ${id}: it is the entry agent of every arm, and a stub would start nothing`);
+  const file = defFile(tree, 'agent', name);
+  if (!fs.existsSync(file)) throw new Error(`${id} does not exist at the base ref`);
+  assertInside(tree, file);
+  const before = readSha(file);
+  const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+  j.config = { ...j.config, systemPrompt: STUB_PROMPT };
+  const dep = j.dependencies ?? {};
+  j.dependencies = { ...dep, skills: { ...dep.skills, skillNames: [] }, agentSops: { ...dep.agentSops, agentSopNames: [] }, context: { ...dep.context, contextNames: [] }, ...(dep.subagents ? { subagents: { ...dep.subagents, agentNames: [] } } : {}) };
+  const sub = j.clientConfig?.kiroCli?.toolsSettings?.subagent;
+  if (sub) { sub.availableAgents = []; if ('trustedAgents' in sub) sub.trustedAgents = []; }
+  if (Array.isArray(j.clientConfig?.claudeCli?.skills)) j.clientConfig.claudeCli.skills = [];
+  fs.writeFileSync(file, `${JSON.stringify(j, null, 2)}\n`);
+  return { op: 'drop', id, how: 'stub', beforeSha256: before, afterSha256: readSha(file), removedFrom: [] };
+}
+
 function opDrop(tree, id) {
   const [kind, name] = parseId(id);
-  if (kind === 'agent') throw new Error(`cannot drop an agent (${id}): the routing rules name every agent, so a dropped one is a dangling reference. Replace its prompt instead`);
+  if (kind === 'agent') return opStubAgent(tree, id, name);
   const file = defFile(tree, kind, name);
   if (!fs.existsSync(file)) throw new Error(`${id} does not exist at the base ref`);
   const before = readSha(file);
@@ -450,4 +476,4 @@ function verifyInstalled({ variant, prepared, tmpRoot = os.tmpdir(), home = null
   }
 }
 
-module.exports = { buildVariant, variantPaths, verifyInstalled, reachWarning, checkScratch, PRESETS, PRESET_ARM, TOOL_VERSION, BARE_PROMPT };
+module.exports = { STUB_PROMPT, buildVariant, variantPaths, verifyInstalled, reachWarning, checkScratch, PRESETS, PRESET_ARM, TOOL_VERSION, BARE_PROMPT };

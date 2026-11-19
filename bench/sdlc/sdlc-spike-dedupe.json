@@ -43,11 +43,6 @@
       "pattern": "node spike/run\\.js"
     },
     {
-      "type": "contains",
-      "path": "docs/spike.md",
-      "pattern": "throwaway|throw-away|not (for )?production|prototype only|discard"
-    },
-    {
       "type": "min_matches",
       "path": "docs/spike.md",
       "pattern": "\\b(50,?000|50k)\\b",

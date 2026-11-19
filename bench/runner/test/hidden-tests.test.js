@@ -262,3 +262,39 @@ test('the report has no hidden-tests column when no run has hiddenTests', () => 
     assert.doesNotMatch(r.markdown, /hidden tests passed/);
   } finally { r.cleanup(); }
 });
+
+// ---- per-test timeout and partial counts (M5) ----
+
+test('withPerTestTimeout adds a per-test limit and the TAP reporter to node --test only, once', () => {
+  const { withPerTestTimeout, PER_TEST_TIMEOUT_MS } = require('../lib/check-matcher.js');
+  const flags = `--test-timeout=${PER_TEST_TIMEOUT_MS} --test-reporter=tap`;
+  assert.equal(withPerTestTimeout('node --test hidden/*.test.js'), `node --test ${flags} hidden/*.test.js`);
+  assert.equal(withPerTestTimeout('ls x && node --test'), `ls x && node --test ${flags}`);
+  assert.equal(withPerTestTimeout('node --test --test-timeout=5 a.js'), 'node --test --test-timeout=5 a.js');
+  assert.equal(withPerTestTimeout('node --test-only x'), 'node --test-only x');
+  assert.equal(withPerTestTimeout('python3 -m pytest'), 'python3 -m pytest');
+});
+
+test('parseTapPartial counts finished leaf tests and skips suites', () => {
+  const { parseTapPartial } = require('../lib/check-matcher.js');
+  const tap = [
+    'TAP version 13', '# Subtest: s', '    # Subtest: x', '    ok 1 - x', '      ---', "      type: 'test'", '      ...',
+    '    # Subtest: y', '    not ok 2 - y', '      ---', "      type: 'test'", '      ...',
+    'not ok 1 - s', '  ---', "  type: 'suite'", '  ...', '# Subtest: top', 'ok 2 - top', '  ---', "  type: 'test'", '  ...',
+  ].join('\n');
+  assert.deepEqual(parseTapPartial(tap), { passed: 2, total: 3 });
+  assert.deepEqual(parseTapPartial(''), { passed: 0, total: 0 });
+});
+
+test('a test that hangs fails alone: the finished tests still count', () => {
+  const s = setup({ good: 3 });
+  try {
+    write(path.join(s.hidden, 'hidden/b.test.js'), "require('node:test').test('hang', () => new Promise(() => setInterval(() => {}, 1000)));\n");
+    const [r] = runChecks(s.ws, [check()], { hiddenDir: s.hidden, testsTimeoutMs: 6000 });
+    assert.equal(r.passed, false);
+    assert.equal(r.tests.passed, 3);
+    assert.equal(r.tests.total, 3);
+    assert.equal(r.tests.unparsed, true);
+    assert.match(r.detail, /3\/\d+ hidden tests passed \(timed out after \d+ ran\)/);
+  } finally { s.cleanup(); }
+});

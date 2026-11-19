@@ -16,6 +16,8 @@ const PATTERN_FLAGS = 'im';
 const CMD_TIMEOUT_MS = 60000;
 const CHECK_TYPES = ['file_exists', 'contains', 'not_contains', 'min_matches', 'fixture_unchanged', 'cmd', 'labelled_findings', 'tests'];
 const TESTS_TIMEOUT_MS = 60000;
+// Each hidden test gets its own limit, so one hung test fails one test and the others still count.
+const PER_TEST_TIMEOUT_MS = 15000;
 const ANSWER_KEY = '.bench-answer-key.md';
 const COMPARE_SKIP = new Set(['node_modules', '.git', ANSWER_KEY]);
 
@@ -90,6 +92,31 @@ function parseNodeTestSummary(text) {
   return n.tests === undefined || n.pass === undefined ? null : { passed: n.pass, total: n.tests };
 }
 
+// A `node --test` command gets a per-test timeout and the TAP reporter (its lines can be counted when the whole run is killed).
+// A command that sets its own --test-timeout, or does not run `node --test`, is left as it is.
+// shortcut: no pytest-timeout flag is added, the plugin may be missing in the sandbox; add it when the hidden suites include pytest.
+function withPerTestTimeout(cmd, ms = PER_TEST_TIMEOUT_MS) {
+  if (/--test-timeout/.test(cmd)) return cmd;
+  return cmd.replace(/\bnode --test\b(?![-\w])/g, `node --test --test-timeout=${ms} --test-reporter=tap`);
+}
+
+// Tests finished so far in (possibly cut-off) TAP output: leaf tests only, suites are skipped. For a run that was killed.
+function parseTapPartial(text) {
+  let status = null;
+  let passed = 0;
+  let total = 0;
+  for (const line of String(text).split('\n')) {
+    const m = /^\s*(not ok|ok) \d+ - /.exec(line);
+    if (m) { status = m[1]; continue; }
+    const t = status && /^\s+type: '(test|suite)'/.exec(line);
+    if (t) {
+      if (t[1] === 'test') { total++; if (status === 'ok') passed++; }
+      status = null;
+    }
+  }
+  return { passed, total };
+}
+
 // Sum of the `tests` checks of one run, or null when it has none.
 function aggregateHidden(checks) {
   const parts = (checks || []).filter((c) => c.type === 'tests' && c.tests);
@@ -153,13 +180,13 @@ function realTestsResult(root, opts) {
   const overlay = opts.hiddenDir ? path.join(opts.hiddenDir, 'overlay') : null;
   if (!real || !overlay || !fs.existsSync(overlay)) return unparsed('no manifest entry or hidden overlay');
   const r = runRealTests(root, real.spec, { overlayDir: overlay, env: opts.env ?? testEnv(), wrapCmd: opts.wrapCmd, scratchDir: opts.scratchDir });
-  if (r.timedOut) return unparsed('timed out');
+  if (r.timedOut && r.results.size === 0) return unparsed('timed out');
   if (r.results.size === 0) return unparsed(`exit ${r.exitCode}, no test results`);
   const s = scoreReal({ results: r.results, failToPass: real.failToPass, passToPass: real.passToPass });
-  const ok = s.failToPass.passed === s.failToPass.total && s.passToPass.passed === s.passToPass.total && s.failToPass.total > 0;
+  const ok = !r.timedOut && s.failToPass.passed === s.failToPass.total && s.passToPass.passed === s.passToPass.total && s.failToPass.total > 0;
   return {
     passed: ok,
-    detail: `FAIL_TO_PASS ${s.failToPass.passed}/${s.failToPass.total}, PASS_TO_PASS ${s.passToPass.passed}/${s.passToPass.total}`,
+    detail: `FAIL_TO_PASS ${s.failToPass.passed}/${s.failToPass.total}, PASS_TO_PASS ${s.passToPass.passed}/${s.passToPass.total}${r.timedOut ? ' (timed out; tests that finished are counted)' : ''}`,
     tests: { ...s.failToPass, unparsed: false }, regression: s.passToPass,
   };
 }
@@ -185,10 +212,17 @@ function testsResult(root, check, opts) {
       const w = opts.wrapCmd ? opts.wrapCmd(cmd) : { file: 'sh', args: ['-c', cmd] };
       return spawnSync(w.file, w.args, { cwd: scratch, encoding: 'utf8', timeout: ms + 10000, killSignal: 'SIGKILL', env: opts.env ?? testEnv(), maxBuffer: 32 * 1024 * 1024 });
     };
-    let r = run(`timeout -s KILL ${secs} sh -c '${check.cmd.replace(/'/g, "'\\''")}'`);
-    if (r.status === 127 && /timeout/.test(r.stderr || '')) r = run(check.cmd);
+    const cmd = withPerTestTimeout(check.cmd);
+    let r = run(`timeout -s KILL ${secs} sh -c '${cmd.replace(/'/g, "'\\''")}'`);
+    if (r.status === 127 && /timeout/.test(r.stderr || '')) r = run(cmd);
     const timedOut = r.status === 124 || r.status === 137 || (r.error && r.error.code === 'ETIMEDOUT') || r.signal === 'SIGKILL';
-    if (timedOut) return unparsed('timed out');
+    if (timedOut) {
+      // The suite was cut off: keep the tests that finished before the hang and count them as ran.
+      const part = parseTapPartial(`${r.stdout || ''}\n${r.stderr || ''}`);
+      if (part.total === 0) return unparsed('timed out');
+      const total = Math.max(part.total, known);
+      return { passed: false, detail: `${part.passed}/${total} hidden tests passed (timed out after ${part.total} ran)`, tests: { passed: part.passed, total, unparsed: true } };
+    }
     const parsed = parseNodeTestSummary(`${r.stdout || ''}\n${r.stderr || ''}`);
     if (!parsed) return unparsed(`exit ${r.status === null ? -1 : r.status}, no test summary`);
     const total = Math.max(parsed.total, known);
@@ -254,4 +288,4 @@ function evalCheck(root, check, opts = {}) {
   return { passed, detail: hit ? 'matched' : 'no match' };
 }
 
-module.exports = { evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, aggregateGroup, aggregateRegression, TESTS_TIMEOUT_MS, CHECK_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };
+module.exports = { withPerTestTimeout, parseTapPartial, PER_TEST_TIMEOUT_MS, evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, aggregateGroup, aggregateRegression, TESTS_TIMEOUT_MS, CHECK_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };

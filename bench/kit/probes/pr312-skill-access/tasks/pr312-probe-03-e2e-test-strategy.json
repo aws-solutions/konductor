@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-03-e2e-test-strategy",
+  "class": "design",
+  "target": null,
+  "prompt": "We are about to ship a three-step checkout web page (cart, address, payment). Write a plan in out.md for how to test the whole flow end to end: what to cover first, what to leave out, and how to keep the tests stable.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

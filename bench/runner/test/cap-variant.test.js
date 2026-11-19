@@ -12,7 +12,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { makeCapRepo, makeCapBench, scratch } = require('./cap-helpers.js');
 const { write } = require('./helpers.js');
-const { buildVariant, verifyInstalled, reachWarning } = require('../../cap/variant.js');
+const { buildVariant, verifyInstalled, reachWarning, STUB_PROMPT } = require('../../cap/variant.js');
 const { guardInstalls, installsHash } = require('../../cap/guard.js');
 const { snapshotDir } = require('../lib/arm-source.js');
 const { parseArmSpec } = require('../lib/arms.js');
@@ -83,12 +83,36 @@ test('drop of a SOP and of a context file edits the SOP and context lists', () =
   } finally { s.done(); }
 });
 
-test('an agent cannot be dropped, and an unknown id is an error', () => {
+test('an unknown id is an error, and the entry agent cannot be dropped', () => {
   const s = setup();
   try {
-    assert.throws(() => s.build({ drop: ['agent:k-dev'] }), /cannot drop an agent/);
+    assert.throws(() => s.build({ drop: ['agent:konductor'] }), /entry agent/);
+    assert.throws(() => s.build({ drop: ['agent:nope'] }), /agent:nope does not exist at the base ref/);
     assert.throws(() => s.build({ drop: ['skill:nope'] }), /skill:nope does not exist at the base ref/);
     assert.throws(() => s.build({}), /nothing to do/);
+  } finally { s.done(); }
+});
+
+test('dropping an agent stubs it: same name and description, the stub prompt, empty lists; the routing and the other specs stay', () => {
+  const s = setup();
+  try {
+    const v = s.build({ drop: ['agent:k-dev'] });
+    const before = JSON.parse(fs.readFileSync(path.join(s.repo, 'agents/k-dev.agent-spec.json'), 'utf8'));
+    const stub = spec_(v, 'k-dev');
+    assert.equal(stub.name, 'k-dev');
+    assert.equal(stub.config.description, before.config.description);
+    assert.equal(stub.config.systemPrompt, STUB_PROMPT);
+    assert.deepEqual(lists(v, 'k-dev'), { skills: [], sops: [], ctx: [] });
+    assert.deepEqual(stub.clientConfig.claudeCli.skills, []);
+    assert.deepEqual(stub.clientConfig.kiroCli.toolsSettings.subagent.availableAgents, []);
+    // The orchestrator still names the agent and keeps its own lists.
+    assert.deepEqual(spec_(v, 'konductor').dependencies.subagents.agentNames, ['k-dev']);
+    assert.deepEqual(lists(v, 'konductor').skills, ['alpha', 'delta']);
+    const op = v.meta.ops[0];
+    assert.deepEqual([op.op, op.id, op.how], ['drop', 'agent:k-dev', 'stub']);
+    assert.notEqual(op.beforeSha256, op.afterSha256);
+    assert.equal(v.armName, 'x-minus');
+    assert.equal(fs.existsSync(path.join(v.dir, 'agents/k-dev.agent-spec.json')), true);
   } finally { s.done(); }
 });
 

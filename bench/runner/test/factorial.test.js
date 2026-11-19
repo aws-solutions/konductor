@@ -508,3 +508,65 @@ test('the 2x2 page names the evidence-quote rule and shows the cells under both 
     assert.match(toMarkdown(renderFactorial(strict)), /Evidence-quote rule: strict \(every segment between ellipses/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('report-2x2 --prereg accepts tasks that match the lock and refuses a task that is not in it or has changed', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  // The pack: the five tasks move out of the bench into a batch directory and get a version, as scenario tasks have.
+  const batch = path.join(root, 'pack', 'b1');
+  for (const id of TASKS) {
+    const file = path.join(bench, 'tasks', `${id}.json`);
+    write(path.join(batch, `${id}.json`), JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), version: 1 }));
+    fs.rmSync(file);
+  }
+  const freeze = spawnSync(process.execPath, [BENCH_JS, 'scenarios', 'prereg', 'freeze', path.join(root, 'pack'), '--date', '2026-11-19'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: tmp(), TMPDIR: process.env.TMPDIR } });
+  assert.equal(freeze.status, 0, freeze.stderr);
+  const lock = path.join(root, 'pack', 'PREREG.json');
+  const args = [...flags(bench, d), '--extra-tasks', batch, '--prereg', lock];
+  const ok = cli(args);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /^# 2x2 pilot/);
+  const t = JSON.parse(fs.readFileSync(path.join(batch, 't2.json'), 'utf8'));
+  write(path.join(batch, 't2.json'), JSON.stringify({ ...t, prompt: 'changed after the lock' }));
+  const bad = cli(args);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /report-2x2: the run does not match the pre-registration lock[\s\S]*t2: the task file differs/);
+  assert.equal(bad.stdout, '');
+});
+
+test('report-2x2 --stats adds the pre-registered statistic from HELD-OUT tasks, with DEV shown apart, and the default output has no such section', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  const plain = cli(flags(bench, d));
+  assert.doesNotMatch(plain.stdout, /Pre-registered statistic/);
+  const res = cli([...flags(bench, d), '--stats', '--json']);
+  assert.equal(res.status, 0, res.stderr);
+  const paired = JSON.parse(res.stdout).paired;
+  assert.equal(paired.margin, 5);
+  assert.equal(paired.draws, 10000);
+  const { splitOf } = require('../../scenarios/split.js');
+  const held = TASKS.filter((t) => splitOf(t) === 'HELD-OUT').length;
+  assert.deepEqual(paired.harnesses.map((h) => [h.id, h.taskCounts.heldOut, h.taskCounts.dev]), [['kiro', held, TASKS.length - held], ['cc', held, TASKS.length - held]]);
+  assert.equal(paired.harnesses[0].heldOut.n, held);
+  const md = cli([...flags(bench, d), '--stats']);
+  assert.match(md.stdout, /## Pre-registered statistic: konductor minus vanilla, two-level bootstrap/);
+  assert.match(md.stdout, /DEV \(\d+\), not a verdict/);
+});
+
+test('report-2x2 shows the run level recorded in the cells\' run-config in its header, and nothing when none is recorded', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  assert.doesNotMatch(cli(flags(bench, d)).stdout, /Run level/);
+  const level = { name: 'lite', taskCount: 16, listHash: 'ab'.repeat(32), smokeOnly: [], unfilledRoles: [], picks: [], tasks: [] };
+  for (const dir of Object.values(d).flat()) {
+    const file = path.join(dir, 'run-config.json');
+    write(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), level }));
+  }
+  const res = cli(flags(bench, d));
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stdout, /Run level: LITE, 16 tasks \(list abababababab\)\. LITE is a smoke test/);
+  assert.match(JSON.parse(cli([...flags(bench, d), '--json']).stdout).runLevel, /^Run level: LITE/);
+});
