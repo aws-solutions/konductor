@@ -1,7 +1,7 @@
 ---
 name: socratic-elicitation
-description: Asks Socratic questions, one at a time, to surface missing information, unstated assumptions, and open tradeoffs before work begins, or to stress-test a plan the user holds. Use when the user says "ask me questions first", "what am I missing", "poke holes in this", or "challenge this plan", or when a request is too vague to start. Ends with a requirements or challenge summary.
-version: 1.1.0
+description: 'Asks one question at a time to find gaps or test a plan. Use when the user says "ask me questions first", "what am I missing", "poke holes in this", "challenge this plan", or a request is too vague.'
+version: 1.1.1
 tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planning]
 ---
 

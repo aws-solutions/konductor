@@ -68,6 +68,14 @@ not per individual commit.
 
 ### Changed
 
+- Shorter descriptions for 20 skills and 11 SOPs, so Claude Code's skill listing keeps every
+  description when the SOPs are listed too. Claude Code's listing budget is 30,000 chars on a
+  1M-window model, and past it the skills last in A to Z order become name only. With the 19
+  SOPs listed, the listing drops from 33,836 to 28,561 chars (the method of
+  `tests/test_skill_listing_budget.py`). Each description keeps its "Use when/for" cue, its
+  trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
+  short first Overview paragraph, which is the one the installer lists; the old paragraph
+  stays below it. Skill patch versions are bumped.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into

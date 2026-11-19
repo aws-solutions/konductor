@@ -1,7 +1,7 @@
 ---
 name: design-evaluation
-description: Evaluates complete design packages for production readiness across 10 dimensions, 8 of them scored. Use as the final quality gate before a design goes to implementation, or when a design SOP asks for design-evaluation scores. Lists missing artifacts (system design, threat model, API specs, data models, diagrams, IAM policies) before scoring.
-version: 1.0.0
+description: 'Use as the final production-readiness gate before implementation, or when a design SOP asks for its scores. Scores 10 dimensions; lists missing artifacts (threat model, API specs, IAM) first.'
+version: 1.0.1
 tags:
   [
     skill,
