@@ -7,6 +7,8 @@ Recorded gates are the stops this SOP names; where the run keeps a session file,
 
 ## Overview
 
+Five-phase workflow from user stories or a problem statement to a design doc ready for principal engineer review, with elicitation, quality gates and adversarial review.
+
 This SOP guides the architect through a five-phase workflow to produce a design document ready for principal engineer review from user stories or a problem statement. It applies Socratic requirements elicitation, outside-in structure enforcement, automated quality gates, and an adversarial review loop before presenting the final artifact.
 
 Invoked when the engineer asks to create or write a design document (e.g., "Design a system for X", "I need a design doc for Y"). For reviewing an _existing_ document, use `k-existing-design-review.sop.md` instead.

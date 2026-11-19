@@ -200,10 +200,9 @@ None specific to these SOPs — both behave the same in Kiro CLI and Claude Code
 to `k-architect`.
 
 One thing to know about Phase 3: the AWS validation step uses the architect's `aws-mcp` server. In
-Claude Code the install launches that server. **In Kiro CLI you add `aws-mcp` to your own MCP
-config** ([Install for Kiro CLI](../tasks/install-kiro-cli.md#optional-integrations)) or those tools
-will not resolve. The server starts with `--skip-auth`, so the lookups work without AWS
-credentials. Without the server, the step degrades to UNVERIFIED findings rather than failing.
+Claude Code and Kiro CLI the install launches that server from the agent file. The server starts
+with `--skip-auth`, so the lookups work without AWS credentials. Without the server (no `uvx`, for
+example), the step degrades to UNVERIFIED findings rather than failing.
 
 ---
 

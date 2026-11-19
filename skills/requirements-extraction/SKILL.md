@@ -1,7 +1,7 @@
 ---
 name: requirements-extraction
-description: Extracts design inputs from user stories and requirements docs into business-context.md, requirements-summary.md, and user-stories-extract.md. Use when existing requirements and user stories must be summarized or handed off for system design, such as preparing design inputs for an architect. Not for a request that has no requirements yet; write user stories first.
-version: 1.1.0
+description: 'Turns user stories and requirements docs into business-context.md, requirements-summary.md and user-stories-extract.md. Use when preparing design inputs. Not for a request with no requirements yet; write stories first.'
+version: 1.1.1
 tags: [skill, requirements, design-handoff, extraction, system-design]
 ---
 
