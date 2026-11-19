@@ -1,0 +1,135 @@
+{
+  "id": "t1-impl-money-split",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please add allocation support to this billing package. Export `splitByWeights(total, parts)` and `allocatePayment(payment, invoices)` from `src/index.js`. `parts` are `{ id, weight }` records and `invoices` are `{ id, due }` records; each result must be `{ id, amount }` with a Money amount. Split a non-negative total by finite non-negative weights, reject negative or all-zero weights, and retain zero-weight rows. Allocate a non-negative payment across due amounts, reject duplicate IDs, mixed currencies, negative dues, closed records, and payments above the outstanding total. Keep each result in the input currency, including currencies with zero or three minor digits. Both operations must return rows sorted by ID, conserve every minor unit, and use largest remainder placement. When remainders tie, give the extra minor unit to the lexicographically smallest ID first, so reordering inputs cannot change results. Add `split` and `allocate` commands to `node bin/billing.js`; their stated flags are `--amount`, `--currency`, `--weights` (`id=weight,...`), and `--invoices` (`id=due,...`), and they must print JSON rows `{id, minor, currency}`. Do not change existing money, invoice, ledger, or formatting behavior, and do not add dependencies. Update the documentation and changelog and add focused tests.",
+  "fixture": "t1-impl-money-split",
+  "hidden": "t1-impl-money-split",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 19,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "src/allocation.js",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/allocation.test.js",
+      "pattern": "\\btest\\s*\\(",
+      "min": 3,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/allocation.md",
+      "pattern": "largest[- ]remainder|tie|currency",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "allocation|split",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\\b(dependencies|devDependencies)\\b",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "verification-report",
+      "criterion": "The final report accurately states which existing, hidden, and reference-overlay checks were run and whether they passed (code cannot check this because it cannot assess the agent's final report)."
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "verification",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "verification",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/dinerojs/dinero.js",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies the algorithm (largest remainder, tie-breaking by lexicographic ID) but does not reveal implementation details, file structure, or test cases."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The specification is clear and complete: input/output formats, validation rules, sorting requirements, tie-breaking, and CLI flags are all explicitly stated. Hidden tests align with the spec."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no allocation code, no allocation tests, and no hints about the tie-breaking rule or largest-remainder method. Currency handling exists but is generic."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy implementation using simple rounding instead of largest-remainder would fail 3+ hidden tests (tie-breaking, conservation, JPY). The tests properly enforce the algorithmic requirements."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are specified in the prompt. No hidden tests rely on unspecified behavior. Tests use standard assertion patterns with clear error message matching."
+      }
+    ]
+  }
+}

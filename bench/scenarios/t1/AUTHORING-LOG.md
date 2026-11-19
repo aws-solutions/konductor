@@ -96,3 +96,7 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-bug-http-retry | author | gpt-5.6-luna | 2.47 |
 | t1-bug-http-retry | map | glm-5 | 0.16 |
 | t1-bug-http-retry | review | glm-5 | 8.05 |
+| t1-ref-dataclasses | author | deepseek-3.2 | 0.00 |
+| t1-impl-money-split | author | gpt-5.6-luna | 2.21 |
+| t1-impl-money-split | map | glm-5 | 0.16 |
+| t1-impl-money-split | review | glm-5 | 7.95 |
