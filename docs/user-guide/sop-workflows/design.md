@@ -84,16 +84,15 @@ flowchart TD
 
     subgraph P3["Phase 3 — Quality gates (no user interaction)"]
         direction TB
-        Q1["doc-accuracy-analyzer<br/>verify claims vs codebase<br/>flag INCORRECT / UNVERIFIED inline"]
-        Q2["aws-service-validator<br/>check every AWS claim via aws-mcp<br/>CONFIRMED / UNVERIFIED / INCORRECT<br/>report → docs/design/&lt;name&gt;-aws-validation.md"]
-        Q3["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
-        Q4["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
-        Q1 --> Q2 --> Q3 --> Q4
+        Q1["doc-accuracy-analyzer<br/>verify claims vs primary sources<br/>route AWS claims to aws-service-validator (aws-mcp)<br/>flag INCORRECT / OVERSTATED / UNVERIFIED inline<br/>AWS report → docs/design/&lt;name&gt;-aws-validation.md"]
+        Q2["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
+        Q3["decision-writing (ADR Mode)<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
+        Q1 --> Q2 --> Q3
     end
 
     P3 --> P4Start{"Adversarial-review<br/>subagent available?"}
-    P4Start -->|"Yes — Path A"| PA["Delegate the full doc to it:<br/>challenge every decision, trade-off,<br/>and AWS service choice"]
-    P4Start -->|"No — Path B"| PB["Adversarial self-review<br/>CRITICAL (architectural) ·<br/>CRITICAL (factual) ·<br/>IMPORTANT · MINOR"]
+    P4Start -->|"Yes, Path A"| PA["Delegate the full doc to it:<br/>challenge every decision, trade-off,<br/>and AWS service choice"]
+    P4Start -->|"No, Path B"| PB["Adversarial self-review<br/>CRITICAL (architectural) ·<br/>CRITICAL (factual) ·<br/>IMPORTANT · SUGGESTION"]
 
     PA --> Loop
     PB --> Loop
@@ -101,14 +100,14 @@ flowchart TD
     Loop["Phase 4 loop — up to 5 rounds<br/>apply corrections, then re-run the<br/>design-doc-guidelines maker-checker"]
     Loop --> R2{"After round 2:<br/>any CRITICAL (architectural)?"}
     R2 -->|Yes| Halt["STOP the loop immediately<br/>present to engineer:<br/>redesign or override?"]
-    R2 -->|No| Exit{"0 CRITICAL, 0 IMPORTANT,<br/>fewer than 3 MINOR?"}
+    R2 -->|No| Exit{"0 CRITICAL, 0 IMPORTANT,<br/>fewer than 3 SUGGESTION?"}
     Exit -->|Yes| P5
     Exit -->|"No, rounds remain"| Loop
     Exit -->|"No, 5 rounds used"| Manual["Present remaining issues<br/>for manual resolution"]
     Halt --> P5
     Manual --> P5
 
-    P5["Phase 5 — Final output<br/>apply all Phase 3+4 corrections<br/>design-evaluation confidence score<br/>= average of 10 dimensions (1–5 each)<br/>write to output_path<br/>reference the path, never inline the doc"]
+    P5["Phase 5 — Final output<br/>apply all Phase 3+4 corrections<br/>design-evaluation confidence score<br/>= average of the 8 scored dimensions (1 to 5 each)<br/>write to output_path<br/>reference the path, never inline the doc"]
 
     class Ask gate
     class Halt stop
@@ -130,8 +129,8 @@ hold:
 | Check | Threshold |
 | --- | --- |
 | `design-doc-guidelines` maker-checker | 0 CRITICAL findings |
-| `doc-accuracy-analyzer` | 0 INCORRECT findings — UNVERIFIED is acceptable with callouts |
-| Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR |
+| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings noted "contradicts prior knowledge", each checked against the named page and reclassified or corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable with callouts) |
+| Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION |
 | `design-evaluation` confidence score | ≥ 3.0 average across all sections |
 
 If any condition fails, it presents the remaining issues and asks: `Fix these before
@@ -151,9 +150,11 @@ and a one-line note on remaining open issues.
 ### Things to know
 
 - **Phase 3 never asks you anything.** It is fully automated by design.
-- **Unverified claims do not block.** Both `doc-accuracy-analyzer` and `aws-service-validator`
-  mark UNVERIFIED claims with a `> ⚠️` callout and proceed. Only INCORRECT findings are treated
-  as blocking.
+- **Most unverified claims do not block.** Both `doc-accuracy-analyzer` and `aws-service-validator`
+  mark UNVERIFIED claims with a `> ⚠️` callout and proceed. INCORRECT findings block until the
+  text is corrected, and OVERSTATED findings block until they are corrected or flagged. An
+  UNVERIFIED claim noted "contradicts prior knowledge" blocks like INCORRECT: check it against the
+  named doc page and reclassify it, or correct the text.
 - **Findings are never silently dropped.** Every Phase 4 finding must either be fixed or
   explicitly recorded as "engineer override".
 - **Diagrams come before prose.** Phase 2 requires generating the Mermaid diagram for each major
@@ -216,7 +217,7 @@ flowchart TD
     G1 -->|No| Halt["Do not proceed"]
     G1 -->|Yes| S3["3. Read all artifacts<br/>order: system design → threat model →<br/>API specs → data models →<br/>security policies → diagrams<br/>missing optional ones noted as 'not provided'"]
 
-    S3 --> S4["4. Run design-evaluation skill<br/>score all 10 dimensions 1–5<br/>flag any dimension below 3<br/>classify CRITICAL / IMPORTANT / SUGGESTION"]
+    S3 --> S4["4. Run design-evaluation skill<br/>score the 8 scored dimensions 1 to 5<br/>flag any dimension below 3<br/>classify CRITICAL / IMPORTANT / SUGGESTION"]
     S4 --> S5["5. Write report to output_file<br/>never print its contents inline"]
     S5 --> S6["6. Present recommendation<br/>READY FOR IMPLEMENTATION / NOT READY"]
 
@@ -240,7 +241,7 @@ flowchart TD
 | Artifact | Filename patterns checked | Criticality |
 | --- | --- | --- |
 | System architecture | `system-design.md` | **Required** — evaluation cannot proceed without it |
-| Threat model | `threat-model.md` | Critical — warned if missing |
+| Threat model | `threat-model.md` | Required for READY FOR IMPLEMENTATION; warned if missing |
 | API specifications | `smithy-model/` or `api-specs/` | Optional |
 | Data models | `dynamodb-*.md` or `data-model.md` | Optional |
 | Security policies | `security-policy*.md` or `iam-policies.md` | Optional |
@@ -248,18 +249,11 @@ flowchart TD
 
 ### The 10 dimensions
 
-Each scored 1–5; anything below 3 is flagged for revision.
-
-1. Template adherence and completeness
-2. Scalability and performance
-3. Security and threat coverage
-4. Maintainability and code quality
-5. Resilience and fault tolerance
-6. Testability
-7. Operational readiness
-8. Cost optimization
-9. API design quality
-10. Data model quality
+The SOP evaluates the 10 dimensions defined in `design-evaluation` Step 1. Eight are scored 1 to
+5: template adherence, scalability (including cost), performance, security, maintainability and
+extensibility, failure handling and resilience, code and implementation quality, and testability
+and automation readiness. Anything below 3 is flagged for revision. The other two, high-level
+assessment and actionable recommendations, are report sections with no score.
 
 ### What you get
 
@@ -276,9 +270,10 @@ does not print the report body.
 - **The confirmation gate is real.** It will not proceed without an explicit answer.
 - **`dry_run: true` stops at step 2** and reports what would be reviewed.
 - **Only IMPORTANT issues is still READY.** The SOP's troubleshooting states a design with only
-  IMPORTANT issues remains ready for implementation.
-- **A missing threat model degrades rather than blocks.** The review proceeds with a note that
-  the security and threat coverage dimension will be limited.
+  IMPORTANT issues remains ready for implementation, as long as a threat model was provided.
+- **A missing threat model rules out READY.** The review still runs, with the Security dimension
+  capped at 3 (`design-evaluation` Step 0), and the recommendation is NOT READY: threat model not
+  provided. The threat model is listed under Not Provided, with no severity.
 
 ---
 
@@ -332,7 +327,7 @@ flowchart TD
 
     S3 --> E{"CRITICAL (architectural)<br/>after round 2?"}
     E -->|Yes| Redesign["STOP the loop immediately<br/>FUNDAMENTAL REDESIGN REQUIRED"]
-    E -->|No| G{"0 CRITICAL<br/>0 IMPORTANT<br/>&lt; 3 MINOR?"}
+    E -->|No| G{"0 CRITICAL<br/>0 IMPORTANT<br/>&lt; 3 SUGGESTION?"}
     G -->|No, and rounds < 5| S3
     G -->|"No, and round 5 reached"| Stop["Exit with findings<br/>outstanding"]
     G -->|Yes| S4["4. Write findings report"]
@@ -357,7 +352,7 @@ flowchart TD
 ### What you get
 
 A findings report at `output_file` covering the slop/quality gate, the architecture-principles
-evaluation, and every adversarial round, with findings ordered CRITICAL → IMPORTANT → MINOR —
+evaluation, and every adversarial round, with findings ordered CRITICAL → IMPORTANT → SUGGESTION,
 headed by a **verdict**: `PE-READY`, `REVISIONS NEEDED`, or `FUNDAMENTAL REDESIGN REQUIRED`.
 The SOP reports the file path rather than printing the report.
 
@@ -366,7 +361,7 @@ The SOP reports the file path rather than printing the report.
 - **Step 1 is a hard gate.** The quality score is 1–5, and a score below 3 **stops the SOP
   outright** — it presents the issues and asks for a revision rather than proceeding to step 2.
 - **The adversarial loop is bounded at 5 rounds.** It exits early when 0 CRITICAL, 0 IMPORTANT,
-  and fewer than 3 MINOR findings remain. Hitting round 5 without converging exits with the
+  and fewer than 3 SUGGESTION findings remain. Hitting round 5 without converging exits with the
   outstanding findings rather than looping forever.
 - **One finding can end the loop early.** Any CRITICAL *architectural* finding still present
   after round 2 stops the loop immediately and forces the `FUNDAMENTAL REDESIGN REQUIRED`

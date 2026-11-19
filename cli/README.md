@@ -184,7 +184,9 @@ dist/
 Each Kiro CLI v2 and v3 agent's `prompt` ends with a generated `## Your skills`
 block listing the agent's declared skills with a rule for when to load one.
 Skills whose description starts "MUST USE for every" (today only `constraints`)
-are left out, since they claim every task. Claude Code agents get no block.
+are left out, since they claim every task. Each Claude Code agent file ends with a
+`## Skills you can load` block instead, listing only the declared skills it does not preload
+(see the preload paragraph below).
 
 The filename carries no architecture or OS: the packaged content (agent/skill/SOP
 markdown and JSON config, no compiled code) is architecture- and OS-independent within
@@ -200,6 +202,15 @@ On success, `synth` prints two summary lines to stdout: what was written
 (agent/skill/SOP/context counts and the output root) and the packaged
 artifact's filename. `dist/` is gitignored - inspect the output with a
 plain directory listing, e.g. `find dist -maxdepth 3`.
+
+Claude Code injects every skill in an agent's `clientConfig.claudeCli.skills` into each
+subagent it spawns, so `synth` measures that preload. It prints a `konductor: warning:` line to
+stderr for any agent over 32 KiB or 32 names; past 32 names it lists the skills Claude Code would
+drop. The command still succeeds. `-v` adds one
+`claude preload: <agent> <bytes> B, <n> skill(s)` line per agent, and `--json` carries the same
+figures in a `claude_preload` array. Each agent file lists the declared skills it does not
+preload, to be loaded with the `Skill` tool, so `synth` also warns when an agent has such skills
+but an explicit `clientConfig.claudeCli.tools` list without `Skill`.
 
 ---
 
@@ -906,6 +917,12 @@ phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its p
 and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
 pass. The SOP name comes from the file name (`<sop>-<digit>...`).
 
+The session keys it reads come from `gate_facts` in the same file: `gate_<phase>_result`,
+`gate_<phase>_evidence`, `gate_<phase>_checker`, and `gate_<phase>_override` for each boundary, and
+`run.data.max_fix_cycles` for the fix-cycle cap. `k-full-sdlc`'s Progress Tracking section says
+when it writes each one, and `make sop-orchestration-check` fails when a gated SOP stops naming
+the keys of its boundaries.
+
 It reads the session file (at most 1 MiB), checks that the evidence files the session
 names exist (it never opens them), and reads the effective config (preset, then
 `~/.konductor/config.yml`, then `<cwd>/.konductor/config.yml`) for
@@ -944,7 +961,7 @@ The first row that fires sets the exit; every firing reason prints.
 | V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the root, or rejected by the YAML loader. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 65 |
 | V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
 | V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
-| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file in the project | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
+| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file inside the root | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
 | V5 | A phase is `BLOCKED`, or a per-feature phase stays `IN_PROGRESS` after a later phase completed | `HALTED` | 1 |
 | V6 | A feature's `fix_cycles_used` is above the cap: `run.data.max_fix_cycles`, or 2 when none is recorded. Also checks the run-level `doc_fix_cycles_used` | `BUDGET_EXCEEDED` | 3 |
 | V7 | A check-threshold or loop-exit `gate_<phase>_result` ranks at or above the effective threshold. A word in no severity list ranks as CRITICAL | `FINDING_UNRESOLVED` | 2 |

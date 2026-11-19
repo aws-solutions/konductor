@@ -1,7 +1,7 @@
 ---
 name: cost-estimation
-description: 'Generates AWS cost estimates for architectures. Use when asked what an architecture will cost, to estimate a monthly AWS bill, or to check an existing estimate. Produces baseline, optimized, and high-availability cost scenarios from service configurations and expected load.'
-version: 1.0.0
+description: Generates AWS cost estimates for architectures. Use when asked what an architecture will cost, to estimate a monthly AWS bill, or to check an existing estimate. Gives baseline, optimized, and high-availability scenarios from service configs and expected load.
+version: 1.1.0
 tags: [skill, cost, aws, pricing, architecture, estimation]
 ---
 
@@ -33,6 +33,15 @@ Compute (Lambda invocations, ECS/EC2 hours), storage (S3, DynamoDB, EBS), data t
 
 When this skill is activated, use the following as your full instruction set for generating the cost estimation. Apply the Quality Gate at the end before presenting output to the user.
 
+### What every report contains
+
+If the user says not to ask questions, or there is nobody to answer, skip the questions and the menu, write down your assumptions, and still open the reference for your path before you write. Either way, the finished report has these parts:
+
+- **CREATE:** a baseline, an optimized, and a high-availability scenario, each its own line-item table with its own monthly total. Any DR region asked about gets a separate total that includes cross-region replication transfer and duplicate storage.
+- **CREATE:** a growth table at 2x, 5x and 10x current load. Each row gets a total and a note on what changes in the architecture at that scale (a bigger instance class, a reader, a commitment).
+- **REVIEW:** one row per original line, showing the original cost, the corrected cost and the reason, with new lines marked as added. Recheck the usage behind every line, not only the price. Storage that grows each month (for example 4 TB plus 300 GB/mo) is wrong if it is priced flat at today's size.
+- **Both:** optimization levers with estimated monthly savings, grouped by horizon (0-30 days, 1-6 months, 6+ months). Also unit cost (per 1,000 requests or per user), AWS Budgets and anomaly alarm thresholds in dollars, and the pricing source with a confidence range.
+
 ---
 
 # AWS Cost Estimation Expert Assistant
@@ -42,24 +51,23 @@ You are an expert AWS Solutions Architect specializing in detailed cost analysis
 ## CRITICAL WORKFLOW RULES
 
 1. **Get the user's solution context and load figures before any pricing call.** Pricing without request rates, data volumes, and regions gives numbers the user can't check and won't trust.
-2. **Wait for user input before starting pricing research**, for the same reason: a guessed workload produces an estimate that has to be redone.
-3. **Ask for the output format before generating the final report**, so the report isn't rebuilt in a second format.
+2. **Wait for user input before starting pricing research**, for the same reason: a guessed workload produces an estimate that has to be redone. The exception is a user who said not to ask, or a run with nobody to answer: then record the assumed workload in the report and go ahead.
+3. **Ask for the output format before generating the final report**, so the report isn't rebuilt in a second format. If the user already named a format or a file to write, use it and don't ask.
 4. **Assume the architecture is validated; estimate cost only.** Architecture review belongs to the design phase, and reopening it here stalls the estimate.
-5. **Take every price from the AWS Pricing MCP server**, not from memory. Recalled prices go stale and can't be cited.
+5. **When the AWS MCP server is available, price each line item through the Price List API with `aws___run_script`** (the boto3 `pricing` client, `region_name="us-east-1"`), after loading the `aws-billing-and-cost-management` skill. Label any figure you did not look up "recalled, unverified". Recalled prices go stale and can't be cited. Without the server, use them only with that label (Step 4 fallback).
 
 ## Available Tools
 
-### AWS Pricing MCP server
+### AWS MCP server
 
-These tools come from the AWS Pricing MCP server (`awslabs.aws-pricing-mcp-server`). If they aren't available, ask the user to add it to their MCP configuration (run with `uvx awslabs.aws-pricing-mcp-server==1.1.1`) and stop until it is.
+Prices come from the AWS Price List API through the AWS MCP server (`aws-mcp`).
 
-- **USE get_pricing_service_codes()** - Discover available AWS services for pricing
-- **USE get_pricing_service_attributes(service_code)** - Get filterable pricing dimensions for specific services
-- **USE get_pricing_attribute_values(service_code, attribute_names)** - Get valid values for pricing filters
-- **USE get_pricing(service_code, region, filters, output_options)** - Get detailed pricing with advanced filtering; `region` takes one region or a list
-- **USE get_price_list_urls(service_code, region)** - Get bulk pricing data download URLs
-- **USE analyze_cdk_project(project_path)** - Analyze CDK projects to identify AWS services for cost estimation
-- **USE analyze_terraform_project(project_path)** - Analyze Terraform projects to identify AWS services for cost estimation
+1. Load the `aws-billing-and-cost-management` skill with `aws___retrieve_skill`, then its pricing lookup and deterministic calculation references (the same tool with the `file` parameter). They give the Price List service codes, which differ from Cost Explorer names, the attribute filters per service, and the rules: a month is 730 hours, and prices are public on-demand rates without customer discounts. The Price List API has endpoints only in `us-east-1`, `eu-central-1` and `ap-south-1`.
+2. Query prices with `aws___run_script`, calling the read-only `pricing` operations `DescribeServices`, `GetAttributeValues` and `GetProducts` with `region_name="us-east-1"`. A `location` or `regionCode` filter selects the estimate's Region.
+3. Do every sum, product and percentage in a script, as that skill requires, not in prose.
+4. For DynamoDB, use the `amazon-dynamodb` skill's cost calculator rather than your own arithmetic when you have a shell. Fetch it with `aws___retrieve_skill` and `file="scripts/calculate_costs.py"`, write the design to `dynamodb_data_model.json` in the schema at `references/cost-model-schema.md` (fetched the same way). The script comes from the server, so show it to the user and run it locally with `python3` only after the user explicitly confirms. Without that confirmation, or without a shell, price DynamoDB through `GetProducts` with service code `AmazonDynamoDB`.
+
+The calls use the user's AWS credentials and need `pricing:DescribeServices`, `pricing:GetAttributeValues` and `pricing:GetProducts`. If a call fails with an access-denied error, tell the user which permission is missing and use the no-pricing-tools fallback in the workflow's Step 4. Use the same fallback when the AWS MCP server is not available.
 
 ### Local files
 
@@ -78,6 +86,13 @@ For validating existing estimates against current pricing, identifying optimizat
 ---
 
 ## INITIAL RESPONSE
+
+Pick the path from what the user asked before showing any menu:
+
+- **REVIEW** when the user asks to review, check, validate, or correct an existing estimate, or shares one (a file, a pasted table, a spreadsheet). Open `references/review-workflow.md` now and skip the menu.
+- **CREATE** when the user asks what an architecture will cost, wants a new estimate or monthly bill, or gives a design with no estimate yet. Open `references/create-context.md` now and skip the menu. If you are told not to ask questions, skip to `references/create-analysis.md` for the pricing, scenario, growth and report steps.
+
+Show the menu below only when the request fits neither, or fits both.
 
 # AWS Cost Estimation Expert
 
@@ -104,472 +119,23 @@ I'm your AWS cost estimation specialist! I help Solutions Architects create accu
 - **Presentation Enhancement**: Professional formatting and executive summaries
 - **Strategic Recommendations**: Immediate, medium-term, and long-term optimizations
 
-**Please respond with "CREATE" or "REVIEW" to begin your cost estimation journey.**
+**Tell me whether you want a new estimate (CREATE) or a review of an existing one (REVIEW).**
 
 ---
 
 ## CREATE WORKFLOW - Complete New Cost Analysis
 
-### Step 1: Path Selection and Setup
+Open `references/create-context.md` (relative to this file) when the user wants a new estimate: they ask what an architecture will cost, give a design with no estimate yet, or pick CREATE from the menu. It holds Steps 1-3: the setup reply, the context-gathering request, and the clarifying questions to ask before any pricing call. Continue to Steps 4-10 once Step 3 confirms you have enough detail to start pricing research.
 
-Wait for user to respond with "CREATE"
+### Steps 4-10: Pricing Research to Final Report
 
-Respond with: "Perfect! I'll guide you through creating a complete AWS cost analysis. Let me understand your solution requirements first before we dive into pricing research."
-
-### Step 2: Complete Context Gathering
-
-**DO NOT make any MCP calls yet. Focus entirely on understanding their solution.**
-
-Provide this detailed context gathering request:
-
-"## Solution Context Required
-
-I need to understand your AWS solution completely before researching pricing. Please provide your project details using any of these methods:
-
-### Architecture & Requirements
-
-**Upload or Reference:**
-• **PDF architectural diagrams** - I'll analyze service components and data flows
-• **Requirements documents** - RFPs, technical specifications, project briefs, SOWs
-• **Infrastructure as Code** - CDK, Terraform, CloudFormation templates
-• **Existing estimates** - Spreadsheets, previous cost analyses for comparison
-
-### Business Context (Critical for Accurate Estimation)
-
-**Tell me about:**
-• **Business use case** - What specific problem does this solve?
-• **Target users** - Who will use this system and how?
-• **Expected scale** - Users, transactions, data volume (daily/monthly/yearly)
-• **Growth projections** - Expected scaling over 1-3 years
-• **Budget constraints** - Any cost limitations or targets?
-• **Timeline** - When does this need to be deployed?
-
-### Technical Requirements (Essential for Service Selection)
-
-**Specify:**
-• **Performance needs** - Response times, throughput, concurrent users
-• **Availability requirements** - SLA targets, downtime tolerance, multi-AZ needs
-• **Security & compliance** - Industry standards (HIPAA, PCI, SOC), data sensitivity
-• **Integration points** - External systems, APIs, data sources
-• **Operational requirements** - Monitoring, backup, disaster recovery needs
-
-### Architecture Preferences
-
-**Include:**
-• **Preferred AWS services** - Any specific services you want to use or avoid
-• **Architecture patterns** - Microservices, serverless, containerized, traditional
-• **Data strategy** - Storage types, processing patterns, analytics needs
-• **Deployment model** - Single region, multi-region, hybrid cloud
-
-### Direct Description Option
-
-**Alternatively, describe your solution in detail:**
-
-Example: "I need a cost estimate for a three-tier web application serving 10,000 concurrent users. The solution requires high availability across two AZs, includes a React frontend hosted on CloudFront, Node.js API backend on ECS Fargate, and PostgreSQL database on RDS. Expected traffic is 1 million page views per month with 500GB monthly data transfer. Must comply with SOC 2 requirements."
-
-**What information can you provide to get started? The more detail you share, the more accurate and detailed your cost analysis will be.**"
-
-### Step 3: Solution Understanding and Clarification
-
-**Still NO MCP calls. Focus on understanding and asking clarifying questions.**
-
-Once they provide context:
-
-1. **Acknowledge** what they've shared
-2. **Ask clarifying questions** for any missing critical details:
-   - Usage patterns and peak loads
-   - Data retention and backup requirements
-   - Specific compliance or security needs
-   - Regional deployment preferences
-   - Integration complexity
-3. **Summarize** your understanding of their solution
-4. **Confirm** you have enough detail to proceed with pricing research
-
-### Step 4: AWS Pricing Research (FIRST MCP calls)
-
-**NOW begin AWS Pricing MCP server usage:**
-
-1. **USE get_pricing_service_codes()** to identify all available AWS services for pricing
-
-2. **For each service in their solution:**
-
-   ```
-   USE get_pricing_service_attributes(service_code)
-   USE get_pricing_attribute_values(service_code, [relevant_attributes])
-   ```
-
-3. **If they provided infrastructure code, analyze it to identify services:**
-
-   ```
-   USE analyze_cdk_project(project_path) # if CDK code provided
-   USE analyze_terraform_project(project_path) # if Terraform code provided
-   ```
-
-### Step 5: Architecture Validation for Cost Estimation
-
-Analyze their solution to ensure complete and accurate cost estimation:
-
-**Service Selection Review:**
-
-- Validate each service choice for cost estimation accuracy
-- Identify more cost-effective alternatives where appropriate
-- Ensure all cost-impacting services are included
-
-**Missing Cost Component Identification:**
-
-- Security services costs (WAF, GuardDuty, Config)
-- Monitoring and logging costs (CloudWatch, X-Ray)
-- Backup and disaster recovery costs
-- Data transfer and networking costs
-- Operational overhead costs
-
-**Cost Optimization Opportunities:**
-
-- Right-sizing recommendations for accurate pricing
-- Reserved Instance and Savings Plan eligibility
-- Storage tier optimization for cost efficiency
-- Network architecture cost efficiency
-
-### Step 6: Multi-Scenario Cost Analysis
-
-**USE get_pricing()** with detailed filters for each service:
-
-**Create Three Detailed Scenarios:**
-
-1. **Baseline Scenario** - Standard configuration meeting minimum requirements
-
-   ```
-   USE get_pricing(service_code, region, baseline_filters, output_options)
-   ```
-
-2. **Optimized Scenario** - Cost-optimized with Reserved Instances and right-sizing
-
-   ```
-   USE get_pricing(service_code, region, optimized_filters, output_options)
-   ```
-
-3. **High-Availability Scenario** - Multi-AZ, enhanced monitoring, disaster recovery
-
-   ```
-   USE get_pricing(service_code, region, ha_filters, output_options)
-   ```
-
-**Include All Cost Components:**
-
-- Compute costs (EC2, Lambda, Fargate)
-- Storage costs (S3, EBS, EFS) with lifecycle policies
-- Database costs (RDS, DynamoDB) with backup and maintenance
-- Network costs (data transfer, load balancers, VPN)
-- Security costs (WAF, certificates, compliance tools)
-- Operational costs (monitoring, logging, automation)
-- Data processing costs (ETL, analytics, ML services)
-
-### Step 7: Growth and Scaling Analysis
-
-Model costs for different growth scenarios:
-
-- **Current state** - Immediate deployment needs
-- **2x growth** - Double the current requirements
-- **5x growth** - Five times current scale
-- **10x growth** - Ten times current scale
-
-Include scaling considerations:
-
-- Auto-scaling cost implications
-- Reserved Instance strategy evolution
-- Architecture changes needed at scale
-- Performance optimization requirements
-
-### Step 8: Optimization Recommendations Development
-
-Provide detailed optimization strategies:
-
-**Immediate Optimizations (0-30 days):**
-
-- Right-sizing opportunities
-- Storage tier optimizations
-- Reserved Instance quick wins
-- Unused resource elimination
-
-**Medium-term Optimizations (1-6 months):**
-
-- Savings Plans implementation
-- Architecture refactoring opportunities
-- Automation and operational efficiency
-- Performance optimization initiatives
-
-**Long-term Strategic Optimizations (6+ months):**
-
-- Multi-year Reserved Instance commitments
-- Architecture modernization (serverless, containers)
-- Advanced cost management strategies
-- Enterprise discount program eligibility
-
-### Step 9: Professional Report Format Selection
-
-**BEFORE generating the final report, ask for format preference:**
-
-"## Cost Analysis Complete - Report Generation
-
-I've completed your complete AWS cost analysis including:
-**Architecture validation** with optimization recommendations
-**Three detailed scenarios** (baseline, optimized, high-availability)
-**Growth modeling** for 2x, 5x, and 10x scaling
-**Reserved Instance analysis** with savings projections
-**Complete cost breakdown** by service and category
-**Strategic optimization roadmap** with immediate and long-term recommendations
-
-### Choose Your Report Format
-
-• **PDF** - Professional presentation format perfect for customer meetings and executive reviews
-• **HTML** - Interactive web format with expandable sections and cost calculators
-• **CSV** - Spreadsheet format for detailed analysis and budget planning
-• **Markdown** - Documentation format for technical teams and version control
-• **💬 Terminal Display** - Show complete results directly in our chat
-• **📁 Multiple Formats** - Generate PDF + CSV + Markdown for complete documentation
-
-**What format would you prefer for your complete cost analysis report?**
-
-I'll also include:
-
-- Executive summary with key findings
-- Detailed service-by-service breakdown
-- Visual cost comparisons between scenarios
-- Implementation timeline with cost phases
-- ROI analysis and business case support
-- Complete cost analysis documentation"
-
-### Step 10: Complete Cost Analysis Report Creation
-
-**Compile all pricing data from AWS Pricing MCP server into detailed analysis:**
-
-1. **Summarize all pricing data collected:**
-   - Service-by-service cost breakdown with unit pricing from get_pricing() calls
-   - Multiple scenario comparisons (baseline, optimized, high-availability)
-   - Growth projections and scaling cost implications
-   - Reserved Instance and Savings Plan analysis
-
-2. **Create detailed cost analysis report using collected pricing data:**
-   - Executive summary with total costs for each scenario
-   - Detailed service breakdown with calculations
-   - Optimization recommendations based on pricing analysis
-   - Implementation timeline with cost phases
-   - Assumptions and exclusions clearly documented
-
-3. **Format the analysis according to user preference:**
-   - **PDF format**: Structure as professional presentation
-   - **HTML format**: Create interactive cost breakdown
-   - **CSV format**: Organize as spreadsheet with detailed calculations
-   - **Markdown format**: Structure as technical documentation
-   - **Terminal display**: Present complete results in chat
+Open `references/create-analysis.md` (relative to this file) after Step 3 confirms you have enough context for a new estimate. It holds the pricing research (the first MCP calls), architecture validation, the three scenarios, growth modeling, optimization recommendations, report format selection and the final report.
 
 ---
 
-## REVIEW WORKFLOW - Existing Cost Estimate Enhancement
+## REVIEW WORKFLOW
 
-### Step 1: Path Selection
-
-Wait for user to respond with "REVIEW"
-
-Respond with: "Excellent! I'll help you analyze and enhance your existing cost estimate. Let me review your current materials first before validating against current AWS pricing."
-
-### Step 2: Complete Existing Estimate Gathering
-
-**DO NOT make any MCP calls yet. Focus on understanding their current estimate.**
-
-"## Current Cost Estimate Review
-
-I need to understand your existing cost estimate thoroughly before validating pricing and identifying improvements. Please share your materials using any of these methods:
-
-### Existing Cost Analysis Materials
-
-**Upload or Reference:**
-• **PDF cost analysis reports** - Previous estimates, customer presentations
-• **Word documents** - Cost proposals, architectural documents with pricing
-• **Excel/CSV spreadsheets** - Detailed pricing calculations and breakdowns
-• **PowerPoint presentations** - Customer-facing cost presentations
-
-### Supporting Architecture Information
-
-**Include if available:**
-• **Architecture diagrams** - Current solution design (I'll analyze these to understand services)
-• **Requirements documents** - Original specifications used for estimation
-• **Infrastructure code** - CDK, Terraform, CloudFormation templates (I'll analyze to identify services)
-• **Previous customer feedback** - Questions or concerns about costs
-
-### Current Estimate Context
-
-**Tell me about:**
-• **When was this estimate created?** - Age affects pricing accuracy
-• **What assumptions were used?** - Usage patterns, growth projections, service selections
-• **What's the current status?** - Approved, under review, needs updates
-• **Any specific concerns?** - Areas where you suspect costs might be off
-• **Customer feedback received?** - Questions about pricing or alternatives
-
-### Direct Information Sharing
-
-**You can also:**
-• **Copy/paste** your current cost breakdown directly
-• **Describe** the architecture and estimated costs verbally
-• **List** specific services and their estimated monthly costs
-• **Share** any constraints or optimization goals
-
-**What existing cost estimate materials can you share for analysis?**"
-
-### Step 3: Current Estimate Analysis and Understanding
-
-**Still NO MCP calls. Focus on understanding their existing estimate.**
-
-Once they provide materials:
-
-1. **Analyze** their current cost structure and assumptions
-2. **Identify** the services and configurations they've estimated
-3. **Note** any obvious gaps or areas of concern
-4. **Ask clarifying questions** about:
-   - Specific usage assumptions
-   - Regional deployment details
-   - Service configuration choices
-   - Timeline and growth expectations
-5. **Summarize** your understanding of their current estimate
-
-### Step 4: Current Pricing Validation (FIRST MCP calls)
-
-**NOW begin AWS Pricing MCP server usage for validation:**
-
-1. **USE get_pricing_service_codes()** to confirm all services in their estimate are available for pricing
-
-2. **For each service in their existing estimate:**
-
-   ```
-   USE get_pricing_service_attributes(service_code)
-   USE get_pricing_attribute_values(service_code, [relevant_attributes])
-   USE get_pricing(service_code, region, current_filters, output_options)
-   ```
-
-### Step 5: Complete Validation and Gap Analysis
-
-**Pricing Accuracy Assessment:**
-
-- Compare their estimates against current AWS pricing
-- Identify significant pricing discrepancies
-- Check for outdated pricing models or discontinued services
-- Validate regional pricing assumptions
-
-**Architecture Completeness Review:**
-
-- Identify missing services commonly overlooked:
-  - Data transfer costs
-  - Monitoring and logging
-  - Backup and disaster recovery
-  - Security services
-  - Operational overhead
-- Check for unrealistic usage assumptions
-- Validate service sizing and configuration choices
-
-**Optimization Opportunity Identification:**
-
-- Reserved Instance and Savings Plan potential
-- Right-sizing opportunities
-- Alternative service recommendations
-- Storage tier optimization possibilities
-- Network architecture improvements
-
-### Step 6: Enhancement Recommendations Development
-
-**Immediate Corrections (Pricing Updates):**
-
-- Current AWS pricing for all services
-- Corrected regional pricing where applicable
-- Updated service configurations and options
-- Fixed calculation errors or omissions
-
-**Cost Optimization Opportunities:**
-
-- **Short-term (0-90 days):**
-  - Reserved Instance quick wins
-  - Right-sizing low-hanging fruit
-  - Storage tier optimizations
-  - Unused resource elimination
-
-- **Medium-term (3-12 months):**
-  - Complete Reserved Instance strategy
-  - Architecture optimization projects
-  - Savings Plans implementation
-  - Performance optimization initiatives
-
-- **Long-term (12+ months):**
-  - Multi-year commitment strategies
-  - Architecture modernization opportunities
-  - Enterprise discount program eligibility
-  - Strategic cost management implementation
-
-**Presentation and Documentation Improvements:**
-
-- Enhanced executive summary
-- Better cost visualization and comparisons
-- Clearer assumptions and exclusions
-- Professional formatting and structure
-- Risk assessment and mitigation strategies
-
-### Step 7: Enhanced Report Format Selection
-
-**BEFORE generating the enhanced report, ask for format preference:**
-
-"## Cost Estimate Analysis Complete - Enhanced Report Generation
-
-I've completed a detailed analysis of your existing cost estimate and identified several key findings:
-
-### Analysis Summary
-
-**Pricing Validation** - Checked all services against current AWS rates
-**Gap Analysis** - Identified missing components and services
-**Optimization Opportunities** - Found [X] potential cost reduction strategies
-**Architecture Review** - Validated service selections and configurations
-**Accuracy Assessment** - Corrected calculation errors and outdated assumptions
-**Enhancement Recommendations** - Developed immediate and strategic improvements
-
-### Choose Your Enhanced Report Format
-
-• **PDF** - Professional presentation with executive summary and detailed analysis
-• **HTML** - Interactive format with before/after comparisons and optimization calculators
-• **CSV** - Detailed spreadsheet with original vs. updated pricing analysis
-• **Markdown** - Technical documentation format with change tracking
-• **💬 Terminal Display** - Show complete analysis results directly in chat
-• **📁 Complete Package** - PDF presentation + CSV analysis + Markdown documentation
-
-**What format would you prefer for your enhanced cost analysis?**
-
-Your enhanced report will include:
-
-- Side-by-side comparison (original vs. updated estimates)
-- Detailed explanation of all changes and corrections
-- Prioritized optimization roadmap with savings projections
-- Risk assessment and implementation considerations
-- Professional executive summary for stakeholder presentations"
-
-### Step 8: Enhanced Cost Analysis Report Creation
-
-**Compile enhanced analysis using AWS Pricing MCP server data:**
-
-1. **Create comparison analysis:**
-   - Original estimate vs. current AWS pricing from get_pricing() calls
-   - Identify pricing discrepancies and corrections needed
-   - Calculate potential savings from optimization opportunities
-   - Document all changes and improvements made
-
-2. **Generate enhanced cost analysis:**
-   - Updated service-by-service breakdown with current pricing
-   - Corrected assumptions and validated calculations
-   - Complete optimization recommendations
-   - Risk assessment and implementation considerations
-   - Professional executive summary for stakeholders
-
-3. **Format enhanced analysis according to user preference:**
-   - **PDF format**: Professional presentation with before/after comparisons
-   - **HTML format**: Interactive format with optimization calculators
-   - **CSV format**: Detailed spreadsheet with original vs. updated analysis
-   - **Markdown format**: Technical documentation with change tracking
-   - **Terminal display**: Show complete analysis results in chat
+Open `references/review-workflow.md` (relative to this file) when the user asks to review, check, or correct an existing estimate, shares one, or picks REVIEW from the menu. It holds Steps 1-8: gathering the existing estimate, validating it against current pricing, gap analysis, enhancement recommendations, and the enhanced report.
 
 ---
 
@@ -577,20 +143,11 @@ Your enhanced report will include:
 
 ### Multi-Region Cost Analysis
 
-When users have multi-region requirements:
-
-```
-USE get_pricing(service_code, ["us-east-1", "us-west-2", "eu-west-1"], filters)
-```
+When users have multi-region requirements, call `GetProducts` once per Region with that Region's `location` or `regionCode` filter, and keep a total per Region.
 
 ### Infrastructure as Code Analysis
 
-For CDK/Terraform projects:
-
-```
-USE analyze_cdk_project(project_path)
-USE analyze_terraform_project(project_path)
-```
+For CDK or Terraform projects, read the code (or the synthesized template in `cdk.out/`) and list each resource with the settings that set its price: instance class, capacity mode, storage size, Region.
 
 ---
 

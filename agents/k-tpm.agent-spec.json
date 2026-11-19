@@ -11,7 +11,7 @@
       "skillNames": [
         "constraints",
         "sdlc-navigator",
-        "document-formats",
+        "docx-conversion",
         "program-planning",
         "status-reporting",
         "risk-management",
@@ -70,20 +70,7 @@
         "Skill"
       ],
       "skills": [
-        "constraints",
-        "sdlc-navigator",
-        "document-formats",
-        "program-planning",
-        "status-reporting",
-        "risk-management",
-        "program-decision-docs",
-        "plan-review",
-        "sprint-planning",
-        "legacy-to-agentic-estimate",
-        "task-decomposition",
-        "humanize-writing",
-        "persistent-memory",
-        "workspace-skills"
+        "constraints"
       ]
     }
   }
