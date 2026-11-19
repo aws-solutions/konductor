@@ -64,6 +64,62 @@
       "weight": 2
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "trust-boundaries",
+        "text": "Names the trust boundaries the data crosses (partner to receiver, receiver to store, forwarder to customer callback, operators to admin API) and ties each finding to one of them.",
+        "source": "OWASP Threat Modeling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Threat_Modeling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "sign-metadata",
+        "text": "The signature must cover the event id and timestamp as well as the body, so a replay window check cannot be bypassed by changing unsigned metadata.",
+        "source": "Standard Webhooks specification, https://github.com/standard-webhooks/standard-webhooks (Apache-2.0)"
+      },
+      {
+        "id": "secret-rotation-overlap",
+        "text": "Partner signing secrets need rotation with an overlap period in which two secrets verify, so rotation does not drop live traffic.",
+        "source": "Standard Webhooks specification, https://github.com/standard-webhooks/standard-webhooks (Apache-2.0)"
+      },
+      {
+        "id": "dns-rebinding",
+        "text": "Callback checks must resolve the host and pin the checked address for the connection (and re-check on every redirect), otherwise a URL that passes at registration can later point inside the network.",
+        "source": "OWASP Server Side Request Forgery Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "outbound-amplification",
+        "text": "Retries and fan-out can be abused to flood a third party that a tenant registers as its callback; per-destination rate and retry caps are needed, not only per-tenant ones.",
+        "source": "OWASP Server Side Request Forgery Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "idempotent-delivery",
+        "text": "Delivery is at least once, so receivers need a stable event id to drop duplicates; the design should give customers that id and say so.",
+        "source": "Standard Webhooks specification, https://github.com/standard-webhooks/standard-webhooks (Apache-2.0)"
+      },
+      {
+        "id": "tenant-scoped-storage-and-queries",
+        "text": "Tenant isolation must hold in storage and admin reads too (every query and admin action scoped by the authenticated tenant), not only at the receiving endpoint.",
+        "source": "OWASP Multi-Tenant Security Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "security-event-logging",
+        "text": "Verification failures, admin actions and callback changes are logged as security events with who and when, without secrets or payload bodies, and alert on spikes.",
+        "source": "OWASP Logging Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Logging_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "residual-risk",
+        "text": "States what stays open after the mitigations (accepted risks, assumptions such as trusting the edge gateway) rather than claiming the design becomes safe.",
+        "source": "OWASP Threat Modeling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Threat_Modeling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Use HTTPS everywhere and validate all input.",
+      "Add authentication and authorization to the API.",
+      "Encrypt the database and enable logging.",
+      "Add a rate limiter to prevent abuse.",
+      "Follow security best practices and do regular penetration tests."
+    ]
+  },
   "tiers": [
     "full"
   ],

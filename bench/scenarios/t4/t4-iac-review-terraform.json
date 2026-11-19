@@ -62,6 +62,47 @@
       "weight": 3
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "secrets-in-state",
+        "text": "Explains that a password given as a variable default also lands in plan output and state, and recommends a secret store reference plus sensitive variables, not only removing the default.",
+        "source": "OWASP Secrets Management Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Secrets_Management_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "scan-in-ci",
+        "text": "Notes that CI runs only fmt and validate and suggests an IaC security scan in the pipeline so these issues are caught before review.",
+        "source": "Checkov, https://github.com/bridgecrewio/checkov (Apache-2.0)"
+      },
+      {
+        "id": "later-is-not-a-control",
+        "text": "Rejects the PR note that broad access will be tightened before production as a reason to merge, since the same modules feed both environments.",
+        "source": "CloudGoat, https://github.com/RhinoSecurityLabs/cloudgoat (BSD-3-Clause)"
+      },
+      {
+        "id": "account-public-block",
+        "text": "Recommends account-level blocking of public bucket access as a guardrail, with the intended public website as an explicit exception.",
+        "source": "Checkov, https://github.com/bridgecrewio/checkov (Apache-2.0)"
+      },
+      {
+        "id": "data-loss-settings",
+        "text": "Flags the reporting database settings that risk data loss (deletion protection off, final snapshot skipped) as a lower-severity item separate from exposure.",
+        "source": "Checkov, https://github.com/bridgecrewio/checkov (Apache-2.0)"
+      },
+      {
+        "id": "merge-blockers",
+        "text": "Says which findings block the merge and which can follow, so the author knows what to fix first.",
+        "source": "CloudGoat, https://github.com/RhinoSecurityLabs/cloudgoat (BSD-3-Clause)"
+      }
+    ],
+    "weakAnswers": [
+      "Follow AWS security best practices.",
+      "Enable encryption everywhere.",
+      "Restrict security groups.",
+      "Use least privilege for IAM.",
+      "Consider using a secrets manager."
+    ]
+  },
   "tiers": [
     "full"
   ],

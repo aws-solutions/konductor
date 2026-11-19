@@ -48,6 +48,17 @@ test('every task has its fixture, hidden tests and reference, and its ids match'
   }
 });
 
+// Owner rule (2026-11-19): threat-model, IAM design, IaC review and security-design tasks carry a judge-only expertKey whose
+// items name their public source by name and URL.
+const NEEDS_EXPERT_KEY = new Set(['t4-threat-model-webhooks', 't4-iam-ci-deploy-role', 't4-iam-lambda-role-split', 't4-iac-review-terraform', 't4-dev-sql-report-filters', 't4-arch-tenant-abac', 't4-iam-vendor-trust', 't4-iam-privesc-groups', 't4-iam-bucket-policy-oac']);
+test('tasks that need an expertKey have one, with 3 to 5 weak answers and a named source URL per item', () => {
+  for (const t of tasks.filter((x) => NEEDS_EXPERT_KEY.has(x.id))) {
+    assert.ok(t.expertKey, `${t.id} has no expertKey`);
+    assert.ok(t.expertKey.weakAnswers.length >= 3 && t.expertKey.weakAnswers.length <= 5, `${t.id} weakAnswers`);
+    for (const it of t.expertKey.items) assert.match(it.source, /^\S.*, https:\/\/\S+/, `${t.id} ${it.id} source`);
+  }
+});
+
 test('hidden helpers are byte-identical copies of lib/', () => {
   const copies = [['iam-eval.js', 'iam-eval.js'], ['findings.js', 'findings.js'], ['py-bridge.test.js', 'py_bridge.test.js'], ['py-timeouts.py', path.join('py', 'timeouts.py')]];
   for (const t of tasks) {
