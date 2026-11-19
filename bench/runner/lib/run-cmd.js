@@ -48,6 +48,7 @@ const { preloadSchemas } = require('./schema.js');
 const { snapshotTaskInputs } = require('./task-inputs.js');
 const { requirePrereg } = require('../../scenarios/prereg.js');
 const { planLevel } = require('../../scenarios/levels.js');
+const { creditNotes, creditNoteLines } = require('./credit-notes.js');
 const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
@@ -120,6 +121,7 @@ function summarize(runConfig, state, extra) {
     ...(usd ? { totalCostUsd: state.spent, totalCostUsdCharged: state.charged } : { totalCredits: state.spent, totalCreditsCharged: state.charged }),
     counts: state.results.reduce((c, r) => ({ ...c, [r.status]: (c[r.status] || 0) + 1 }), {}),
     results: state.results,
+    ...creditNotes(state.results),
     ...extra,
   };
 }
@@ -592,6 +594,7 @@ async function cmdRun(opts, deps = {}) {
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
+    for (const line of creditNoteLines(creditNotes(results))) log(line);
     if (authStop.tripped) {
       log(authStop.kind === 'launch'
         ? `LAUNCH FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Check that the kiro-cli binary is still in place, then rerun the skipped cells in a new --out or with --replicate-offset.`
