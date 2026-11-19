@@ -89,3 +89,8 @@
 | t3-sre-log-retention | review | minimax-m2.5 | 1.70 |
 | t3-adr-cache-sizing-twin | review | glm-5 | 2.96 |
 | t3-sre-log-retention | expertKey | glm-5 | 1.32 |
+| t3-adr-cache-sizing-twin | expertKey | glm-5 | 2.04 |
+| t3-nfr-capacity-autoscale | author | deepseek-3.2 | 7.05 |
+| t3-nfr-capacity-autoscale | map | glm-5 | 0.63 |
+| t3-nfr-capacity-autoscale | review | minimax-m2.5 | 4.40 |
+| t3-nfr-capacity-autoscale | expertKey | glm-5 | 1.27 |
