@@ -116,7 +116,8 @@ describe('applyRunEvents', () => {
   });
 
   it('takes a gap in seq for skipped events, not for lost ones', () => {
-    // A finished run keeps no console lines, so seq 2 and 5 are not sent.
+    // A run read a minute after it finished has no console lines, so seq 2
+    // and 5 are not sent.
     const run = follow(PASSING.filter((event) => event.type !== 'console'));
 
     expect(run.outcome).toEqual({ status: 'passed', exitCode: 0 });
