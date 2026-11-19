@@ -1,0 +1,105 @@
+{
+  "id": "t5-qa-parser-gaps",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "prompt": "A bad input reached production last week even though the parser tests look healthy and coverage is high. The suite under test/ for Tide Config, our small configuration format, only uses short, well-formed inputs, and I no longer trust it. Please strengthen it for the tokenizer, parser, validator and printer: add new test files under test/ (you may also extend the existing ones), keep the suite runnable with `node --test --test-timeout=4000 test/*.test.js`, and assert on public results and error messages rather than private details. Do not change anything under src/, package.json or docs/, do not add dependencies, and keep every existing test working. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "fixture": "t5-qa-parser-gaps",
+  "hidden": "t5-qa-parser-gaps",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test --test-timeout=4000 test/*.test.js && test \"$(cat test/*.js | grep -cE '^[[:space:]]*(test|it)\\(')\" -ge 32",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/parser.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "The regression cases make the important boundary and state assumptions clear in their descriptions (code cannot check this because it can verify outcomes but not the explanation of why each case matters).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "test-coverage-analysis"
+  ],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "test-coverage-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/stryker-mutator/stryker-js",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name any specific methods, processes, or tools. It only says 'add new test files under test/' and 'assert on public results and error messages', which is standard guidance for testing tasks."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The documented format (docs/format.md) and API (docs/api.md) clearly specify the boundaries: magnitudes 0-1,000,000 with MIN_NONZERO 0.001, max nesting depth 8, quantity rounding to two decimal places, required escapes, and validator schema. The prompt's request to strengthen tests for edge cases is unambiguous given this documentation."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no hints about the specific mutants. The existing tests cover only happy paths with short well-formed inputs. The docs/format.md mentions the key boundaries (magnitudes 0-1,000,000, nonzero below 0.001 rejected, max 8 section names, two decimal places for conversion) but does not reveal that these exact boundaries are the seeded defects."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow answer that only adds ordinary string and conversion tests would kill 0/10 mutants (verified by running mutation tests on the plain fixture). The mutants target specific boundary conditions: escape at end of input (m01), empty document behavior (m02), max value boundary (m03), rounding vs truncation (m04), duplicate key detection (m05), exact nesting limit (m06), location reporting (m07), type-preserving print (m08), tokenizer reuse (m09), and timeout validation (m10). Each requires careful boundary testing."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All mutants represent realistic bugs that sound tests of documented behavior would catch. None are equivalent mutants. The documentation clearly specifies the expected behavior for each: escape sequences must be complete, empty documents return empty object, numeric range is inclusive, conversion rounds to two decimals, duplicate keys are rejected, max nesting is 8, validation errors include locations, print preserves types, tokenizer resets state, and timeout requires a time unit. A careful tester reading the docs would naturally test these boundaries."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

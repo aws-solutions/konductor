@@ -25,6 +25,27 @@ function codeRoot(key) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 }
 
+// Public sources an expert-key item may cite (licences checked on each source on 2026-11-19). An item's source is
+// written as "Name, URL (licence)" so a reader sees the source by name and address.
+const EXPERT_SOURCES = [
+  ['https://sre.google/sre-book/table-of-contents/', 'Site Reliability Engineering (Google, O\'Reilly 2016)', 'CC BY-NC-ND 4.0'],
+  ['https://cheatsheetseries.owasp.org', 'OWASP Cheat Sheet Series', 'CC BY-SA 4.0'],
+  ['https://12factor.net', 'The Twelve-Factor App', 'MIT'],
+  ['https://www.rfc-editor.org/rfc/rfc9700', 'RFC 9700, Best Current Practice for OAuth 2.0 Security', 'IETF Trust Legal Provisions'],
+  ['https://github.com/kubernetes/enhancements', 'Kubernetes Enhancement Proposals (KEP template)', 'Apache-2.0'],
+  ['https://github.com/adr/madr', 'MADR, Markdown Architectural Decision Records', 'MIT OR CC0-1.0'],
+];
+
+// Rewrites each item's source to "Name, URL (licence)"; throws on a source outside the list.
+function expertKeyOf(raw) {
+  const items = raw.items.map((it) => {
+    const hit = EXPERT_SOURCES.find(([url]) => String(it.source).includes(url.replace(/\/$/, '')));
+    if (!hit) throw new Error(`expert-key item ${it.id}: source not in the checked list: ${it.source}`);
+    return { id: it.id, text: it.text, source: `${hit[1]}, ${hit[0]} (${hit[2]})` };
+  });
+  return { items, weakAnswers: raw.weakAnswers };
+}
+
 function build(id, work) {
   const brief = readJson(path.join(DIR, 'briefs', `${id}.json`));
   const draft = readJson(path.join(work, 'task-draft.json'));
@@ -72,7 +93,7 @@ function build(id, work) {
     rubric: draft.rubric,
     tiers: ['full'],
     ...(twin ? {} : { findingsKey: key.items.map((it) => ({ id: it.id, finding: it.finding, weight: 1 })) }),
-    ...(fs.existsSync(path.join(work, 'expert-key.json')) ? { expertKey: readJson(path.join(work, 'expert-key.json')) } : {}),
+    ...(fs.existsSync(path.join(work, 'expert-key.json')) ? { expertKey: expertKeyOf(readJson(path.join(work, 'expert-key.json'))) } : {}),
     targetSkills: map?.targetSkills ?? [],
     targetSop: map?.targetSop ?? null,
     targetAgent: map?.targetAgent ?? null,

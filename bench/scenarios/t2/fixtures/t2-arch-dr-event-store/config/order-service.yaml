@@ -1,0 +1,15 @@
+service: order-api
+request_timeout_ms: 5000
+write_p95_target_ms: 750
+read_p95_target_ms: 400
+idempotency_ttl_days: 30
+read_replica_lag_alert_seconds: 30
+outbox_retention_days: 14
+support_audit_retention_months: 18
+recovery:
+  rto_minutes: 15
+  rpo_minutes: 5
+  degraded_read_only_minutes: 5
+limits:
+  max_lines_per_order: 100
+  max_order_events_per_request: 8

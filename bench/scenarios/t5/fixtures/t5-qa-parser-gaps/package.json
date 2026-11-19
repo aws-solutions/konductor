@@ -1,0 +1,13 @@
+{
+  "name": "tide-config",
+  "version": "2.3.0",
+  "description": "A small dependency-free configuration format",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "bin": { "tide-config": "src/cli.js" },
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test --test-timeout=4000 test/*.test.js",
+    "check": "node scripts/check.js examples/basic.conf"
+  }
+}

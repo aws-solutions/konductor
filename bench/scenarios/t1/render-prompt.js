@@ -20,7 +20,7 @@ const STACKS = {
   python: {
     stack: 'Python 3.12, standard library only, no install step. Tests use unittest and run with `python3 -m unittest`.',
     hidden: () => `Hidden tests are unittest modules \`hidden/py/test_*.py\` that subclass \`TimedCase\` from \`hidden/py/timeouts.py\` instead of unittest.TestCase (a per-test time limit). Add the paths your tests need to sys.path yourself; the repository root is on PYTHONPATH. Also write these two bench-provided files exactly as shown, so you can run the tests; do not change them.\n\n\`hidden/py/timeouts.py\`:\n\n\`\`\`python\n${read('lib/py-timeouts.py')}\`\`\`\n\n\`hidden/py_bridge.test.js\`:\n\n\`\`\`js\n${read('lib/py-bridge.test.js')}\`\`\`\n\nThe bridge runs the Python tests once and makes node:test see one test per Python test. To run your hidden tests yourself use \`node --test hidden/py_bridge.test.js\` from the repository root (fixture plus solution).`,
-    testCmd: '`node --test --test-timeout=15000 hidden/py_bridge.test.js`',
+    testCmd: '`python3 -c "import sys; assert sys.version_info[:2] == (3, 12)" && node --test --test-timeout=15000 hidden/py_bridge.test.js`',
   },
 };
 

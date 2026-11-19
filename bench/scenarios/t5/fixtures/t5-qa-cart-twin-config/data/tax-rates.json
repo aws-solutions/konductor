@@ -1,0 +1,4 @@
+{
+  "default": {"country": "US", "rateBps": 825},
+  "reduced": {"country": "GB", "rateBps": 500}
+}

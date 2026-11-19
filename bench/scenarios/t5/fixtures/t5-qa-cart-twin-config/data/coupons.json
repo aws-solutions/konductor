@@ -1,0 +1,5 @@
+[
+  {"code": "SAVE10", "kind": "percent", "value": 10, "active": true, "expiresAtMs": 1893456000000},
+  {"code": "LESS300", "kind": "fixed", "value": 300, "active": true, "expiresAtMs": null},
+  {"code": "OLD5", "kind": "percent", "value": 5, "active": true, "expiresAtMs": 1577836800000}
+]

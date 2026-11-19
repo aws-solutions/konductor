@@ -1,0 +1,5 @@
+[
+  { "id": "u-100", "email": "alex@example.test", "name": "Alex Rivera", "role": "admin", "active": true },
+  { "id": "u-101", "email": "morgan@example.test", "name": "Morgan Chen", "role": "planner", "active": true },
+  { "id": "u-102", "email": "sam@example.test", "name": "Sam Patel", "role": "viewer", "active": true }
+]

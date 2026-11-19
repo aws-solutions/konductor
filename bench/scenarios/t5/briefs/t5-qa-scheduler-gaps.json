@@ -1,0 +1,19 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "python",
+  "kind": "mutants",
+  "size": "25 to 40",
+  "nmut": 10,
+  "source": {
+    "url": "https://github.com/boxed/mutmut",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Python 3.12 library, standard library only, for a job scheduler with calendar rules: cron-like expressions with ranges, steps and lists, next-run computation across month ends, leap years and time zone offsets, a retry policy with exponential backoff and a cap, a priority queue with stable ordering for equal priorities, a rate limiter with a sliding window, a persistence layer writing JSON to a temp directory, a CLI, docs, CI config. The existing unittest suite looks healthy (many tests, high coverage) but uses mid-month dates, round numbers and a single time zone. The behaviours that matter and are thin: month-end and leap-day rollover, a step that does not divide the range, the backoff cap exactly reached, equal-priority ordering, the window edge of the limiter, a corrupted or empty state file. Inspiration (a testing idea only, nothing copied): Python mutation testing tools show suites with high line coverage that miss boundaries.\n\nThe request is from a QA lead: a job fired a day late after a month end; they want the tests under tests/ to be trustworthy for the scheduling and retry code, without touching the library.",
+  "id": "t5-qa-scheduler-gaps"
+}

@@ -1,0 +1,7 @@
+{
+  "default": {
+    "freeShippingThresholdCents": 5000,
+    "standardShippingCents": 799
+  },
+  "countries": {}
+}

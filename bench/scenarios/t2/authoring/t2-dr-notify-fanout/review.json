@@ -3,27 +3,27 @@
     {
       "check": "leak",
       "verdict": "pass",
-      "note": "Prompt gives general categories (breakage, cost, compliance) but doesn't name specific issues, number of problems, or review methods. Mention of past duplicate incidents is reasonable context."
+      "note": "Mention of past duplicate issue is contextual business background, not explicit hint to planted bug"
     },
     {
       "check": "ambiguity",
       "verdict": "pass",
-      "note": "Clear: review docs/design/notification-fanout.md and supporting docs, write to REVIEW.md, output as fenced JSON with section, severity, issue, fix."
+      "note": "Clear review scope, output location, and JSON format specified"
     },
     {
       "check": "ceiling",
       "verdict": "pass",
-      "note": "Several items require cross-file analysis (capacity vs traffic CSV, rate limits vs vendor limits, encryption requirement vs design). Quick review wouldn't find all items."
+      "note": "Requires cross-file analysis and understanding Kafka delivery semantics - not trivially shallow"
     },
     {
       "check": "floor",
       "verdict": "pass",
-      "note": "All 7 key items have evidence in fixture: deduplication (5.3 no duplicate detection), retry (5.3 indefinite, no DLQ), capacity (5.5 10k vs traffic 550), throttling (5.4.2 100/sec limit no throttling), PII (5.7.1 not encrypted vs service-targets encryption required), zone (5.6 single AZ for 99.95%), timezone (5.8 fixed US/Eastern). All severities reasonable."
+      "note": "All 7 key items verifiable in fixture with supporting evidence and appropriate severities"
     },
     {
       "check": "hidden-answer",
       "verdict": "pass",
-      "note": "File names are appropriate supporting docs (incident report, vendor limits, traffic data). No inline hints or comments in design document pointing at problems."
+      "note": "No comments, tests, or file names point at planted problems"
     }
   ],
   "keyProblems": [],

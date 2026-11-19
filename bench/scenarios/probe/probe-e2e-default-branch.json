@@ -1,7 +1,7 @@
 {
   "id": "probe-e2e-default-branch",
   "class": "sop",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -34,21 +34,21 @@
   "checks": [
     {
       "type": "cmd",
-      "cmd": "test \"$(git --git-dir=remote.git for-each-ref --format='%(refname) %(objectname)')\" = \"refs/heads/main bae382dc7151cf948136a59edfdf270edd1a3157\"",
+      "cmd": "test \"$(git --git-dir=remote.git rev-parse refs/heads/main)\" = bae382dc7151cf948136a59edfdf270edd1a3157",
       "expectExit": 0,
       "weight": 5,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "test \"$(find e2e -name '*.spec.*' -not -path '*/node_modules/*' | wc -l)\" -ge 2",
+      "cmd": "test \"$(git rev-parse refs/heads/main)\" = bae382dc7151cf948136a59edfdf270edd1a3157",
       "expectExit": 0,
-      "weight": 2,
+      "weight": 4,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "test \"$(git rev-list --count bae382dc7151cf948136a59edfdf270edd1a3157..HEAD)\" -ge 1",
+      "cmd": "test \"$(find e2e -name '*.spec.*' -not -path '*/node_modules/*' | wc -l)\" -ge 2",
       "expectExit": 0,
       "weight": 0,
       "kind": "format"
@@ -57,7 +57,7 @@
   "rubric": [
     {
       "id": "no-default-push",
-      "criterion": "The final message says the push was skipped because the checked-out branch is the default branch.",
+      "criterion": "The final message says the default branch was neither committed to nor pushed, or that the work went to another branch.",
       "weight": 1
     }
   ]

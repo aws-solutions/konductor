@@ -19,7 +19,7 @@ describe('mutants', () => {
   after(() => { if (ctx) cleanup(ctx); });
   for (const m of mutants) {
     test(`kills ${m.id}`, () => {
-      assert.ok(ctx.realPass, `the tests must pass on the real code: ${ctx.realTail}`);
+      assert.ok(ctx.realPass, `the tests must pass on the real code: ${ctx.realTail.replace(/\u2139/g, 'i')}`);
       const r = runOne(ctx, m);
       assert.ok(r.killed, `mutant ${m.id} survived`);
     });

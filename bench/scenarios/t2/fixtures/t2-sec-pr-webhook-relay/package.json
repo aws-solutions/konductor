@@ -1,0 +1,9 @@
+{
+  "name": "relay-gateway",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Small webhook relay for repository and payment events",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "start": "node src/index.js" }
+}

@@ -66,3 +66,13 @@ test('every task passes the task schema and the v3 rules (needs the scoring sche
     assert.deepEqual(v3Errors(task), [], id);
   }
 });
+
+test('a task aimed at an SOP that waits for the user\'s yes says in its prompt that the scope is confirmed and committing is allowed', () => {
+  const waits = ['k-e2e-test-generation', 'k-light-ui-testing', 'k-test-coverage-review'];
+  for (const id of ids) {
+    const task = JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8'));
+    if (!waits.includes(task.targetSop)) continue;
+    assert.match(task.prompt, /scope is confirmed|confirm(ed)? the scope/i, `${id} must confirm the scope`);
+    assert.match(task.prompt, /commit/i, `${id} must allow committing on the feature branch`);
+  }
+});

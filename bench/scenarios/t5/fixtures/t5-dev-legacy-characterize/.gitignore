@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+coverage.xml
+build/
+dist/

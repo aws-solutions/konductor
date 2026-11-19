@@ -1,0 +1,9 @@
+[project]
+name = "monthly-customer-reports"
+version = "0.4.0"
+description = "A standard-library SQLite reporting job"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.report]
+default_month = "2024-01"

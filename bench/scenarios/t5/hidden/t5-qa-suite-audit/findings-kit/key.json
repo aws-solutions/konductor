@@ -1,0 +1,117 @@
+{
+  "outputFile": "docs/TEST-AUDIT.md",
+  "findingsKey": [
+    {
+      "id": "proration-self-comparison",
+      "location": "test/proration.test.js",
+      "severity": "critical",
+      "fix": [
+        "independent",
+        "expected",
+        "amount",
+        "boundary",
+        "specific",
+        "assertion"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "invoice-output-recomputed",
+      "location": "test/invoice-contract.test.js",
+      "severity": "high",
+      "fix": [
+        "literal",
+        "expected",
+        "fields",
+        "contract",
+        "independent",
+        "fixture"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "retry-unit-replaced",
+      "location": "test/retry.test.js",
+      "severity": "high",
+      "fix": [
+        "real",
+        "implementation",
+        "behavior",
+        "stub",
+        "dependency",
+        "integration"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "webhook-error-ignored",
+      "location": "test/webhook-failure.test.js",
+      "severity": "high",
+      "fix": [
+        "assert",
+        "error",
+        "throws",
+        "invalid",
+        "rejection",
+        "failure"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "proration-shared-formula",
+      "location": "test/proration-preview.test.js",
+      "severity": "critical",
+      "fix": [
+        "independent",
+        "oracle",
+        "boundary",
+        "amount",
+        "fixture",
+        "example"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "api-body-unchecked",
+      "location": "test/api-routes.test.js",
+      "severity": "high",
+      "fix": [
+        "body",
+        "payload",
+        "response",
+        "error",
+        "content",
+        "assert"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "empty-adjustment-loop",
+      "location": "test/discounts.test.js",
+      "severity": "medium",
+      "fix": [
+        "non-empty",
+        "case",
+        "iteration",
+        "fixture",
+        "assert",
+        "example"
+      ],
+      "fixMin": 2
+    },
+    {
+      "id": "snapshot-overwritten",
+      "location": "test/invoice-snapshot.test.js",
+      "severity": "medium",
+      "fix": [
+        "committed",
+        "review",
+        "snapshot",
+        "independent",
+        "detect",
+        "compare"
+      ],
+      "fixMin": 2
+    }
+  ]
+}
