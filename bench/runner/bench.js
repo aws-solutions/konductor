@@ -299,7 +299,7 @@ const USAGE = `Usage:
        tasks that should make the agent load the skill on its own, in varied phrasings that never name it, and as many near misses that share its words
        but belong elsewhere (skill-creator's should-trigger and should-not-trigger method), into DIR/scenarios/<id>.trigger.json and .md, with a queries view
        that cap trigger reads as its query file. --seed-queries FILE seeds it with a skill-creator eval set or a cap draft file for that one skill)
-  node bench/runner/bench.js cap forced-prefix --cap skill:NAME [--harness kiro-cli|opencode] [--out DIR] [--base REF] [--repo-root DIR] [--bench-dir DIR]
+  node bench/runner/bench.js cap forced-prefix --cap skill:NAME|sop:NAME|agent:NAME [--harness kiro-cli|opencode] [--out DIR] [--base REF] [--repo-root DIR] [--bench-dir DIR]
        (free: writes the forced-load instruction for one skill and harness, to pass with run's arm prefix option to a forced arm and its A/A repeat in a run of their own)
   node bench/runner/bench.js cap keep-prune --skill NAME --run stub-ID [--out DIR] [--depth quick|deep|both] [--provider stub] [--subject-model ID] [--judges A,B,C] [--replicates N] [--rejudge] [--selection FILE] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap select --skill NAME (--run stub-ID [--reps N] [--stub-behaviour always|never|correct|fake] | --from-run DIR | --write-tasks DIR) [--requests FILE] [--out DIR] [--repo-root DIR] [--json]
@@ -309,7 +309,7 @@ const USAGE = `Usage:
        (known-answer controls for skill studies. With --out it writes a skill that holds a fact nobody can guess (keep), a decoy skill (prune) and one task for
        each, and prints the variant, run and check commands; free. With --check it reads a finished controls run and exits 0 only when the planted lift was
        found and the decoy showed no effect; it writes controls-check.json beside the run)
-  node bench/runner/bench.js cap trigger --cap ID --mode proxy|live [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
+  node bench/runner/bench.js cap trigger --cap ID --mode proxy|live|runs [--from-runs DIR[,DIR]] [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
        [--queries FILE] [--out DIR] [--model M] [--model-cmd CMD] [--from-run DIR] [--from-arm NAME] [--acting-agent A] [--concurrency N]
        [--crosscheck F] [--crosscheck-run DIR] [--budget-credits X] [--budget-usd X] [--run-credit-limit X] [--stop-on first-capability|first-load|end_turn]
        [--max-tool-calls N] [--seed N] [--censored-floor X] [--dry-run] [--kiro-bin PATH] [--auth-db FILE] [--isolate auto|unshare|sandbox-exec|none]
@@ -322,7 +322,11 @@ const USAGE = `Usage:
        (arm --from-arm) or from the agent spec at --base. live: real runs of trigger tasks, stopped at the first load or delegation (first-load by
        default; first-capability also stops at find_skills), at most 4 tool calls; needs --budget-credits (--budget-usd on opencode) unless --profile is given, which also sets --reps (quick 1 to 3, detailed at least 5). --crosscheck F
        runs a share F of the queries live (at least one per kind) and --crosscheck-run DIR reads a finished live run; kappa below 0.6 or fewer than
-       12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged)
+       12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged.
+       --cap takes skill:, sop: and agent: ids (proxy reads skills, and SOPs on opencode; live and runs read all three). --mode runs reads no model and starts no run:
+       it scores the unit from the loadCheck of finished task runs in --from-runs (a konductor arm; --from-arm picks one): runs of tasks that list the unit in
+       loadCheck.mustLoad or have it as a target are should-load, runs of tasks that list it in mustNotLoad are should-not, and it also prints the share loaded
+       before the first file write)
   node bench/runner/bench.js cap prune-report --base REF [--harness kiro-cli|opencode|both] [--runs DIR[,DIR...]] [--runs-glob GLOB]
        [--min-exposure N] [--evidence FILE] [--out DIR] [--json] [--detail quick|full] [--format md|html|both] [--repo-root DIR] [--bench-dir DIR]
        (read-only, no credits: one recommendation per skill and harness from the audit at --base, the skill loads recomputed from the stream.jsonl of

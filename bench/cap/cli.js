@@ -42,7 +42,7 @@ const { analyze } = require('../report/generate.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
 const { generateScenarios, checkCount, generateTriggerScenarios, checkTriggerCount, parseSeed } = require('./scenarios.js');
-const { forcedPrefix, prefixHash, HARNESSES } = require('./forced.js');
+const { forcedPrefix, prefixHash, HARNESSES, KINDS: FORCED_KINDS } = require('./forced.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria } = require('./skillcli.js');
 const { cmdKeepPrune } = require('./kprun.js');
@@ -365,12 +365,37 @@ function liveScore(results, cap) {
   return { rows, dropped, score: scoreTrigger(rows), credits, censored: results.filter((r) => r.creditsCensored).length, first: trig.firstDecisions(results.filter((r) => r.capInvocation)) };
 }
 
+/**
+ * `cap trigger --mode runs`: the selection check of a skill, SOP or agent read from finished task runs (their result.json
+ * loadCheck), not from trigger queries. Free: no model call, no run.
+ */
+function runsMode({ opts, cap, outDir, benchDir, extraTasks, base }) {
+  const dirs = list(opts['from-runs']);
+  if (!dirs.length) throw new Error('--mode runs needs --from-runs DIR[,DIR]: finished run directories whose results carry a loadCheck');
+  const arm = opts['from-arm'] && opts['from-arm'] !== true ? opts['from-arm'] : null;
+  const results = dirs.flatMap((d) => loadRun(path.resolve(d)).runs.map((r) => r.result)).filter((r) => !arm || r.armId === arm);
+  const { rows, dropped } = trig.loadCheckRows(results, cap, loadTasks(benchDir, { extraDirs: extraTasks }));
+  if (!rows.length) throw new Error(`no run in ${dirs.join(', ')} counts for ${cap.id}: a run needs a loadCheck (a konductor arm) and a task that lists ${cap.name} in loadCheck.mustLoad or mustNotLoad, or has it as a target (dropped: ${Object.entries(dropped).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(', ') || 'none'})`);
+  const score = scoreTrigger(rows);
+  const shares = trig.loadShares(rows);
+  const harness = results.find((r) => r.harness)?.harness ?? 'kiro-cli';
+  const reps = Math.max(...score.queries.map((q) => q.reps));
+  const pct = (a, b) => (b ? `${a} of ${b} (${Math.round((100 * a) / b)}%)` : 'n/a');
+  const report = `${trig.renderTriggerReport({ cap, harness, mode: 'runs', split: 'task runs', reps, score, credits: 0 }).trimEnd()}\n\n## From the runs' load check\n\n- should-load runs that loaded ${cap.name}: ${pct(shares.loaded, shares.shouldRuns)}\n- of those, loaded before the first file write: ${pct(shares.beforeWrite, shares.loaded)}\n- false loads (runs of twins and controls that list it in mustNotLoad): ${pct(shares.falseLoads, shares.falseRuns)}\n- dropped runs: ${Object.entries(dropped).map(([k, n]) => `${k} ${n}`).join(', ')}\n`;
+  fs.mkdirSync(outDir, { recursive: true });
+  const name = `trigger-${cap.id.replace(':', '-')}-${harness}-runs`;
+  fs.writeFileSync(path.join(outDir, `${name}.md`), report);
+  fs.writeFileSync(path.join(outDir, `${name}.json`), `${JSON.stringify({ cap, harness, mode: 'runs', base, runs: dirs, score, shares, rows, dropped }, null, 2)}\n`);
+  console.log(opts.json ? JSON.stringify({ score, shares, rows }, null, 2) : report);
+  console.log(`wrote ${path.join(outDir, `${name}.md`)}`);
+}
+
 async function cmdTrigger(opts) {
   const { repo, benchDir, base, extraTasks } = common(opts);
   const capId = opts.cap && opts.cap !== true ? opts.cap : null;
   if (!capId) throw new Error('--cap is required (for example skill:backend-review)');
   const mode = opts.mode;
-  if (mode !== 'proxy' && mode !== 'live') throw new Error('--mode takes proxy or live');
+  if (mode !== 'proxy' && mode !== 'live' && mode !== 'runs') throw new Error('--mode takes proxy, live or runs');
   const harness = opts.harness && opts.harness !== true ? opts.harness : 'kiro-cli';
   if (!['kiro-cli', 'opencode'].includes(harness)) throw new Error('--harness takes kiro-cli or opencode');
   const split = opts.split && opts.split !== true ? opts.split : 'all';
@@ -391,6 +416,7 @@ async function cmdTrigger(opts) {
     if (!c) throw new Error(`unknown capability ${capId} at ${b.label}`);
     if (c.kind === 'context') throw new Error(`${capId} cannot be triggered: context files are always loaded`);
     cap = { id: c.id, kind: c.kind, name: c.name };
+    if (mode === 'runs') return runsMode({ opts, cap, outDir, benchDir, extraTasks, base });
     entry = loadRegistry(benchDir).entries.find((e) => e.data?.id === capId)?.data ?? null;
     const queries = opts.queries && opts.queries !== true ? trig.queriesFromDraft(path.resolve(opts.queries), capId) : trig.queriesFromRegistry(entry ?? { id: capId, trigger: { queries: [] } }, split);
     const fromRun = opts['from-run'] && opts['from-run'] !== true ? path.resolve(opts['from-run']) : null;
@@ -550,22 +576,23 @@ async function cmdScenarios(opts) {
 
 // ---- forced-prefix ----
 
-/** Writes the forced-load instruction for one skill and harness, for a hand-built `run --arm-prefix`. Free. */
+/** Writes the forced-load instruction for one skill, SOP or agent and one harness, for a hand-built `run --arm-prefix`. Free. */
 function cmdForcedPrefix(opts) {
   const { repo, base } = common(opts);
   const ids = list(opts.cap);
-  if (ids.length !== 1) throw new Error('--cap takes one skill (for example skill:backend-review)');
+  if (ids.length !== 1) throw new Error('--cap takes one unit (for example skill:backend-review, sop:k-plan or agent:k-architect)');
   const capId = ids[0];
-  if (!capId.startsWith('skill:')) throw new Error(`${capId} is not a skill: only a skill can be forced to load`);
+  const kind = capId.slice(0, capId.indexOf(':'));
+  if (!FORCED_KINDS.includes(kind)) throw new Error(`${capId} is not a skill, SOP or agent: only those can be forced`);
   const harness = opts.harness === undefined ? 'kiro-cli' : String(opts.harness);
   if (!HARNESSES.includes(harness)) throw new Error(`--harness takes ${HARNESSES.join(' or ')}`);
   const b = resolveBase(base, repo);
   try { if (!scanRepo(b.dir).has(capId)) throw new Error(`unknown capability ${capId} at ${b.label}`); } finally { b.cleanup(); }
-  const name = capId.slice('skill:'.length);
-  const text = `${forcedPrefix({ name, harness })}\n`;
+  const name = capId.slice(kind.length + 1);
+  const text = `${forcedPrefix({ name, harness, kind })}\n`;
   const outDir = outDirOf(opts, repo);
   fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, `forced-prefix-${name}-${harness}.txt`);
+  const file = path.join(outDir, kind === 'skill' ? `forced-prefix-${name}-${harness}.txt` : `forced-prefix-${kind}-${name}-${harness}.txt`);
   fs.writeFileSync(file, text);
   const arm = harness === 'opencode' ? 'oc-frc' : 'frc';
   console.log([

@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { mulberry32, shuffle } = require('../runner/lib/orchestrate.js');
 const { wilson } = require('./score.js');
+const { splitOf } = require('../scenarios/split.js');
 
 const SPLITS = ['train', 'heldout', 'all'];
 const NEUTRAL_FIXTURE = 'trigger-neutral';
@@ -96,6 +97,55 @@ function liveRows(results, cap) {
   return { rows, dropped };
 }
 
+// ---- reading finished task runs ----
+
+const unitKey = (name) => lower(name).replace(/^(skill|sop|agent)::?/, '').replace(/^sop-/, '');
+
+/** The units a task says must load and must not load, as unit keys: its loadCheck lists, else its v3 targets (a skill, a SOP, an agent). */
+function taskExpectations(task) {
+  const t = task.targets ?? {};
+  const fromTargets = [...(t.targetSkills ?? []), t.targetSop, t.targetAgent].filter(Boolean);
+  return { mustLoad: (Array.isArray(task.loadCheck?.mustLoad) ? task.loadCheck.mustLoad : fromTargets).map(unitKey), mustNotLoad: (task.loadCheck?.mustNotLoad ?? []).map(unitKey) };
+}
+
+/**
+ * Scored rows from the `loadCheck` of finished task runs (B2): the selection check of a skill, SOP or agent read from the real
+ * runs instead of trigger queries. A run counts for the unit when its task lists it in mustLoad (expect load) or mustNotLoad
+ * (expect none); any other task says nothing about it. `hit` is that the unit loaded at all; `beforeWrite` that it loaded before the
+ * run's first file write. A run with no loadCheck (a vanilla arm) is dropped, as is one that errored or timed out without loading.
+ * `tasks` maps task id to the loaded task. Same row shape as liveRows, so scoreTrigger reads both.
+ */
+function loadCheckRows(results, cap, tasks) {
+  const dropped = { notRun: 0, noLoadCheck: 0, noTask: 0, unrelated: 0, infra: 0, failed: 0 };
+  const key = unitKey(cap.name);
+  const rows = [];
+  for (const r of results) {
+    if (r.status === 'budget_skipped') { dropped.notRun++; continue; }
+    if (r.infraError) { dropped.infra++; continue; }
+    if (!r.loadCheck) { dropped.noLoadCheck++; continue; }
+    const task = tasks.get(r.taskId);
+    if (!task) { dropped.noTask++; continue; }
+    const exp = taskExpectations(task);
+    const expect = exp.mustLoad.includes(key) ? 'load' : exp.mustNotLoad.includes(key) ? 'none' : null;
+    if (!expect) { dropped.unrelated++; continue; }
+    const mine = (r.loadCheck.loaded ?? []).find((u) => u.unit === key && u.kind === cap.kind);
+    const failed = r.status !== 'success' || (r.flags ?? []).includes('modelMismatch');
+    if (failed && !mine) { dropped.failed++; continue; }
+    rows.push({
+      queryId: r.taskId, expect, rep: r.replicate, split: splitOf(r.taskId), hit: Boolean(mine), beforeWrite: Boolean(mine?.beforeFirstWrite),
+      fired: [...new Set((r.loadCheck.loaded ?? []).filter((u) => u !== mine).map((u) => `${u.kind}:${u.unit}`))],
+    });
+  }
+  return { rows, dropped };
+}
+
+/** Of the runs that should load the unit: how many loaded it, and how many of those before the first write. */
+function loadShares(rows) {
+  const should = rows.filter((r) => r.expect === 'load');
+  const never = rows.filter((r) => r.expect === 'none');
+  return { shouldRuns: should.length, loaded: should.filter((r) => r.hit).length, beforeWrite: should.filter((r) => r.hit && r.beforeWrite).length, falseRuns: never.length, falseLoads: never.filter((r) => r.hit).length };
+}
+
 /** How the runs began: counts of first decision kinds, from result.json objects or rows. */
 function firstDecisions(items) {
   const out = {};
@@ -174,5 +224,5 @@ function renderTriggerReport({ cap, harness, mode, split, reps, score, proxy = n
 }
 
 module.exports = {
-  queriesFromRegistry, queriesFromDraft, materializeTasks, liveRow, liveRows, firstDecisions, crossCheckSample, crossPairs, renderTriggerReport, NEUTRAL_FIXTURE, SPLITS, wilson,
+  queriesFromRegistry, queriesFromDraft, materializeTasks, liveRow, liveRows, loadCheckRows, loadShares, taskExpectations, firstDecisions, crossCheckSample, crossPairs, renderTriggerReport, NEUTRAL_FIXTURE, SPLITS, wilson,
 };
