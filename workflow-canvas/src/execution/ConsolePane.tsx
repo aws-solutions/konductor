@@ -11,8 +11,9 @@ function canStillPrint(stage: FollowedStage, runFinished: boolean): boolean {
   );
 }
 
-// Why no line is shown. Lines that are gone, because the run ended, the
-// server started again or the run-wide cap dropped them, are not "yet".
+// Why no line is shown. Lines that are gone, because the run ended over a
+// minute ago, the server started again or the run-wide cap dropped them, are
+// not "yet".
 function emptyText(stage: FollowedStage, runFinished: boolean): string {
   return !stage.dropped && canStillPrint(stage, runFinished)
     ? 'No output yet.'
@@ -21,8 +22,8 @@ function emptyText(stage: FollowedStage, runFinished: boolean): string {
 
 /**
  * The console lines of one stage, read-only. The lines are live only: the
- * server keeps none once the run ends, and the page saves none, which the
- * pane says.
+ * server drops them a minute after the run ends, and the page saves none,
+ * which the pane says.
  */
 export function ConsolePane({
   stage,

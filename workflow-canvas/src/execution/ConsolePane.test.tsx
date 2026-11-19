@@ -143,7 +143,7 @@ describe('ConsolePane', () => {
     );
 
     it('says no live output is available once the run has finished', () => {
-      // A finished run's events carry no console lines.
+      // A run read a minute after it finished carries no console lines.
       renderPane({ status: 'passed', console: [] }, true);
 
       expect(screen.getByText('No live output is available.')).toBeTruthy();
