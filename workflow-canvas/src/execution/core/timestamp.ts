@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/;
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+// A Gregorian leap year: divisible by 4, except by 100, unless by 400.
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+
+function daysInMonth(year: number, month: number): number {
+  return month === 2 && isLeapYear(year) ? 29 : DAYS_IN_MONTH[month - 1]!;
+}
 
 // Days from 1970-01-01 to the given date of the proleptic Gregorian calendar.
 function daysFromEpoch(year: number, month: number, day: number): number {
@@ -33,7 +43,8 @@ export function timestampMs(at: string): number | undefined {
     number,
     number,
   ];
-  if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+  if (month < 1 || month > 12) return undefined;
+  if (day < 1 || day > daysInMonth(year, month)) return undefined;
   if (hours > 23 || minutes > 59 || seconds > 59) return undefined;
   const days = daysFromEpoch(year, month, day);
   return ((days * 24 + hours) * 60 + minutes) * 60_000 + seconds * 1000;
