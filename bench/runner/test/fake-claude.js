@@ -23,15 +23,19 @@ if (args[0] === '--version') { console.log(cfg.version || '9.9.9 (fake)'); proce
 // answered from the skills in CLAUDE_CONFIG_DIR by the real fill rule (built-ins first, then name order while it fits),
 // and never touch started.json or the files of a run.
 if (args.includes('/context') || args.includes('--debug-file')) {
-  fs.appendFileSync(path.join(cfg.dir, 'probe-env.jsonl'), JSON.stringify(Object.keys(process.env).filter((k) => k.startsWith('AWS_')).sort()) + '\\n');
+  fs.appendFileSync(path.join(cfg.dir, 'probe-env.jsonl'), JSON.stringify({ aws: Object.keys(process.env).filter((k) => k.startsWith('AWS_')).sort(), args }) + '\\n');
   const dir = path.join(process.env.CLAUDE_CONFIG_DIR, 'skills');
   const builtins = [['dataviz', 1440], ['code-review', 840]];
-  const skills = (fs.existsSync(dir) ? fs.readdirSync(dir).sort() : []).flatMap((name) => {
-    let text = ''; try { text = fs.readFileSync(path.join(dir, name, 'SKILL.md'), 'utf8'); } catch { return []; }
+  const read = (d, source) => (fs.existsSync(d) ? fs.readdirSync(d).sort() : []).flatMap((name) => {
+    let text = ''; try { text = fs.readFileSync(path.join(d, name, 'SKILL.md'), 'utf8'); } catch { return []; }
     if (/^disable-model-invocation:\\s*true/m.test(text)) return [];
     const desc = (/^description:\\s*(.*)$/m.exec(text) || [])[1] || '';
-    return [{ name, full: ('- ' + name + ': ' + desc + '\\n').length, bare: ('- ' + name + '\\n').length }];
+    return [{ name, source, full: ('- ' + name + ': ' + desc + '\\n').length, bare: ('- ' + name + '\\n').length }];
   });
+  // Like Claude Code, every .claude/skills above the cwd is read as project skills.
+  const project = [];
+  for (let d = process.cwd(); ; d = path.dirname(d)) { project.push(...read(path.join(d, '.claude', 'skills'), 'Project')); if (d === path.dirname(d)) break; }
+  const skills = [...read(dir, 'User'), ...project].sort((x, y) => (x.name < y.name ? -1 : 1));
   const budget = Number(process.env.SLASH_COMMAND_TOOL_CHAR_BUDGET || cfg.listingBudget || 30000);
   const base = builtins.reduce((n, b) => n + b[1], 0);
   const total = base + skills.reduce((n, s) => n + s.full, 0);
@@ -39,7 +43,7 @@ if (args.includes('/context') || args.includes('--debug-file')) {
   for (const s of skills) { s.chars = total <= budget || used + s.full - s.bare <= budget ? s.full : s.bare; if (s.chars === s.full && total > budget) used += s.full - s.bare; }
   if (args.includes('/context')) {
     const tok = (c) => (Math.ceil(c / 3) < 20 ? '< 20' : '~' + Math.ceil(c / 3));
-    const rows = [...skills.map((s) => '| ' + s.name + ' | User | ' + tok(s.chars) + ' |'), ...builtins.map((b) => '| ' + b[0] + ' | Built-in | ' + tok(b[1]) + ' |')];
+    const rows = [...skills.map((s) => '| ' + s.name + ' | ' + s.source + ' | ' + tok(s.chars) + ' |'), ...builtins.map((b) => '| ' + b[0] + ' | Built-in | ' + tok(b[1]) + ' |')];
     const result = '## Context Usage\\n\\n**Tokens:** 17k / ' + (cfg.contextWindow || '1m') + ' (2%)\\n\\n### Skills\\n\\n| Skill | Source | Tokens |\\n|-------|--------|--------|\\n' + rows.join('\\n') + '\\n';
     console.log(JSON.stringify({ result, num_turns: 0, total_cost_usd: cfg.contextCost || 0 }));
     process.exit(0);

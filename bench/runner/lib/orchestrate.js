@@ -222,6 +222,7 @@ function noteListing(arm, { skillListing = null, skillListingError = null }, ctx
   (ctx.skillListings ??= new Map()).set(arm.id, { listing: skillListing, error: skillListingError });
   if (skillListingError) log(`WARNING: arm ${arm.id}: the skill listing was not recorded: ${skillListingError}`);
   else if (skillListing?.nameOnly > 0) log(`WARNING: arm ${arm.id}: ${skillListing.nameOnly} konductor skill(s) are name-only in the ${skillListing.harness} listing (${skillListing.listingChars} chars > ${skillListing.budgetChars} budget): ${skillListing.konductorNameOnly.join(', ')}; report-2x2 refuses this cell`);
+  if (skillListing?.otherSkills?.length) log(`WARNING: arm ${arm.id}: the ${skillListing.harness} listing holds ${skillListing.otherSkills.length} skill(s) that are neither built-in nor the arm's: ${skillListing.otherSkills.slice(0, 5).join(', ')}${skillListing.otherSkills.length > 5 ? ', ...' : ''}; report-2x2 refuses this cell`);
 }
 
 // What identifies an arm's content in the preflight table: its commit, or the hash of a directory snapshot.

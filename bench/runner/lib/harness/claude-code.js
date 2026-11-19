@@ -12,6 +12,7 @@ const { parseStream } = require('../stream.js');
 const sandbox = require('../sandbox.js');
 const { ALLOW } = require('../env.js');
 const { ensureEmptyClaudeRules } = require('../isolation-gates.js');
+const { realHomes } = require('../isolate.js');
 const { scrubTreeDetailed } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
@@ -296,6 +297,23 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
   return meta;
 }
 
+/**
+ * Throws unless `dir`, a scratch root Claude Code runs and probes are made under, is safe from host skills. Claude Code
+ * walks up from the run cwd and loads every `.claude/skills` it finds as project skills, so a scratch root under the real
+ * HOME, or below any directory holding a `.claude` entry, would hand vanilla runs the owner's skills and konductor runs
+ * more than konductor's. Returns the real path. `homes` defaults to the real homes.
+ */
+function checkScratchRoot(dir, { homes = realHomes() } = {}) {
+  const real = fs.realpathSync(dir);
+  const fix = 'Set TMPDIR to a directory outside HOME with no .claude above it, for example /var/tmp/<name>';
+  const home = homes.find((h) => real === h || real.startsWith(h + path.sep));
+  if (home) throw new Error(`Claude Code scratch dir ${real} is under the real HOME ${home}; Claude Code would load ${path.join(home, '.claude', 'skills')} as project skills. ${fix}`);
+  for (let d = real; ; d = path.dirname(d)) {
+    if (fs.existsSync(path.join(d, '.claude'))) throw new Error(`Claude Code scratch dir ${real} is below ${d}, which holds a .claude entry; Claude Code would load its skills as project skills. ${fix}`);
+    if (d === path.dirname(d)) return real;
+  }
+}
+
 function trialInstall(prepared, ctx) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
   try {
@@ -489,7 +507,7 @@ const strictMcp = true;
 
 module.exports = {
   id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

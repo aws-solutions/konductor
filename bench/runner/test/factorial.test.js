@@ -91,6 +91,9 @@ test('the header shows each cell\'s skill listing, and a konductor cell with a n
     const cut = LISTING({ listingChars: 33894, overBudget: true, konductorNameOnly: ['verification', 'workspace-skills'], nameOnly: 2 });
     const bad = four(path.join(root, 'bad'), bench, { ck: { extra: () => ({ skillListing: cut }) } });
     assert.throws(() => build(bench, bad), /2 konductor skill\(s\) by name only in the claude-code skill listing \(33894 chars > 30000 budget: verification, workspace-skills\)/);
+    // A vanilla cell (and a konductor one) whose runs listed the owner's own skills is refused too.
+    const leaked = four(path.join(root, 'leak'), bench, { cv: { extra: () => ({ skillListing: LISTING({ konductorDescribed: [], otherDescribed: 25, otherNameOnly: 0, otherSkills: ['aws-cdk (Project)'] }) }) } });
+    assert.throws(() => build(bench, leaked), /ccVanilla \(Claude Code vanilla\): 5 run\(s\) listed 25 skill\(s\) that are neither built-in nor the arm's .*TMPDIR outside HOME/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

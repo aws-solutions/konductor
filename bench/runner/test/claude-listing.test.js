@@ -140,7 +140,8 @@ test('the probe environment holds no credentials even when the caller has them',
     assert.equal(r.skillListing.konductorDescribed.length, 0);
     const seen = fs.readFileSync(path.join(root, 'probe-env.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     assert.equal(seen.length, 4, 'two /context calls and two debug calls');
-    for (const keys of seen) assert.deepEqual(keys.filter((k) => /ACCESS_KEY|SECRET|SESSION_TOKEN|PROFILE/.test(k)), []);
+    for (const { aws } of seen) assert.deepEqual(aws.filter((k) => /ACCESS_KEY|SECRET|SESSION_TOKEN|PROFILE/.test(k)), []);
+    for (const { args } of seen) for (const f of L.RUN_FLAGS) assert.ok(args.includes(f), `probe ${args.slice(0, 2).join(' ')} passes ${f} like a real run`);
     assert.equal(fs.existsSync(path.join(root, 'started.json')), false, 'the probes never start a run');
   } finally {
     for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
@@ -160,6 +161,33 @@ test('Kiro\'s record: the installed SKILL.md dirs, every one described, no known
     assert.deepEqual([viaMcp.skillsSent, viaMcp.sops], [2, 1]);
     assert.match(viaMcp.source, /catalog/);
     assert.equal(kiro.vanillaSkillListing().skillListing.skillsSent, 0);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('every flag the probes copy from a real run is on the real command line', () => {
+  const { args } = cc.buildCommand({ arm: { vanilla: true }, task: { prompt: 'x' }, config: { model: MODEL, effort: 'high' }, ctx: { claude: { bin: 'claude' } } });
+  for (const f of L.RUN_FLAGS) assert.ok(args.includes(f), f);
+});
+
+test('a fake HOME with .claude/skills above the scratch dir: the guard refuses it, and the listing shows the leaked skills', () => {
+  const root = tmp();
+  try {
+    const fakeHome = path.join(root, 'owner');
+    write(path.join(fakeHome, '.claude/skills/owner-skill/SKILL.md'), '---\nname: owner-skill\ndescription: The owner\'s own skill, long enough to be cut when the budget is tight.\n---\nb\n');
+    const under = path.join(fakeHome, 'scratch');
+    fs.mkdirSync(under);
+    assert.throws(() => cc.checkScratchRoot(under, { homes: [fs.realpathSync(fakeHome)] }), /is under the real HOME .*owner; Claude Code would load .*\.claude\/skills as project skills\. Set TMPDIR/);
+    assert.throws(() => cc.checkScratchRoot(under, { homes: [] }), /is below .*owner, which holds a \.claude entry/);
+    const clean = path.join(root, 'clean');
+    fs.mkdirSync(clean);
+    assert.equal(cc.checkScratchRoot(clean, { homes: [fs.realpathSync(fakeHome)] }), fs.realpathSync(clean));
+    // Without the guard, a probe below that HOME records the owner's skill as a foreign one.
+    const { listing } = probe(under, {}, { home: home(path.join(root, 'arm'), 2) });
+    assert.deepEqual(listing.otherSkills, ['owner-skill (Project)']);
+    assert.equal(listing.otherDescribed + listing.otherNameOnly, 1);
+    assert.deepEqual(listing.konductorDescribed, ['zz-skill-01', 'zz-skill-02']);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

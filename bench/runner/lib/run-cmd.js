@@ -131,6 +131,9 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   ensureOwnedDir(cacheDir, 'cache');
+  // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
+  // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
+  if (isCc) cc.checkScratchRoot(os.tmpdir());
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
@@ -305,6 +308,9 @@ async function cmdRun(opts, deps = {}) {
   ensureOwnedDir(outDir, 'run-out');
   ensureOwnedDir(cacheDir, 'cache');
   if (opts['cargo-target'] || !process.env.CARGO_TARGET_DIR) for (const t of [cargoTarget, `${cargoTarget}-mcp`]) ensureOwnedDir(t, 'cargo-target');
+  // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
+  // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
+  if (isCc) cc.checkScratchRoot(os.tmpdir());
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
 

@@ -137,6 +137,10 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
   const listings = executed.map((e) => e.result.skillListing ?? e.result.claudeCode?.skillListing ?? null);
   const cut = listings.find((l) => l?.nameOnly > 0);
   if (spec.role === 'konductor' && cut) throw new Error(`${where}: ${listings.filter((l) => l?.nameOnly > 0).length} run(s) sent ${cut.nameOnly} konductor skill(s) by name only in the ${spec.harness} skill listing (${cut.listingChars} chars > ${cut.budgetChars} budget: ${cut.konductorNameOnly.join(', ')}); this cell does not compare with the other harness. Land the description trim, or pin a commit whose listing fits`);
+  // A vanilla arm must see built-ins only and a konductor arm konductor's only: a skill from above the run cwd (the
+  // owner's ~/.claude/skills) is a confound.
+  const foreign = listings.find((l) => (l?.otherDescribed ?? 0) + (l?.otherNameOnly ?? 0) > 0);
+  if (foreign) throw new Error(`${where}: ${listings.filter((l) => (l?.otherDescribed ?? 0) + (l?.otherNameOnly ?? 0) > 0).length} run(s) listed ${foreign.otherDescribed + foreign.otherNameOnly} skill(s) that are neither built-in nor the arm's (project skills found above the run cwd); rerun with TMPDIR outside HOME, for example under /var/tmp`);
   const listing = { record: listings.find(Boolean) ?? null, unrecorded: listings.filter((l) => !l).length, variants: uniq(listings.filter(Boolean).map((l) => JSON.stringify({ ...l, cacheKey: undefined }))).length };
   return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, effort: efforts[0], judgeRubric, listing, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
 }

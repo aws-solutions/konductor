@@ -545,7 +545,7 @@ served by the MCP server).
 | `listingChars`, `skillsSent`, `overBudget` | the full listing size before any cut, the skills sent, and whether it is over the budget; `listingChars` is null for Kiro |
 | `konductorDescribed`, `konductorNameOnly`, `nameOnly` | the installed (konductor) skills sent with their description, those sent by name only, and the count of the latter |
 | `konductorNotListed` | installed model-invocable skills that Claude Code did not list at all (expected to be empty) |
-| `otherDescribed`, `otherNameOnly`, `builtins` | counts for skills that are not the arm's: project skills found from the run cwd, and built-ins |
+| `otherDescribed`, `otherNameOnly`, `otherSkills`, `builtins` | skills that are neither the arm's nor built-in (project skills found above the run cwd), as counts and as `name (source)`; and the built-in count. Both counts must be 0 |
 | `sops`, `sopsModelInvocable` | the installed SOP skills, and whether all are listed (no `disable-model-invocation: true`); null with no SOPs |
 
 Where it is written: `run-config.json` `arms[].skillListing` (and `arms[].skillListingError` when the probe failed),
@@ -553,6 +553,12 @@ Where it is written: `run-config.json` `arms[].skillListing` (and `arms[].skillL
 field the 2x2 kit's `gate` reads). The runner logs a `WARNING` at prepare when a konductor skill is name-only or the
 listing could not be measured, and `report-2x2` shows the listing in its header and refuses a konductor cell whose runs
 sent a konductor skill by name only.
+
+Every probe passes `--strict-mcp-config`, as a real run does. Claude Code walks up from the run cwd and loads every
+`.claude/skills` it finds as project skills, so a scratch dir under the owner's HOME would hand a vanilla run the
+owner's skills. `bench run` with Claude Code arms therefore refuses a TMPDIR under the real HOME, or below any
+directory that holds a `.claude` entry, before it builds or starts anything (set `TMPDIR` under `/var/tmp`).
+`report-2x2` also refuses any cell, vanilla or konductor, whose runs list a skill in `otherSkills`.
 
 ## 2x2 pilot
 A small pilot of the question "does konductor help, and does the answer depend on the harness?": Kiro CLI and Claude Code,

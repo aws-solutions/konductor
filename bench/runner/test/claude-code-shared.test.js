@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { tmp, makeBench, makeRun, testModeEnv } = require('./helpers.js');
+const { tmp, write, makeBench, makeRun, testModeEnv } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 const { produce } = require('./regression-reports.js');
 const { parseArmSpec, resolveArm, listArms, KNOWN_ARMS } = require('../lib/arms.js');
@@ -259,6 +259,22 @@ test('CLI guards: flags that do not apply to Claude Code arms are refused before
     }
     const kiro = await collect(spawn(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--bench-dir', s.bench, '--arms', 'vanilla', '--claude-bin', s.bin, '--repo-root', s.root, '--prepare-only'], { env: { PATH: process.env.PATH, HOME: path.join(s.root, 'home') }, stdio: ['ignore', 'pipe', 'pipe'] }));
     assert.match(kiro.err, /--claude-bin applies to Claude Code \(cc-\) arms only/);
+  } finally {
+    fs.rmSync(s.root, { recursive: true, force: true });
+  }
+});
+
+test('CLI: a TMPDIR under HOME is refused before anything is built or started, since claude would load HOME/.claude/skills', async () => {
+  const s = cliRoot();
+  try {
+    const home = path.join(s.root, 'home');
+    write(path.join(home, '.claude/skills/owner-skill/SKILL.md'), '---\nname: owner-skill\ndescription: x\n---\n');
+    fs.mkdirSync(path.join(home, 'tmp'));
+    const r = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')], { ...CC_ENV, TMPDIR: path.join(home, 'tmp') }));
+    assert.notEqual(r.code, 0);
+    assert.match(r.err, /Claude Code scratch dir .*home\/tmp is under the real HOME .*home; Claude Code would load .*home\/\.claude\/skills as project skills\. Set TMPDIR to a directory outside HOME/);
+    assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false, 'claude was never started');
+    assert.equal(fs.existsSync(path.join(s.probe, 'probe-env.jsonl')), false, 'not even a listing probe');
   } finally {
     fs.rmSync(s.root, { recursive: true, force: true });
   }

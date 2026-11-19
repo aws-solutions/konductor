@@ -23,7 +23,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { writeAtomic } = require('../owned.js');
 
-const PROBE_VERSION = 1;
+const PROBE_VERSION = 2;
 const LIFTED_BUDGET = '100000000';
 const BUDGET_VAR = 'SLASH_COMMAND_TOOL_CHAR_BUDGET';
 const DEFAULT_FRACTION = 0.01;
@@ -31,6 +31,8 @@ const DEFAULT_FRACTION = 0.01;
 const FOUR_CHAR_MODELS = /claude-3|(?:opus|sonnet)-4(?:-[0-6])?(?![0-9])|haiku-4-5/;
 const SENDING = /Sending (\d+) skills via attachment/;
 const OVER = /Skill listing over budget: (\d+) skills, (\d+) chars > (\d+) budget/;
+// The flags of a real run (claude-code.js buildCommand) that change what is loaded: no MCP configuration but none.
+const RUN_FLAGS = ['--strict-mcp-config'];
 
 /** Token count of a /context cell: "~40" is 40, "~1.2k" is 1200, "< 20" is 0 (below the table's resolution). */
 function tokensOf(cell) {
@@ -122,14 +124,14 @@ function measure({ claude, model, home, envFor, scratch, timeoutMs = 60000 }) {
   const cwd = fs.mkdtempSync(path.join(scratch, 'listing-'));
   try {
     const context = (extra) => {
-      const { status, json } = call(claude, ['-p', '/context', '--model', model, '--output-format', 'json'], { cwd, env: envFor(extra), timeoutMs });
+      const { status, json } = call(claude, ['-p', '/context', '--model', model, '--output-format', 'json', ...RUN_FLAGS], { cwd, env: envFor(extra), timeoutMs });
       if (status !== 0 || typeof json?.result !== 'string') throw new Error(`claude -p /context exited ${status} without a result`);
       if ((json.num_turns ?? 0) !== 0) throw new Error(`claude -p /context took ${json.num_turns} turns; it must be computed locally`);
       return parseContext(json.result);
     };
     const debug = (extra, name) => {
       const file = path.join(cwd, name);
-      call(claude, ['-p', 'ok', '--model', model, '--output-format', 'json', '--debug-file', file], { cwd, env: envFor(extra), timeoutMs });
+      call(claude, ['-p', 'ok', '--model', model, '--output-format', 'json', ...RUN_FLAGS, '--debug-file', file], { cwd, env: envFor(extra), timeoutMs });
       return parseDebug(readText(file) ?? '');
     };
     const atBudget = context({});
@@ -159,6 +161,7 @@ function measure({ claude, model, home, envFor, scratch, timeoutMs = 60000 }) {
       nameOnly: kListed.filter(cut).length,
       konductorNotListed: installed.filter((s) => s.modelInvocable && !kListed.some((k) => k.name === s.name)).map((s) => s.name),
       otherDescribed: others.filter((s) => !cut(s)).length, otherNameOnly: others.filter(cut).length,
+      otherSkills: others.map((s) => `${s.name} (${s.source})`),
       builtins: atBudget.skills.length - listed.length,
       sops: sops.length, sopsModelInvocable: sops.length ? sops.every((s) => s.modelInvocable) : null,
     };
@@ -187,4 +190,4 @@ function skillListing({ claude, model, home, envFor, cacheDir = null, scratch = 
   }
 }
 
-module.exports = { skillListing, measure, parseContext, parseDebug, formulaBudget, installedSkills, tokensOf, BUDGET_VAR };
+module.exports = { skillListing, measure, parseContext, parseDebug, formulaBudget, installedSkills, tokensOf, BUDGET_VAR, RUN_FLAGS };
