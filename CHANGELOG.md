@@ -75,6 +75,9 @@ not per individual commit.
 - Orchestrators now start a matched SOP themselves: they say its name, phase count and values,
   load its `sop-<name>` skill and run it under its own gates. They still give the typed command
   when the skill cannot be loaded, and never pass a confirmation flag the user did not give.
+- The orchestrators' capability routing table now names the SOPs each specialist runs
+  (`k-architect`: three design SOPs; `k-developer`: four code SOPs; `k-quality-assurance`:
+  `k-test-coverage-review`), and a brief to that owner carries the SOP name and values.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
