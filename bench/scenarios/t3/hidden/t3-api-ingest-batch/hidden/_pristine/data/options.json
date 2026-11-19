@@ -1,0 +1,59 @@
+{
+  "envelope_bytes": 512,
+  "options": {
+    "buffered-batch": {
+      "label": "Buffered batch with durable queue",
+      "max_items": 688,
+      "throughput_readings_per_second": 6000,
+      "p99_latency_ms": 420,
+      "rpo_seconds": 30,
+      "rto_minutes": 10,
+      "usage": {
+        "gateway_request_million": 15.0697674419,
+        "queue_reading_million": 10368,
+        "worker_hour": 720,
+        "storage_gib_month": 900,
+        "backup_gib_month": 900,
+        "database_write_million": 10368,
+        "monitoring_flat": 1,
+        "replication_flat": 0
+      }
+    },
+    "direct-large-batch": {
+      "label": "Direct writer with large batches",
+      "max_items": 1000,
+      "throughput_readings_per_second": 6000,
+      "p99_latency_ms": 460,
+      "rpo_seconds": 60,
+      "rto_minutes": 15,
+      "usage": {
+        "gateway_request_million": 10.368,
+        "queue_reading_million": 0,
+        "worker_hour": 480,
+        "storage_gib_month": 700,
+        "backup_gib_month": 700,
+        "database_write_million": 10368,
+        "monitoring_flat": 1,
+        "replication_flat": 0
+      }
+    },
+    "replicated-stream": {
+      "label": "Replicated stream with small batches",
+      "max_items": 64,
+      "throughput_readings_per_second": 7000,
+      "p99_latency_ms": 350,
+      "rpo_seconds": 15,
+      "rto_minutes": 5,
+      "usage": {
+        "gateway_request_million": 162,
+        "queue_reading_million": 10368,
+        "worker_hour": 960,
+        "storage_gib_month": 1100,
+        "backup_gib_month": 1100,
+        "database_write_million": 10368,
+        "monitoring_flat": 1,
+        "replication_flat": 1
+      }
+    }
+  }
+}

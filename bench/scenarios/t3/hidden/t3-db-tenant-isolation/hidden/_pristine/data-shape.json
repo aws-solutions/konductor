@@ -1,0 +1,6 @@
+{
+  "ticket_rows": 1500000000,
+  "support_rows": 400000000,
+  "bytes_per_row_including_indexes": 310,
+  "max_stored_gb": 620
+}

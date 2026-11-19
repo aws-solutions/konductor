@@ -1,0 +1,14 @@
+{
+  "service": "billing-worker",
+  "environment": "production",
+  "replicas": 2,
+  "resources": {
+    "cpu": "300m",
+    "memory": "384Mi"
+  },
+  "logLevel": "warn",
+  "featureFlags": {
+    "requestTracing": false,
+    "newCheckout": true
+  }
+}

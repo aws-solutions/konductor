@@ -1,0 +1,13 @@
+service: orders-api
+endpoint:
+  dns_name: orders-db.service.internal
+  port: 6432
+  ttl_seconds: 30
+pool:
+  min_connections: 8
+  max_connections: 40
+  connect_timeout_seconds: 2
+  idle_timeout_seconds: 60
+health:
+  query: SELECT 1
+  interval_seconds: 5

@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/architecture.md"],
+  "acceptableOptions": ["topic-regional-queues", "stream-partitions"],
+  "temptingOption": "single-queue-pool",
+  "notes": "The single-queue design is cheapest but misses peak throughput because its one-queue quota is in service-limits.json while the required peak is in traffic.csv."
+}

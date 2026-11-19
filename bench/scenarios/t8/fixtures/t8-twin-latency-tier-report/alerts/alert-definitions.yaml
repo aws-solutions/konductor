@@ -1,0 +1,21 @@
+alerts:
+  - name: CheckoutP99High
+    metric: p99_ms
+    threshold: 1200
+    for_minutes: 5
+    severity: page
+  - name: CheckoutFailures
+    metric: five_xx
+    threshold: 5
+    for_minutes: 3
+    severity: page
+  - name: PoolWaiters
+    metric: pool_waiters
+    threshold: 10
+    for_minutes: 3
+    severity: page
+  - name: CheckoutCpuWarm
+    metric: checkout_cpu_pct
+    threshold: 75
+    for_minutes: 10
+    severity: ticket

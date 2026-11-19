@@ -1,0 +1,27 @@
+{
+  "currency": "USD",
+  "billing": {
+    "days_per_month": 30,
+    "hours_per_day": 24,
+    "request_unit": "million requests",
+    "request_usd_per_million": 0.18,
+    "storage_usd_per_gb_month": 0.28,
+    "replica_usd_per_month": 650
+  },
+  "options": [
+    {
+      "id": "offset-sql",
+      "description": "Existing relational store with an added search index",
+      "fixed_usd_per_month": 2700,
+      "storage_gb": 800,
+      "replicas": 2
+    },
+    {
+      "id": "cursor-index",
+      "description": "Partitioned search index with resumable ordered reads",
+      "fixed_usd_per_month": 4200,
+      "storage_gb": 1200,
+      "replicas": 4
+    }
+  ]
+}

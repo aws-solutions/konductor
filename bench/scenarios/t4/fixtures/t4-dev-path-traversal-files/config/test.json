@@ -1,0 +1,6 @@
+{
+  "port": 0,
+  "maxUploadBytes": 65536,
+  "storageRoot": "./var/test-files",
+  "logLevel": "silent"
+}

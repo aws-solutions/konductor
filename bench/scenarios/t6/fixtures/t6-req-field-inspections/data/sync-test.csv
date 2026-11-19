@@ -1,0 +1,5 @@
+run,device,started_at,network,forms_created,forms_uploaded,notes
+1,tablet-a,2025-02-06T08:00:00-05:00,none,5,0,local save only
+2,tablet-a,2025-02-06T12:00:00-05:00,intermittent,2,1,one attachment retried
+3,tablet-b,2025-02-07T09:00:00-05:00,wifi,4,4,baseline
+4,tablet-b,2025-02-07T15:00:00-05:00,none,3,0,returned before upload

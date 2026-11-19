@@ -1,0 +1,5 @@
+{
+  "platform": { "group": "developers", "service": "team-api" },
+  "operations": { "group": "on-call", "service": "platform-api" },
+  "analytics": { "group": "analysts", "dataClass": "internal" }
+}

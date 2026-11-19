@@ -1,0 +1,4 @@
+appointment_id,account_id,start_at,end_at,start_timezone,status,attendee_name,notes
+AP-10,A-104,2025-03-30T09:00:00+00:00,2025-03-30T10:00:00+00:00,Europe/Dublin,confirmed,Noah Green,"bring access badge"
+AP-11,A-104,2025-10-26T09:00:00-06:00,2025-10-26T10:00:00-06:00,America/Denver,cancelled,Ravi Shah,"customer asked to reschedule"
+AP-21,A-219,2025-04-02T14:30:00+02:00,2025-04-02T15:00:00+02:00,Europe/Paris,completed,Mae Wong,""

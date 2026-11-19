@@ -1,0 +1,5 @@
+account_id,api_version,token_status,default_timezone,callback_url
+acct_aurora,v2,active,Europe/Paris,,
+acct_birch,v2,active,America/New_York,,
+acct_cedar,v2,rotating,Europe/Berlin,,
+acct_dahlia,v2,active,America/Chicago,,

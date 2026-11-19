@@ -1,0 +1,4 @@
+{
+  "us-east": {"displayName": "East test region", "enabled": true},
+  "eu-west": {"displayName": "West test region", "enabled": false}
+}

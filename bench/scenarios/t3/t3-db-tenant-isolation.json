@@ -1,0 +1,161 @@
+{
+  "id": "t3-db-tenant-isolation",
+  "class": "design",
+  "target": null,
+  "prompt": "Design the tenant-isolated ticket data model for this B2B ticketing service using the files in fixture/. Write the SQLite schema to db/schema.sql and the architecture decision to docs/decision.md. The schema must support tenant-scoped ticket-key lookups, status queues, recent-ticket access, and reuse of the same human-readable ticket key in different tenants without cross-tenant results. Explain the chosen option, its tradeoffs, the access paths, recovery and capacity calculations, and the monthly cost. In docs/decision.md, include a fenced block whose info string is exactly `decision` and whose JSON has exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (number). Compute the reported values from the fixture inputs and make the decision block valid JSON.",
+  "fixture": "t3-db-tenant-isolation",
+  "timeoutSec": 900,
+  "hidden": "t3-db-tenant-isolation",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 20
+    },
+    {
+      "type": "file_exists",
+      "path": "db/schema.sql"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tenant-boundary-reasoning",
+      "criterion": "Explains why tenant_id must participate in every customer-facing access path and why the composite human-readable key preserves tenant-local reuse. (not code-checkable: A schema can expose the right columns and indexes without showing that the author understands the cross-tenant failure mode or the request contract.)",
+      "weight": 1
+    },
+    {
+      "id": "capacity-and-cost-tradeoff",
+      "criterion": "Reconciles the uneven tenant distribution, row footprint, throughput headroom, recovery targets, and monthly price into a clear option comparison. (not code-checkable: Tests can recompute figures but cannot judge whether the assumptions are explained, mutually reconciled, or weighed against the operational alternative.)",
+      "weight": 1
+    },
+    {
+      "id": "decision-clarity",
+      "criterion": "States a decisive architecture choice and gives a concise, technically accurate explanation of the main tradeoffs and operational consequences. (not code-checkable: Automated checks cannot reliably assess whether the decision is understandable to an architect or whether its rationale is complete without unnecessary material.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "dynamodb-design",
+    "trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "dynamodb-design",
+      "trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the task requirements but does not name or hint at the solution method, framework, or answer."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits are clearly stated in JSON files or tables with explicit values; two careful readers would reach the same conclusion."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files present both options neutrally without stating which to choose; the answer requires synthesis across multiple inputs."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires computing capacity, cost, and recovery metrics across two options, then identifying the operational constraint that disqualifies the tempting cheaper option."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers are present in fixture files; the 1,000 max_logical_databases limit is explicitly in service-levels.json."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that the tenant-database-per-customer option is disqualified because its 12,000 logical databases exceed the 1,000 max_logical_databases limit from service-levels.json (or the connection-pool budget in traffic.json/operations.md), not because of cost.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "states that the superseded 80 ms EU sandbox lookup target must not be used, and that the production acceptance target is 120 ms p95 from requirements.md.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "explains that every customer-facing index must begin with tenant_id so queries seek directly into one tenant's data rather than scanning and filtering, preventing cross-tenant leakage as a failure mode.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "computes monthly cost from fixture inputs as 505.68 USD (589 GB storage × 0.12 USD + 2 compute units × 180 USD + 30M requests × 2.50 USD + 1 database × 0.004 USD), which is under the 600 USD budget.",
+        "source": "original"
+      },
+      {
+        "id": "e5",
+        "text": "shows that the shared-composite option's 2,800 writes/second (2 units × 1,400 writes/second) exceeds the 2,500 writes/second requirement, while the per-customer option would exceed the database count limit even though its single-unit 3,000 writes/second appears sufficient.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "notes that the unique constraint must be on (tenant_id, ticket_key) so the same human-readable key can be used by different tenants without collision, preserving tenant-local reuse.",
+        "source": "original"
+      },
+      {
+        "id": "e7",
+        "text": "identifies that the shared option's 30-second RPO and 10-minute RTO meet the 60-second RPO and 15-minute RTO limits, while the per-customer option also meets these recovery targets but fails on the database count constraint.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "observes that the tenant-database-per-customer option appears cheaper on the pricing worksheet due to fewer compute units, but this distractor ignores the operational ceiling that makes the option infeasible.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "picks tenant-database-per-customer as cheaper without checking the 1,000 database limit in service-levels.json",
+      "uses the 80 ms EU sandbox target instead of the 120 ms production target from requirements.md",
+      "creates indexes without tenant_id prefix, allowing cross-tenant data exposure in queries",
+      "computes cost correctly but chooses the per-customer option despite the 12,000 database count exceeding operational limits",
+      "states that the per-customer option is rejected due to higher cost rather than the database count constraint"
+    ]
+  }
+}

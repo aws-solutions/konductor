@@ -1,0 +1,107 @@
+{
+  "id": "t8-inc-memory-leak",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Please investigate the restart and short error bursts affecting the Atlas search API and write the incident report a senior on-call engineer can send to the team. Use the records in this folder, quantify the impact, explain the causal chain, and record the mitigation, recovery, and follow-up owners. Write the report to incidents/search-oom-restarts.md. End it with one fenced ```json block containing one object with rootCause, timeline, impact, and actionItems. rootCause has summary (string) and evidence (list of path:line strings). Use paths relative to this folder and 1-based line numbers for log or configuration evidence. timeline is a list of objects with time (ISO 8601 UTC string) and event (string). impact is an object containing the named numeric fields degradedMinutes (minutes from the first out-of-memory kill until the fleet was stable again), oomKills (out-of-memory kills over the four days), and failedRequests (the sum of error_count in the per-container metrics over the degraded span); calculate those from the records. actionItems is a list of objects with text (string) and owner (string). Keep times in the JSON block as ISO 8601 UTC, and cite log evidence as path:line.",
+  "fixture": "t8-inc-memory-leak",
+  "hidden": "t8-inc-memory-leak",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 21,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "incidents/search-oom-restarts.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "incidents/search-oom-restarts.md",
+      "pattern": "```json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "ops/metrics/container-search-08.csv",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "narrative-judgment",
+      "criterion": "The prose clearly explains why the traffic campaign changed severity but was not the initiating condition (code cannot check this because it cannot reliably judge causal explanation in the narrative)",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks for an incident report with specific structure (JSON block with rootCause, timeline, impact, actionItems) and mentions 'query_cache.max_entries' in notes but does not tell the agent how to work or name the method/tool. It tells what to find (OOM cause) but not how to analyze it."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All key items are specific: paths are absolute (e.g., rootCause.summary, impact.oomKills), time tolerances are 5 minutes, numeric tolerances are 5% of exact values. The notes clarify the split-signal nature but don't change the measurable facts."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture provides all evidence in logs (kernel_oom_event, SIGKILL lines in cluster-2025-04-09.log and cluster-2025-04-10.log), configs (release-diff.yaml), and metrics (container-search-*.csv). No hints in file names, docs, or comments about the root cause."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer might blame the traffic campaign (April 9 launch), cite only broad file names, or omit the unbounded cache. The key catches this: cause-summary explicitly forbids 'marketing|campaign' and 'traffic surge', requires 'cache' and 'unbound' keywords, and evidence-precision checks for 'to: null' and 'max_entries' in release-diff.yaml."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable: 42 OOM kills (21 in Apr 9 + 21 in Apr 10 logs), 5046 failed requests (summed from CSV), 1865 degraded minutes (from first OOM at 2025-04-09T06:20:00Z to stable at 2025-04-10T13:25:00Z). The notes clarify that the campaign correlated but did not cause the issue, and evidence paths like 'ops/config/release-diff.yaml' are present."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

@@ -1,0 +1,4 @@
+case_id,account_id,category,internal_note,customer_message,closed
+SC-77,A-104,export,"verify requester against contract","Can I get bookings?",false
+SC-91,A-219,security,"sent questionnaire to legal","Please confirm audit trail",true
+SC-93,A-219,billing,"credit discussion with finance","Question about invoice",false

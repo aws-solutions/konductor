@@ -1,0 +1,7 @@
+{
+  "region": "eu-central-2",
+  "queue": "order-sync-primary",
+  "workers": 6,
+  "logLevel": "info",
+  "metricsIntervalSeconds": 60
+}

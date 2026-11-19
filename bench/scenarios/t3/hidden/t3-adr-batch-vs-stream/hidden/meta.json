@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/adr/0001-processing.md"],
+  "acceptableOptions": ["batch_2x_scaling", "streaming"],
+  "temptingOption": "batch_current",
+  "notes": "The trap is that batch_current seems cheapest initially but fails the processing window when data grows to 4.65 TB (6.98 hours > 4 hours). The growth numbers are in traffic-analysis.md and the processing time scaling is implied across multiple files."
+}

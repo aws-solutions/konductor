@@ -1,0 +1,14 @@
+{
+  "service": "catalog",
+  "environment": "development",
+  "replicas": 1,
+  "resources": {
+    "cpu": "350m",
+    "memory": "448Mi"
+  },
+  "logLevel": "debug",
+  "featureFlags": {
+    "requestTracing": true,
+    "newCheckout": true
+  }
+}

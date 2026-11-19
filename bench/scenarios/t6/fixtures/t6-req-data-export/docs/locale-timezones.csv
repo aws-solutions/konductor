@@ -1,0 +1,4 @@
+account_id,account_timezone,locale,example_user_timezone
+A-104,Europe/Dublin,en-IE,America/Denver
+A-219,America/Denver,en-US,Europe/Dublin
+A-300,Asia/Singapore,en-SG,Asia/Tokyo

@@ -1,0 +1,4 @@
+[
+  {"name":"login-code","channel":"sms","body":"Your login code is {{code}}"},
+  {"name":"delivery-update","channel":"email","body":"Your delivery status changed."}
+]

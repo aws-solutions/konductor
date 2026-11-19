@@ -1,0 +1,11 @@
+service,unit,price_usd,region,notes
+Lambda,GB-second,0.0000166667,us-east-1,x86 architecture, 512MB min charge
+API Gateway,per million requests,3.50,us-east-1,HTTP API, includes 1TB data transfer
+S3 Storage,GB-month,0.023,us-east-1,Standard tier, first 50TB
+S3 PUT,per 1000 requests,0.005,us-east-1,Standard tier
+S3 GET,per 1000 requests,0.0004,us-east-1,Standard tier
+Data Transfer,per GB out,0.09,us-east-1,to internet, first 10TB
+SQS,per million requests,0.40,us-east-1,Standard queue
+SES,per 1000 emails,0.10,us-east-1,includes attachments up to 10MB
+CloudWatch,per GB ingested,0.50,us-east-1,logs and metrics
+EventBridge,per million events,1.00,us-east-1,default event bus

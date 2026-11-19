@@ -1,0 +1,140 @@
+{
+  "edits": [
+    "author: the first author call (deepseek-3.2) was stopped after 34 minutes by the batch rule (30 minutes); authored again by gpt-5.6-luna, reviewed by glm-5",
+    "prompt rewritten (the draft listed the escalation routes and jobs)",
+    "checks: statement-id checks (TeamExecutionRoleOnly, RejectAdministrativeActions, UserProvisioning) the prompt never names replaced by one check on NotAction allows in any group policy",
+    "limits raised from 90/180 to 1200/2400 s",
+    "validate.js check made format and the NotAction check weighted 3, so checks that pass on the fixture stay at 25% of substance weight (stub 25.3 before)",
+    "expertKey added"
+  ],
+  "prompt": "An access audit found that our developers can make themselves account admins, and I suspect the other groups have the same kind of hole. Please tighten the IAM policies under iam/ (iam/groups/developers.json, iam/groups/analysts.json, iam/groups/on-call.json and iam/permissions-boundary.json, which applies to every group) so that no member of any group can raise their own rights or anyone else's, by any route. Each group must still be able to do the work its guide in docs/ describes, on the resources named in config/account.json. Requests carry the caller's aws:username. Do not change config/account.json, the docs, src/validate.js, package.json or the existing tests; node src/validate.js must still print a clean summary and node --test must pass. Keep the files valid IAM policy JSON.",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 26,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');let bad=false;for(const g of ['developers','analysts','on-call']){const d=JSON.parse(fs.readFileSync('iam/groups/'+g+'.json','utf8'));for(const s of [].concat(d.Statement))if(s.Effect==='Allow'&&s.NotAction)bad=true;}process.exit(bad?1:0)\"",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node src/validate.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config/account.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review",
+      "threat-modeling",
+      "security-test-generation"
+    ]
+  },
+  "twinIdea": "Document the IAM policies in the iam/ folder for an internal wiki - the chosen skills would not help with writing documentation.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "escalation-classes",
+        "text": "Names the escalation routes found by kind (editing or versioning a policy, attaching policies, passing a stronger role to a service that runs code, editing trust policies, minting credentials for other users) rather than only listing edits.",
+        "source": "Cloudsplaining, https://github.com/salesforce/cloudsplaining (BSD-3-Clause)"
+      },
+      {
+        "id": "boundary-self-protection",
+        "text": "Notes that the boundary only works if members cannot edit or detach it, or create roles and users without it, and covers that.",
+        "source": "AWS IAM User Guide, Permissions boundaries for IAM entities, https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "org-guardrail",
+        "text": "Suggests an organization-level guardrail for the most dangerous actions, since a single group policy edit could reopen the hole.",
+        "source": "AWS Organizations User Guide, Service control policies, https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "detect-and-test",
+        "text": "Proposes a repeatable check (a policy scan in CI, or tests that try each escalation route) so the holes do not come back.",
+        "source": "Pacu, https://github.com/RhinoSecurityLabs/pacu (BSD-3-Clause)"
+      },
+      {
+        "id": "own-credentials-scope",
+        "text": "Explains how the developers keep rotating their own keys (scoped to their own user via the username variable) while losing the ability to touch anyone else's.",
+        "source": "AWS IAM User Guide, Security best practices in IAM, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html (AWS documentation; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Removed admin permissions from the developers.",
+      "Applied least privilege to the groups.",
+      "Added a deny on iam:*.",
+      "Added a permissions boundary."
+    ]
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the deliverable (tightened IAM JSON) and the security goals without naming a specific methodology, framework, or process that must be followed."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt explicitly lists all the specific escalation vectors to block and all the job functions to preserve; the hidden tests check exactly those requirements with resource ARNs from the fixture."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no comments, documentation, or artifacts that reveal the solution; docs describe job functions but not the privilege escalation vulnerabilities or their fixes."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt listed every escalation route to block and every job to keep. The lead rewrote it to the audit finding plus the docs as the source of the jobs; 4 of 26 hidden tests pass on the fixture."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests are fair: the prompt explicitly states each escalation vector to block and each job function to preserve, and the test resources match names in config/account.json or the prompt."
+      }
+    ]
+  }
+}

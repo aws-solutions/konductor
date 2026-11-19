@@ -1,0 +1,197 @@
+{
+  "id": "t6-req-field-inspections",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "scripted",
+  "prompt": "I need a first usable set of product requirements for replacing our paper field-inspection process with a tablet app. This is for the PM taking the work into delivery, so cover field capture, the first release boundary, records, safety, and unresolved decisions. Read the material in this folder and keep the requirements concrete without making up facts. Put the result at docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "offline",
+          "connectivity",
+          "saved work",
+          "reconnecting"
+        ],
+        "answer": "Most routes lose connectivity for up to 8 hours, so the app must support 8 hours of offline work and queue submissions and photos until it reconnects."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "shared tablets",
+          "tablet handoff",
+          "personal device"
+        ],
+        "answer": "There are 12 rugged tablets shared across crews. At sign-out, a worker must choose the tablet's asset tag, and the app must not require a personal device."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "photos",
+          "privacy rules",
+          "stored quality",
+          "photo limits",
+          "identifiable"
+        ],
+        "answer": "Attach at most 4 photos per inspection item, keep the original resolution, and warn or block before capturing identifiable people or vehicle plates."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "conflicting edits",
+          "conflict",
+          "same record",
+          "overwrite"
+        ],
+        "answer": "If two tablets edit the same inspection while offline, keep both versions and flag the record for field-lead resolution; never silently overwrite either submission."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "inspection complete",
+          "inspector attestation",
+          "approval deadline",
+          "export gate",
+          "sign-off",
+          "sign off",
+          "completed inspection"
+        ],
+        "answer": "An inspection is not complete until the inspector attests on the tablet and the field lead approves it within 2 business days. The lead's approval is the export gate."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "safety stop",
+          "conditions require",
+          "hazards",
+          "chlorine",
+          "stop-work"
+        ],
+        "answer": "Stop the inspection and notify the field lead for any chlorine smell, exposed electrical conductor, or unstable ground. The app must offer a safety-stop status without requiring a reading or photo."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-field-inspections",
+  "hidden": "t6-req-field-inspections",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 12,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'),t=fs.readFileSync('docs/requirements.md','utf8'),start=t.lastIndexOf('\\n{'),f=String.fromCharCode(96).repeat(3),j=JSON.parse(t.slice(start).split(f)[0]);if(!Array.isArray(j.requirements)||j.requirements.length<5||j.requirements.some(r=>!r.id))process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "open points|assumptions",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "Q1",
+      "criterion": "Requirements separate confirmed operating rules from decisions that still need an owner and do not turn the old draft into settled policy (code cannot check this because it requires judging the source evidence and the document's interpretation).",
+      "weight": 2
+    },
+    {
+      "id": "Q2",
+      "criterion": "The requirements are practical for a field crew and preserve the intent of the paper process without adding needless workflow burden (code cannot check this because usability and proportionality require human review).",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "kiro-requirements-generation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-product-manager",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:kiro-requirements-generation"
+    ],
+    "mustNotLoad": [
+      "skill:e2e-test-strategy",
+      "skill:test-coverage-analysis"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/18F/methods",
+      "licence": "CC0-1.0 (US federal work, public domain)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies the desired outcome (requirements document covering listed topics) and output format, but does not prescribe methods, frameworks, or processes."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt, fixture materials, and hidden tests align: fixture provides partial context, tests check for specific values unlocked only by asking the scripted user. A competent person would know to gather requirements from available materials and clarify gaps through questions."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Critical numeric values (8 hours offline, 12 tablets, 4 photos, 2 business days, specific safety hazards) exist only in scripted facts. Fixture establishes that older drafts and notes are not approved, preventing a quick copy-paste answer."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All six facts have natural topic labels matching how a person would ask (offline/connectivity, tablets/handoff, photos/privacy, conflicting edits, inspection completion, safety stop). Reference scores 100/100."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains no scripted facts, only context that points to gaps. Prompt mentions topic areas but does not reveal specific values. ASKS.json is in solution/, not visible to agent."
+      }
+    ]
+  }
+}

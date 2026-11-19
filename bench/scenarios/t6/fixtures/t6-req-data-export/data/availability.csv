@@ -1,0 +1,4 @@
+rule_id,account_id,weekday,local_start,local_end,time_zone,active
+AV-1,A-104,MONDAY,09:00,17:00,Europe/Dublin,true
+AV-2,A-104,WEDNESDAY,08:30,16:30,America/Denver,true
+AV-3,A-219,FRIDAY,10:00,18:00,America/Denver,false

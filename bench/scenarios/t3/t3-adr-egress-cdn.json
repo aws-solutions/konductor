@@ -1,0 +1,153 @@
+{
+  "id": "t3-adr-egress-cdn",
+  "class": "design",
+  "target": null,
+  "prompt": "Read the architecture packet under `fixture/` and choose the production delivery option. Write the architecture decision record to `docs/adr/0001-delivery.md`. Explain the cost calculation, measured limits, alternatives, and the tradeoff behind the choice. The output must contain a fenced block whose info string is exactly `decision`, containing JSON with exactly these keys: `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the option ID, `options` to the array of option IDs considered, and set `monthly_cost_usd` to the chosen option's computed monthly price. Set `limits` to an object with one entry per hard limit in the inputs, where each entry has `limit` and `value` numbers and `value` is the computed figure for the chosen option.",
+  "fixture": "t3-adr-egress-cdn",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-egress-cdn",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 20
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-delivery.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoned-choice",
+      "criterion": "Explains why the selected option is preferable, including a concrete tradeoff against the cheaper or simpler alternatives. (not code-checkable: A parser can verify IDs and numbers but cannot judge whether the comparison is meaningful or whether the stated tradeoff follows from the evidence.)",
+      "weight": 1
+    },
+    {
+      "id": "calculation-explanation",
+      "criterion": "Presents a clear, mutually consistent calculation for the tiered or committed monthly price and relates it to the hard limits. (not code-checkable: Tests can recompute the answer, but they cannot assess whether a human reader can follow the calculation or spot the important billing assumption.)",
+      "weight": 1
+    },
+    {
+      "id": "adr-clarity",
+      "criterion": "Uses a concise ADR structure that states context, decision, consequences, and operational follow-up in language suitable for an architecture review. (not code-checkable: Automated checks do not reliably measure narrative organization, precision, or whether the document gives reviewers enough rationale to act.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "trade-off-evaluator",
+    "cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "trade-off-evaluator",
+      "cost-estimation",
+      "decision-writing"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt does not name or hint at a method, framework, or specific answer; it just asks for a design decision based on provided data."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fail",
+        "note": "Both cdn-committed and cdn-payg meet all hard limits, but the expected answer is cdn-committed without specifying that more headroom should be prioritized over lower cost."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains only raw data (prices, performance, requirements); the correct choice is not stated outright anywhere in fixture files."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Not too easy: requires calculating tiered costs, comparing performance against multiple limits, and understanding tradeoffs (cheapest vs. headroom)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Tests check all hard limits and calculations; all needed numbers are in fixture and format requirements are clear."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the superseded 120 TB monthly estimate from the pilot must not be used, and uses the 180 TB production forecast from traffic.json and requirements.md instead.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Calculates the tiered egress cost correctly by applying each tier rate only to its incremental range (e.g., first 10 TB at first-tier rate, next 40 TB at second-tier rate, etc.), not by applying the highest tier rate to the entire volume.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Rejects object-direct because its measured 1,400 ms p95 start time exceeds the 800 ms hard limit, noting that the low first-tier rate ($0.012/GB) is irrelevant when the option fails a non-negotiable performance constraint.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Weighs cdn-payg's lower monthly cost (USD 6,820) against its thin headroom (780 ms vs. 800 ms limit, 1.6 Gbps vs. 1.5 Gbps requirement), explaining why the cheaper option is riskier operationally.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Verifies the committed plan cost (USD 8,600 including overage and delivery charges) stays within the USD 9,500 budget ceiling and notes the margin for variance.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Notes that the 2.8 Gbps lab burst mentioned in operations.md is planning context only and does not substitute for the sustained 1.5 Gbps requirement measured over 15 minutes.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "States the reversibility condition: revisit the 150 TB commitment if rolling three-month volume falls materially below the commit level, or if measured headroom degrades.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Picks object-direct because its first-tier rate of $0.012/GB is the cheapest, without calculating the full tiered cost or checking the 1,400 ms start time against the 800 ms limit.",
+      "Calculates cdn-committed cost as 150 TB × commit rate without accounting for the 30 TB overage at the higher $0.045/GB rate.",
+      "Selects cdn-payg because it is cheapest and 'meets all limits,' ignoring the 20 ms latency headroom and 0.1 Gbps throughput margin as operational risk.",
+      "Uses the 120 TB pilot estimate from the README warning instead of the 180 TB production forecast, producing an incorrect cost calculation.",
+      "Applies the overage rate ($0.045/GB) to the entire 180 TB for cdn-committed instead of only the 30 TB above the 150 TB commit."
+    ]
+  }
+}
