@@ -5,12 +5,13 @@
 // as Kiro CLI output (agent config JSON, `SKILL.md` + auxiliary files,
 // `.sop.md`).
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use super::claude::merge_mcp_servers;
 use super::content_writers::{write_all_context, write_all_skills, write_all_sops};
 #[cfg(test)]
 use super::content_writers::{write_auxiliary_file, write_skill, write_sop};
@@ -18,7 +19,7 @@ use super::model::CanonicalModel;
 #[cfg(test)]
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
 use super::parse_canonical::skill_names_from_dependencies;
-use super::parser::KiroCliConfig;
+use super::parser::{KiroCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
 #[cfg(test)]
 use super::path_safety::{
@@ -85,6 +86,7 @@ impl HarnessTransformer for KiroCliV2Transformer {
                 let Some(kiro) = &agent.client_config.kiro_cli else {
                     continue;
                 };
+                let kiro = with_registry_mcp_servers(kiro, &agent.dependencies.mcp_registry);
                 let declared: Vec<&str> =
                     skill_names_from_dependencies(&agent.dependencies.skills).collect();
                 let prompt = skill_index::kiro_skill_block(&agent.name, &declared, &model.skills)
@@ -92,7 +94,7 @@ impl HarnessTransformer for KiroCliV2Transformer {
                 let mut file = render_agent_file(
                     &agent.name,
                     &agent.config,
-                    kiro,
+                    &kiro,
                     &agent.dependencies.context.context_names,
                     &skill_names,
                 )?;
@@ -119,6 +121,19 @@ impl HarnessTransformer for KiroCliV2Transformer {
         })?;
 
         Ok(())
+    }
+}
+
+/// A copy of `kiro` whose `mcp_servers` is the agent spec's
+/// `dependencies.mcpRegistry` merged with its own `kiroCli.mcpServers` by
+/// `merge_mcp_servers`.
+pub(crate) fn with_registry_mcp_servers(
+    kiro: &KiroCliConfig,
+    registry: &BTreeMap<String, McpServerDef>,
+) -> KiroCliConfig {
+    KiroCliConfig {
+        mcp_servers: merge_mcp_servers(registry, &kiro.mcp_servers),
+        ..kiro.clone()
     }
 }
 
@@ -2457,5 +2472,96 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&output_root);
+    }
+
+    fn aws_mcp_registry_entry() -> McpServerDef {
+        McpServerDef {
+            command: Some("uvx".to_string()),
+            args: vec![
+                "mcp-proxy-for-aws-cli==1.7.0".to_string(),
+                "https://aws-mcp.us-east-1.api.aws/mcp".to_string(),
+            ],
+            url: None,
+        }
+    }
+
+    fn agent_with_mcp_registry(
+        name: &str,
+        kiro: KiroCliConfig,
+        registry: BTreeMap<String, McpServerDef>,
+    ) -> ParsedAgentSpec {
+        let mut agent = agent_with_kiro(name, kiro);
+        agent.dependencies.mcp_registry = registry;
+        agent
+    }
+
+    fn transform_and_read_agent(label: &str, agent: ParsedAgentSpec) -> serde_json::Value {
+        let dir = temp_dir(label);
+        let file_name = format!("{}.json", agent.name);
+        let model = CanonicalModel {
+            agents: vec![agent],
+            ..Default::default()
+        };
+        KiroCliV2Transformer.transform(&model, &dir).unwrap();
+        let written = fs::read_to_string(dir.join(expected_output_dir()).join(file_name)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+        serde_json::from_str(&written).unwrap()
+    }
+
+    #[test]
+    fn transform_renders_mcp_servers_from_dependencies_mcp_registry() {
+        let registry = BTreeMap::from([("aws-mcp".to_string(), aws_mcp_registry_entry())]);
+        let agent = agent_with_mcp_registry("k-developer", KiroCliConfig::default(), registry);
+
+        let file = transform_and_read_agent("mcp-registry", agent);
+
+        assert_eq!(file["mcpServers"]["aws-mcp"]["command"], "uvx");
+        assert_eq!(
+            file["mcpServers"]["aws-mcp"]["args"],
+            serde_json::json!([
+                "mcp-proxy-for-aws-cli==1.7.0",
+                "https://aws-mcp.us-east-1.api.aws/mcp"
+            ])
+        );
+    }
+
+    #[test]
+    fn kiro_cli_mcp_servers_entry_overrides_the_same_named_registry_entry() {
+        let registry = BTreeMap::from([
+            ("aws-mcp".to_string(), aws_mcp_registry_entry()),
+            (
+                "other-mcp".to_string(),
+                McpServerDef {
+                    command: Some("other".to_string()),
+                    ..Default::default()
+                },
+            ),
+        ]);
+        let mut kiro_servers = IndexMap::new();
+        kiro_servers.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("kiro-specific".to_string()),
+                ..Default::default()
+            },
+        );
+        let kiro = KiroCliConfig {
+            mcp_servers: kiro_servers,
+            ..Default::default()
+        };
+
+        let file = transform_and_read_agent(
+            "mcp-registry-override",
+            agent_with_mcp_registry("k-developer", kiro, registry),
+        );
+
+        let servers = file["mcpServers"].as_object().unwrap();
+        assert_eq!(
+            servers.keys().collect::<Vec<_>>(),
+            ["aws-mcp", "other-mcp"],
+            "the kiroCli entry replaces the registry entry in place"
+        );
+        assert_eq!(servers["aws-mcp"]["command"], "kiro-specific");
+        assert_eq!(servers["aws-mcp"]["args"], serde_json::json!([]));
     }
 }
