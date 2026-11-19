@@ -2,10 +2,11 @@
 /** Checks the simulated run against a clock that the test moves. */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
-import { RUN_ID_PATTERN } from './contract.ts';
+import { MAX_GOAL_CHARS, RUN_ID_PATTERN } from './contract.ts';
 import { STAGE_REASONS } from './model.ts';
 import { RunSimulator } from './runs.ts';
 
+const GOAL = 'Say hello';
 const STAGE_MS = 1000;
 let clock: FakeClock;
 let runs: RunSimulator;
@@ -26,13 +27,13 @@ function statusesOf(runId: string): string[] {
 
 describe('a simulated run', () => {
   it('has an id of the contract, made from the start time', () => {
-    const runId = runs.start('hello', ['draft', 'review']);
+    const runId = runs.start('hello', ['draft', 'review'], GOAL);
     expect(runId).toBe('20261024-0412-00001');
     expect(runId).toMatch(RUN_ID_PATTERN);
   });
 
   it('starts with the first stage running and the rest pending', () => {
-    const runId = runs.start('hello', ['draft', 'review']);
+    const runId = runs.start('hello', ['draft', 'review'], GOAL);
     expect(runs.get(runId)).toEqual({
       run_id: runId,
       workflow: 'hello',
@@ -47,7 +48,7 @@ describe('a simulated run', () => {
   });
 
   it('runs the stages one after the other and then passes', () => {
-    const runId = runs.start('hello', ['draft', 'review']);
+    const runId = runs.start('hello', ['draft', 'review'], GOAL);
     const seen = [statusesOf(runId)];
     for (let step = 0; step < 2; step++) {
       clock.advance(STAGE_MS);
@@ -66,19 +67,19 @@ describe('a simulated run', () => {
   });
 
   it('stays in a stage until its time is up', () => {
-    const runId = runs.start('hello', ['draft', 'review']);
+    const runId = runs.start('hello', ['draft', 'review'], GOAL);
     clock.advance(STAGE_MS - 1);
     expect(statusesOf(runId)).toEqual(['running', 'pending']);
   });
 
   it('stays readable after it has finished', () => {
-    const runId = runs.start('hello', ['draft']);
+    const runId = runs.start('hello', ['draft'], GOAL);
     clock.advance(60 * STAGE_MS);
     expect(runs.get(runId)?.status).toBe('passed');
   });
 
   it('is the only active run until it finishes', () => {
-    const runId = runs.start('hello', ['draft', 'review']);
+    const runId = runs.start('hello', ['draft', 'review'], GOAL);
     expect(runs.activeRunId()).toBe(runId);
     clock.advance(2 * STAGE_MS - 1);
     expect(runs.activeRunId()).toBe(runId);
@@ -91,8 +92,8 @@ describe('a simulated run', () => {
   });
 
   it('gives two runs that start at once two ids', () => {
-    const first = runs.start('hello', ['draft']);
-    const second = runs.start('hello', ['draft']);
+    const first = runs.start('hello', ['draft'], GOAL);
+    const second = runs.start('hello', ['draft'], GOAL);
     expect(second).not.toBe(first);
   });
 });
@@ -102,7 +103,7 @@ describe('a simulated run that is blocked', () => {
   const block = { at: 1, reason: 'RESULT_MISSING' } as const;
 
   it('runs the stages before the blocked one, then halts there', () => {
-    const runId = runs.start('hello', STAGES, { block });
+    const runId = runs.start('hello', STAGES, GOAL, { block });
     const seen = [statusesOf(runId)];
     for (let step = 0; step < 2; step++) {
       clock.advance(STAGE_MS);
@@ -116,7 +117,7 @@ describe('a simulated run that is blocked', () => {
   });
 
   it('halts with exit code 1 when the blocked stage ends', () => {
-    const runId = runs.start('hello', STAGES, { block });
+    const runId = runs.start('hello', STAGES, GOAL, { block });
     clock.advance(2 * STAGE_MS - 1);
     expect(runs.get(runId)).toMatchObject({
       status: 'running',
@@ -140,7 +141,7 @@ describe('a simulated run that is blocked', () => {
   });
 
   it('gives only the blocked stage a reason, and keeps it as time goes on', () => {
-    const runId = runs.start('hello', STAGES, { block });
+    const runId = runs.start('hello', STAGES, GOAL, { block });
     clock.advance(60 * STAGE_MS);
     const stages = runs.get(runId)?.stages ?? {};
     expect(Object.keys(stages.plan ?? {})).toEqual(['status']);
@@ -152,7 +153,9 @@ describe('a simulated run that is blocked', () => {
   });
 
   it.each(STAGE_REASONS)('can end with the reason %s', (reason) => {
-    const runId = runs.start('hello', STAGES, { block: { at: 0, reason } });
+    const runId = runs.start('hello', STAGES, GOAL, {
+      block: { at: 0, reason },
+    });
     clock.advance(STAGE_MS);
     expect(runs.get(runId)?.stages['plan']).toEqual({
       status: 'blocked',
@@ -161,7 +164,7 @@ describe('a simulated run that is blocked', () => {
   });
 
   it('blocks the last stage when the place is past the end', () => {
-    const runId = runs.start('hello', ['only'], {
+    const runId = runs.start('hello', ['only'], GOAL, {
       block: { at: 5, reason: 'TIMEOUT' },
     });
     clock.advance(STAGE_MS);
@@ -174,7 +177,9 @@ describe('a simulated run that is blocked', () => {
 
 describe('a simulated run that never ends', () => {
   it('stays in its first stage, and is the active run', () => {
-    const runId = runs.start('hello', ['draft', 'review'], { neverEnds: true });
+    const runId = runs.start('hello', ['draft', 'review'], GOAL, {
+      neverEnds: true,
+    });
     clock.advance(1000 * STAGE_MS);
     expect(runs.get(runId)).toMatchObject({
       status: 'running',
@@ -183,5 +188,33 @@ describe('a simulated run that never ends', () => {
       stages: { draft: { status: 'running' }, review: { status: 'pending' } },
     });
     expect(runs.activeRunId()).toBe(runId);
+  });
+});
+
+describe('the history of simulated runs', () => {
+  it('cuts a goal over the limit between code points, and says so', () => {
+    const long = '😀'.repeat(MAX_GOAL_CHARS + 5);
+    runs.start('hello', ['only'], long);
+    const [row] = runs.list('hello', 10);
+    expect(row?.goal).toBe('😀'.repeat(MAX_GOAL_CHARS));
+    expect(row?.goal_truncated).toBe(true);
+  });
+
+  it('keeps a goal within the limit as it is', () => {
+    runs.start('hello', ['only'], GOAL);
+    expect(runs.list('hello', 10)).toMatchObject([
+      { goal: GOAL, goal_truncated: false },
+    ]);
+  });
+});
+
+describe('the history of one workflow', () => {
+  it('leaves out a run of another workflow in the workspace', () => {
+    const mine = runs.start('hello', ['only'], GOAL);
+    clock.advance(STAGE_MS);
+    const other = runs.start('other', ['only'], GOAL);
+    expect(runs.list('hello', 10).map((row) => row.run_id)).toEqual([mine]);
+    expect(runs.list('other', 10).map((row) => row.run_id)).toEqual([other]);
+    expect(runs.get(other)?.workflow).toBe('other');
   });
 });

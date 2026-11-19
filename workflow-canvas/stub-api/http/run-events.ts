@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Clock } from '../core/clock.ts';
-import { ApiError } from '../core/errors.ts';
 import type { RunEventsPage, WorkflowApi } from '../core/workflow-api.ts';
+import { wholeNumber } from './queries.ts';
 
 /** The longest a long poll waits, in seconds. */
 export const MAX_WAIT_SECONDS = 25;
@@ -17,26 +17,6 @@ export interface Waiter {
 export interface EventsQuery {
   after: number;
   waitMs: number;
-}
-
-const WHOLE_NUMBER = /^(0|[1-9][0-9]{0,15})$/;
-
-// A value given more than once, or that is not a whole number in range, is a
-// bad request. One that is left out takes its default.
-function wholeNumber(
-  query: URLSearchParams,
-  key: string,
-  max: number,
-): number | undefined {
-  const values = query.getAll(key);
-  if (values.length === 0) return undefined;
-  const [value] = values;
-  const number =
-    values.length === 1 && WHOLE_NUMBER.test(value ?? '') ? Number(value) : NaN;
-  if (!(number <= max)) {
-    throw new ApiError('bad_request', `\`${key}\` is not valid.`);
-  }
-  return number;
 }
 
 export function readEventsQuery(query: URLSearchParams): EventsQuery {

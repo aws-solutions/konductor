@@ -74,6 +74,7 @@ const STABLE_OPERATION_IDS = [
   'getRun',
   'listAgents',
   'getRunEvents',
+  'listRuns',
 ];
 
 // This version has these operations and no others.
@@ -84,6 +85,7 @@ const OPERATIONS = [
   'GET /api/agents listAgents',
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
+  'GET /api/runs listRuns',
   'GET /api/runs/{id} getRun',
   'GET /api/runs/{id}/events getRunEvents',
 ];
@@ -1035,7 +1037,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.6.3');
+      expect(info.version).toBe('1.8.3');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1409,6 +1411,109 @@ describe('workflow canvas API contract', () => {
     it('says that version 1.6.0 only adds the events of a run', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.6\.0 only adds: the operation `getRunEvents`/,
+      );
+    });
+  });
+
+  describe('the history of runs', () => {
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const rows = () =>
+      (
+        jsonBodyOf(spec, 'GET /api/runs', '200').example as {
+          runs: { started_at: string; status: string }[];
+        }
+      ).runs;
+
+    it('lists the newest run first', () => {
+      const starts = rows().map((row) => row.started_at);
+      expect(starts.length).toBeGreaterThan(1);
+      expect(starts).toEqual([...starts].sort().reverse());
+    });
+
+    it('has at most one active run, the newest', () => {
+      const active = rows().filter((row) => row.status === 'running');
+      expect(active.length).toBeLessThan(2);
+      if (active.length === 1) expect(rows()[0]).toBe(active[0]);
+    });
+
+    it('caps the list at the largest limit', () => {
+      const limit = spec.paths['/api/runs']!['get']!.parameters!.find(
+        (p) => p.name === 'limit',
+      );
+      expect(limit?.schema?.['maximum']).toBe(200);
+      const list = spec.components.schemas['RunList']!['properties'] as Record<
+        string,
+        Schema
+      >;
+      expect(list['runs']!['maxItems']).toBe(200);
+    });
+
+    it('caps the goal of a run at the goal limit of the session', () => {
+      const summary = spec.components.schemas['RunSummary']![
+        'properties'
+      ] as Record<string, Schema>;
+      const session = jsonBodyOf(spec, 'POST /api/session', '200').example as {
+        limits: { goal_chars: number };
+      };
+      expect(summary['goal']!['maxLength']).toBe(session.limits.goal_chars);
+      expect(words(summary['goal']!['description'] as string)).toMatch(
+        /never writes it to a log/,
+      );
+      expect(spec.components.schemas['RunSummary']!['required']).toContain(
+        'goal_truncated',
+      );
+    });
+
+    it('accepts an empty goal in a run of the list', () => {
+      const summary = spec.components.schemas['RunSummary']!;
+      const row = {
+        run_id: '20261024-0412-a7b3c',
+        started_at: '2026-10-24T04:12:05Z',
+        status: 'running',
+        goal: '',
+        goal_truncated: false,
+      };
+      expect(valueMatchesSchema(summary, row)).toBe(true);
+    });
+
+    it('lists runs of the root only, and says how a client learns another run', () => {
+      const description = words(
+        spec.paths['/api/runs']!['get']!.description as string,
+      );
+      expect(description).toMatch(
+        /A run of another workflow in the same workspace is not listed, even though `GET \/api\/runs\/\{id\}` can read it/,
+      );
+      expect(description).toMatch(/409 `already_running`/);
+      expect(description).not.toMatch(/every run that/);
+    });
+
+    it('says that version 1.8.3 changes wording only, about which runs are listed', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.3 changes wording only: it says that `GET \/api\/runs` lists the runs of the root workflow/,
+      );
+    });
+
+    it('says that version 1.8.2 takes in the console grace period of 1.6.3', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.2 adds nothing: it takes in the change of 1\.6\.3/,
+      );
+    });
+
+    it('says that version 1.8.1 lets the goal of a run in the list be empty', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.1 adds nothing: the `goal` of a run in that list may be empty/,
+      );
+    });
+
+    it('says that version 1.8.0 only adds goal_truncated', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.0 only adds: a run in that list gains `goal_truncated`/,
+      );
+    });
+
+    it('says that version 1.7.0 only adds the history of runs', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.7\.0 only adds: the operation `listRuns`/,
       );
     });
   });

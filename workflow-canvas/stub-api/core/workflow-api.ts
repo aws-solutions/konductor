@@ -13,8 +13,10 @@ import type {
   CheckResult,
   Run,
   RunEvent,
+  RunSummary,
   SaveResult,
   WorkflowDocument,
+  WorkflowView,
 } from './model.ts';
 import type { RunPlan, RunSimulator } from './runs.ts';
 import type { Behavior } from './sample.ts';
@@ -54,6 +56,7 @@ export class WorkflowApi {
    * the file stops matching it, as the contract says.
    */
   private readonly trustedHash: string | undefined;
+  private otherRunStarted = false;
 
   constructor(options: WorkflowApiOptions) {
     this.root = options.root;
@@ -115,7 +118,7 @@ export class WorkflowApi {
    * that is active, the harness. The workflow is trusted only while the file
    * still has the bytes it had when the stub started.
    */
-  startRun(): { run_id: string } {
+  startRun(goal: string): { run_id: string } {
     const file = this.store.read(this.root);
     if (!file) {
       throw new ApiError('not_found', 'The workflow has not been saved yet.');
@@ -124,12 +127,8 @@ export class WorkflowApi {
     if (!check.view) throw invalidWorkflow(check);
     const stageNames = check.view.stages.map((stage) => stage.name);
     if (this.trustedHash !== file.hash) throw untrusted(this.root);
-    // Another program holds the workspace: its run is there from the start.
-    const active =
-      this.runs.activeRunId() ??
-      (this.behavior.busy
-        ? this.runs.start(this.root, stageNames, { neverEnds: true })
-        : undefined);
+    this.findOtherRun();
+    const active = this.runs.activeRunId();
     if (active) {
       throw new ApiError(
         'already_running',
@@ -148,7 +147,36 @@ export class WorkflowApi {
         },
       );
     }
-    return { run_id: this.runs.start(this.root, stageNames, this.planOfRun()) };
+    const runId = this.runs.start(
+      this.root,
+      stageNames,
+      goal,
+      this.planOfRun(),
+    );
+    return { run_id: runId };
+  }
+
+  /** The runs of the root, newest first: the stub keeps every run it played. */
+  listRuns(limit: number): { runs: RunSummary[] } {
+    this.findOtherRun();
+    return { runs: this.runs.list(this.root, limit) };
+  }
+
+  /**
+   * In a busy workspace another program's run is there before any call, so
+   * the first call that reads runs finds it, and every later call sees the
+   * same run. It never ends.
+   */
+  private findOtherRun(): void {
+    if (!this.behavior.busy || this.otherRunStarted) return;
+    const file = this.store.read(this.root);
+    const view = file && checkWorkflowText(file.text, this.root).view;
+    if (!view) return;
+    this.otherRunStarted = true;
+    const stageNames = view.stages.map((stage) => stage.name);
+    this.runs.start(this.root, stageNames, goalOfOther(view), {
+      neverEnds: true,
+    });
   }
 
   listAgents(): { agents: Agent[] } {
@@ -156,6 +184,7 @@ export class WorkflowApi {
   }
 
   getRun(runId: string): Run {
+    this.findOtherRun();
     const run = RUN_ID_PATTERN.test(runId) ? this.runs.get(runId) : undefined;
     if (!run) throw new ApiError('not_found', 'There is no run with this id.');
     return run;
@@ -166,6 +195,7 @@ export class WorkflowApi {
    * `nextAt` says when the next one happens, for a caller that waits for it.
    */
   runEvents(runId: string, after: number): RunEventsPage {
+    this.findOtherRun();
     const known = RUN_ID_PATTERN.test(runId) ? this.runs.events(runId) : null;
     if (!known)
       throw new ApiError('not_found', 'There is no run with this id.');
@@ -205,6 +235,12 @@ export class WorkflowApi {
     }
     return target;
   }
+}
+
+// The run that another program started has a goal the stub never saw, so it
+// stands in the workflow's default goal, or its outcome.
+function goalOfOther(view: WorkflowView): string {
+  return view.params?.goal?.default ?? view.intent.outcome;
 }
 
 function emptyDocument(name: string): WorkflowDocument {

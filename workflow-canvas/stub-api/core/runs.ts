@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Clock } from './clock.ts';
-import { HARNESS } from './contract.ts';
-import type { Run, RunEvent, RunStage, StageReason } from './model.ts';
+import { HARNESS, MAX_GOAL_CHARS } from './contract.ts';
+import type {
+  Run,
+  RunEvent,
+  RunStage,
+  RunSummary,
+  StageReason,
+} from './model.ts';
 import { scriptOf, type TimedEvent } from './run-events.ts';
 import { formatTimestamp, runIdPrefix } from './timestamp.ts';
 
@@ -26,6 +32,7 @@ interface StartedRun {
   startedAt: number;
   order: string[];
   plan: RunPlan;
+  goal: string;
   script: TimedEvent[];
 }
 
@@ -80,6 +87,7 @@ export class RunSimulator {
   start(
     workflow: string,
     stageNames: readonly string[],
+    goal: string,
     plan: RunPlan = {},
   ): string {
     const startedAt = this.clock.now();
@@ -92,6 +100,7 @@ export class RunSimulator {
       startedAt,
       order,
       plan: normal,
+      goal,
       script: scriptOf({
         runId,
         startedAt,
@@ -104,6 +113,20 @@ export class RunSimulator {
     this.runs.set(run.runId, run);
     this.latest = run;
     return run.runId;
+  }
+
+  /** The runs of `workflow` so far, newest first, at most `limit` of them. */
+  list(workflow: string, limit: number): RunSummary[] {
+    return [...this.runs.values()]
+      .filter((run) => run.workflow === workflow)
+      .reverse()
+      .slice(0, limit)
+      .map((run) => ({
+        run_id: run.runId,
+        started_at: formatTimestamp(run.startedAt),
+        status: this.describe(run).status,
+        ...cappedGoal(run.goal),
+      }));
   }
 
   get(runId: string): Run | undefined {
@@ -184,6 +207,14 @@ export class RunSimulator {
     while (this.runs.has(runId)) runId = `${prefix}-${this.suffix()}`;
     return runId;
   }
+}
+
+// The list carries at most the session's goal limit, cut between code points.
+function cappedGoal(goal: string): Pick<RunSummary, 'goal' | 'goal_truncated'> {
+  const chars = [...goal];
+  const goal_truncated = chars.length > MAX_GOAL_CHARS;
+  const kept = goal_truncated ? chars.slice(0, MAX_GOAL_CHARS).join('') : goal;
+  return { goal: kept, goal_truncated };
 }
 
 // A blocked stage past the end of the list is the last one.

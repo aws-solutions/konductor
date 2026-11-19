@@ -13,6 +13,7 @@ import {
   readSaveRequest,
   readSessionRequest,
 } from './readers.ts';
+import { readLimit } from './queries.ts';
 import { followRunEvents, readEventsQuery, type Waiter } from './run-events.ts';
 import type { SessionGate } from './session.ts';
 
@@ -125,8 +126,8 @@ export function buildRoutes(
           id: 'startRun',
           secured: true,
           handle: ({ body }) => {
-            readRunRequest(body);
-            return { status: 202, body: api.startRun() };
+            const { params } = readRunRequest(body);
+            return { status: 202, body: api.startRun(params.goal) };
           },
         },
       },
@@ -138,6 +139,16 @@ export function buildRoutes(
           id: 'getRun',
           secured: true,
           handle: ({ params }) => ok({ run: api.getRun(params[0] ?? '') }),
+        },
+      },
+    },
+    {
+      pattern: /^\/api\/runs$/,
+      operations: {
+        GET: {
+          id: 'listRuns',
+          secured: true,
+          handle: ({ query }) => ok(api.listRuns(readLimit(query))),
         },
       },
     },

@@ -75,6 +75,7 @@ canvas calls. It covers these operations:
 | `GET /api/agents`           | `listAgents`    | List the agents a stage may name        |
 | `POST /api/validate`        | `checkWorkflow` | Check workflow text and report problems |
 | `POST /api/run`             | `startRun`      | Start a run                             |
+| `GET /api/runs`             | `listRuns`      | List the past runs, newest first        |
 | `GET /api/runs/{id}`        | `getRun`        | Get the status of a run                 |
 | `GET /api/runs/{id}/events` | `getRunEvents`  | Follow the events of a run              |
 
@@ -97,7 +98,9 @@ run by polling `GET /api/runs/{id}`, or with the long poll of
 run and console lines. A client resumes from the last number it read. Console
 lines are live only: the server keeps at most the last 1000 of a run, while the
 run is active and for 60 seconds after `run_finished`, and never stores them.
-The session response also says which
+`GET /api/runs` lists the runs of the workflow, newest first, with each run's
+start time, status and goal (cut to the goal limit, with `goal_truncated`
+saying so). The session response also says which
 server it is: `konductor_version`, the `capabilities` it supports (the
 `operationId` of each operation, which is not renamed within an API major
 version) and its `limits` (text bytes, stages, outcome, prompt and goal
@@ -185,7 +188,8 @@ eight agents that the Designer offers. The stub reads no files, so for a
 `prompt_file` it checks only the path rules: it accepts a path to a file that
 does not exist. A run is faked and calls no agent: its stages run for 3 seconds
 each, one after the other, each prints two scripted console lines, and all of
-them pass. It runs one run at a time and
+them pass. `GET /api/runs` lists the runs it played since it started. It runs
+one run at a time and
 never fails a stage.
 
 `STUB_WORKFLOW` picks the workflow of the session, to show the other answers of
@@ -520,9 +524,9 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
-  used for that run. The API does not give the goal of a run, so while the tab
-  follows a run that was already going the Goal box is empty, says "Not known"
-  and is labelled so. When that run ends, the status line still says it was
+  used for that run. `GET /api/runs` gives the goal of each run, but the Run
+  view does not call `listRuns` yet, so while the tab follows a run that was
+  already going the Goal box is empty, says "Not known" and is labelled so. When that run ends, the status line still says it was
   already in progress.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). If the server was started
