@@ -12,19 +12,21 @@ const RUNNING: RunProgress = {
 };
 
 describe('RunProgressStrip', () => {
-  it('says where the run is in a status region', () => {
+  it('says where the run is in text a screen reader can reach', () => {
     render(<RunProgressStrip progress={RUNNING} />);
 
-    expect(screen.getByRole('status').textContent).toBe(
-      'Running review. 1 of 4 stages passed.',
-    );
+    expect(
+      screen.getByText('Running review. 1 of 4 stages passed.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Elapsed 1:05')).toBeTruthy();
   });
 
-  it('shows the elapsed time outside the status region', () => {
-    render(<RunProgressStrip progress={RUNNING} />);
+  it('announces nothing, as the page announces the run status elsewhere', () => {
+    const { container } = render(<RunProgressStrip progress={RUNNING} />);
 
-    expect(screen.getByText('Elapsed 1:05')).toBeTruthy();
-    expect(screen.getByRole('status').textContent).not.toContain('1:05');
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(container.querySelector('[aria-live]')).toBeNull();
   });
 
   it('draws the passed share of the stages in a bar hidden from a screen reader', () => {
@@ -50,9 +52,9 @@ describe('RunProgressStrip', () => {
     );
 
     expect(screen.getByTestId('run-progress-blocked').style.width).toBe('25%');
-    expect(screen.getByRole('status').textContent).toBe(
-      'Run halted at review. 1 of 4 stages passed.',
-    );
+    expect(
+      screen.getByText('Run halted at review. 1 of 4 stages passed.'),
+    ).toBeTruthy();
   });
 
   it('draws an empty bar for a run with no stages', () => {

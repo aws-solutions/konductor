@@ -11,16 +11,16 @@ function share(count: number, total: number): string {
 }
 
 /**
- * One line on how far a run has got: a status sentence that a screen reader
- * announces, a bar of the passed and blocked stages, and the elapsed time.
- * The elapsed time is outside the live region, so its tick is not read out.
+ * One line on how far a run has got: a status sentence, a bar of the passed
+ * and blocked stages, and the elapsed time. It is not a live region: the run
+ * status is announced once, elsewhere on the page, so a screen reader would
+ * otherwise hear each change twice. It reads the sentence and the time when
+ * a person moves to them.
  */
 export function RunProgressStrip({ progress }: { progress: RunProgress }) {
   return (
     <div className="wf-progress" data-testid="run-progress">
-      <p role="status" className="wf-progress-summary">
-        {progressText(progress)}
-      </p>
+      <p className="wf-progress-summary">{progressText(progress)}</p>
       <div className="wf-progress-bar" aria-hidden="true">
         <span
           className="wf-progress-passed"
