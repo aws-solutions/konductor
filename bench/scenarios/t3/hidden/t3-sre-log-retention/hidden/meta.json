@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/retention.md"],
+  "acceptableOptions": ["mixed_hot_warm_cold", "hot_90_cold_rest"],
+  "temptingOption": "all_hot",
+  "notes": "The trap is that all-hot looks simplest and meets performance requirements but exceeds the budget when calculated correctly with 24 TB/day ingest; the budget limit is in budget-constraints.md while the ingest rate is in requirements.md; hot_90_cold_rest is viable but suboptimal at 2.6x the cost of mixed_hot_warm_cold"
+}

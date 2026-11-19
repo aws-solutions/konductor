@@ -80,3 +80,12 @@
 | t3-nfr-latency-budget | review | minimax-m2.5 | 1.35 |
 | t3-db-audit-retention-twin | expertKey | glm-5 | 1.22 |
 | t3-nfr-latency-budget | expertKey | glm-5 | 1.53 |
+| t3-adr-cache-sizing-twin | author(twin) | deepseek-3.2 | 4.36 |
+| t3-adr-cache-sizing-twin | author(twin) | deepseek-3.2 | 4.36 |
+| t3-sre-log-retention | author | deepseek-3.2 | 9.51 |
+| t3-adr-cache-sizing-twin | review | minimax-m2.5 | 0.00 |
+| t3-sre-log-retention | map | glm-5 | 0.62 |
+| t3-adr-cache-sizing-twin | author(twin) | deepseek-3.2 | 4.36 |
+| t3-sre-log-retention | review | minimax-m2.5 | 1.70 |
+| t3-adr-cache-sizing-twin | review | glm-5 | 2.96 |
+| t3-sre-log-retention | expertKey | glm-5 | 1.32 |
