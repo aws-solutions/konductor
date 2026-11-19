@@ -1,0 +1,1440 @@
+2026-06-08T00:00:00Z service=partner-adapter INFO request req-00003a99-f888 region=solmere route=/certification status=200 latency_ms=50
+2026-06-08T00:01:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003a9a-f01f
+2026-06-08T00:02:00Z service=partner-adapter INFO request req-00003a9b-d787 region=solmere route=/certification status=200 latency_ms=74
+2026-06-08T00:03:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=41
+2026-06-08T00:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=37
+2026-06-08T00:05:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003a9e-06f4
+2026-06-08T00:06:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003a9f-f829
+2026-06-08T00:07:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003aa0-c846
+2026-06-08T00:08:00Z service=partner-adapter INFO request req-00003aa1-389f region=solmere bank=Northstar status=200 latency_ms=49
+2026-06-08T00:09:00Z service=partner-adapter INFO request req-00003aa2-171f region=veyra bank=Northstar status=200 latency_ms=20
+2026-06-08T00:10:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003aa3-4898
+2026-06-08T00:11:00Z service=partner-adapter WARN slow request req-00003aa4-6394 region=veyra latency_ms=1207
+2026-06-08T00:12:00Z service=partner-adapter INFO request req-00003aa5-43cf region=solmere route=/certification status=200 latency_ms=29
+2026-06-08T00:13:00Z service=partner-adapter INFO request req-00003aa6-4e22 region=veyra bank=Northstar status=200 latency_ms=19
+2026-06-08T00:14:00Z service=partner-adapter INFO request req-00003aa7-fbaa region=solmere route=/certification status=200 latency_ms=52
+2026-06-08T00:15:00Z service=partner-adapter WARN slow request req-00003aa8-3ff0 region=veyra latency_ms=873
+2026-06-08T00:16:00Z service=partner-adapter INFO request req-00003aa9-e423 region=solmere route=/certification status=200 latency_ms=48
+2026-06-08T00:17:00Z service=partner-adapter INFO request req-00003aaa-c40f region=veyra route=/certification status=200 latency_ms=20
+2026-06-08T00:18:00Z service=partner-adapter INFO request req-00003aab-d48b region=solmere bank=Northstar status=200 latency_ms=35
+2026-06-08T00:19:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003aac-35a9
+2026-06-08T00:20:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003aad-159d
+2026-06-08T00:21:00Z service=partner-adapter INFO request req-00003aae-1757 region=veyra bank=Northstar status=200 latency_ms=64
+2026-06-08T00:22:00Z service=partner-adapter INFO request req-00003aaf-48c3 region=solmere bank=Northstar status=200 latency_ms=24
+2026-06-08T00:23:00Z service=partner-adapter WARN slow request req-00003ab0-1b09 region=veyra latency_ms=1663
+2026-06-08T00:24:00Z service=partner-adapter WARN slow request req-00003ab1-5bef region=solmere latency_ms=990
+2026-06-08T00:25:00Z service=partner-adapter INFO request req-00003ab2-df63 region=veyra route=/certification status=200 latency_ms=26
+2026-06-08T00:26:00Z service=partner-adapter INFO request req-00003ab3-8f7b region=solmere route=/certification status=200 latency_ms=11
+2026-06-08T00:27:00Z service=partner-adapter INFO request req-00003ab4-eae2 region=veyra bank=Northstar status=200 latency_ms=75
+2026-06-08T00:28:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003ab5-075e
+2026-06-08T00:29:00Z service=partner-adapter WARN slow request req-00003ab6-862b region=veyra latency_ms=884
+2026-06-08T00:30:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003ab7-a864
+2026-06-08T00:31:00Z service=partner-adapter WARN slow request req-00003ab8-fbec region=veyra latency_ms=1294
+2026-06-08T00:32:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003ab9-067f
+2026-06-08T00:33:00Z service=partner-adapter INFO request req-00003aba-9da4 region=veyra route=/certification status=200 latency_ms=18
+2026-06-08T00:34:00Z service=partner-adapter INFO request req-00003abb-dd74 region=solmere route=/certification status=200 latency_ms=43
+2026-06-08T00:35:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003abc-121b
+2026-06-08T00:36:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003abd-58e8
+2026-06-08T00:37:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003abe-a047
+2026-06-08T00:38:00Z service=partner-adapter INFO request req-00003abf-ac5f region=solmere route=/certification status=200 latency_ms=54
+2026-06-08T00:39:00Z service=partner-adapter WARN slow request req-00003ac0-bb38 region=veyra latency_ms=1272
+2026-06-08T00:40:00Z service=partner-adapter INFO request req-00003ac1-d74b region=solmere bank=Northstar status=200 latency_ms=49
+2026-06-08T00:41:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003ac2-1e63
+2026-06-08T00:42:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003ac3-0fd0
+2026-06-08T00:43:00Z service=partner-adapter INFO request req-00003ac4-9112 region=veyra route=/certification status=200 latency_ms=46
+2026-06-08T00:44:00Z service=partner-adapter WARN slow request req-00003ac5-f88c region=solmere latency_ms=1232
+2026-06-08T00:45:00Z service=partner-adapter INFO request req-00003ac6-ebcd region=veyra bank=Northstar status=200 latency_ms=69
+2026-06-08T00:46:00Z service=partner-adapter INFO request req-00003ac7-e118 region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T00:47:00Z service=partner-adapter WARN slow request req-00003ac8-b036 region=veyra latency_ms=1071
+2026-06-08T00:48:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003ac9-ad25
+2026-06-08T00:49:00Z service=partner-adapter INFO request req-00003aca-2260 region=veyra bank=Northstar status=200 latency_ms=21
+2026-06-08T00:50:00Z service=partner-adapter WARN slow request req-00003acb-9384 region=solmere latency_ms=1756
+2026-06-08T00:51:00Z service=partner-adapter INFO request req-00003acc-6f0e region=veyra route=/certification status=200 latency_ms=20
+2026-06-08T00:52:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003acd-bbeb
+2026-06-08T00:53:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003ace-548f
+2026-06-08T00:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=56
+2026-06-08T00:55:00Z service=partner-adapter INFO request req-00003ad0-a29d region=veyra route=/certification status=200 latency_ms=72
+2026-06-08T00:56:00Z service=partner-adapter INFO request req-00003ad1-38fa region=solmere bank=Northstar status=200 latency_ms=11
+2026-06-08T00:57:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=36
+2026-06-08T00:58:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003ad3-887f
+2026-06-08T00:59:00Z service=partner-adapter INFO request req-00003ad4-da8a region=veyra route=/certification status=200 latency_ms=26
+2026-06-08T01:00:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=43
+2026-06-08T01:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=8
+2026-06-08T01:02:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003ad7-a549
+2026-06-08T01:03:00Z service=partner-adapter WARN slow request req-00003ad8-f9a7 region=veyra latency_ms=1553
+2026-06-08T01:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=55
+2026-06-08T01:05:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003ada-0840
+2026-06-08T01:06:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T01:07:00Z service=partner-adapter INFO request req-00003adc-f420 region=veyra bank=Northstar status=200 latency_ms=37
+2026-06-08T01:08:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003add-19d6
+2026-06-08T01:09:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=72
+2026-06-08T01:10:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=36
+2026-06-08T01:11:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=29
+2026-06-08T01:12:00Z service=partner-adapter WARN slow request req-00003ae1-a319 region=solmere latency_ms=1289
+2026-06-08T01:13:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=20
+2026-06-08T01:14:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003ae3-b539
+2026-06-08T01:15:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003ae4-a9e1
+2026-06-08T01:16:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=28
+2026-06-08T01:17:00Z service=partner-adapter WARN slow request req-00003ae6-b467 region=veyra latency_ms=1265
+2026-06-08T01:18:00Z service=partner-adapter WARN slow request req-00003ae7-d4d4 region=solmere latency_ms=891
+2026-06-08T01:19:00Z service=partner-adapter INFO request req-00003ae8-5835 region=veyra route=/certification status=200 latency_ms=37
+2026-06-08T01:20:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003ae9-ee0d
+2026-06-08T01:21:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003aea-85f5
+2026-06-08T01:22:00Z service=partner-adapter INFO request req-00003aeb-4209 region=solmere route=/certification status=200 latency_ms=58
+2026-06-08T01:23:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003aec-b71c
+2026-06-08T01:24:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003aed-a314
+2026-06-08T01:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=21
+2026-06-08T01:26:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003aef-c2d1
+2026-06-08T01:27:00Z service=partner-adapter INFO request req-00003af0-abe0 region=veyra route=/certification status=200 latency_ms=28
+2026-06-08T01:28:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003af1-b898
+2026-06-08T01:29:00Z service=partner-adapter INFO request req-00003af2-90aa region=veyra bank=Northstar status=200 latency_ms=66
+2026-06-08T01:30:00Z service=partner-adapter INFO request req-00003af3-42ca region=solmere route=/certification status=200 latency_ms=67
+2026-06-08T01:31:00Z service=partner-adapter INFO request req-00003af4-93c4 region=veyra bank=Northstar status=200 latency_ms=71
+2026-06-08T01:32:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003af5-9018
+2026-06-08T01:33:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=30
+2026-06-08T01:34:00Z service=partner-adapter INFO request req-00003af7-3b09 region=solmere route=/certification status=200 latency_ms=15
+2026-06-08T01:35:00Z service=partner-adapter WARN slow request req-00003af8-c020 region=veyra latency_ms=1156
+2026-06-08T01:36:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003af9-7bab
+2026-06-08T01:37:00Z service=partner-adapter WARN slow request req-00003afa-abcc region=veyra latency_ms=995
+2026-06-08T01:38:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003afb-45cf
+2026-06-08T01:39:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=44
+2026-06-08T01:40:00Z service=partner-adapter INFO request req-00003afd-e837 region=solmere bank=Northstar status=200 latency_ms=33
+2026-06-08T01:41:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003afe-c306
+2026-06-08T01:42:00Z service=partner-adapter WARN slow request req-00003aff-29d3 region=solmere latency_ms=1085
+2026-06-08T01:43:00Z service=partner-adapter INFO request req-00003b00-bf35 region=veyra route=/certification status=200 latency_ms=42
+2026-06-08T01:44:00Z service=partner-adapter INFO request req-00003b01-4310 region=solmere route=/certification status=200 latency_ms=65
+2026-06-08T01:45:00Z service=partner-adapter INFO request req-00003b02-cfd5 region=veyra bank=Northstar status=200 latency_ms=30
+2026-06-08T01:46:00Z service=partner-adapter INFO request req-00003b03-a3ab region=solmere bank=Northstar status=200 latency_ms=72
+2026-06-08T01:47:00Z service=partner-adapter INFO request req-00003b04-bb26 region=veyra route=/certification status=200 latency_ms=57
+2026-06-08T01:48:00Z service=partner-adapter INFO request req-00003b05-cba4 region=solmere bank=Northstar status=200 latency_ms=55
+2026-06-08T01:49:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003b06-ad78
+2026-06-08T01:50:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003b07-6a71
+2026-06-08T01:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=8
+2026-06-08T01:52:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=60
+2026-06-08T01:53:00Z service=partner-adapter WARN slow request req-00003b0a-d387 region=veyra latency_ms=1424
+2026-06-08T01:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=16
+2026-06-08T01:55:00Z service=partner-adapter INFO request req-00003b0c-9574 region=veyra bank=Northstar status=200 latency_ms=65
+2026-06-08T01:56:00Z service=partner-adapter WARN slow request req-00003b0d-cf22 region=solmere latency_ms=1851
+2026-06-08T01:57:00Z service=partner-adapter INFO request req-00003b0e-17c7 region=veyra route=/certification status=200 latency_ms=33
+2026-06-08T01:58:00Z service=partner-adapter WARN slow request req-00003b0f-6238 region=solmere latency_ms=1604
+2026-06-08T01:59:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003b10-6651
+2026-06-08T02:00:00Z service=partner-adapter INFO request req-00003b11-552c region=solmere bank=Northstar status=200 latency_ms=66
+2026-06-08T02:01:00Z service=partner-adapter INFO request req-00003b12-4751 region=veyra bank=Northstar status=200 latency_ms=69
+2026-06-08T02:02:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003b13-7444
+2026-06-08T02:03:00Z service=partner-adapter WARN slow request req-00003b14-e3b3 region=veyra latency_ms=1287
+2026-06-08T02:04:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003b15-7762
+2026-06-08T02:05:00Z service=partner-adapter INFO request req-00003b16-9df8 region=veyra route=/certification status=200 latency_ms=29
+2026-06-08T02:06:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003b17-76a3
+2026-06-08T02:07:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003b18-d25b
+2026-06-08T02:08:00Z service=partner-adapter INFO request req-00003b19-fda0 region=solmere route=/certification status=200 latency_ms=43
+2026-06-08T02:09:00Z service=partner-adapter INFO request req-00003b1a-b400 region=veyra route=/certification status=200 latency_ms=15
+2026-06-08T02:10:00Z service=partner-adapter WARN slow request req-00003b1b-d2b6 region=solmere latency_ms=1775
+2026-06-08T02:11:00Z service=partner-adapter INFO request req-00003b1c-3acb region=veyra bank=Northstar status=200 latency_ms=59
+2026-06-08T02:12:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003b1d-4b73
+2026-06-08T02:13:00Z service=partner-adapter INFO request req-00003b1e-c8e4 region=veyra route=/certification status=200 latency_ms=30
+2026-06-08T02:14:00Z service=partner-adapter WARN slow request req-00003b1f-e2e1 region=solmere latency_ms=1884
+2026-06-08T02:15:00Z service=partner-adapter INFO request req-00003b20-fee4 region=veyra bank=Northstar status=200 latency_ms=9
+2026-06-08T02:16:00Z service=partner-adapter WARN slow request req-00003b21-e2a6 region=solmere latency_ms=1818
+2026-06-08T02:17:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=59
+2026-06-08T02:18:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003b23-fae1
+2026-06-08T02:19:00Z service=partner-adapter INFO request req-00003b24-bb7a region=veyra bank=Northstar status=200 latency_ms=62
+2026-06-08T02:20:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003b25-20e9
+2026-06-08T02:21:00Z service=partner-adapter INFO request req-00003b26-411d region=veyra bank=Northstar status=200 latency_ms=40
+2026-06-08T02:22:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=55
+2026-06-08T02:23:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003b28-79f3
+2026-06-08T02:24:00Z service=partner-adapter INFO request req-00003b29-b79b region=solmere bank=Northstar status=200 latency_ms=24
+2026-06-08T02:25:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003b2a-5444
+2026-06-08T02:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=37
+2026-06-08T02:27:00Z service=partner-adapter INFO request req-00003b2c-e2d7 region=veyra route=/certification status=200 latency_ms=75
+2026-06-08T02:28:00Z service=partner-adapter INFO request req-00003b2d-91be region=solmere bank=Northstar status=200 latency_ms=46
+2026-06-08T02:29:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=50
+2026-06-08T02:30:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003b2f-5cdd
+2026-06-08T02:31:00Z service=partner-adapter INFO request req-00003b30-7634 region=veyra route=/certification status=200 latency_ms=8
+2026-06-08T02:32:00Z service=partner-adapter INFO request req-00003b31-d76d region=solmere route=/certification status=200 latency_ms=64
+2026-06-08T02:33:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003b32-72a6
+2026-06-08T02:34:00Z service=partner-adapter INFO request req-00003b33-7e47 region=solmere route=/certification status=200 latency_ms=16
+2026-06-08T02:35:00Z service=partner-adapter WARN slow request req-00003b34-4a35 region=veyra latency_ms=1153
+2026-06-08T02:36:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=22
+2026-06-08T02:37:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=39
+2026-06-08T02:38:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=27
+2026-06-08T02:39:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003b38-88a8
+2026-06-08T02:40:00Z service=partner-adapter INFO request req-00003b39-4d6d region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T02:41:00Z service=partner-adapter INFO request req-00003b3a-9bed region=veyra route=/certification status=200 latency_ms=32
+2026-06-08T02:42:00Z service=partner-adapter INFO request req-00003b3b-4ece region=solmere route=/certification status=200 latency_ms=13
+2026-06-08T02:43:00Z service=partner-adapter WARN slow request req-00003b3c-68bb region=veyra latency_ms=1110
+2026-06-08T02:44:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=17
+2026-06-08T02:45:00Z service=partner-adapter INFO request req-00003b3e-7c42 region=veyra bank=Northstar status=200 latency_ms=28
+2026-06-08T02:46:00Z service=partner-adapter INFO request req-00003b3f-4e33 region=solmere bank=Northstar status=200 latency_ms=51
+2026-06-08T02:47:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=26
+2026-06-08T02:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T02:49:00Z service=partner-adapter INFO request req-00003b42-83e3 region=veyra bank=Northstar status=200 latency_ms=34
+2026-06-08T02:50:00Z service=partner-adapter WARN slow request req-00003b43-c8b9 region=solmere latency_ms=1652
+2026-06-08T02:51:00Z service=partner-adapter WARN slow request req-00003b44-31d3 region=veyra latency_ms=1413
+2026-06-08T02:52:00Z service=partner-adapter INFO request req-00003b45-500b region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T02:53:00Z service=partner-adapter WARN slow request req-00003b46-f4fe region=veyra latency_ms=1421
+2026-06-08T02:54:00Z service=partner-adapter INFO request req-00003b47-fa5d region=solmere bank=Northstar status=200 latency_ms=59
+2026-06-08T02:55:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=43
+2026-06-08T02:56:00Z service=partner-adapter INFO request req-00003b49-4144 region=solmere bank=Northstar status=200 latency_ms=41
+2026-06-08T02:57:00Z service=partner-adapter INFO request req-00003b4a-481d region=veyra route=/certification status=200 latency_ms=69
+2026-06-08T02:58:00Z service=partner-adapter INFO request req-00003b4b-b115 region=solmere bank=Northstar status=200 latency_ms=55
+2026-06-08T02:59:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003b4c-375e
+2026-06-08T03:00:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=52
+2026-06-08T03:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T03:02:00Z service=partner-adapter INFO request req-00003b4f-3fa9 region=solmere bank=Northstar status=200 latency_ms=21
+2026-06-08T03:03:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003b50-3bdd
+2026-06-08T03:04:00Z service=partner-adapter WARN slow request req-00003b51-b46e region=solmere latency_ms=1262
+2026-06-08T03:05:00Z service=partner-adapter INFO request req-00003b52-d46b region=veyra route=/certification status=200 latency_ms=17
+2026-06-08T03:06:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=74
+2026-06-08T03:07:00Z service=partner-adapter INFO request req-00003b54-2c65 region=veyra bank=Northstar status=200 latency_ms=75
+2026-06-08T03:08:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003b55-3496
+2026-06-08T03:09:00Z service=partner-adapter INFO request req-00003b56-0c09 region=veyra bank=Northstar status=200 latency_ms=18
+2026-06-08T03:10:00Z service=partner-adapter INFO request req-00003b57-ab6f region=solmere route=/certification status=200 latency_ms=49
+2026-06-08T03:11:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003b58-6522
+2026-06-08T03:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=59
+2026-06-08T03:13:00Z service=partner-adapter INFO request req-00003b5a-47e0 region=veyra bank=Northstar status=200 latency_ms=31
+2026-06-08T03:14:00Z service=partner-adapter INFO request req-00003b5b-d967 region=solmere route=/certification status=200 latency_ms=18
+2026-06-08T03:15:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003b5c-9f13
+2026-06-08T03:16:00Z service=partner-adapter WARN slow request req-00003b5d-9136 region=solmere latency_ms=1878
+2026-06-08T03:17:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=38
+2026-06-08T03:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T03:19:00Z service=partner-adapter WARN slow request req-00003b60-89c7 region=veyra latency_ms=1864
+2026-06-08T03:20:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=28
+2026-06-08T03:21:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T03:22:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003b63-e963
+2026-06-08T03:23:00Z service=partner-adapter INFO request req-00003b64-024f region=veyra route=/certification status=200 latency_ms=72
+2026-06-08T03:24:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003b65-960e
+2026-06-08T03:25:00Z service=partner-adapter INFO request req-00003b66-9b3d region=veyra route=/certification status=200 latency_ms=19
+2026-06-08T03:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=17
+2026-06-08T03:27:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=12
+2026-06-08T03:28:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003b69-bd2f
+2026-06-08T03:29:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=68
+2026-06-08T03:30:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=18
+2026-06-08T03:31:00Z service=partner-adapter INFO request req-00003b6c-4978 region=veyra route=/certification status=200 latency_ms=21
+2026-06-08T03:32:00Z service=partner-adapter WARN slow request req-00003b6d-4094 region=solmere latency_ms=1131
+2026-06-08T03:33:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=22
+2026-06-08T03:34:00Z service=partner-adapter INFO request req-00003b6f-989d region=solmere route=/certification status=200 latency_ms=41
+2026-06-08T03:35:00Z service=partner-adapter INFO request req-00003b70-e280 region=veyra route=/certification status=200 latency_ms=66
+2026-06-08T03:36:00Z service=partner-adapter INFO request req-00003b71-d49f region=solmere route=/certification status=200 latency_ms=46
+2026-06-08T03:37:00Z service=partner-adapter WARN slow request req-00003b72-f6c6 region=veyra latency_ms=1642
+2026-06-08T03:38:00Z service=partner-adapter INFO request req-00003b73-4272 region=solmere route=/certification status=200 latency_ms=15
+2026-06-08T03:39:00Z service=partner-adapter WARN slow request req-00003b74-7a89 region=veyra latency_ms=909
+2026-06-08T03:40:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003b75-a352
+2026-06-08T03:41:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003b76-03ea
+2026-06-08T03:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T03:43:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003b78-abcc
+2026-06-08T03:44:00Z service=partner-adapter WARN slow request req-00003b79-434d region=solmere latency_ms=1830
+2026-06-08T03:45:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=35
+2026-06-08T03:46:00Z service=partner-adapter INFO request req-00003b7b-407a region=solmere route=/certification status=200 latency_ms=75
+2026-06-08T03:47:00Z service=partner-adapter WARN slow request req-00003b7c-fdc8 region=veyra latency_ms=868
+2026-06-08T03:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=25
+2026-06-08T03:49:00Z service=partner-adapter WARN slow request req-00003b7e-732e region=veyra latency_ms=1681
+2026-06-08T03:50:00Z service=partner-adapter WARN slow request req-00003b7f-d4b9 region=solmere latency_ms=1129
+2026-06-08T03:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=8
+2026-06-08T03:52:00Z service=partner-adapter WARN slow request req-00003b81-25e8 region=solmere latency_ms=1465
+2026-06-08T03:53:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=55
+2026-06-08T03:54:00Z service=partner-adapter INFO request req-00003b83-c30c region=solmere route=/certification status=200 latency_ms=58
+2026-06-08T03:55:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003b84-e863
+2026-06-08T03:56:00Z service=partner-adapter INFO request req-00003b85-af7d region=solmere route=/certification status=200 latency_ms=29
+2026-06-08T03:57:00Z service=partner-adapter INFO request req-00003b86-1976 region=veyra bank=Northstar status=200 latency_ms=24
+2026-06-08T03:58:00Z service=partner-adapter WARN slow request req-00003b87-74ec region=solmere latency_ms=1687
+2026-06-08T03:59:00Z service=partner-adapter WARN slow request req-00003b88-fd79 region=veyra latency_ms=1384
+2026-06-08T04:00:00Z service=partner-adapter INFO request req-00003b89-3067 region=solmere bank=Northstar status=200 latency_ms=31
+2026-06-08T04:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=62
+2026-06-08T04:02:00Z service=partner-adapter WARN slow request req-00003b8b-376f region=solmere latency_ms=1063
+2026-06-08T04:03:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003b8c-e1f9
+2026-06-08T04:04:00Z service=partner-adapter INFO request req-00003b8d-b6da region=solmere bank=Northstar status=200 latency_ms=16
+2026-06-08T04:05:00Z service=partner-adapter INFO request req-00003b8e-15f4 region=veyra bank=Northstar status=200 latency_ms=21
+2026-06-08T04:06:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=26
+2026-06-08T04:07:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=60
+2026-06-08T04:08:00Z service=partner-adapter INFO request req-00003b91-0f30 region=solmere route=/certification status=200 latency_ms=63
+2026-06-08T04:09:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003b92-1599
+2026-06-08T04:10:00Z service=partner-adapter WARN slow request req-00003b93-841b region=solmere latency_ms=1635
+2026-06-08T04:11:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=34
+2026-06-08T04:12:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003b95-559d
+2026-06-08T04:13:00Z service=partner-adapter INFO request req-00003b96-1101 region=veyra bank=Northstar status=200 latency_ms=41
+2026-06-08T04:14:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=62
+2026-06-08T04:15:00Z service=partner-adapter WARN slow request req-00003b98-4e6e region=veyra latency_ms=962
+2026-06-08T04:16:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003b99-01f7
+2026-06-08T04:17:00Z service=partner-adapter WARN slow request req-00003b9a-c495 region=veyra latency_ms=1770
+2026-06-08T04:18:00Z service=partner-adapter INFO request req-00003b9b-aa56 region=solmere route=/certification status=200 latency_ms=35
+2026-06-08T04:19:00Z service=partner-adapter INFO request req-00003b9c-5a0f region=veyra route=/certification status=200 latency_ms=31
+2026-06-08T04:20:00Z service=partner-adapter WARN slow request req-00003b9d-7626 region=solmere latency_ms=990
+2026-06-08T04:21:00Z service=partner-adapter INFO request req-00003b9e-fe68 region=veyra route=/certification status=200 latency_ms=64
+2026-06-08T04:22:00Z service=partner-adapter WARN slow request req-00003b9f-31e3 region=solmere latency_ms=1074
+2026-06-08T04:23:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T04:24:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=31
+2026-06-08T04:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T04:26:00Z service=partner-adapter WARN slow request req-00003ba3-9dd6 region=solmere latency_ms=1857
+2026-06-08T04:27:00Z service=partner-adapter WARN slow request req-00003ba4-32a1 region=veyra latency_ms=1121
+2026-06-08T04:28:00Z service=partner-adapter WARN slow request req-00003ba5-fd2d region=solmere latency_ms=1882
+2026-06-08T04:29:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=32
+2026-06-08T04:30:00Z service=partner-adapter INFO request req-00003ba7-9de5 region=solmere route=/certification status=200 latency_ms=32
+2026-06-08T04:31:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003ba8-eeca
+2026-06-08T04:32:00Z service=partner-adapter INFO request req-00003ba9-55f0 region=solmere bank=Northstar status=200 latency_ms=62
+2026-06-08T04:33:00Z service=partner-adapter INFO request req-00003baa-f33a region=veyra bank=Northstar status=200 latency_ms=47
+2026-06-08T04:34:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003bab-3bcf
+2026-06-08T04:35:00Z service=partner-adapter WARN slow request req-00003bac-266c region=veyra latency_ms=1133
+2026-06-08T04:36:00Z service=partner-adapter INFO request req-00003bad-2ce8 region=solmere bank=Northstar status=200 latency_ms=12
+2026-06-08T04:37:00Z service=partner-adapter INFO request req-00003bae-8eae region=veyra route=/certification status=200 latency_ms=9
+2026-06-08T04:38:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=23
+2026-06-08T04:39:00Z service=partner-adapter INFO request req-00003bb0-facb region=veyra bank=Northstar status=200 latency_ms=65
+2026-06-08T04:40:00Z service=partner-adapter INFO request req-00003bb1-bc95 region=solmere bank=Northstar status=200 latency_ms=59
+2026-06-08T04:41:00Z service=partner-adapter WARN slow request req-00003bb2-b875 region=veyra latency_ms=1116
+2026-06-08T04:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=67
+2026-06-08T04:43:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003bb4-1465
+2026-06-08T04:44:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003bb5-1813
+2026-06-08T04:45:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003bb6-d2da
+2026-06-08T04:46:00Z service=partner-adapter INFO request req-00003bb7-8cad region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T04:47:00Z service=partner-adapter INFO request req-00003bb8-c3fa region=veyra route=/certification status=200 latency_ms=62
+2026-06-08T04:48:00Z service=partner-adapter INFO request req-00003bb9-15e1 region=solmere bank=Northstar status=200 latency_ms=10
+2026-06-08T04:49:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=19
+2026-06-08T04:50:00Z service=partner-adapter INFO request req-00003bbb-4e9b region=solmere route=/certification status=200 latency_ms=64
+2026-06-08T04:51:00Z service=partner-adapter INFO request req-00003bbc-721b region=veyra route=/certification status=200 latency_ms=17
+2026-06-08T04:52:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T04:53:00Z service=partner-adapter INFO request req-00003bbe-3e06 region=veyra bank=Northstar status=200 latency_ms=30
+2026-06-08T04:54:00Z service=partner-adapter WARN slow request req-00003bbf-e9c9 region=solmere latency_ms=1407
+2026-06-08T04:55:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003bc0-2660
+2026-06-08T04:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T04:57:00Z service=partner-adapter INFO request req-00003bc2-1d76 region=veyra route=/certification status=200 latency_ms=42
+2026-06-08T04:58:00Z service=partner-adapter WARN slow request req-00003bc3-dd07 region=solmere latency_ms=1601
+2026-06-08T04:59:00Z service=partner-adapter INFO request req-00003bc4-5924 region=veyra bank=Northstar status=200 latency_ms=39
+2026-06-08T05:00:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003bc5-c51d
+2026-06-08T05:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=43
+2026-06-08T05:02:00Z service=partner-adapter INFO request req-00003bc7-0283 region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T05:03:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003bc8-f79e
+2026-06-08T05:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T05:05:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=40
+2026-06-08T05:06:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003bcb-637c
+2026-06-08T05:07:00Z service=partner-adapter INFO request req-00003bcc-5455 region=veyra bank=Northstar status=200 latency_ms=23
+2026-06-08T05:08:00Z service=partner-adapter WARN slow request req-00003bcd-3a04 region=solmere latency_ms=1704
+2026-06-08T05:09:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003bce-c4ee
+2026-06-08T05:10:00Z service=partner-adapter INFO request req-00003bcf-68fe region=solmere route=/certification status=200 latency_ms=17
+2026-06-08T05:11:00Z service=partner-adapter INFO request req-00003bd0-e7c3 region=veyra route=/certification status=200 latency_ms=18
+2026-06-08T05:12:00Z service=partner-adapter WARN slow request req-00003bd1-de31 region=solmere latency_ms=1323
+2026-06-08T05:13:00Z service=partner-adapter WARN slow request req-00003bd2-86ad region=veyra latency_ms=1453
+2026-06-08T05:14:00Z service=partner-adapter INFO request req-00003bd3-e61e region=solmere route=/certification status=200 latency_ms=36
+2026-06-08T05:15:00Z service=partner-adapter WARN slow request req-00003bd4-c03a region=veyra latency_ms=1271
+2026-06-08T05:16:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003bd5-1efe
+2026-06-08T05:17:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003bd6-129e
+2026-06-08T05:18:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003bd7-439c
+2026-06-08T05:19:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003bd8-c25a
+2026-06-08T05:20:00Z service=partner-adapter INFO request req-00003bd9-63f3 region=solmere bank=Northstar status=200 latency_ms=74
+2026-06-08T05:21:00Z service=partner-adapter INFO request req-00003bda-0c58 region=veyra bank=Northstar status=200 latency_ms=70
+2026-06-08T05:22:00Z service=partner-adapter INFO request req-00003bdb-7068 region=solmere route=/certification status=200 latency_ms=72
+2026-06-08T05:23:00Z service=partner-adapter INFO request req-00003bdc-d645 region=veyra bank=Northstar status=200 latency_ms=38
+2026-06-08T05:24:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003bdd-03b5
+2026-06-08T05:25:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003bde-0ea0
+2026-06-08T05:26:00Z service=partner-adapter INFO request req-00003bdf-f161 region=solmere route=/certification status=200 latency_ms=23
+2026-06-08T05:27:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=65
+2026-06-08T05:28:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=67
+2026-06-08T05:29:00Z service=partner-adapter INFO request req-00003be2-c4b0 region=veyra bank=Northstar status=200 latency_ms=73
+2026-06-08T05:30:00Z service=partner-adapter INFO request req-00003be3-81ba region=solmere bank=Northstar status=200 latency_ms=15
+2026-06-08T05:31:00Z service=partner-adapter INFO request req-00003be4-bf9e region=veyra bank=Northstar status=200 latency_ms=23
+2026-06-08T05:32:00Z service=partner-adapter INFO request req-00003be5-99ec region=solmere route=/certification status=200 latency_ms=71
+2026-06-08T05:33:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003be6-de1e
+2026-06-08T05:34:00Z service=partner-adapter WARN slow request req-00003be7-53e6 region=solmere latency_ms=1754
+2026-06-08T05:35:00Z service=partner-adapter WARN slow request req-00003be8-23d6 region=veyra latency_ms=1580
+2026-06-08T05:36:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003be9-7c84
+2026-06-08T05:37:00Z service=partner-adapter WARN slow request req-00003bea-0149 region=veyra latency_ms=1189
+2026-06-08T05:38:00Z service=partner-adapter INFO request req-00003beb-0d8e region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T05:39:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=28
+2026-06-08T05:40:00Z service=partner-adapter INFO request req-00003bed-18b3 region=solmere bank=Northstar status=200 latency_ms=20
+2026-06-08T05:41:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003bee-846d
+2026-06-08T05:42:00Z service=partner-adapter INFO request req-00003bef-a9e2 region=solmere route=/certification status=200 latency_ms=44
+2026-06-08T05:43:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003bf0-c836
+2026-06-08T05:44:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003bf1-1870
+2026-06-08T05:45:00Z service=partner-adapter INFO request req-00003bf2-2f84 region=veyra bank=Northstar status=200 latency_ms=68
+2026-06-08T05:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T05:47:00Z service=partner-adapter INFO request req-00003bf4-6722 region=veyra route=/certification status=200 latency_ms=53
+2026-06-08T05:48:00Z service=partner-adapter INFO request req-00003bf5-5520 region=solmere bank=Northstar status=200 latency_ms=62
+2026-06-08T05:49:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003bf6-6ec7
+2026-06-08T05:50:00Z service=partner-adapter WARN slow request req-00003bf7-77fe region=solmere latency_ms=1290
+2026-06-08T05:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=57
+2026-06-08T05:52:00Z service=partner-adapter INFO request req-00003bf9-2416 region=solmere bank=Northstar status=200 latency_ms=68
+2026-06-08T05:53:00Z service=partner-adapter INFO request req-00003bfa-bb78 region=veyra bank=Northstar status=200 latency_ms=75
+2026-06-08T05:54:00Z service=partner-adapter WARN slow request req-00003bfb-8283 region=solmere latency_ms=1065
+2026-06-08T05:55:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T05:56:00Z service=partner-adapter INFO request req-00003bfd-2874 region=solmere bank=Northstar status=200 latency_ms=26
+2026-06-08T05:57:00Z service=partner-adapter INFO request req-00003bfe-e40a region=veyra bank=Northstar status=200 latency_ms=70
+2026-06-08T05:58:00Z service=partner-adapter INFO request req-00003bff-4405 region=solmere bank=Northstar status=200 latency_ms=47
+2026-06-08T05:59:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003c00-5bd6
+2026-06-08T06:00:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=50
+2026-06-08T06:01:00Z service=partner-adapter INFO request req-00003c02-d41e region=veyra bank=Northstar status=200 latency_ms=55
+2026-06-08T06:02:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003c03-4da7
+2026-06-08T06:03:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003c04-7655
+2026-06-08T06:04:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003c05-6294
+2026-06-08T06:05:00Z service=partner-adapter INFO request req-00003c06-1376 region=veyra bank=Northstar status=200 latency_ms=9
+2026-06-08T06:06:00Z service=partner-adapter WARN slow request req-00003c07-dea0 region=solmere latency_ms=1612
+2026-06-08T06:07:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003c08-0211
+2026-06-08T06:08:00Z service=partner-adapter WARN slow request req-00003c09-133e region=solmere latency_ms=1453
+2026-06-08T06:09:00Z service=partner-adapter INFO request req-00003c0a-4986 region=veyra route=/certification status=200 latency_ms=50
+2026-06-08T06:10:00Z service=partner-adapter INFO request req-00003c0b-df9c region=solmere route=/certification status=200 latency_ms=75
+2026-06-08T06:11:00Z service=partner-adapter INFO request req-00003c0c-dab6 region=veyra route=/certification status=200 latency_ms=68
+2026-06-08T06:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=23
+2026-06-08T06:13:00Z service=partner-adapter WARN slow request req-00003c0e-73ff region=veyra latency_ms=1367
+2026-06-08T06:14:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=12
+2026-06-08T06:15:00Z service=partner-adapter WARN slow request req-00003c10-df7f region=veyra latency_ms=1478
+2026-06-08T06:16:00Z service=partner-adapter WARN slow request req-00003c11-2ca1 region=solmere latency_ms=908
+2026-06-08T06:17:00Z service=partner-adapter INFO request req-00003c12-259c region=veyra route=/certification status=200 latency_ms=30
+2026-06-08T06:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=50
+2026-06-08T06:19:00Z service=partner-adapter WARN slow request req-00003c14-946b region=veyra latency_ms=1317
+2026-06-08T06:20:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T06:21:00Z service=partner-adapter INFO request req-00003c16-a573 region=veyra bank=Northstar status=200 latency_ms=9
+2026-06-08T06:22:00Z service=partner-adapter INFO request req-00003c17-53f2 region=solmere route=/certification status=200 latency_ms=31
+2026-06-08T06:23:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003c18-d604
+2026-06-08T06:24:00Z service=partner-adapter WARN slow request req-00003c19-6c2c region=solmere latency_ms=1106
+2026-06-08T06:25:00Z service=partner-adapter INFO request req-00003c1a-7372 region=veyra route=/certification status=200 latency_ms=21
+2026-06-08T06:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=41
+2026-06-08T06:27:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=16
+2026-06-08T06:28:00Z service=partner-adapter INFO request req-00003c1d-54fd region=solmere route=/certification status=200 latency_ms=70
+2026-06-08T06:29:00Z service=partner-adapter INFO request req-00003c1e-801e region=veyra bank=Northstar status=200 latency_ms=74
+2026-06-08T06:30:00Z service=partner-adapter INFO request req-00003c1f-3b5e region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T06:31:00Z service=partner-adapter INFO request req-00003c20-1cdd region=veyra route=/certification status=200 latency_ms=10
+2026-06-08T06:32:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003c21-b6b7
+2026-06-08T06:33:00Z service=partner-adapter INFO request req-00003c22-32e0 region=veyra bank=Northstar status=200 latency_ms=59
+2026-06-08T06:34:00Z service=partner-adapter WARN slow request req-00003c23-a068 region=solmere latency_ms=1360
+2026-06-08T06:35:00Z service=partner-adapter WARN slow request req-00003c24-5890 region=veyra latency_ms=1067
+2026-06-08T06:36:00Z service=partner-adapter INFO request req-00003c25-d1ba region=solmere bank=Northstar status=200 latency_ms=26
+2026-06-08T06:37:00Z service=partner-adapter WARN slow request req-00003c26-2ba3 region=veyra latency_ms=893
+2026-06-08T06:38:00Z service=partner-adapter INFO request req-00003c27-c600 region=solmere route=/certification status=200 latency_ms=48
+2026-06-08T06:39:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003c28-4cc8
+2026-06-08T06:40:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003c29-e909
+2026-06-08T06:41:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=38
+2026-06-08T06:42:00Z service=partner-adapter WARN slow request req-00003c2b-77d7 region=solmere latency_ms=1230
+2026-06-08T06:43:00Z service=partner-adapter INFO request req-00003c2c-e006 region=veyra route=/certification status=200 latency_ms=68
+2026-06-08T06:44:00Z service=partner-adapter INFO request req-00003c2d-33de region=solmere route=/certification status=200 latency_ms=70
+2026-06-08T06:45:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003c2e-751a
+2026-06-08T06:46:00Z service=partner-adapter INFO request req-00003c2f-21a9 region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T06:47:00Z service=partner-adapter INFO request req-00003c30-57dd region=veyra bank=Northstar status=200 latency_ms=52
+2026-06-08T06:48:00Z service=partner-adapter INFO request req-00003c31-ac85 region=solmere route=/certification status=200 latency_ms=48
+2026-06-08T06:49:00Z service=partner-adapter INFO request req-00003c32-54fb region=veyra bank=Northstar status=200 latency_ms=59
+2026-06-08T06:50:00Z service=partner-adapter WARN slow request req-00003c33-55eb region=solmere latency_ms=1200
+2026-06-08T06:51:00Z service=partner-adapter WARN slow request req-00003c34-7a5b region=veyra latency_ms=1744
+2026-06-08T06:52:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003c35-8b64
+2026-06-08T06:53:00Z service=partner-adapter WARN slow request req-00003c36-7a1d region=veyra latency_ms=1213
+2026-06-08T06:54:00Z service=partner-adapter WARN slow request req-00003c37-48b6 region=solmere latency_ms=1446
+2026-06-08T06:55:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003c38-e0e1
+2026-06-08T06:56:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003c39-7eb4
+2026-06-08T06:57:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003c3a-95e3
+2026-06-08T06:58:00Z service=partner-adapter INFO request req-00003c3b-0cef region=solmere route=/certification status=200 latency_ms=41
+2026-06-08T06:59:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003c3c-1e2a
+2026-06-08T07:00:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003c3d-509c
+2026-06-08T07:01:00Z service=partner-adapter INFO request req-00003c3e-e4cb region=veyra bank=Northstar status=200 latency_ms=26
+2026-06-08T07:02:00Z service=partner-adapter INFO request req-00003c3f-3587 region=solmere route=/certification status=200 latency_ms=26
+2026-06-08T07:03:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003c40-412e
+2026-06-08T07:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=23
+2026-06-08T07:05:00Z service=partner-adapter INFO request req-00003c42-005e region=veyra route=/certification status=200 latency_ms=36
+2026-06-08T07:06:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=62
+2026-06-08T07:07:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=16
+2026-06-08T07:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T07:09:00Z service=partner-adapter INFO request req-00003c46-58f8 region=veyra bank=Northstar status=200 latency_ms=71
+2026-06-08T07:10:00Z service=partner-adapter INFO request req-00003c47-1fd1 region=solmere bank=Northstar status=200 latency_ms=34
+2026-06-08T07:11:00Z service=partner-adapter INFO request req-00003c48-670c region=veyra route=/certification status=200 latency_ms=8
+2026-06-08T07:12:00Z service=partner-adapter WARN slow request req-00003c49-145f region=solmere latency_ms=1436
+2026-06-08T07:13:00Z service=partner-adapter INFO request req-00003c4a-759e region=veyra bank=Northstar status=200 latency_ms=10
+2026-06-08T07:14:00Z service=partner-adapter INFO request req-00003c4b-77ad region=solmere route=/certification status=200 latency_ms=57
+2026-06-08T07:15:00Z service=partner-adapter INFO request req-00003c4c-9050 region=veyra route=/certification status=200 latency_ms=50
+2026-06-08T07:16:00Z service=partner-adapter INFO request req-00003c4d-0118 region=solmere bank=Northstar status=200 latency_ms=21
+2026-06-08T07:17:00Z service=partner-adapter INFO request req-00003c4e-cd25 region=veyra bank=Northstar status=200 latency_ms=17
+2026-06-08T07:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=68
+2026-06-08T07:19:00Z service=partner-adapter INFO request req-00003c50-686d region=veyra route=/certification status=200 latency_ms=64
+2026-06-08T07:20:00Z service=partner-adapter INFO request req-00003c51-4282 region=solmere route=/certification status=200 latency_ms=43
+2026-06-08T07:21:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003c52-5ff0
+2026-06-08T07:22:00Z service=partner-adapter INFO request req-00003c53-7c9d region=solmere route=/certification status=200 latency_ms=61
+2026-06-08T07:23:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T07:24:00Z service=partner-adapter WARN slow request req-00003c55-3c0a region=solmere latency_ms=1701
+2026-06-08T07:25:00Z service=partner-adapter INFO request req-00003c56-c63b region=veyra route=/certification status=200 latency_ms=40
+2026-06-08T07:26:00Z service=partner-adapter INFO request req-00003c57-855c region=solmere bank=Northstar status=200 latency_ms=52
+2026-06-08T07:27:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003c58-a7b1
+2026-06-08T07:28:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003c59-7f64
+2026-06-08T07:29:00Z service=partner-adapter INFO request req-00003c5a-0c5a region=veyra route=/certification status=200 latency_ms=25
+2026-06-08T07:30:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003c5b-8716
+2026-06-08T07:31:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003c5c-016a
+2026-06-08T07:32:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=14
+2026-06-08T07:33:00Z service=partner-adapter WARN slow request req-00003c5e-4bac region=veyra latency_ms=1632
+2026-06-08T07:34:00Z service=partner-adapter WARN slow request req-00003c5f-ca82 region=solmere latency_ms=1436
+2026-06-08T07:35:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003c60-5c2f
+2026-06-08T07:36:00Z service=partner-adapter INFO request req-00003c61-c223 region=solmere bank=Northstar status=200 latency_ms=8
+2026-06-08T07:37:00Z service=partner-adapter INFO request req-00003c62-2974 region=veyra bank=Northstar status=200 latency_ms=39
+2026-06-08T07:38:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=47
+2026-06-08T07:39:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=58
+2026-06-08T07:40:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003c65-59ea
+2026-06-08T07:41:00Z service=partner-adapter INFO request req-00003c66-c5fa region=veyra route=/certification status=200 latency_ms=40
+2026-06-08T07:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T07:43:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=53
+2026-06-08T07:44:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T07:45:00Z service=partner-adapter INFO request req-00003c6a-03c9 region=veyra route=/certification status=200 latency_ms=39
+2026-06-08T07:46:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003c6b-901e
+2026-06-08T07:47:00Z service=partner-adapter WARN slow request req-00003c6c-cd50 region=veyra latency_ms=1329
+2026-06-08T07:48:00Z service=partner-adapter INFO request req-00003c6d-e4d7 region=solmere bank=Northstar status=200 latency_ms=51
+2026-06-08T07:49:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=38
+2026-06-08T07:50:00Z service=partner-adapter WARN slow request req-00003c6f-9f5d region=solmere latency_ms=1633
+2026-06-08T07:51:00Z service=partner-adapter INFO request req-00003c70-dc44 region=veyra route=/certification status=200 latency_ms=44
+2026-06-08T07:52:00Z service=partner-adapter WARN slow request req-00003c71-2b51 region=solmere latency_ms=1710
+2026-06-08T07:53:00Z service=partner-adapter WARN slow request req-00003c72-48ff region=veyra latency_ms=1237
+2026-06-08T07:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=31
+2026-06-08T07:55:00Z service=partner-adapter INFO request req-00003c74-6e04 region=veyra bank=Northstar status=200 latency_ms=67
+2026-06-08T07:56:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003c75-9e5b
+2026-06-08T07:57:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003c76-1853
+2026-06-08T07:58:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=48
+2026-06-08T07:59:00Z service=partner-adapter INFO request req-00003c78-ccfe region=veyra bank=Northstar status=200 latency_ms=59
+2026-06-08T08:00:00Z service=partner-adapter WARN slow request req-00003c79-7c60 region=solmere latency_ms=1716
+2026-06-08T08:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T08:02:00Z service=partner-adapter INFO request req-00003c7b-9bba region=solmere bank=Northstar status=200 latency_ms=72
+2026-06-08T08:03:00Z service=partner-adapter INFO request req-00003c7c-7ef2 region=veyra bank=Northstar status=200 latency_ms=18
+2026-06-08T08:04:00Z service=partner-adapter WARN slow request req-00003c7d-60c8 region=solmere latency_ms=1285
+2026-06-08T08:05:00Z service=partner-adapter INFO request req-00003c7e-f621 region=veyra bank=Northstar status=200 latency_ms=42
+2026-06-08T08:06:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=40
+2026-06-08T08:07:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003c80-f35e
+2026-06-08T08:08:00Z service=partner-adapter WARN slow request req-00003c81-8dbc region=solmere latency_ms=1342
+2026-06-08T08:09:00Z service=partner-adapter INFO request req-00003c82-9b80 region=veyra route=/certification status=200 latency_ms=55
+2026-06-08T08:10:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=23
+2026-06-08T08:11:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=71
+2026-06-08T08:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=8
+2026-06-08T08:13:00Z service=partner-adapter INFO request req-00003c86-e3e0 region=veyra bank=Northstar status=200 latency_ms=49
+2026-06-08T08:14:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003c87-e074
+2026-06-08T08:15:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003c88-b524
+2026-06-08T08:16:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=61
+2026-06-08T08:17:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003c8a-4b65
+2026-06-08T08:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T08:19:00Z service=partner-adapter WARN slow request req-00003c8c-3447 region=veyra latency_ms=1590
+2026-06-08T08:20:00Z service=partner-adapter INFO request req-00003c8d-e309 region=solmere bank=Northstar status=200 latency_ms=72
+2026-06-08T08:21:00Z service=partner-adapter INFO request req-00003c8e-a6ea region=veyra bank=Northstar status=200 latency_ms=26
+2026-06-08T08:22:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003c8f-2cc8
+2026-06-08T08:23:00Z service=partner-adapter INFO request req-00003c90-43a1 region=veyra bank=Northstar status=200 latency_ms=43
+2026-06-08T08:24:00Z service=partner-adapter WARN slow request req-00003c91-9084 region=solmere latency_ms=1255
+2026-06-08T08:25:00Z service=partner-adapter INFO request req-00003c92-d915 region=veyra bank=Northstar status=200 latency_ms=58
+2026-06-08T08:26:00Z service=partner-adapter INFO request req-00003c93-13e3 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T08:27:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T08:28:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003c95-fa21
+2026-06-08T08:29:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003c96-5d30
+2026-06-08T08:30:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T08:31:00Z service=partner-adapter INFO request req-00003c98-43e9 region=veyra bank=Northstar status=200 latency_ms=32
+2026-06-08T08:32:00Z service=partner-adapter WARN slow request req-00003c99-24fc region=solmere latency_ms=1360
+2026-06-08T08:33:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003c9a-1173
+2026-06-08T08:34:00Z service=partner-adapter INFO request req-00003c9b-24d1 region=solmere bank=Northstar status=200 latency_ms=71
+2026-06-08T08:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=25
+2026-06-08T08:36:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=48
+2026-06-08T08:37:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003c9e-f3bb
+2026-06-08T08:38:00Z service=partner-adapter INFO request req-00003c9f-966f region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T08:39:00Z service=partner-adapter INFO request req-00003ca0-8d8d region=veyra bank=Northstar status=200 latency_ms=48
+2026-06-08T08:40:00Z service=partner-adapter INFO request req-00003ca1-74cb region=solmere route=/certification status=200 latency_ms=10
+2026-06-08T08:41:00Z service=partner-adapter INFO request req-00003ca2-a3e8 region=veyra route=/certification status=200 latency_ms=15
+2026-06-08T08:42:00Z service=partner-adapter INFO request req-00003ca3-cc89 region=solmere route=/certification status=200 latency_ms=56
+2026-06-08T08:43:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=29
+2026-06-08T08:44:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003ca5-06cc
+2026-06-08T08:45:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003ca6-2801
+2026-06-08T08:46:00Z service=partner-adapter INFO request req-00003ca7-a3a7 region=solmere bank=Northstar status=200 latency_ms=53
+2026-06-08T08:47:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003ca8-590a
+2026-06-08T08:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=59
+2026-06-08T08:49:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T08:50:00Z service=partner-adapter INFO request req-00003cab-baf3 region=solmere bank=Northstar status=200 latency_ms=46
+2026-06-08T08:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=69
+2026-06-08T08:52:00Z service=partner-adapter INFO request req-00003cad-7938 region=solmere route=/certification status=200 latency_ms=20
+2026-06-08T08:53:00Z service=partner-adapter WARN slow request req-00003cae-5d80 region=veyra latency_ms=953
+2026-06-08T08:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=42
+2026-06-08T08:55:00Z service=partner-adapter INFO request req-00003cb0-6a6b region=veyra bank=Northstar status=200 latency_ms=45
+2026-06-08T08:56:00Z service=partner-adapter INFO request req-00003cb1-9db4 region=solmere bank=Northstar status=200 latency_ms=10
+2026-06-08T08:57:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=17
+2026-06-08T08:58:00Z service=partner-adapter INFO request req-00003cb3-0bb4 region=solmere route=/certification status=200 latency_ms=12
+2026-06-08T08:59:00Z service=partner-adapter INFO request req-00003cb4-0a28 region=veyra bank=Northstar status=200 latency_ms=10
+2026-06-08T09:00:00Z service=partner-adapter INFO request req-00003cb5-3df1 region=solmere bank=Northstar status=200 latency_ms=66
+2026-06-08T09:01:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003cb6-3668
+2026-06-08T09:02:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=64
+2026-06-08T09:03:00Z service=partner-adapter INFO request req-00003cb8-8635 region=veyra bank=Northstar status=200 latency_ms=9
+2026-06-08T09:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=46
+2026-06-08T09:05:00Z service=partner-adapter INFO request req-00003cba-86f5 region=veyra route=/certification status=200 latency_ms=42
+2026-06-08T09:06:00Z service=partner-adapter WARN slow request req-00003cbb-10ce region=solmere latency_ms=1028
+2026-06-08T09:07:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=45
+2026-06-08T09:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=67
+2026-06-08T09:09:00Z service=partner-adapter WARN slow request req-00003cbe-772c region=veyra latency_ms=1252
+2026-06-08T09:10:00Z service=partner-adapter INFO request req-00003cbf-ab2e region=solmere bank=Northstar status=200 latency_ms=47
+2026-06-08T09:11:00Z service=partner-adapter INFO request req-00003cc0-c014 region=veyra bank=Northstar status=200 latency_ms=11
+2026-06-08T09:12:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003cc1-2f91
+2026-06-08T09:13:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=73
+2026-06-08T09:14:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003cc3-34a7
+2026-06-08T09:15:00Z service=partner-adapter WARN slow request req-00003cc4-d693 region=veyra latency_ms=884
+2026-06-08T09:16:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003cc5-f2a3
+2026-06-08T09:17:00Z service=partner-adapter WARN slow request req-00003cc6-1f58 region=veyra latency_ms=1677
+2026-06-08T09:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=68
+2026-06-08T09:19:00Z service=partner-adapter WARN slow request req-00003cc8-7e23 region=veyra latency_ms=1511
+2026-06-08T09:20:00Z service=partner-adapter INFO request req-00003cc9-47ee region=solmere bank=Northstar status=200 latency_ms=74
+2026-06-08T09:21:00Z service=partner-adapter INFO request req-00003cca-37df region=veyra bank=Northstar status=200 latency_ms=68
+2026-06-08T09:22:00Z service=partner-adapter WARN slow request req-00003ccb-0062 region=solmere latency_ms=1758
+2026-06-08T09:23:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003ccc-cda7
+2026-06-08T09:24:00Z service=partner-adapter INFO request req-00003ccd-d6b5 region=solmere route=/certification status=200 latency_ms=64
+2026-06-08T09:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=58
+2026-06-08T09:26:00Z service=partner-adapter INFO request req-00003ccf-048f region=solmere route=/certification status=200 latency_ms=67
+2026-06-08T09:27:00Z service=partner-adapter INFO request req-00003cd0-09de region=veyra bank=Northstar status=200 latency_ms=36
+2026-06-08T09:28:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=72
+2026-06-08T09:29:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003cd2-3e66
+2026-06-08T09:30:00Z service=partner-adapter WARN slow request req-00003cd3-cabf region=solmere latency_ms=1051
+2026-06-08T09:31:00Z service=partner-adapter WARN slow request req-00003cd4-50ab region=veyra latency_ms=1898
+2026-06-08T09:32:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=47
+2026-06-08T09:33:00Z service=partner-adapter WARN slow request req-00003cd6-8eee region=veyra latency_ms=1022
+2026-06-08T09:34:00Z service=partner-adapter WARN slow request req-00003cd7-65e5 region=solmere latency_ms=1560
+2026-06-08T09:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=50
+2026-06-08T09:36:00Z service=partner-adapter INFO request req-00003cd9-6d4b region=solmere route=/certification status=200 latency_ms=20
+2026-06-08T09:37:00Z service=partner-adapter WARN slow request req-00003cda-267a region=veyra latency_ms=1092
+2026-06-08T09:38:00Z service=partner-adapter INFO request req-00003cdb-22d5 region=solmere route=/certification status=200 latency_ms=53
+2026-06-08T09:39:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003cdc-f6d4
+2026-06-08T09:40:00Z service=partner-adapter INFO request req-00003cdd-e724 region=solmere bank=Northstar status=200 latency_ms=64
+2026-06-08T09:41:00Z service=partner-adapter INFO request req-00003cde-4f39 region=veyra route=/certification status=200 latency_ms=63
+2026-06-08T09:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=56
+2026-06-08T09:43:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T09:44:00Z service=partner-adapter WARN slow request req-00003ce1-4c03 region=solmere latency_ms=1007
+2026-06-08T09:45:00Z service=partner-adapter WARN slow request req-00003ce2-5f8d region=veyra latency_ms=1352
+2026-06-08T09:46:00Z service=partner-adapter INFO request req-00003ce3-9860 region=solmere route=/certification status=200 latency_ms=14
+2026-06-08T09:47:00Z service=partner-adapter INFO request req-00003ce4-4e15 region=veyra route=/certification status=200 latency_ms=30
+2026-06-08T09:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=27
+2026-06-08T09:49:00Z service=partner-adapter INFO request req-00003ce6-2228 region=veyra route=/certification status=200 latency_ms=31
+2026-06-08T09:50:00Z service=partner-adapter INFO request req-00003ce7-a11a region=solmere route=/certification status=200 latency_ms=38
+2026-06-08T09:51:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003ce8-a190
+2026-06-08T09:52:00Z service=partner-adapter INFO request req-00003ce9-6ee6 region=solmere bank=Northstar status=200 latency_ms=68
+2026-06-08T09:53:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=68
+2026-06-08T09:54:00Z service=partner-adapter INFO request req-00003ceb-0c2c region=solmere route=/certification status=200 latency_ms=38
+2026-06-08T09:55:00Z service=partner-adapter INFO request req-00003cec-61e0 region=veyra route=/certification status=200 latency_ms=44
+2026-06-08T09:56:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003ced-7fe7
+2026-06-08T09:57:00Z service=partner-adapter INFO request req-00003cee-bf87 region=veyra route=/certification status=200 latency_ms=61
+2026-06-08T09:58:00Z service=partner-adapter INFO request req-00003cef-92cc region=solmere bank=Northstar status=200 latency_ms=68
+2026-06-08T09:59:00Z service=partner-adapter INFO request req-00003cf0-8e10 region=veyra route=/certification status=200 latency_ms=29
+2026-06-08T10:00:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003cf1-390b
+2026-06-08T10:01:00Z service=partner-adapter INFO request req-00003cf2-b2ae region=veyra route=/certification status=200 latency_ms=34
+2026-06-08T10:02:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003cf3-0529
+2026-06-08T10:03:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=32
+2026-06-08T10:04:00Z service=partner-adapter WARN slow request req-00003cf5-208d region=solmere latency_ms=1639
+2026-06-08T10:05:00Z service=partner-adapter WARN slow request req-00003cf6-2678 region=veyra latency_ms=1208
+2026-06-08T10:06:00Z service=partner-adapter INFO request req-00003cf7-c6bf region=solmere route=/certification status=200 latency_ms=19
+2026-06-08T10:07:00Z service=partner-adapter INFO request req-00003cf8-bfaa region=veyra bank=Northstar status=200 latency_ms=19
+2026-06-08T10:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=30
+2026-06-08T10:09:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003cfa-e813
+2026-06-08T10:10:00Z service=partner-adapter WARN slow request req-00003cfb-30e4 region=solmere latency_ms=1480
+2026-06-08T10:11:00Z service=partner-adapter WARN slow request req-00003cfc-ad25 region=veyra latency_ms=912
+2026-06-08T10:12:00Z service=partner-adapter INFO request req-00003cfd-bdeb region=solmere bank=Northstar status=200 latency_ms=68
+2026-06-08T10:13:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003cfe-761f
+2026-06-08T10:14:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003cff-f3d2
+2026-06-08T10:15:00Z service=partner-adapter WARN slow request req-00003d00-621b region=veyra latency_ms=974
+2026-06-08T10:16:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003d01-354c
+2026-06-08T10:17:00Z service=partner-adapter INFO request req-00003d02-7b16 region=veyra bank=Northstar status=200 latency_ms=46
+2026-06-08T10:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=44
+2026-06-08T10:19:00Z service=partner-adapter WARN slow request req-00003d04-7dd7 region=veyra latency_ms=923
+2026-06-08T10:20:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003d05-7fe2
+2026-06-08T10:21:00Z service=partner-adapter WARN slow request req-00003d06-433e region=veyra latency_ms=1138
+2026-06-08T10:22:00Z service=partner-adapter INFO request req-00003d07-0a86 region=solmere bank=Northstar status=200 latency_ms=17
+2026-06-08T10:23:00Z service=partner-adapter INFO request req-00003d08-49ff region=veyra route=/certification status=200 latency_ms=43
+2026-06-08T10:24:00Z service=partner-adapter WARN slow request req-00003d09-2e1c region=solmere latency_ms=1150
+2026-06-08T10:25:00Z service=partner-adapter INFO request req-00003d0a-7614 region=veyra bank=Northstar status=200 latency_ms=52
+2026-06-08T10:26:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003d0b-0ec9
+2026-06-08T10:27:00Z service=partner-adapter INFO request req-00003d0c-a066 region=veyra bank=Northstar status=200 latency_ms=61
+2026-06-08T10:28:00Z service=partner-adapter INFO request req-00003d0d-f1f8 region=solmere bank=Northstar status=200 latency_ms=73
+2026-06-08T10:29:00Z service=partner-adapter INFO request req-00003d0e-a13c region=veyra route=/certification status=200 latency_ms=27
+2026-06-08T10:30:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003d0f-4182
+2026-06-08T10:31:00Z service=partner-adapter INFO request req-00003d10-e131 region=veyra bank=Northstar status=200 latency_ms=24
+2026-06-08T10:32:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=45
+2026-06-08T10:33:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T10:34:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=55
+2026-06-08T10:35:00Z service=partner-adapter INFO request req-00003d14-1385 region=veyra bank=Northstar status=200 latency_ms=11
+2026-06-08T10:36:00Z service=partner-adapter WARN slow request req-00003d15-8032 region=solmere latency_ms=1358
+2026-06-08T10:37:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003d16-bd94
+2026-06-08T10:38:00Z service=partner-adapter INFO request req-00003d17-51f2 region=solmere bank=Northstar status=200 latency_ms=58
+2026-06-08T10:39:00Z service=partner-adapter INFO request req-00003d18-81bb region=veyra bank=Northstar status=200 latency_ms=43
+2026-06-08T10:40:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003d19-a937
+2026-06-08T10:41:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003d1a-c8dc
+2026-06-08T10:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=14
+2026-06-08T10:43:00Z service=partner-adapter INFO request req-00003d1c-39c0 region=veyra bank=Northstar status=200 latency_ms=19
+2026-06-08T10:44:00Z service=partner-adapter WARN slow request req-00003d1d-a08a region=solmere latency_ms=1780
+2026-06-08T10:45:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003d1e-a8d7
+2026-06-08T10:46:00Z service=partner-adapter INFO request req-00003d1f-a58c region=solmere route=/certification status=200 latency_ms=71
+2026-06-08T10:47:00Z service=partner-adapter WARN slow request req-00003d20-2f7e region=veyra latency_ms=1182
+2026-06-08T10:48:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003d21-b1b5
+2026-06-08T10:49:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=31
+2026-06-08T10:50:00Z service=partner-adapter WARN slow request req-00003d23-5009 region=solmere latency_ms=1418
+2026-06-08T10:51:00Z service=partner-adapter INFO request req-00003d24-d014 region=veyra route=/certification status=200 latency_ms=21
+2026-06-08T10:52:00Z service=partner-adapter WARN slow request req-00003d25-a093 region=solmere latency_ms=1295
+2026-06-08T10:53:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=73
+2026-06-08T10:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=31
+2026-06-08T10:55:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003d28-1a97
+2026-06-08T10:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=11
+2026-06-08T10:57:00Z service=partner-adapter INFO request req-00003d2a-9df5 region=veyra route=/certification status=200 latency_ms=8
+2026-06-08T10:58:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003d2b-7ba0
+2026-06-08T10:59:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=42
+2026-06-08T11:00:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003d2d-1657
+2026-06-08T11:01:00Z service=partner-adapter WARN slow request req-00003d2e-738b region=veyra latency_ms=1090
+2026-06-08T11:02:00Z service=partner-adapter INFO request req-00003d2f-13da region=solmere route=/certification status=200 latency_ms=48
+2026-06-08T11:03:00Z service=partner-adapter INFO request req-00003d30-db2d region=veyra bank=Northstar status=200 latency_ms=47
+2026-06-08T11:04:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003d31-ddec
+2026-06-08T11:05:00Z service=partner-adapter INFO request req-00003d32-0ee8 region=veyra route=/certification status=200 latency_ms=10
+2026-06-08T11:06:00Z service=partner-adapter INFO request req-00003d33-255d region=solmere bank=Northstar status=200 latency_ms=24
+2026-06-08T11:07:00Z service=partner-adapter INFO request req-00003d34-b786 region=veyra bank=Northstar status=200 latency_ms=73
+2026-06-08T11:08:00Z service=partner-adapter WARN slow request req-00003d35-a5dd region=solmere latency_ms=959
+2026-06-08T11:09:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003d36-8c5f
+2026-06-08T11:10:00Z service=partner-adapter WARN slow request req-00003d37-c47e region=solmere latency_ms=1319
+2026-06-08T11:11:00Z service=partner-adapter INFO request req-00003d38-7317 region=veyra route=/certification status=200 latency_ms=54
+2026-06-08T11:12:00Z service=partner-adapter INFO request req-00003d39-d1af region=solmere bank=Northstar status=200 latency_ms=35
+2026-06-08T11:13:00Z service=partner-adapter WARN slow request req-00003d3a-2e20 region=veyra latency_ms=1581
+2026-06-08T11:14:00Z service=partner-adapter INFO request req-00003d3b-5bb6 region=solmere route=/certification status=200 latency_ms=64
+2026-06-08T11:15:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003d3c-aeb7
+2026-06-08T11:16:00Z service=partner-adapter INFO request req-00003d3d-a26d region=solmere bank=Northstar status=200 latency_ms=54
+2026-06-08T11:17:00Z service=partner-adapter INFO request req-00003d3e-4621 region=veyra bank=Northstar status=200 latency_ms=38
+2026-06-08T11:18:00Z service=partner-adapter INFO request req-00003d3f-adb8 region=solmere bank=Northstar status=200 latency_ms=37
+2026-06-08T11:19:00Z service=partner-adapter INFO request req-00003d40-8ba4 region=veyra route=/certification status=200 latency_ms=52
+2026-06-08T11:20:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=30
+2026-06-08T11:21:00Z service=partner-adapter INFO request req-00003d42-f847 region=veyra bank=Northstar status=200 latency_ms=74
+2026-06-08T11:22:00Z service=partner-adapter INFO request req-00003d43-dd35 region=solmere route=/certification status=200 latency_ms=50
+2026-06-08T11:23:00Z service=partner-adapter INFO request req-00003d44-080d region=veyra route=/certification status=200 latency_ms=12
+2026-06-08T11:24:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003d45-ac66
+2026-06-08T11:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=34
+2026-06-08T11:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=67
+2026-06-08T11:27:00Z service=partner-adapter INFO request req-00003d48-9016 region=veyra bank=Northstar status=200 latency_ms=54
+2026-06-08T11:28:00Z service=partner-adapter WARN slow request req-00003d49-2904 region=solmere latency_ms=1507
+2026-06-08T11:29:00Z service=partner-adapter INFO request req-00003d4a-0e1b region=veyra route=/certification status=200 latency_ms=63
+2026-06-08T11:30:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003d4b-9e02
+2026-06-08T11:31:00Z service=partner-adapter WARN slow request req-00003d4c-1b41 region=veyra latency_ms=915
+2026-06-08T11:32:00Z service=partner-adapter INFO request req-00003d4d-2bea region=solmere bank=Northstar status=200 latency_ms=42
+2026-06-08T11:33:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=18
+2026-06-08T11:34:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=53
+2026-06-08T11:35:00Z service=partner-adapter WARN slow request req-00003d50-a23d region=veyra latency_ms=1464
+2026-06-08T11:36:00Z service=partner-adapter INFO request req-00003d51-5548 region=solmere bank=Northstar status=200 latency_ms=33
+2026-06-08T11:37:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=12
+2026-06-08T11:38:00Z service=partner-adapter INFO request req-00003d53-58f4 region=solmere route=/certification status=200 latency_ms=71
+2026-06-08T11:39:00Z service=partner-adapter WARN slow request req-00003d54-26f7 region=veyra latency_ms=867
+2026-06-08T11:40:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=30
+2026-06-08T11:41:00Z service=partner-adapter WARN slow request req-00003d56-28d9 region=veyra latency_ms=1830
+2026-06-08T11:42:00Z service=partner-adapter WARN slow request req-00003d57-2508 region=solmere latency_ms=1721
+2026-06-08T11:43:00Z service=partner-adapter WARN slow request req-00003d58-563c region=veyra latency_ms=1408
+2026-06-08T11:44:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T11:45:00Z service=partner-adapter INFO request req-00003d5a-b0e6 region=veyra route=/certification status=200 latency_ms=23
+2026-06-08T11:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=71
+2026-06-08T11:47:00Z service=partner-adapter WARN slow request req-00003d5c-67c4 region=veyra latency_ms=1719
+2026-06-08T11:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=22
+2026-06-08T11:49:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=47
+2026-06-08T11:50:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=70
+2026-06-08T11:51:00Z service=partner-adapter INFO request req-00003d60-3201 region=veyra route=/certification status=200 latency_ms=72
+2026-06-08T11:52:00Z service=partner-adapter INFO request req-00003d61-ab32 region=solmere route=/certification status=200 latency_ms=30
+2026-06-08T11:53:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=32
+2026-06-08T11:54:00Z service=partner-adapter WARN slow request req-00003d63-80d4 region=solmere latency_ms=1146
+2026-06-08T11:55:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T11:56:00Z service=partner-adapter INFO request req-00003d65-4314 region=solmere route=/certification status=200 latency_ms=68
+2026-06-08T11:57:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003d66-bac1
+2026-06-08T11:58:00Z service=partner-adapter INFO request req-00003d67-212d region=solmere route=/certification status=200 latency_ms=56
+2026-06-08T11:59:00Z service=partner-adapter WARN slow request req-00003d68-cd5f region=veyra latency_ms=883
+2026-06-08T12:00:00Z service=partner-adapter INFO request req-00003d69-1b5b region=solmere bank=Northstar status=200 latency_ms=16
+2026-06-08T12:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T12:02:00Z service=partner-adapter INFO request req-00003d6b-116b region=solmere bank=Northstar status=200 latency_ms=50
+2026-06-08T12:03:00Z service=partner-adapter WARN slow request req-00003d6c-1620 region=veyra latency_ms=1786
+2026-06-08T12:04:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003d6d-8d2c
+2026-06-08T12:05:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=65
+2026-06-08T12:06:00Z service=partner-adapter INFO request req-00003d6f-fcfc region=solmere bank=Northstar status=200 latency_ms=75
+2026-06-08T12:07:00Z service=partner-adapter WARN slow request req-00003d70-29c7 region=veyra latency_ms=1682
+2026-06-08T12:08:00Z service=partner-adapter INFO request req-00003d71-835a region=solmere bank=Northstar status=200 latency_ms=59
+2026-06-08T12:09:00Z service=partner-adapter WARN slow request req-00003d72-9368 region=veyra latency_ms=1688
+2026-06-08T12:10:00Z service=partner-adapter INFO request req-00003d73-d57f region=solmere bank=Northstar status=200 latency_ms=18
+2026-06-08T12:11:00Z service=partner-adapter WARN slow request req-00003d74-bdec region=veyra latency_ms=1133
+2026-06-08T12:12:00Z service=partner-adapter INFO request req-00003d75-02b4 region=solmere route=/certification status=200 latency_ms=46
+2026-06-08T12:13:00Z service=partner-adapter INFO request req-00003d76-0367 region=veyra route=/certification status=200 latency_ms=65
+2026-06-08T12:14:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=59
+2026-06-08T12:15:00Z service=partner-adapter WARN slow request req-00003d78-0db1 region=veyra latency_ms=996
+2026-06-08T12:16:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T12:17:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=75
+2026-06-08T12:18:00Z service=partner-adapter WARN slow request req-00003d7b-0431 region=solmere latency_ms=1173
+2026-06-08T12:19:00Z service=partner-adapter WARN slow request req-00003d7c-6576 region=veyra latency_ms=1488
+2026-06-08T12:20:00Z service=partner-adapter WARN slow request req-00003d7d-31e4 region=solmere latency_ms=882
+2026-06-08T12:21:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003d7e-d3d2
+2026-06-08T12:22:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=11
+2026-06-08T12:23:00Z service=partner-adapter WARN slow request req-00003d80-8250 region=veyra latency_ms=1307
+2026-06-08T12:24:00Z service=partner-adapter WARN slow request req-00003d81-c68e region=solmere latency_ms=1522
+2026-06-08T12:25:00Z service=partner-adapter WARN slow request req-00003d82-e97d region=veyra latency_ms=1334
+2026-06-08T12:26:00Z service=partner-adapter WARN slow request req-00003d83-6b1a region=solmere latency_ms=897
+2026-06-08T12:27:00Z service=partner-adapter INFO request req-00003d84-6349 region=veyra bank=Northstar status=200 latency_ms=30
+2026-06-08T12:28:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=64
+2026-06-08T12:29:00Z service=partner-adapter INFO request req-00003d86-3998 region=veyra route=/certification status=200 latency_ms=65
+2026-06-08T12:30:00Z service=partner-adapter WARN slow request req-00003d87-d5f9 region=solmere latency_ms=1692
+2026-06-08T12:31:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003d88-b1ef
+2026-06-08T12:32:00Z service=partner-adapter WARN slow request req-00003d89-13c3 region=solmere latency_ms=1248
+2026-06-08T12:33:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003d8a-e669
+2026-06-08T12:34:00Z service=partner-adapter INFO request req-00003d8b-a5eb region=solmere bank=Northstar status=200 latency_ms=36
+2026-06-08T12:35:00Z service=partner-adapter INFO request req-00003d8c-da73 region=veyra bank=Northstar status=200 latency_ms=54
+2026-06-08T12:36:00Z service=partner-adapter INFO request req-00003d8d-af92 region=solmere route=/certification status=200 latency_ms=34
+2026-06-08T12:37:00Z service=partner-adapter WARN slow request req-00003d8e-b5cf region=veyra latency_ms=902
+2026-06-08T12:38:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=37
+2026-06-08T12:39:00Z service=partner-adapter INFO request req-00003d90-e9ef region=veyra bank=Northstar status=200 latency_ms=12
+2026-06-08T12:40:00Z service=partner-adapter WARN slow request req-00003d91-e123 region=solmere latency_ms=1209
+2026-06-08T12:41:00Z service=partner-adapter INFO request req-00003d92-b4ab region=veyra bank=Northstar status=200 latency_ms=47
+2026-06-08T12:42:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003d93-be7c
+2026-06-08T12:43:00Z service=partner-adapter INFO request req-00003d94-5687 region=veyra route=/certification status=200 latency_ms=40
+2026-06-08T12:44:00Z service=partner-adapter INFO request req-00003d95-7cca region=solmere route=/certification status=200 latency_ms=52
+2026-06-08T12:45:00Z service=partner-adapter WARN slow request req-00003d96-ed55 region=veyra latency_ms=1387
+2026-06-08T12:46:00Z service=partner-adapter WARN slow request req-00003d97-e108 region=solmere latency_ms=1230
+2026-06-08T12:47:00Z service=partner-adapter INFO request req-00003d98-1023 region=veyra bank=Northstar status=200 latency_ms=30
+2026-06-08T12:48:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003d99-c9c4
+2026-06-08T12:49:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003d9a-e1a0
+2026-06-08T12:50:00Z service=partner-adapter INFO request req-00003d9b-f251 region=solmere route=/certification status=200 latency_ms=54
+2026-06-08T12:51:00Z service=partner-adapter WARN slow request req-00003d9c-d7e3 region=veyra latency_ms=1171
+2026-06-08T12:52:00Z service=partner-adapter INFO request req-00003d9d-42a4 region=solmere route=/certification status=200 latency_ms=35
+2026-06-08T12:53:00Z service=partner-adapter WARN slow request req-00003d9e-6222 region=veyra latency_ms=1714
+2026-06-08T12:54:00Z service=partner-adapter INFO request req-00003d9f-7bd8 region=solmere bank=Northstar status=200 latency_ms=22
+2026-06-08T12:55:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=37
+2026-06-08T12:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=13
+2026-06-08T12:57:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=57
+2026-06-08T12:58:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003da3-4630
+2026-06-08T12:59:00Z service=partner-adapter INFO request req-00003da4-9cbe region=veyra route=/certification status=200 latency_ms=60
+2026-06-08T13:00:00Z service=partner-adapter INFO request req-00003da5-eadd region=solmere route=/certification status=200 latency_ms=33
+2026-06-08T13:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=42
+2026-06-08T13:02:00Z service=partner-adapter INFO request req-00003da7-96b3 region=solmere route=/certification status=200 latency_ms=36
+2026-06-08T13:03:00Z service=partner-adapter INFO request req-00003da8-c59d region=veyra bank=Northstar status=200 latency_ms=36
+2026-06-08T13:04:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003da9-9065
+2026-06-08T13:05:00Z service=partner-adapter INFO request req-00003daa-4287 region=veyra route=/certification status=200 latency_ms=11
+2026-06-08T13:06:00Z service=partner-adapter INFO request req-00003dab-9f87 region=solmere bank=Northstar status=200 latency_ms=34
+2026-06-08T13:07:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003dac-5dd9
+2026-06-08T13:08:00Z service=partner-adapter WARN slow request req-00003dad-2770 region=solmere latency_ms=1225
+2026-06-08T13:09:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003dae-f9ba
+2026-06-08T13:10:00Z service=partner-adapter INFO request req-00003daf-5c88 region=solmere bank=Northstar status=200 latency_ms=59
+2026-06-08T13:11:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=44
+2026-06-08T13:12:00Z service=partner-adapter INFO request req-00003db1-7b3e region=solmere bank=Northstar status=200 latency_ms=18
+2026-06-08T13:13:00Z service=partner-adapter INFO request req-00003db2-e1f2 region=veyra bank=Northstar status=200 latency_ms=61
+2026-06-08T13:14:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=56
+2026-06-08T13:15:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=75
+2026-06-08T13:16:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003db5-103e
+2026-06-08T13:17:00Z service=partner-adapter WARN slow request req-00003db6-615e region=veyra latency_ms=1039
+2026-06-08T13:18:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003db7-6478
+2026-06-08T13:19:00Z service=partner-adapter WARN slow request req-00003db8-4684 region=veyra latency_ms=930
+2026-06-08T13:20:00Z service=partner-adapter WARN slow request req-00003db9-0dfd region=solmere latency_ms=1119
+2026-06-08T13:21:00Z service=partner-adapter INFO request req-00003dba-e3fe region=veyra route=/certification status=200 latency_ms=13
+2026-06-08T13:22:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003dbb-276f
+2026-06-08T13:23:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=26
+2026-06-08T13:24:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=61
+2026-06-08T13:25:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003dbe-b5b2
+2026-06-08T13:26:00Z service=partner-adapter INFO request req-00003dbf-a73b region=solmere bank=Northstar status=200 latency_ms=28
+2026-06-08T13:27:00Z service=partner-adapter INFO request req-00003dc0-7d23 region=veyra route=/certification status=200 latency_ms=65
+2026-06-08T13:28:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T13:29:00Z service=partner-adapter WARN slow request req-00003dc2-f549 region=veyra latency_ms=1222
+2026-06-08T13:30:00Z service=partner-adapter INFO request req-00003dc3-206b region=solmere route=/certification status=200 latency_ms=64
+2026-06-08T13:31:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003dc4-1877
+2026-06-08T13:32:00Z service=partner-adapter INFO request req-00003dc5-ede9 region=solmere bank=Northstar status=200 latency_ms=26
+2026-06-08T13:33:00Z service=partner-adapter WARN slow request req-00003dc6-125e region=veyra latency_ms=1188
+2026-06-08T13:34:00Z service=partner-adapter INFO request req-00003dc7-a945 region=solmere bank=Northstar status=200 latency_ms=48
+2026-06-08T13:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=20
+2026-06-08T13:36:00Z service=partner-adapter WARN slow request req-00003dc9-edc6 region=solmere latency_ms=1784
+2026-06-08T13:37:00Z service=partner-adapter INFO request req-00003dca-1e48 region=veyra route=/certification status=200 latency_ms=27
+2026-06-08T13:38:00Z service=partner-adapter WARN slow request req-00003dcb-01e4 region=solmere latency_ms=1242
+2026-06-08T13:39:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=61
+2026-06-08T13:40:00Z service=partner-adapter INFO request req-00003dcd-2865 region=solmere bank=Northstar status=200 latency_ms=20
+2026-06-08T13:41:00Z service=partner-adapter INFO request req-00003dce-9c0a region=veyra route=/certification status=200 latency_ms=31
+2026-06-08T13:42:00Z service=partner-adapter INFO request req-00003dcf-e9c2 region=solmere route=/certification status=200 latency_ms=45
+2026-06-08T13:43:00Z service=partner-adapter INFO request req-00003dd0-73d5 region=veyra bank=Northstar status=200 latency_ms=18
+2026-06-08T13:44:00Z service=partner-adapter WARN slow request req-00003dd1-2bea region=solmere latency_ms=1402
+2026-06-08T13:45:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=69
+2026-06-08T13:46:00Z service=partner-adapter WARN slow request req-00003dd3-1b5d region=solmere latency_ms=1474
+2026-06-08T13:47:00Z service=partner-adapter WARN slow request req-00003dd4-0bd6 region=veyra latency_ms=1852
+2026-06-08T13:48:00Z service=partner-adapter INFO request req-00003dd5-ae53 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T13:49:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=62
+2026-06-08T13:50:00Z service=partner-adapter INFO request req-00003dd7-3143 region=solmere bank=Northstar status=200 latency_ms=9
+2026-06-08T13:51:00Z service=partner-adapter INFO request req-00003dd8-541d region=veyra route=/certification status=200 latency_ms=39
+2026-06-08T13:52:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=46
+2026-06-08T13:53:00Z service=partner-adapter WARN slow request req-00003dda-0ecf region=veyra latency_ms=946
+2026-06-08T13:54:00Z service=partner-adapter INFO request req-00003ddb-44bd region=solmere route=/certification status=200 latency_ms=70
+2026-06-08T13:55:00Z service=partner-adapter INFO request req-00003ddc-e9a0 region=veyra route=/certification status=200 latency_ms=68
+2026-06-08T13:56:00Z service=partner-adapter WARN slow request req-00003ddd-be06 region=solmere latency_ms=1304
+2026-06-08T13:57:00Z service=partner-adapter WARN slow request req-00003dde-fd4f region=veyra latency_ms=1530
+2026-06-08T13:58:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003ddf-57d7
+2026-06-08T13:59:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=75
+2026-06-08T14:00:00Z service=partner-adapter INFO request req-00003de1-ff73 region=solmere bank=Northstar status=200 latency_ms=35
+2026-06-08T14:01:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003de2-83eb
+2026-06-08T14:02:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=39
+2026-06-08T14:03:00Z service=partner-adapter INFO request req-00003de4-caff region=veyra route=/certification status=200 latency_ms=50
+2026-06-08T14:04:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003de5-64a5
+2026-06-08T14:05:00Z service=partner-adapter WARN slow request req-00003de6-876b region=veyra latency_ms=1355
+2026-06-08T14:06:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003de7-0212
+2026-06-08T14:07:00Z service=partner-adapter INFO request req-00003de8-343f region=veyra bank=Northstar status=200 latency_ms=13
+2026-06-08T14:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=30
+2026-06-08T14:09:00Z service=partner-adapter INFO request req-00003dea-0ca8 region=veyra bank=Northstar status=200 latency_ms=17
+2026-06-08T14:10:00Z service=partner-adapter INFO request req-00003deb-acef region=solmere route=/certification status=200 latency_ms=45
+2026-06-08T14:11:00Z service=partner-adapter INFO request req-00003dec-b125 region=veyra route=/certification status=200 latency_ms=75
+2026-06-08T14:12:00Z service=partner-adapter INFO request req-00003ded-7f98 region=solmere bank=Northstar status=200 latency_ms=15
+2026-06-08T14:13:00Z service=partner-adapter WARN slow request req-00003dee-e643 region=veyra latency_ms=1320
+2026-06-08T14:14:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=67
+2026-06-08T14:15:00Z service=partner-adapter INFO request req-00003df0-c7da region=veyra bank=Northstar status=200 latency_ms=69
+2026-06-08T14:16:00Z service=partner-adapter INFO request req-00003df1-86b0 region=solmere route=/certification status=200 latency_ms=59
+2026-06-08T14:17:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=34
+2026-06-08T14:18:00Z service=partner-adapter WARN slow request req-00003df3-0b8c region=solmere latency_ms=1408
+2026-06-08T14:19:00Z service=partner-adapter INFO request req-00003df4-e2bd region=veyra route=/certification status=200 latency_ms=33
+2026-06-08T14:20:00Z service=partner-adapter INFO request req-00003df5-7273 region=solmere bank=Northstar status=200 latency_ms=55
+2026-06-08T14:21:00Z service=partner-adapter INFO request req-00003df6-bd69 region=veyra bank=Northstar status=200 latency_ms=58
+2026-06-08T14:22:00Z service=partner-adapter INFO request req-00003df7-ba06 region=solmere bank=Northstar status=200 latency_ms=61
+2026-06-08T14:23:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003df8-8ced
+2026-06-08T14:24:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003df9-6bac
+2026-06-08T14:25:00Z service=partner-adapter WARN slow request req-00003dfa-8d2d region=veyra latency_ms=1129
+2026-06-08T14:26:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003dfb-ac28
+2026-06-08T14:27:00Z service=partner-adapter INFO request req-00003dfc-9483 region=veyra bank=Northstar status=200 latency_ms=25
+2026-06-08T14:28:00Z service=partner-adapter INFO request req-00003dfd-9d67 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T14:29:00Z service=partner-adapter INFO request req-00003dfe-b31e region=veyra bank=Northstar status=200 latency_ms=59
+2026-06-08T14:30:00Z service=partner-adapter INFO request req-00003dff-f212 region=solmere route=/certification status=200 latency_ms=42
+2026-06-08T14:31:00Z service=partner-adapter WARN slow request req-00003e00-db99 region=veyra latency_ms=947
+2026-06-08T14:32:00Z service=partner-adapter WARN slow request req-00003e01-892c region=solmere latency_ms=1429
+2026-06-08T14:33:00Z service=partner-adapter INFO request req-00003e02-419f region=veyra bank=Northstar status=200 latency_ms=49
+2026-06-08T14:34:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T14:35:00Z service=partner-adapter WARN slow request req-00003e04-9577 region=veyra latency_ms=1798
+2026-06-08T14:36:00Z service=partner-adapter INFO request req-00003e05-5b84 region=solmere route=/certification status=200 latency_ms=22
+2026-06-08T14:37:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=17
+2026-06-08T14:38:00Z service=partner-adapter WARN slow request req-00003e07-bca1 region=solmere latency_ms=914
+2026-06-08T14:39:00Z service=partner-adapter WARN slow request req-00003e08-57a5 region=veyra latency_ms=1834
+2026-06-08T14:40:00Z service=partner-adapter INFO request req-00003e09-1d65 region=solmere bank=Northstar status=200 latency_ms=12
+2026-06-08T14:41:00Z service=partner-adapter INFO request req-00003e0a-0de7 region=veyra bank=Northstar status=200 latency_ms=55
+2026-06-08T14:42:00Z service=partner-adapter INFO request req-00003e0b-3de9 region=solmere route=/certification status=200 latency_ms=9
+2026-06-08T14:43:00Z service=partner-adapter INFO request req-00003e0c-dd8d region=veyra route=/certification status=200 latency_ms=11
+2026-06-08T14:44:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003e0d-ea2c
+2026-06-08T14:45:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=73
+2026-06-08T14:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=48
+2026-06-08T14:47:00Z service=partner-adapter INFO request req-00003e10-3da1 region=veyra route=/certification status=200 latency_ms=29
+2026-06-08T14:48:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003e11-f3c1
+2026-06-08T14:49:00Z service=partner-adapter INFO request req-00003e12-4110 region=veyra route=/certification status=200 latency_ms=44
+2026-06-08T14:50:00Z service=partner-adapter INFO request req-00003e13-127f region=solmere bank=Northstar status=200 latency_ms=14
+2026-06-08T14:51:00Z service=partner-adapter INFO request req-00003e14-b505 region=veyra bank=Northstar status=200 latency_ms=12
+2026-06-08T14:52:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003e15-65b3
+2026-06-08T14:53:00Z service=partner-adapter INFO request req-00003e16-8ecf region=veyra route=/certification status=200 latency_ms=44
+2026-06-08T14:54:00Z service=partner-adapter INFO request req-00003e17-fb82 region=solmere route=/certification status=200 latency_ms=52
+2026-06-08T14:55:00Z service=partner-adapter WARN slow request req-00003e18-83c5 region=veyra latency_ms=900
+2026-06-08T14:56:00Z service=partner-adapter INFO request req-00003e19-f799 region=solmere route=/certification status=200 latency_ms=23
+2026-06-08T14:57:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003e1a-bb9a
+2026-06-08T14:58:00Z service=partner-adapter WARN slow request req-00003e1b-697c region=solmere latency_ms=1843
+2026-06-08T14:59:00Z service=partner-adapter INFO request req-00003e1c-3a9d region=veyra route=/certification status=200 latency_ms=15
+2026-06-08T15:00:00Z service=partner-adapter INFO request req-00003e1d-dccc region=solmere bank=Northstar status=200 latency_ms=43
+2026-06-08T15:01:00Z service=partner-adapter WARN slow request req-00003e1e-831c region=veyra latency_ms=932
+2026-06-08T15:02:00Z service=partner-adapter INFO request req-00003e1f-247c region=solmere route=/certification status=200 latency_ms=29
+2026-06-08T15:03:00Z service=partner-adapter INFO request req-00003e20-a9a5 region=veyra route=/certification status=200 latency_ms=65
+2026-06-08T15:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=64
+2026-06-08T15:05:00Z service=partner-adapter INFO request req-00003e22-c285 region=veyra route=/certification status=200 latency_ms=30
+2026-06-08T15:06:00Z service=partner-adapter INFO request req-00003e23-b34e region=solmere route=/certification status=200 latency_ms=51
+2026-06-08T15:07:00Z service=partner-adapter WARN slow request req-00003e24-bfc4 region=veyra latency_ms=1053
+2026-06-08T15:08:00Z service=partner-adapter INFO request req-00003e25-8cf3 region=solmere bank=Northstar status=200 latency_ms=18
+2026-06-08T15:09:00Z service=partner-adapter WARN slow request req-00003e26-13cd region=veyra latency_ms=1373
+2026-06-08T15:10:00Z service=partner-adapter INFO request req-00003e27-294b region=solmere bank=Northstar status=200 latency_ms=19
+2026-06-08T15:11:00Z service=partner-adapter INFO request req-00003e28-c4ae region=veyra route=/certification status=200 latency_ms=64
+2026-06-08T15:12:00Z service=partner-adapter INFO request req-00003e29-814d region=solmere bank=Northstar status=200 latency_ms=13
+2026-06-08T15:13:00Z service=partner-adapter INFO request req-00003e2a-a8bf region=veyra bank=Northstar status=200 latency_ms=19
+2026-06-08T15:14:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=26
+2026-06-08T15:15:00Z service=partner-adapter INFO request req-00003e2c-711f region=veyra route=/certification status=200 latency_ms=42
+2026-06-08T15:16:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=53
+2026-06-08T15:17:00Z service=partner-adapter INFO request req-00003e2e-87bb region=veyra bank=Northstar status=200 latency_ms=66
+2026-06-08T15:18:00Z service=partner-adapter INFO request req-00003e2f-5c0b region=solmere route=/certification status=200 latency_ms=63
+2026-06-08T15:19:00Z service=partner-adapter INFO request req-00003e30-fd13 region=veyra route=/certification status=200 latency_ms=47
+2026-06-08T15:20:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003e31-264a
+2026-06-08T15:21:00Z service=partner-adapter INFO request req-00003e32-3526 region=veyra route=/certification status=200 latency_ms=36
+2026-06-08T15:22:00Z service=partner-adapter INFO request req-00003e33-a904 region=solmere bank=Northstar status=200 latency_ms=35
+2026-06-08T15:23:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003e34-00de
+2026-06-08T15:24:00Z service=partner-adapter WARN slow request req-00003e35-620d region=solmere latency_ms=1508
+2026-06-08T15:25:00Z service=partner-adapter WARN slow request req-00003e36-31cb region=veyra latency_ms=1130
+2026-06-08T15:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=51
+2026-06-08T15:27:00Z service=partner-adapter WARN slow request req-00003e38-345e region=veyra latency_ms=1729
+2026-06-08T15:28:00Z service=partner-adapter INFO request req-00003e39-2eaf region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T15:29:00Z service=partner-adapter INFO request req-00003e3a-d323 region=veyra bank=Northstar status=200 latency_ms=75
+2026-06-08T15:30:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=44
+2026-06-08T15:31:00Z service=partner-adapter WARN slow request req-00003e3c-d511 region=veyra latency_ms=1020
+2026-06-08T15:32:00Z service=partner-adapter INFO request req-00003e3d-5ee9 region=solmere bank=Northstar status=200 latency_ms=75
+2026-06-08T15:33:00Z service=partner-adapter INFO request req-00003e3e-528a region=veyra bank=Northstar status=200 latency_ms=18
+2026-06-08T15:34:00Z service=partner-adapter INFO request req-00003e3f-6bc7 region=solmere bank=Northstar status=200 latency_ms=52
+2026-06-08T15:35:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003e40-fe27
+2026-06-08T15:36:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=36
+2026-06-08T15:37:00Z service=partner-adapter WARN slow request req-00003e42-9b1c region=veyra latency_ms=1704
+2026-06-08T15:38:00Z service=partner-adapter INFO request req-00003e43-50a6 region=solmere route=/certification status=200 latency_ms=68
+2026-06-08T15:39:00Z service=partner-adapter INFO request req-00003e44-5998 region=veyra route=/certification status=200 latency_ms=34
+2026-06-08T15:40:00Z service=partner-adapter WARN slow request req-00003e45-b6c3 region=solmere latency_ms=1253
+2026-06-08T15:41:00Z service=partner-adapter WARN slow request req-00003e46-e67c region=veyra latency_ms=1284
+2026-06-08T15:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=24
+2026-06-08T15:43:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003e48-a838
+2026-06-08T15:44:00Z service=partner-adapter INFO request req-00003e49-ddc6 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T15:45:00Z service=partner-adapter WARN slow request req-00003e4a-25c3 region=veyra latency_ms=1448
+2026-06-08T15:46:00Z service=partner-adapter WARN slow request req-00003e4b-44f8 region=solmere latency_ms=1349
+2026-06-08T15:47:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003e4c-6c39
+2026-06-08T15:48:00Z service=partner-adapter WARN slow request req-00003e4d-40dc region=solmere latency_ms=926
+2026-06-08T15:49:00Z service=partner-adapter INFO request req-00003e4e-210c region=veyra bank=Northstar status=200 latency_ms=28
+2026-06-08T15:50:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=64
+2026-06-08T15:51:00Z service=partner-adapter INFO request req-00003e50-d176 region=veyra bank=Northstar status=200 latency_ms=53
+2026-06-08T15:52:00Z service=partner-adapter INFO request req-00003e51-edd0 region=solmere route=/certification status=200 latency_ms=33
+2026-06-08T15:53:00Z service=partner-adapter WARN slow request req-00003e52-69d8 region=veyra latency_ms=1031
+2026-06-08T15:54:00Z service=partner-adapter WARN slow request req-00003e53-aed6 region=solmere latency_ms=1224
+2026-06-08T15:55:00Z service=partner-adapter INFO request req-00003e54-1fe6 region=veyra bank=Northstar status=200 latency_ms=15
+2026-06-08T15:56:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003e55-cb5b
+2026-06-08T15:57:00Z service=partner-adapter INFO request req-00003e56-f697 region=veyra bank=Northstar status=200 latency_ms=26
+2026-06-08T15:58:00Z service=partner-adapter INFO request req-00003e57-19fb region=solmere bank=Northstar status=200 latency_ms=10
+2026-06-08T15:59:00Z service=partner-adapter INFO request req-00003e58-d92d region=veyra bank=Northstar status=200 latency_ms=68
+2026-06-08T16:00:00Z service=partner-adapter INFO request req-00003e59-71f6 region=solmere bank=Northstar status=200 latency_ms=64
+2026-06-08T16:01:00Z service=partner-adapter INFO request req-00003e5a-98b9 region=veyra route=/certification status=200 latency_ms=70
+2026-06-08T16:02:00Z service=partner-adapter INFO request req-00003e5b-bc8b region=solmere route=/certification status=200 latency_ms=72
+2026-06-08T16:03:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003e5c-c842
+2026-06-08T16:04:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=41
+2026-06-08T16:05:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003e5e-2e27
+2026-06-08T16:06:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003e5f-0736
+2026-06-08T16:07:00Z service=partner-adapter WARN slow request req-00003e60-f5f5 region=veyra latency_ms=1858
+2026-06-08T16:08:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003e61-968e
+2026-06-08T16:09:00Z service=partner-adapter WARN slow request req-00003e62-b8c4 region=veyra latency_ms=1856
+2026-06-08T16:10:00Z service=partner-adapter INFO request req-00003e63-017a region=solmere route=/certification status=200 latency_ms=46
+2026-06-08T16:11:00Z service=partner-adapter INFO request req-00003e64-88b5 region=veyra route=/certification status=200 latency_ms=44
+2026-06-08T16:12:00Z service=partner-adapter INFO request req-00003e65-3c2c region=solmere bank=Northstar status=200 latency_ms=48
+2026-06-08T16:13:00Z service=partner-adapter INFO request req-00003e66-1497 region=veyra route=/certification status=200 latency_ms=66
+2026-06-08T16:14:00Z service=partner-adapter WARN slow request req-00003e67-9a55 region=solmere latency_ms=1782
+2026-06-08T16:15:00Z service=partner-adapter INFO request req-00003e68-9b60 region=veyra bank=Northstar status=200 latency_ms=13
+2026-06-08T16:16:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003e69-7ad2
+2026-06-08T16:17:00Z service=partner-adapter INFO request req-00003e6a-9077 region=veyra route=/certification status=200 latency_ms=61
+2026-06-08T16:18:00Z service=partner-adapter INFO request req-00003e6b-0256 region=solmere bank=Northstar status=200 latency_ms=37
+2026-06-08T16:19:00Z service=partner-adapter INFO request req-00003e6c-0928 region=veyra bank=Northstar status=200 latency_ms=55
+2026-06-08T16:20:00Z service=partner-adapter INFO request req-00003e6d-245e region=solmere bank=Northstar status=200 latency_ms=71
+2026-06-08T16:21:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003e6e-7eeb
+2026-06-08T16:22:00Z service=partner-adapter INFO request req-00003e6f-c139 region=solmere route=/certification status=200 latency_ms=35
+2026-06-08T16:23:00Z service=partner-adapter WARN slow request req-00003e70-a7a1 region=veyra latency_ms=1060
+2026-06-08T16:24:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003e71-4952
+2026-06-08T16:25:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003e72-6ba6
+2026-06-08T16:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=43
+2026-06-08T16:27:00Z service=partner-adapter INFO request req-00003e74-af90 region=veyra bank=Northstar status=200 latency_ms=48
+2026-06-08T16:28:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=29
+2026-06-08T16:29:00Z service=partner-adapter WARN slow request req-00003e76-7ab5 region=veyra latency_ms=1424
+2026-06-08T16:30:00Z service=partner-adapter INFO request req-00003e77-f74b region=solmere bank=Northstar status=200 latency_ms=8
+2026-06-08T16:31:00Z service=partner-adapter INFO request req-00003e78-b329 region=veyra bank=Northstar status=200 latency_ms=46
+2026-06-08T16:32:00Z service=partner-adapter INFO request req-00003e79-dfee region=solmere route=/certification status=200 latency_ms=69
+2026-06-08T16:33:00Z service=partner-adapter INFO request req-00003e7a-75ef region=veyra route=/certification status=200 latency_ms=27
+2026-06-08T16:34:00Z service=partner-adapter INFO request req-00003e7b-9a68 region=solmere bank=Northstar status=200 latency_ms=37
+2026-06-08T16:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T16:36:00Z service=partner-adapter INFO request req-00003e7d-34c2 region=solmere bank=Northstar status=200 latency_ms=75
+2026-06-08T16:37:00Z service=partner-adapter INFO request req-00003e7e-c8ca region=veyra route=/certification status=200 latency_ms=51
+2026-06-08T16:38:00Z service=partner-adapter WARN slow request req-00003e7f-ed2b region=solmere latency_ms=1230
+2026-06-08T16:39:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003e80-4aa1
+2026-06-08T16:40:00Z service=partner-adapter INFO request req-00003e81-787d region=solmere route=/certification status=200 latency_ms=51
+2026-06-08T16:41:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003e82-1f39
+2026-06-08T16:42:00Z service=partner-adapter WARN slow request req-00003e83-f947 region=solmere latency_ms=1556
+2026-06-08T16:43:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003e84-bcd8
+2026-06-08T16:44:00Z service=partner-adapter WARN slow request req-00003e85-9a7b region=solmere latency_ms=1259
+2026-06-08T16:45:00Z service=partner-adapter INFO request req-00003e86-d404 region=veyra route=/certification status=200 latency_ms=58
+2026-06-08T16:46:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003e87-31c9
+2026-06-08T16:47:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=19
+2026-06-08T16:48:00Z service=partner-adapter INFO request req-00003e89-b715 region=solmere route=/certification status=200 latency_ms=71
+2026-06-08T16:49:00Z service=partner-adapter WARN slow request req-00003e8a-5d63 region=veyra latency_ms=1411
+2026-06-08T16:50:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003e8b-15f6
+2026-06-08T16:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=46
+2026-06-08T16:52:00Z service=partner-adapter WARN slow request req-00003e8d-9f00 region=solmere latency_ms=939
+2026-06-08T16:53:00Z service=partner-adapter INFO request req-00003e8e-c080 region=veyra bank=Northstar status=200 latency_ms=66
+2026-06-08T16:54:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003e8f-ae4d
+2026-06-08T16:55:00Z service=partner-adapter INFO request req-00003e90-0924 region=veyra route=/certification status=200 latency_ms=73
+2026-06-08T16:56:00Z service=partner-adapter INFO request req-00003e91-e8f7 region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T16:57:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003e92-040d
+2026-06-08T16:58:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=36
+2026-06-08T16:59:00Z service=partner-adapter WARN slow request req-00003e94-1a76 region=veyra latency_ms=1615
+2026-06-08T17:00:00Z service=partner-adapter INFO request req-00003e95-84b0 region=solmere bank=Northstar status=200 latency_ms=32
+2026-06-08T17:01:00Z service=partner-adapter INFO request req-00003e96-6f77 region=veyra route=/certification status=200 latency_ms=26
+2026-06-08T17:02:00Z service=partner-adapter INFO request req-00003e97-e981 region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T17:03:00Z service=partner-adapter INFO request req-00003e98-6a21 region=veyra bank=Northstar status=200 latency_ms=71
+2026-06-08T17:04:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003e99-603b
+2026-06-08T17:05:00Z service=partner-adapter INFO request req-00003e9a-e190 region=veyra bank=Northstar status=200 latency_ms=44
+2026-06-08T17:06:00Z service=partner-adapter WARN slow request req-00003e9b-d57b region=solmere latency_ms=1647
+2026-06-08T17:07:00Z service=partner-adapter WARN slow request req-00003e9c-1312 region=veyra latency_ms=1032
+2026-06-08T17:08:00Z service=partner-adapter INFO request req-00003e9d-2ab9 region=solmere route=/certification status=200 latency_ms=24
+2026-06-08T17:09:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=68
+2026-06-08T17:10:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003e9f-91dc
+2026-06-08T17:11:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=64
+2026-06-08T17:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=56
+2026-06-08T17:13:00Z service=partner-adapter INFO request req-00003ea2-5e5d region=veyra route=/certification status=200 latency_ms=55
+2026-06-08T17:14:00Z service=partner-adapter WARN slow request req-00003ea3-42e6 region=solmere latency_ms=1241
+2026-06-08T17:15:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=73
+2026-06-08T17:16:00Z service=partner-adapter WARN slow request req-00003ea5-0a9d region=solmere latency_ms=1455
+2026-06-08T17:17:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003ea6-318b
+2026-06-08T17:18:00Z service=partner-adapter INFO request req-00003ea7-eb8e region=solmere route=/certification status=200 latency_ms=28
+2026-06-08T17:19:00Z service=partner-adapter INFO request req-00003ea8-33aa region=veyra route=/certification status=200 latency_ms=33
+2026-06-08T17:20:00Z service=partner-adapter INFO request req-00003ea9-ed89 region=solmere route=/certification status=200 latency_ms=61
+2026-06-08T17:21:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003eaa-01d3
+2026-06-08T17:22:00Z service=partner-adapter INFO request req-00003eab-53b7 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T17:23:00Z service=partner-adapter INFO request req-00003eac-b725 region=veyra route=/certification status=200 latency_ms=70
+2026-06-08T17:24:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=49
+2026-06-08T17:25:00Z service=partner-adapter WARN slow request req-00003eae-b847 region=veyra latency_ms=945
+2026-06-08T17:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=45
+2026-06-08T17:27:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=8
+2026-06-08T17:28:00Z service=partner-adapter WARN slow request req-00003eb1-4102 region=solmere latency_ms=1404
+2026-06-08T17:29:00Z service=partner-adapter WARN slow request req-00003eb2-3683 region=veyra latency_ms=1697
+2026-06-08T17:30:00Z service=partner-adapter INFO request req-00003eb3-db31 region=solmere route=/certification status=200 latency_ms=41
+2026-06-08T17:31:00Z service=partner-adapter INFO request req-00003eb4-b223 region=veyra bank=Northstar status=200 latency_ms=36
+2026-06-08T17:32:00Z service=partner-adapter WARN slow request req-00003eb5-cca7 region=solmere latency_ms=1607
+2026-06-08T17:33:00Z service=partner-adapter WARN slow request req-00003eb6-4c9c region=veyra latency_ms=1680
+2026-06-08T17:34:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003eb7-bb7d
+2026-06-08T17:35:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003eb8-1c5a
+2026-06-08T17:36:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=13
+2026-06-08T17:37:00Z service=partner-adapter WARN slow request req-00003eba-898f region=veyra latency_ms=1118
+2026-06-08T17:38:00Z service=partner-adapter INFO request req-00003ebb-ddef region=solmere route=/certification status=200 latency_ms=28
+2026-06-08T17:39:00Z service=partner-adapter INFO request req-00003ebc-03be region=veyra route=/certification status=200 latency_ms=29
+2026-06-08T17:40:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=60
+2026-06-08T17:41:00Z service=partner-adapter INFO request req-00003ebe-5b71 region=veyra route=/certification status=200 latency_ms=43
+2026-06-08T17:42:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=19
+2026-06-08T17:43:00Z service=partner-adapter WARN slow request req-00003ec0-147a region=veyra latency_ms=1201
+2026-06-08T17:44:00Z service=partner-adapter INFO request req-00003ec1-cff3 region=solmere route=/certification status=200 latency_ms=46
+2026-06-08T17:45:00Z service=partner-adapter INFO request req-00003ec2-bed8 region=veyra bank=Northstar status=200 latency_ms=21
+2026-06-08T17:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=70
+2026-06-08T17:47:00Z service=partner-adapter WARN slow request req-00003ec4-3d15 region=veyra latency_ms=1678
+2026-06-08T17:48:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003ec5-36bc
+2026-06-08T17:49:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003ec6-49c2
+2026-06-08T17:50:00Z service=partner-adapter INFO request req-00003ec7-ca7a region=solmere route=/certification status=200 latency_ms=29
+2026-06-08T17:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=10
+2026-06-08T17:52:00Z service=partner-adapter INFO request req-00003ec9-1242 region=solmere bank=Northstar status=200 latency_ms=49
+2026-06-08T17:53:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=52
+2026-06-08T17:54:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003ecb-6659
+2026-06-08T17:55:00Z service=partner-adapter INFO request req-00003ecc-aa02 region=veyra bank=Northstar status=200 latency_ms=60
+2026-06-08T17:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=75
+2026-06-08T17:57:00Z service=partner-adapter INFO request req-00003ece-4427 region=veyra route=/certification status=200 latency_ms=31
+2026-06-08T17:58:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003ecf-faed
+2026-06-08T17:59:00Z service=partner-adapter WARN slow request req-00003ed0-d91e region=veyra latency_ms=1523
+2026-06-08T18:00:00Z service=partner-adapter WARN slow request req-00003ed1-af4b region=solmere latency_ms=1296
+2026-06-08T18:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=70
+2026-06-08T18:02:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003ed3-fcbc
+2026-06-08T18:03:00Z service=partner-adapter INFO request req-00003ed4-2cb8 region=veyra route=/certification status=200 latency_ms=41
+2026-06-08T18:04:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003ed5-bbc1
+2026-06-08T18:05:00Z service=partner-adapter INFO request req-00003ed6-95e4 region=veyra route=/certification status=200 latency_ms=28
+2026-06-08T18:06:00Z service=partner-adapter WARN slow request req-00003ed7-2b2a region=solmere latency_ms=919
+2026-06-08T18:07:00Z service=partner-adapter INFO request req-00003ed8-7290 region=veyra route=/certification status=200 latency_ms=35
+2026-06-08T18:08:00Z service=partner-adapter INFO request req-00003ed9-3dcd region=solmere route=/certification status=200 latency_ms=32
+2026-06-08T18:09:00Z service=partner-adapter INFO request req-00003eda-0618 region=veyra bank=Northstar status=200 latency_ms=31
+2026-06-08T18:10:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=71
+2026-06-08T18:11:00Z service=partner-adapter INFO request req-00003edc-f7c9 region=veyra route=/certification status=200 latency_ms=60
+2026-06-08T18:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=69
+2026-06-08T18:13:00Z service=partner-adapter INFO request req-00003ede-2d6a region=veyra route=/certification status=200 latency_ms=69
+2026-06-08T18:14:00Z service=partner-adapter INFO request req-00003edf-e061 region=solmere route=/certification status=200 latency_ms=68
+2026-06-08T18:15:00Z service=partner-adapter WARN slow request req-00003ee0-0f26 region=veyra latency_ms=1552
+2026-06-08T18:16:00Z service=partner-adapter INFO request req-00003ee1-d52e region=solmere bank=Northstar status=200 latency_ms=66
+2026-06-08T18:17:00Z service=partner-adapter INFO request req-00003ee2-3e4a region=veyra route=/certification status=200 latency_ms=35
+2026-06-08T18:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=41
+2026-06-08T18:19:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=70
+2026-06-08T18:20:00Z service=partner-adapter INFO request req-00003ee5-83bd region=solmere route=/certification status=200 latency_ms=19
+2026-06-08T18:21:00Z service=partner-adapter WARN slow request req-00003ee6-811e region=veyra latency_ms=1772
+2026-06-08T18:22:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003ee7-79aa
+2026-06-08T18:23:00Z service=partner-adapter WARN slow request req-00003ee8-d4fc region=veyra latency_ms=991
+2026-06-08T18:24:00Z service=partner-adapter INFO request req-00003ee9-f52a region=solmere bank=Northstar status=200 latency_ms=50
+2026-06-08T18:25:00Z service=partner-adapter INFO request req-00003eea-cb31 region=veyra route=/certification status=200 latency_ms=36
+2026-06-08T18:26:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003eeb-ce22
+2026-06-08T18:27:00Z service=partner-adapter WARN slow request req-00003eec-9f8b region=veyra latency_ms=1310
+2026-06-08T18:28:00Z service=partner-adapter WARN slow request req-00003eed-3576 region=solmere latency_ms=1505
+2026-06-08T18:29:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=12
+2026-06-08T18:30:00Z service=partner-adapter WARN slow request req-00003eef-729a region=solmere latency_ms=1086
+2026-06-08T18:31:00Z service=partner-adapter INFO request req-00003ef0-874d region=veyra bank=Northstar status=200 latency_ms=29
+2026-06-08T18:32:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T18:33:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003ef2-f6c4
+2026-06-08T18:34:00Z service=partner-adapter INFO request req-00003ef3-a0a5 region=solmere route=/certification status=200 latency_ms=29
+2026-06-08T18:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T18:36:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003ef5-c79f
+2026-06-08T18:37:00Z service=partner-adapter WARN slow request req-00003ef6-607a region=veyra latency_ms=1249
+2026-06-08T18:38:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=59
+2026-06-08T18:39:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=47
+2026-06-08T18:40:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003ef9-2f22
+2026-06-08T18:41:00Z service=partner-adapter INFO request req-00003efa-2bdc region=veyra route=/certification status=200 latency_ms=26
+2026-06-08T18:42:00Z service=partner-adapter WARN slow request req-00003efb-8594 region=solmere latency_ms=1152
+2026-06-08T18:43:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=48
+2026-06-08T18:44:00Z service=partner-adapter INFO request req-00003efd-a875 region=solmere bank=Northstar status=200 latency_ms=12
+2026-06-08T18:45:00Z service=partner-adapter INFO request req-00003efe-d0c5 region=veyra bank=Northstar status=200 latency_ms=49
+2026-06-08T18:46:00Z service=partner-adapter WARN slow request req-00003eff-9b95 region=solmere latency_ms=1833
+2026-06-08T18:47:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003f00-4742
+2026-06-08T18:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=10
+2026-06-08T18:49:00Z service=partner-adapter WARN slow request req-00003f02-84f8 region=veyra latency_ms=1264
+2026-06-08T18:50:00Z service=partner-adapter INFO request req-00003f03-6c80 region=solmere route=/certification status=200 latency_ms=19
+2026-06-08T18:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=70
+2026-06-08T18:52:00Z service=partner-adapter INFO request req-00003f05-6c56 region=solmere route=/certification status=200 latency_ms=75
+2026-06-08T18:53:00Z service=partner-adapter INFO request req-00003f06-ab2f region=veyra route=/certification status=200 latency_ms=17
+2026-06-08T18:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=68
+2026-06-08T18:55:00Z service=partner-adapter WARN slow request req-00003f08-9395 region=veyra latency_ms=1325
+2026-06-08T18:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T18:57:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=34
+2026-06-08T18:58:00Z service=partner-adapter INFO request req-00003f0b-a5ae region=solmere route=/certification status=200 latency_ms=29
+2026-06-08T18:59:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003f0c-0c0e
+2026-06-08T19:00:00Z service=partner-adapter INFO request req-00003f0d-debf region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T19:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=65
+2026-06-08T19:02:00Z service=partner-adapter WARN slow request req-00003f0f-cdf1 region=solmere latency_ms=1599
+2026-06-08T19:03:00Z service=partner-adapter INFO request req-00003f10-26a0 region=veyra route=/certification status=200 latency_ms=71
+2026-06-08T19:04:00Z service=partner-adapter INFO request req-00003f11-43e1 region=solmere bank=Northstar status=200 latency_ms=45
+2026-06-08T19:05:00Z service=partner-adapter INFO request req-00003f12-076c region=veyra bank=Northstar status=200 latency_ms=45
+2026-06-08T19:06:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003f13-ff00
+2026-06-08T19:07:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=250 request=req-00003f14-2bd9
+2026-06-08T19:08:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003f15-5c05
+2026-06-08T19:09:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T19:10:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003f17-0347
+2026-06-08T19:11:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003f18-5b01
+2026-06-08T19:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=44
+2026-06-08T19:13:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=48
+2026-06-08T19:14:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003f1b-b0cf
+2026-06-08T19:15:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T19:16:00Z service=partner-adapter INFO request req-00003f1d-0614 region=solmere bank=Northstar status=200 latency_ms=50
+2026-06-08T19:17:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=55
+2026-06-08T19:18:00Z service=partner-adapter WARN slow request req-00003f1f-c688 region=solmere latency_ms=1114
+2026-06-08T19:19:00Z service=partner-adapter INFO request req-00003f20-41d1 region=veyra route=/certification status=200 latency_ms=51
+2026-06-08T19:20:00Z service=partner-adapter INFO request req-00003f21-856b region=solmere route=/certification status=200 latency_ms=10
+2026-06-08T19:21:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T19:22:00Z service=partner-adapter INFO request req-00003f23-76d7 region=solmere bank=Northstar status=200 latency_ms=47
+2026-06-08T19:23:00Z service=partner-adapter INFO request req-00003f24-5f8f region=veyra route=/certification status=200 latency_ms=29
+2026-06-08T19:24:00Z service=partner-adapter INFO request req-00003f25-ea60 region=solmere bank=Northstar status=200 latency_ms=10
+2026-06-08T19:25:00Z service=partner-adapter INFO request req-00003f26-e817 region=veyra route=/certification status=200 latency_ms=54
+2026-06-08T19:26:00Z service=partner-adapter WARN slow request req-00003f27-59a1 region=solmere latency_ms=1460
+2026-06-08T19:27:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003f28-92db
+2026-06-08T19:28:00Z service=partner-adapter INFO request req-00003f29-4575 region=solmere route=/certification status=200 latency_ms=62
+2026-06-08T19:29:00Z service=partner-adapter INFO request req-00003f2a-5565 region=veyra bank=Northstar status=200 latency_ms=35
+2026-06-08T19:30:00Z service=partner-adapter INFO request req-00003f2b-6678 region=solmere route=/certification status=200 latency_ms=9
+2026-06-08T19:31:00Z service=partner-adapter INFO request req-00003f2c-0003 region=veyra route=/certification status=200 latency_ms=74
+2026-06-08T19:32:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003f2d-0ed1
+2026-06-08T19:33:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003f2e-8c71
+2026-06-08T19:34:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=500 request=req-00003f2f-8f8b
+2026-06-08T19:35:00Z service=partner-adapter INFO request req-00003f30-e075 region=veyra route=/certification status=200 latency_ms=54
+2026-06-08T19:36:00Z service=partner-adapter INFO request req-00003f31-637d region=solmere route=/certification status=200 latency_ms=13
+2026-06-08T19:37:00Z service=partner-adapter INFO request req-00003f32-7ce2 region=veyra route=/certification status=200 latency_ms=59
+2026-06-08T19:38:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=38
+2026-06-08T19:39:00Z service=partner-adapter INFO request req-00003f34-b504 region=veyra bank=Northstar status=200 latency_ms=41
+2026-06-08T19:40:00Z service=partner-adapter INFO request req-00003f35-92d9 region=solmere route=/certification status=200 latency_ms=65
+2026-06-08T19:41:00Z service=partner-adapter INFO request req-00003f36-ec2e region=veyra bank=Northstar status=200 latency_ms=65
+2026-06-08T19:42:00Z service=partner-adapter WARN slow request req-00003f37-f08a region=solmere latency_ms=1005
+2026-06-08T19:43:00Z service=partner-adapter WARN slow request req-00003f38-3eaa region=veyra latency_ms=1494
+2026-06-08T19:44:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003f39-64a1
+2026-06-08T19:45:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T19:46:00Z service=partner-adapter INFO request req-00003f3b-68ad region=solmere route=/certification status=200 latency_ms=9
+2026-06-08T19:47:00Z service=partner-adapter INFO request req-00003f3c-56d5 region=veyra bank=Northstar status=200 latency_ms=25
+2026-06-08T19:48:00Z service=partner-adapter INFO request req-00003f3d-4e4a region=solmere bank=Northstar status=200 latency_ms=15
+2026-06-08T19:49:00Z service=partner-adapter INFO request req-00003f3e-2f69 region=veyra bank=Northstar status=200 latency_ms=49
+2026-06-08T19:50:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003f3f-de82
+2026-06-08T19:51:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003f40-8f2d
+2026-06-08T19:52:00Z service=partner-adapter INFO request req-00003f41-af73 region=solmere route=/certification status=200 latency_ms=20
+2026-06-08T19:53:00Z service=partner-adapter INFO request req-00003f42-6fe9 region=veyra bank=Northstar status=200 latency_ms=40
+2026-06-08T19:54:00Z service=partner-adapter WARN slow request req-00003f43-d9ca region=solmere latency_ms=1492
+2026-06-08T19:55:00Z service=partner-adapter INFO request req-00003f44-549a region=veyra bank=Northstar status=200 latency_ms=26
+2026-06-08T19:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=10
+2026-06-08T19:57:00Z service=partner-adapter WARN slow request req-00003f46-bd0f region=veyra latency_ms=1847
+2026-06-08T19:58:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=250 request=req-00003f47-c988
+2026-06-08T19:59:00Z service=partner-adapter WARN slow request req-00003f48-b74f region=veyra latency_ms=1143
+2026-06-08T20:00:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003f49-8763
+2026-06-08T20:01:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T20:02:00Z service=partner-adapter INFO request req-00003f4b-e257 region=solmere route=/certification status=200 latency_ms=75
+2026-06-08T20:03:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T20:04:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-00003f4d-acfd
+2026-06-08T20:05:00Z service=partner-adapter INFO request req-00003f4e-498e region=veyra route=/certification status=200 latency_ms=46
+2026-06-08T20:06:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T20:07:00Z service=partner-adapter WARN slow request req-00003f50-070f region=veyra latency_ms=1354
+2026-06-08T20:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=19
+2026-06-08T20:09:00Z service=partner-adapter WARN slow request req-00003f52-9f43 region=veyra latency_ms=1656
+2026-06-08T20:10:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=62
+2026-06-08T20:11:00Z service=partner-adapter INFO request req-00003f54-e505 region=veyra route=/certification status=200 latency_ms=26
+2026-06-08T20:12:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=14
+2026-06-08T20:13:00Z service=partner-adapter INFO request req-00003f56-175a region=veyra bank=Northstar status=200 latency_ms=50
+2026-06-08T20:14:00Z service=partner-adapter INFO request req-00003f57-2bfd region=solmere bank=Northstar status=200 latency_ms=51
+2026-06-08T20:15:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003f58-6b63
+2026-06-08T20:16:00Z service=partner-adapter WARN slow request req-00003f59-be10 region=solmere latency_ms=932
+2026-06-08T20:17:00Z service=partner-adapter WARN slow request req-00003f5a-4f8d region=veyra latency_ms=960
+2026-06-08T20:18:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003f5b-6e8c
+2026-06-08T20:19:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003f5c-8e53
+2026-06-08T20:20:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=18
+2026-06-08T20:21:00Z service=partner-adapter INFO request req-00003f5e-1117 region=veyra route=/certification status=200 latency_ms=32
+2026-06-08T20:22:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=57
+2026-06-08T20:23:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=29
+2026-06-08T20:24:00Z service=partner-adapter INFO request req-00003f61-c107 region=solmere bank=Northstar status=200 latency_ms=13
+2026-06-08T20:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=56
+2026-06-08T20:26:00Z service=partner-adapter INFO request req-00003f63-d04e region=solmere bank=Northstar status=200 latency_ms=11
+2026-06-08T20:27:00Z service=partner-adapter INFO request req-00003f64-4c1b region=veyra route=/certification status=200 latency_ms=22
+2026-06-08T20:28:00Z service=partner-adapter WARN slow request req-00003f65-0cf1 region=solmere latency_ms=1494
+2026-06-08T20:29:00Z service=partner-adapter INFO request req-00003f66-4a9c region=veyra route=/certification status=200 latency_ms=13
+2026-06-08T20:30:00Z service=partner-adapter INFO request req-00003f67-c175 region=solmere bank=Northstar status=200 latency_ms=18
+2026-06-08T20:31:00Z service=partner-adapter INFO request req-00003f68-1dab region=veyra bank=Northstar status=200 latency_ms=46
+2026-06-08T20:32:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=13
+2026-06-08T20:33:00Z service=partner-adapter INFO request req-00003f6a-9813 region=veyra bank=Northstar status=200 latency_ms=43
+2026-06-08T20:34:00Z service=partner-adapter INFO request req-00003f6b-b121 region=solmere bank=Northstar status=200 latency_ms=67
+2026-06-08T20:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T20:36:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003f6d-a2b7
+2026-06-08T20:37:00Z service=partner-adapter WARN slow request req-00003f6e-c41f region=veyra latency_ms=1291
+2026-06-08T20:38:00Z service=partner-adapter INFO request req-00003f6f-4b1f region=solmere bank=Northstar status=200 latency_ms=75
+2026-06-08T20:39:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=38
+2026-06-08T20:40:00Z service=partner-adapter WARN slow request req-00003f71-3323 region=solmere latency_ms=1749
+2026-06-08T20:41:00Z service=partner-adapter WARN slow request req-00003f72-a18b region=veyra latency_ms=1126
+2026-06-08T20:42:00Z service=partner-adapter INFO request req-00003f73-1fb2 region=solmere route=/certification status=200 latency_ms=63
+2026-06-08T20:43:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=56
+2026-06-08T20:44:00Z service=partner-adapter INFO request req-00003f75-7906 region=solmere bank=Northstar status=200 latency_ms=45
+2026-06-08T20:45:00Z service=partner-adapter INFO request req-00003f76-637c region=veyra route=/certification status=200 latency_ms=25
+2026-06-08T20:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T20:47:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=40
+2026-06-08T20:48:00Z service=partner-adapter INFO request req-00003f79-64df region=solmere bank=Northstar status=200 latency_ms=64
+2026-06-08T20:49:00Z service=partner-adapter INFO request req-00003f7a-7196 region=veyra bank=Northstar status=200 latency_ms=23
+2026-06-08T20:50:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003f7b-82f7
+2026-06-08T20:51:00Z service=partner-adapter INFO request req-00003f7c-14dc region=veyra bank=Northstar status=200 latency_ms=62
+2026-06-08T20:52:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003f7d-d825
+2026-06-08T20:53:00Z service=partner-adapter INFO request req-00003f7e-44dd region=veyra bank=Northstar status=200 latency_ms=65
+2026-06-08T20:54:00Z service=partner-adapter WARN slow request req-00003f7f-d317 region=solmere latency_ms=1150
+2026-06-08T20:55:00Z service=partner-adapter INFO request req-00003f80-aaae region=veyra bank=Northstar status=200 latency_ms=47
+2026-06-08T20:56:00Z service=partner-adapter INFO request req-00003f81-992a region=solmere bank=Northstar status=200 latency_ms=28
+2026-06-08T20:57:00Z service=partner-adapter INFO request req-00003f82-2126 region=veyra bank=Northstar status=200 latency_ms=8
+2026-06-08T20:58:00Z service=partner-adapter INFO request req-00003f83-42df region=solmere bank=Northstar status=200 latency_ms=65
+2026-06-08T20:59:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=69
+2026-06-08T21:00:00Z service=partner-adapter INFO request req-00003f85-0995 region=solmere bank=Northstar status=200 latency_ms=58
+2026-06-08T21:01:00Z service=partner-adapter WARN slow request req-00003f86-2f40 region=veyra latency_ms=1197
+2026-06-08T21:02:00Z service=partner-adapter INFO request req-00003f87-d65f region=solmere route=/certification status=200 latency_ms=37
+2026-06-08T21:03:00Z service=partner-adapter WARN slow request req-00003f88-626a region=veyra latency_ms=1465
+2026-06-08T21:04:00Z service=partner-adapter INFO request req-00003f89-e4b7 region=solmere route=/certification status=200 latency_ms=66
+2026-06-08T21:05:00Z service=partner-adapter INFO request req-00003f8a-4951 region=veyra route=/certification status=200 latency_ms=45
+2026-06-08T21:06:00Z service=partner-adapter INFO request req-00003f8b-15ed region=solmere route=/certification status=200 latency_ms=25
+2026-06-08T21:07:00Z service=partner-adapter INFO request req-00003f8c-4aa7 region=veyra route=/certification status=200 latency_ms=10
+2026-06-08T21:08:00Z service=partner-adapter INFO request req-00003f8d-9dc2 region=solmere bank=Northstar status=200 latency_ms=71
+2026-06-08T21:09:00Z service=partner-adapter WARN slow request req-00003f8e-8948 region=veyra latency_ms=1475
+2026-06-08T21:10:00Z service=partner-adapter INFO request req-00003f8f-45ea region=solmere bank=Northstar status=200 latency_ms=12
+2026-06-08T21:11:00Z service=partner-adapter INFO request req-00003f90-6c8f region=veyra bank=Northstar status=200 latency_ms=73
+2026-06-08T21:12:00Z service=partner-adapter WARN slow request req-00003f91-c3ff region=solmere latency_ms=1734
+2026-06-08T21:13:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003f92-19ef
+2026-06-08T21:14:00Z service=partner-adapter WARN slow request req-00003f93-2253 region=solmere latency_ms=1456
+2026-06-08T21:15:00Z service=partner-adapter INFO request req-00003f94-29c2 region=veyra route=/certification status=200 latency_ms=75
+2026-06-08T21:16:00Z service=partner-adapter INFO request req-00003f95-abf0 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T21:17:00Z service=partner-adapter INFO request req-00003f96-ddf9 region=veyra route=/certification status=200 latency_ms=8
+2026-06-08T21:18:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003f97-093f
+2026-06-08T21:19:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00003f98-6129
+2026-06-08T21:20:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003f99-f205
+2026-06-08T21:21:00Z service=partner-adapter INFO request req-00003f9a-3a72 region=veyra route=/certification status=200 latency_ms=32
+2026-06-08T21:22:00Z service=partner-adapter INFO request req-00003f9b-acd3 region=solmere bank=Northstar status=200 latency_ms=75
+2026-06-08T21:23:00Z service=partner-adapter WARN slow request req-00003f9c-dfc0 region=veyra latency_ms=1743
+2026-06-08T21:24:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003f9d-7a09
+2026-06-08T21:25:00Z service=partner-adapter INFO request req-00003f9e-aa2f region=veyra route=/certification status=200 latency_ms=68
+2026-06-08T21:26:00Z service=partner-adapter WARN slow request req-00003f9f-5184 region=solmere latency_ms=1321
+2026-06-08T21:27:00Z service=partner-adapter WARN slow request req-00003fa0-2216 region=veyra latency_ms=1351
+2026-06-08T21:28:00Z service=partner-adapter WARN slow request req-00003fa1-1044 region=solmere latency_ms=1184
+2026-06-08T21:29:00Z service=partner-adapter INFO request req-00003fa2-f11d region=veyra bank=Northstar status=200 latency_ms=51
+2026-06-08T21:30:00Z service=partner-adapter WARN slow request req-00003fa3-0d6f region=solmere latency_ms=1349
+2026-06-08T21:31:00Z service=partner-adapter INFO request req-00003fa4-548f region=veyra route=/certification status=200 latency_ms=39
+2026-06-08T21:32:00Z service=partner-adapter INFO request req-00003fa5-2d46 region=solmere route=/certification status=200 latency_ms=8
+2026-06-08T21:33:00Z service=partner-adapter INFO request req-00003fa6-8e6e region=veyra route=/certification status=200 latency_ms=58
+2026-06-08T21:34:00Z service=partner-adapter INFO request req-00003fa7-84d1 region=solmere bank=Northstar status=200 latency_ms=29
+2026-06-08T21:35:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=8
+2026-06-08T21:36:00Z service=partner-adapter INFO request req-00003fa9-5e3b region=solmere route=/certification status=200 latency_ms=36
+2026-06-08T21:37:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=41
+2026-06-08T21:38:00Z service=partner-adapter WARN slow request req-00003fab-c5da region=solmere latency_ms=1887
+2026-06-08T21:39:00Z service=partner-adapter INFO request req-00003fac-287a region=veyra route=/certification status=200 latency_ms=67
+2026-06-08T21:40:00Z service=partner-adapter INFO request req-00003fad-d1a2 region=solmere route=/certification status=200 latency_ms=27
+2026-06-08T21:41:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=59
+2026-06-08T21:42:00Z service=partner-adapter INFO request req-00003faf-114b region=solmere route=/certification status=200 latency_ms=40
+2026-06-08T21:43:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003fb0-6e7c
+2026-06-08T21:44:00Z service=partner-adapter INFO request req-00003fb1-7e69 region=solmere route=/certification status=200 latency_ms=46
+2026-06-08T21:45:00Z service=partner-adapter INFO request req-00003fb2-c642 region=veyra bank=Northstar status=200 latency_ms=9
+2026-06-08T21:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=50
+2026-06-08T21:47:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=71
+2026-06-08T21:48:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=18
+2026-06-08T21:49:00Z service=partner-adapter INFO request req-00003fb6-3b06 region=veyra route=/certification status=200 latency_ms=39
+2026-06-08T21:50:00Z service=partner-adapter INFO request req-00003fb7-0438 region=solmere bank=Northstar status=200 latency_ms=11
+2026-06-08T21:51:00Z service=partner-adapter INFO request req-00003fb8-da93 region=veyra bank=Northstar status=200 latency_ms=46
+2026-06-08T21:52:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T21:53:00Z service=partner-adapter WARN slow request req-00003fba-7789 region=veyra latency_ms=1344
+2026-06-08T21:54:00Z service=partner-adapter INFO request req-00003fbb-9422 region=solmere route=/certification status=200 latency_ms=66
+2026-06-08T21:55:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=20
+2026-06-08T21:56:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=49
+2026-06-08T21:57:00Z service=partner-adapter INFO request req-00003fbe-5a40 region=veyra bank=Northstar status=200 latency_ms=60
+2026-06-08T21:58:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=1000 request=req-00003fbf-25c9
+2026-06-08T21:59:00Z service=partner-adapter INFO request req-00003fc0-0899 region=veyra route=/certification status=200 latency_ms=44
+2026-06-08T22:00:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=36
+2026-06-08T22:01:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003fc2-23e6
+2026-06-08T22:02:00Z service=partner-adapter WARN slow request req-00003fc3-2ac3 region=solmere latency_ms=1350
+2026-06-08T22:03:00Z service=partner-adapter INFO request req-00003fc4-b609 region=veyra bank=Northstar status=200 latency_ms=66
+2026-06-08T22:04:00Z service=partner-adapter INFO request req-00003fc5-c573 region=solmere bank=Northstar status=200 latency_ms=49
+2026-06-08T22:05:00Z service=partner-adapter WARN slow request req-00003fc6-f5dd region=veyra latency_ms=1785
+2026-06-08T22:06:00Z service=partner-adapter WARN slow request req-00003fc7-2caf region=solmere latency_ms=1166
+2026-06-08T22:07:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00003fc8-8458
+2026-06-08T22:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=49
+2026-06-08T22:09:00Z service=partner-adapter INFO request req-00003fca-f53b region=veyra route=/certification status=200 latency_ms=15
+2026-06-08T22:10:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=36
+2026-06-08T22:11:00Z service=partner-adapter INFO request req-00003fcc-707d region=veyra route=/certification status=200 latency_ms=31
+2026-06-08T22:12:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003fcd-e9e6
+2026-06-08T22:13:00Z service=partner-adapter INFO request req-00003fce-fa1a region=veyra route=/certification status=200 latency_ms=57
+2026-06-08T22:14:00Z service=partner-adapter WARN slow request req-00003fcf-af2b region=solmere latency_ms=889
+2026-06-08T22:15:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=31
+2026-06-08T22:16:00Z service=partner-adapter INFO request req-00003fd1-dcd1 region=solmere route=/certification status=200 latency_ms=59
+2026-06-08T22:17:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=48
+2026-06-08T22:18:00Z service=partner-adapter INFO request req-00003fd3-adcf region=solmere bank=Northstar status=200 latency_ms=41
+2026-06-08T22:19:00Z service=partner-adapter WARN slow request req-00003fd4-ece8 region=veyra latency_ms=1866
+2026-06-08T22:20:00Z service=partner-adapter WARN slow request req-00003fd5-0081 region=solmere latency_ms=993
+2026-06-08T22:21:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003fd6-591b
+2026-06-08T22:22:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003fd7-d6f7
+2026-06-08T22:23:00Z service=partner-adapter INFO request req-00003fd8-3088 region=veyra bank=Northstar status=200 latency_ms=50
+2026-06-08T22:24:00Z service=partner-adapter WARN slow request req-00003fd9-5baf region=solmere latency_ms=1787
+2026-06-08T22:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=40
+2026-06-08T22:26:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T22:27:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=66
+2026-06-08T22:28:00Z service=partner-adapter INFO request req-00003fdd-52f3 region=solmere bank=Northstar status=200 latency_ms=62
+2026-06-08T22:29:00Z service=partner-adapter INFO request req-00003fde-4f3e region=veyra bank=Northstar status=200 latency_ms=31
+2026-06-08T22:30:00Z service=partner-adapter WARN slow request req-00003fdf-8596 region=solmere latency_ms=1651
+2026-06-08T22:31:00Z service=partner-adapter INFO request req-00003fe0-8e3d region=veyra bank=Northstar status=200 latency_ms=52
+2026-06-08T22:32:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003fe1-4ce2
+2026-06-08T22:33:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=63
+2026-06-08T22:34:00Z service=partner-adapter INFO request req-00003fe3-739d region=solmere route=/certification status=200 latency_ms=68
+2026-06-08T22:35:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003fe4-3e00
+2026-06-08T22:36:00Z service=partner-adapter INFO request req-00003fe5-ec22 region=solmere bank=Northstar status=200 latency_ms=19
+2026-06-08T22:37:00Z service=partner-adapter WARN slow request req-00003fe6-8415 region=veyra latency_ms=1546
+2026-06-08T22:38:00Z service=partner-adapter INFO request req-00003fe7-2532 region=solmere bank=Northstar status=200 latency_ms=57
+2026-06-08T22:39:00Z service=partner-adapter WARN slow request req-00003fe8-1f1a region=veyra latency_ms=1759
+2026-06-08T22:40:00Z service=partner-adapter INFO request req-00003fe9-d2e1 region=solmere bank=Northstar status=200 latency_ms=57
+2026-06-08T22:41:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=31
+2026-06-08T22:42:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003feb-ce9a
+2026-06-08T22:43:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=1000 request=req-00003fec-db18
+2026-06-08T22:44:00Z service=partner-adapter INFO request req-00003fed-63de region=solmere bank=Northstar status=200 latency_ms=11
+2026-06-08T22:45:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=10
+2026-06-08T22:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=54
+2026-06-08T22:47:00Z service=partner-adapter WARN slow request req-00003ff0-ef83 region=veyra latency_ms=1225
+2026-06-08T22:48:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00003ff1-0c70
+2026-06-08T22:49:00Z service=partner-adapter WARN slow request req-00003ff2-5276 region=veyra latency_ms=1377
+2026-06-08T22:50:00Z service=partner-adapter WARN slow request req-00003ff3-2fe7 region=solmere latency_ms=1357
+2026-06-08T22:51:00Z service=partner-adapter INFO request req-00003ff4-6907 region=veyra bank=Northstar status=200 latency_ms=69
+2026-06-08T22:52:00Z service=partner-adapter INFO request req-00003ff5-0ceb region=solmere bank=Northstar status=200 latency_ms=25
+2026-06-08T22:53:00Z service=partner-adapter INFO request req-00003ff6-7430 region=veyra route=/certification status=200 latency_ms=58
+2026-06-08T22:54:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=32
+2026-06-08T22:55:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=50
+2026-06-08T22:56:00Z service=partner-adapter INFO request req-00003ff9-d3ef region=solmere route=/certification status=200 latency_ms=55
+2026-06-08T22:57:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=33
+2026-06-08T22:58:00Z service=partner-adapter WARN slow request req-00003ffb-4d5c region=solmere latency_ms=1335
+2026-06-08T22:59:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=250 request=req-00003ffc-a697
+2026-06-08T23:00:00Z service=partner-adapter INFO request req-00003ffd-e2e7 region=solmere bank=Northstar status=200 latency_ms=44
+2026-06-08T23:01:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=500 request=req-00003ffe-f34d
+2026-06-08T23:02:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=1000 request=req-00003fff-47fe
+2026-06-08T23:03:00Z service=partner-adapter INFO request req-00004000-2165 region=veyra route=/certification status=200 latency_ms=43
+2026-06-08T23:04:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00004001-dc0b
+2026-06-08T23:05:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=43
+2026-06-08T23:06:00Z service=partner-adapter INFO request req-00004003-eafc region=solmere bank=Northstar status=200 latency_ms=18
+2026-06-08T23:07:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00004004-b5c4
+2026-06-08T23:08:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=34
+2026-06-08T23:09:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=73
+2026-06-08T23:10:00Z service=partner-adapter INFO request req-00004007-00ae region=solmere bank=Northstar status=200 latency_ms=10
+2026-06-08T23:11:00Z service=partner-adapter INFO request req-00004008-396b region=veyra bank=Northstar status=200 latency_ms=14
+2026-06-08T23:12:00Z service=partner-adapter INFO request req-00004009-9f6a region=solmere bank=Northstar status=200 latency_ms=47
+2026-06-08T23:13:00Z service=partner-adapter INFO request req-0000400a-9ff7 region=veyra route=/certification status=200 latency_ms=63
+2026-06-08T23:14:00Z service=partner-adapter INFO request req-0000400b-0248 region=solmere route=/certification status=200 latency_ms=69
+2026-06-08T23:15:00Z service=partner-adapter INFO request req-0000400c-39e8 region=veyra route=/certification status=200 latency_ms=19
+2026-06-08T23:16:00Z service=partner-adapter INFO request req-0000400d-6bb1 region=solmere bank=Northstar status=200 latency_ms=65
+2026-06-08T23:17:00Z service=partner-adapter INFO request req-0000400e-51c1 region=veyra bank=Northstar status=200 latency_ms=29
+2026-06-08T23:18:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=64
+2026-06-08T23:19:00Z service=partner-adapter WARN slow request req-00004010-c4b4 region=veyra latency_ms=1808
+2026-06-08T23:20:00Z service=partner-adapter WARN retrying bank call attempt=2 backoff_ms=100 request=req-00004011-4672
+2026-06-08T23:21:00Z service=partner-adapter INFO request req-00004012-3a78 region=veyra bank=Northstar status=200 latency_ms=32
+2026-06-08T23:22:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=13
+2026-06-08T23:23:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=45
+2026-06-08T23:24:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=27
+2026-06-08T23:25:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=26
+2026-06-08T23:26:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00004017-cfc0
+2026-06-08T23:27:00Z service=partner-adapter INFO request req-00004018-c41a region=veyra bank=Northstar status=200 latency_ms=8
+2026-06-08T23:28:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=60
+2026-06-08T23:29:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=58
+2026-06-08T23:30:00Z service=partner-adapter WARN slow request req-0000401b-98ef region=solmere latency_ms=1076
+2026-06-08T23:31:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-0000401c-6214
+2026-06-08T23:32:00Z service=partner-adapter INFO request req-0000401d-5e0d region=solmere bank=Northstar status=200 latency_ms=9
+2026-06-08T23:33:00Z service=partner-adapter WARN slow request req-0000401e-b84f region=veyra latency_ms=1327
+2026-06-08T23:34:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=62
+2026-06-08T23:35:00Z service=partner-adapter INFO request req-00004020-e3ff region=veyra bank=Northstar status=200 latency_ms=75
+2026-06-08T23:36:00Z service=partner-adapter WARN slow request req-00004021-b4bf region=solmere latency_ms=1486
+2026-06-08T23:37:00Z service=partner-adapter INFO request req-00004022-6ab9 region=veyra bank=Northstar status=200 latency_ms=10
+2026-06-08T23:38:00Z service=partner-adapter WARN retrying bank call attempt=1 backoff_ms=100 request=req-00004023-5fdb
+2026-06-08T23:39:00Z service=partner-adapter INFO request req-00004024-3232 region=veyra route=/certification status=200 latency_ms=69
+2026-06-08T23:40:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=100 request=req-00004025-fa28
+2026-06-08T23:41:00Z service=partner-adapter INFO request req-00004026-2155 region=veyra route=/certification status=200 latency_ms=29
+2026-06-08T23:42:00Z service=partner-adapter INFO request req-00004027-3512 region=solmere bank=Northstar status=200 latency_ms=40
+2026-06-08T23:43:00Z service=partner-adapter INFO request req-00004028-7ce4 region=veyra bank=Northstar status=200 latency_ms=70
+2026-06-08T23:44:00Z service=partner-adapter WARN slow request req-00004029-bf1f region=solmere latency_ms=1514
+2026-06-08T23:45:00Z service=partner-adapter INFO request req-0000402a-09f1 region=veyra bank=Northstar status=200 latency_ms=56
+2026-06-08T23:46:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=38
+2026-06-08T23:47:00Z service=partner-adapter WARN retrying bank call attempt=3 backoff_ms=500 request=req-0000402c-6acc
+2026-06-08T23:48:00Z service=partner-adapter INFO request req-0000402d-19fe region=solmere route=/certification status=200 latency_ms=31
+2026-06-08T23:49:00Z service=partner-adapter INFO request req-0000402e-1729 region=veyra bank=Northstar status=200 latency_ms=41
+2026-06-08T23:50:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=46
+2026-06-08T23:51:00Z service=partner-adapter INFO health check dependency=northstar-bank status=ok latency_ms=9
+2026-06-08T23:52:00Z service=partner-adapter INFO request req-00004031-75be region=solmere route=/certification status=200 latency_ms=9
+2026-06-08T23:53:00Z service=partner-adapter WARN slow request req-00004032-1383 region=veyra latency_ms=1739
+2026-06-08T23:54:00Z service=partner-adapter INFO request req-00004033-81fc region=solmere route=/certification status=200 latency_ms=30
+2026-06-08T23:55:00Z service=partner-adapter INFO request req-00004034-036e region=veyra bank=Northstar status=200 latency_ms=68
+2026-06-08T23:56:00Z service=partner-adapter INFO request req-00004035-0bbb region=solmere route=/certification status=200 latency_ms=9
+2026-06-08T23:57:00Z service=partner-adapter INFO request req-00004036-4812 region=veyra bank=Northstar status=200 latency_ms=59
+2026-06-08T23:58:00Z service=partner-adapter WARN slow request req-00004037-7647 region=solmere latency_ms=1280
+2026-06-08T23:59:00Z service=partner-adapter WARN slow request req-00004038-37aa region=veyra latency_ms=1114

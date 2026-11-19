@@ -1,0 +1,27 @@
+{
+  "service": "notifications-worker",
+  "owner": "messaging-platform",
+  "schemaVersion": 3,
+  "rules": [
+    {
+      "name": "NotificationQueueBacklog",
+      "kind": "threshold",
+      "metric": "queue_depth",
+      "threshold": 900,
+      "operator": ">",
+      "duration": "15m",
+      "labels": {"severity": "warning", "team": "messaging"},
+      "annotations": {"summary": "Notification queue is building up", "description": "Pending notification work has remained high."}
+    },
+    {
+      "name": "NotificationDeadLetterGrowth",
+      "kind": "rate",
+      "metric": "dead_letter_messages_total",
+      "threshold": 4,
+      "operator": ">",
+      "duration": "10m",
+      "labels": {"severity": "critical", "team": "messaging"},
+      "annotations": {"summary": "Dead-letter messages are arriving", "description": "The worker is sending messages to the dead-letter queue."}
+    }
+  ]
+}

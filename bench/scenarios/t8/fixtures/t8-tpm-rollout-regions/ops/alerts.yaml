@@ -1,0 +1,17 @@
+alerts:
+  - name: wallet-error-rate
+    metric: wallet_error_rate_pct
+    condition: '> 1.0 for 10m'
+    owner: Observability
+  - name: pool-pressure
+    metric: connection_pool_utilization_pct
+    condition: '> 70 for 10m'
+    owner: Regional Operations
+  - name: residency-breach
+    metric: residency_violation_count
+    condition: '> 0 for 5m'
+    owner: Privacy Engineering
+  - name: partner-contract
+    metric: contract_success_rate_pct
+    condition: '< 99 for 10m'
+    owner: Partner Integrations

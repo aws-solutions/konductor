@@ -73,3 +73,14 @@ A deepseek author is stopped after 85 tool calls (about 25 credits at T5's rate;
 | t8-pm-cache-stampede | map | glm-5 | 0.16 |  |
 | t8-pm-cache-stampede | review | qwen3-coder-next | 1.01 |  |
 | t8-pm-cache-stampede | edit | (worker) | 0.00 | the request did not name the impact fields the key reads; named and defined; timeline items required words such as "first" and "third"; decoy pattern now fails only a summary that blames the reporting job; two keyword `contains` checks removed; evidence needs 2 of 3 groups |
+| t8-tpm-rollout-regions | author (discarded) | deepseek-3.2 | 18.43 | the fixture held the author's own answer and key files; the request listed every constraint and the file holding it; re-authored by gpt-5.6-luna |
+| t8-tpm-rollout-regions | map | glm-5 | 0.16 |  |
+| t8-tpm-rollout-regions | review (stopped) | minimax-m2.5 | 0.00 | stopped once the draft was discarded; the cut stream reports no credits |
+| t8-neg-alert-threshold | author | gpt-5.6-luna | 3.85 |  |
+| t8-neg-alert-threshold | map | glm-5 | 0.16 |  |
+| t8-neg-alert-threshold | review | qwen3-coder-next | 0.15 |  |
+| t8-tpm-rollout-regions | author | gpt-5.6-luna | 4.26 |  |
+| t8-tpm-rollout-regions | map | glm-5 | 0.16 |  |
+| t8-tpm-rollout-regions | review | qwen3-coder-next | 0.46 |  |
+| t8-tpm-rollout-regions | edit | (worker) | 0.00 | the request offered optional `risk.cause` and `risk.decoy` fields (naming the decoy) that the key graded; removed with their items and an optional canary field; a positional `steps.13` item, a "contract" item that matched the partner contract, and an exact certification start time replaced by "no Solmere step before the certification time"; order patterns widened; gate rule limited to traffic steps; grader gained `timeField` for that item |
+| t8-neg-alert-threshold | note | (worker) | 0.00 | the author wrote one scratch file to /tmp (outside its dir, no unit or batch read); removed |

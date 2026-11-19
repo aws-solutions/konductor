@@ -6,14 +6,14 @@ The block's fields for this task: {{BLOCKFIELDS}}
 
 A bench-provided script (`kit/block-key.js`, read its header for the exact rules) grades the block against a key you write. Put the key in `task-draft.json` as `blockKey`: `{ "outputFile": "{{OUTFILE}}", "items": [ ... ] }`, {{NITEMS}} items. Each item has `id`, `type`, an optional `weight` (1 to 3) and the fields of its type:
 - `text` {path, all, none}: the value at a dotted path, as text, matches every regex in `all` and none in `none`.
-- `some` / `none` / `every` {path, match}: list elements matching a matcher `{field?, all?, none?, num?: {gt, gte, lt, lte}, timeNear?: {time, tolMin}, timeIn?: [from, to]}`. `timeNear` without `field` reads the element's `time`.
+- `some` / `none` / `every` {path, match}: list elements matching a matcher `{field?, all?, none?, num?: {gt, gte, lt, lte}, timeNear?: {time, tolMin}, timeIn?: [from, to], timeField?}`. Times come from `timeField`, else `field`, else the element's `time`.
 - `order` {path, first, then}: the first element matching `first` comes before the first matching `then`.
 - `number` {path, value, tol | tolPct}: a number within the tolerance.
 - `maxLen` {path, max, min}: list length bounds (a precision term: a list that names everything does not win).
 - `inSet` {path, field, fromFile, pattern}: every value of `field` is one of the names a fixture file defines (for example every metric a plan gates on exists in the metrics catalogue).
 - `evidence` {path, groups: [{all, file}], min}: cited `path:line` refs must hit lines whose text matches each group's regexes.
 - `evidencePrecision` {path, relevant, min}: the share of cited lines that are relevant.
-All regexes are JavaScript, case-insensitive, and every regex field (`all`, `none`, `relevant`) is a LIST of strings. A matcher reads only `field`, `all`, `none`, `num`, `timeNear` and `timeIn`; any other key is ignored, so a matcher with only `timeNear` accepts any element at that time. Rules for a fair key:
+All regexes are JavaScript, case-insensitive, and every regex field (`all`, `none`, `relevant`) is a LIST of strings. A matcher reads only `field`, `all`, `none`, `num`, `timeNear`, `timeIn` and `timeField`; any other key is ignored, so a matcher with only `timeNear` accepts any element at that time. Rules for a fair key:
 - The request never says which suspect is the decoy, and never lists the files or log lines to look at first.
 - Each item tests one thing a careful practitioner gets right and a quick answer gets wrong. Most items are substance: the true cause, the numbers, the times, the constraint respected.
 - Text patterns accept every reasonable phrasing: use alternations with synonyms (`pool|connections?`), and require two or more patterns where one word could appear in a wrong answer. Use `none` to fail an answer that blames the decoy.

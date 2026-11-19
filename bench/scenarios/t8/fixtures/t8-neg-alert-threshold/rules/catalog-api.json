@@ -1,0 +1,27 @@
+{
+  "service": "catalog-api",
+  "owner": "storefront-platform",
+  "schemaVersion": 3,
+  "rules": [
+    {
+      "name": "Catalog5xxRate",
+      "kind": "ratio",
+      "metric": "http_requests_total",
+      "threshold": 0.02,
+      "operator": ">",
+      "duration": "6m",
+      "labels": {"severity": "critical", "team": "catalog"},
+      "annotations": {"summary": "Catalog server errors are elevated", "description": "Catalog responses contain too many server errors."}
+    },
+    {
+      "name": "CatalogLatencyHigh",
+      "kind": "threshold",
+      "metric": "http_request_duration_seconds_p95",
+      "threshold": 0.65,
+      "operator": ">",
+      "duration": "10m",
+      "labels": {"severity": "warning", "team": "catalog"},
+      "annotations": {"summary": "Catalog responses are slow", "description": "Catalog p95 response time is above the warning level."}
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "northstar-monitoring-config",
+  "version": "2.7.0",
+  "private": true,
+  "description": "Alert definitions and validation for Northstar services",
+  "main": "src/validate-rules.js",
+  "scripts": {
+    "test": "node --test test/",
+    "validate": "node src/validate-rules.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

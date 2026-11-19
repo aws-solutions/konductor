@@ -1,0 +1,169 @@
+{
+  "id": "t8-tpm-rollout-regions",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "tpm",
+  "phases2": [
+    "planning"
+  ],
+  "questions": "allowed",
+  "prompt": "I own the Aurora Wallet release. Please turn the material in this folder into a rollout plan the four regional teams can sign off on next Monday. Put the finished document at launch/wallet-rollout-plan.md, with the schedule, ownership, go/no-go decisions, rollback and the reasons behind each date. End it with one fenced ```json block containing one object. The block must have steps, an ordered list of objects with id, action, percent (a traffic or host share from 0 to 100, or null when the step moves no traffic), start (an ISO 8601 UTC time), and gate (null or an object with metric, op (< or >), threshold, and windowMin in minutes). Include rollback with trigger (metric, op, threshold, windowMin) and a list of step strings. Keep steps to no more than 14 entries. Include owners as an object mapping every step id to a team name from the team list, ownerList as id/team objects, and goNoGo as before/decider/criteria objects, with criteria as strings and each decider a role from the responsibility sheet in this folder. Use the folder's units. Keep all times in ISO 8601 UTC. The goal is a safe, signable release plan, not a summary of every file.",
+  "fixture": "t8-tpm-rollout-regions",
+  "hidden": "t8-tpm-rollout-regions",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "launch/wallet-rollout-plan.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "launch/wallet-rollout-plan.md",
+      "pattern": "(?=.*data)(?=.*residen)(?=.*Veyra)",
+      "min": 1,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/metrics-catalogue.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "signoff-quality",
+      "criterion": "The plan gives the teams a clear decision-ready narrative with explicit ownership and operational sequencing (code cannot check this because it cannot judge whether the prose is usable for a sign-off meeting).",
+      "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "critical-path",
+        "text": "Names the critical path and its owner, and says which work can run in parallel across teams.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "go-no-go",
+        "text": "Puts a go or no-go decision with a named decider and measurable criteria before each region.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "staging-bake",
+        "text": "Rolls out region by region with a bake time between stages, starting where the risk and impact are lowest.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "calendar",
+        "text": "Says what moves when a holiday, support gap or partner date shifts a stage, and keeps a buffer before each blackout.",
+        "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "rollback-ponr",
+        "text": "States the rollback for each stage and any point of no return (for example data moved or customers notified).",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "comms",
+        "text": "Plans who is told what and when: support, partner, status page, customers.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "slip",
+        "text": "Says what happens if a dependency slips: which dates move and what is decoupled.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Launch in all four regions on the target date.",
+      "Teams will coordinate in the chat channel.",
+      "Monitor closely after launch.",
+      "A timeline with no owners or criteria."
+    ]
+  },
+  "targetSkills": [
+    "decision-writing",
+    "risk-management",
+    "verification"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "risk-management",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template",
+      "licence": "Apache-2.0 (repository licence, GitHub API); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not name a specific method or tool the agent should use, nor does it list causes or constraints to find. It asks for a rollout plan document with a specific JSON structure, but does not prescribe how to derive the content."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is well-specified with clear output format requirements (markdown with JSON block), required sections (schedule, ownership, go/no-go, rollback), and constraints (14 steps max, 5% canary). The key uses paths and fields defined in the request itself, and units are stated (percent, minutes, ISO 8601)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fail",
+        "note": "The reference solution file at solution/launch/wallet-rollout-plan.md contains the complete correct answer, which an agent running on the plain fixture should not be able to see. This is the expected hidden-answer pattern for a document task, but it means the grader is copying the solution into the workspace, making it effectively available."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is not too easy. A quick wrong answer (e.g., blaming certificate warnings instead of pool exhaustion, listing the newest deploy as root cause, or giving round numbers like 25% canary) would fail multiple blockKey items including cause-is-pool-exhaustion, certificate-is-decoy, and canary-capacity. The schedule would also fail freeze and bank-certification-time checks."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values can be derived from the fixture. The pool exhaustion cause is explicitly logged (wallet-session.log shows 'connection pool exhausted active=80 max=80'), the certificate warning is documented as a decoy in risk-register.md, the 5% canary limit is in capacity-note.md and the status thread, and the schedule constraints (freeze dates, certification time, holidays, coverage gaps) are all in docs/."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

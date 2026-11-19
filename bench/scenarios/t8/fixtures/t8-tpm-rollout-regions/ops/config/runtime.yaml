@@ -1,0 +1,10 @@
+service: wallet-session
+region_defaults:
+  poolMaxConnections: 80
+  poolWarnUtilizationPct: 70
+  retryLimit: 3
+  requestTimeoutMs: 1800
+features:
+  sessionRegionCodeWriter: false
+  walletClientFlagDefault: false
+  residencyEnforcement: true

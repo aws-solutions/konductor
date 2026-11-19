@@ -1,0 +1,27 @@
+{
+  "service": "search-api",
+  "owner": "discovery-platform",
+  "schemaVersion": 3,
+  "rules": [
+    {
+      "name": "SearchEmptyResults",
+      "kind": "ratio",
+      "metric": "search_requests_total",
+      "threshold": 0.35,
+      "operator": ">",
+      "duration": "20m",
+      "labels": {"severity": "info", "team": "search"},
+      "annotations": {"summary": "Search returns many empty result sets", "description": "The share of searches with no results is unusual."}
+    },
+    {
+      "name": "SearchLatencyHigh",
+      "kind": "threshold",
+      "metric": "http_request_duration_seconds_p99",
+      "threshold": 1.8,
+      "operator": ">",
+      "duration": "12m",
+      "labels": {"severity": "warning", "team": "search"},
+      "annotations": {"summary": "Search requests are slow", "description": "Search p99 latency is above the warning level."}
+    }
+  ]
+}

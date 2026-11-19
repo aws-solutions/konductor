@@ -1,0 +1,7 @@
+{
+  "checkout-api": {"team": "checkout", "slack": "#team-checkout"},
+  "catalog-api": {"team": "catalog", "slack": "#team-catalog"},
+  "identity-api": {"team": "identity", "slack": "#team-identity"},
+  "notifications-worker": {"team": "messaging", "slack": "#team-messaging"},
+  "search-api": {"team": "search", "slack": "#team-search"}
+}
