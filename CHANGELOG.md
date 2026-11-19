@@ -79,6 +79,14 @@ not per individual commit.
 
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
+- `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
+  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.3 KB). It also gains a
+  scope section and a shorter Coverage-mode path for one module or one PR, and drops the
+  compatibility and roadmap lists.
+- `cypress-test-implementation` moved its task breakdown, Cypress patterns, and report templates into
+  `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.4 KB). It also gains a
+  scope section and a short path that writes the specs directly for one or two flows, and its
+  Quality Gate no longer renders inside a code block.
 - Claude Code subagents now preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
   load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
