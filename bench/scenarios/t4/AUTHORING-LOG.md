@@ -25,9 +25,21 @@ and one-line descriptions extracted by script; no skill, SOP or agent body was r
    finished calls of the same models, they likely cost 30 to 60 credits in all. They are not in the table below.
 3. **Model throttling.** One author call (t4-iam-ci-deploy-role) ended on a throttling error after 0.94 credits; the
    task was authored again.
-4. **Reviewer change.** minimax-m2.5 cost 21 credits for one review (t4-dev-sql-report-filters). Later reviews of
+4. **Two deepseek author calls stopped by the batch rule.** t4-iam-privesc-groups (34 minutes) and t4-secrets-in-repo
+   (31 minutes) passed the 30-minute limit and were stopped; an interrupted call reports no credits. Both tasks were
+   authored again by gpt-5.6-luna and reviewed by glm-5. An earlier deepseek call for t4-iam-privesc-groups ended after
+   97 seconds without writing a task (0.91 credits) and was run again.
+5. **Reviewer change.** minimax-m2.5 cost 21 credits for one review (t4-dev-sql-report-filters). Later reviews of
    deepseek-authored tasks use gpt-5.6-luna, which the plan also allows for deepseek authors. One minimax review was
    stopped 12 seconds after start (0 credits) for that reason.
+
+## Blindness audit
+
+Every tool call in every stream (kept and discarded) was scanned for paths outside the call's own folder. No call read
+or listed anything under konductor's `skills/`, `agent-sops/`, `agents/` or `context/`, or another batch's folder. The only
+outside paths were the call's own folder written with a broken prefix, and one author call that tried a working
+directory that does not exist (it failed and read nothing). The mapping calls saw only `units.json` (names and one-line
+descriptions extracted by script) and the finished task summary.
 
 ## Hand edits after review
 
@@ -43,8 +55,8 @@ that measure the fix (t4-dev-sql-report-filters) or split so one forgotten path 
 | wave | credits |
 | --- | --- |
 | 1 | 146.42 |
-| 2 | 114.60 |
-| all | 261.02 |
+| 2 | 130.97 |
+| all | 277.39 |
 
 ## Calls
 
@@ -88,3 +100,11 @@ Times are UTC on 2026-11-19. Credits are what each call reported in its stream.
 | 19:55 | t4-iam-bucket-policy-oac | author | deepseek-3.2 | 2 | 2035 | 22.83 |  |
 | 19:55 | t4-iam-bucket-policy-oac | map | glm-5 | 2 | 20 | 0.74 |  |
 | 19:57 | t4-iam-bucket-policy-oac | review | gpt-5.6-luna | 2 | 90 | 1.74 |  |
+| 20:20 | t4-iam-privesc-groups | author | deepseek-3.2 | 2 | 2043 | 0.00 | exit 143, stopped or throttled |
+| 20:23 | t4-iam-privesc-groups | author | gpt-5.6-luna | 2 | 142 | 2.29 |  |
+| 20:23 | t4-iam-privesc-groups | map | glm-5 | 2 | 16 | 0.73 |  |
+| 20:24 | t4-iam-privesc-groups | review | glm-5 | 2 | 89 | 4.13 |  |
+| 20:29 | t4-secrets-in-repo | author | deepseek-3.2 | 2 | 1869 | 0.00 | exit 143, stopped or throttled |
+| 20:35 | t4-secrets-in-repo | author | gpt-5.6-luna | 2 | 351 | 4.90 |  |
+| 20:35 | t4-secrets-in-repo | map | glm-5 | 2 | 16 | 0.51 |  |
+| 20:36 | t4-secrets-in-repo | review | glm-5 | 2 | 99 | 3.82 |  |

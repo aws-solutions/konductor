@@ -1,0 +1,12 @@
+{
+  "name": "account-baseline",
+  "version": "2.4.1",
+  "private": true,
+  "description": "IAM account baseline for a small platform team",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "test": "node --test",
+    "validate": "node src/validate.js",
+    "account": "node scripts/print-account.js"
+  }
+}
