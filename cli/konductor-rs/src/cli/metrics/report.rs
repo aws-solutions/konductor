@@ -19,6 +19,9 @@ pub(super) struct Context<'a> {
     pub agents_known: usize,
     pub unparsed: usize,
     pub unreadable: usize,
+    /// Changed files whose re-parse failed; their last good record is shown.
+    pub stale: usize,
+    pub unreadable_cache_lines: usize,
     pub home: &'a Path,
 }
 
@@ -200,13 +203,18 @@ fn tables(records: &[&Record], ctx: &Context) -> Vec<Table> {
 
 fn human(n: Option<u64>) -> String {
     let Some(n) = n else { return "—".into() };
-    let f = n as f64;
-    match n {
-        0..=999 => n.to_string(),
-        1_000..=999_999 => format!("{:.1}K", f / 1e3),
-        1_000_000..=999_999_999 => format!("{:.1}M", f / 1e6),
-        _ => format!("{:.1}B", f / 1e9),
+    if n < 1_000 {
+        return n.to_string();
     }
+    // Pick the unit by the rounded value, so 999_950 is "1.0M", not "1000.0K".
+    let f = n as f64;
+    for (scale, suffix) in [(1e3, "K"), (1e6, "M")] {
+        let v = f / scale;
+        if (v * 10.0).round() / 10.0 < 1000.0 {
+            return format!("{v:.1}{suffix}");
+        }
+    }
+    format!("{:.1}B", f / 1e9)
 }
 
 fn credits(c: Option<f64>) -> String {
@@ -309,28 +317,31 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
             );
         } else {
             let v3 = t.harness == "kiro-v3";
-            let reqs = if v3 { "turns" } else { "requests" };
+            // Kiro v2 subagents are separate session files, so only v3
+            // has a subagent-runs column.
+            let subs_col = |s: &str| {
+                if v3 {
+                    format!(" {s:>9}")
+                } else {
+                    String::new()
+                }
+            };
             let _ = writeln!(
                 out,
-                "  {:<key_w$} {:>8} {:>9} {:>9} {:>9}",
+                "  {:<key_w$} {:>8}{} {:>9} {:>9}",
                 by_label(ctx.by),
                 "sessions",
-                if v3 { "subagents" } else { "" },
-                reqs,
+                subs_col("subagents"),
+                if v3 { "turns" } else { "requests" },
                 "credits"
             );
             for r in t.rows.iter().chain(std::iter::once(&t.total)) {
-                let subs = if v3 {
-                    r.subagent_runs.unwrap_or(0).to_string()
-                } else {
-                    String::new()
-                };
                 let _ = writeln!(
                     out,
-                    "  {:<key_w$} {:>8} {:>9} {:>9} {:>9}",
+                    "  {:<key_w$} {:>8}{} {:>9} {:>9}",
                     truncate(&r.key, key_w),
                     r.files,
-                    subs,
+                    subs_col(&r.subagent_runs.unwrap_or(0).to_string()),
                     r.requests,
                     credits(r.credits)
                 );
@@ -357,6 +368,24 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
             "{} session files could not be read",
             ctx.unreadable
         ));
+    }
+    if ctx.stale > 0 {
+        notes.push(format!(
+            "{} session files changed but could not be re-read; their last good data is shown",
+            ctx.stale
+        ));
+    }
+    if ctx.unreadable_cache_lines > 0 {
+        notes.push(format!(
+            "{} cache lines could not be read and were kept as-is",
+            ctx.unreadable_cache_lines
+        ));
+    }
+    if !tables.is_empty() {
+        notes.push(
+            "Usage is counted per whole session: a session active in the window counts in full, dated by its start"
+                .into(),
+        );
     }
     if tables.iter().any(|t| t.harness == "claude") {
         notes.push(
@@ -400,6 +429,8 @@ pub(super) fn render_json(records: &[&Record], ctx: &Context) -> String {
         "harnesses": tables(records, ctx),
         "unparsed_files": ctx.unparsed,
         "unreadable_files": ctx.unreadable,
+        "stale_files": ctx.stale,
+        "unreadable_cache_lines": ctx.unreadable_cache_lines,
     });
     serde_json::to_string_pretty(&doc).unwrap_or_else(|_| "{}".into())
 }
@@ -437,8 +468,81 @@ mod tests {
             agents_known: 1,
             unparsed: 0,
             unreadable: 0,
+            stale: 0,
+            unreadable_cache_lines: 0,
             home: Path::new("/h"),
         }
+    }
+
+    fn kiro(credits: f64) -> ModelUsage {
+        ModelUsage {
+            model: "m".into(),
+            requests: 2,
+            credits: Some(credits),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn human_and_pct_boundaries() {
+        for (n, want) in [
+            (None, "—"),
+            (Some(0), "0"),
+            (Some(999), "999"),
+            (Some(1_000), "1.0K"),
+            (Some(999_949), "999.9K"),
+            (Some(999_950), "1.0M"),
+            (Some(999_950_000), "1.0B"),
+        ] {
+            assert_eq!(human(n), want, "{n:?}");
+        }
+        assert_eq!(pct(1, 0), "—");
+        assert_eq!(pct(1, 4), "25%");
+    }
+
+    #[test]
+    fn render_text_without_an_install_says_so() {
+        let mut c = ctx(GroupBy::Agent);
+        c.agents_known = 0;
+        assert!(render_text(&[], &c, ColorMode::disabled()).contains("No Konductor install found"));
+    }
+
+    #[test]
+    fn render_text_empty_window_and_footer_counts() {
+        let mut c = ctx(GroupBy::Agent);
+        (c.unparsed, c.unreadable, c.stale, c.unreadable_cache_lines) = (2, 3, 4, 5);
+        let out = render_text(&[], &c, ColorMode::disabled());
+        assert!(out.contains("No Konductor sessions in this window."));
+        for note in [
+            "2 session files could not be parsed",
+            "3 session files could not be read",
+            "4 session files changed but could not be re-read",
+            "5 cache lines could not be read",
+        ] {
+            assert!(out.contains(note), "missing {note:?} in:\n{out}");
+        }
+    }
+
+    #[test]
+    fn render_text_kiro_tables_and_long_keys() {
+        let long = "k-".to_string() + &"x".repeat(80);
+        let v2 = rec(Harness::KiroCliV2, &long, vec![kiro(1.5)]);
+        let mut v3 = rec(Harness::KiroV3, "konductor", vec![kiro(0.25)]);
+        v3.subagent_runs = Some(3);
+        let out = render_text(&[&v2, &v3], &ctx(GroupBy::Agent), ColorMode::disabled());
+        let v2_header = out
+            .lines()
+            .skip_while(|l| !l.starts_with("Kiro CLI v2"))
+            .nth(1)
+            .unwrap();
+        assert!(!v2_header.contains("subagents"), "{v2_header}");
+        assert!(out.contains("subagents") && out.contains("turns"));
+        assert!(out.contains("#289"), "v3 note");
+        assert!(
+            out.contains('…') && !out.contains(&long),
+            "long key truncated"
+        );
+        assert!(out.contains("counted per whole session"));
     }
 
     #[test]
