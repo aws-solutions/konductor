@@ -362,9 +362,12 @@ EDITS = [
      'each AWS MCP tool that acts on AWS (aws___run_script, aws___get_presigned_url and '
      'aws___get_tasks) in the settings file it installs into, so a mux or cmux pane that file '
      'applies to cannot call them: every pane for the default $HOME install, and only panes '
-     'running in the target project for a --target install. A Claude Code plugin install sets no '
-     'rule; add them yourself. Calls to these tools need a person to approve them; run that work '
-     'from konductor. Add deny rules for anything a dispatched agent must never do."]'),
+     'running in the target project for a --target install. No ask rule is written for a Claude '
+     'Code plugin install (add them yourself), when the settings file cannot be written (install '
+     'still succeeds and ends by printing the rules to add by hand), or for a tool one of your own '
+     'deny or allow entries already covers. Calls to these tools need a person to approve them; '
+     'run that work from konductor. Add deny rules for anything a dispatched agent must never '
+     'do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'

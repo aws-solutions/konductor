@@ -276,9 +276,24 @@ YAML) is skipped with a `konductor install: warning:` naming the file.
 The merge only appends. It never removes or reorders your entries, and a reinstall that
 adds nothing leaves the file untouched. If one of your entries already covers a rule (a
 `deny` rule, an exact `allow` of an ask-gated tool, or an `ask` rule covering a read-only
-tool), install keeps yours, leaves that rule out and prints one line naming your entry. A
-symlinked `.claude` or `settings.json` is refused with a warning. `uninstall` leaves the
-rules in place, like the rest of `settings.json`.
+tool), install keeps yours, leaves that rule out and prints one line naming your entry.
+`uninstall` leaves the rules in place, like the rest of `settings.json`.
+
+When the settings file cannot take the rules (a symlinked `.claude` or `settings.json`,
+malformed JSON, a `permissions` that is not an object, or a `permissions.ask`, `allow` or
+`deny` that is not an array), install writes none of them and still exits 0. It ends with a
+block on stderr headed `konductor install: AWS MCP permission rules were NOT written` that
+names the file and the reason and prints the rules as JSON to merge into the file's
+`permissions` object by hand. `install --json` carries the same outcome in an `aws_mcp_rules`
+field: `{"written": false, "file": ..., "reason": ..., "rules": {"permissions": {...}}}`, with
+`written: true` and `reason: null` when the merge succeeded, and `null` when no installed agent
+uses `aws-mcp`.
+
+No ask rule is written for a tool when:
+
+- Konductor is installed as a Claude Code plugin (see below).
+- The settings file cannot take the rules, as above.
+- One of your entries already covers the tool: a `deny` rule, or an exact `allow` of it.
 
 Under `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, each pane runs
 `claude -p --dangerously-skip-permissions`. Claude Code's

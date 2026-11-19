@@ -46,7 +46,9 @@ use super::kiro_cli::{
     list_agent_files_like, list_skill_dirs, plan_claude_hooks_file, plan_context_files_into,
     plan_skill_dir_recursive, reject_unsafe_file_name, PlannedFile, KONDUCTOR_DESTINATION_ROOT,
 };
-use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
+use super::manifest::{
+    classify_provenance, AwsMcpRulesRecord, ManifestFile, Status, StrategyManifest,
+};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
 use super::resource_rewrite::{
     apply_claude_settings_hooks_only, apply_claude_settings_mcp_rules, aws_mcp_ask_tools,
@@ -243,8 +245,12 @@ impl InstallStrategy for ClaudeInstallStrategy {
 
         // The `aws-mcp` ask/allow rules go into `.claude/settings.json`.
         // On a `$HOME` install that is also the hooks file, so this later
-        // write's hash replaces the hooks entry.
-        if let Some(settings_file) = apply_claude_settings_mcp_rules(target_dir, &aws_mcp.rules) {
+        // write's hash replaces the hooks entry. A failed write does not
+        // fail the install: the manifest records it, and the install
+        // report lists the rules to add by hand.
+        let rules_result = apply_claude_settings_mcp_rules(target_dir, &aws_mcp.rules);
+        let aws_mcp_rules_record = aws_mcp_rules_record(&aws_mcp.rules, &rules_result);
+        if let Ok(Some(settings_file)) = rules_result {
             raw_files.retain(|file| file.path != settings_file.path);
             raw_files.push(settings_file);
             if aws_mcp.sidecar_missing {
@@ -263,7 +269,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
 
         let files = attach_provenance(raw_files, &plan)?;
 
-        let complete = StrategyManifest::new(
+        let mut complete = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -271,6 +277,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
             Status::Complete,
             files,
         );
+        complete.aws_mcp_rules = aws_mcp_rules_record;
         super::manifest::upsert_strategy(target_dir, complete)?;
 
         // Same call, same rationale, as `kiro_cli.rs`'s own identical
@@ -466,6 +473,23 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
     Ok(AwsMcpRulePlan {
         rules,
         sidecar_missing: false,
+    })
+}
+
+/// The manifest record of this run's rules merge, `None` when there were
+/// no rules to merge.
+fn aws_mcp_rules_record(
+    rules: &McpPermissionRules,
+    result: &Result<Option<ManifestFile>, String>,
+) -> Option<AwsMcpRulesRecord> {
+    if rules.is_empty() {
+        return None;
+    }
+    Some(AwsMcpRulesRecord {
+        written: result.is_ok(),
+        reason: result.as_ref().err().cloned(),
+        ask: rules.ask.clone(),
+        allow: rules.allow.clone(),
     })
 }
 
@@ -2065,6 +2089,129 @@ mod tests {
             settings_manifest_entry(&target_dir).unwrap().provenance,
             super::super::manifest::Provenance::ReplacedOurs
         );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    fn recorded_aws_mcp_rules(target_dir: &Path) -> Option<AwsMcpRulesRecord> {
+        super::super::manifest::read_manifest(target_dir)
+            .unwrap()
+            .expect("manifest must exist after install")
+            .strategies[0]
+            .aws_mcp_rules
+            .clone()
+    }
+
+    #[test]
+    fn install_records_written_aws_mcp_rules_in_the_manifest() {
+        let target_dir = scratch_dir("aws-rules-record-target");
+        let repo_root = scratch_dir("aws-rules-record-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            recorded_aws_mcp_rules(&target_dir),
+            Some(AwsMcpRulesRecord {
+                written: true,
+                reason: None,
+                ask: ASK_RULES.map(String::from).to_vec(),
+                allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+            })
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_succeeds_and_records_the_reason_when_settings_json_cannot_take_the_rules() {
+        for (name, settings) in [
+            ("malformed", "{not json".to_string()),
+            (
+                "ask-not-array",
+                r#"{"permissions": {"ask": "mcp__aws-mcp__*"}}"#.to_string(),
+            ),
+            (
+                "allow-not-array",
+                r#"{"permissions": {"allow": "mcp__aws-mcp__*"}}"#.to_string(),
+            ),
+        ] {
+            let target_dir = scratch_dir(&format!("aws-rules-unwritable-{name}-target"));
+            let repo_root = scratch_dir(&format!("aws-rules-unwritable-{name}-repo"));
+            seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+            fs::create_dir_all(target_dir.join(".claude")).unwrap();
+            fs::write(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH), &settings).unwrap();
+
+            install(&target_dir, &repo_root)
+                .unwrap_or_else(|err| panic!("{name}: install must still succeed: {err}"));
+
+            let record = recorded_aws_mcp_rules(&target_dir).expect("the outcome must be recorded");
+            assert!(!record.written, "{name}");
+            assert!(
+                record
+                    .reason
+                    .as_deref()
+                    .is_some_and(|reason| reason.contains("settings.json")),
+                "{name}: {record:?}"
+            );
+            assert_eq!(record.ask, ASK_RULES.map(String::from).to_vec(), "{name}");
+            assert_eq!(
+                fs::read_to_string(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap(),
+                settings,
+                "{name}: the file must be left as it was"
+            );
+            assert!(target_dir.join(".claude/agents/k-x.md").is_file(), "{name}");
+
+            fs::remove_dir_all(&target_dir).ok();
+            fs::remove_dir_all(&repo_root).ok();
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_records_a_symlinked_settings_file_as_not_written() {
+        let target_dir = scratch_dir("aws-rules-symlink-target");
+        let repo_root = scratch_dir("aws-rules-symlink-repo");
+        let elsewhere = scratch_dir("aws-rules-symlink-elsewhere");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+        fs::write(elsewhere.join("settings.json"), "{}").unwrap();
+        std::os::unix::fs::symlink(
+            elsewhere.join("settings.json"),
+            target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH),
+        )
+        .unwrap();
+
+        install(&target_dir, &repo_root).expect("install must still succeed");
+
+        let record = recorded_aws_mcp_rules(&target_dir).expect("the outcome must be recorded");
+        assert!(!record.written);
+        assert!(record.reason.unwrap().contains("symlink"));
+        assert_eq!(
+            fs::read_to_string(elsewhere.join("settings.json")).unwrap(),
+            "{}"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+        fs::remove_dir_all(&elsewhere).ok();
+    }
+
+    #[test]
+    fn install_without_aws_mcp_agents_records_no_aws_mcp_rules() {
+        let target_dir = scratch_dir("aws-rules-no-record-target");
+        let repo_root = scratch_dir("aws-rules-no-record-repo");
+        seed_synthed_agent(&repo_root, "k-plain", b"---\nname: k-plain\n---\nBody\n");
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(recorded_aws_mcp_rules(&target_dir), None);
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

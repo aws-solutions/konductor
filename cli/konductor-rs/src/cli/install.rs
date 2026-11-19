@@ -1428,6 +1428,7 @@ fn report_install_success(
                     "replaced_foreign": 0,
                     "agent_version": agent_version,
                     "mcp_binary_version": mcp_binary_version,
+                    "aws_mcp_rules": serde_json::Value::Null,
                 });
                 if let Some(result) = &link_bin_result {
                     merge_link_bin_json(&mut value, result);
@@ -1478,6 +1479,7 @@ fn report_install_success(
             mcp_binary_version.as_deref(),
             harness_dir,
         );
+        value["aws_mcp_rules"] = aws_mcp_rules_json(destination, slot.aws_mcp_rules.as_ref());
         if let Some(result) = &link_bin_result {
             merge_link_bin_json(&mut value, result);
         }
@@ -1490,6 +1492,7 @@ fn report_install_success(
             value["warning"] = serde_json::Value::String(warning.to_string());
         }
         println!("{value}");
+        print_unwritten_aws_mcp_rules(destination, &slot);
         return;
     }
 
@@ -1524,6 +1527,67 @@ fn report_install_success(
         for line in format_install_verbose_lines(&slot) {
             println!("{line}");
         }
+    }
+    print_unwritten_aws_mcp_rules(destination, &slot);
+}
+
+/// The `--json` `aws_mcp_rules` field: `null` when this install had no
+/// `aws-mcp` rules to merge.
+fn aws_mcp_rules_json(
+    destination: &Path,
+    record: Option<&manifest::AwsMcpRulesRecord>,
+) -> serde_json::Value {
+    let Some(record) = record else {
+        return serde_json::Value::Null;
+    };
+    serde_json::json!({
+        "written": record.written,
+        "file": aws_mcp_rules_file(destination).display().to_string(),
+        "reason": record.reason,
+        "rules": aws_mcp_rules_settings_fragment(record),
+    })
+}
+
+fn aws_mcp_rules_file(destination: &Path) -> PathBuf {
+    destination.join(resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH)
+}
+
+/// `{"permissions": {"ask": [...], "allow": [...]}}`, leaving out an empty
+/// list, so the user can merge it into their settings file as is.
+fn aws_mcp_rules_settings_fragment(record: &manifest::AwsMcpRulesRecord) -> serde_json::Value {
+    let mut permissions = serde_json::Map::new();
+    for (key, rules) in [("ask", &record.ask), ("allow", &record.allow)] {
+        if !rules.is_empty() {
+            permissions.insert(key.to_string(), serde_json::json!(rules));
+        }
+    }
+    serde_json::json!({ "permissions": permissions })
+}
+
+/// The end-of-install block for `aws-mcp` rules the settings file could not
+/// take, `None` when they were written or there were none.
+fn format_unwritten_aws_mcp_rules(
+    destination: &Path,
+    record: Option<&manifest::AwsMcpRulesRecord>,
+) -> Option<String> {
+    let record = record.filter(|record| !record.written)?;
+    let fragment = serde_json::to_string_pretty(&aws_mcp_rules_settings_fragment(record))
+        .expect("a JSON value always serializes");
+    Some(format!(
+        "konductor install: AWS MCP permission rules were NOT written\n\
+         \x20 file:   {file}\n\
+         \x20 reason: {reason}\n\
+         Until you add these rules to that file by hand (merge them into its \"permissions\" \
+         object), nothing makes Claude Code ask before the AWS MCP tools that act on AWS:\n\
+         {fragment}",
+        file = aws_mcp_rules_file(destination).display(),
+        reason = record.reason.as_deref().unwrap_or("unknown"),
+    ))
+}
+
+fn print_unwritten_aws_mcp_rules(destination: &Path, slot: &manifest::StrategyManifest) {
+    if let Some(block) = format_unwritten_aws_mcp_rules(destination, slot.aws_mcp_rules.as_ref()) {
+        eprintln!("\n{block}");
     }
 }
 
@@ -4649,6 +4713,97 @@ mod tests {
         assert_eq!(value["replaced_foreign"], 2);
         assert_eq!(value["agent_version"], "0.1.1");
         assert_eq!(value["mcp_binary_version"], "v0.2.0");
+    }
+
+    fn unwritten_aws_mcp_rules() -> manifest::AwsMcpRulesRecord {
+        manifest::AwsMcpRulesRecord {
+            written: false,
+            reason: Some(
+                "failed to parse /tmp/example-target/.claude/settings.json as JSON".to_string(),
+            ),
+            ask: vec!["mcp__aws-mcp__aws___run_script".to_string()],
+            allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+        }
+    }
+
+    #[test]
+    fn unwritten_aws_mcp_rules_block_names_the_file_the_reason_and_the_rules() {
+        let block = format_unwritten_aws_mcp_rules(
+            Path::new("/tmp/example-target"),
+            Some(&unwritten_aws_mcp_rules()),
+        )
+        .expect("unwritten rules must produce the block");
+
+        assert_eq!(
+            block,
+            "konductor install: AWS MCP permission rules were NOT written\n  \
+             file:   /tmp/example-target/.claude/settings.json\n  \
+             reason: failed to parse /tmp/example-target/.claude/settings.json as JSON\n\
+             Until you add these rules to that file by hand (merge them into its \
+             \"permissions\" object), nothing makes Claude Code ask before the AWS MCP tools \
+             that act on AWS:\n\
+             {\n  \"permissions\": {\n    \"ask\": [\n      \
+             \"mcp__aws-mcp__aws___run_script\"\n    ],\n    \"allow\": [\n      \
+             \"mcp__aws-mcp__aws___list_regions\"\n    ]\n  }\n}"
+        );
+        let fragment = &block[block.find('{').unwrap()..];
+        let parsed: serde_json::Value =
+            serde_json::from_str(fragment).expect("the rules must be copy-pasteable JSON");
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::json!(["mcp__aws-mcp__aws___run_script"])
+        );
+    }
+
+    #[test]
+    fn unwritten_aws_mcp_rules_block_is_absent_when_written_or_not_applicable() {
+        let written = manifest::AwsMcpRulesRecord {
+            written: true,
+            reason: None,
+            ..unwritten_aws_mcp_rules()
+        };
+        let destination = Path::new("/tmp/example-target");
+        assert_eq!(
+            format_unwritten_aws_mcp_rules(destination, Some(&written)),
+            None
+        );
+        assert_eq!(format_unwritten_aws_mcp_rules(destination, None), None);
+    }
+
+    #[test]
+    fn aws_mcp_rules_json_field_carries_written_file_reason_and_rules() {
+        let destination = Path::new("/tmp/example-target");
+        assert_eq!(
+            aws_mcp_rules_json(destination, Some(&unwritten_aws_mcp_rules())),
+            serde_json::json!({
+                "written": false,
+                "file": "/tmp/example-target/.claude/settings.json",
+                "reason": "failed to parse /tmp/example-target/.claude/settings.json as JSON",
+                "rules": {"permissions": {
+                    "ask": ["mcp__aws-mcp__aws___run_script"],
+                    "allow": ["mcp__aws-mcp__aws___list_regions"]
+                }}
+            })
+        );
+        let written = manifest::AwsMcpRulesRecord {
+            written: true,
+            reason: None,
+            allow: Vec::new(),
+            ..unwritten_aws_mcp_rules()
+        };
+        assert_eq!(
+            aws_mcp_rules_json(destination, Some(&written)),
+            serde_json::json!({
+                "written": true,
+                "file": "/tmp/example-target/.claude/settings.json",
+                "reason": null,
+                "rules": {"permissions": {"ask": ["mcp__aws-mcp__aws___run_script"]}}
+            })
+        );
+        assert_eq!(
+            aws_mcp_rules_json(destination, None),
+            serde_json::Value::Null
+        );
     }
 
     /// Companion to the test above, for the Claude harness: `sops_skipped`

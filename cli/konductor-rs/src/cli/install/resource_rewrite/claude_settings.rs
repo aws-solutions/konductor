@@ -668,14 +668,16 @@ fn merge_claude_settings_mcp_rules(
 }
 
 /// Merges `rules` into `<target_dir>/.claude/settings.json` and returns the
-/// file for the manifest, or `None` when nothing is on disk. Never fails
-/// the install: each skipped rule and any error is reported on stderr.
+/// file for the manifest, `Ok(None)` when nothing is on disk, or `Err` with
+/// the reason the file could not take the rules (a symlink, malformed JSON
+/// or a key of the wrong shape). The caller still finishes the install and
+/// reports the rules to add by hand. Each skipped rule is reported on stderr.
 pub(in crate::cli::install) fn apply_claude_settings_mcp_rules(
     target_dir: &Path,
     rules: &McpPermissionRules,
-) -> Option<ManifestFile> {
+) -> Result<Option<ManifestFile>, String> {
     if rules.is_empty() {
-        return None;
+        return Ok(None);
     }
     match merge_claude_settings_mcp_rules(target_dir, rules) {
         Ok(outcome) => {
@@ -691,20 +693,20 @@ pub(in crate::cli::install) fn apply_claude_settings_mcp_rules(
                 );
             }
             if outcome.bytes.is_empty() {
-                return None;
+                return Ok(None);
             }
-            Some(ManifestFile {
+            Ok(Some(ManifestFile {
                 path: CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
                 sha256: Some(super::super::artifact::sha256_hex(&outcome.bytes)),
                 provenance: Provenance::Created,
-            })
+            }))
         }
         Err(err) => {
             eprintln!(
-                "warning: Claude Code AWS MCP permission rules skipped ({err}) -- the rest of \
-                 this install is unaffected"
+                "warning: Claude Code AWS MCP permission rules not written ({err}) -- the rest \
+                 of this install is unaffected"
             );
-            None
+            Err(err.to_string())
         }
     }
 }
@@ -2121,6 +2123,7 @@ mod tests {
         fs::create_dir_all(dir.join(".claude")).unwrap();
 
         let file = apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .unwrap()
             .expect("a fresh target must get a settings file");
         assert_eq!(file.path, CLAUDE_SETTINGS_RELATIVE_PATH);
 
@@ -2158,7 +2161,9 @@ mod tests {
             }),
         );
 
-        apply_claude_settings_mcp_rules(&dir, &aws_rules()).expect("the merge must write");
+        apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .unwrap()
+            .expect("the merge must write");
 
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
         assert_eq!(parsed["env"], serde_json::json!({"FOO": "bar"}));
@@ -2189,12 +2194,16 @@ mod tests {
         fs::create_dir_all(dir.join(".claude")).unwrap();
         let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
 
-        let first = apply_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        let first = apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .unwrap()
+            .unwrap();
         let bytes_before = fs::read(&path).unwrap();
         let mtime_before = fs::metadata(&path).unwrap().modified().unwrap();
         std::thread::sleep(std::time::Duration::from_millis(20));
 
-        let second = apply_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        let second = apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .unwrap()
+            .unwrap();
         assert_eq!(fs::read(&path).unwrap(), bytes_before);
         assert_eq!(
             fs::metadata(&path).unwrap().modified().unwrap(),
@@ -2210,7 +2219,9 @@ mod tests {
         let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
         fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
 
-        apply_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .unwrap()
+            .unwrap();
 
         assert_eq!(
             fs::metadata(&path).unwrap().permissions().mode() & 0o777,
@@ -2351,7 +2362,9 @@ mod tests {
             .expect_err("a non-array ask key must be refused");
         assert!(matches!(err, ClaudeGrantError::Other(_)));
         assert!(err.contains("permissions.ask"));
-        assert!(apply_claude_settings_mcp_rules(&dir, &aws_rules()).is_none());
+        let reason = apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .expect_err("the failure reason must reach the caller");
+        assert!(reason.contains(".claude"), "{reason}");
         assert_eq!(
             read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)),
             original
@@ -2369,7 +2382,9 @@ mod tests {
         let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
             .expect_err("a symlinked .claude directory must be refused");
         assert!(err.contains("symlink"));
-        assert!(apply_claude_settings_mcp_rules(&dir, &aws_rules()).is_none());
+        let reason = apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .expect_err("the failure reason must reach the caller");
+        assert!(reason.contains(".claude"), "{reason}");
         assert!(!real_elsewhere.join("settings.json").exists());
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&real_elsewhere).ok();
@@ -2406,7 +2421,7 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(apply_claude_settings_mcp_rules(&dir, &rules).is_none());
+        assert_eq!(apply_claude_settings_mcp_rules(&dir, &rules), Ok(None));
         assert!(!dir.join(".claude").exists());
         fs::remove_dir_all(&dir).ok();
     }

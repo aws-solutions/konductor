@@ -573,8 +573,12 @@ not per individual commit.
   rules' settings file applies to cannot call them (every pane for the default `$HOME` install;
   for a `--target` install, only panes running in that project); run that work from
   `konductor`. The merge only appends, keeps any user entry that already covers a rule and says
-  so, refuses a symlinked `.claude` or `settings.json`, and
-  `uninstall` leaves the rules in place. The Claude Code plugin cannot ship permission rules;
+  so, and `uninstall` leaves the rules in place. When the settings file cannot take the rules (a
+  symlinked `.claude` or `settings.json`, malformed JSON, or a `permissions`, `ask`, `allow` or
+  `deny` key of the wrong shape), install writes none of them, still exits 0, and ends with a
+  stderr block naming the file, the reason and the rules as JSON to add by hand; `install --json`
+  reports it in a new `aws_mcp_rules` field. No ask rule is written for a plugin install, an
+  unwritable settings file, or a tool a user entry already covers. The Claude Code plugin cannot ship permission rules;
   plugin users add `mcp__plugin_konductor_aws-mcp__<tool>` for each of the three to
   `permissions.ask` themselves.
 

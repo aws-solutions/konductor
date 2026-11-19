@@ -268,8 +268,10 @@ exception on Claude Code is the three AWS MCP tools that act on AWS: `aws___run_
 rule for each in the settings file it installs into, and a pane that file applies to cannot call
 them. That is every pane for the default `$HOME` install (`~/.claude/settings.json`), but only
 panes running in the target project for a `--target` install (`<target>/.claude/settings.json`).
-A Claude Code plugin install writes no rule: add `mcp__plugin_konductor_aws-mcp__<tool>` for each
-of the three to `permissions.ask` yourself (see
+No ask rule is written for a Claude Code plugin install, when that settings file cannot be written
+(install still succeeds and ends by printing the rules to add by hand), or for a tool one of your own
+entries already covers. For a plugin install, add `mcp__plugin_konductor_aws-mcp__<tool>` for each of
+the three to `permissions.ask` yourself (see
 [Install from the Claude plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md)
 and [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine)).
 Use them only in a workspace and with AWS credentials you are willing to let an agent act on. With
