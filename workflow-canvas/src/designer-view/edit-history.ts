@@ -6,7 +6,11 @@
  */
 export const EDIT_HISTORY_LIMIT = 50;
 
-/** The text of a workflow now, with the texts to undo to and to redo. */
+/**
+ * The text of a workflow now, with the texts to undo to and to redo. No
+ * function here changes a history: one that changes it returns a new one,
+ * and one with nothing to do returns the history it was given.
+ */
 export interface EditHistory {
   /** The earlier texts, oldest first. */
   readonly past: readonly string[];
