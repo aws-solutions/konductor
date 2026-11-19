@@ -106,5 +106,56 @@
         "note": "All required numbers present in fixture. Output format clearly specified. Tests verify both constraints are met and calculations are correct."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that the 2-index option (120% overhead, 380+ TB) exceeds the 300 TB storage limit and must be rejected, showing the calculation that proves it doesn't fit",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "identifies the 90-day retention figure from legacy documentation as superseded by the 400-day requirement, and uses only 400 days in storage calculations",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "calculates monthly storage cost (~$6,514) and validates it fits within the $7,000 monthly storage budget hard limit",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "explains the query performance trade-off: the single (user_id, event_time) index optimizes the 65% time-range queries with user filter, but resource_type queries (20%) will require partition scans",
+        "source": "SQLite query planner docs, https://www.sqlite.org/queryplanner.html (public domain); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "specifies monthly partitioning (not daily) as the retention cleanup mechanism, enabling O(1) partition drops instead of DELETE scans",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "addresses the failure mode where queries without user_id require full partition scans, and proposes mitigations like batch processing during off-peak or materialized views for aggregates",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "notes that if budget increases or storage costs drop, adding a second index on (resource_type, event_time) would improve the 20% user activity queries that currently scan partitions",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "identifies that the 20% capacity headroom requirement from budget-constraints.md means the 300 TB technical limit should not be fully utilized, and shows that ~277 TB usage leaves adequate buffer",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "picks the 2-index option because it provides better query coverage without calculating whether it fits the storage limit",
+      "uses the 90-day retention period from legacy documentation instead of the 400-day requirement, drastically underestimating storage needs",
+      "selects 3-index strategy for optimal query performance, ignoring both the 300 TB storage limit and $7,000 budget constraint",
+      "proposes daily DELETE operations for retention cleanup without recognizing this requires full table scans and violates the time-bucket deletion requirement",
+      "calculates raw storage (190 TB) but forgets index overhead, incorrectly concluding the 2-index or 3-index options fit within 300 TB"
+    ]
   }
 }
