@@ -1,0 +1,159 @@
+{
+  "id": "t2-arch-dr-event-store",
+  "version": 1,
+  "class": "design",
+  "phase": "design-review",
+  "phases2": [],
+  "role": "architect",
+  "prompt": "Review the order-service architecture decision record in fixture/docs/adr/0007-event-sourced-orders.md and the supporting packet around it. I own this change and need a decision I can take to the architecture council, not a rewrite of the design. Check whether the proposed behavior, operations, migration, and dependencies fit the contracts and targets in the packet, and call out concrete consequences where the design is incomplete or inconsistent. Keep the review focused on issues that could change approval or implementation work. Write the review to REVIEW.md at the top of the project. End it with a fenced json list of findings, each with location (the section number of the document, like 3.2), severity (critical, high, medium, low or nit), issue and fix.",
+  "questions": "allowed",
+  "fixture": "t2-arch-dr-event-store",
+  "hidden": "t2-arch-dr-event-store",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 20,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const H=new Set();for(const l of fs.readFileSync(\"docs/adr/0007-event-sourced-orders.md\",\"utf8\").split(\"\\n\")){const m=l.match(/^#+\\s*(?:section\\s*)?(\\d+(?:\\.\\d+)*)/i);if(m)H.add(m[1])}process.exit(L.every(x=>{const m=String(x.location).match(/\\d+(?:\\.\\d+)*/);return m&&H.has(m[0])})?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/adr/0007-event-sourced-orders.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Each important finding identifies the concrete consequence in this project and gives a fix a developer can act on, without inventing problems unsupported by the packet (code cannot check this because it requires judging the review's reasoning against the project context).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "The design keeps immutable events for the life of the service but only promises optional fields and consumer tolerance, with no event versioning, upcaster policy, or procedure for incompatible domain changes over years of stored data.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "The customer endpoints read an asynchronous projection and explicitly return stale data when it is behind, contradicting the product requirement that a successful placement is immediately visible and leaving no read-your-writes mechanism.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "At 2.5 million events per minute, replaying the 174.66 million current events takes about 70 minutes rather than the stated ten, so the full rebuild cannot meet the 15-minute recovery target and the projected growth worsens it.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "The proposal stores customer and delivery personal data in an indefinitely retained immutable event log but only deletes projections, so the product deletion contract has no way to erase or irreversibly de-identify the source data.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "The options table compares event sourcing with an inaccurately reduced CRUD baseline and omits the existing outbox plus audit-table design, which could provide reliable integration and history with materially less migration and operational cost.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "Snapshots are deferred to a later spike without specifying when they are created, how writes coordinate with them, where they are stored and indexed, or how their format and retention are operated.",
+      "weight": 1
+    },
+    {
+      "id": "k7",
+      "finding": "Removing the reporting team's direct SQL access and pointing vaguely to an API, daily export, or future feed does not replace its current-day SQL contract, seven-year reproducibility, or full audit fields.",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "adversarial-design-review",
+    "doc-accuracy-analyzer"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": "k-architect",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-design-review",
+      "k-existing-design-review"
+    ],
+    "mustNotLoad": [
+      "code-review",
+      "design-evaluation"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/adr/madr",
+      "licence": "MIT OR CC0-1.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a review against contracts and targets but does not name a method, checklist, or planted problems. It specifies the output format without revealing what to find."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The task is clear: review the ADR against the supporting packet, write findings to REVIEW.md with section-numbered locations and json list format."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Finding issues requires cross-file reading (ADR vs product requirements, recovery targets, reporting contract), arithmetic verification (174.7M events at 2.5M/min), and recognizing that the options table omits existing outbox+audit. A quick read accepting the rationale would miss most items."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All seven key items have evidence in the fixture: k2 and k4 contradict explicit product requirements; k3 is a verifiable math error; k5 omits documented existing architecture; k7 conflicts with reporting-contract.md. Severities are defensible for a senior reviewer."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, test names, file names, or docs in the fixture point at the planted problems. The findings emerge from comparing documents."
+      }
+    ]
+  }
+}
