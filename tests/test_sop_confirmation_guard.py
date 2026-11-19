@@ -4,8 +4,8 @@ confirmation flag the model could set by itself must not stand in for the
 user's yes.
 
 Every SOP that takes `scope_confirmed` says the value counts only when it comes
-from the user. k-e2e-test-generation also refuses to stage, commit or push
-without that yes, and never pushes the default branch. The orchestrator rules
+from the user. k-e2e-test-generation is also told not to stage, commit or push
+without that yes, or to push the default branch. The orchestrator rules
 say the same from the caller's side."""
 
 import re

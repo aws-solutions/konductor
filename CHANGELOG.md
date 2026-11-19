@@ -414,6 +414,9 @@ not per individual commit.
   to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
   without that yes, or to push the default branch. Orchestrators never add the flag to a SOP
   command unless the user gave it.
+- The `adversarial-code-review` description says "Use for a second pass after code review"
+  (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
+  activation condition. The trigger itself is unchanged.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes

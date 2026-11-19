@@ -498,8 +498,8 @@ an executable spec suite that has been run once and committed, plus a summary re
   avoids the "Browser is already in use" error when Chrome is already open on macOS.
 - **`scope_confirmed` matters for automation.** Left at its default, step 3 stops and waits. Any
   parallel or unattended caller must set it `true`, from the user's own yes: a value the model
-  picks by itself does not count, and the commit step will not stage, commit or push without
-  that yes. It never pushes the repository's default branch.
+  picks by itself does not count, and the commit step is told not to stage, commit or push
+  without that yes, or to push the repository's default branch.
 - **Only the two functional modes validate and commit.** `unit-prompts` writes prompt files and
   goes straight to the summary.
 
