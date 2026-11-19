@@ -544,7 +544,8 @@ not per individual commit.
   the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
   in this repository. They say which tool-ID rows no source confirms, and correctly state that
   `install/registry.rs` registers three install strategies, not two.
-- `k-verify` no longer runs `cdk synth` or `cdk diff` on an untrusted checkout without asking.
+- `k-verify` no longer runs `cdk synth`, `cdk ls` or `cdk diff` until the user confirms the CDK
+  app is trusted, since all three run the app's code and `cdk diff` also reads the deployed stack.
 
 ### Security
 

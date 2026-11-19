@@ -18,14 +18,15 @@ def k_verify_guide():
 
 def test_step_5_waits_for_trust_confirmation():
     text = step_5()
-    assert "You MUST NOT run either until the user confirms that the CDK app is trusted to execute in this environment" in text
+    assert "You MUST NOT run `cdk synth`, `cdk ls` or `cdk diff` until the user confirms that the CDK app is trusted to execute in this environment" in text
     assert "A change you wrote yourself in this session counts as trusted; a checkout under review does not." in text
 
 
-def test_step_5_runs_synth_strict_and_account_checks_only_on_request():
+def test_step_5_runs_ls_and_synth_strict_and_diff_only_on_request():
     text = step_5()
-    assert "When the user confirms, You MUST run `cdk synth --strict` and record its outcome." in text
-    assert "You MUST run `cdk ls` and `cdk diff` only when the user asks for an account-aware check, and only with the credentials they name." in text
+    assert "When the user confirms, You MUST run `cdk ls` and `cdk synth --strict` and record each outcome." in text
+    assert "You MUST run `cdk diff` only when the user also asks for a check against the deployed stack" in text
+    assert "You MUST run `cdk diff` and any context lookup only with the credentials the user names." in text
 
 
 def test_step_5_reports_unrun_commands_without_confirmation():
@@ -51,4 +52,4 @@ def test_user_guide_describes_the_trust_gate():
     text = k_verify_guide()
     assert "cdk ls → cdk diff → cdk synth" not in text
     assert "**CDK commands wait for your confirmation.**" in text
-    assert "the SOP runs neither until you confirm the CDK app is trusted" in text
+    assert "the SOP runs none of them\n  until you confirm the CDK app is trusted" in text
