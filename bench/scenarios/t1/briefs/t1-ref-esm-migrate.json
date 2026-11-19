@@ -1,0 +1,16 @@
+{
+  "id": "t1-ref-esm-migrate",
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 40",
+  "source": {
+    "url": "https://github.com/chalk/chalk",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor, migration and dependency upgrade. Role: developer. Repo kind: a small Node.js 24 library with a command-line tool, written in CommonJS (about 25 modules: a plugin loader that requires modules by name, a module that reads a data file next to itself with __dirname, one that requires a JSON file, two modules that depend on each other in a cycle, a default export that is a function with properties, a bin script, tests, CI config, docs). Size: about 35 files. Inspiration (an idea only, nothing copied): public libraries that moved from CommonJS to ES modules. Build a task where the owner asks to move the whole package to ES modules while the public behaviour stays the same, with wrinkles of your own design (the package entry points and the exports map, the command-line tool still starting from the shell, tests moved over and still passing, the plugin loader still working with dynamic import, the cycle still working). The hidden tests must check behaviour through the public entry points, plus a few structural facts the request states. Make the fixture's existing tests pass today under CommonJS, and make the hidden tests fail on the untouched fixture for a reason the request names (module format, entry points, exports map), never because the old code is broken."
+}

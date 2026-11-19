@@ -1,11 +1,11 @@
 {
-  "id": "t1-impl-env-expand",
+  "id": "t1-impl-settings-expand",
   "phase": "implementation",
   "role": "developer",
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
   "stack": "python",
-  "size": "25 to 40",
+  "size": "25 to 35",
   "source": {
     "url": "https://github.com/theskumar/python-dotenv",
     "licence": "BSD-3-Clause",

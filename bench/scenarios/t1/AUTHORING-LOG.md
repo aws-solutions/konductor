@@ -29,6 +29,15 @@ Notes on hand edits after review (no model call): `t1-bug-cache-ttl` was changed
 
 `t1-nfr-report-queries`: the author's limits of 25 and 50 seconds were raised to 900 and 1800. Python tasks now run their hidden suite with `python3 -c "import sys; assert sys.version_info[:2] == (3, 12)" && node --test ... hidden/py_bridge.test.js`: the bench pins Python 3.12 only for a task whose checks name python, and this also makes a wrong interpreter fail loudly. `dry-run.js` pins Python the same way (set `BENCH_PYTHON` to a 3.12 interpreter when the default one is a different build).
 
+## Dropped tasks
+
+| task | author | why | what happened |
+| --- | --- | --- | --- |
+| t1-impl-env-expand | deepseek-3.2 | the reference did not run after one fix round (syntax error in the solution; the reviewer's floor verdict was fail twice) | author 50.99 credits, one fix round, dropped. Its public idea (variable expansion in settings files) is not covered by another task |
+| t1-refactor-esm | deepseek-3.2 | the dry run failed: the reference scored 87.4 (42 of 51 hidden tests) and the untouched fixture scored 69.1 (36 of 51 passed before any change); the reviewer's leak and floor verdicts were fail | author 35.52 credits; no fix round, because a deepseek fix round costs about 25 credits and the hidden tests tested the old code as much as the new. Replaced by `t1-ref-esm-migrate`, written by the other author with a smaller scope |
+
+Drafts of both are kept outside the repo (scratch), not in the tree.
+
 ## Calls
 
 | task | step | model | credits |
@@ -51,3 +60,5 @@ Notes on hand edits after review (no model call): `t1-bug-cache-ttl` was changed
 | t1-nfr-report-queries | author | gpt-5.6-luna | 2.59 |
 | t1-nfr-report-queries | map | glm-5 | 0.16 |
 | t1-nfr-report-queries | review | glm-5 | 7.06 |
+| t1-impl-env-expand | fix | deepseek-3.2 | n/a (call stopped at the 25 minute limit before it reported; about 80 tool calls, about 25 credits by the rate of the other deepseek calls) |
+| t1-impl-env-expand | review | minimax-m2.5 | 3.02 |
