@@ -1,0 +1,141 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Fleet Sensor Ingest API",
+    "version": "1.0.0",
+    "description": "Bounded batch ingestion with idempotent retries and item-level outcomes."
+  },
+  "servers": [
+    { "url": "https://ingest.example.invalid" }
+  ],
+  "paths": {
+    "/v1/ingest-batches": {
+      "post": {
+        "operationId": "submitReadingBatch",
+        "summary": "Submit a bounded batch of readings",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Stable caller-generated key for safely retrying one batch.",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["readings"],
+                "properties": {
+                  "readings": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 688,
+                    "items": { "$ref": "#/components/schemas/Reading" }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "207": {
+            "description": "Each submitted reading has an individual outcome.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BatchResult" }
+              }
+            }
+          },
+          "400": { "description": "The batch shape or a reading is invalid." },
+          "409": { "description": "The idempotency key is already bound to different input." },
+          "413": { "description": "The request is larger than the gateway limit." },
+          "429": { "description": "The service is applying backpressure." }
+        }
+      }
+    },
+    "/v1/ingest-batches/{batchId}": {
+      "get": {
+        "operationId": "getIngestBatchStatus",
+        "summary": "Get processing status for a submitted batch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current aggregate and per-item processing status.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BatchStatus" }
+              }
+            }
+          },
+          "404": { "description": "The batch is not known." }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Reading": {
+        "type": "object",
+        "required": ["readingId", "deviceId", "observedAt", "value"],
+        "properties": {
+          "readingId": { "type": "string", "minLength": 1 },
+          "deviceId": { "type": "string", "minLength": 1 },
+          "observedAt": { "type": "string", "format": "date-time" },
+          "value": { "type": "number" },
+          "unit": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "ItemResult": {
+        "type": "object",
+        "required": ["readingId", "status"],
+        "properties": {
+          "readingId": { "type": "string" },
+          "status": { "type": "string", "enum": ["accepted", "rejected", "deferred"] },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "BatchResult": {
+        "type": "object",
+        "required": ["batchId", "results"],
+        "properties": {
+          "batchId": { "type": "string" },
+          "results": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ItemResult" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchStatus": {
+        "type": "object",
+        "required": ["batchId", "state", "total", "completed", "results"],
+        "properties": {
+          "batchId": { "type": "string" },
+          "state": { "type": "string", "enum": ["processing", "complete", "partial", "failed"] },
+          "total": { "type": "integer", "minimum": 0 },
+          "completed": { "type": "integer", "minimum": 0 },
+          "deferred": { "type": "integer", "minimum": 0 },
+          "results": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ItemResult" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

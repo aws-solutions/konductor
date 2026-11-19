@@ -1,0 +1,6 @@
+{
+  "deliverables": ["api/openapi.json", "docs/decision.md"],
+  "acceptableOptions": ["buffered-batch", "replicated-stream"],
+  "temptingOption": "direct-large-batch",
+  "notes": "The tempting low-cost direct-large-batch option uses 1,000 readings with 380-byte payloads in fixture/data/options.json and fixture/data/traffic.json, exceeding the 256 KiB gateway ceiling recorded in fixture/data/gateway.json and the requirements prose."
+}

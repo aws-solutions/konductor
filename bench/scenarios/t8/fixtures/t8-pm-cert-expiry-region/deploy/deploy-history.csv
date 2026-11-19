@@ -1,0 +1,8 @@
+deploy_id,service,region,version,started_at,completed_at,result,operator
+rel-8421,atlas-auth,eu-west-1,2025.02.14-rc3,2025-02-14T10:49:00Z,2025-02-14T10:52:00Z,success,release-bot
+rel-8421,atlas-auth,us-east-1,2025.02.14-rc3,2025-02-14T10:49:00Z,2025-02-14T10:52:00Z,success,release-bot
+rel-8422,edge,eu-west-1,2025.02.14-rc2,2025-02-14T10:25:00Z,2025-02-14T10:27:00Z,success,release-bot
+rel-8422,edge,us-east-1,2025.02.14-rc2,2025-02-14T10:25:00Z,2025-02-14T10:27:00Z,success,release-bot
+rel-8423,atlas-auth,eu-west-1,2025.02.14-rc3-rollback,2025-02-14T11:18:00Z,2025-02-14T11:26:00Z,success,oncall-17
+rel-8423,atlas-auth,us-east-1,2025.02.14-rc3-rollback,2025-02-14T11:18:00Z,2025-02-14T11:26:00Z,success,oncall-17
+rel-8424,atlas-auth,eu-west-1,2025.02.14-hotfix1,2025-02-14T12:05:00Z,2025-02-14T12:11:00Z,success,oncall-17

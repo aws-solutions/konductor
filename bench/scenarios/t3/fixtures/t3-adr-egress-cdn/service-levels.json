@@ -1,0 +1,11 @@
+{
+  "p95_start_time_max_ms": 800,
+  "monthly_budget_max_usd": 9500,
+  "rpo_max_minutes": 15,
+  "rto_max_minutes": 30,
+  "measurement_notes": {
+    "p95_start_time_max_ms": "measured from an edge request until the first playable bytes",
+    "rpo_max_minutes": "maximum clip metadata and manifest loss after an origin incident",
+    "rto_max_minutes": "maximum time to restore clip delivery after an origin incident"
+  }
+}

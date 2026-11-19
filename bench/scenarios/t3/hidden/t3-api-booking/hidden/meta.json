@@ -1,0 +1,6 @@
+{
+  "deliverables": ["api/openapi.json", "docs/decision.md"],
+  "acceptableOptions": ["cursor"],
+  "temptingOption": "offset",
+  "notes": "The older offset page size is recorded in traffic.json and the gateway response cap is recorded in gateway.json; combining them makes that cheaper option exceed the current body-size limit."
+}

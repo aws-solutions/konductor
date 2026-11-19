@@ -1,0 +1,6 @@
+{
+  "deliverables": ["db/schema.sql", "docs/decision.md"],
+  "acceptableOptions": ["composite-optimized", "two-table-normalized"],
+  "temptingOption": "single-column-all",
+  "notes": "The trap is that indexing every column (7 indexes) uses ~3.1 TB storage, exceeding the 2.5 TB limit. Storage numbers are in traffic-analysis.md and prototype-results.md."
+}

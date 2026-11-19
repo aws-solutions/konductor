@@ -1,0 +1,6 @@
+{
+  "deliverables": ["db/schema.sql", "docs/decision.md"],
+  "acceptableOptions": ["1-index"],
+  "temptingOption": "2-indexes",
+  "notes": "Trap: 2-index option exceeds 300TB storage limit when combining 400-day retention with 120% index overhead; numbers are spread across traffic-analysis.md (25k/sec, 220 bytes), compliance.md (400 days), and budget-constraints.md (300TB limit, $7k budget)."
+}

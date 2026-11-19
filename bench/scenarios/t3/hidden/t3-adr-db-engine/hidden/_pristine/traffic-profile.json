@@ -1,0 +1,12 @@
+{
+  "environment": "launch-day-production",
+  "peak_writes_per_second": 25000,
+  "average_writes_per_second": 1800,
+  "average_reads_per_second": 3600,
+  "hot_key_fraction": 0.60,
+  "top_key_fraction": 0.02,
+  "active_logical_keys": 10000,
+  "hot_keys_per_storage_partition": 25,
+  "item_size_bytes": 1024,
+  "billing_hours_per_month": 730
+}

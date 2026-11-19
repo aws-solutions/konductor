@@ -1,0 +1,6 @@
+[
+  {"at":"2025-03-12T09:20:00Z","version":"2.7.2","service":"order-sync","change":"breaker state telemetry"},
+  {"at":"2025-03-17T22:14:00Z","version":"2.8.0","service":"order-sync","change":"partner limiter snapshot updated"},
+  {"at":"2025-03-18T00:40:00Z","version":"2.8.0","service":"order-sync","change":"routine worker restart","result":"healthy"},
+  {"at":"2025-03-18T04:02:00Z","version":"2.8.1","service":"order-sync","change":"queue drain tuning","result":"rolled out after incident"}
+]

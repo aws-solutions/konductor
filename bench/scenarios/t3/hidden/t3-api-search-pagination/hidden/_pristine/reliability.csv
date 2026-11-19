@@ -1,0 +1,3 @@
+name,limit,unit,direction,measurement
+rpo,60,seconds,max,maximum accepted search-index data loss
+rto,15,minutes,max,maximum time to restore search service

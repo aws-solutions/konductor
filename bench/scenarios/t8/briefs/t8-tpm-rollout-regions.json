@@ -1,0 +1,69 @@
+{
+  "id": "t8-tpm-rollout-regions",
+  "kind": "doc",
+  "phase": "release-ops",
+  "role": "tpm",
+  "phases2": [
+    "planning"
+  ],
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "ops",
+  "size": "15 to 30",
+  "loglines": 800,
+  "source": {
+    "url": "https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template",
+    "licence": "Apache-2.0 (repository licence, GitHub API); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outFile": "launch/wallet-rollout-plan.md",
+  "blockFields": "`steps` (ordered list of `{ \"id\", \"action\", \"percent\" (share of traffic or hosts after the step, 0 to 100, or null when the step moves no traffic), \"start\" (ISO 8601 UTC planned start), \"gate\": { \"metric\", \"op\" (\"<\" or \">\"), \"threshold\", \"windowMin\" } or null }`), `rollback` (object: `trigger`: `{ \"metric\", \"op\", \"threshold\", \"windowMin\" }`, and `steps`: list of strings), plus any other fields you need, stated in the request. Also `owners` (object mapping each step id to a team name from the fixture) and `goNoGo` (list of `{ \"before\" (a step id), \"decider\" (a role from the fixture), \"criteria\": [strings] }`).",
+  "kindExtra": "Seed 5 to 7 constraints in the fixture, each stated once in a place a careful reader finds (a change calendar with a freeze window, a metrics catalogue file listing every metric name that exists, a capacity note, a dependency between two services, a schema change that old code cannot read, an on-call rota with a gap). Key shape: `order` items (a small canary before any 100% step; the schema expand step before the code that writes the new column; the contract step last), `every` items on `steps` (each traffic step has a gate; no step starts inside the freeze window, via `none` with `timeIn` on `start`), `inSet` items (every gate metric and the rollback trigger metric are names in the metrics catalogue file, read with `fromFile` and a `pattern`), `number` or `text` items for constraint values (for example the canary share at most the capacity note allows), and a `maxLen` on `steps` (max 14). 12 to 16 items. TPM flavour: the constraints are cross-team: one team's API must be live in a region before another team's client release there; a public holiday and a support-staff gap in one region; a partner bank that accepts traffic only after a certification date; a data residency rule for one region. Add `inSet` items that every owner is a team in the team list file and every decider a role in the RACI file, and an `order` item for the dependency.",
+  "brief": "Phase: release. Role: TPM. Folder: the launch folder for a digital wallet feature going to four regions, with the team list, a RACI sheet, each team's readiness notes, the partner bank's certification letter, the regional holiday and support calendars, the metrics catalogue, risk notes, and the status mail thread. The request from the director: a rollout plan across the four regions that the teams can sign off on next Monday.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "critical-path",
+        "text": "Orders the work by cross-team dependencies and names the critical path and its owner.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "go-no-go",
+        "text": "Puts a go or no-go decision with a named decider and measurable criteria before each region.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "staging-bake",
+        "text": "Rolls out region by region with a bake time between stages, starting where the risk and impact are lowest.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "calendar",
+        "text": "Keeps launches out of holidays, support gaps and partner blackout dates.",
+        "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "rollback-ponr",
+        "text": "States the rollback for each stage and any point of no return (for example data moved or customers notified).",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "comms",
+        "text": "Plans who is told what and when: support, partner, status page, customers.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "slip",
+        "text": "Says what happens if a dependency slips: which dates move and what is decoupled.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Launch in all four regions on the target date.",
+      "Teams will coordinate in the chat channel.",
+      "Monitor closely after launch.",
+      "A timeline with no owners or criteria."
+    ]
+  }
+}

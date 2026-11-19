@@ -1,0 +1,61 @@
+{
+  "id": "t8-runbook-db-failover",
+  "kind": "doc",
+  "phase": "release-ops",
+  "role": "sre",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "size": "15 to 30",
+  "loglines": 2000,
+  "source": {
+    "url": "https://github.com/SkeltonThatcher/run-book-template",
+    "licence": "no licence file (GitHub API: license null); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outFile": "runbooks/orders-db-failover.md",
+  "blockFields": "`steps` (ordered list of `{ \"id\", \"action\", \"command\" (the exact command or console action, or null), \"verify\" (what to check and the expected result), \"abortIf\" (a condition that stops the procedure, or null) }`), `abort` (object: `{ \"metric\", \"op\", \"threshold\" }` naming the measurable condition under which the failover must not proceed), `escalate` (list of roles or rota names to call, from the fixture).",
+  "kindExtra": "Seed the constraints in the fixture: the replication tool's CLI help (its real command names and flags), the metrics catalogue (replication lag metric name and the RPO in the data policy), the topology (one primary, two replicas in different zones, one of them delayed by design for backups), the client config (DNS name and TTL, connection pool settings), the paging rota, and last year's failover notes in which the old primary came back and accepted writes. Key shape: `order` items (check lag on the candidate before promote; fence or stop the old primary before promote or before clients are pointed to the new one; repoint clients after promote; verify writes after repoint), a `none` item that fails promoting the delayed replica, `text` items that commands use the tool's real subcommands, `inSet` on the abort metric against the metrics catalogue, a `number` item for the abort threshold equal to the RPO, an `inSet` on `escalate` against the rota file, and a `maxLen` on `steps` (max 16). 12 to 16 items.",
+  "brief": "Phase: release and ops. Role: SRE. Folder: the ops repo of an orders database (managed with an open-source replication manager of your own invention, described in a vendored CLI help text), with the topology, client configs, metrics catalogue, data-loss policy, paging rota, and old notes from a messy failover last year (2,000 lines of logs from it). The request: the team has no written failover procedure; write the runbook an on-call engineer can follow at 3 a.m. for a manual failover when the primary is unhealthy.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "data-loss-bound",
+        "text": "Checks the candidate replica's lag against the allowed data loss before promoting, and picks the most caught-up eligible replica.",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+      },
+      {
+        "id": "fencing",
+        "text": "Fences or stops the old primary before clients can reach the new one, so two primaries never take writes.",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "client-cutover",
+        "text": "Covers how clients find the new primary (DNS TTL, pool reconnects) and verifies that real writes succeed afterwards.",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+      },
+      {
+        "id": "verify-each",
+        "text": "Gives a check with the expected result after each step, so the operator knows the step worked before going on.",
+        "source": "Google SRE book, Being On-Call, https://sre.google/sre-book/being-on-call/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "abort-escalate",
+        "text": "Says when to stop and who to call, with a named rota, instead of pushing on when a check fails.",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "after",
+        "text": "Covers the aftermath: rebuild the old primary as a replica, re-point backups and monitoring, and record the event.",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Promote the replica and update the config.",
+      "Restart the database and see if it recovers.",
+      "A list of steps with no check after each.",
+      "No word on the old primary coming back."
+    ]
+  }
+}

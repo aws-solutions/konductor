@@ -1,0 +1,4 @@
+option_id,p95_start_ms,sustained_throughput_gbps,rpo_minutes,rto_minutes,test_note
+cdn-committed,620,2.4,10,20,regional edge load test
+cdn-payg,780,1.6,15,25,regional edge load test
+object-direct,1400,1.8,15,30,origin direct load test

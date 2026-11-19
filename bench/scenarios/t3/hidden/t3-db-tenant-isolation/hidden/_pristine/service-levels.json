@@ -1,0 +1,6 @@
+{
+  "lookup_p95_ms": 120,
+  "rpo_seconds": 60,
+  "rto_minutes": 15,
+  "max_logical_databases": 1000
+}

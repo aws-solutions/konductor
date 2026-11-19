@@ -1,0 +1,103 @@
+{
+  "id": "t8-inc-checkout-latency",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "phases2": [
+    "bugfix"
+  ],
+  "questions": "allowed",
+  "prompt": "Please prepare the checkout incident report for tomorrow's review. Read the service and pooler logs, the minute metrics, configuration diff, deploy history, alerts, and on-call transcript in this folder, then explain what happened, the causal chain, customer impact, and concrete follow-up work. Write the report to incidents/2026-03-checkout-latency.md. Cite log, config, or deploy evidence as path:line, where the path is relative to this folder and the line is 1-based. End the document with one fenced ```json block containing one object. Its rootCause is an object with summary (string) and evidence (list of path:line strings). Its timeline is a list of objects with time (ISO 8601 UTC string) and event (string). Its impact is an object with these named numbers: durationMinutes (minutes), failedRequests (HTTP 5xx responses), and peakP99Ms (milliseconds). Its actionItems is a list of objects with text (string) and owner (string). Keep timeline times in ISO 8601 UTC and make the report useful for deciding what to change, not just a log transcription.",
+  "fixture": "t8-inc-checkout-latency",
+  "hidden": "t8-inc-checkout-latency",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 20,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "incidents/2026-03-checkout-latency.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config/config-diff-week.yaml",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-causal-narrative",
+      "criterion": "The prose clearly distinguishes the causal configuration change, customer-visible symptoms, and mitigation without assigning blame to a person (code cannot check this because narrative clarity and blame-free framing depend on context).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/danluu/post-mortems",
+      "licence": "no licence file (GitHub API: license null); a list of links, used for the idea only; no linked text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not name a specific method, process, or tool the agent should use, nor tell it how to work or list causes/constraints to find."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All paths (logs/, config/, metrics/), field names (rootCause.summary, timeline[].time, impact.durationMinutes), units (minutes, milliseconds), and formats (ISO 8601 UTC) are explicitly stated."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains all evidence directly: config-diff.yaml line 17 shows pool_size 40→12, pooler.log line 1083 shows 'client_pool_size=12 previous=40', checkout-api.log shows 'connection_acquire_timeout' and 'status=503'."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer (blaming receipt release or GC warnings) would fail the key items because the config-diff shows the runtime-config change at 17:42:00Z and pooler.log shows the pool size reduction matching the symptom window exactly."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values can be derived: config-diff.yaml:17, pooler.log:1083, checkout-api.log evidence, impact values (407 failures, 3505ms P99, 40 min duration) from the CSV, and timeline times from the logs."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

@@ -1,0 +1,174 @@
+{
+  "id": "t3-adr-queue-choice",
+  "class": "design",
+  "target": null,
+  "prompt": "We need to choose a managed queue service for our event processing pipeline. Review the requirements, technical design, pricing information, and operational context in the fixture/ directory.\n\nBased on the analysis, select the most appropriate queue service that meets all requirements while staying within budget. Consider message size, throughput needs, ordering requirements, and operational complexity.\n\nCreate an Architecture Decision Record (ADR) at docs/adr/0001-queue.md documenting your decision. The ADR should include:\n- Context and problem statement\n- Considered options with pros and cons\n- Decision and rationale\n- Consequences and implementation notes\n\nInclude a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the selected option id (e.g., \"sqs_standard\", \"sqs_fifo\", \"kinesis_streams\")\n- \"options\": array of all option ids considered\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements\n- \"monthly_cost_usd\": the chosen option's monthly cost computed from the pricing data\n\nEnsure your cost calculations account for message size, chunk billing, and all operations needed for the complete message lifecycle. Verify that the chosen option meets all throughput limits and stays within the $900 monthly budget.",
+  "fixture": "t3-adr-queue-choice",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-queue-choice",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 43
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-queue.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of reasoning and tradeoff analysis (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
+      "weight": 1
+    },
+    {
+      "id": "explanation_clarity",
+      "criterion": "Clarity and completeness of explanation in the ADR (not code-checkable: Automated checks can verify structure and presence of sections, but cannot assess whether the explanation would be understandable to stakeholders, whether it addresses all relevant concerns, or whether it provides sufficient context for future readers.)",
+      "weight": 1
+    },
+    {
+      "id": "professional_writing",
+      "criterion": "Professional writing quality and appropriate tone (not code-checkable: While basic grammar and spelling can be checked, code cannot evaluate whether the writing is persuasive, appropriately technical, well-structured for the audience, or maintains a professional tone suitable for architectural documentation.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff_consideration",
+      "criterion": "Consideration of non-quantitative tradeoffs (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/rust-lang/rfcs",
+      "licence": "MIT OR Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "structure"
+    }
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-research",
+    "decision-writing",
+    "cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "decision-research",
+      "decision-writing",
+      "cost-estimation"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks to analyze and select from available options; it does not name or hint at a specific answer. The solution correctly derives kinesis_streams through analysis of provided data."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements clearly state 400/s peak throughput and $900 budget. The FIFO 300/s limit is explicitly in pricing data, making the decision unambiguous for a careful reader."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files contain the data needed to calculate but do not state the answer. The trap (FIFO appears cheaper but fails throughput) is correctly identified by the solution through its own analysis."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Three options are under budget ($900), so simple cheapest-choice would be wrong. The throughput constraint (400/s) is the key discriminator - FIFO fails it while others pass."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All needed numbers are provided: 8M events/day, 90KB size, 400/s peak, $900 budget, and detailed pricing. Output format is specified clearly."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that SQS FIFO cannot meet the 400 events/second peak throughput requirement due to its 300 messages/second per message group limit, making it an invalid option regardless of its lower per-request cost.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e2",
+        "text": "Correctly calculates SQS request billing using 64KB chunks for the 90KB average message size, resulting in 2 chunks per message (not 1), which affects the total request count for cost calculations.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "Accounts for the complete message lifecycle in cost calculations: send, receive, and delete operations (3 operations per message, each billed separately), not just send operations alone.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "Identifies that ordering is not strictly required per the requirements document (which states the team decided FIFO semantics are not required if reasonable processing order can be maintained), removing a key advantage of SQS FIFO from the decision.",
+        "source": "original"
+      },
+      {
+        "id": "e5",
+        "text": "Uses the correct peak throughput figure of 400 events/second from requirements and technical design, explicitly rejecting the outdated 500 events/second figure that appears in historical notes.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "For Kinesis, correctly calculates PUT payload units using 25KB chunks for the 90KB message size (4 units per message, not 3), and includes shard-hour costs plus any data retention costs in the total.",
+        "source": "original"
+      },
+      {
+        "id": "e7",
+        "text": "Verifies that the chosen option's monthly cost stays within the $900 budget constraint, showing the computed value and confirming it meets the limit.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e8",
+        "text": "Discusses operational trade-offs: Kinesis requires shard capacity planning and monitoring (higher operational complexity), while SQS Standard offers simpler operations but with possible duplicate processing requiring idempotent consumers.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e9",
+        "text": "Notes that SQS Standard's at-least-once delivery may produce duplicate messages, requiring idempotent consumer logic, which is acceptable since the previous system experienced this and the requirements do not mandate exactly-once processing.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Selects SQS FIFO because it has the lowest per-request price ($0.45 vs $0.50 for Standard) without checking the 300 messages/second throughput limit against the 400 events/second peak requirement.",
+      "Calculates SQS cost using 1 request per message, ignoring the 64KB chunk billing that makes a 90KB message count as 2 requests per operation.",
+      "Only accounts for send operations in cost estimates, omitting receive and delete operations that triple the actual request count.",
+      "Uses the 500 events/second peak figure from historical notes instead of the current 400 events/second requirement stated in the technical design document.",
+      "Dismisses Kinesis due to operational complexity without calculating its actual cost, missing that it is significantly cheaper than SQS options for this message volume."
+    ]
+  }
+}
