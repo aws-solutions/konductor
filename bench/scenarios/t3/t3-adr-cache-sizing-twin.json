@@ -91,5 +91,56 @@
         "note": "All required inputs are present: price-sheet.json has node data, operating-model.md has the 25% reservation; the prompt specifies output location and rounding rules."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that usable memory is 75% of advertised memory (or equivalently, advertised memory minus 25% reservation), and cites the operating-model.md as the source for the 25% engine overhead figure.",
+        "source": "original"
+      },
+      {
+        "id": "e2",
+        "text": "calculates price per usable GB correctly by dividing monthly price by usable memory (not advertised memory), and reports cache-105 as the most price-efficient node at approximately 8.25 USD/GB.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "ignores the candidate-configs.json file entirely, recognizing it describes architecture topologies (shards, replicas) which are irrelevant to a pure memory-and-price calculation task.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "ignores the traffic-profile.md working set values (90 GB ordinary, 118 GB peak) and the superseded 600 requests/second figure, recognizing these demand measures are not needed for the requested price-per-GB calculation.",
+        "source": "original"
+      },
+      {
+        "id": "e5",
+        "text": "does not recommend any node as 'best' or make architecture decisions, correctly interpreting the prompt's explicit statement that 'This is a straightforward calculation task that requires no design decisions or recommendations.'",
+        "source": "original"
+      },
+      {
+        "id": "e6",
+        "text": "uses price-sheet.json (not price-sheet.md) as the data source for node prices, as instructed by the markdown file itself which states 'Use the JSON export for arithmetic.'",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "rounds memory values to one decimal place and monetary values to two decimal places as specified, and does not introduce false precision from the calculation.",
+        "source": "original"
+      },
+      {
+        "id": "e8",
+        "text": "does not output to docs/adr/0001-cache.md despite the README.md mentioning that path, recognizing the task explicitly specifies docs/memory-table.md as the output location.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "picks cache-105 as the 'best' node because it has the lowest price per usable GB, treating the calculation task as an architecture recommendation.",
+      "uses the 118 GB peak working set to declare that only cache-209 has enough usable memory (156.8 GB) and recommends it, conflating calculation with sizing.",
+      "includes the superseded 600 requests/second or the 90 GB ordinary working set in the analysis, missing the instruction to ignore superseded pilot data.",
+      "calculates price per advertised GB instead of price per usable GB, ignoring the 25% engine overhead that defines usable capacity.",
+      "creates docs/adr/0001-cache.md instead of docs/memory-table.md, following the README's architecture framing rather than the explicit prompt instruction."
+    ]
   }
 }
