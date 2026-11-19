@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.8.2
+  version: 1.8.3
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -47,7 +47,9 @@ info:
     nothing: the `goal` of a run in that list may be empty, because a
     workflow may declare an empty default goal, and a client already shows
     whatever text it gets. Version 1.8.2 adds nothing: it takes in the change
-    of 1.6.3.
+    of 1.6.3. Version 1.8.3 changes wording only: it says that `GET /api/runs`
+    lists the runs of the root workflow and no run of another workflow in the
+    workspace, though `GET /api/runs/{id}` can read one.
 
     **Conventions**
 
@@ -250,8 +252,9 @@ info:
     (see **Run events**). A finished run stays readable. A client
     that does not know the `run_id`, such as a second tab, gets it from the
     409 `already_running` that `POST /api/run` answers while a run is active.
-    The `run_id` is that of the active run, whichever process started it, and
-    `GET /api/runs/{id}` reads it.
+    The `run_id` is that of the active run, whichever process started it and
+    whichever workflow of the workspace it runs, and `GET /api/runs/{id}`
+    reads it. `GET /api/runs` lists it only when it is a run of the root.
 
     **Run events.** `GET /api/runs/{id}/events` returns what happened in a
     run as an ordered list of events, each with a `seq` that goes up by one
@@ -1318,10 +1321,13 @@ paths:
         Returns the runs of the root workflow, newest first, so a client can
         show the history of its runs. A row has the run's id, the time it
         started, its status and its goal, and `GET /api/runs/{id}` reads the
-        rest. The list holds every run that `GET /api/runs/{id}` can read,
-        whichever process started it, the active one included, and at most
-        `limit` of them. Runs that started in the same second keep the order
-        in which they started.
+        rest. The list holds the runs of the root workflow that
+        `GET /api/runs/{id}` can read, whichever process started them, the
+        active one included, and at most `limit` of them. A run of another
+        workflow in the same workspace is not listed, even though
+        `GET /api/runs/{id}` can read it. A client learns its id from the 409
+        `already_running` answer of `POST /api/run`. Runs that started in the
+        same second keep the order in which they started.
       tags: [Run]
       parameters:
         - name: limit
@@ -2466,7 +2472,7 @@ components:
     RunSummary:
       type: object
       required: [run_id, started_at, status, goal, goal_truncated]
-      description: One run in the history.
+      description: One run of the root workflow in the history.
       properties:
         run_id:
           $ref: '#/components/schemas/RunId'

@@ -195,15 +195,26 @@ describe('the history of simulated runs', () => {
   it('cuts a goal over the limit between code points, and says so', () => {
     const long = '😀'.repeat(MAX_GOAL_CHARS + 5);
     runs.start('hello', ['only'], long);
-    const [row] = runs.list(10);
+    const [row] = runs.list('hello', 10);
     expect(row?.goal).toBe('😀'.repeat(MAX_GOAL_CHARS));
     expect(row?.goal_truncated).toBe(true);
   });
 
   it('keeps a goal within the limit as it is', () => {
     runs.start('hello', ['only'], GOAL);
-    expect(runs.list(10)).toMatchObject([
+    expect(runs.list('hello', 10)).toMatchObject([
       { goal: GOAL, goal_truncated: false },
     ]);
+  });
+});
+
+describe('the history of one workflow', () => {
+  it('leaves out a run of another workflow in the workspace', () => {
+    const mine = runs.start('hello', ['only'], GOAL);
+    clock.advance(STAGE_MS);
+    const other = runs.start('other', ['only'], GOAL);
+    expect(runs.list('hello', 10).map((row) => row.run_id)).toEqual([mine]);
+    expect(runs.list('other', 10).map((row) => row.run_id)).toEqual([other]);
+    expect(runs.get(other)?.workflow).toBe('other');
   });
 });

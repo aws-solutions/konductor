@@ -115,9 +115,10 @@ export class RunSimulator {
     return run.runId;
   }
 
-  /** The runs so far, newest first, at most `limit` of them. */
-  list(limit: number): RunSummary[] {
+  /** The runs of `workflow` so far, newest first, at most `limit` of them. */
+  list(workflow: string, limit: number): RunSummary[] {
     return [...this.runs.values()]
+      .filter((run) => run.workflow === workflow)
       .reverse()
       .slice(0, limit)
       .map((run) => ({

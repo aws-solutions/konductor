@@ -1037,7 +1037,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.8.2');
+      expect(info.version).toBe('1.8.3');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1474,6 +1474,23 @@ describe('workflow canvas API contract', () => {
         goal_truncated: false,
       };
       expect(valueMatchesSchema(summary, row)).toBe(true);
+    });
+
+    it('lists runs of the root only, and says how a client learns another run', () => {
+      const description = words(
+        spec.paths['/api/runs']!['get']!.description as string,
+      );
+      expect(description).toMatch(
+        /A run of another workflow in the same workspace is not listed, even though `GET \/api\/runs\/\{id\}` can read it/,
+      );
+      expect(description).toMatch(/409 `already_running`/);
+      expect(description).not.toMatch(/every run that/);
+    });
+
+    it('says that version 1.8.3 changes wording only, about which runs are listed', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.3 changes wording only: it says that `GET \/api\/runs` lists the runs of the root workflow/,
+      );
     });
 
     it('says that version 1.8.2 takes in the console grace period of 1.6.3', () => {

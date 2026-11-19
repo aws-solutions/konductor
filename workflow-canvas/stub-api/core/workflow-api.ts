@@ -159,7 +159,7 @@ export class WorkflowApi {
   /** The runs of the root, newest first: the stub keeps every run it played. */
   listRuns(limit: number): { runs: RunSummary[] } {
     this.findOtherRun();
-    return { runs: this.runs.list(limit) };
+    return { runs: this.runs.list(this.root, limit) };
   }
 
   /**
