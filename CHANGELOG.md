@@ -232,8 +232,9 @@ not per individual commit.
 - The Claude Code plugin is ready for the plugin directory. The README says what the plugin runs,
   sends and fetches, including the telemetry endpoint and payload, that telemetry is on by default,
   and how to turn it off, and adds example prompts and a support link. The plugin ships the brand
-  logo as its listing icon and drops the `kiro` keyword, the mux and cmux orchestrators describe
-  `.done` completion on both runtimes, release assembly stages generator output in a temporary
+  logo as its listing icon at the plugin root, named by `icon` in `plugin.json` along with a
+  `supportUrl`, and drops the `kiro` keyword. The mux and cmux orchestrators describe `.done`
+  completion on both runtimes, release assembly stages generator output in a temporary
   directory, and `make claude-plugin` writes the gitignored `dist/claude-plugin/`.
 - **Behavior change:** on Claude Code, the mux and cmux orchestrators no longer start each child
   with every permission check skipped (what is now `bypass`); the default is `interactive`, which

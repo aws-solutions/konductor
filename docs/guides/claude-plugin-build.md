@@ -84,8 +84,8 @@ The published branch contains:
 
 ```text
 .claude-plugin/plugin.json
-.claude-plugin/icon.png
 .mcp.json
+icon.png
 agents/
 skills/
 hooks/hooks.json
@@ -101,10 +101,11 @@ NOTICE.txt
 root, by `scripts/assemble-claude-plugin-branch.sh`. There is no separate
 repository-root copy of either file.
 
-`.claude-plugin/icon.png` is copied from `docs/assets/konductor-icon.png`, a
-1024 by 1024 PNG render of `docs/assets/konductor-logo.svg`. If the logo
-changes, render the SVG again at that size and replace the PNG. The plugin
-directory takes the listing icon only the first time the plugin is saved or
+`icon.png` is copied from `docs/assets/konductor-icon.png`, a 1024 by 1024 PNG
+render of `docs/assets/konductor-logo.svg`. The plugin directory reads it
+through `icon` in `plugin.json`, which also sets `supportUrl` to the GitHub
+issues page. If the logo changes, render the SVG again at that size and
+replace the PNG. The plugin directory takes the listing icon only the first time the plugin is saved or
 submitted, so a later change does not update an existing listing.
 
 To correct a bad release, publish a fixed version through the same

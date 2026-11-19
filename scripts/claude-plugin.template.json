@@ -9,6 +9,8 @@
   },
   "homepage": "https://aws-solutions.github.io/konductor/",
   "repository": "https://github.com/aws-solutions/konductor",
+  "icon": "./icon.png",
+  "supportUrl": "https://github.com/aws-solutions/konductor/issues",
   "license": "Apache-2.0",
   "keywords": [
     "sdlc",

@@ -135,7 +135,11 @@ def test_assembled_tree_has_no_repo_root_plugin_layout_leftovers(assembled):
 
 def test_assembled_tree_ships_the_listing_icon(assembled):
     """The directory listing icon is the committed brand PNG, copied as is."""
-    icon = assembled / ".claude-plugin" / "icon.png"
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    # The directory reads the icon from plugin.json, as a path from the plugin root.
+    assert plugin["icon"] == "./icon.png"
+    assert not (assembled / ".claude-plugin" / "icon.png").exists()
+    icon = assembled / plugin["icon"]
     data = icon.read_bytes()
     assert data == (REPO_ROOT / "docs" / "assets" / "konductor-icon.png").read_bytes()
     # The directory accepts a square PNG of 512 to 2048 px under 2 MB.
@@ -145,6 +149,14 @@ def test_assembled_tree_ships_the_listing_icon(assembled):
     assert width == height
     assert 512 <= width <= 2048
     assert len(data) < 2 * 1024 * 1024
+
+
+
+def test_assembled_plugin_json_sets_the_support_link(assembled):
+    """The directory reads supportUrl from plugin.json; it matches the README's Support section."""
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert plugin["supportUrl"] == "https://github.com/aws-solutions/konductor/issues"
+    assert plugin["supportUrl"] in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
 
 def test_assembled_tree_ships_the_telemetry_hook(assembled):
