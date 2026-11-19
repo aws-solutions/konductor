@@ -1,0 +1,156 @@
+{
+  "id": "t4-dev-path-traversal-files",
+  "version": 1,
+  "class": "complex",
+  "phase": "security",
+  "phases2": [],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "A bug bounty report came in for this document-sharing service: a researcher read another user's files and wrote files outside their own folder. That is all the detail we have. Please close the holes without breaking normal use. The four exported handlers in src/handlers.js are uploadFile(storageRoot, userId, input), downloadFile(storageRoot, userId, input), listFolder(storageRoot, userId, input) and importArchive(storageRoot, userId, input); each returns a promise for { status, body }, and keeps doing so. Every caller must stay inside their own account folder, whatever path, file name or archive entry they send. Upload names are single file names, and an upload must not replace an existing file unless the caller passes overwrite: true. Error responses must not reveal storage paths or other accounts. Normal use must keep working: nested folders, unicode names, names with several dots such as report..final.pdf, and archives with nested folders in the format src/archive.js reads. Keep the response shapes, the archive format, the CommonJS API and the no-dependency setup.",
+  "fixture": "t4-dev-path-traversal-files",
+  "hidden": "t4-dev-path-traversal-files",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 20,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'),os=require('os'),p=require('path');const {downloadFile}=require('./src/handlers.js');const r=fs.mkdtempSync(p.join(os.tmpdir(),'t4chk-'));fs.mkdirSync(p.join(r,'anna'));fs.mkdirSync(p.join(r,'ann'));fs.writeFileSync(p.join(r,'anna','x.txt'),'secret');downloadFile(r,'ann',{path:'../anna/x.txt'}).then(a=>downloadFile(r,'ann',{path:p.join(r,'anna','x.txt')}).then(b=>{fs.rmSync(r,{recursive:true,force:true});process.exit(a.status>=400&&b.status>=400?0:1)})).catch(()=>{fs.rmSync(r,{recursive:true,force:true});process.exit(1)})\"",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/archive.js",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\"(dev)?[dD]ependencies\"",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [],
+  "expertKey": {
+    "items": [
+      {
+        "id": "one-guard",
+        "text": "Puts the containment check in one shared function used by every handler (resolve, then compare with a separator-aware prefix or a relative-path test), so a new handler cannot skip it.",
+        "source": "OWASP Input Validation Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Input_Validation_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "check-after-decode",
+        "text": "Explains that the check must run after all decoding and normalisation, and why checking the raw string first is not enough.",
+        "source": "OWASP Input Validation Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Input_Validation_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "symlink-race",
+        "text": "Notes the gap between checking a path and opening it (a symlink can be swapped in between) and how the fix handles it, for example by refusing links when opening or checking the real path of the opened file.",
+        "source": "OWASP File Upload Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/File_Upload_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "archive-limits",
+        "text": "Mentions archive limits beyond names: entry count, total unpacked size and link entries, against archive bombs and link tricks.",
+        "source": "Snyk Zip Slip vulnerability write-up, https://github.com/snyk/zip-slip-vulnerability (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "generated-names",
+        "text": "Suggests storing uploads under generated names with the user's name kept as metadata, as a stronger long-term design than validating names.",
+        "source": "OWASP File Upload Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/File_Upload_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "log-not-echo",
+        "text": "Logs the rejected path on the server for investigation while the response stays generic.",
+        "source": "OWASP Error Handling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Error_Handling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Sanitized the file paths.",
+      "Blocked ../ in paths.",
+      "Validated user input.",
+      "Prevented path traversal."
+    ]
+  },
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "adversarial-code-review",
+    "security-remediation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-code-review"
+    ],
+    "mustNotLoad": [
+      "code-review",
+      "backend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/File_Upload_Cheat_Sheet.md",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the deliverable (security fixes) and the constraints without prescribing a named method, framework, or process for how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All behaviors tested are explicitly stated in the prompt: reject separators in upload names, prevent traversal via decoded paths and absolute paths, avoid following symlinks, prevent overwrites without the flag, and keep error messages generic."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no comments, documentation, or tests that reveal the vulnerabilities or their fixes; it only shows normal usage patterns."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer flagged checks that required O_NOFOLLOW and path.relative in the source; the lead removed them. The draft prompt also listed each attack (encoded dots, backslashes, symlinks, archive names); the lead cut it to the bounty report plus the rules. 4 of 20 hidden tests pass on the fixture."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests are fair requirements explicitly stated in the prompt: block traversal attacks, handle encoded paths, reject separators in upload names, prevent overwrites, avoid symlink escapes, and hide internal paths in errors."
+      }
+    ]
+  }
+}

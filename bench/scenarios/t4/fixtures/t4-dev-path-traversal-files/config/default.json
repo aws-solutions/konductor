@@ -1,0 +1,6 @@
+{
+  "port": 8787,
+  "maxUploadBytes": 8388608,
+  "storageRoot": "./var/files",
+  "logLevel": "info"
+}
