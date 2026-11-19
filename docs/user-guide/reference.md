@@ -67,6 +67,8 @@ a skill that both you (`/sop-<name>`) and Claude (its `Skill` tool) can invoke, 
 the `.kiro/skills/sop-<name>/SKILL.md` copy has on Kiro CLI. The three SOPs that commit and
 push, open pull requests, or act on a live app (`k-e2e-test-generation`, `k-full-sdlc`,
 `k-light-ui-testing`) carry `disable-model-invocation: true`, so only you can start them.
+Kiro CLI has no per-SOP setting for this, so there the model can load those three too; their
+behavior differs by runtime on purpose.
 Context files install too, into `<target>/.kiro/context/`.
 
 `konductor help [COMMAND]` prints help for a command, and `--help` works at every level.
