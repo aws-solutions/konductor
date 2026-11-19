@@ -438,6 +438,12 @@ not per individual commit.
 
 ### Fixed
 
+- `konductor` now declares the 46 role skills the specialists use (such as `dynamodb-design`,
+  `code-review`, `program-planning` and `e2e-test-strategy`), so the single-writer `konductor` on
+  Kiro CLI can see and load them instead of writing without them. Claude Code could already load
+  them. The adversarial-review pass skills and `historical-issues-registry` stay with the
+  specialists, as that SOP requires. Cost: about 2,000 tokens more in the Kiro `konductor` prompt
+  and about 300 more in the Claude Code one. The guide's skill counts and "Declared by" columns are updated to match.
 - `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
   `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
   to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
