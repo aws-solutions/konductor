@@ -51,6 +51,7 @@ function normalize(id) {
     for (const name of fs.readdirSync(w).filter((n) => !AUTHOR_FILES.has(n))) fs.renameSync(path.join(w, name), path.join(w, 'fixture', name));
   }
   const b = brief(id);
+  if (b.kind === 'scripted') return;
   if (b.kind === 'findings') buildHidden([path.join(w, 'hidden'), 'findings', b.outputFile], readJson(path.join(w, 'task-draft.json')).findingsKey);
   else buildHidden([path.join(w, 'hidden'), 'mutants']);
 }
@@ -108,6 +109,7 @@ function assemble(id) {
     questions: b.questions || 'allowed', prompt, fixture: id, hidden: id,
     timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: draft.rubric,
     ...(draft.findingsKey ? { findingsKey: draft.findingsKey } : {}),
+    ...(draft.scriptedUser ? { scriptedUser: draft.scriptedUser } : {}),
     targetSkills: mapping.targetSkills, targetSop: mapping.targetSop, targetAgent: mapping.targetAgent,
     controlKind: b.controlKind || 'none', ...(b.twinOf ? { twinOf: b.twinOf } : {}),
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: b.mustNotLoad || [] },

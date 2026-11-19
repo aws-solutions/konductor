@@ -27,3 +27,6 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t5-qa-ledger-gaps | review | qwen3-coder-next | 0.80 | |
 | t5-qa-security-tests | map | glm-5 | 0.16 | |
 | t5-qa-security-tests | review | glm-5 | 5.74 | |
+| t5-qa-flaky-fix | author (discarded) | deepseek-3.2 | 25.89 | run ended in the middle of a malformed tool call; the draft task had checks with a wrong path prefix and a request that listed the causes; re-authored by another family |
+| t5-qa-flaky-fix | author | gpt-5.6-luna | 7.96 | |
+| t5-qa-flaky-fix | edit | (worker) | 0.00 | stability test and preload rewritten to the scratch-root layout; child suite output stripped from failure messages (the bench's summary parser read it); checks replaced by a time-zone run, an assertion-count floor and the hidden tests |

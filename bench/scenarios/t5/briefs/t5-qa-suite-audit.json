@@ -1,0 +1,25 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "code-review"
+  ],
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "node",
+  "kind": "findings",
+  "size": "35 to 50",
+  "nkey": 8,
+  "ntrap": 3,
+  "ndecoy": 2,
+  "outputFile": "docs/TEST-AUDIT.md",
+  "source": {
+    "url": "https://martinfowler.com/articles/mocksArentStubs.html",
+    "licence": "Copyright Martin Fowler; no licence granted, idea only (no text used)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "keyExtra": "Locations are test file paths (for example `test/billing.test.js`), each key item a different file. The fix field names what the test should check instead.",
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js subscription billing service (plans, invoices, proration, dunning, webhooks, a small HTTP-free API layer) with a large existing test suite that passes. The task is to AUDIT the test suite, not write product code or new tests: the agent writes docs/TEST-AUDIT.md naming which existing test files give false confidence and why, and what each should check instead, with a JSON list at the end whose `location` is the test file path. Seed 8 weak test files (for example: assertions that compare a value to itself or to the function's own output, a mock that replaces the unit under test, a test that catches and ignores the thrown error, a test whose expected value is computed with the same formula as the code, assertions only on the status code and never the body, a test that passes when the loop body never runs, snapshots updated blindly, an ordering dependence on a file written by an earlier test). Add decoys: a long, ugly but sound test file and a heavily mocked but legitimate adapter test.\n\nThe request is from a QA lead: 'coverage is 92% and we still shipped a proration bug; which tests are we kidding ourselves with'.",
+  "id": "t5-qa-suite-audit"
+}

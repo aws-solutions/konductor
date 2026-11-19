@@ -1,0 +1,25 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "architecture"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "findings",
+  "size": "40 to 55",
+  "nkey": 8,
+  "ntrap": 3,
+  "ndecoy": 2,
+  "outputFile": "docs/TEST-STRATEGY.md",
+  "source": {
+    "url": "https://github.com/OWASP/wstg",
+    "licence": "CC-BY-SA-4.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "keyExtra": "Locations are source file paths, each key item a different file.",
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js data synchronisation service that copies customer records from a legacy store to a new one: a batch migrator with checkpoints and resume, a change-capture reader, a field mapper with type conversions, a conflict resolver (last write wins with a tie rule), a dead-letter queue, a verification job, an admin CLI, a generated mapping table (large, low risk), docs, CI config, a small existing suite. The task is NOT to write tests; it is to plan them: the agent writes docs/TEST-STRATEGY.md saying where the real risk is, the severity and the test for each, with a JSON list at the end. Seed 8 real risk areas found only by reading code (for example: a checkpoint written before the batch commit so a crash skips records, a mapper that truncates or coerces a value silently, a tie rule that depends on iteration order, a retry that re-applies a non-idempotent change, a verification job that compares counts only, a timezone-naive timestamp comparison, a dead-letter queue that drops the failure reason, a resume path that is never exercised). Add decoys: the large generated mapping table and a messy legacy export script are low risk.\n\nThe request is from a QA lead who has two weeks before a migration weekend: 'what do we test, in what order, and what happens if we skip the rest'.",
+  "id": "t5-qa-sync-strategy"
+}
