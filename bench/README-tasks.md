@@ -24,6 +24,19 @@ The same prompt goes to every arm, so it must make sense without any add-on. Pro
  "tiers": ["lite", "full" or "hard"]}
 ```
 
+### Schema v3 fields
+
+New tasks may add these top-level fields (all optional; old tasks keep working). `bench/schema/task.schema.json` holds their shapes, and `bench/runner/lib/task-v3.js` checks the rules a schema cannot express. Both the loader and the validator apply them.
+
+- `version`; `phase` and `phases2` (secondary phases, labels only); `role`.
+- `questions`: `allowed`, `scripted` or `forbidden`. `scripted` needs `scriptedUser` (`facts` with the `topics` that unlock each `answer`, and a `defaultReply`).
+- `findingsKey`: seeded items a review, design or planning output must find.
+- `targetSkills`, `targetSop`, `targetAgent`: the units the task exercises. They replace `target`; a task sets either `target` or these, never both. The loader maps an old `target` by looking it up in the repo's `skills/`, `agent-sops/` and `agents/` (a `skill:`, `sop:` or `agent:` prefix decides it directly) and puts the result in `task.targets`. Read `task.targets`, not `target`.
+- `controlKind`: `none`, `twin` (needs `twinOf`, another task's id) or `negative`.
+- `loadCheck`: `mustLoad` (units that must load before the first file write) and `mustNotLoad`. No unit may be in both.
+- `authorship`: `family`, `model`, `date` and `source`. `source` is `"original"` or `{url, licence, licenceCheckedAt, use}`, where `use` is `idea`, `structure` or `quoted`. A task with a `phase` (a v3 task) must have it; old tasks are exempt.
+- `effectSubset`, `limits` (`softSec` at most `hardSec`, optional `maxTurns`), `review` (its `family` must differ from the author's), `pilot`, `lockedAt`.
+
 A task keeps its own tier and may also carry `"pilot"` (for example `["lite", "full", "pilot"]`). `suites/pilot.json` lists the pilot tasks, and the validator requires the file and the tag to agree.
 
 ## Prompts

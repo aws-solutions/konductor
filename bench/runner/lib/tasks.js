@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('./schema.js');
 const real = require('./real.js');
+const { v3Errors, targetsOf, catalogOfRepo } = require('./task-v3.js');
 
 const BENCH_DIR = path.join(__dirname, '..', '..');
 
@@ -55,11 +56,15 @@ const isSuiteName = (name, benchDir = BENCH_DIR, suitesDir = null) => SUITE_NAME
 // hidden test directories from `hiddenRoot`.
 function readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots, hiddenRoot, allowReal, extra }) {
   if (!fs.existsSync(dir)) return;
+  let cat;
+  const catalog = () => (cat ??= catalogOfRepo(benchDir));
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
     const task = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-    const errors = validate(schema, task);
+    const errors = [...validate(schema, task), ...v3Errors(task)];
     if (errors.length) throw new Error(`invalid task file ${file}:\n  ${errors.join('\n  ')}`);
     if (tasks.has(task.id)) throw new Error(`duplicate task id ${task.id} (${file})`);
+    // The v3 target fields, mapped from an old `target` when the file has none (N1). Read this, not `target`.
+    task.targets = targetsOf(task, catalog());
     if (task.real !== undefined) {
       if (!allowReal) throw new Error(`task ${task.id}: real tasks cannot come from an extra tasks directory`);
       // The base tree comes from the real-repository cache and is built on first use, so loading never needs the cache.
