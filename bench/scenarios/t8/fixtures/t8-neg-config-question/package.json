@@ -1,0 +1,15 @@
+{
+  "name": "northline-deploy-config",
+  "version": "2.8.0",
+  "private": true,
+  "description": "Environment configuration and rendering utilities for Northline services",
+  "main": "scripts/render-config.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test test/",
+    "render:production": "node scripts/render-config.js production"
+  }
+}

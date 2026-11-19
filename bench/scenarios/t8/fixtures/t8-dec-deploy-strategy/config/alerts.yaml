@@ -1,0 +1,16 @@
+alerts:
+  websocket_connect_error_rate:
+    page_above_percent: 0.8
+    window_minutes: 5
+  room_operation_error_rate:
+    page_above_percent: 0.4
+    window_minutes: 5
+  upstream_pool_wait_ms:
+    page_above_ms: 250
+    window_minutes: 3
+  presence_lag_seconds:
+    page_above_seconds: 30
+    window_minutes: 5
+  host_cpu_percent:
+    warn_above_percent: 80
+    window_minutes: 10

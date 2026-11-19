@@ -1,0 +1,7 @@
+metric,unit,service,description
+host_cpu_percent,percent,fleet,fleet CPU utilisation
+websocket_connect_error_rate,percent,edge-gateway,failed websocket connection percentage
+room_operation_error_rate,percent,collab-api,room operation failures
+upstream_pool_wait_ms,milliseconds,session-router,wait for an upstream websocket connection
+presence_lag_seconds,seconds,presence-worker,presence update lag
+active_websocket_sessions,sessions,session-router,active websocket sessions

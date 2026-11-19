@@ -22,12 +22,12 @@
     "items": [
       {
         "id": "data-loss-bound",
-        "text": "Checks the candidate replica's lag against the allowed data loss before promoting, and picks the most caught-up eligible replica.",
+        "text": "Explains how to choose among replicas when more than one qualifies, and what to do when none is within the allowed data loss.",
         "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
       },
       {
         "id": "fencing",
-        "text": "Fences or stops the old primary before clients can reach the new one, so two primaries never take writes.",
+        "text": "Says how to confirm the fence held (the old primary cannot take writes even if it comes back) and what to do if fencing fails.",
         "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
@@ -42,7 +42,7 @@
       },
       {
         "id": "abort-escalate",
-        "text": "Says when to stop and who to call, with a named rota, instead of pushing on when a check fails.",
+        "text": "Timeboxes the procedure and says who may decide to continue past a failed check, instead of pushing on alone.",
         "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
       },
       {

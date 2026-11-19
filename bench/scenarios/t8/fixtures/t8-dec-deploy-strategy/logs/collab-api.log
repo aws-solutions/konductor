@@ -1,0 +1,562 @@
+2025-08-19T00:00:27Z INFO request_id=req-74864280 service=collab-api request completed method=GET path=/v1/rooms/166 status=200 latency_ms=100
+2025-08-19T00:02:55Z WARN request_id=req-31244651 service=collab-api request completed method=GET path=/v1/rooms/731 status=200 latency_ms=147
+2025-08-19T00:05:22Z WARN request_id=req-55873227 service=collab-api request completed method=GET path=/v1/rooms/433 status=200 latency_ms=74
+2025-08-19T00:07:57Z WARN request_id=req-96831774 service=collab-api slow request method=POST path=/v1/rooms/910/ops status=200 latency_ms=1320
+2025-08-19T00:10:28Z DEBUG request_id=req-11014737 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T00:12:56Z DEBUG request_id=req-89929792 service=collab-api slow request method=POST path=/v1/rooms/419/ops status=200 latency_ms=917
+2025-08-19T00:15:33Z INFO request_id=req-57234377 service=collab-api slow request method=POST path=/v1/rooms/350/ops status=200 latency_ms=763
+2025-08-19T00:18:19Z DEBUG request_id=req-51524259 service=collab-api request completed method=GET path=/v1/rooms/793 status=200 latency_ms=63
+2025-08-19T00:20:51Z DEBUG request_id=req-37640052 service=collab-api slow request method=POST path=/v1/rooms/700/ops status=200 latency_ms=719
+2025-08-19T00:23:36Z DEBUG request_id=req-94038990 service=collab-api request completed method=POST path=/v1/rooms/309/ops status=200 latency_ms=105
+2025-08-19T00:25:47Z INFO request_id=req-28161278 service=collab-api slow request method=POST path=/v1/rooms/211/ops status=200 latency_ms=917
+2025-08-19T00:28:20Z INFO request_id=req-69998705 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T00:31:21Z WARN request_id=req-71734671 service=collab-api request completed method=POST path=/v1/rooms/326/ops status=200 latency_ms=55
+2025-08-19T00:33:59Z DEBUG request_id=req-57922011 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T00:36:30Z INFO request_id=req-19350463 service=collab-api slow request method=POST path=/v1/rooms/179/ops status=200 latency_ms=1296
+2025-08-19T00:38:58Z DEBUG request_id=req-39138128 service=collab-api request completed method=POST path=/v1/rooms/406/ops status=200 latency_ms=179
+2025-08-19T00:41:27Z WARN request_id=req-49559774 service=collab-api slow request method=POST path=/v1/rooms/475/ops status=200 latency_ms=1292
+2025-08-19T00:44:10Z DEBUG request_id=req-95433699 service=collab-api request completed method=POST path=/v1/rooms/176/ops status=200 latency_ms=53
+2025-08-19T00:46:27Z INFO request_id=req-29409092 service=collab-api request completed method=GET path=/v1/rooms/449 status=200 latency_ms=87
+2025-08-19T00:48:56Z DEBUG request_id=req-49929245 service=collab-api request completed method=GET path=/v1/rooms/283 status=200 latency_ms=133
+2025-08-19T00:51:35Z DEBUG request_id=req-93122289 service=collab-api slow request method=POST path=/v1/rooms/626/ops status=200 latency_ms=932
+2025-08-19T00:54:01Z INFO request_id=req-73567947 service=collab-api slow request method=POST path=/v1/rooms/283/ops status=200 latency_ms=1009
+2025-08-19T00:56:59Z DEBUG request_id=req-47128958 service=collab-api health check passed db_commit_ms=15
+2025-08-19T00:59:16Z INFO request_id=req-37880657 service=collab-api health check passed db_commit_ms=28
+2025-08-19T01:01:43Z WARN request_id=req-91514954 service=collab-api health check passed db_commit_ms=36
+2025-08-19T01:04:25Z INFO request_id=req-89081456 service=collab-api health check passed db_commit_ms=28
+2025-08-19T01:06:52Z INFO request_id=req-29428098 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T01:09:30Z INFO request_id=req-92587735 service=collab-api slow request method=POST path=/v1/rooms/288/ops status=200 latency_ms=1281
+2025-08-19T01:12:26Z INFO request_id=req-28935083 service=collab-api slow request method=POST path=/v1/rooms/732/ops status=200 latency_ms=1124
+2025-08-19T01:15:06Z INFO request_id=req-74197142 service=collab-api request completed method=GET path=/v1/rooms/748 status=200 latency_ms=157
+2025-08-19T01:17:31Z INFO request_id=req-47904706 service=collab-api request completed method=GET path=/v1/rooms/897 status=200 latency_ms=179
+2025-08-19T01:19:43Z DEBUG request_id=req-18867045 service=collab-api request completed method=POST path=/v1/rooms/499/ops status=200 latency_ms=134
+2025-08-19T01:22:32Z INFO request_id=req-91955323 service=collab-api slow request method=POST path=/v1/rooms/286/ops status=200 latency_ms=1322
+2025-08-19T01:25:19Z WARN request_id=req-30095012 service=collab-api slow request method=POST path=/v1/rooms/950/ops status=200 latency_ms=1497
+2025-08-19T01:27:45Z INFO request_id=req-52345967 service=collab-api slow request method=POST path=/v1/rooms/510/ops status=200 latency_ms=979
+2025-08-19T01:30:06Z WARN request_id=req-97562596 service=collab-api request completed method=POST path=/v1/rooms/112/ops status=200 latency_ms=150
+2025-08-19T01:32:53Z INFO request_id=req-11522025 service=collab-api slow request method=POST path=/v1/rooms/460/ops status=200 latency_ms=1381
+2025-08-19T01:35:31Z WARN request_id=req-10151132 service=collab-api health check passed db_commit_ms=53
+2025-08-19T01:38:16Z WARN request_id=req-54570362 service=collab-api slow request method=POST path=/v1/rooms/577/ops status=200 latency_ms=1215
+2025-08-19T01:40:23Z WARN request_id=req-47331518 service=collab-api health check passed db_commit_ms=56
+2025-08-19T01:43:18Z INFO request_id=req-69459546 service=collab-api health check passed db_commit_ms=47
+2025-08-19T01:45:59Z INFO request_id=req-76870091 service=collab-api request completed method=POST path=/v1/rooms/678/ops status=200 latency_ms=148
+2025-08-19T01:48:23Z INFO request_id=req-52194156 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T01:50:55Z DEBUG request_id=req-30097178 service=collab-api health check passed db_commit_ms=47
+2025-08-19T01:53:18Z INFO request_id=req-91312640 service=collab-api slow request method=POST path=/v1/rooms/175/ops status=200 latency_ms=989
+2025-08-19T01:55:51Z INFO request_id=req-98262615 service=collab-api request completed method=POST path=/v1/rooms/908/ops status=200 latency_ms=50
+2025-08-19T01:58:46Z DEBUG request_id=req-58724164 service=collab-api health check passed db_commit_ms=56
+2025-08-19T02:01:19Z WARN request_id=req-60362834 service=collab-api request completed method=GET path=/v1/rooms/316 status=200 latency_ms=137
+2025-08-19T02:03:44Z INFO request_id=req-53643369 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T02:06:27Z INFO request_id=req-34073364 service=collab-api health check passed db_commit_ms=69
+2025-08-19T02:08:59Z INFO request_id=req-86502398 service=collab-api health check passed db_commit_ms=50
+2025-08-19T02:11:35Z INFO request_id=req-19622622 service=collab-api health check passed db_commit_ms=66
+2025-08-19T02:14:12Z DEBUG request_id=req-64626857 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T02:16:37Z INFO request_id=req-31300572 service=collab-api request completed method=GET path=/v1/rooms/331 status=200 latency_ms=72
+2025-08-19T02:18:59Z WARN request_id=req-70987676 service=collab-api request completed method=GET path=/v1/rooms/114 status=200 latency_ms=96
+2025-08-19T02:21:48Z INFO request_id=req-66972947 service=collab-api health check passed db_commit_ms=50
+2025-08-19T02:24:12Z WARN request_id=req-56490867 service=collab-api slow request method=POST path=/v1/rooms/630/ops status=200 latency_ms=1149
+2025-08-19T02:26:45Z DEBUG request_id=req-97367729 service=collab-api health check passed db_commit_ms=46
+2025-08-19T02:29:30Z INFO request_id=req-70511914 service=collab-api slow request method=POST path=/v1/rooms/606/ops status=200 latency_ms=804
+2025-08-19T02:32:01Z DEBUG request_id=req-68217243 service=collab-api request completed method=GET path=/v1/rooms/496 status=200 latency_ms=54
+2025-08-19T02:34:23Z WARN request_id=req-61196147 service=collab-api request completed method=POST path=/v1/rooms/106/ops status=200 latency_ms=171
+2025-08-19T02:37:08Z DEBUG request_id=req-35776784 service=collab-api slow request method=POST path=/v1/rooms/728/ops status=200 latency_ms=875
+2025-08-19T02:39:33Z DEBUG request_id=req-62019268 service=collab-api request completed method=GET path=/v1/rooms/299 status=200 latency_ms=153
+2025-08-19T02:42:23Z WARN request_id=req-10409684 service=collab-api request completed method=POST path=/v1/rooms/873/ops status=200 latency_ms=156
+2025-08-19T02:44:37Z INFO request_id=req-16183882 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T02:47:29Z WARN request_id=req-47264399 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T02:49:52Z INFO request_id=req-26050596 service=collab-api slow request method=POST path=/v1/rooms/850/ops status=200 latency_ms=865
+2025-08-19T02:52:17Z INFO request_id=req-58892852 service=collab-api slow request method=POST path=/v1/rooms/682/ops status=200 latency_ms=1379
+2025-08-19T02:54:55Z DEBUG request_id=req-10992852 service=collab-api slow request method=POST path=/v1/rooms/582/ops status=200 latency_ms=918
+2025-08-19T02:57:27Z INFO request_id=req-43417224 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T03:00:13Z INFO request_id=req-97313784 service=collab-api slow request method=POST path=/v1/rooms/894/ops status=200 latency_ms=1101
+2025-08-19T03:02:46Z WARN request_id=req-50065122 service=collab-api request completed method=POST path=/v1/rooms/891/ops status=200 latency_ms=62
+2025-08-19T03:05:37Z INFO request_id=req-84213873 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T03:08:07Z WARN request_id=req-73840839 service=collab-api slow request method=POST path=/v1/rooms/233/ops status=200 latency_ms=1444
+2025-08-19T03:10:46Z DEBUG request_id=req-55364632 service=collab-api request completed method=POST path=/v1/rooms/122/ops status=200 latency_ms=84
+2025-08-19T03:13:01Z INFO request_id=req-69044845 service=collab-api slow request method=POST path=/v1/rooms/112/ops status=200 latency_ms=1324
+2025-08-19T03:15:54Z INFO request_id=req-30184963 service=collab-api request completed method=POST path=/v1/rooms/131/ops status=200 latency_ms=132
+2025-08-19T03:18:16Z INFO request_id=req-17904360 service=collab-api slow request method=POST path=/v1/rooms/592/ops status=200 latency_ms=996
+2025-08-19T03:20:38Z INFO request_id=req-85043593 service=collab-api request completed method=GET path=/v1/rooms/578 status=200 latency_ms=141
+2025-08-19T03:23:33Z INFO request_id=req-64873179 service=collab-api slow request method=POST path=/v1/rooms/200/ops status=200 latency_ms=800
+2025-08-19T03:26:00Z WARN request_id=req-32291149 service=collab-api slow request method=POST path=/v1/rooms/647/ops status=200 latency_ms=918
+2025-08-19T03:28:44Z INFO request_id=req-46322207 service=collab-api request completed method=POST path=/v1/rooms/216/ops status=200 latency_ms=129
+2025-08-19T03:31:15Z WARN request_id=req-19824333 service=collab-api health check passed db_commit_ms=56
+2025-08-19T03:33:44Z WARN request_id=req-35921188 service=collab-api health check passed db_commit_ms=63
+2025-08-19T03:36:23Z INFO request_id=req-94671145 service=collab-api health check passed db_commit_ms=63
+2025-08-19T03:38:50Z INFO request_id=req-72210184 service=collab-api request completed method=GET path=/v1/rooms/759 status=200 latency_ms=149
+2025-08-19T03:41:14Z INFO request_id=req-47707694 service=collab-api health check passed db_commit_ms=55
+2025-08-19T03:44:00Z INFO request_id=req-60018497 service=collab-api request completed method=POST path=/v1/rooms/233/ops status=200 latency_ms=132
+2025-08-19T03:46:46Z WARN request_id=req-79964192 service=collab-api health check passed db_commit_ms=16
+2025-08-19T03:49:11Z DEBUG request_id=req-99473532 service=collab-api slow request method=POST path=/v1/rooms/213/ops status=200 latency_ms=657
+2025-08-19T03:51:41Z DEBUG request_id=req-28947180 service=collab-api request completed method=POST path=/v1/rooms/374/ops status=200 latency_ms=117
+2025-08-19T03:54:00Z INFO request_id=req-62695311 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T03:56:45Z INFO request_id=req-14137294 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T03:59:32Z INFO request_id=req-71853618 service=collab-api health check passed db_commit_ms=61
+2025-08-19T04:02:13Z WARN request_id=req-72593511 service=collab-api slow request method=POST path=/v1/rooms/675/ops status=200 latency_ms=792
+2025-08-19T04:04:50Z WARN request_id=req-89245236 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T04:07:13Z INFO request_id=req-78945918 service=collab-api request completed method=POST path=/v1/rooms/264/ops status=200 latency_ms=101
+2025-08-19T04:09:41Z WARN request_id=req-13997660 service=collab-api health check passed db_commit_ms=30
+2025-08-19T04:12:11Z INFO request_id=req-38192042 service=collab-api health check passed db_commit_ms=21
+2025-08-19T04:15:08Z INFO request_id=req-90121116 service=collab-api request completed method=GET path=/v1/rooms/541 status=200 latency_ms=57
+2025-08-19T04:17:24Z INFO request_id=req-89001884 service=collab-api request completed method=POST path=/v1/rooms/764/ops status=200 latency_ms=128
+2025-08-19T04:19:50Z WARN request_id=req-21508454 service=collab-api request completed method=GET path=/v1/rooms/885 status=200 latency_ms=125
+2025-08-19T04:22:40Z DEBUG request_id=req-77074074 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T04:24:51Z INFO request_id=req-36933416 service=collab-api health check passed db_commit_ms=15
+2025-08-19T04:27:47Z WARN request_id=req-25484074 service=collab-api slow request method=POST path=/v1/rooms/265/ops status=200 latency_ms=1351
+2025-08-19T04:30:09Z WARN request_id=req-39735040 service=collab-api slow request method=POST path=/v1/rooms/420/ops status=200 latency_ms=1337
+2025-08-19T04:33:00Z INFO request_id=req-81742306 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T04:35:32Z INFO request_id=req-50991894 service=collab-api request completed method=GET path=/v1/rooms/970 status=200 latency_ms=115
+2025-08-19T04:38:03Z INFO request_id=req-84287669 service=collab-api slow request method=POST path=/v1/rooms/832/ops status=200 latency_ms=1137
+2025-08-19T04:40:22Z INFO request_id=req-91731750 service=collab-api slow request method=POST path=/v1/rooms/280/ops status=200 latency_ms=1138
+2025-08-19T04:43:19Z INFO request_id=req-38979196 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T04:45:57Z WARN request_id=req-67130422 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T04:48:16Z INFO request_id=req-63582142 service=collab-api request completed method=POST path=/v1/rooms/269/ops status=200 latency_ms=51
+2025-08-19T04:50:48Z DEBUG request_id=req-13485055 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T04:53:41Z INFO request_id=req-92434106 service=collab-api health check passed db_commit_ms=60
+2025-08-19T04:56:16Z INFO request_id=req-83189655 service=collab-api slow request method=POST path=/v1/rooms/904/ops status=200 latency_ms=1346
+2025-08-19T04:58:20Z DEBUG request_id=req-18213840 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:01:14Z DEBUG request_id=req-67610173 service=collab-api slow request method=POST path=/v1/rooms/755/ops status=200 latency_ms=1261
+2025-08-19T05:03:27Z DEBUG request_id=req-99782414 service=collab-api request completed method=POST path=/v1/rooms/162/ops status=200 latency_ms=40
+2025-08-19T05:06:19Z INFO request_id=req-82762843 service=collab-api request completed method=GET path=/v1/rooms/625 status=200 latency_ms=113
+2025-08-19T05:08:58Z INFO request_id=req-28060721 service=collab-api request completed method=POST path=/v1/rooms/289/ops status=200 latency_ms=54
+2025-08-19T05:11:37Z INFO request_id=req-29066210 service=collab-api health check passed db_commit_ms=67
+2025-08-19T05:13:47Z INFO request_id=req-68549540 service=collab-api health check passed db_commit_ms=30
+2025-08-19T05:16:28Z INFO request_id=req-52447538 service=collab-api health check passed db_commit_ms=45
+2025-08-19T05:19:05Z INFO request_id=req-13209359 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:21:42Z WARN request_id=req-22286500 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:24:31Z INFO request_id=req-92806780 service=collab-api slow request method=POST path=/v1/rooms/796/ops status=200 latency_ms=1149
+2025-08-19T05:26:57Z INFO request_id=req-20613709 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:29:14Z INFO request_id=req-43622466 service=collab-api health check passed db_commit_ms=59
+2025-08-19T05:31:54Z INFO request_id=req-24366634 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:34:38Z WARN request_id=req-26323968 service=collab-api request completed method=GET path=/v1/rooms/975 status=200 latency_ms=37
+2025-08-19T05:36:54Z INFO request_id=req-94764330 service=collab-api health check passed db_commit_ms=38
+2025-08-19T05:39:54Z INFO request_id=req-65314250 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:42:00Z DEBUG request_id=req-43001317 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:44:34Z DEBUG request_id=req-58168745 service=collab-api slow request method=POST path=/v1/rooms/255/ops status=200 latency_ms=1124
+2025-08-19T05:47:32Z WARN request_id=req-74823939 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:50:04Z INFO request_id=req-52063572 service=collab-api request completed method=POST path=/v1/rooms/714/ops status=200 latency_ms=10
+2025-08-19T05:52:42Z DEBUG request_id=req-17182770 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T05:54:58Z WARN request_id=req-99036452 service=collab-api request completed method=POST path=/v1/rooms/544/ops status=200 latency_ms=92
+2025-08-19T05:57:28Z INFO request_id=req-72385267 service=collab-api request completed method=POST path=/v1/rooms/858/ops status=200 latency_ms=95
+2025-08-19T06:00:26Z INFO request_id=req-14766823 service=collab-api health check passed db_commit_ms=30
+2025-08-19T06:02:59Z DEBUG request_id=req-28232377 service=collab-api request completed method=POST path=/v1/rooms/503/ops status=200 latency_ms=139
+2025-08-19T06:05:40Z INFO request_id=req-90012277 service=collab-api slow request method=POST path=/v1/rooms/205/ops status=200 latency_ms=946
+2025-08-19T06:08:01Z INFO request_id=req-80273071 service=collab-api request completed method=GET path=/v1/rooms/556 status=200 latency_ms=64
+2025-08-19T06:10:27Z INFO request_id=req-64565355 service=collab-api slow request method=POST path=/v1/rooms/978/ops status=200 latency_ms=677
+2025-08-19T06:13:08Z DEBUG request_id=req-92298747 service=collab-api health check passed db_commit_ms=49
+2025-08-19T06:15:46Z INFO request_id=req-81981404 service=collab-api slow request method=POST path=/v1/rooms/120/ops status=200 latency_ms=1361
+2025-08-19T06:18:30Z WARN request_id=req-54324767 service=collab-api request completed method=POST path=/v1/rooms/118/ops status=200 latency_ms=130
+2025-08-19T06:21:08Z DEBUG request_id=req-20210064 service=collab-api request completed method=GET path=/v1/rooms/883 status=200 latency_ms=177
+2025-08-19T06:23:39Z WARN request_id=req-34010967 service=collab-api health check passed db_commit_ms=33
+2025-08-19T06:26:09Z DEBUG request_id=req-74470597 service=collab-api slow request method=POST path=/v1/rooms/949/ops status=200 latency_ms=1436
+2025-08-19T06:28:43Z INFO request_id=req-50644260 service=collab-api health check passed db_commit_ms=32
+2025-08-19T06:31:04Z INFO request_id=req-65750658 service=collab-api health check passed db_commit_ms=23
+2025-08-19T06:33:33Z WARN request_id=req-80647416 service=collab-api request completed method=GET path=/v1/rooms/966 status=200 latency_ms=66
+2025-08-19T06:36:25Z DEBUG request_id=req-30164857 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T06:39:04Z INFO request_id=req-27804629 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T06:41:31Z INFO request_id=req-25613786 service=collab-api slow request method=POST path=/v1/rooms/840/ops status=200 latency_ms=698
+2025-08-19T06:44:01Z DEBUG request_id=req-46469741 service=collab-api health check passed db_commit_ms=46
+2025-08-19T06:46:39Z DEBUG request_id=req-26071539 service=collab-api request completed method=GET path=/v1/rooms/124 status=200 latency_ms=63
+2025-08-19T06:49:19Z INFO request_id=req-26363148 service=collab-api request completed method=GET path=/v1/rooms/399 status=200 latency_ms=70
+2025-08-19T06:51:50Z INFO request_id=req-65289004 service=collab-api health check passed db_commit_ms=20
+2025-08-19T06:54:27Z WARN request_id=req-29417133 service=collab-api health check passed db_commit_ms=54
+2025-08-19T06:56:35Z WARN request_id=req-34700652 service=collab-api request completed method=GET path=/v1/rooms/246 status=200 latency_ms=58
+2025-08-19T06:59:14Z INFO request_id=req-81373723 service=collab-api request completed method=GET path=/v1/rooms/274 status=200 latency_ms=119
+2025-08-19T07:02:14Z WARN request_id=req-17847028 service=collab-api slow request method=POST path=/v1/rooms/404/ops status=200 latency_ms=1437
+2025-08-19T07:04:48Z DEBUG request_id=req-42085435 service=collab-api request completed method=GET path=/v1/rooms/866 status=200 latency_ms=93
+2025-08-19T07:07:15Z WARN request_id=req-55622022 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:09:40Z INFO request_id=req-25486591 service=collab-api slow request method=POST path=/v1/rooms/197/ops status=200 latency_ms=1442
+2025-08-19T07:12:34Z DEBUG request_id=req-15997246 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:14:39Z INFO request_id=req-45425108 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:17:23Z INFO request_id=req-66046101 service=collab-api request completed method=POST path=/v1/rooms/602/ops status=200 latency_ms=167
+2025-08-19T07:19:56Z WARN request_id=req-71083762 service=collab-api request completed method=POST path=/v1/rooms/179/ops status=200 latency_ms=28
+2025-08-19T07:22:32Z WARN request_id=req-57928349 service=collab-api request completed method=GET path=/v1/rooms/375 status=200 latency_ms=154
+2025-08-19T07:25:00Z INFO request_id=req-74207637 service=collab-api request completed method=POST path=/v1/rooms/772/ops status=200 latency_ms=25
+2025-08-19T07:27:48Z INFO request_id=req-82161282 service=collab-api request completed method=GET path=/v1/rooms/886 status=200 latency_ms=32
+2025-08-19T07:30:34Z INFO request_id=req-32380015 service=collab-api health check passed db_commit_ms=25
+2025-08-19T07:32:45Z INFO request_id=req-39506868 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:35:37Z INFO request_id=req-85057351 service=collab-api request completed method=POST path=/v1/rooms/592/ops status=200 latency_ms=166
+2025-08-19T07:38:07Z INFO request_id=req-24695922 service=collab-api request completed method=POST path=/v1/rooms/320/ops status=200 latency_ms=74
+2025-08-19T07:40:39Z INFO request_id=req-16658060 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:43:24Z INFO request_id=req-67804891 service=collab-api slow request method=POST path=/v1/rooms/587/ops status=200 latency_ms=1219
+2025-08-19T07:45:41Z INFO request_id=req-10893789 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:48:07Z WARN request_id=req-37679954 service=collab-api request completed method=GET path=/v1/rooms/379 status=200 latency_ms=164
+2025-08-19T07:50:57Z INFO request_id=req-72480551 service=collab-api request completed method=POST path=/v1/rooms/955/ops status=200 latency_ms=147
+2025-08-19T07:53:20Z INFO request_id=req-28603938 service=collab-api request completed method=POST path=/v1/rooms/677/ops status=200 latency_ms=20
+2025-08-19T07:55:48Z INFO request_id=req-42296726 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T07:58:46Z DEBUG request_id=req-85182114 service=collab-api slow request method=POST path=/v1/rooms/808/ops status=200 latency_ms=831
+2025-08-19T08:01:15Z DEBUG request_id=req-49886771 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T08:03:45Z INFO request_id=req-66962950 service=collab-api health check passed db_commit_ms=27
+2025-08-19T08:06:31Z INFO request_id=req-68278545 service=collab-api slow request method=POST path=/v1/rooms/895/ops status=200 latency_ms=881
+2025-08-19T08:08:37Z DEBUG request_id=req-18847526 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T08:11:38Z INFO request_id=req-58150648 service=collab-api request completed method=POST path=/v1/rooms/961/ops status=200 latency_ms=70
+2025-08-19T08:14:09Z INFO request_id=req-56728040 service=collab-api request completed method=POST path=/v1/rooms/330/ops status=200 latency_ms=160
+2025-08-19T08:16:22Z INFO request_id=req-47521395 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T08:19:20Z INFO request_id=req-82797358 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T08:21:49Z WARN request_id=req-16882168 service=collab-api slow request method=POST path=/v1/rooms/926/ops status=200 latency_ms=810
+2025-08-19T08:24:18Z INFO request_id=req-66402723 service=collab-api health check passed db_commit_ms=20
+2025-08-19T08:26:38Z INFO request_id=req-50261329 service=collab-api slow request method=POST path=/v1/rooms/340/ops status=200 latency_ms=901
+2025-08-19T08:29:37Z INFO request_id=req-61284918 service=collab-api slow request method=POST path=/v1/rooms/131/ops status=200 latency_ms=1199
+2025-08-19T08:31:46Z INFO request_id=req-30455661 service=collab-api request completed method=GET path=/v1/rooms/916 status=200 latency_ms=145
+2025-08-19T08:34:34Z DEBUG request_id=req-28497768 service=collab-api request completed method=POST path=/v1/rooms/181/ops status=200 latency_ms=173
+2025-08-19T08:36:58Z DEBUG request_id=req-36948550 service=collab-api request completed method=GET path=/v1/rooms/430 status=200 latency_ms=19
+2025-08-19T08:39:25Z INFO request_id=req-88885842 service=collab-api request completed method=POST path=/v1/rooms/379/ops status=200 latency_ms=105
+2025-08-19T08:42:28Z WARN request_id=req-60351754 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T08:44:41Z DEBUG request_id=req-16422808 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T08:47:20Z INFO request_id=req-21230451 service=collab-api request completed method=GET path=/v1/rooms/915 status=200 latency_ms=159
+2025-08-19T08:49:42Z INFO request_id=req-72972007 service=collab-api request completed method=POST path=/v1/rooms/667/ops status=200 latency_ms=118
+2025-08-19T08:52:23Z INFO request_id=req-19003039 service=collab-api request completed method=POST path=/v1/rooms/405/ops status=200 latency_ms=175
+2025-08-19T08:55:10Z DEBUG request_id=req-58963270 service=collab-api request completed method=POST path=/v1/rooms/294/ops status=200 latency_ms=110
+2025-08-19T08:57:36Z DEBUG request_id=req-29689832 service=collab-api health check passed db_commit_ms=68
+2025-08-19T09:00:14Z WARN request_id=req-65579910 service=collab-api request completed method=GET path=/v1/rooms/539 status=200 latency_ms=99
+2025-08-19T09:03:07Z INFO request_id=req-27171856 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T09:05:40Z INFO request_id=req-22920360 service=collab-api request completed method=POST path=/v1/rooms/660/ops status=200 latency_ms=163
+2025-08-19T09:08:08Z INFO request_id=req-36546726 service=collab-api request completed method=POST path=/v1/rooms/247/ops status=200 latency_ms=56
+2025-08-19T09:10:27Z INFO request_id=req-89171247 service=collab-api health check passed db_commit_ms=58
+2025-08-19T09:12:56Z WARN request_id=req-92039622 service=collab-api health check passed db_commit_ms=68
+2025-08-19T09:15:30Z INFO request_id=req-26082797 service=collab-api health check passed db_commit_ms=69
+2025-08-19T09:18:09Z DEBUG request_id=req-50661118 service=collab-api request completed method=GET path=/v1/rooms/645 status=200 latency_ms=124
+2025-08-19T09:20:36Z DEBUG request_id=req-21399541 service=collab-api slow request method=POST path=/v1/rooms/786/ops status=200 latency_ms=1006
+2025-08-19T09:23:08Z DEBUG request_id=req-84682799 service=collab-api request completed method=GET path=/v1/rooms/483 status=200 latency_ms=172
+2025-08-19T09:26:11Z WARN request_id=req-12276953 service=collab-api request completed method=GET path=/v1/rooms/982 status=200 latency_ms=126
+2025-08-19T09:28:40Z INFO request_id=req-39142828 service=collab-api health check passed db_commit_ms=31
+2025-08-19T09:30:51Z WARN request_id=req-64860569 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T09:33:42Z INFO request_id=req-67931774 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T09:36:02Z WARN request_id=req-93569045 service=collab-api request completed method=POST path=/v1/rooms/407/ops status=200 latency_ms=152
+2025-08-19T09:38:37Z INFO request_id=req-54742046 service=collab-api health check passed db_commit_ms=37
+2025-08-19T09:41:09Z DEBUG request_id=req-78430319 service=collab-api request completed method=POST path=/v1/rooms/489/ops status=200 latency_ms=98
+2025-08-19T09:44:04Z INFO request_id=req-65676098 service=collab-api request completed method=GET path=/v1/rooms/584 status=200 latency_ms=87
+2025-08-19T09:46:19Z DEBUG request_id=req-24224818 service=collab-api slow request method=POST path=/v1/rooms/218/ops status=200 latency_ms=1045
+2025-08-19T09:49:02Z INFO request_id=req-92401765 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T09:51:49Z INFO request_id=req-25200914 service=collab-api request completed method=POST path=/v1/rooms/805/ops status=200 latency_ms=56
+2025-08-19T09:54:11Z WARN request_id=req-67033726 service=collab-api slow request method=POST path=/v1/rooms/262/ops status=200 latency_ms=1265
+2025-08-19T09:57:07Z DEBUG request_id=req-13810000 service=collab-api health check passed db_commit_ms=36
+2025-08-19T09:59:38Z INFO request_id=req-72165448 service=collab-api health check passed db_commit_ms=60
+2025-08-19T10:02:07Z INFO request_id=req-26320124 service=collab-api request completed method=POST path=/v1/rooms/752/ops status=200 latency_ms=176
+2025-08-19T10:04:48Z INFO request_id=req-61753440 service=collab-api request completed method=POST path=/v1/rooms/345/ops status=200 latency_ms=48
+2025-08-19T10:07:09Z INFO request_id=req-82624716 service=collab-api request completed method=GET path=/v1/rooms/462 status=200 latency_ms=74
+2025-08-19T10:09:58Z INFO request_id=req-42894880 service=collab-api request completed method=GET path=/v1/rooms/658 status=200 latency_ms=32
+2025-08-19T10:12:04Z INFO request_id=req-92922467 service=collab-api health check passed db_commit_ms=23
+2025-08-19T10:15:08Z INFO request_id=req-38236415 service=collab-api health check passed db_commit_ms=69
+2025-08-19T10:17:16Z INFO request_id=req-40218603 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T10:19:43Z INFO request_id=req-16034274 service=collab-api slow request method=POST path=/v1/rooms/902/ops status=200 latency_ms=880
+2025-08-19T10:22:35Z WARN request_id=req-12656553 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T10:25:25Z WARN request_id=req-82878908 service=collab-api request completed method=POST path=/v1/rooms/452/ops status=200 latency_ms=151
+2025-08-19T10:27:55Z DEBUG request_id=req-89143106 service=collab-api slow request method=POST path=/v1/rooms/178/ops status=200 latency_ms=1258
+2025-08-19T10:30:23Z INFO request_id=req-46588911 service=collab-api slow request method=POST path=/v1/rooms/429/ops status=200 latency_ms=748
+2025-08-19T10:32:59Z WARN request_id=req-58942918 service=collab-api request completed method=POST path=/v1/rooms/485/ops status=200 latency_ms=101
+2025-08-19T10:35:10Z INFO request_id=req-89312795 service=collab-api health check passed db_commit_ms=39
+2025-08-19T10:37:48Z INFO request_id=req-30773055 service=collab-api slow request method=POST path=/v1/rooms/275/ops status=200 latency_ms=1333
+2025-08-19T10:40:27Z INFO request_id=req-56111051 service=collab-api slow request method=POST path=/v1/rooms/322/ops status=200 latency_ms=1188
+2025-08-19T10:43:21Z WARN request_id=req-95083303 service=collab-api request completed method=POST path=/v1/rooms/229/ops status=200 latency_ms=179
+2025-08-19T10:45:49Z INFO request_id=req-57989858 service=collab-api request completed method=GET path=/v1/rooms/531 status=200 latency_ms=147
+2025-08-19T10:48:24Z INFO request_id=req-39057927 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T10:51:01Z INFO request_id=req-51252008 service=collab-api health check passed db_commit_ms=61
+2025-08-19T10:53:11Z INFO request_id=req-75651675 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T10:56:13Z INFO request_id=req-78342699 service=collab-api request completed method=POST path=/v1/rooms/399/ops status=200 latency_ms=149
+2025-08-19T10:58:39Z INFO request_id=req-28083626 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T11:01:12Z WARN request_id=req-38383525 service=collab-api request completed method=POST path=/v1/rooms/944/ops status=200 latency_ms=85
+2025-08-19T11:03:58Z DEBUG request_id=req-38783223 service=collab-api request completed method=POST path=/v1/rooms/732/ops status=200 latency_ms=68
+2025-08-19T11:06:13Z INFO request_id=req-26799998 service=collab-api request completed method=GET path=/v1/rooms/314 status=200 latency_ms=31
+2025-08-19T11:08:52Z DEBUG request_id=req-55340917 service=collab-api health check passed db_commit_ms=42
+2025-08-19T11:11:23Z INFO request_id=req-62106737 service=collab-api slow request method=POST path=/v1/rooms/922/ops status=200 latency_ms=1100
+2025-08-19T11:14:12Z DEBUG request_id=req-55391730 service=collab-api health check passed db_commit_ms=62
+2025-08-19T11:16:19Z INFO request_id=req-34229047 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T11:19:09Z INFO request_id=req-44851851 service=collab-api request completed method=POST path=/v1/rooms/707/ops status=200 latency_ms=42
+2025-08-19T11:21:25Z WARN request_id=req-75800504 service=collab-api request completed method=GET path=/v1/rooms/617 status=200 latency_ms=101
+2025-08-19T11:24:04Z WARN request_id=req-28737048 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T11:27:05Z INFO request_id=req-22524137 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T11:29:36Z INFO request_id=req-22459276 service=collab-api health check passed db_commit_ms=23
+2025-08-19T11:31:42Z INFO request_id=req-75000237 service=collab-api health check passed db_commit_ms=40
+2025-08-19T11:34:21Z INFO request_id=req-31247366 service=collab-api request completed method=POST path=/v1/rooms/993/ops status=200 latency_ms=106
+2025-08-19T11:37:13Z WARN request_id=req-33585773 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T11:39:40Z INFO request_id=req-51368131 service=collab-api request completed method=GET path=/v1/rooms/142 status=200 latency_ms=88
+2025-08-19T11:42:21Z DEBUG request_id=req-21700028 service=collab-api request completed method=GET path=/v1/rooms/417 status=200 latency_ms=155
+2025-08-19T11:44:50Z INFO request_id=req-68238803 service=collab-api request completed method=GET path=/v1/rooms/457 status=200 latency_ms=68
+2025-08-19T11:47:18Z INFO request_id=req-78347762 service=collab-api slow request method=POST path=/v1/rooms/536/ops status=200 latency_ms=1207
+2025-08-19T11:50:14Z INFO request_id=req-51098935 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T11:52:23Z INFO request_id=req-10656499 service=collab-api health check passed db_commit_ms=23
+2025-08-19T11:54:55Z WARN request_id=req-43893415 service=collab-api request completed method=GET path=/v1/rooms/297 status=200 latency_ms=86
+2025-08-19T11:57:56Z INFO request_id=req-59531262 service=collab-api request completed method=POST path=/v1/rooms/396/ops status=200 latency_ms=113
+2025-08-19T12:00:26Z WARN request_id=req-35761289 service=collab-api health check passed db_commit_ms=58
+2025-08-19T12:02:53Z INFO request_id=req-62185698 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:05:40Z INFO request_id=req-34730084 service=collab-api request completed method=GET path=/v1/rooms/483 status=200 latency_ms=37
+2025-08-19T12:07:52Z WARN request_id=req-26606608 service=collab-api health check passed db_commit_ms=57
+2025-08-19T12:10:42Z INFO request_id=req-53454736 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:13:16Z INFO request_id=req-42995085 service=collab-api health check passed db_commit_ms=20
+2025-08-19T12:15:31Z WARN request_id=req-16537304 service=collab-api slow request method=POST path=/v1/rooms/995/ops status=200 latency_ms=876
+2025-08-19T12:18:33Z DEBUG request_id=req-39106297 service=collab-api request completed method=GET path=/v1/rooms/868 status=200 latency_ms=113
+2025-08-19T12:20:37Z INFO request_id=req-30748078 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:23:23Z INFO request_id=req-63920449 service=collab-api request completed method=POST path=/v1/rooms/729/ops status=200 latency_ms=101
+2025-08-19T12:25:45Z WARN request_id=req-34629358 service=collab-api slow request method=POST path=/v1/rooms/678/ops status=200 latency_ms=1100
+2025-08-19T12:28:48Z DEBUG request_id=req-46443794 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:30:56Z INFO request_id=req-90989501 service=collab-api request completed method=POST path=/v1/rooms/334/ops status=200 latency_ms=130
+2025-08-19T12:33:30Z WARN request_id=req-78076756 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:36:29Z DEBUG request_id=req-11044471 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:38:45Z DEBUG request_id=req-34926663 service=collab-api slow request method=POST path=/v1/rooms/313/ops status=200 latency_ms=1421
+2025-08-19T12:41:28Z INFO request_id=req-70138418 service=collab-api health check passed db_commit_ms=51
+2025-08-19T12:44:00Z DEBUG request_id=req-78937746 service=collab-api request completed method=POST path=/v1/rooms/277/ops status=200 latency_ms=87
+2025-08-19T12:46:49Z INFO request_id=req-28209320 service=collab-api request completed method=GET path=/v1/rooms/324 status=200 latency_ms=124
+2025-08-19T12:48:52Z INFO request_id=req-82487501 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:51:36Z INFO request_id=req-63511119 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T12:54:31Z INFO request_id=req-59116647 service=collab-api slow request method=POST path=/v1/rooms/473/ops status=200 latency_ms=1261
+2025-08-19T12:56:49Z INFO request_id=req-95774443 service=collab-api request completed method=POST path=/v1/rooms/963/ops status=200 latency_ms=146
+2025-08-19T12:59:27Z DEBUG request_id=req-58842737 service=collab-api request completed method=GET path=/v1/rooms/781 status=200 latency_ms=39
+2025-08-19T13:01:48Z WARN request_id=req-67908894 service=collab-api request completed method=GET path=/v1/rooms/759 status=200 latency_ms=112
+2025-08-19T13:04:39Z INFO request_id=req-12892351 service=collab-api health check passed db_commit_ms=59
+2025-08-19T13:07:03Z INFO request_id=req-46366892 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T13:09:48Z INFO request_id=req-65245051 service=collab-api request completed method=GET path=/v1/rooms/649 status=200 latency_ms=46
+2025-08-19T13:12:00Z INFO request_id=req-75500828 service=collab-api slow request method=POST path=/v1/rooms/271/ops status=200 latency_ms=840
+2025-08-19T13:14:47Z DEBUG request_id=req-85653172 service=collab-api request completed method=POST path=/v1/rooms/766/ops status=200 latency_ms=150
+2025-08-19T13:17:35Z INFO request_id=req-41456202 service=collab-api request completed method=GET path=/v1/rooms/269 status=200 latency_ms=172
+2025-08-19T13:19:50Z DEBUG request_id=req-12864199 service=collab-api slow request method=POST path=/v1/rooms/180/ops status=200 latency_ms=826
+2025-08-19T13:22:25Z WARN request_id=req-18917370 service=collab-api request completed method=POST path=/v1/rooms/798/ops status=200 latency_ms=164
+2025-08-19T13:25:03Z WARN request_id=req-56511211 service=collab-api request completed method=POST path=/v1/rooms/558/ops status=200 latency_ms=118
+2025-08-19T13:27:50Z DEBUG request_id=req-86881865 service=collab-api slow request method=POST path=/v1/rooms/499/ops status=200 latency_ms=992
+2025-08-19T13:30:12Z INFO request_id=req-83105254 service=collab-api request completed method=GET path=/v1/rooms/749 status=200 latency_ms=46
+2025-08-19T13:32:36Z INFO request_id=req-44751609 service=collab-api request completed method=GET path=/v1/rooms/391 status=200 latency_ms=65
+2025-08-19T13:35:14Z INFO request_id=req-87497271 service=collab-api request completed method=GET path=/v1/rooms/554 status=200 latency_ms=124
+2025-08-19T13:38:00Z INFO request_id=req-40968642 service=collab-api slow request method=POST path=/v1/rooms/459/ops status=200 latency_ms=1261
+2025-08-19T13:40:31Z DEBUG request_id=req-46736623 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T13:43:01Z INFO request_id=req-36400383 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T13:45:55Z INFO request_id=req-71788358 service=collab-api request completed method=GET path=/v1/rooms/342 status=200 latency_ms=120
+2025-08-19T13:48:01Z DEBUG request_id=req-78598585 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T13:50:51Z WARN request_id=req-31808206 service=collab-api health check passed db_commit_ms=42
+2025-08-19T13:53:18Z DEBUG request_id=req-64887352 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T13:56:12Z WARN request_id=req-13718917 service=collab-api health check passed db_commit_ms=29
+2025-08-19T13:58:22Z INFO request_id=req-42933656 service=collab-api request completed method=POST path=/v1/rooms/975/ops status=200 latency_ms=167
+2025-08-19T14:01:12Z INFO request_id=req-16648228 service=collab-api request completed method=POST path=/v1/rooms/173/ops status=200 latency_ms=53
+2025-08-19T14:03:25Z WARN request_id=req-34519712 service=collab-api slow request method=POST path=/v1/rooms/463/ops status=200 latency_ms=954
+2025-08-19T14:06:32Z DEBUG request_id=req-84644158 service=collab-api health check passed db_commit_ms=25
+2025-08-19T14:08:59Z INFO request_id=req-51779261 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T14:11:41Z INFO request_id=req-88950216 service=collab-api request completed method=GET path=/v1/rooms/212 status=200 latency_ms=29
+2025-08-19T14:14:11Z INFO request_id=req-69450893 service=collab-api health check passed db_commit_ms=19
+2025-08-19T14:16:36Z INFO request_id=req-69189471 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T14:18:58Z WARN request_id=req-36174007 service=collab-api request completed method=POST path=/v1/rooms/659/ops status=200 latency_ms=54
+2025-08-19T14:21:44Z WARN request_id=req-31038512 service=collab-api slow request method=POST path=/v1/rooms/753/ops status=200 latency_ms=800
+2025-08-19T14:24:10Z INFO request_id=req-23875284 service=collab-api request completed method=POST path=/v1/rooms/827/ops status=200 latency_ms=39
+2025-08-19T14:26:37Z WARN request_id=req-38110601 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T14:29:23Z INFO request_id=req-81894613 service=collab-api slow request method=POST path=/v1/rooms/643/ops status=200 latency_ms=764
+2025-08-19T14:31:59Z WARN request_id=req-94599362 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T14:33:02Z INFO request_id=req-37632360 service=collab-api database query latency normal commit_ms=38 cpu_percent=54
+2025-08-19T14:34:41Z INFO request_id=req-79777938 service=collab-api slow request method=POST path=/v1/rooms/575/ops status=200 latency_ms=783
+2025-08-19T14:36:10Z WARN request_id=req-81861516 service=collab-api room operation retry rate elevated percent=0.62 reason=client_reconnects
+2025-08-19T14:37:01Z INFO request_id=req-14599828 service=collab-api request completed method=POST path=/v1/rooms/510/ops status=200 latency_ms=119
+2025-08-19T14:39:27Z DEBUG request_id=req-94249975 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T14:42:29Z WARN request_id=req-12357171 service=collab-api slow request method=POST path=/v1/rooms/782/ops status=200 latency_ms=831
+2025-08-19T14:45:05Z WARN request_id=req-75121364 service=collab-api request completed method=GET path=/v1/rooms/971 status=200 latency_ms=81
+2025-08-19T14:47:30Z INFO request_id=req-58540982 service=collab-api request completed method=POST path=/v1/rooms/604/ops status=200 latency_ms=47
+2025-08-19T14:50:01Z WARN request_id=req-41837891 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T14:52:22Z INFO request_id=req-19857823 service=collab-api request completed method=GET path=/v1/rooms/444 status=200 latency_ms=91
+2025-08-19T14:55:20Z WARN request_id=req-95915950 service=collab-api request completed method=GET path=/v1/rooms/900 status=200 latency_ms=9
+2025-08-19T14:57:39Z INFO request_id=req-84928674 service=collab-api request completed method=GET path=/v1/rooms/756 status=200 latency_ms=91
+2025-08-19T15:00:15Z INFO request_id=req-33010635 service=collab-api request completed method=POST path=/v1/rooms/215/ops status=200 latency_ms=132
+2025-08-19T15:02:42Z INFO request_id=req-59530977 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T15:05:21Z INFO request_id=req-70431771 service=collab-api request completed method=POST path=/v1/rooms/236/ops status=200 latency_ms=154
+2025-08-19T15:07:48Z INFO request_id=req-47339342 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T15:10:17Z WARN request_id=req-13618684 service=collab-api slow request method=POST path=/v1/rooms/754/ops status=200 latency_ms=858
+2025-08-19T15:13:08Z DEBUG request_id=req-29362312 service=collab-api request completed method=POST path=/v1/rooms/737/ops status=200 latency_ms=155
+2025-08-19T15:15:57Z INFO request_id=req-23434776 service=collab-api request completed method=POST path=/v1/rooms/518/ops status=200 latency_ms=16
+2025-08-19T15:18:07Z INFO request_id=req-41398734 service=collab-api health check passed db_commit_ms=63
+2025-08-19T15:20:34Z DEBUG request_id=req-11364838 service=collab-api health check passed db_commit_ms=16
+2025-08-19T15:23:22Z DEBUG request_id=req-69592338 service=collab-api health check passed db_commit_ms=22
+2025-08-19T15:26:01Z DEBUG request_id=req-57735464 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T15:28:19Z WARN request_id=req-98185174 service=collab-api slow request method=POST path=/v1/rooms/949/ops status=200 latency_ms=1344
+2025-08-19T15:31:11Z INFO request_id=req-44683835 service=collab-api request completed method=GET path=/v1/rooms/889 status=200 latency_ms=138
+2025-08-19T15:33:46Z INFO request_id=req-36736613 service=collab-api request completed method=GET path=/v1/rooms/949 status=200 latency_ms=93
+2025-08-19T15:36:16Z WARN request_id=req-97143471 service=collab-api request completed method=POST path=/v1/rooms/672/ops status=200 latency_ms=73
+2025-08-19T15:38:34Z INFO request_id=req-66204605 service=collab-api health check passed db_commit_ms=68
+2025-08-19T15:41:19Z WARN request_id=req-54198228 service=collab-api request completed method=GET path=/v1/rooms/659 status=200 latency_ms=77
+2025-08-19T15:43:43Z INFO request_id=req-54067715 service=collab-api slow request method=POST path=/v1/rooms/425/ops status=200 latency_ms=1393
+2025-08-19T15:46:17Z INFO request_id=req-54960671 service=collab-api slow request method=POST path=/v1/rooms/818/ops status=200 latency_ms=736
+2025-08-19T15:49:06Z INFO request_id=req-55345513 service=collab-api request completed method=POST path=/v1/rooms/309/ops status=200 latency_ms=51
+2025-08-19T15:51:33Z WARN request_id=req-47719980 service=collab-api request completed method=POST path=/v1/rooms/883/ops status=200 latency_ms=161
+2025-08-19T15:54:26Z WARN request_id=req-23341291 service=collab-api health check passed db_commit_ms=16
+2025-08-19T15:56:46Z INFO request_id=req-48327244 service=collab-api health check passed db_commit_ms=55
+2025-08-19T15:59:33Z WARN request_id=req-89907455 service=collab-api request completed method=GET path=/v1/rooms/591 status=200 latency_ms=144
+2025-08-19T16:01:44Z INFO request_id=req-18542499 service=collab-api request completed method=GET path=/v1/rooms/514 status=200 latency_ms=147
+2025-08-19T16:04:36Z INFO request_id=req-25924983 service=collab-api request completed method=GET path=/v1/rooms/657 status=200 latency_ms=163
+2025-08-19T16:07:17Z INFO request_id=req-44633964 service=collab-api request completed method=GET path=/v1/rooms/331 status=200 latency_ms=92
+2025-08-19T16:09:50Z INFO request_id=req-64785496 service=collab-api request completed method=POST path=/v1/rooms/546/ops status=200 latency_ms=69
+2025-08-19T16:12:22Z INFO request_id=req-89926745 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T16:14:50Z INFO request_id=req-51306747 service=collab-api request completed method=GET path=/v1/rooms/470 status=200 latency_ms=18
+2025-08-19T16:17:08Z INFO request_id=req-78073782 service=collab-api request completed method=POST path=/v1/rooms/317/ops status=200 latency_ms=10
+2025-08-19T16:19:43Z INFO request_id=req-56904526 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T16:22:24Z INFO request_id=req-67730132 service=collab-api request completed method=GET path=/v1/rooms/632 status=200 latency_ms=14
+2025-08-19T16:25:00Z INFO request_id=req-27437269 service=collab-api slow request method=POST path=/v1/rooms/819/ops status=200 latency_ms=1166
+2025-08-19T16:27:38Z WARN request_id=req-16887347 service=collab-api health check passed db_commit_ms=50
+2025-08-19T16:30:01Z INFO request_id=req-48945951 service=collab-api request completed method=GET path=/v1/rooms/609 status=200 latency_ms=71
+2025-08-19T16:33:03Z INFO request_id=req-50078214 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T16:35:15Z INFO request_id=req-37394049 service=collab-api health check passed db_commit_ms=52
+2025-08-19T16:38:14Z INFO request_id=req-77037934 service=collab-api slow request method=POST path=/v1/rooms/486/ops status=200 latency_ms=1261
+2025-08-19T16:40:22Z WARN request_id=req-86067023 service=collab-api health check passed db_commit_ms=15
+2025-08-19T16:43:23Z INFO request_id=req-95926411 service=collab-api health check passed db_commit_ms=50
+2025-08-19T16:45:46Z WARN request_id=req-31590259 service=collab-api request completed method=GET path=/v1/rooms/355 status=200 latency_ms=47
+2025-08-19T16:48:04Z INFO request_id=req-67858428 service=collab-api health check passed db_commit_ms=18
+2025-08-19T16:50:38Z INFO request_id=req-94205582 service=collab-api slow request method=POST path=/v1/rooms/387/ops status=200 latency_ms=690
+2025-08-19T16:53:15Z INFO request_id=req-82947350 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T16:56:07Z WARN request_id=req-85083745 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T16:58:35Z INFO request_id=req-51410245 service=collab-api health check passed db_commit_ms=23
+2025-08-19T17:01:16Z INFO request_id=req-55556595 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T17:03:50Z WARN request_id=req-33704558 service=collab-api request completed method=POST path=/v1/rooms/932/ops status=200 latency_ms=22
+2025-08-19T17:06:02Z INFO request_id=req-70584726 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T17:08:45Z DEBUG request_id=req-24600113 service=collab-api request completed method=GET path=/v1/rooms/336 status=200 latency_ms=131
+2025-08-19T17:11:40Z INFO request_id=req-46667661 service=collab-api request completed method=POST path=/v1/rooms/335/ops status=200 latency_ms=136
+2025-08-19T17:13:53Z INFO request_id=req-45948460 service=collab-api request completed method=POST path=/v1/rooms/564/ops status=200 latency_ms=116
+2025-08-19T17:16:20Z INFO request_id=req-62001785 service=collab-api health check passed db_commit_ms=26
+2025-08-19T17:19:07Z DEBUG request_id=req-36654496 service=collab-api slow request method=POST path=/v1/rooms/990/ops status=200 latency_ms=1076
+2025-08-19T17:21:34Z DEBUG request_id=req-15401302 service=collab-api request completed method=POST path=/v1/rooms/854/ops status=200 latency_ms=42
+2025-08-19T17:24:22Z DEBUG request_id=req-30397931 service=collab-api health check passed db_commit_ms=37
+2025-08-19T17:26:56Z INFO request_id=req-16449822 service=collab-api request completed method=GET path=/v1/rooms/583 status=200 latency_ms=132
+2025-08-19T17:29:36Z WARN request_id=req-92679602 service=collab-api slow request method=POST path=/v1/rooms/273/ops status=200 latency_ms=1396
+2025-08-19T17:31:44Z DEBUG request_id=req-76150844 service=collab-api request completed method=POST path=/v1/rooms/600/ops status=200 latency_ms=116
+2025-08-19T17:34:26Z INFO request_id=req-11532192 service=collab-api health check passed db_commit_ms=67
+2025-08-19T17:37:20Z INFO request_id=req-34619055 service=collab-api request completed method=POST path=/v1/rooms/779/ops status=200 latency_ms=64
+2025-08-19T17:39:43Z INFO request_id=req-96904197 service=collab-api request completed method=POST path=/v1/rooms/435/ops status=200 latency_ms=77
+2025-08-19T17:42:20Z INFO request_id=req-81611140 service=collab-api slow request method=POST path=/v1/rooms/765/ops status=200 latency_ms=986
+2025-08-19T17:44:39Z INFO request_id=req-72371302 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T17:47:20Z DEBUG request_id=req-65470218 service=collab-api request completed method=POST path=/v1/rooms/556/ops status=200 latency_ms=34
+2025-08-19T17:50:02Z INFO request_id=req-48354804 service=collab-api request completed method=POST path=/v1/rooms/340/ops status=200 latency_ms=176
+2025-08-19T17:52:24Z DEBUG request_id=req-18052973 service=collab-api slow request method=POST path=/v1/rooms/499/ops status=200 latency_ms=767
+2025-08-19T17:55:14Z INFO request_id=req-81539596 service=collab-api request completed method=GET path=/v1/rooms/569 status=200 latency_ms=116
+2025-08-19T17:57:30Z INFO request_id=req-90039121 service=collab-api request completed method=POST path=/v1/rooms/664/ops status=200 latency_ms=33
+2025-08-19T18:00:26Z WARN request_id=req-14126081 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T18:02:35Z WARN request_id=req-65618140 service=collab-api request completed method=GET path=/v1/rooms/505 status=200 latency_ms=107
+2025-08-19T18:05:21Z INFO request_id=req-66273749 service=collab-api slow request method=POST path=/v1/rooms/122/ops status=200 latency_ms=881
+2025-08-19T18:07:46Z INFO request_id=req-41916807 service=collab-api health check passed db_commit_ms=33
+2025-08-19T18:10:29Z WARN request_id=req-26515780 service=collab-api request completed method=GET path=/v1/rooms/972 status=200 latency_ms=117
+2025-08-19T18:13:10Z INFO request_id=req-11415750 service=collab-api request completed method=GET path=/v1/rooms/691 status=200 latency_ms=152
+2025-08-19T18:15:35Z INFO request_id=req-80072447 service=collab-api health check passed db_commit_ms=43
+2025-08-19T18:18:34Z INFO request_id=req-42925284 service=collab-api request completed method=POST path=/v1/rooms/583/ops status=200 latency_ms=118
+2025-08-19T18:20:48Z INFO request_id=req-33414010 service=collab-api request completed method=POST path=/v1/rooms/516/ops status=200 latency_ms=25
+2025-08-19T18:23:12Z INFO request_id=req-64959958 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T18:26:11Z DEBUG request_id=req-53454925 service=collab-api request completed method=GET path=/v1/rooms/852 status=200 latency_ms=37
+2025-08-19T18:28:20Z INFO request_id=req-80445934 service=collab-api request completed method=POST path=/v1/rooms/739/ops status=200 latency_ms=49
+2025-08-19T18:31:22Z INFO request_id=req-23974748 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T18:33:55Z INFO request_id=req-74232021 service=collab-api slow request method=POST path=/v1/rooms/759/ops status=200 latency_ms=1469
+2025-08-19T18:36:11Z INFO request_id=req-59027124 service=collab-api request completed method=POST path=/v1/rooms/502/ops status=200 latency_ms=130
+2025-08-19T18:38:56Z DEBUG request_id=req-32880692 service=collab-api health check passed db_commit_ms=44
+2025-08-19T18:41:36Z INFO request_id=req-12698540 service=collab-api request completed method=GET path=/v1/rooms/799 status=200 latency_ms=135
+2025-08-19T18:43:55Z WARN request_id=req-72460668 service=collab-api request completed method=GET path=/v1/rooms/636 status=200 latency_ms=108
+2025-08-19T18:46:51Z DEBUG request_id=req-89325578 service=collab-api slow request method=POST path=/v1/rooms/112/ops status=200 latency_ms=949
+2025-08-19T18:48:52Z INFO request_id=req-65851672 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T18:51:29Z DEBUG request_id=req-25920946 service=collab-api health check passed db_commit_ms=27
+2025-08-19T18:54:04Z INFO request_id=req-46273025 service=collab-api health check passed db_commit_ms=48
+2025-08-19T18:56:39Z INFO request_id=req-66494502 service=collab-api request completed method=GET path=/v1/rooms/994 status=200 latency_ms=88
+2025-08-19T18:59:33Z INFO request_id=req-80929190 service=collab-api slow request method=POST path=/v1/rooms/486/ops status=200 latency_ms=1448
+2025-08-19T19:01:53Z DEBUG request_id=req-61187982 service=collab-api request completed method=POST path=/v1/rooms/965/ops status=200 latency_ms=74
+2025-08-19T19:04:38Z INFO request_id=req-98619541 service=collab-api health check passed db_commit_ms=17
+2025-08-19T19:07:16Z INFO request_id=req-65515517 service=collab-api request completed method=POST path=/v1/rooms/680/ops status=200 latency_ms=29
+2025-08-19T19:09:56Z INFO request_id=req-38525771 service=collab-api request completed method=POST path=/v1/rooms/267/ops status=200 latency_ms=100
+2025-08-19T19:12:18Z INFO request_id=req-74836306 service=collab-api request completed method=POST path=/v1/rooms/794/ops status=200 latency_ms=53
+2025-08-19T19:14:34Z WARN request_id=req-62645953 service=collab-api request completed method=GET path=/v1/rooms/284 status=200 latency_ms=35
+2025-08-19T19:17:19Z WARN request_id=req-60594260 service=collab-api health check passed db_commit_ms=68
+2025-08-19T19:19:44Z INFO request_id=req-19685376 service=collab-api request completed method=GET path=/v1/rooms/426 status=200 latency_ms=86
+2025-08-19T19:22:24Z DEBUG request_id=req-36750382 service=collab-api request completed method=GET path=/v1/rooms/340 status=200 latency_ms=151
+2025-08-19T19:25:23Z WARN request_id=req-32270854 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T19:27:47Z INFO request_id=req-95364248 service=collab-api request completed method=POST path=/v1/rooms/104/ops status=200 latency_ms=62
+2025-08-19T19:30:33Z WARN request_id=req-84594466 service=collab-api slow request method=POST path=/v1/rooms/699/ops status=200 latency_ms=886
+2025-08-19T19:32:48Z DEBUG request_id=req-54424255 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T19:35:30Z INFO request_id=req-53781440 service=collab-api slow request method=POST path=/v1/rooms/763/ops status=200 latency_ms=855
+2025-08-19T19:37:55Z INFO request_id=req-34488855 service=collab-api health check passed db_commit_ms=17
+2025-08-19T19:40:51Z WARN request_id=req-93508406 service=collab-api request completed method=GET path=/v1/rooms/448 status=200 latency_ms=132
+2025-08-19T19:42:59Z INFO request_id=req-59369805 service=collab-api slow request method=POST path=/v1/rooms/709/ops status=200 latency_ms=948
+2025-08-19T19:45:58Z WARN request_id=req-58579214 service=collab-api request completed method=GET path=/v1/rooms/908 status=200 latency_ms=166
+2025-08-19T19:48:02Z DEBUG request_id=req-30530157 service=collab-api request completed method=GET path=/v1/rooms/983 status=200 latency_ms=16
+2025-08-19T19:51:07Z WARN request_id=req-99136137 service=collab-api request completed method=GET path=/v1/rooms/704 status=200 latency_ms=14
+2025-08-19T19:53:19Z WARN request_id=req-57737423 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T19:55:42Z WARN request_id=req-31859687 service=collab-api request completed method=POST path=/v1/rooms/325/ops status=200 latency_ms=38
+2025-08-19T19:58:50Z DEBUG request_id=req-74711416 service=collab-api request completed method=POST path=/v1/rooms/574/ops status=200 latency_ms=135
+2025-08-19T20:01:10Z INFO request_id=req-82020457 service=collab-api health check passed db_commit_ms=67
+2025-08-19T20:03:32Z INFO request_id=req-38328749 service=collab-api request completed method=POST path=/v1/rooms/441/ops status=200 latency_ms=21
+2025-08-19T20:06:07Z INFO request_id=req-78336410 service=collab-api request completed method=POST path=/v1/rooms/701/ops status=200 latency_ms=86
+2025-08-19T20:09:05Z DEBUG request_id=req-36469827 service=collab-api slow request method=POST path=/v1/rooms/625/ops status=200 latency_ms=1190
+2025-08-19T20:11:14Z INFO request_id=req-14053342 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T20:14:14Z WARN request_id=req-98589948 service=collab-api health check passed db_commit_ms=57
+2025-08-19T20:16:38Z DEBUG request_id=req-87330101 service=collab-api health check passed db_commit_ms=34
+2025-08-19T20:18:52Z INFO request_id=req-97170834 service=collab-api request completed method=GET path=/v1/rooms/673 status=200 latency_ms=22
+2025-08-19T20:21:34Z DEBUG request_id=req-23245301 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T20:24:00Z DEBUG request_id=req-15797850 service=collab-api health check passed db_commit_ms=36
+2025-08-19T20:27:08Z WARN request_id=req-31921158 service=collab-api slow request method=POST path=/v1/rooms/792/ops status=200 latency_ms=1399
+2025-08-19T20:29:09Z WARN request_id=req-43879415 service=collab-api slow request method=POST path=/v1/rooms/828/ops status=200 latency_ms=1079
+2025-08-19T20:32:03Z INFO request_id=req-16214814 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T20:34:47Z DEBUG request_id=req-18757781 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T20:37:05Z INFO request_id=req-39685108 service=collab-api request completed method=POST path=/v1/rooms/917/ops status=200 latency_ms=59
+2025-08-19T20:39:48Z INFO request_id=req-47066506 service=collab-api request completed method=POST path=/v1/rooms/969/ops status=200 latency_ms=157
+2025-08-19T20:42:14Z WARN request_id=req-68099554 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T20:44:37Z INFO request_id=req-16774576 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T20:47:24Z DEBUG request_id=req-95102048 service=collab-api slow request method=POST path=/v1/rooms/556/ops status=200 latency_ms=778
+2025-08-19T20:50:01Z INFO request_id=req-27244077 service=collab-api request completed method=POST path=/v1/rooms/756/ops status=200 latency_ms=54
+2025-08-19T20:52:24Z DEBUG request_id=req-66013200 service=collab-api slow request method=POST path=/v1/rooms/663/ops status=200 latency_ms=1458
+2025-08-19T20:55:01Z WARN request_id=req-90127737 service=collab-api request completed method=GET path=/v1/rooms/788 status=200 latency_ms=58
+2025-08-19T20:57:35Z INFO request_id=req-76797313 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T21:00:09Z WARN request_id=req-95126274 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T21:02:36Z DEBUG request_id=req-81794393 service=collab-api health check passed db_commit_ms=63
+2025-08-19T21:05:10Z WARN request_id=req-74033038 service=collab-api request completed method=POST path=/v1/rooms/428/ops status=200 latency_ms=65
+2025-08-19T21:08:02Z WARN request_id=req-56746867 service=collab-api slow request method=POST path=/v1/rooms/562/ops status=200 latency_ms=1157
+2025-08-19T21:10:22Z INFO request_id=req-29118409 service=collab-api request completed method=GET path=/v1/rooms/328 status=200 latency_ms=64
+2025-08-19T21:13:06Z WARN request_id=req-35563222 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T21:15:50Z WARN request_id=req-81196832 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T21:18:15Z WARN request_id=req-81481400 service=collab-api request completed method=POST path=/v1/rooms/466/ops status=200 latency_ms=31
+2025-08-19T21:21:04Z INFO request_id=req-58611490 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T21:23:32Z WARN request_id=req-29828128 service=collab-api slow request method=POST path=/v1/rooms/949/ops status=200 latency_ms=696
+2025-08-19T21:26:02Z INFO request_id=req-11467094 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T21:28:51Z WARN request_id=req-83499627 service=collab-api request completed method=POST path=/v1/rooms/496/ops status=200 latency_ms=160
+2025-08-19T21:31:20Z INFO request_id=req-97787321 service=collab-api slow request method=POST path=/v1/rooms/266/ops status=200 latency_ms=1008
+2025-08-19T21:33:59Z DEBUG request_id=req-65228363 service=collab-api request completed method=GET path=/v1/rooms/843 status=200 latency_ms=18
+2025-08-19T21:36:27Z DEBUG request_id=req-23256902 service=collab-api health check passed db_commit_ms=48
+2025-08-19T21:38:38Z DEBUG request_id=req-96695130 service=collab-api request completed method=POST path=/v1/rooms/907/ops status=200 latency_ms=108
+2025-08-19T21:41:42Z INFO request_id=req-57349550 service=collab-api slow request method=POST path=/v1/rooms/393/ops status=200 latency_ms=895
+2025-08-19T21:43:42Z INFO request_id=req-33828835 service=collab-api slow request method=POST path=/v1/rooms/437/ops status=200 latency_ms=1070
+2025-08-19T21:46:34Z INFO request_id=req-71871458 service=collab-api slow request method=POST path=/v1/rooms/106/ops status=200 latency_ms=1452
+2025-08-19T21:49:01Z INFO request_id=req-55494540 service=collab-api request completed method=GET path=/v1/rooms/474 status=200 latency_ms=30
+2025-08-19T21:51:44Z INFO request_id=req-71090445 service=collab-api request completed method=POST path=/v1/rooms/744/ops status=200 latency_ms=147
+2025-08-19T21:54:01Z INFO request_id=req-31410012 service=collab-api health check passed db_commit_ms=13
+2025-08-19T21:56:56Z WARN request_id=req-19187111 service=collab-api slow request method=POST path=/v1/rooms/494/ops status=200 latency_ms=762
+2025-08-19T21:59:26Z INFO request_id=req-65426769 service=collab-api request completed method=GET path=/v1/rooms/280 status=200 latency_ms=156
+2025-08-19T22:01:47Z INFO request_id=req-42279842 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T22:04:43Z WARN request_id=req-51899627 service=collab-api request completed method=GET path=/v1/rooms/698 status=200 latency_ms=79
+2025-08-19T22:07:02Z INFO request_id=req-39715485 service=collab-api request completed method=GET path=/v1/rooms/605 status=200 latency_ms=113
+2025-08-19T22:09:50Z WARN request_id=req-69247858 service=collab-api slow request method=POST path=/v1/rooms/649/ops status=200 latency_ms=1363
+2025-08-19T22:12:11Z INFO request_id=req-83143509 service=collab-api request completed method=POST path=/v1/rooms/396/ops status=200 latency_ms=158
+2025-08-19T22:15:03Z INFO request_id=req-52324547 service=collab-api slow request method=POST path=/v1/rooms/277/ops status=200 latency_ms=1315
+2025-08-19T22:17:36Z DEBUG request_id=req-45707031 service=collab-api request completed method=POST path=/v1/rooms/358/ops status=200 latency_ms=105
+2025-08-19T22:19:44Z INFO request_id=req-63992430 service=collab-api health check passed db_commit_ms=64
+2025-08-19T22:22:17Z INFO request_id=req-49216399 service=collab-api request completed method=GET path=/v1/rooms/863 status=200 latency_ms=169
+2025-08-19T22:25:06Z INFO request_id=req-60429104 service=collab-api health check passed db_commit_ms=64
+2025-08-19T22:27:26Z INFO request_id=req-71502778 service=collab-api health check passed db_commit_ms=22
+2025-08-19T22:30:02Z INFO request_id=req-48504224 service=collab-api request completed method=GET path=/v1/rooms/150 status=200 latency_ms=25
+2025-08-19T22:32:57Z INFO request_id=req-22502539 service=collab-api request completed method=POST path=/v1/rooms/884/ops status=200 latency_ms=63
+2025-08-19T22:35:25Z INFO request_id=req-96207286 service=collab-api health check passed db_commit_ms=56
+2025-08-19T22:38:07Z INFO request_id=req-24898917 service=collab-api health check passed db_commit_ms=50
+2025-08-19T22:40:19Z DEBUG request_id=req-64302380 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T22:43:15Z DEBUG request_id=req-84456289 service=collab-api request completed method=GET path=/v1/rooms/928 status=200 latency_ms=85
+2025-08-19T22:45:25Z WARN request_id=req-32898790 service=collab-api request completed method=POST path=/v1/rooms/974/ops status=200 latency_ms=96
+2025-08-19T22:48:27Z WARN request_id=req-31743103 service=collab-api health check passed db_commit_ms=13
+2025-08-19T22:50:43Z DEBUG request_id=req-78381441 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T22:53:21Z INFO request_id=req-58402899 service=collab-api health check passed db_commit_ms=13
+2025-08-19T22:55:53Z DEBUG request_id=req-76311988 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T22:58:36Z INFO request_id=req-18594442 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T23:01:08Z WARN request_id=req-26275500 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T23:03:33Z WARN request_id=req-63707361 service=collab-api health check passed db_commit_ms=44
+2025-08-19T23:06:01Z DEBUG request_id=req-35008124 service=collab-api request completed method=POST path=/v1/rooms/191/ops status=200 latency_ms=71
+2025-08-19T23:08:38Z DEBUG request_id=req-43922267 service=collab-api request completed method=GET path=/v1/rooms/651 status=200 latency_ms=171
+2025-08-19T23:11:16Z WARN request_id=req-74022214 service=collab-api request completed method=POST path=/v1/rooms/464/ops status=200 latency_ms=128
+2025-08-19T23:13:51Z INFO request_id=req-39783100 service=collab-api request completed method=POST path=/v1/rooms/766/ops status=200 latency_ms=44
+2025-08-19T23:16:27Z WARN request_id=req-34389317 service=collab-api request completed method=POST path=/v1/rooms/766/ops status=200 latency_ms=84
+2025-08-19T23:19:17Z DEBUG request_id=req-99498714 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T23:21:44Z INFO request_id=req-37221051 service=collab-api request completed method=POST path=/v1/rooms/398/ops status=200 latency_ms=77
+2025-08-19T23:24:03Z DEBUG request_id=req-76471868 service=collab-api slow request method=POST path=/v1/rooms/495/ops status=200 latency_ms=1290
+2025-08-19T23:26:53Z INFO request_id=req-54200591 service=collab-api slow request method=POST path=/v1/rooms/640/ops status=200 latency_ms=941
+2025-08-19T23:29:38Z INFO request_id=req-67317876 service=collab-api health check passed db_commit_ms=51
+2025-08-19T23:31:45Z DEBUG request_id=req-41718948 service=collab-api request completed method=GET path=/v1/rooms/990 status=200 latency_ms=110
+2025-08-19T23:34:37Z INFO request_id=req-46869397 service=collab-api database query retried attempt=1 reason=serialization_conflict
+2025-08-19T23:37:18Z DEBUG request_id=req-44493337 service=collab-api request completed method=POST path=/v1/rooms/599/ops status=200 latency_ms=101
+2025-08-19T23:39:36Z DEBUG request_id=req-25853807 service=collab-api slow request method=POST path=/v1/rooms/939/ops status=200 latency_ms=1323
+2025-08-19T23:42:05Z INFO request_id=req-77571844 service=collab-api health check passed db_commit_ms=17
+2025-08-19T23:44:47Z INFO request_id=req-34374275 service=collab-api health check passed db_commit_ms=34
+2025-08-19T23:47:34Z WARN request_id=req-48077086 service=collab-api health check passed db_commit_ms=29
+2025-08-19T23:49:50Z INFO request_id=req-61732558 service=collab-api slow request method=POST path=/v1/rooms/664/ops status=200 latency_ms=1070
+2025-08-19T23:52:43Z DEBUG request_id=req-79218054 service=collab-api health check passed db_commit_ms=57
+2025-08-19T23:55:22Z INFO request_id=req-43123576 service=collab-api health check passed db_commit_ms=65
+2025-08-19T23:57:53Z INFO request_id=req-68273061 service=collab-api request completed method=GET path=/v1/rooms/595 status=200 latency_ms=67

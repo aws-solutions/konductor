@@ -1,0 +1,25 @@
+cluster: orders-prod
+service: orders-database
+nodes:
+  - name: orders-db-a
+    role: primary
+    zone: zone-amber
+    address: 10.42.8.11
+    state: serving
+  - name: orders-db-b
+    role: replica
+    zone: zone-blue
+    address: 10.42.9.11
+    state: serving
+    promotion_eligible: true
+  - name: orders-db-c
+    role: delayed-replica
+    zone: zone-green
+    address: 10.42.10.11
+    state: serving
+    delay_seconds: 900
+    purpose: backup-recovery
+    promotion_eligible: false
+quorum:
+  voting_nodes: 3
+  write_acknowledgements: 2
