@@ -12,7 +12,7 @@ module.exports = Object.freeze({
   armPrefix: 'cc-',
   costUnit: 'usd',
   streamFormat: 'claude-stream-json',
-  supports: Object.freeze({ trace: true, stopOn: false, effort: true, runCreditLimit: false, multiTurn: false, capCommands: false, skillStudy: false, agentEngine: false, prepareOnly: true, armConfig: true }),
+  supports: Object.freeze({ trace: true, stopOn: false, effort: true, runCreditLimit: false, multiTurn: true, capCommands: false, skillStudy: false, agentEngine: false, prepareOnly: true, armConfig: true }),
   flags: Object.freeze({
     own: Object.freeze(['claude-bin', 'claude-tools-dir', 'run-budget-usd', 'allow-claude-change']),
     // Table order is the order `run` checks them in.
@@ -25,7 +25,7 @@ module.exports = Object.freeze({
   }),
   // How runs skip the agent's own approval prompts (design 15.3, A-4): PERMISSION_MODE in claude-code.js, plus --allowedTools.
   noPrompt: Object.freeze({ flags: Object.freeze(['--permission-mode', 'acceptEdits']), env: Object.freeze({}), note: '--allowedTools lists the tools that run without a prompt' }),
-  multiTurnNote: 'the resume flags have not been verified',
+  multiTurnNote: null,
   trace: Object.freeze({
     sessionFiles: false,
     timeNote: 'stream.jsonl has no per-event timestamps; time is only known for the whole run',

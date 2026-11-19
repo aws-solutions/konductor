@@ -1047,6 +1047,13 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   Checked once with kiro-cli 2.35.2 on a trivial two-turn task (0.15 credits): the resumed turn kept the session id and
   the earlier context, the model stayed pinned, and credits were summed over both turns. One run, so not a rate.
   To repeat it, point `--bench-dir` at a scratch directory with one ask-then-answer task and use `--budget-credits 3`.
+- Scripted-user tasks (schema v3, `questions: scripted`): the task's `scriptedUser` plays the same oracle. Each hidden fact is a clarification whose
+  `topics` are matched as plain, case-insensitive substrings of the agent's question (not as patterns), and its `answer` is the reply; `defaultReply` answers any
+  other question. A fact is given once. The cap is `facts + 2` interjections (at least 4). The harness resumes the session with the reply: Kiro CLI with
+  `--resume-id <session id>` as above, Claude Code with `claude -p --resume <session id>` and the reply on stdin (every other flag is the first turn's; the per-turn
+  `--max-budget-usd` applies to each turn; the flag text comes from `claude --help`, and a real two-turn run has not been done yet). `result.json` records
+  `questions` (turn, text, the fact ids matched, the reply), `factsUnlocked` and `factsLocked` (fact ids), `unmatchedQuestions` and the usual turn counts. On a
+  scripted task `autonomous` and `completedWithoutHelp` are null, because questions are expected there. A task cannot have both `scriptedUser` and `autonomy`.
 - Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
   `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,
   questions on the no-question task and unmatched questions (shown apart), cap hits, intended and invariant tests,

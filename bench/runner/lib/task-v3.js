@@ -48,6 +48,7 @@ function v3Errors(task) {
   if (task.twinOf !== undefined && task.controlKind !== 'twin') errors.push('twinOf is only for controlKind "twin"');
   if (task.twinOf !== undefined && task.twinOf === task.id) errors.push('twinOf cannot name the task itself');
   if (task.questions === 'scripted' && !task.scriptedUser) errors.push('questions "scripted" needs scriptedUser');
+  if (task.scriptedUser && task.autonomy) errors.push('scriptedUser and autonomy cannot both be set: a scripted task plays its own facts');
   if (task.scriptedUser && task.questions !== 'scripted') errors.push('scriptedUser is only for questions "scripted"');
   if (task.limits && task.limits.softSec > task.limits.hardSec) errors.push('limits.softSec must not exceed limits.hardSec');
   if (task.phase && (task.phases2 ?? []).includes(task.phase)) errors.push('phases2 must not repeat the main phase');
