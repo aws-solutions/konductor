@@ -1,0 +1,133 @@
+{
+  "id": "t6-neg-release-notes-csv",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "Hey, I need the release notes in docs/release-notes.md converted to a CSV file. Please create docs/release-notes.csv with these columns: version, date, type, summary. Each bullet point should be a separate row. The type is the heading the bullet sits under (like 'New Features', 'Improvements', etc.). Let me know when it's done.",
+  "fixture": "t6-neg-release-notes-csv",
+  "hidden": "t6-neg-release-notes-csv",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 11,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/release-notes.csv",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/release-notes.csv",
+      "pattern": "^version,date,type,summary",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/release-notes.csv",
+      "pattern": "^6\\.2\\.0,",
+      "min": 12,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/release-notes.csv",
+      "pattern": "\"quotes, commas, and other punctuation\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/release-notes.csv",
+      "pattern": "2024-01-28",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "diff -u fixture/docs/release-notes.md docs/release-notes.md | head -20",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clean-conversion",
+      "criterion": "CSV is cleanly formatted with proper quoting and no extraneous content",
+      "weight": 1
+    },
+    {
+      "id": "handles-edge-cases",
+      "criterion": "Correctly handles the tricky cases in the source (comma in quotes, different date format, wrapped lines)",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "negative",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt only specifies what output is wanted (convert markdown to CSV with specific columns), not how to do it. No method, framework, or process is named."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Prompt clearly specifies input path (docs/release-notes.md), output path (docs/release-notes.csv), column names, and that each bullet is a row. The type mapping is explained. The main traps (date normalization, CSV quoting) are implicit in 'convert to CSV' - a reasonable agent would handle these."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Task requires handling specific edge cases (date normalization, proper CSV quoting for commas, multi-line bullets) that a quick/naive answer would miss. Hidden tests check for exact row counts (67 total, 12 for 6.2.0, etc.) and proper CSV formatting. A quick answer would lose significant points."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "No scriptedUser or hidden facts. Task is straightforward conversion. Reference passes all 23 hidden tests. No impossible requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No ASKS.json, no scriptedUser facts, no hints in fixture files. The solution/ directory contains reference output but an agent has no reason to discover or read it. Task-draft.json notes are for task authors only, not visible to agents."
+      }
+    ]
+  }
+}

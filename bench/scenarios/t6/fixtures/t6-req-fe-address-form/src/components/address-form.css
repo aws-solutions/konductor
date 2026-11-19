@@ -1,0 +1,4 @@
+.address-form { max-width: 42rem; }
+.address-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.address-form__error { color: #a22; }
+@media (max-width: 36rem) { .address-form__row { grid-template-columns: 1fr; } }

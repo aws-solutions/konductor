@@ -1,0 +1,120 @@
+# Email Templates for Volunteer Communications
+
+## 1. Shift Confirmation
+Subject: Your Community Food Hub shift is confirmed!
+
+Hi [Volunteer Name],
+
+Thank you for signing up to volunteer!
+
+**Shift Details:**
+- Date: [Date]
+- Time: [Start Time] - [End Time] [time zone?]
+- Site: [Site Name]
+- Role: [Role]
+- Address: [Site Address]
+
+**What to bring:**
+- Closed-toe shoes
+- Water bottle
+- Weather-appropriate clothing
+
+**Reminders:**
+- Please arrive 10 minutes early for check-in
+- Contact [Site Coordinator] at [Phone] if running late
+- Cancellations require 24 hours notice
+
+We appreciate your support!
+
+The Community Food Hub Team
+
+## 2. Shift Reminder (48 hours)
+Subject: Reminder: Your volunteer shift in 2 days
+
+Hi [Volunteer Name],
+
+This is a reminder about your upcoming shift:
+
+**When:** [Date], [Start Time] - [End Time] [time zone?]
+**Where:** [Site Name], [Site Address]
+**Role:** [Role]
+
+Please confirm you can still make it by clicking here: [Link]
+
+If you need to cancel, please do so at least 24 hours in advance.
+
+Thank you!
+
+## 3. Shift Reminder (24 hours)
+Subject: Reminder: Your volunteer shift is tomorrow
+
+Hi [Volunteer Name],
+
+Your shift is tomorrow:
+
+**When:** Tomorrow, [Date], [Start Time] - [End Time] [time zone?]  
+**Where:** [Site Name], [Site Address]
+**Role:** [Role]
+
+**Important:**
+- Arrive by [10 minutes before Start Time]
+- Bring water and wear comfortable clothes
+- Check weather and dress appropriately
+
+See you tomorrow!
+
+## 4. Cancellation Notice
+Subject: Your shift has been cancelled
+
+Hi [Volunteer Name],
+
+Your shift on [Date] at [Site Name] has been cancelled.
+
+**Reason:** [Reason - optional]
+
+We appreciate you letting us know in advance. Please sign up for another shift when you're available.
+
+Thank you for your understanding.
+
+## 5. Background Check Required
+Subject: Action required: Background check for volunteer role
+
+Hi [Volunteer Name],
+
+The [Role] role you've signed up for requires a background check.
+
+**Next steps:**
+1. Complete the authorization form: [Link]
+2. We'll initiate the background check
+3. You'll be notified when cleared (processing time varies)
+
+You cannot volunteer in this role until the background check is complete.
+
+Please complete the authorization within 48 hours.
+
+## 6. Group Booking Confirmation
+Subject: Group volunteer booking confirmed
+
+Hi [Group Coordinator Name],
+
+Your group volunteer booking has been confirmed!
+
+**Group:** [Group Name]
+**Date:** [Date]
+**Time:** [Start Time] - [End Time] [time zone?]
+**Site:** [Site Name]
+**Number of volunteers:** [Count]
+**Site Coordinator:** [Name], [Phone]
+
+**Next steps:**
+1. Share this email with all group members
+2. Each volunteer must complete individual registration: [Link]
+3. Review volunteer guidelines: [Link]
+
+We're excited to have your group volunteer with us!
+
+## Notes:
+- Personalize with volunteer/site coordinator names
+- Include emergency contact info for site
+- Add site-specific instructions when needed
+- Consider SMS alternatives for time-sensitive reminders

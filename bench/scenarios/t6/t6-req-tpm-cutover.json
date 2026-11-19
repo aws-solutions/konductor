@@ -1,0 +1,212 @@
+{
+  "id": "t6-req-tpm-cutover",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "tpm",
+  "questions": "scripted",
+  "prompt": "Hey - I'm Maya, the TPM for our order processing migration. We're moving from RabbitMQ to AWS Kafka and need to nail down the cutover requirements with our sponsor Sarah. The team has been gathering docs in this folder. Can you read through everything and write up the requirements we need Sarah to approve? Focus on the concrete details for the actual cutover: what can go wrong, what we need to promise, and what decisions she needs to make. Put the output in docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "freeze",
+          "blackout",
+          "change freeze",
+          "no change"
+        ],
+        "answer": "There's a tax filing freeze from April 15 that blocks all changes. We can't cut over during that, so our window is either April 25-26 or we wait until after May 1."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "downtime",
+          "outage",
+          "unavailable",
+          "how long down",
+          "service disruption"
+        ],
+        "answer": "The business approved maximum is 15 minutes of service degradation. Payment processing specifically can't be down more than 10 minutes during the cutover window."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "rollback",
+          "time limit",
+          "abort",
+          "revert",
+          "backout",
+          "when to rollback"
+        ],
+        "answer": "We roll back automatically if services aren't fully operational within 20 minutes of cutover start. The decision point is at T+15, execute by T+20."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "sign off",
+          "authority",
+          "who signs",
+          "final approval",
+          "green light",
+          "go decision"
+        ],
+        "answer": "Sarah Johnson (VP Engineering) gives the final go/no-go, but she wants Alex Rodriguez (Platform Lead) and Lisa Wong (Payment Lead) to confirm their areas are ready first."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "ordering",
+          "fifo",
+          "message order",
+          "payment ordering"
+        ],
+        "answer": "Payment messages require strict FIFO ordering. We'll use a single Kafka partition for all payment topics to guarantee this, even though it limits throughput to 2,000 messages per second."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "dual running",
+          "dual write",
+          "both systems",
+          "how long run both",
+          "migration period",
+          "coexistence"
+        ],
+        "answer": "We'll run both systems in parallel for 21 days. That's the minimum per security policy but saves cost versus the full 30 days. After 21 days with no issues, we'll turn off RabbitMQ."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-tpm-cutover",
+  "hidden": "t6-req-tpm-cutover",
+  "timeoutSec": 3600,
+  "limits": {
+    "softSec": 1800,
+    "hardSec": 3600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 4,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");try{const d=fs.readFileSync(\"docs/requirements.md\",\"utf8\");const m=d.match(/```json[^\\n]*\\n([\\s\\S]*?)\\n\\s*```/);if(!m)throw\"no block\";const j=JSON.parse(m[1]);if(!j.requirements||j.requirements.length<11)throw\"not enough\";if(!j.requirements.every(r=>r.id&&r.text))throw\"missing fields\";}catch(e){console.error(e);process.exit(1);}'",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "assumptions",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/requirements.md",
+      "pattern": "R[0-9]+",
+      "min": 11,
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "R1",
+      "criterion": "Requirements document is clear and actionable for the sponsor (code cannot check this because it's about readability and business appropriateness)",
+      "weight": 1
+    },
+    {
+      "id": "R2",
+      "criterion": "Document shows understanding of both technical and business constraints from the folder (code cannot check this because it's about synthesis of scattered information)",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "decision-research",
+    "decision-writing",
+    "risk-management"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-research",
+      "skill:decision-writing",
+      "agent:k-tpm"
+    ],
+    "mustNotLoad": [
+      "skill:kiro-requirements-generation",
+      "skill:user-story-writing"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "structure"
+    }
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt describes outcome (requirements document) but not method. It doesn't tell agent to ask questions or use a specific template."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Output format is clear (docs/requirements.md with JSON block). Ambiguity about content depth is intentional - agent discovers specifics by asking questions."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Six hidden facts require asking scripted user (downtime limit, rollback time, sign-off sequence, ordering/throughput, dual-run duration, freeze dates). Fixture contains misleading info (calendar shows freeze but not absolute, meeting says 30min but approval was 15, policy says 30 days but exception approved 21). Quick answers fail hidden tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "Reviewer passed it at 95; the lead found the reference failed the contradiction test (wrong-value patterns too broad) and a fixture_unchanged check on the output folder. The fix round anchored the patterns and checks the input files by name; reference 100."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains misleading information (calendar shows freeze without 'absolute', meeting says 30min instead of approved 15, vendor doc mentions ordering without throughput tradeoff, roster lists all three people without hierarchy). No direct answer keys - agent must ask questions to discover the six specific facts."
+      }
+    ]
+  }
+}

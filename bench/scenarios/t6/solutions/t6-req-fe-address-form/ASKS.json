@@ -1,0 +1,5 @@
+[
+  "Which countries are in the launch scope, and what postcode format rules should apply to each one?",
+  "Which address lookup provider and per-checkout request limit should we commit to, and what is the rule for PO boxes?",
+  "What accessibility target and mobile width or touch-target commitment should the frontend meet, which browser autofill tokens are required, and which existing analytics event names and payload keys must stay unchanged?"
+]

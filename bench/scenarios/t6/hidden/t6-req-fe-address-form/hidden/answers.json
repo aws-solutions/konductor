@@ -1,0 +1,10 @@
+[
+  "For the first release, ship address entry only for the United States, Canada, and the United Kingdom. Australia is explicitly deferred until the second rollout on 2026-04-15.",
+  "US ZIP codes may be five digits or five digits plus a hyphen and four digits; Canada uses A1A 1A1; the UK uses the current outward/inward pattern. Run the format check on blur, while server validation remains authoritative.",
+  "Use the ParcelPin Lookup v2 service. Allow at most 3 lookup requests in one checkout session; after that, show manual entry and do not block checkout.",
+  "The form must meet WCAG 2.2 AA. Invalid fields need programmatic associations and focus must reach the error summary without relying on color.",
+  "Keep the existing checkout_address_viewed, checkout_address_submitted, and checkout_address_lookup_used events and their current payload keys unchanged, and fire each event once for its matching action.",
+  "Design for a 360px-wide viewport without horizontal scrolling; make the primary controls at least 48px tall and keep the keyboard from hiding the active field's error.",
+  "Permit PO boxes for the United States and Canada, but reject them for the United Kingdom with an actionable message explaining that a street address is required.",
+  "Use the browser autofill tokens for name, organization, address-line1, address-line2, address-level2, address-level1, postal-code, and country; lookup selection must not overwrite a manually entered unit."
+]

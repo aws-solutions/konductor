@@ -1,0 +1,268 @@
+{
+  "id": "t6-req-volunteer-shifts",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "scripted",
+  "prompt": "Hey, we're finally moving the volunteer shift sign-up off that messy spreadsheet. Sarah's been complaining about double-booking and no reminders for ages. The board wants something proper that handles our safeguarding rules and doesn't show coordinators stuff they shouldn't see. We've got all the docs in this folder - the CSV exports, handbook bits, policies, meeting notes, the whole mess. Can you pull together what we actually need? Write it up as requirements for the dev team or a vendor. Put it in docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}. We're aiming for a June launch.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "time zone",
+          "timezone",
+          "mountain time",
+          "what time",
+          "display times",
+          "local time"
+        ],
+        "answer": "All times should be shown in Mountain Time with (MT) after them. We have a few remote volunteers but most are local, and trying to handle multiple time zones would confuse everyone."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "background check",
+          "background checks",
+          "processing time",
+          "days to clear"
+        ],
+        "answer": "Background checks take 5 to 7 business days right now. The system needs to account for that delay before letting people sign up for roles that need them."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "groups",
+          "minimum size",
+          "group booking",
+          "team sign up",
+          "group size",
+          "group sign"
+        ],
+        "answer": "The minimum group size is 3 volunteers. Below that, people should just sign up individually."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "cancellation",
+          "cancel",
+          "emergency",
+          "24 hour",
+          "notice period"
+        ],
+        "answer": "Yes, there's an exception for emergencies - coordinators can use their discretion on the 24-hour cancellation rule for genuine emergencies."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "verify age",
+          "birth date",
+          "date of birth",
+          "DOB",
+          "16 years old",
+          "parent consent",
+          "minimum age",
+          "how old",
+          "under 18",
+          "guardian"
+        ],
+        "answer": "We should verify age without storing full birth dates. Use an age bracket like 16-17 or 18+, and for 16-17 we need parent consent forms."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "coordinator see",
+          "coordinator view",
+          "hide from coordinator",
+          "coordinator cannot see",
+          "privacy coordinator",
+          "coordinators not",
+          "what should coordinators not see"
+        ],
+        "answer": "Site coordinators should not be able to see volunteer age (except to verify 16+), medical information, background check details, or performance issues from other sites."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-volunteer-shifts",
+  "hidden": "t6-req-volunteer-shifts",
+  "timeoutSec": 3600,
+  "limits": {
+    "softSec": 1800,
+    "hardSec": 3600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 13,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "policy",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "meetings",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "drafts",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "vendor",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "communications",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "code",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "operations",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const d=fs.readFileSync(\"docs/requirements.md\",\"utf8\");const b=[...d.matchAll(/\\x60\\x60\\x60json[^\\n]*\\n([\\s\\S]*?)\\n\\s*\\x60\\x60\\x60/g)];if(!b.length)process.exit(1);const j=JSON.parse(b[b.length-1][1]);if(!Array.isArray(j.requirements)||j.requirements.length<5||!j.requirements.every(r=>r.id&&r.text))process.exit(1)'",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "background check",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "shift cap|capacity limit",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "safeguarding|vulnerable|child protection",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/requirements.md",
+      "pattern": "R\\d+",
+      "min": 10,
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "R1",
+      "criterion": "Requirements are actionable and testable, not vague wishes (code cannot check this because it requires judging whether each requirement could be implemented and verified)",
+      "weight": 2
+    },
+    {
+      "id": "R2",
+      "criterion": "Document shows understanding of trade-offs between volunteer convenience, operational needs, and safeguarding requirements (code cannot check this because it requires understanding of the balance between different stakeholder needs)",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "socratic-elicitation",
+    "kiro-requirements-generation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:socratic-elicitation",
+      "skill:kiro-requirements-generation"
+    ],
+    "mustNotLoad": [
+      "skill:adversarial-code-review",
+      "skill:e2e-test-strategy"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "review": {
+    "family": "openai",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies the desired requirements document, path, and JSON footer, but names no method, framework, process, or question policy."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "Second review (gpt-5.6-luna) failed it; the lead removed the remaining answers from the fixture (coordinator data list, MT in templates), relaxed the F1 and F6 patterns and fixed the JSON check quoting. First review (minimax-m2.5) had failed ambiguity, ceiling and hidden-answer; fix round 1 removed most fixture answers. Note: Six required facts are only unlocked through stakeholder questions, but the request does not explain how unresolved decisions should be obtained. Seve"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Four scripted facts have no exact answer in the fixture, and the hidden suite requires all six facts plus substantive requirements work. A quick fixture-only response cannot score near full marks."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "Second review (gpt-5.6-luna) failed it; the lead removed the remaining answers from the fixture (coordinator data list, MT in templates), relaxed the F1 and F6 patterns and fixed the JSON check quoting. First review (minimax-m2.5) had failed ambiguity, ceiling and hidden-answer; fix round 1 removed most fixture answers. Note: The reference passes the hidden tests 13/13, but check-draft reports its JSON-format command as FAIL because the shell interprets the unescaped backti"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fixed",
+        "note": "Second review (gpt-5.6-luna) failed it; the lead removed the remaining answers from the fixture (coordinator data list, MT in templates), relaxed the F1 and F6 patterns and fixed the JSON check quoting. First review (minimax-m2.5) had failed ambiguity, ceiling and hidden-answer; fix round 1 removed most fixture answers. Note: The fixture directly lists the coordinator privacy restrictions in operations/site-coordinator-checklist.md, and communication templates expose the Mo"
+      }
+    ]
+  }
+}

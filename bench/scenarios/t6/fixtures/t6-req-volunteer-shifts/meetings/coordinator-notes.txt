@@ -1,0 +1,57 @@
+Sarah's Coordinator Notes - March 2024
+
+=== PAIN POINTS ===
+- Spreadsheet chaos: people overwrite each other's sign-ups
+- No-shows increasing - need better reminder system
+- Background checks are slow, need the current turnaround time
+- Driver scheduling nightmare - DMV checks expire yearly
+
+=== VOLUNTEER FEEDBACK ===
+* "Wish I could sign up from my phone" - multiple volunteers
+* "Can't remember if I signed up for next week" - older volunteers
+* "Group of 5 from local college wants to volunteer together"
+* "Spanish-speaking volunteers want interface in Spanish"
+
+=== OPERATIONAL ISSUES ===
+- Eastside Church has different hours Wed-Sun vs other sites
+- Northgate Shelter requires special training - not in spreadsheet
+- Riverside Commons new - still figuring out capacity
+- Summer months: need to adjust for student volunteers
+
+=== DATA CONCERNS ===
+What coordinators NEED to see:
+- Who's signed up for their site
+- Contact info for their volunteers
+- Emergency contacts
+- Shift history at their site
+
+What coordinators SHOULD NOT see:
+- Still need to agree what coordinators can't see - privacy concerns
+
+=== REMINDER TIMING ===
+Current: none
+Ideal: 48h reminder, 24h reminder, morning-of check-in
+Problem: Some volunteers work night shifts
+
+=== GROUP BOOKINGS ===
+Corporate groups: 8 max
+School groups: 6 max  
+Church groups: 10 max (with advance notice)
+Need 2 weeks notice for groups
+
+=== LANGUAGES ===
+Top 3: English, Spanish, Mandarin
+Have volunteers who can help translate
+
+=== TIME ZONE ISSUE ===
+We have volunteers from:
+- California (PST)
+- Arizona (no DST - MST half the year)
+- Remote volunteers from East Coast (EST)
+Spreadsheet shows times in local but confusion about "what time here?"
+
+=== NEXT STEPS ===
+1. Fix double-booking issue ASAP
+2. Implement some reminder system (even if manual)
+3. Create group booking process
+4. Document time zone rule

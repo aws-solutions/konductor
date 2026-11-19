@@ -1,0 +1,68 @@
+version,date,type,summary
+6.2.0,2024-02-15,New Features,Introduced biometric login for iOS and Android devices
+6.2.0,2024-02-15,New Features,Added Quick Transfer feature to send money with just 3 taps
+6.2.0,2024-02-15,New Features,Implemented spending categorization with custom tags
+6.2.0,2024-02-15,New Features,Launched investment portfolio dashboard for brokerage accounts
+6.2.0,2024-02-15,Improvements,Enhanced transaction search with date range filters
+6.2.0,2024-02-15,Improvements,Improved bill payment scheduling interface
+6.2.0,2024-02-15,Improvements,Optimized app startup time by 40% on Android devices
+6.2.0,2024-02-15,Improvements,Updated security certificates for all API endpoints
+6.2.0,2024-02-15,Bug Fixes,Fixed crash when viewing statements older than 2 years
+6.2.0,2024-02-15,Bug Fixes,Resolved synchronization issue with joint accounts
+6.2.0,2024-02-15,Bug Fixes,Corrected currency conversion rates for GBP to EUR
+6.2.0,2024-02-15,Bug Fixes,Fixed push notification delay on iOS 17.3
+6.1.3,2024-01-28,Improvements,Reduced app size by 15% through asset optimization
+6.1.3,2024-01-28,Improvements,Added support for dark mode system synchronization
+6.1.3,2024-01-28,Improvements,Improved accessibility for screen readers
+6.1.3,2024-01-28,Bug Fixes,Fixed login timeout after biometric failure
+6.1.3,2024-01-28,Bug Fixes,Resolved calendar sync issue with scheduled payments
+6.1.3,2024-01-28,Bug Fixes,Corrected display of account nicknames with special characters
+6.1.2,2024-01-15,Bug Fixes,Fixed transaction duplication when network connection is lost
+6.1.2,2024-01-15,Bug Fixes,Resolved incorrect balance display during scheduled transfers
+6.1.2,2024-01-15,Bug Fixes,Fixed PDF export formatting for statements with many transactions
+6.1.1,2024-01-10,Security Updates,Patched vulnerability in QR code scanner library
+6.1.1,2024-01-10,Security Updates,Updated SSL/TLS configuration for enhanced encryption
+6.1.1,2024-01-10,Security Updates,Added additional fraud detection checks for wire transfers
+6.1.1,2024-01-10,Bug Fixes,Fixed crash when deleting multiple payees at once
+6.1.1,2024-01-10,Bug Fixes,Resolved issue with contact import from device address book
+6.1.0,2023-12-20,New Features,Launched peer-to-peer payments via QR codes
+6.1.0,2023-12-20,New Features,Added travel mode to temporarily disable certain features abroad
+6.1.0,2023-12-20,New Features,Introduced savings goals with progress tracking
+6.1.0,2023-12-20,Improvements,Redesigned account overview dashboard
+6.1.0,2023-12-20,Improvements,Added transaction export to CSV and Excel formats
+6.1.0,2023-12-20,Improvements,Improved error messages for failed transactions
+6.1.0,2023-12-20,Bug Fixes,Fixed incorrect interest calculation display for CDs
+6.1.0,2023-12-20,Bug Fixes,Resolved duplicate push notifications for bill reminders
+6.1.0,2023-12-20,Bug Fixes,Fixed calendar integration with Google Calendar
+6.0.5,2023-11-30,Bug Fixes,Fixed critical security issue with session management
+6.0.5,2023-11-30,Bug Fixes,Resolved crash when loading very large transaction history
+6.0.5,2023-11-30,Bug Fixes,"Fixed display issue with accounts containing ""quotes, commas, and other punctuation"" in their names"
+6.0.5,2023-11-30,Improvements,Added loading indicators for all data fetch operations
+6.0.5,2023-11-30,Improvements,Improved offline mode error messages
+6.0.4,2023-11-15,Security Updates,Updated encryption libraries to latest versions
+6.0.4,2023-11-15,Security Updates,Added additional authentication checks for high-value transfers
+6.0.4,2023-11-15,Bug Fixes,Fixed issue where some users couldn't update their contact information
+6.0.4,2023-11-15,Bug Fixes,Resolved sync problem between web and mobile app versions
+6.0.4,2023-11-15,Bug Fixes,Fixed display of international transaction fees
+6.0.4,2023-11-15,Documentation,Updated user guide with new feature explanations
+6.0.4,2023-11-15,Documentation,Added troubleshooting section for common issues
+5.9.0,2023-10-25,New Features,Launched budgeting tool with customizable categories
+5.9.0,2023-10-25,New Features,Added ability to split bills with multiple people
+5.9.0,2023-10-25,New Features,Introduced financial health score calculation
+5.9.0,2023-10-25,Improvements,Enhanced transaction categorization accuracy
+5.9.0,2023-10-25,Improvements,Improved performance on older Android devices
+5.9.0,2023-10-25,Improvements,Added support for additional bank account types
+5.9.0,2023-10-25,Bug Fixes,Fixed calculation error in loan payment estimator
+5.9.0,2023-10-25,Bug Fixes,Resolved display issue with joint account permissions
+5.9.0,2023-10-25,Bug Fixes,Fixed export functionality for transaction history
+5.7.2,2023-09-18,Bug Fixes,Fixed memory leak in transaction loading
+5.7.2,2023-09-18,Bug Fixes,Resolved crash when switching between accounts quickly
+5.7.2,2023-09-18,Bug Fixes,Fixed display of foreign currency symbols
+5.7.2,2023-09-18,Security Updates,Implemented additional rate limiting on login attempts
+5.7.2,2023-09-18,Security Updates,Updated certificate pinning for API calls
+5.7.1,2023-09-05,Improvements,Optimized image loading for faster dashboard display
+5.7.1,2023-09-05,Improvements,Added caching for frequently accessed account data
+5.7.1,2023-09-05,Improvements,Improved error recovery during network interruptions
+5.7.1,2023-09-05,Bug Fixes,Fixed issue with scheduled transfers on weekends
+5.7.1,2023-09-05,Bug Fixes,Resolved problem with check deposit photo capture
+5.7.1,2023-09-05,Bug Fixes,Fixed display of account balances during maintenance windows

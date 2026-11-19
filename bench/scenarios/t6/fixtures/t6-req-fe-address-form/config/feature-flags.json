@@ -1,0 +1,4 @@
+{
+  "addressLookup": { "enabled": false, "audience": "internal" },
+  "newAddressCopy": { "enabled": true, "audience": "all" }
+}

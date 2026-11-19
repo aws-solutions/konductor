@@ -1,0 +1,6 @@
+country,entered,accepted,corrected,common_issue,exported_at
+US,1842,1701,99,zip missing digit,2025-02-03T09:14:00Z
+CA,614,558,41,space omitted,2025-02-03T09:14:00Z
+GB,492,430,38,county assumed required,2025-02-03T09:14:00Z
+AU,87,73,8,postcode label,2025-02-03T09:14:00Z
+,12,0,12,country cleared after back button,2025-02-03T09:14:00Z

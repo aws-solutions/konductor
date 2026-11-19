@@ -1,0 +1,6 @@
+ticket_id,opened,channel,summary,tag
+A-184,2025-01-05,chat,"The form says county is required but my address has none",region-copy
+A-191,2025-01-07,email,"I selected a suggestion and my flat number disappeared",lookup-data-loss
+A-207,2025-01-11,chat,"On my phone the postal hint is behind the keyboard",mobile-layout
+A-214,2025-01-15,email,"The postcode was rejected with a space",postcode-format
+A-225,2025-01-19,chat,"Could not tell if a locker address was allowed",delivery-policy

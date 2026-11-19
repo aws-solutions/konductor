@@ -1,0 +1,61 @@
+{
+  "rabbitmq": {
+    "cluster": {
+      "nodes": 3,
+      "uptime": "45 days",
+      "version": "3.8.12"
+    },
+    "performance": {
+      "average_latency_ms": 12.5,
+      "p95_latency_ms": 45.2,
+      "p99_latency_ms": 120.8,
+      "throughput_msg_sec": 1280,
+      "connection_count": 342,
+      "queue_depth_avg": 150,
+      "queue_depth_max": 12500
+    },
+    "queues": {
+      "order_queue": {
+        "messages": 85,
+        "consumers": 3,
+        "memory_mb": 12.5
+      },
+      "payment_queue": {
+        "messages": 42,
+        "consumers": 1,
+        "memory_mb": 8.2
+      },
+      "fulfillment_queue": {
+        "messages": 1250,
+        "consumers": 5,
+        "memory_mb": 45.8
+      },
+      "inventory_queue": {
+        "messages": 18,
+        "consumers": 2,
+        "memory_mb": 3.1
+      }
+    },
+    "limits": {
+      "max_connections": 5000,
+      "max_queues": 500,
+      "memory_high_watermark": "85%",
+      "disk_free_limit": "2GB"
+    }
+  },
+  "projected_kafka": {
+    "brokers": 3,
+    "estimated_latency_ms": 8.5,
+    "estimated_p95_ms": 32.1,
+    "estimated_throughput_msg_sec": 5000,
+    "partition_count": 10,
+    "replication_factor": 3,
+    "estimated_cost_monthly": 1850
+  },
+  "comparison": {
+    "latency_improvement": "32%",
+    "throughput_improvement": "290%",
+    "reliability_improvement": "Expected 99.99% vs current 99.95%",
+    "operational_overhead_reduction": "70%"
+  }
+}

@@ -1,0 +1,4 @@
+viewport,field,error_share,notes
+320,postalCode,0.19,keyboard obscures helper text
+375,addressLine1,0.08,autofill replaces typed value
+412,region,0.04,select is hard to open one-handed

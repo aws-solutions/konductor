@@ -13,6 +13,7 @@
   "licenceCheckedAt": "2026-11-19",
   "use": "idea"
  },
- "author": "deepseek-3.2",
- "reviewer": "minimax-m2.5"
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5",
+ "note": "Re-authored by gpt-5.6-luna: the deepseek-3.2 draft (13 credits over three calls) had overbroad topics and a reference at 82."
 }

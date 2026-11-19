@@ -1,0 +1,7 @@
+{
+  "name": "larkspur-market-checkout-snapshot",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}
