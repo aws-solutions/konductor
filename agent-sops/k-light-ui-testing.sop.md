@@ -1,5 +1,7 @@
 # Light UI Testing
 
+Invocation: user-only (runs the test prompts against a live web app). On Claude Code the model cannot start it; the user does.
+
 ## Overview
 
 Discovers a deployed web page using browser automation and DOM inspection, writes structured markdown test prompts for the features described by the user, then executes those prompts live using the browser and reports pass/fail per prompt.

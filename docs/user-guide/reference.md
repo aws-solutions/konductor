@@ -64,7 +64,9 @@ integrity only — there is no GPG or sigstore provenance check.
 `SopInstallPhase`, which copies every `.sop.md` verbatim into `<target>/.konductor/sops/`. On
 Claude Code each one is additionally converted into `<target>/.claude/skills/sop-<name>/SKILL.md`,
 a skill that both you (`/sop-<name>`) and Claude (its `Skill` tool) can invoke, the same reach
-the `.kiro/skills/sop-<name>/SKILL.md` copy has on Kiro CLI.
+the `.kiro/skills/sop-<name>/SKILL.md` copy has on Kiro CLI. The three SOPs that commit and
+push, open pull requests, or act on a live app (`k-e2e-test-generation`, `k-full-sdlc`,
+`k-light-ui-testing`) carry `disable-model-invocation: true`, so only you can start them.
 Context files install too, into `<target>/.kiro/context/`.
 
 `konductor help [COMMAND]` prints help for a command, and `--help` works at every level.

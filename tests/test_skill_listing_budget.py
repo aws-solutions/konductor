@@ -42,13 +42,16 @@ def sop_listing_entries():
     """The `sop-<name>` skills the installer builds from agent-sops/.
 
     They are model-invocable on Claude Code, so their descriptions are in the
-    listing too. shortcut: approximates the installer's Overview reflow and
+    listing too. A SOP marked `Invocation: user-only` is hidden from the model
+    (`disable-model-invocation: true`), so it adds nothing to the listing. shortcut: approximates the installer's Overview reflow and
     truncation (first paragraph, whitespace joined, cut at 400 chars); switch to
     the installer's own output if the two ever disagree.
     """
     entries = {}
     for path in sorted((ROOT / "agent-sops").glob("*.sop.md")):
         text = path.read_text(encoding="utf-8")
+        if re.search(r"^Invocation: user-only", text, re.M):
+            continue
         match = re.search(r"^## Overview[ \t]*\n(.*?)(?:\n[ \t]*\n|\n#|\Z)", text, re.S | re.M)
         description = " ".join(match.group(1).split()) if match else ""
         description = description[:SOP_DESCRIPTION_MAX_CHARS].replace("<", "&lt;").replace(">", "&gt;")

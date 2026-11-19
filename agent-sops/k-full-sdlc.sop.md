@@ -5,6 +5,8 @@ Strict means: stop at each recorded gate, record the gate facts, and do not proc
 
 Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
 
+Invocation: user-only (creates branches, commits, pushes and opens pull requests). On Claude Code the model cannot start it; the user does.
+
 ## Overview
 
 Takes a project or feature through the full lifecycle, from analysis and requirements to design, specs, implementation, review, tests and docs. Every phase is gated and skippable.

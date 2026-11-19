@@ -79,7 +79,10 @@ not per individual commit.
 - On Claude Code, the `sop-<name>` skills the installer builds from SOPs no longer carry
   `disable-model-invocation: true`, so Claude can load a SOP through its `Skill` tool, as Kiro
   CLI already could through its `.kiro/skills/sop-<name>` copy. `/sop-<name>` still works.
-  The skill listing budget test now counts these 19 descriptions.
+  The three SOPs that commit and push, open pull requests, or act on a live app
+  (`k-e2e-test-generation`, `k-full-sdlc`, `k-light-ui-testing`) are marked
+  `Invocation: user-only` and keep the key, so only the user can start them.
+  The skill listing budget test now counts the 16 other SOP descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into

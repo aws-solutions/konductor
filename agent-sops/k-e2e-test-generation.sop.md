@@ -1,5 +1,7 @@
 # Web App Functional Test Generation
 
+Invocation: user-only (commits and pushes the generated tests). On Claude Code the model cannot start it; the user does.
+
 ## Overview
 
 Discovers a deployed web application via browser automation, then generates either:
