@@ -208,7 +208,7 @@ test('os.tmpdir based scratch roots use a neutral prefix', () => {
   const dir = makeScratchRoot();
   try {
     assert.match(path.basename(dir), /^w-[A-Za-z0-9]+$/);
-    assert.equal(/konductor|bench/i.test(dir), false);
+    assert.equal(/konductor|bench/i.test(path.basename(dir)), false); // the name only: the parent is the caller's TMPDIR
     assert.ok(dir.startsWith(os.tmpdir()));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
