@@ -16,7 +16,11 @@ const SLICES = 20;
 const FAMILY = { 'gpt-5.6-luna': 'gpt', 'deepseek-3.2': 'deepseek', 'glm-5': 'glm', 'qwen3-coder-next': 'qwen', 'minimax-m2.5': 'minimax' };
 
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
-const copyDir = (src, dest) => { fs.rmSync(dest, { recursive: true, force: true }); fs.cpSync(src, dest, { recursive: true }); };
+// Python byte-code caches hold the author's host paths; they never belong in a fixture or solution.
+const copyDir = (src, dest) => {
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.cpSync(src, dest, { recursive: true, filter: (p) => !/(^|[\\/])(__pycache__|\.pytest_cache|\.git)$|\.pyc$/.test(p) });
+};
 
 // The directory a code review must leave alone: the top-level dir holding most of the keyed files.
 function codeRoot(key) {

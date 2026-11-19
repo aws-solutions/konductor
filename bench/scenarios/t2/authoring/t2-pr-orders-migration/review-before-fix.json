@@ -1,0 +1,38 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt is general, doesn't name specific review methods or checklists, doesn't hint at specific problems, doesn't give number of problems."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: write to REVIEW.md, format specified (location with path:LINE, severity, issue, fix). A competent reviewer knows exactly what to do."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Requires cross-file reading (deployment.md, architecture.md, existing patterns) to find issues like rolling deployment incompatibility, batching requirements, migration safety rules. Shallow review would miss most key items."
+    },
+    {
+      "check": "floor",
+      "verdict": "fail",
+      "note": "k4: key says lines 37-39 but SQL injection is at lines 24-25 (12+ lines off, beyond 3-line tolerance). Grader would miss correct finding. Other items (k1-3, k5-7) have correct line numbers."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "fail",
+      "note": "CRITICAL: Fixture contains explicit 'PLANTED PROBLEM' comments at 7 locations directly revealing each planted bug. Comments like '# PLANTED PROBLEM: string formatting for SQL query' and '# PLANTED PROBLEM: N+1 query pattern' make the task trivially solvable."
+    }
+  ],
+  "keyProblems": [
+    "k4: line numbers 37-39 don't match actual SQL injection code at lines 24-25 (12+ lines off, beyond 3-line tolerance, grader would miss)",
+    "hidden-answer FAIL: PLANTED PROBLEM comments at 7 locations directly reveal planted bugs"
+  ],
+  "suggestedFixes": [
+    "Remove all 'PLANTED PROBLEM' comments from fixture source files",
+    "Fix key.json line numbers to match actual locations in fixture",
+    "Alternative: use more subtle hints in fixture, or remove comments entirely"
+  ]
+}
