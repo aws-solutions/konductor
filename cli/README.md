@@ -308,14 +308,18 @@ No ask rule is written for a tool when:
 - The settings file cannot take the rules, as above.
 - One of your entries already covers the tool: a `deny` rule, or an exact `allow` of it.
 
-Under `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, each pane runs
-`claude -p --dangerously-skip-permissions`. Claude Code's
+Under `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`,
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` (or the plugin's `dispatch_permission_mode` option) sets
+how each Claude Code pane starts. An `interactive` pane, the default, is a normal session. A
+`headless` pane runs `claude -p --permission-mode acceptEdits --permission-prompts none`, and the
+opt-in `bypass` pane runs `claude --dangerously-skip-permissions -p`. Claude Code's
 [permission modes](https://code.claude.com/docs/en/permission-modes) docs say an explicit ask
 rule is still enforced in `bypassPermissions`, and that a `-p` run denies a call that would
-prompt. So a dispatched pane cannot call the ask-gated tools when the settings file holding the
-rules applies to it: every pane for the default `$HOME` install, and only panes running in the
-target project for a `--target` install. Plugin installs get no rule (see below). Run work that
-needs them from `konductor`, where you can approve each call.
+prompt. So when the settings file holding the rules applies to a pane (every pane for the
+default `$HOME` install, and only panes running in the target project for a `--target`
+install), an `interactive` pane asks you before each call to the ask-gated tools, and a
+`headless` or `bypass` pane cannot call them. Plugin installs get no rule (see below). Run work
+that needs them from `konductor` or an `interactive` pane, where you can approve each call.
 
 The Claude Code plugin cannot ship permission rules. Plugin users add
 `mcp__plugin_konductor_aws-mcp__<tool>` for each ask-gated tool to `permissions.ask`

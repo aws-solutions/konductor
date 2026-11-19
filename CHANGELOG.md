@@ -597,11 +597,12 @@ not per individual commit.
   it under `mcpServers` or its `tools` grants `mcp__aws-mcp` or a tool under it, and CRLF
   frontmatter is read too; an agent file whose frontmatter cannot be read is skipped with a
   warning naming the file. These tools act on AWS with your credentials; `aws___run_script`
-  runs agent-written Python. Mux and cmux panes run `claude -p --dangerously-skip-permissions`,
-  where an ask rule is still enforced and a call that would prompt is denied, so a pane the
-  rules' settings file applies to cannot call them (every pane for the default `$HOME` install;
-  for a `--target` install, only panes running in that project); run that work from
-  `konductor`. The merge only appends, keeps any user entry that already covers a rule and says
+  runs agent-written Python. In a mux or cmux pane the rules' settings file applies to (every
+  pane for the default `$HOME` install; for a `--target` install, only panes running in that
+  project), an `interactive` pane asks before each call, and a `headless` or `bypass` pane
+  cannot call them: both run with `-p`, which denies a call that would prompt, and an ask rule
+  is still enforced under `--dangerously-skip-permissions`. Run that work from `konductor` or an
+  `interactive` pane. The merge only appends, keeps any user entry that already covers a rule and says
   so. Install records the entries it appended in its manifest, and `uninstall` removes exactly
   those, keeping entries the user already had and the rest of the file. When the settings file cannot take the rules (a
   symlinked `.claude` or `settings.json`, malformed JSON, or a `permissions`, `ask`, `allow` or
