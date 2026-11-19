@@ -551,11 +551,13 @@ not per individual commit.
   without a hand-added MCP config. Without `uvx` the server fails to start and the agents work
   without it.
 - `uninstall` now keeps tracked files that changed since install and warns about them, instead of
-  deleting them. A Kiro agent file that `kiro-cli agent upgrade` rewrote is still removed when its
-  `.json.bak` backup matches what Konductor installed. This also removes an agent file you edited
-  after the upgrade, since the backup still matches. `uninstall` never deletes a `.bak` file; it
-  lists each matching backup by full path and suggests removing them by hand. The `--json` output
-  adds `kept_changed`, `kept_changed_paths` and `kept_backups`.
+  deleting them. The warning says a kept file is still live and, for a Kiro CLI v3 hook document,
+  names the Konductor hook entries to remove; that document's lock file is kept with it. A Kiro
+  agent file that `kiro-cli agent upgrade` rewrote is still removed when its `.json.bak` backup
+  matches what Konductor installed. This also removes an agent file you edited after the upgrade,
+  since the backup still matches. `uninstall` never deletes a `.bak` file; it lists each matching
+  backup by full path and suggests removing them by hand. The `--json` output adds `kept_changed`,
+  `kept_changed_paths` and `kept_backups`.
 
 ### Security
 

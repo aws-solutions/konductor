@@ -57,7 +57,9 @@ even when its last entry goes. If the install used `--link-bin`, the symlink at
 `$HOME/.local/bin/konductor` is removed too.
 
 A file you changed after install is kept. `uninstall` prints a warning naming it and still
-exits `0`; the file is no longer tracked, so delete it yourself if you do not want it.
+exits `0`. The kept file is still live, so your runtime keeps loading it, but it is no longer
+tracked: delete it yourself if you do not want it. For a kept Kiro CLI v3 hooks document, the
+warning also names the Konductor hook entries to remove from it.
 
 Kiro CLI's `kiro-cli agent upgrade` rewrites each `.kiro/agents/<name>.json` and saves the
 original as `<name>.json.bak`. When that backup matches what Konductor installed, `uninstall`

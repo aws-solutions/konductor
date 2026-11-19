@@ -700,8 +700,10 @@ reports `stale: true` rather than failing, since there is nothing left on disk t
 protect.
 
 `uninstall` keeps a tracked file whose content no longer matches the manifest's recorded
-hash, prints a warning naming it, and still exits `0`. The kept file is no longer tracked
-once the manifest entry is gone. One exception covers Kiro CLI's `kiro-cli agent upgrade`,
+hash, prints a warning naming it, and still exits `0`. The kept file is still live (the
+runtime keeps loading it) but is no longer tracked once the manifest entry is gone. For a
+kept Kiro CLI v3 hook document the warning also names the Konductor hook entries to remove,
+and the document's lock file is left with it. One exception covers Kiro CLI's `kiro-cli agent upgrade`,
 which rewrites each `.kiro/agents/<name>.json` in place and saves the original as
 `<name>.json.bak`: when that backup hashes to the manifest's recorded hash, the rewritten
 agent file is removed and listed. Uninstall never deletes a `.bak` file. It prints a

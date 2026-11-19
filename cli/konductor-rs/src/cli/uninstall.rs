@@ -38,8 +38,9 @@ use super::install::kiro_cli::{
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::{
     claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_konductor_hooks,
-    V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
-    V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+    v3_hook_entry_names, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+    V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME, V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 use crate::cli::output::ColorMode;
 use crate::cli::synth::kiro_cli_v2::{
@@ -1545,8 +1546,9 @@ fn delete_target_file(
 /// agent is deleted and listed in `diverged_paths`. No Kiro backup is
 /// deleted: a matching one is listed in `kept_backups`, and one that
 /// does not match is not touched or listed. Never deletes a
-/// `ReplacedForeign` path. Records each deleted file's parent directory
-/// in `touched_dirs` for later empty-directory cleanup.
+/// `ReplacedForeign` path. A V3 hook document's lock file is removed
+/// only when the document is not kept. Records each deleted file's
+/// parent directory in `touched_dirs` for later empty-directory cleanup.
 ///
 /// `validate_relative_path` runs before `file.provenance` is even
 /// inspected, so an unsafe path can never reach path computation
@@ -1567,44 +1569,65 @@ fn delete_eligible_files(
             continue;
         }
         let path = target_dir.join(rel);
-
-        // Each V3 hook document shares its directory with a dedicated
-        // lock file that is never manifest-tracked, so it never appears
-        // as its own loop iteration. Removed unconditionally alongside
-        // the tracked document's entry, otherwise the lock file (and
-        // transitively `.kiro/hooks/`) would be stranded.
-        let hook_lock = match file.path.as_str() {
-            V3_STANDALONE_HOOKS_RELATIVE_PATH => Some(V3_STANDALONE_HOOK_LOCK_FILE_NAME),
-            V3_ORCHESTRATION_HOOKS_RELATIVE_PATH => Some(V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME),
-            _ => None,
+        let kept = if path.is_file() {
+            let action = classify_tracked_file(target_dir, rel, file);
+            apply_tracked_file_action(target_dir, rel, action, counts, touched_dirs)?
+        } else {
+            false
         };
-        if let (Some(lock), Some(parent)) = (hook_lock, path.parent()) {
-            let _ = std::fs::remove_file(parent.join(lock));
-            touched_dirs.push(parent.to_path_buf());
-        }
-
-        if !path.is_file() {
-            continue;
-        }
-        match classify_tracked_file(target_dir, rel, file) {
-            TrackedFileAction::KeepChanged => {
-                counts.kept_changed_paths.push(rel.to_path_buf());
-            }
-            TrackedFileAction::Delete { kiro_backup } => {
-                delete_target_file(target_dir, rel, counts, touched_dirs)?;
-                counts
-                    .kept_backups
-                    .extend(kiro_backup.map(|backup| target_dir.join(backup)));
-            }
-            TrackedFileAction::DeleteRewrittenByKiro { kiro_backup } => {
-                counts.diverged_deleted += 1;
-                counts.diverged_paths.push(rel.to_path_buf());
-                delete_target_file(target_dir, rel, counts, touched_dirs)?;
-                counts.kept_backups.push(target_dir.join(kiro_backup));
-            }
+        // A kept hook document is still live, so its lock stays with it.
+        if !kept {
+            remove_hook_lock(&file.path, &path, touched_dirs);
         }
     }
     Ok(())
+}
+
+/// Carries out `action` for the tracked file at `target_dir/rel` and
+/// returns whether the file was kept.
+fn apply_tracked_file_action(
+    target_dir: &Path,
+    rel: &Path,
+    action: TrackedFileAction,
+    counts: &mut UninstallCounts,
+    touched_dirs: &mut Vec<PathBuf>,
+) -> Result<bool, String> {
+    match action {
+        TrackedFileAction::KeepChanged => {
+            counts.kept_changed_paths.push(rel.to_path_buf());
+            return Ok(true);
+        }
+        TrackedFileAction::Delete { kiro_backup } => {
+            delete_target_file(target_dir, rel, counts, touched_dirs)?;
+            counts
+                .kept_backups
+                .extend(kiro_backup.map(|backup| target_dir.join(backup)));
+        }
+        TrackedFileAction::DeleteRewrittenByKiro { kiro_backup } => {
+            counts.diverged_deleted += 1;
+            counts.diverged_paths.push(rel.to_path_buf());
+            delete_target_file(target_dir, rel, counts, touched_dirs)?;
+            counts.kept_backups.push(target_dir.join(kiro_backup));
+        }
+    }
+    Ok(false)
+}
+
+/// Each V3 hook document shares its directory with a dedicated lock
+/// file that is never manifest-tracked. Called once the document at
+/// `document` (manifest path `manifest_path`) has been deleted or was
+/// already gone, so neither the lock nor `.kiro/hooks/` is stranded.
+/// A no-op for any other tracked file.
+fn remove_hook_lock(manifest_path: &str, document: &Path, touched_dirs: &mut Vec<PathBuf>) {
+    let lock = match manifest_path {
+        V3_STANDALONE_HOOKS_RELATIVE_PATH => V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+        V3_ORCHESTRATION_HOOKS_RELATIVE_PATH => V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
+        _ => return,
+    };
+    if let Some(parent) = document.parent() {
+        let _ = std::fs::remove_file(parent.join(lock));
+        touched_dirs.push(parent.to_path_buf());
+    }
 }
 
 /// Removes any directory in `touched_dirs` (and, transitively, any of
@@ -1718,22 +1741,43 @@ fn join_paths(paths: &[PathBuf]) -> String {
 }
 
 /// The warning `report_single`/`report_batch` print when changed files
-/// were kept, or `None` when nothing was kept.
-fn format_kept_changed_warning(
+/// were kept: a header, then one line per file. A kept V3 hook document
+/// also names the Konductor hook entries still in it. Empty when
+/// nothing was kept.
+fn kept_changed_warning_lines(
     target_dir: &str,
     kept_changed_paths: &[PathBuf],
     color: ColorMode,
-) -> Option<String> {
+) -> Vec<String> {
     if kept_changed_paths.is_empty() {
-        return None;
+        return Vec::new();
     }
-    Some(format!(
-        "{} kept {} file(s) in {target_dir} that changed since install; they are no longer \
-         tracked: {}",
+    let header = format!(
+        "{} kept {} file(s) in {target_dir} that changed since install. They are still live \
+         but no longer tracked; delete them, or the Konductor entries named, by hand:",
         crate::cli::output::status::warn(color, "konductor uninstall: warning:"),
-        kept_changed_paths.len(),
-        join_paths(kept_changed_paths)
-    ))
+        kept_changed_paths.len()
+    );
+    std::iter::once(header)
+        .chain(
+            kept_changed_paths
+                .iter()
+                .map(|path| kept_changed_line(path)),
+        )
+        .collect()
+}
+
+fn kept_changed_line(path: &Path) -> String {
+    let entries = path.to_str().map(v3_hook_entry_names).unwrap_or_default();
+    if entries.is_empty() {
+        format!("  {}", path.display())
+    } else {
+        format!(
+            "  {} (Konductor hook entries: {})",
+            path.display(),
+            entries.join(", ")
+        )
+    }
 }
 
 fn kept_backups_warning_lines(kept_backups: &[PathBuf], color: ColorMode) -> Vec<String> {
@@ -1790,10 +1834,8 @@ fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool, color: 
             counts.dirs_removed
         );
     }
-    if let Some(warning) =
-        format_kept_changed_warning(target_dir, &counts.kept_changed_paths, color)
-    {
-        println!("{warning}");
+    for line in kept_changed_warning_lines(target_dir, &counts.kept_changed_paths, color) {
+        println!("{line}");
     }
     for line in kept_backups_warning_lines(&counts.kept_backups, color) {
         println!("{line}");
@@ -1909,8 +1951,8 @@ fn report_batch(
                 counts.dirs_removed
             );
         }
-        if let Some(warning) = format_kept_changed_warning(dir, &counts.kept_changed_paths, color) {
-            println!("{warning}");
+        for line in kept_changed_warning_lines(dir, &counts.kept_changed_paths, color) {
+            println!("{line}");
         }
         for line in kept_backups_warning_lines(&counts.kept_backups, color) {
             println!("{line}");
@@ -3084,16 +3126,18 @@ mod tests {
             counts.kept_changed_paths,
             vec![PathBuf::from(".kiro/agents/a.json")]
         );
-        let warning = format_kept_changed_warning(
-            "/proj/a",
-            &counts.kept_changed_paths,
-            ColorMode::disabled(),
-        )
-        .expect("a kept file must produce a warning");
         assert_eq!(
-            warning,
-            "konductor uninstall: warning: kept 1 file(s) in /proj/a that changed since \
-             install; they are no longer tracked: .kiro/agents/a.json"
+            kept_changed_warning_lines(
+                "/proj/a",
+                &counts.kept_changed_paths,
+                ColorMode::disabled()
+            ),
+            vec![
+                "konductor uninstall: warning: kept 1 file(s) in /proj/a that changed since \
+                 install. They are still live but no longer tracked; delete them, or the \
+                 Konductor entries named, by hand:",
+                "  .kiro/agents/a.json",
+            ]
         );
         assert!(
             !manifest::manifest_path(&target).exists(),
@@ -3104,9 +3148,73 @@ mod tests {
 
     #[test]
     fn kept_changed_warning_is_absent_when_nothing_was_kept() {
+        assert!(kept_changed_warning_lines("/proj/a", &[], ColorMode::disabled()).is_empty());
+    }
+
+    fn seed_hook_document_with_lock(target: &Path, content: &[u8], recorded: &[u8]) -> PathBuf {
+        seed_target(
+            target,
+            vec![(
+                V3_STANDALONE_HOOKS_RELATIVE_PATH,
+                content,
+                Provenance::Created,
+                Some(&sha256_hex(recorded)),
+            )],
+        );
+        let lock = target
+            .join(".kiro/hooks")
+            .join(V3_STANDALONE_HOOK_LOCK_FILE_NAME);
+        fs::write(&lock, b"").unwrap();
+        lock
+    }
+
+    #[test]
+    fn keeps_a_changed_hook_document_and_its_lock() {
+        let _home = HomeGuard::new("kept-hook-document-home");
+        let target = scratch_home("kept-hook-document");
+        let lock = seed_hook_document_with_lock(&target, b"edited", b"installed");
+
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
         assert_eq!(
-            format_kept_changed_warning("/proj/a", &[], ColorMode::disabled()),
-            None
+            fs::read(target.join(V3_STANDALONE_HOOKS_RELATIVE_PATH)).unwrap(),
+            b"edited"
+        );
+        assert!(lock.is_file(), "the lock must stay with its kept document");
+        assert_eq!(counts.files_deleted, 0);
+        assert_eq!(
+            kept_changed_warning_lines(
+                "/proj/a",
+                &counts.kept_changed_paths,
+                ColorMode::disabled()
+            )[1],
+            "  .kiro/hooks/konductor-telemetry-hooks.json (Konductor hook entries: \
+             konductor-telemetry-session-start, konductor-telemetry-subagent-invocation)"
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn removes_an_unchanged_hook_document_with_its_lock() {
+        let _home = HomeGuard::new("removed-hook-document-home");
+        let target = scratch_home("removed-hook-document");
+        let lock = seed_hook_document_with_lock(&target, b"installed", b"installed");
+
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
+        assert!(!target.join(V3_STANDALONE_HOOKS_RELATIVE_PATH).exists());
+        assert!(!lock.exists());
+        assert!(!target.join(".kiro/hooks").exists());
+        assert_eq!(counts.files_deleted, 1);
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn kept_changed_line_names_the_orchestration_hook_entry() {
+        assert_eq!(
+            kept_changed_line(Path::new(V3_ORCHESTRATION_HOOKS_RELATIVE_PATH)),
+            "  .kiro/hooks/konductor-orchestration-hooks.json (Konductor hook entries: \
+             konductor-orchestration-session-start)"
         );
     }
 

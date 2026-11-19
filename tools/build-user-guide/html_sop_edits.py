@@ -1340,7 +1340,9 @@ SOP_EDITS += [
     ("uninstall: a real run keeps changed files and Kiro backups",
      f'<p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves',
      f"{_UNINSTALL_P}A file you changed after install is kept. {_MONO13}uninstall</span> prints a warning naming it "
-     f"and still exits {_MONO13}0</span>; the file is no longer tracked, so delete it yourself if you do not want it.</p>\n"
+     f"and still exits {_MONO13}0</span>. The kept file is still live, so your runtime keeps loading it, but it is no "
+     "longer tracked: delete it yourself if you do not want it. For a kept Kiro CLI v3 hooks document, the warning "
+     "also names the Konductor hook entries to remove from it.</p>\n"
      f"        {_UNINSTALL_P}Kiro CLI's {_MONO13}kiro-cli agent upgrade</span> rewrites each "
      f"{_MONO13}.kiro/agents/&lt;name&gt;.json</span> and saves the original as {_MONO13}&lt;name&gt;.json.bak</span>. "
      f"When that backup matches what Konductor installed, {_MONO13}uninstall</span> removes the rewritten agent file. "
