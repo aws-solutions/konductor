@@ -22,6 +22,17 @@
   ],
   "repeatable": true
  },
+ "alt": {
+  "score": 100,
+  "checks": [
+   "pass tests 22/22",
+   "pass file_exists",
+   "pass cmd",
+   "pass cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
  "dump": {
   "score": 28.6,
   "checks": [
@@ -37,6 +48,8 @@
   "reference": true,
   "referenceAllChecks": true,
   "stub": true,
-  "repeatable": true
+  "repeatable": true,
+  "dump": true,
+  "alt": true
  }
 }

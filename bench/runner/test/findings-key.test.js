@@ -67,6 +67,17 @@ test('one reported item matches one key item, and a repeat of a finding counts a
   assert.equal(g.precision, 0.5);
 });
 
+test('two findings at nearby lines match their own key items whatever order they are listed in', () => {
+  const key = [
+    { id: 'a', location: ['x.js:10', 'x.js:11', 'x.js:12'], severity: 'critical', fix: ['lock'] },
+    { id: 'b', location: ['x.js:11', 'x.js:12', 'x.js:13'], severity: 'low', fix: ['rename'] },
+  ];
+  const a = { location: 'x.js:11', severity: 'critical', fix: 'add a lock' };
+  const b = { location: 'x.js:12', severity: 'low', fix: 'rename it' };
+  assert.equal(gradeFindings([a, b], key).score, 1);
+  assert.equal(gradeFindings([b, a], key).score, 1);
+});
+
 test('readFindingsBlock takes a plain array or {findings}, skips bad blocks, and ignores other fences', () => {
   assert.equal(readFindingsBlock(`${FENCE}json\n{bad\n${FENCE}`), null);
   assert.equal(readFindingsBlock(`${FENCE}sh\nls\n${FENCE}\n${block(REFERENCE)}`).length, 4);
