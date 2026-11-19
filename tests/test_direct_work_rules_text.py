@@ -133,7 +133,7 @@ DOCUMENT_TRIGGER = (
     "a threat model, and a document that designs authentication, authorization, or how credentials "
     "are stored or handled, that exposes a service or data across a network boundary, or that "
     "handles personal or sensitive data, always gets the gate review, but a data model, schema, or "
-    "deployment configuration that does none of these does not call for one;"
+    "deployment configuration that does none of these does not by itself call for one;"
 )
 DOCUMENT_SELF_CHECK = (
     "a document phase without the gate review must still run the document's checker skill on it "
