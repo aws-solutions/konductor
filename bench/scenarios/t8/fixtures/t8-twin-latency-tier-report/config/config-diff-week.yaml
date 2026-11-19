@@ -1,0 +1,27 @@
+week_start: 2026-03-16T00:00:00Z
+repository: shop-runtime-config
+changes:
+  - at: 2026-03-16T10:18:00Z
+    path: services.payments_adapter.retry_budget
+    before: 3
+    after: 4
+    actor: tomas
+    source: reviewed-change
+  - at: 2026-03-17T13:05:00Z
+    path: services.checkout.receipt_template
+    before: receipt-v18
+    after: receipt-v19
+    actor: rhea
+    source: reviewed-change
+  - at: 2026-03-17T17:42:00Z
+    path: services.checkout.pool_size
+    before: 40
+    after: 12
+    actor: batch-console
+    source: runtime-config
+  - at: 2026-03-18T01:12:00Z
+    path: services.inventory.cache_refresh_seconds
+    before: 300
+    after: 360
+    actor: mira
+    source: reviewed-change

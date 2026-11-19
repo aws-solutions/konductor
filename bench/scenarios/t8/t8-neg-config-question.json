@@ -1,0 +1,94 @@
+{
+  "id": "t8-neg-config-question",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Can you check the effective production configuration and leave me the short answer? I need the services whose rendered production record has the logLevel field set to \"debug\", along with each service's replica count. The existing renderer is scripts/render-config.js, and its production result is the source of truth rather than an individual base record. Write exactly one file at answers/prod-debug.json. It must contain a JSON list of objects with exactly these fields: service, a service-name string, and replicas, an integer. Sort the list by service in ascending name order. Do not include any other fields, services, or environments. This is for a quick capacity and logging review before today's release, so the replica values need to match the effective production records. Do not edit, reformat, or add anything else in the repository.",
+  "fixture": "t8-neg-config-question",
+  "hidden": "t8-neg-config-question",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden-check.test.js",
+      "min": 7,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "answers/prod-debug.json",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config/production/catalog.json",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "negative",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/release-engineering/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks the agent to find services with logLevel debug and their replicas without specifying how to process the data. It mentions the renderer exists but doesn't mandate its use, and doesn't list constraints or causes. This is appropriate guidance, not a leak."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request unambiguously asks for services with effective production logLevel debug and their replica counts. The key items (catalog and inventory) and test assertions (sort order, fields, effective replicas) match the request. No unstated path, field name, or unit assumptions exist."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No file in fixture reveals the answer: notes and docs discuss historical capacity and operations but not debug settings. The renderer script's logic (merging overrides) must be understood to derive that catalog gets debug from overrides.json, while inventory already has debug in its production record. File names don't hint at answers."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer would be to list only inventory (which explicitly shows logLevel debug in its record) and miss catalog (which only gets debug via the override). This would pass only the unchanged-check (catalog.json base record unchanged) but fail all answer tests that require both services with correct effective replicas (3 for catalog, 3 for inventory)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required values are derivable: the effective logLevel for each service comes from running the renderer or manually applying overrides.json. Both debug services (catalog via override, inventory natively) have integer replica counts visible in production records. Tests use standard JSON assertions without rejecting correct phrasings."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

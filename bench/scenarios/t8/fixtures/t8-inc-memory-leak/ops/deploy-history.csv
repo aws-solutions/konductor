@@ -1,0 +1,7 @@
+time,version,actor,scope,notes
+2025-04-07T09:00:00Z,3.7.4,release-bot,search-api,baseline image refresh
+2025-04-07T18:00:00Z,3.7.5,release-bot,search-api,shard reader timeout adjustment
+2025-04-08T09:00:00Z,3.7.6,release-bot,search-api,request label cleanup
+2025-04-08T14:00:00Z,3.8.0,release-bot,search-api,query response handling update
+2025-04-09T12:00:00Z,3.8.1,release-bot,gateway,access log field update
+2025-04-10T08:00:00Z,3.8.2,release-bot,indexer,refresh scheduling update

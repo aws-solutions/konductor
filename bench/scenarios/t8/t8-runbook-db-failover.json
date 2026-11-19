@@ -1,0 +1,145 @@
+{
+  "id": "t8-runbook-db-failover",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Please turn this ops folder into the missing 3 a.m. manual failover runbook for the orders database. Write a real, concise procedure for an on-call engineer handling an unhealthy primary, with prechecks, safe role change, client recovery, verification, stop conditions, and escalation. Put it at runbooks/orders-db-failover.md. End the document with one fenced ```json block. That JSON object must have steps (an ordered list of objects: id, action, and abortIf are strings; command is the exact command (from the tools in this folder) or console action as a string, or null; verify is a string saying what to check and the expected result), abort (an object with metric and op as strings and threshold as a number in the metric's unit), and escalate (a list of role-name strings from the rota). State units for every number, and write all times as ISO 8601 UTC. Use the supplied topology, QuorumCtl help, client settings, metric catalogue, data policy, logs, old notes, and paging rota as the source of truth. Do not edit the supplied fixture files.",
+  "fixture": "t8-runbook-db-failover",
+  "hidden": "t8-runbook-db-failover",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "runbooks/orders-db-failover.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "topology.yaml",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "usable-at-3am",
+      "criterion": "The prose gives an operator a clear sequence with expected results and explicit stop or escalation behavior (code cannot check this because it cannot judge whether the procedure is practically usable under incident pressure).",
+      "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "data-loss-bound",
+        "text": "Explains how to choose among replicas when more than one qualifies, and what to do when none is within the allowed data loss.",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+      },
+      {
+        "id": "fencing",
+        "text": "Says how to confirm the fence held (the old primary cannot take writes even if it comes back) and what to do if fencing fails.",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "client-cutover",
+        "text": "Covers how clients find the new primary (DNS TTL, pool reconnects) and verifies that real writes succeed afterwards.",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+      },
+      {
+        "id": "verify-each",
+        "text": "Gives a check with the expected result after each step, so the operator knows the step worked before going on.",
+        "source": "Google SRE book, Being On-Call, https://sre.google/sre-book/being-on-call/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "abort-escalate",
+        "text": "Timeboxes the procedure and says who may decide to continue past a failed check, instead of pushing on alone.",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "after",
+        "text": "Covers the aftermath: rebuild the old primary as a replica, re-point backups and monitoring, and record the event.",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Promote the replica and update the config.",
+      "Restart the database and see if it recovers.",
+      "A list of steps with no check after each.",
+      "No word on the old primary coming back."
+    ]
+  },
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/SkeltonThatcher/run-book-template",
+      "licence": "no licence file (GitHub API: license null); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The output format is part of the deliverable, not a method. After review the request no longer asks for log citations, and the key no longer checks incident lines; it checks the procedure's order, real commands, abort limit and rota names. (reviewer: The request explicitly specifies the output format (JSON with steps/abort/escalate), tells the model how to work (cite path:line with 1-based line numbers), lists the causes to find (storage_io_await_ms, commit_latency, io_wait, write_timeout), and constrains the solution (never promote delayed replica, use 120-second RPO, follow quorumctl command syntax from vendor/quorumctl-help.txt).)"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "While the request could be more explicit about relative paths (e.g., whether 'path:line' citations are relative to the workspace root or fixture root), the block-kit grader's resolveRefs() function standardizes this by resolving against the workspace root after copying fixture+solution. All path references in the key.json (logs/orders-db.log, metrics/catalog.csv, rota/paging.md) are workspace-relative and match the fixture structure."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The storage evidence the reviewer found is context for the old failover, not graded: the evidence and diagnosis items were removed from the key after review. (reviewer: The root cause (storage I/O issues on orders-db-a) is explicitly visible in the fixture logs: quorum-replicator.log shows storage_io_await_ms=1840 and commit_latency=1960; orders-db.log shows io_wait with await_ms=1840 and write_timeout=2000. The delayed replica orders-db-c is explicitly marked with promotion_eligible=false and delay_seconds=900 in topology.yaml. The RPO of 120 seconds is stated in data-policy.md.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task has meaningful complexity. Quick wrong answers would be caught: blaming the recent orders-api deploy (4.18.0) would ignore the storage signals; focusing on connection pool warnings would miss the real cause per the notes; promoting orders-db-c (delayed replica) would fail the 'never-promote-delayed-copy' check; using a different RPO would fail 'abort-threshold-is-rpo'."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required values are derivable from the fixture: storage values (1840, 1960, 2000) appear directly in logs; replication lag (27, 19) is in logs; RPO=120 is explicit in data-policy.md; escalation roles are listed in rota/paging.md; quorumctl command syntax is in vendor/quorumctl-help.txt."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

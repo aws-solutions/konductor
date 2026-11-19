@@ -1,0 +1,57 @@
+{
+  "service": "relayroom",
+  "zones": {
+    "north": [
+      "rr-n-01",
+      "rr-n-02",
+      "rr-n-03",
+      "rr-n-04",
+      "rr-n-05",
+      "rr-n-06",
+      "rr-n-07",
+      "rr-n-08",
+      "rr-n-09",
+      "rr-n-10",
+      "rr-n-11",
+      "rr-n-12",
+      "rr-n-13",
+      "rr-n-14",
+      "rr-n-15",
+      "rr-n-16",
+      "rr-n-17",
+      "rr-n-18"
+    ],
+    "central": [
+      "rr-c-01",
+      "rr-c-02",
+      "rr-c-03",
+      "rr-c-04",
+      "rr-c-05",
+      "rr-c-06",
+      "rr-c-07",
+      "rr-c-08",
+      "rr-c-09",
+      "rr-c-10",
+      "rr-c-11",
+      "rr-c-12"
+    ],
+    "south": [
+      "rr-s-01",
+      "rr-s-02",
+      "rr-s-03",
+      "rr-s-04",
+      "rr-s-05",
+      "rr-s-06",
+      "rr-s-07",
+      "rr-s-08",
+      "rr-s-09",
+      "rr-s-10"
+    ]
+  },
+  "roles": {
+    "session-router": 16,
+    "edge-gateway": 8,
+    "presence-worker": 8,
+    "collab-api": 8
+  }
+}
