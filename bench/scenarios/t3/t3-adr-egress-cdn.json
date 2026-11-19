@@ -13,7 +13,7 @@
     {
       "type": "tests",
       "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
-      "min": 18
+      "min": 20
     },
     {
       "type": "file_exists",
@@ -57,5 +57,51 @@
     "source": "original"
   },
   "pilot": null,
-  "version": 1
+  "version": 1,
+  "targetSkills": [
+    "skill:trade-off-evaluator",
+    "skill:cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:trade-off-evaluator",
+      "skill:cost-estimation",
+      "skill:decision-writing"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt does not name or hint at a method, framework, or specific answer; it just asks for a design decision based on provided data."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fail",
+        "note": "Both cdn-committed and cdn-payg meet all hard limits, but the expected answer is cdn-committed without specifying that more headroom should be prioritized over lower cost."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains only raw data (prices, performance, requirements); the correct choice is not stated outright anywhere in fixture files."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Not too easy: requires calculating tiered costs, comparing performance against multiple limits, and understanding tradeoffs (cheapest vs. headroom)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Tests check all hard limits and calculations; all needed numbers are in fixture and format requirements are clear."
+      }
+    ]
+  }
 }

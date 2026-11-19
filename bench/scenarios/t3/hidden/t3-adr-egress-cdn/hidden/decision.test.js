@@ -81,6 +81,30 @@ test('options lists exactly the fixture candidates', () => {
   assert.deepEqual([...decision().options].sort(), [...allOptionIds].sort());
 });
 
+test('limits lists exactly one entry for each hard limit', () => {
+  assert.deepEqual(Object.keys(decision().limits).sort(), [
+    'data_size_tb',
+    'monthly_cost_usd',
+    'p95_start_ms',
+    'rpo_minutes',
+    'rto_minutes',
+    'sustained_throughput_gbps'
+  ]);
+});
+
+test('tempting direct option exceeds only the latency limit', () => {
+  const row = performanceById.get(temptingOption);
+  const failures = [
+    row.p95_start_ms > service.p95_start_time_max_ms,
+    row.sustained_throughput_gbps < traffic.sustained_throughput_min_gbps,
+    monthlyCost(temptingOption) > service.monthly_budget_max_usd,
+    traffic.monthly_delivery_tb < traffic.monthly_delivery_tb,
+    row.rpo_minutes > service.rpo_max_minutes,
+    row.rto_minutes > service.rto_max_minutes
+  ].filter(Boolean).length;
+  assert.equal(failures, 1);
+});
+
 test('monthly cost matches the selected price calculation', () => {
   assert.ok(near(decision().monthly_cost_usd, monthlyCost(decision().chosen)));
 });

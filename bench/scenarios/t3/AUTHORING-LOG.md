@@ -17,3 +17,6 @@
 | t3-adr-db-engine | author | gpt-5.6-luna | 0.00 |
 | t3-adr-db-engine | map | glm-5 | 0.63 |
 | t3-adr-db-engine | review | glm-5 | 3.46 |
+| t3-adr-egress-cdn | author | gpt-5.6-luna | 0.00 |
+| t3-adr-egress-cdn | map | glm-5 | 0.85 |
+| t3-adr-egress-cdn | review | qwen3-coder-next | 0.37 |
