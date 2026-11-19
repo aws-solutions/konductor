@@ -411,11 +411,13 @@ not per individual commit.
 
 - Three skill descriptions now say what each skill takes in and puts out, so the model can tell
   them from their neighbors. `requirements-extraction` is for handing finished requirements and
-  stories to an architect, once stories exist. `trade-off-evaluator` is for comparing options side
-  by side and choosing one. `status-reporting` turns done, late and blocked work
+  stories to an architect, once stories exist. `trade-off-evaluator` is for a side-by-side
+  comparison of options for a design decision, with a pick. `status-reporting` turns done, late and blocked work
   into a weekly update with a RAG rating. The `about-konductor` SOP overview says it is not for
-  real work. Together the three descriptions are 319 characters shorter, so the Claude Code
-  skill listing shrinks.
+  real work. Together the three descriptions are 312 characters shorter, so the Claude Code
+  skill listing shrinks. The descriptions keep the nouns a skill search is likely to use
+  ("decision", "comparison") and leave out the words of requests they exclude, because
+  `find_skills` matches any part of a description.
 - The `adversarial-code-review` description says "Use for a second pass after code review"
   (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
   activation condition. The trigger itself is unchanged.
