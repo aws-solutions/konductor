@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-cart-twin-config",
-  "phase": "testing",
-  "role": "qa",
+  "phase": "implementation",
+  "role": "developer",
   "phases2": [],
   "author": "gpt-5.6-luna",
   "reviewer": "glm-5",

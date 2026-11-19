@@ -40,3 +40,5 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t5-dev-legacy-characterize | review | glm-5 | 7.84 | |
 | t5-fe-widget-logic-tests | review | glm-5 | 5.40 | |
 | t5-fe-widget-logic-tests | map | glm-5 | 0.16 | |
+| t5-qa-acceptance-criteria | map | glm-5 | 0.16 | |
+| t5-qa-cart-twin-config | map | glm-5 | 0.16 | |

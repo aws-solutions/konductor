@@ -129,7 +129,8 @@ function assemble(id) {
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   const put = (from, to) => { fs.rmSync(to, { recursive: true, force: true }); fs.cpSync(from, to, { recursive: true }); };
   put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
-  put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id));
+  // A twin's hidden tests sit in `hidden/` (the command runs `hidden/*.test.js`), so the hidden dir holds that folder; the other kinds put their files at its top.
+  put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id, b.kind === 'twin' ? 'hidden' : ''));
   put(path.join(w, 'solution'), path.join(DIR, 'solutions', id));
 }
 
