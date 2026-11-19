@@ -1,0 +1,26 @@
+service: checkout
+owner: Commerce Platform
+region_count: 3
+slo:
+  availability: 99.95%
+  checkout_p99_ms: 450
+  checkout_error_rate: 0.5%
+  measurement: "complete response from public checkout endpoint"
+request_limits:
+  timeout_ms: 700
+  max_inflight_per_pod: 120
+  payment_timeout_ms: 300
+  inventory_timeout_ms: 200
+capacity:
+  expected_peak_rps: 180
+  expected_peak_orders_per_minute: 640
+  annual_growth: 0.35
+observed_p99_components_ms:
+  local_validation: 70
+  gateway_to_checkout: 55
+  checkout_to_payments: 190
+  checkout_to_fulfillment: 155
+  order_write: 85
+release:
+  maximum_customer_traffic_percent_before_exit_criteria: 10
+  rollback_target_minutes: 10

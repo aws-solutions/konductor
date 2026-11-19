@@ -1,0 +1,3 @@
+{
+  "notes": "The strongest traps are plausible claims in the proposal that conflict with numbers or boundaries elsewhere in the packet. A quick review may accept the rollout language and the state-machine wording without checking what they actually guarantee. Several findings require reading the design beside the schema, ownership notes, incident summary, service targets, and caller graph. The document contains ordinary implementation detail that should not be promoted to a finding without a concrete consequence."
+}
