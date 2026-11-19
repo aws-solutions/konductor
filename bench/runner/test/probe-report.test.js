@@ -533,7 +533,7 @@ test('probe-report writes the report files, honours the fractional scoring profi
   assert.equal(res.status, 0, res.stderr);
   for (const f of ['probe-report.md', 'probe-report.json', 'probe-runs.jsonl', 'judge-queue.json']) assert.ok(fs.existsSync(path.join(out, f)), f);
   const md = fs.readFileSync(path.join(out, 'probe-report.md'), 'utf8');
-  assert.match(md, /passed \/ total/);
+  assert.match(md, /weighted share of substance checks/);
   assert.match(md, /Canary token: given, exact match/);
   assert.match(md, /\| k-canary \| 1 \| 1 \|/);
   const rows = fs.readFileSync(path.join(out, 'probe-runs.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));

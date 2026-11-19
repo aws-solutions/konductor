@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-06-decision-writing",
+  "class": "design",
+  "target": null,
+  "prompt": "We chose to keep our queue on SQS instead of moving to Kafka, because the team is small and the volume is low. Write down this decision in out.md so a new engineer can see why we chose it and what we gave up.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

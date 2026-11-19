@@ -6,6 +6,7 @@ bench runs the same tasks with and without a change, scores the output with a pa
 and reports cost, quality and run-to-run noise. It is plain Node, with no install step beyond the tools below.
 
 New to bench? Start with [GUIDE.md](GUIDE.md). Known open debt in the bench code is tracked in [DEBT.md](DEBT.md).
+To repeat the 2x2 study, or a run level, from the scripts in this repository, see [REPEAT.md](REPEAT.md) and [kit/README.md](kit/README.md).
 
 Two kinds of question, two sets of commands:
 
@@ -1164,8 +1165,10 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   - proxy asks a model what it would do without starting an agent. On kiro-cli it writes `find_skills` arguments, an offline copy of the tool
     returns the candidates, and a second call picks; retrieval failures (the wording never reaches the skill) and judgment failures are
     counted apart. On opencode the skill index is in the prompt. It cannot see task context or delegation hops: a miss is informative, a hit is not proof.
+    `--dry-run` prints the most model calls it would make (two per query and repeat on kiro-cli, one on opencode) and a credit estimate, and calls nothing.
   - live runs real trigger tasks and stops at the first load or delegation (`--stop-on first-load`, default) within 4 tool calls. A killed run
     has no metered credits at all (metering arrives at the end of a turn), so live spend is unobserved; give `--budget-credits` and `--run-credit-limit`.
+    `--dry-run` prints the `run` command and starts nothing.
   - Agreement of the two on a sample (`--crosscheck F` or `--crosscheck-run DIR`) is Cohen's kappa; below 0.6 or under 12 queries every proxy
     report says "proxy not validated".
 - Forced load: `run --arm-prefix name=FILE` puts the file's text in front of the task prompt of one arm (recorded as sha256 and size); use
@@ -1205,11 +1208,10 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   the judge heatmap and pairwise bars, autonomy, skill load, contamination, spend by phase, run durations, provenance, commands to reproduce, and the existing text tables unchanged.
   A run without judgments still renders; the charts that need them are listed under "Not shown". New JSON keys (`scores`, `diligence`, `detail`) are additive.
 - Scores (`report/scores.js`; every one has n and a 95% bootstrap CI, and is "anecdotal" below 3 runs; a failed run is never hidden):
-  - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (all pass = 1), rubric
+  - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (the weight-share of `substance` checks passed; `format` checks and `tests` checks are reported, not scored), rubric
     (median over judges of the verified score, NO DATA under 3 judges; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`).
-    With no hidden tests the weights renormalise to checks 0.4 and rubric 0.6, so one failed check out of many costs 40 points. `--scoring bench/profiles/scoring-fractional.json` (same weights) scores the checks
-    term as passed / total instead, and `profiles/scoring-quality-fractional.json` does the same with the quality pack. A scoring file opts in with `"checks": "fraction"`; the default is `"all"`. The report's weights line and
-    quality formula say which mode was used, and the default output is unchanged. A missing component is dropped and the
+    With no hidden tests the weights renormalise to checks 0.4 and rubric 0.6, so one failed check of five costs 8 points. Each check may carry `weight` (default 1) and `kind` (`substance`, the default, or `format`). `--scoring bench/profiles/scoring-all.json` (same weights) restores the old rule, 1 only when every check passed, for reports made before 2026-11-19. A scoring file picks the mode with `"checks": "fraction"` (the default) or `"all"`. The report's weights line and
+    quality formula say when `all` was used. A missing component is dropped and the
     others renormalised, never imputed. infraError, modelMismatch and runs with no component are left out and counted. The inputs used are printed beside the score.
   - Reliability /100: 100 minus the share of runs that timed out, errored, hit infraError or had a modelMismatch.
   - Autonomy /100 (autonomy tier only): share of runs completed without help, with interjections per task and the unnecessary-question rate beside it.

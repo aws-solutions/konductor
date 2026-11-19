@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The checks term of the quality score is 1 only when every check passed, unless the scoring file says "checks": "fraction",
-// in which case it is passed / total. Default weights, rows and report text must not change.
+// The checks term of the quality score is the weighted share of substance checks passed. Format checks and `tests` checks are not
+// scored. The scoring file may say "checks": "all" for the old rule (1 only when every check passed), for old reports.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,6 +17,7 @@ const { loadScoring, qualityOfRun, checksScore, checksModeNote, formulasForWeigh
 const { mkScratch } = require('./scratch.js');
 
 const PROFILES = path.join(__dirname, '..', '..', 'profiles');
+const ALL = path.join(PROFILES, 'scoring-all.json');
 const FRACTIONAL = path.join(PROFILES, 'scoring-fractional.json');
 const QUALITY_FRACTIONAL = path.join(PROFILES, 'scoring-quality-fractional.json');
 const DEFAULT = path.join(PROFILES, 'scoring.json');
@@ -27,43 +28,55 @@ const scratchFile = (obj) => { const f = path.join(mkScratch('scoring-'), 'scori
 
 // ---- loading ----
 
-test('default weights carry no checks mode and the shipped default file is unchanged', () => {
+test('default weights carry no checks mode, the default is fraction, and the shipped default file sets no mode', () => {
   assert.deepEqual(loadScoring(), { hidden: 0.5, checks: 0.2, rubric: 0.3 });
   assert.deepEqual(JSON.parse(fs.readFileSync(DEFAULT, 'utf8')).weights, { hidden: 0.5, checks: 0.2, rubric: 0.3 });
   assert.equal('checks' in JSON.parse(fs.readFileSync(DEFAULT, 'utf8')), false);
 });
 
-test('the fractional profiles keep the weights of their base file and add the mode', () => {
-  assert.deepEqual(loadScoring(FRACTIONAL), { hidden: 0.5, checks: 0.2, rubric: 0.3, checksMode: 'fraction' });
-  assert.deepEqual(loadScoring(QUALITY_FRACTIONAL, { allowPack: true }), { hidden: 0.4, checks: 0.16, rubric: 0.24, pack: 0.2, checksMode: 'fraction' });
+test('the fractional profiles equal the default weights, and scoring-all.json adds the old mode', () => {
+  assert.deepEqual(loadScoring(FRACTIONAL), loadScoring());
+  assert.deepEqual(loadScoring(QUALITY_FRACTIONAL, { allowPack: true }), { hidden: 0.4, checks: 0.16, rubric: 0.24, pack: 0.2 });
+  assert.deepEqual(loadScoring(ALL), { hidden: 0.5, checks: 0.2, rubric: 0.3, checksMode: 'all' });
   assert.throws(() => loadScoring(QUALITY_FRACTIONAL), /pack needs the quality-pack scores/);
 });
 
-test('an explicit "all" is the default mode, and an unknown mode is refused', () => {
-  assert.deepEqual(loadScoring(scratchFile({ weights: { hidden: 1, checks: 1, rubric: 1 }, checks: 'all' })), { hidden: 1, checks: 1, rubric: 1 });
-  assert.throws(() => loadScoring(scratchFile({ weights: { hidden: 1, checks: 1, rubric: 1 }, checks: 'half' })), /"checks" must be one of "all", "fraction"/);
+test('an explicit "fraction" is the default mode, and an unknown mode is refused', () => {
+  assert.deepEqual(loadScoring(scratchFile({ weights: { hidden: 1, checks: 1, rubric: 1 }, checks: 'fraction' })), { hidden: 1, checks: 1, rubric: 1 });
+  assert.throws(() => loadScoring(scratchFile({ weights: { hidden: 1, checks: 1, rubric: 1 }, checks: 'half' })), /"checks" must be one of "fraction", "all"/);
 });
 
 // ---- the checks term ----
 
-test('checksScore: all-or-nothing by default, passed / total in fraction mode, null without checks', () => {
-  const frac = { checksMode: 'fraction' };
+test('checksScore: weighted share by default, all-or-nothing in "all" mode, null without scored checks', () => {
+  const all = { checksMode: 'all' };
   assert.equal(checksScore(checksOf(5, 5)), 1);
-  assert.equal(checksScore(checksOf(4, 5)), 0);
+  assert.equal(checksScore(checksOf(4, 5)), 0.8);
   assert.equal(checksScore(checksOf(0, 5)), 0);
-  assert.equal(checksScore(checksOf(5, 5), frac), 1);
-  assert.equal(checksScore(checksOf(4, 5), frac), 0.8);
-  assert.equal(checksScore(checksOf(0, 5), frac), 0);
-  assert.equal(checksScore([], frac), null);
-  assert.equal(checksScore(undefined, frac), null);
-  assert.equal(checksScore([], undefined), null);
+  assert.equal(checksScore(checksOf(5, 5), all), 1);
+  assert.equal(checksScore(checksOf(4, 5), all), 0);
+  assert.equal(checksScore([]), null);
+  assert.equal(checksScore(undefined), null);
+  assert.equal(checksScore([], all), null);
+});
+
+test('checksScore: weight counts, format checks and tests checks are not scored', () => {
+  const c = (passed, extra = {}) => ({ type: 'contains', path: 'a', passed, ...extra });
+  assert.equal(checksScore([c(true, { weight: 3 }), c(false)]), 0.75);
+  assert.equal(checksScore([c(true), c(false, { kind: 'format' })]), 1);
+  assert.equal(checksScore([c(true, { kind: 'substance' }), c(false, { kind: 'substance' })]), 0.5);
+  assert.equal(checksScore([c(true), { type: 'tests', passed: false }]), 1);
+  assert.equal(checksScore([{ type: 'tests', passed: true }]), null, 'only a tests check: no checks component');
+  assert.equal(checksScore([c(true, { kind: 'format' })]), null);
+  assert.equal(checksScore([c(false, { weight: 0 }), c(true, { weight: 0 })]), null);
+  assert.equal(checksScore([c(true, { kind: 'format' }), c(false)], { checksMode: 'all' }), 0, 'all mode counts every check');
 });
 
 // ---- the formula, with and without hidden tests ----
 
-test('without hidden tests one failed check of five costs 40 points by default and 8 in fraction mode', () => {
-  const def = loadScoring();
-  const frac = loadScoring(FRACTIONAL);
+test('without hidden tests one failed check of five costs 40 points in all mode and 8 by default', () => {
+  const def = loadScoring(ALL);
+  const frac = loadScoring();
   const rubric = 0.6;
   const miss = { hidden: null, rubric };
   // weights renormalise to checks 0.4 / rubric 0.6
@@ -74,16 +87,16 @@ test('without hidden tests one failed check of five costs 40 points by default a
 });
 
 test('with hidden tests the checks term keeps its 0.2 weight in both modes', () => {
-  const def = loadScoring();
-  const frac = loadScoring(FRACTIONAL);
+  const def = loadScoring(ALL);
+  const frac = loadScoring();
   const parts = { hidden: 0.5, rubric: 0.6 };
   near(qualityOfRun({ ...parts, checks: checksScore(checksOf(3, 4), def) }, def).score, (0.5 * 0.5 + 0.2 * 0 + 0.3 * 0.6) * 100);
   near(qualityOfRun({ ...parts, checks: checksScore(checksOf(3, 4), frac) }, frac).score, (0.5 * 0.5 + 0.2 * 0.75 + 0.3 * 0.6) * 100);
 });
 
 test('a run with every check passed scores the same in both modes', () => {
-  const def = loadScoring();
-  const frac = loadScoring(FRACTIONAL);
+  const def = loadScoring(ALL);
+  const frac = loadScoring();
   const parts = (w) => ({ hidden: 0.9, rubric: 0.7, checks: checksScore(checksOf(6, 6), w) });
   near(qualityOfRun(parts(def), def).score, qualityOfRun(parts(frac), frac).score);
 });
@@ -101,29 +114,29 @@ const fakeRun = (checks) => ({ runs: [{ armId: 'a', taskId: 't', replicate: 1, r
 
 test('buildRows reads the mode from the ctx and leaves a ctx without it as before', () => {
   const run = fakeRun(checksOf(3, 4));
-  assert.equal(buildRows(run, new Map(), fakeCtx())[0].checks, 0);
-  assert.equal(buildRows(run, new Map(), fakeCtx(loadScoring()))[0].checks, 0);
-  assert.equal(buildRows(run, new Map(), fakeCtx(loadScoring(FRACTIONAL)))[0].checks, 0.75);
+  assert.equal(buildRows(run, new Map(), fakeCtx())[0].checks, 0.75);
+  assert.equal(buildRows(run, new Map(), fakeCtx(loadScoring()))[0].checks, 0.75);
+  assert.equal(buildRows(run, new Map(), fakeCtx(loadScoring(ALL)))[0].checks, 0);
 });
 
 test('the default ctx and an explicit default scoring give identical rows', () => {
   const run = fakeRun(checksOf(3, 4));
   assert.deepEqual(buildRows(run, new Map(), fakeCtx()), buildRows(run, new Map(), fakeCtx(loadScoring())));
-  assert.deepEqual(Object.keys(buildRows(run, new Map(), fakeCtx())[0]), Object.keys(buildRows(run, new Map(), fakeCtx(loadScoring(FRACTIONAL)))[0]));
+  assert.deepEqual(Object.keys(buildRows(run, new Map(), fakeCtx())[0]), Object.keys(buildRows(run, new Map(), fakeCtx(loadScoring(ALL)))[0]));
 });
 
 // ---- text ----
 
-test('the mode note and the formula wording change only in fraction mode', () => {
+test('the mode note and the formula wording change only in "all" mode', () => {
   assert.equal(checksModeNote(loadScoring()), '');
-  assert.equal(checksModeNote(loadScoring(FRACTIONAL)), ' (scored as passed / total)');
+  assert.equal(checksModeNote(loadScoring(ALL)), ' (scored all or nothing)');
   assert.equal(formulasForWeights(FORMULAS, loadScoring()), FORMULAS);
-  const f = formulasForWeights(FORMULAS, loadScoring(FRACTIONAL));
-  assert.match(f.quality, /checks \(passed \/ total, because the scoring file sets "checks": "fraction"\)/);
-  assert.doesNotMatch(f.quality, /1 when every check passed/);
+  const f = formulasForWeights(FORMULAS, loadScoring(ALL));
+  assert.match(f.quality, /checks \(1 when every check passed, else 0, because the scoring file sets "checks": "all"\)/);
+  assert.doesNotMatch(f.quality, /weight-share/);
   assert.equal(f.reliability, FORMULAS.reliability);
-  assert.match(computeScores({ rows: [], baseline: 'a', weights: loadScoring(FRACTIONAL) }).formulas.quality, /passed \/ total/);
-  assert.match(computeScores({ rows: [], baseline: 'a' }).formulas.quality, /1 when every check passed/);
+  assert.match(computeScores({ rows: [], baseline: 'a', weights: loadScoring(ALL) }).formulas.quality, /1 when every check passed/);
+  assert.match(computeScores({ rows: [], baseline: 'a' }).formulas.quality, /weight-share of substance checks/);
 });
 
 // ---- the report ----
@@ -145,25 +158,25 @@ const report = (s, out, extra = {}) => {
   return { json: JSON.parse(fs.readFileSync(path.join(out, 'report.json'), 'utf8')), md: fs.readFileSync(path.join(out, 'report.md'), 'utf8') };
 };
 
-test('a report with the fractional file scores checks as passed / total and says so; the default report does neither', () => {
+test('a report scores weighted checks by default; the all file gives the old numbers and says so', () => {
   const s = setup();
   try {
     const plain = report(s, path.join(s.root, 'plain'));
     const explicit = report(s, path.join(s.root, 'explicit'), { scoringFile: DEFAULT });
-    const frac = report(s, path.join(s.root, 'frac'), { scoringFile: FRACTIONAL });
+    const all = report(s, path.join(s.root, 'all'), { scoringFile: ALL });
     assert.deepEqual(plain.json.scores.weights, { hidden: 0.5, checks: 0.2, rubric: 0.3 });
     assert.deepEqual(explicit.json, plain.json);
     assert.equal(explicit.md, plain.md);
     assert.match(plain.md, /Weights in use: hidden 0\.5, checks 0\.2, rubric 0\.3\./);
-    assert.match(plain.md, /checks \(1 when every check passed, else 0\)/);
-    assert.deepEqual(frac.json.scores.weights, { hidden: 0.5, checks: 0.2, rubric: 0.3, checksMode: 'fraction' });
-    assert.match(frac.md, /Weights in use: hidden 0\.5, checks 0\.2 \(scored as passed \/ total\), rubric 0\.3\./);
-    assert.match(frac.md, /checks \(passed \/ total, because the scoring file sets "checks": "fraction"\)/);
+    assert.match(plain.md, /checks \(the weight-share of substance checks that passed/);
+    assert.deepEqual(all.json.scores.weights, { hidden: 0.5, checks: 0.2, rubric: 0.3, checksMode: 'all' });
+    assert.match(all.md, /Weights in use: hidden 0\.5, checks 0\.2 \(scored all or nothing\), rubric 0\.3\./);
+    assert.match(all.md, /checks \(1 when every check passed, else 0, because the scoring file sets "checks": "all"\)/);
     const q = (r, arm) => r.json.scores.arms[arm].overall.quality.value;
     // No hidden tests and a rubric of 0.5, so a run is (0.2 * checks + 0.15) / 0.5 * 100.
-    near(q(plain, 'vanilla'), (70 + 30 + 30) / 3);
-    near(q(frac, 'vanilla'), (70 + (0.2 * (2 / 3) + 0.15) / 0.5 * 100 + (0.2 * (1 / 3) + 0.15) / 0.5 * 100) / 3);
-    near(q(plain, 'other'), (70 + 30 + 70) / 3);
-    near(q(frac, 'other'), (70 + 50 + 70) / 3);
+    near(q(all, 'vanilla'), (70 + 30 + 30) / 3);
+    near(q(plain, 'vanilla'), (70 + (0.2 * (2 / 3) + 0.15) / 0.5 * 100 + (0.2 * (1 / 3) + 0.15) / 0.5 * 100) / 3);
+    near(q(all, 'other'), (70 + 30 + 70) / 3);
+    near(q(plain, 'other'), (70 + 50 + 70) / 3);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });

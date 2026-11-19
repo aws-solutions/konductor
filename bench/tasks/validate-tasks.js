@@ -319,6 +319,8 @@ function validateShape(file, t, textOnly = false, rubricMax = 6) {
     const at = `${where} checks[${i}]`;
     if (!CHECK_TYPES.includes(c.type)) return err(at, `type must be one of ${CHECK_TYPES.join('|')}`);
     if (c.type !== 'cmd' && c.type !== 'tests' && !isStr(c.path)) err(at, 'path is required');
+    if (c.weight !== undefined && !(typeof c.weight === 'number' && Number.isFinite(c.weight) && c.weight >= 0)) err(at, 'weight must be a number of 0 or more');
+    if (c.kind !== undefined && !['substance', 'format'].includes(c.kind)) err(at, 'kind must be substance or format');
     if (c.allowAdditions !== undefined && c.type !== 'fixture_unchanged') err(at, 'allowAdditions applies to fixture_unchanged only');
     if (c.manifest !== undefined && (c.type !== 'tests' || c.manifest !== true)) err(at, 'manifest: true applies to tests checks only');
     if (c.type === 'labelled_findings' && !(isInt(c.min) && c.min >= 1)) err(at, 'min must be an integer >= 1');

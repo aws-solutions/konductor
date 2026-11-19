@@ -162,7 +162,7 @@ const USAGE = `Usage:
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
        [--allow-stale-pack]
        (--criteria-pack quality adds a Quality dimensions table from judgments-quality.json; it is indicative and not part of quality /100.
-       --scoring profiles/scoring-fractional.json scores the checks component as passed / total instead of 1 only when every check passed; the default is unchanged.
+       --scoring profiles/scoring-all.json scores the checks component as 1 only when every check passed (the old rule); the default is the weighted share of substance checks.
        The evidence-quote rule is lenient (tightened) unless the scoring file says "quotes": "strict" (profiles/scoring-strict-quotes.json, which reproduces the numbers of earlier reports).
        Every page names the rule on its first lines, and a full report, a contrast, report-2x2 and both verdicts show the other rule beside it.
        --profile sets the default detail (quick or full), adds a check of the run against the profile and, for detailed, writes calibration-sample.json and .md.

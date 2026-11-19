@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-04-program-planning",
+  "class": "design",
+  "target": null,
+  "prompt": "Four teams must deliver a customer export feature over the next three quarters. Team A owns the API, B the web page, C the data store, D the billing change. Write a program plan in out.md with phases, who depends on whom, and milestones.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

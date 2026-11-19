@@ -30,8 +30,9 @@
       "path": "test/cli.test.js"
     },
     {
-      "type": "fixture_unchanged",
-      "path": "package.json"
+      "type": "cmd",
+      "cmd": "node -e 'const p=require(\"./package.json\");const n=[\"dependencies\",\"devDependencies\",\"optionalDependencies\",\"peerDependencies\"].reduce((s,k)=>s+Object.keys(p[k]||{}).length,0);process.exit(n===0?0:1)'",
+      "expectExit": 0
     },
     {
       "type": "cmd",
