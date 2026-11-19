@@ -13,6 +13,10 @@ import { formatTimestamp, runIdPrefix } from './timestamp.ts';
 
 /** How long each simulated stage takes. */
 export const DEFAULT_STAGE_MS = 3000;
+/** How long a finished run keeps its console lines, as the contract says. */
+export const CONSOLE_GRACE_MS = 60_000;
+/** The most console lines of a run that are kept, the latest ones. */
+export const MAX_CONSOLE_LINES = 1000;
 
 /** How a simulated run ends. A run with no plan passes every stage. */
 export interface RunPlan {
@@ -34,7 +38,10 @@ interface StartedRun {
 
 /** The events of a run that have happened by now. */
 export interface EventsSoFar {
-  /** In order. A finished run has no console lines: they are live only. */
+  /**
+   * In order. Console lines are live only: a run keeps them, at most the last
+   * `consoleLimit`, until `CONSOLE_GRACE_MS` after it finished.
+   */
   events: RunEvent[];
   /** The highest `seq` the run has given out, console lines included. */
   lastSeq: number;
@@ -48,6 +55,8 @@ export interface RunSimulatorOptions {
   /** Five characters from `a-z0-9`, for the end of a run id. */
   suffix: () => string;
   stageMs?: number;
+  /** The most console lines kept per run. The default is `MAX_CONSOLE_LINES`. */
+  consoleLimit?: number;
 }
 
 /**
@@ -58,6 +67,7 @@ export class RunSimulator {
   private readonly clock: Clock;
   private readonly suffix: () => string;
   private readonly stageMs: number;
+  private readonly consoleLimit: number;
   private readonly runs = new Map<string, StartedRun>();
   private latest: StartedRun | undefined;
 
@@ -65,6 +75,7 @@ export class RunSimulator {
     this.clock = options.clock;
     this.suffix = options.suffix;
     this.stageMs = options.stageMs ?? DEFAULT_STAGE_MS;
+    this.consoleLimit = options.consoleLimit ?? MAX_CONSOLE_LINES;
   }
 
   /** The id of the run that has not finished yet, if there is one. */
@@ -129,10 +140,14 @@ export class RunSimulator {
     const happened = run.script.filter((timed) => timed.time <= now);
     const finished = this.isDone(run);
     const next = run.script.find((timed) => timed.time > now);
+    const keepConsole =
+      !finished || now < this.finishTime(run) + CONSOLE_GRACE_MS;
+    const lines = happened.filter((timed) => timed.event.type === 'console');
+    const kept = new Set(keepConsole ? lines.slice(-this.consoleLimit) : []);
     return {
       events: happened
-        .map((timed) => timed.event)
-        .filter((event) => !finished || event.type !== 'console'),
+        .filter((timed) => timed.event.type !== 'console' || kept.has(timed))
+        .map((timed) => timed.event),
       lastSeq: happened.at(-1)?.event.seq ?? 0,
       finished,
       ...(next ? { nextAt: next.time } : {}),

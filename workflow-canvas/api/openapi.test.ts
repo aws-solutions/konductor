@@ -1037,7 +1037,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.8.1');
+      expect(info.version).toBe('1.8.2');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1269,7 +1269,7 @@ describe('workflow canvas API contract', () => {
       expect(page('running').finished).toBe(false);
     });
 
-    it('has no console line for a finished run, so a seq can be skipped', () => {
+    it('has no console line for a run read after the grace period, so a seq can be skipped', () => {
       const { events } = page('halted');
       expect(events.some((e) => e.type === 'console')).toBe(false);
       const seqs = events.map((e) => e.seq);
@@ -1307,6 +1307,12 @@ describe('workflow canvas API contract', () => {
       expect(text).toMatch(/A console line is live only/);
       expect(text).toMatch(/at most 8192 bytes of UTF-8/);
       expect(text).toMatch(/stores them nowhere/);
+      expect(text).toMatch(
+        /for 60 seconds after the `at` of its `run_finished`, then drops them/,
+      );
+      expect(text).toMatch(
+        /a client that was following the run gets every line before `run_finished`/,
+      );
       expect(text).toMatch(/at most 25 seconds/);
       const wait = spec.paths['/api/runs/{id}/events']![
         'get'
@@ -1382,6 +1388,12 @@ describe('workflow canvas API contract', () => {
           /A server of this version sends only the three known types/,
         );
       });
+    });
+
+    it('says that version 1.6.3 keeps console lines for a grace period', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.3 adds nothing: a finished run keeps its console lines for 60 seconds/,
+      );
     });
 
     it('says that version 1.6.2 adds a branch for a later event type', () => {
@@ -1462,6 +1474,12 @@ describe('workflow canvas API contract', () => {
         goal_truncated: false,
       };
       expect(valueMatchesSchema(summary, row)).toBe(true);
+    });
+
+    it('says that version 1.8.2 takes in the console grace period of 1.6.3', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.2 adds nothing: it takes in the change of 1\.6\.3/,
+      );
     });
 
     it('says that version 1.8.1 lets the goal of a run in the list be empty', () => {

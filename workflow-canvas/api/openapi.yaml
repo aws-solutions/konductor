@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.8.1
+  version: 1.8.2
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -39,11 +39,15 @@ info:
     its own enum without `pending`. The event was already described as never
     `pending`, so no answer a server sends changes. Version 1.6.2 adds
     nothing: a run event gains a branch for a type that a later version adds,
-    which the description already told a client to skip. Version 1.7.0 only
-    adds: the operation `listRuns`. Version 1.8.0 only adds: a run in that
-    list gains `goal_truncated`. Version 1.8.1 adds nothing: the `goal` of a
-    run in that list may be empty, because a workflow may declare an empty
-    default goal, and a client already shows whatever text it gets.
+    which the description already told a client to skip. Version 1.6.3
+    adds nothing: a finished run keeps its console lines for 60 seconds
+    after `run_finished`, so a client that was following reads them all.
+    Version 1.7.0 only adds: the operation `listRuns`. Version 1.8.0 only
+    adds: a run in that list gains `goal_truncated`. Version 1.8.1 adds
+    nothing: the `goal` of a run in that list may be empty, because a
+    workflow may declare an empty default goal, and a client already shows
+    whatever text it gets. Version 1.8.2 adds nothing: it takes in the change
+    of 1.6.3.
 
     **Conventions**
 
@@ -261,10 +265,13 @@ info:
     A console line is live only. Before it leaves the server, any value that
     looks like a secret is removed from it, as from an `error`, and it is cut
     to at most 8192 bytes of UTF-8 at a character boundary. The server keeps
-    the lines of a run in memory while the run is active, at most the last
-    1000, and stores them nowhere. Once the run has finished, or after the
-    server restarts, its events have no console lines. So a `seq` can be
-    skipped in an answer, and a client does not take a skipped `seq` for a
+    the lines of a run in memory, at most the last 1000, and stores them
+    nowhere. It keeps them while the run is active and for 60 seconds after
+    the `at` of its `run_finished`, then drops them. So a client that was
+    following the run gets every line before `run_finished`, even the lines a
+    stage printed just before it ended. After those 60 seconds, or after the
+    server restarts, the run's events have no console lines. So a `seq` can
+    be skipped in an answer, and a client does not take a skipped `seq` for a
     lost event. The other events are kept as long as the run is readable.
 
     The events are a long poll on plain JSON, like every other call, and not
@@ -1559,7 +1566,7 @@ paths:
                     next: 6
                     finished: false
                 halted:
-                  summary: A finished run, read again from the start
+                  summary: A finished run, read again from the start more than 60 seconds after it ended
                   value:
                     events:
                       - seq: 1

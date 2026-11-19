@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Calls GET /api/runs/{id}/events over HTTP; a long poll moves a fake clock. */
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STAGE_MS } from '../core/runs.ts';
+import { CONSOLE_GRACE_MS, DEFAULT_STAGE_MS } from '../core/runs.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { expectGuardedGet } from '../test-support/guarded.ts';
 import { useStub, type TestStub } from '../test-support/harness.ts';
@@ -86,9 +86,25 @@ describe('GET /api/runs/{id}/events', () => {
     expect(seen).toHaveLength(9);
   });
 
-  it('answers at once for a finished run, with no console line', async () => {
+  it('gives a follower the last lines of a run that just finished', async () => {
     const runId = await start(stub());
-    stub().clock.advance(2 * DEFAULT_STAGE_MS);
+    stub().clock.advance(DEFAULT_STAGE_MS);
+    const seen = await page(stub(), runId);
+    expect(seen.events.at(-1)).toMatchObject({ seq: 5, stage: 'review' });
+    stub().clock.advance(DEFAULT_STAGE_MS + CONSOLE_GRACE_MS - 1000);
+    const read = await page(stub(), runId, `?after=${seen.next}&wait=25`);
+    expect(read.finished).toBe(true);
+    expect(read.events.map((e) => [e.seq, e.type])).toEqual([
+      [6, 'console'],
+      [7, 'console'],
+      [8, 'stage_state'],
+      [9, 'run_finished'],
+    ]);
+  });
+
+  it('answers at once for a run that finished over a minute ago, with no console line', async () => {
+    const runId = await start(stub());
+    stub().clock.advance(2 * DEFAULT_STAGE_MS + CONSOLE_GRACE_MS);
     const before = stub().clock.now();
     const read = await page(stub(), runId, '?wait=25');
     expect(stub().clock.now()).toBe(before);
