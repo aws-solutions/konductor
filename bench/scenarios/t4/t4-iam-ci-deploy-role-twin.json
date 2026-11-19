@@ -1,0 +1,118 @@
+{
+  "id": "t4-iam-ci-deploy-role-twin",
+  "version": 1,
+  "class": "complex",
+  "phase": "implementation",
+  "phases2": [],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Every deploy uploads every file again, even unchanged ones, and one failed upload stops the whole deploy. Please make scripts/deploy.js smarter. (1) Add a dry run: `node scripts/deploy.js <staging|production> --dry-run` calls no cloud client, changes nothing, and prints one JSON object: { \"stage\", \"plannedUploads\": [object keys], \"skippedFiles\": [paths], \"functionUpdate\": { \"functionArn\", \"source\" }, \"invalidation\": { \"distributionId\", \"paths\": [\"/*\"] } } (production only; staging has no invalidation). (2) Skip unchanged files: after a successful deploy, write a manifest, by default .lantern-deploy.json in the working directory, shaped { \"version\": \"1.0\", \"stage\": \"<stage>\", \"files\": { \"<path under public/>\": \"<sha256 hex of the file>\" } }; a file whose hash matches the manifest is not uploaded. The path can be changed with --manifest-path <file> on the command line or manifestPath in deploy({ stage, client, releaseId, sleep, manifestPath }). (3) Retry failed uploads: try each upload up to 4 times in all, waiting 100, 200 and 400 ms between tries through the injectable sleep option (default a real timer); if the last try fails, throw an Error whose message says \"failed to upload\" and names the file. Do not change the IAM policy files, the config or the existing tests.",
+  "fixture": "t4-iam-ci-deploy-role",
+  "hidden": "t4-iam-ci-deploy-role-twin",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node scripts/deploy.js staging --dry-run --manifest-path /dev/null/none.json > dry.out && node -e \"const o=JSON.parse(require('fs').readFileSync('dry.out','utf8'));process.exit(Array.isArray(o.plannedUploads)?0:1)\"; s=$?; rm -f dry.out; exit $s",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "backend-development",
+    "verification"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "twin",
+  "twinOf": "t4-iam-ci-deploy-role",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development"
+    ],
+    "mustNotLoad": [
+      "iam-policy-design",
+      "policy-validation",
+      "frontend-development",
+      "design-doc-guidelines"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/salesforce/cloudsplaining",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "gpt",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies implementation behavior such as hashing and exponential backoff, but it does not prescribe a named workflow, threat model, framework, or planning process."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "The prompt now states the dry-run JSON, the manifest path, format and flag, the deploy() options and the retry rule."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow patch is unlikely to pass most tests because it must combine SHA-256 manifest comparison, per-file retry behavior, injectable 100/200/400ms backoff, non-network handling, and side-effect-free dry runs. The hidden tests do expose those implementation traps, although some also contain independent defects."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "After one author fix round the suite still shared one manifest across parallel files and counted tries across files (reference 18 of 22). The lead replaced it with one suite of 14 tests, each with its own temp manifest and per-file retry counters: reference 14 of 14 three times, fixture 2 of 14."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture has no leftover solution file or test describing the finished implementation. Its deployment docs and changelog mention manifests and deployment operations generally, but do not name the defects or reveal the answer."
+      }
+    ]
+  }
+}
