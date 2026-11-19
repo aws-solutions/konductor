@@ -251,7 +251,7 @@ SOP_EDITS += [
      "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          79\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (changed since install; kept)\n\nProject files under .konductor/ would be left in place."),
     ("uninstall task: prompt prose",
      'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:',
-     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all. It marks each path whose content changed since install, a file you hand-edited, as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(changed since install; kept)</span>, and a Kiro agent file that <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">kiro-cli agent upgrade</span> rewrote as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(rewritten by Kiro; removed with its .bak)</span>. Under <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--json</span> each path carries a <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">"diverged"</span> and a <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">"kept"</span> boolean. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
+     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all. It marks each path whose content changed since install, a file you hand-edited, as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(changed since install; kept)</span>, and a Kiro agent file that <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">kiro-cli agent upgrade</span> rewrote as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(rewritten by Kiro; removed)</span>. It also lists the Kiro agent backups a real run would leave. Under <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--json</span> each path carries a <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">"diverged"</span> and a <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">"kept"</span> boolean, and <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">kept_backups</span> lists the backups. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
 ]
 
 # Install samples: --harness is required and there is no destination auto-detection,
@@ -1335,15 +1335,19 @@ _MONO13 = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;c
 _UNINSTALL_P = '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">'
 
 SOP_EDITS += [
-    # uninstall keeps a file changed since install and removes a Kiro agent file
-    # that kiro-cli agent upgrade rewrote, with its .bak (docs/user-guide/tasks/uninstall.md).
-    ("uninstall: a real run keeps changed files and removes matching Kiro backups",
+    # uninstall keeps a file changed since install, removes a Kiro agent file that
+    # kiro-cli agent upgrade rewrote, and keeps every .bak (docs/user-guide/tasks/uninstall.md).
+    ("uninstall: a real run keeps changed files and Kiro backups",
      f'<p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves',
      f"{_UNINSTALL_P}A file you changed after install is kept. {_MONO13}uninstall</span> prints a warning naming it "
      f"and still exits {_MONO13}0</span>; the file is no longer tracked, so delete it yourself if you do not want it.</p>\n"
      f"        {_UNINSTALL_P}Kiro CLI's {_MONO13}kiro-cli agent upgrade</span> rewrites each "
      f"{_MONO13}.kiro/agents/&lt;name&gt;.json</span> and saves the original as {_MONO13}&lt;name&gt;.json.bak</span>. "
-     f"When that backup matches what Konductor installed, {_MONO13}uninstall</span> removes both files and lists them. "
-     "A backup that does not match is left alone.</p>\n"
+     f"When that backup matches what Konductor installed, {_MONO13}uninstall</span> removes the rewritten agent file. "
+     f"It never deletes a {_MONO13}.bak</span> file: it prints a warning listing each matching backup by full path, "
+     "and you can remove them by hand. A backup that does not match is left alone and not listed.</p>\n"
+     f"        {_UNINSTALL_P}{_MONO13}uninstall</span> cannot tell Kiro's rewrite from an edit you made after running "
+     f"{_MONO13}kiro-cli agent upgrade</span>, because the backup still matches in both cases. An agent file you edited "
+     "after the upgrade is removed too. Copy it somewhere else first if you want to keep it.</p>\n"
      f'        <p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves'),
 ]

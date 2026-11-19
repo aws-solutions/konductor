@@ -34,8 +34,9 @@ Project files under .konductor/ would be left in place.
 
 `--dry-run` touches the filesystem in no way at all. It marks each path whose content changed
 since install, a file you hand-edited, as `(changed since install; kept)`, and a Kiro agent file
-that `kiro-cli agent upgrade` rewrote as `(rewritten by Kiro; removed with its .bak)`. Under
-`--json` each path carries a `"diverged"` and a `"kept"` boolean.
+that `kiro-cli agent upgrade` rewrote as `(rewritten by Kiro; removed)`. It also lists the Kiro
+agent backups a real run would leave. Under `--json` each path carries a `"diverged"` and a
+`"kept"` boolean, and `kept_backups` lists the backups.
 
 ### Then remove it
 
@@ -60,7 +61,13 @@ exits `0`; the file is no longer tracked, so delete it yourself if you do not wa
 
 Kiro CLI's `kiro-cli agent upgrade` rewrites each `.kiro/agents/<name>.json` and saves the
 original as `<name>.json.bak`. When that backup matches what Konductor installed, `uninstall`
-removes both files and lists them. A backup that does not match is left alone.
+removes the rewritten agent file. It never deletes a `.bak` file: it prints a warning listing
+each matching backup by full path, and you can remove them by hand. A backup that does not
+match is left alone and not listed.
+
+`uninstall` cannot tell Kiro's rewrite from an edit you made after running
+`kiro-cli agent upgrade`, because the backup still matches in both cases. An agent file you
+edited after the upgrade is removed too. Copy it somewhere else first if you want to keep it.
 
 ### Choosing which install to remove
 

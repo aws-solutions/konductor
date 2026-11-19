@@ -552,8 +552,10 @@ not per individual commit.
   without it.
 - `uninstall` now keeps tracked files that changed since install and warns about them, instead of
   deleting them. A Kiro agent file that `kiro-cli agent upgrade` rewrote is still removed when its
-  `.json.bak` backup matches what Konductor installed, and the backup is removed with it. The
-  `--json` output adds `kept_changed`, `kept_changed_paths` and `kiro_backups_removed`.
+  `.json.bak` backup matches what Konductor installed. This also removes an agent file you edited
+  after the upgrade, since the backup still matches. `uninstall` never deletes a `.bak` file; it
+  lists each matching backup by full path and suggests removing them by hand. The `--json` output
+  adds `kept_changed`, `kept_changed_paths` and `kept_backups`.
 
 ### Security
 

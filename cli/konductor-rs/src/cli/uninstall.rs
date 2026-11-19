@@ -141,7 +141,7 @@ impl UninstallError {
 // shorter local names) so the values can't drift between modules.
 
 /// One target's uninstall outcome: how many files were deleted, which
-/// changed files were kept, which Kiro agent backups were removed, how
+/// changed files and Kiro agent backups were left in place, how
 /// many now-empty directories were removed, and whether this target
 /// was **stale** -- tracked in the index but with no manifest found on
 /// disk. A stale result's counts are always 0, which is why `stale`
@@ -155,15 +155,17 @@ pub struct UninstallCounts {
     /// the order `delete_eligible_files` encountered them. Only Kiro
     /// agent files rewritten by `kiro-cli agent upgrade` land here:
     /// their backup still holds the installed content, so they are
-    /// deleted although their hash changed. Populated alongside
+    /// deleted although their hash changed. This cannot tell Kiro's
+    /// rewrite from a user edit made after the upgrade. Populated alongside
     /// `diverged_deleted`'s increment, never independently.
     pub diverged_paths: Vec<PathBuf>,
     /// Tracked files whose content changed since install, kept on disk
     /// and no longer tracked once the manifest slot is removed.
     pub kept_changed_paths: Vec<PathBuf>,
-    /// Kiro agent backups (`.kiro/agents/<name>.json.bak`) that matched
-    /// the manifest hash and were deleted. Also counted in `files_deleted`.
-    pub kiro_backups_removed: Vec<PathBuf>,
+    /// Absolute paths of Kiro agent backups (`.kiro/agents/<name>.json.bak`)
+    /// that match the manifest hash. Uninstall never deletes them; the
+    /// report asks the user to remove them by hand.
+    pub kept_backups: Vec<PathBuf>,
     pub dirs_removed: usize,
     pub stale: bool,
     /// Whether this target had a `--link-bin`-created symlink tracked
@@ -746,20 +748,30 @@ impl PreviewFile {
     }
 }
 
-/// Lists the preview entries for one tracked file: the file itself,
-/// then its Kiro backup when the real run would remove that too.
-fn preview_files_for(rel: &Path, action: TrackedFileAction) -> Vec<PreviewFile> {
-    match action {
-        TrackedFileAction::KeepChanged => vec![PreviewFile::kept(rel.to_path_buf())],
-        TrackedFileAction::Delete { kiro_backup } => {
-            std::iter::once(PreviewFile::removed(rel.to_path_buf(), false))
-                .chain(kiro_backup.map(|backup| PreviewFile::removed(backup, false)))
-                .collect()
-        }
-        TrackedFileAction::DeleteRewrittenByKiro { kiro_backup } => vec![
-            PreviewFile::removed(rel.to_path_buf(), true),
-            PreviewFile::removed(kiro_backup, false),
-        ],
+/// What `--dry-run` reports for one target: the tracked files and the
+/// matching Kiro agent backups the real run would leave in place.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct UninstallPreview {
+    files: Vec<PreviewFile>,
+    /// Absolute paths, as in `UninstallCounts::kept_backups`.
+    kept_backups: Vec<PathBuf>,
+}
+
+impl UninstallPreview {
+    fn add(&mut self, target_dir: &Path, rel: &Path, action: TrackedFileAction) {
+        let (file, kiro_backup) = match action {
+            TrackedFileAction::KeepChanged => (PreviewFile::kept(rel.to_path_buf()), None),
+            TrackedFileAction::Delete { kiro_backup } => {
+                (PreviewFile::removed(rel.to_path_buf(), false), kiro_backup)
+            }
+            TrackedFileAction::DeleteRewrittenByKiro { kiro_backup } => (
+                PreviewFile::removed(rel.to_path_buf(), true),
+                Some(kiro_backup),
+            ),
+        };
+        self.files.push(file);
+        self.kept_backups
+            .extend(kiro_backup.map(|backup| target_dir.join(backup)));
     }
 }
 
@@ -771,8 +783,9 @@ fn preview_files_for(rel: &Path, action: TrackedFileAction) -> Vec<PreviewFile> 
 /// eligibility rule `delete_eligible_files` itself uses
 /// (`Created`/`ReplacedOurs`, never `ReplacedForeign`, never a Claude
 /// settings file) and the same `classify_tracked_file` decision per
-/// file: removed, kept because it changed, or removed with its Kiro
-/// backup. Returns those entries, or an `UninstallError` for
+/// file: removed, kept because it changed, or removed as a Kiro rewrite,
+/// plus the matching Kiro backups the real run leaves. Returns that
+/// preview, or an `UninstallError` for
 /// the same failure classes `uninstall_one` itself would report
 /// (missing/malformed manifest, unresolved `--harness`) -- a dry run
 /// must fail exactly where a real run would, so a script relying on
@@ -786,16 +799,16 @@ fn preview_uninstall(
     target_dir: &str,
     harness: Option<&str>,
     json: bool,
-) -> Result<Vec<PreviewFile>, UninstallError> {
+) -> Result<UninstallPreview, UninstallError> {
     let target_path = Path::new(target_dir);
     let manifest = manifest::read_manifest(target_path)
         .map_err(|err| UninstallError::from_manifest(target_dir, err))?;
 
     let Some(full_manifest) = manifest else {
-        return Ok(Vec::new());
+        return Ok(UninstallPreview::default());
     };
     if full_manifest.strategies.is_empty() {
-        return Ok(Vec::new());
+        return Ok(UninstallPreview::default());
     }
 
     let selected = harness_select::select_harness(
@@ -817,7 +830,7 @@ fn preview_uninstall(
         }
     })?;
 
-    let mut would_delete = Vec::new();
+    let mut preview = UninstallPreview::default();
     for file in &selected.files {
         let rel = validate_relative_path(&file.path).map_err(UninstallError::usage)?;
         if file.provenance == Provenance::ReplacedForeign || is_claude_settings_path(&file.path) {
@@ -827,24 +840,21 @@ fn preview_uninstall(
             continue;
         }
         let action = classify_tracked_file(target_path, rel, file);
-        would_delete.extend(preview_files_for(rel, action));
+        preview.add(target_path, rel, action);
     }
-    Ok(would_delete)
+    Ok(preview)
 }
 
 /// Renders one `PreviewFile` as a plain-text line: `  <path>` for a
 /// plain removal, `  <path> (changed since install; kept)` for a file the
-/// real run keeps, and `  <path> (rewritten by Kiro; removed with its
-/// .bak)` for a Kiro-rewritten agent. Shared by
+/// real run keeps, and `  <path> (rewritten by Kiro; removed)` for a
+/// Kiro-rewritten agent. Shared by
 /// `report_dry_run_preview`/`report_dry_run_preview_all`.
 fn format_preview_file_line(file: &PreviewFile) -> String {
     if file.kept {
         format!("  {} (changed since install; kept)", file.path.display())
     } else if file.diverged {
-        format!(
-            "  {} (rewritten by Kiro; removed with its .bak)",
-            file.path.display()
-        )
+        format!("  {} (rewritten by Kiro; removed)", file.path.display())
     } else {
         format!("  {}", file.path.display())
     }
@@ -864,12 +874,47 @@ fn count_removed(files: &[PreviewFile]) -> usize {
     files.iter().filter(|file| !file.kept).count()
 }
 
+fn kept_backups_json(kept_backups: &[PathBuf]) -> Vec<String> {
+    kept_backups
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect()
+}
+
+/// Lists the matching Kiro agent backups uninstall leaves in place, one
+/// absolute path per line, after a header that starts with `lead`.
+/// Empty when there are none.
+fn format_kept_backups_lines(lead: &str, kept_backups: &[PathBuf]) -> Vec<String> {
+    if kept_backups.is_empty() {
+        return Vec::new();
+    }
+    std::iter::once(format!(
+        "{lead} {} Kiro agent backup(s) that match what Konductor installed; remove them \
+         by hand if you do not need them:",
+        kept_backups.len()
+    ))
+    .chain(
+        kept_backups
+            .iter()
+            .map(|path| format!("  {}", path.display())),
+    )
+    .collect()
+}
+
+fn dry_run_kept_backups_lines(kept_backups: &[PathBuf], color: ColorMode) -> Vec<String> {
+    let lead = format!(
+        "{} dry run: would leave",
+        crate::cli::output::success_prefix(color, "konductor uninstall:")
+    );
+    format_kept_backups_lines(&lead, kept_backups)
+}
+
 /// Prints `preview_uninstall`'s result for a single target -- every
 /// tracked path, one per line in plain-text mode (marked via
 /// `format_preview_file_line` when kept or rewritten by Kiro), or a
 /// structured `{"command": "uninstall", "dry_run": true, "target_dir":
 /// ..., "would_delete": [{"path": ..., "diverged": ..., "kept": ...},
-/// ...]}` document in `--json` mode --
+/// ...], "kept_backups": [...]}` document in `--json` mode --
 /// and returns the exit code `dispatch_target`/the single-entry
 /// shortcut should return. A preview failure (unresolved
 /// manifest/harness) is reported the same way a real failure would be,
@@ -882,7 +927,8 @@ fn report_dry_run_preview(
     color: ColorMode,
 ) -> u8 {
     match preview_uninstall(target_dir, harness, json) {
-        Ok(would_delete) => {
+        Ok(preview) => {
+            let would_delete = &preview.files;
             if json {
                 println!(
                     "{}",
@@ -891,9 +937,12 @@ fn report_dry_run_preview(
                         "dry_run": true,
                         "target_dir": target_dir,
                         "would_delete": would_delete.iter().map(preview_file_json).collect::<Vec<_>>(),
+                        "kept_backups": kept_backups_json(&preview.kept_backups),
                     })
                 );
-            } else if would_delete.is_empty() {
+                return 0;
+            }
+            if would_delete.is_empty() {
                 println!(
                     "{} dry run: nothing to remove from {target_dir}",
                     crate::cli::output::success_prefix(color, "konductor uninstall:")
@@ -902,11 +951,14 @@ fn report_dry_run_preview(
                 println!(
                     "{} dry run: would remove {} file(s) from {target_dir}:",
                     crate::cli::output::success_prefix(color, "konductor uninstall:"),
-                    count_removed(&would_delete)
+                    count_removed(would_delete)
                 );
-                for file in &would_delete {
+                for file in would_delete {
                     println!("{}", format_preview_file_line(file));
                 }
+            }
+            for line in dry_run_kept_backups_lines(&preview.kept_backups, color) {
+                println!("{line}");
             }
             0
         }
@@ -945,13 +997,13 @@ fn report_dry_run_preview_all(
     json: bool,
     color: ColorMode,
 ) -> u8 {
-    let mut previewed: Vec<(String, Vec<PreviewFile>)> = Vec::new();
+    let mut previewed: Vec<(String, UninstallPreview)> = Vec::new();
     let mut skipped: Vec<(String, String)> = Vec::new();
     let mut failed: Vec<(String, String)> = Vec::new();
 
     for entry in entries {
         match preview_uninstall(&entry.target_dir, harness, json) {
-            Ok(would_delete) => previewed.push((entry.target_dir.clone(), would_delete)),
+            Ok(preview) => previewed.push((entry.target_dir.clone(), preview)),
             Err(err) if err.harness_not_tracked => {
                 skipped.push((entry.target_dir.clone(), err.message));
             }
@@ -965,9 +1017,10 @@ fn report_dry_run_preview_all(
             serde_json::json!({
                 "command": "uninstall",
                 "dry_run": true,
-                "previewed": previewed.iter().map(|(dir, files)| serde_json::json!({
+                "previewed": previewed.iter().map(|(dir, preview)| serde_json::json!({
                     "target_dir": dir,
-                    "would_delete": files.iter().map(preview_file_json).collect::<Vec<_>>(),
+                    "would_delete": preview.files.iter().map(preview_file_json).collect::<Vec<_>>(),
+                    "kept_backups": kept_backups_json(&preview.kept_backups),
                 })).collect::<Vec<_>>(),
                 "skipped": skipped.iter().map(|(dir, message)| serde_json::json!({
                     "target_dir": dir,
@@ -982,7 +1035,8 @@ fn report_dry_run_preview_all(
         return 0;
     }
 
-    for (dir, would_delete) in &previewed {
+    for (dir, preview) in &previewed {
+        let would_delete = &preview.files;
         if would_delete.is_empty() {
             println!(
                 "{} dry run: nothing to remove from {dir}",
@@ -997,6 +1051,9 @@ fn report_dry_run_preview_all(
             for file in would_delete {
                 println!("{}", format_preview_file_line(file));
             }
+        }
+        for line in dry_run_kept_backups_lines(&preview.kept_backups, color) {
+            println!("{line}");
         }
     }
     for (dir, message) in &skipped {
@@ -1406,14 +1463,15 @@ pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
     Ok(rel)
 }
 
-/// What uninstall does with one tracked file that exists on disk.
+/// What uninstall does with one tracked file that exists on disk. A
+/// `kiro_backup` is a Kiro agent backup holding the installed content;
+/// it is reported and left in place, never deleted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum TrackedFileAction {
-    /// Unchanged since install, or no recorded hash. `kiro_backup` is a
-    /// Kiro agent backup holding the installed content, removed too.
+    /// Unchanged since install, or no recorded hash.
     Delete { kiro_backup: Option<PathBuf> },
     /// A Kiro agent file that `kiro-cli agent upgrade` rewrote: changed,
-    /// but its backup holds the installed content, so both go.
+    /// but its backup holds the installed content, so the file goes.
     DeleteRewrittenByKiro { kiro_backup: PathBuf },
     /// Changed since install with nothing proving konductor wrote the
     /// new content: left in place.
@@ -1481,23 +1539,12 @@ fn delete_target_file(
     Ok(())
 }
 
-fn remove_kiro_backup(
-    target_dir: &Path,
-    backup: PathBuf,
-    counts: &mut UninstallCounts,
-    touched_dirs: &mut Vec<PathBuf>,
-) -> Result<(), String> {
-    delete_target_file(target_dir, &backup, counts, touched_dirs)?;
-    counts.kiro_backups_removed.push(backup);
-    Ok(())
-}
-
 /// Applies `classify_tracked_file` to every `Created`/`ReplacedOurs`
 /// file this manifest names: unchanged files are deleted, changed files
 /// are kept and listed in `kept_changed_paths`, and a Kiro-rewritten
-/// agent is deleted with its matching backup (listed in
-/// `diverged_paths` and `kiro_backups_removed`). A Kiro backup that
-/// does not match the manifest is never touched. Never deletes a
+/// agent is deleted and listed in `diverged_paths`. No Kiro backup is
+/// deleted: a matching one is listed in `kept_backups`, and one that
+/// does not match is not touched or listed. Never deletes a
 /// `ReplacedForeign` path. Records each deleted file's parent directory
 /// in `touched_dirs` for later empty-directory cleanup.
 ///
@@ -1545,15 +1592,15 @@ fn delete_eligible_files(
             }
             TrackedFileAction::Delete { kiro_backup } => {
                 delete_target_file(target_dir, rel, counts, touched_dirs)?;
-                if let Some(backup) = kiro_backup {
-                    remove_kiro_backup(target_dir, backup, counts, touched_dirs)?;
-                }
+                counts
+                    .kept_backups
+                    .extend(kiro_backup.map(|backup| target_dir.join(backup)));
             }
             TrackedFileAction::DeleteRewrittenByKiro { kiro_backup } => {
                 counts.diverged_deleted += 1;
                 counts.diverged_paths.push(rel.to_path_buf());
                 delete_target_file(target_dir, rel, counts, touched_dirs)?;
-                remove_kiro_backup(target_dir, kiro_backup, counts, touched_dirs)?;
+                counts.kept_backups.push(target_dir.join(kiro_backup));
             }
         }
     }
@@ -1651,7 +1698,7 @@ fn build_single_json(target_dir: &str, counts: &UninstallCounts) -> serde_json::
         "diverged_paths": counts.diverged_paths,
         "kept_changed": counts.kept_changed_paths.len(),
         "kept_changed_paths": counts.kept_changed_paths,
-        "kiro_backups_removed": counts.kiro_backups_removed,
+        "kept_backups": kept_backups_json(&counts.kept_backups),
         "dirs_removed": counts.dirs_removed,
         "bin_link_untracked": counts.bin_link_untracked,
         "bin_link_symlink_removed": counts.bin_link_symlink_removed,
@@ -1689,14 +1736,12 @@ fn format_kept_changed_warning(
     ))
 }
 
-fn format_kiro_backups_note(kiro_backups_removed: &[PathBuf]) -> String {
-    if kiro_backups_removed.is_empty() {
-        return String::new();
-    }
-    format!(
-        "; removed Kiro agent backup(s): {}",
-        join_paths(kiro_backups_removed)
-    )
+fn kept_backups_warning_lines(kept_backups: &[PathBuf], color: ColorMode) -> Vec<String> {
+    let lead = format!(
+        "{} left",
+        crate::cli::output::status::warn(color, "konductor uninstall: warning:")
+    );
+    format_kept_backups_lines(&lead, kept_backups)
 }
 
 /// `counts.stale` (set by `uninstall_one` when no manifest was
@@ -1728,7 +1773,6 @@ fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool, color: 
         ""
     };
     let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
-    let backups_note = format_kiro_backups_note(&counts.kiro_backups_removed);
     if counts.stale {
         println!(
             "{} {target_dir} is stale (no manifest found); cleared its \
@@ -1739,7 +1783,7 @@ fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool, color: 
         println!(
             "{} uninstalled from {target_dir}; deleted {} file(s) ({} with \
              a hash that had diverged from the manifest), removed {} now-empty \
-             director(y/ies){bin_link_note}{diverged_note}{backups_note}",
+             director(y/ies){bin_link_note}{diverged_note}",
             crate::cli::output::success_prefix(color, "konductor uninstall:"),
             counts.files_deleted,
             counts.diverged_deleted,
@@ -1750,6 +1794,9 @@ fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool, color: 
         format_kept_changed_warning(target_dir, &counts.kept_changed_paths, color)
     {
         println!("{warning}");
+    }
+    for line in kept_backups_warning_lines(&counts.kept_backups, color) {
+        println!("{line}");
     }
     // Printed via `println!` (stdout), not `eprintln!` -- see
     // `bin_link_error`'s own doc comment for why this must not be
@@ -1812,7 +1859,7 @@ fn report_batch(
                         "diverged_paths": counts.diverged_paths,
                         "kept_changed": counts.kept_changed_paths.len(),
                         "kept_changed_paths": counts.kept_changed_paths,
-                        "kiro_backups_removed": counts.kiro_backups_removed,
+                        "kept_backups": kept_backups_json(&counts.kept_backups),
                         "dirs_removed": counts.dirs_removed,
                         "bin_link_untracked": counts.bin_link_untracked,
                         "bin_link_symlink_removed": counts.bin_link_symlink_removed,
@@ -1846,7 +1893,6 @@ fn report_batch(
             ""
         };
         let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
-        let backups_note = format_kiro_backups_note(&counts.kiro_backups_removed);
         if counts.stale {
             println!(
                 "{} {dir} is stale (no manifest found); cleared its \
@@ -1856,7 +1902,7 @@ fn report_batch(
         } else {
             println!(
                 "{} uninstalled from {dir}; deleted {} file(s) ({} \
-                 diverged), removed {} now-empty director(y/ies){bin_link_note}{diverged_note}{backups_note}",
+                 diverged), removed {} now-empty director(y/ies){bin_link_note}{diverged_note}",
                 crate::cli::output::success_prefix(color, "konductor uninstall:"),
                 counts.files_deleted,
                 counts.diverged_deleted,
@@ -1865,6 +1911,9 @@ fn report_batch(
         }
         if let Some(warning) = format_kept_changed_warning(dir, &counts.kept_changed_paths, color) {
             println!("{warning}");
+        }
+        for line in kept_backups_warning_lines(&counts.kept_backups, color) {
+            println!("{line}");
         }
         // Same stdout-not-stderr rationale as `report_single`'s own
         // `bin_link_error` warning line.
@@ -3062,7 +3111,7 @@ mod tests {
     }
 
     #[test]
-    fn removes_a_kiro_rewritten_agent_and_its_matching_backup() {
+    fn removes_a_kiro_rewritten_agent_and_keeps_its_backup() {
         let _home = HomeGuard::new("kiro-rewritten-agent-home");
         let target = scratch_home("kiro-rewritten-agent");
         seed_kiro_rewritten_agent(&target, ".kiro/agents/a.json");
@@ -3070,27 +3119,26 @@ mod tests {
         let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
 
         assert!(!target.join(".kiro/agents/a.json").exists());
-        assert!(!target.join(".kiro/agents/a.json.bak").exists());
-        assert!(
-            !target.join(".kiro/agents").exists(),
-            "the emptied agents dir must be cleaned up"
+        assert_eq!(
+            fs::read(target.join(".kiro/agents/a.json.bak")).unwrap(),
+            b"installed"
         );
-        assert_eq!(counts.files_deleted, 2);
+        assert_eq!(counts.files_deleted, 1);
         assert_eq!(counts.diverged_deleted, 1);
         assert_eq!(
             counts.diverged_paths,
             vec![PathBuf::from(".kiro/agents/a.json")]
         );
         assert_eq!(
-            counts.kiro_backups_removed,
-            vec![PathBuf::from(".kiro/agents/a.json.bak")]
+            counts.kept_backups,
+            vec![target.join(".kiro/agents/a.json.bak")]
         );
         assert!(counts.kept_changed_paths.is_empty());
         fs::remove_dir_all(&target).ok();
     }
 
     #[test]
-    fn removes_a_matching_backup_next_to_an_unchanged_agent() {
+    fn keeps_a_matching_backup_next_to_an_unchanged_agent() {
         let _home = HomeGuard::new("unchanged-agent-backup-home");
         let target = scratch_home("unchanged-agent-backup");
         seed_target(
@@ -3102,12 +3150,12 @@ mod tests {
         let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
 
         assert!(!target.join(".kiro/agents/a.json").exists());
-        assert!(!target.join(".kiro/agents/a.json.bak").exists());
-        assert_eq!(counts.files_deleted, 2);
+        assert!(target.join(".kiro/agents/a.json.bak").is_file());
+        assert_eq!(counts.files_deleted, 1);
         assert_eq!(counts.diverged_deleted, 0);
         assert_eq!(
-            counts.kiro_backups_removed,
-            vec![PathBuf::from(".kiro/agents/a.json.bak")]
+            counts.kept_backups,
+            vec![target.join(".kiro/agents/a.json.bak")]
         );
         fs::remove_dir_all(&target).ok();
     }
@@ -3142,7 +3190,7 @@ mod tests {
             counts.kept_changed_paths,
             vec![PathBuf::from(".kiro/agents/a.json")]
         );
-        assert!(counts.kiro_backups_removed.is_empty());
+        assert!(counts.kept_backups.is_empty());
         fs::remove_dir_all(&target).ok();
     }
 
@@ -3182,7 +3230,7 @@ mod tests {
             assert!(target.join(kept).is_file(), "{kept} must be left in place");
         }
         assert_eq!(counts.kept_changed_paths.len(), 2);
-        assert!(counts.kiro_backups_removed.is_empty());
+        assert!(counts.kept_backups.is_empty());
         fs::remove_dir_all(&target).ok();
     }
 
@@ -3213,7 +3261,7 @@ mod tests {
             diverged_deleted: 1,
             diverged_paths: vec![PathBuf::from(".kiro/agents/a.json")],
             kept_changed_paths: vec![PathBuf::from(".kiro/context/k-core-rules.md")],
-            kiro_backups_removed: vec![PathBuf::from(".kiro/agents/a.json.bak")],
+            kept_backups: vec![PathBuf::from("/proj/a/.kiro/agents/a.json.bak")],
             ..Default::default()
         };
         let value = build_single_json("/proj/a", &counts);
@@ -3223,8 +3271,8 @@ mod tests {
             serde_json::json!([".kiro/context/k-core-rules.md"])
         );
         assert_eq!(
-            value["kiro_backups_removed"],
-            serde_json::json!([".kiro/agents/a.json.bak"])
+            value["kept_backups"],
+            serde_json::json!(["/proj/a/.kiro/agents/a.json.bak"])
         );
         assert_eq!(
             value["diverged_paths"],
@@ -5692,7 +5740,7 @@ mod tests {
         );
         let canonical = index::canonicalize_target_dir(&target).unwrap();
 
-        let would_delete = preview_uninstall(&canonical, None, true).unwrap();
+        let would_delete = preview_uninstall(&canonical, None, true).unwrap().files;
         assert_eq!(
             would_delete,
             vec![PreviewFile::removed(
@@ -5733,7 +5781,9 @@ mod tests {
                 ),
             ],
         );
-        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false)
+            .unwrap()
+            .files;
         assert_eq!(
             would_delete,
             vec![PreviewFile::removed(
@@ -5750,7 +5800,9 @@ mod tests {
     fn preview_uninstall_stale_target_previews_as_empty_not_a_failure() {
         let target = scratch_home("preview-stale");
         assert!(!manifest::manifest_path(&target).exists());
-        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false)
+            .unwrap()
+            .files;
         assert!(would_delete.is_empty());
         fs::remove_dir_all(&target).ok();
     }
@@ -5779,7 +5831,9 @@ mod tests {
             ],
         );
 
-        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false)
+            .unwrap()
+            .files;
         assert_eq!(would_delete.len(), 2);
 
         let edited = would_delete
@@ -5823,7 +5877,7 @@ mod tests {
         );
         assert_eq!(
             rewritten,
-            "  .kiro/agents/a.json (rewritten by Kiro; removed with its .bak)"
+            "  .kiro/agents/a.json (rewritten by Kiro; removed)"
         );
         assert_eq!(untouched, "  .kiro/agents/b.json");
     }
@@ -5846,21 +5900,51 @@ mod tests {
     }
 
     #[test]
-    fn preview_uninstall_lists_a_kiro_rewritten_agent_with_its_backup() {
+    fn preview_uninstall_lists_a_kiro_rewritten_agent_and_its_kept_backup() {
         let target = scratch_home("preview-kiro-rewritten");
         seed_kiro_rewritten_agent(&target, ".kiro/agents/a.json");
 
-        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        let preview = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
 
         assert_eq!(
-            would_delete,
-            vec![
-                PreviewFile::removed(PathBuf::from(".kiro/agents/a.json"), true),
-                PreviewFile::removed(PathBuf::from(".kiro/agents/a.json.bak"), false),
-            ]
+            preview.files,
+            vec![PreviewFile::removed(
+                PathBuf::from(".kiro/agents/a.json"),
+                true
+            )]
+        );
+        assert_eq!(
+            preview.kept_backups,
+            vec![target.join(".kiro/agents/a.json.bak")]
         );
         assert!(target.join(".kiro/agents/a.json.bak").is_file());
         fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn kept_backups_lines_list_each_backup_by_full_path() {
+        let backups = [
+            PathBuf::from("/proj/a/.kiro/agents/a.json.bak"),
+            PathBuf::from("/proj/a/.kiro/agents/b.json.bak"),
+        ];
+        assert_eq!(
+            kept_backups_warning_lines(&backups, ColorMode::disabled()),
+            vec![
+                "konductor uninstall: warning: left 2 Kiro agent backup(s) that match what \
+                 Konductor installed; remove them by hand if you do not need them:",
+                "  /proj/a/.kiro/agents/a.json.bak",
+                "  /proj/a/.kiro/agents/b.json.bak",
+            ]
+        );
+        assert_eq!(
+            dry_run_kept_backups_lines(&backups[..1], ColorMode::disabled()),
+            vec![
+                "konductor uninstall: dry run: would leave 1 Kiro agent backup(s) that match \
+                 what Konductor installed; remove them by hand if you do not need them:",
+                "  /proj/a/.kiro/agents/a.json.bak",
+            ]
+        );
+        assert!(kept_backups_warning_lines(&[], ColorMode::disabled()).is_empty());
     }
 
     /// End-to-end: `report_dry_run_preview`'s `--json` document for a
@@ -5890,7 +5974,9 @@ mod tests {
             ],
         );
 
-        let would_delete = preview_uninstall(target.to_str().unwrap(), None, true).unwrap();
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, true)
+            .unwrap()
+            .files;
         let document = serde_json::json!({
             "command": "uninstall",
             "dry_run": true,

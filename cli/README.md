@@ -682,8 +682,9 @@ uninstall.
 `--dry-run` reports what a real run would do for every selected target, without touching
 the filesystem in any way. It lists each tracked path and marks a file that changed since
 install as `(changed since install; kept)` and a Kiro-rewritten agent as
-`(rewritten by Kiro; removed with its .bak)`. Under `--json` each path carries a
-`"diverged"` and a `"kept"` boolean. Without `--dry-run`, a real uninstall proceeds
+`(rewritten by Kiro; removed)`, then lists the matching Kiro agent backups a real run would
+leave. Under `--json` each path carries a `"diverged"` and a `"kept"` boolean, and
+`kept_backups` holds the backups. Without `--dry-run`, a real uninstall proceeds
 directly, with no confirmation prompt of any kind.
 
 Uses `update`'s `--target`/`--all` selection table above exactly, with no divergence:
@@ -703,12 +704,15 @@ hash, prints a warning naming it, and still exits `0`. The kept file is no longe
 once the manifest entry is gone. One exception covers Kiro CLI's `kiro-cli agent upgrade`,
 which rewrites each `.kiro/agents/<name>.json` in place and saves the original as
 `<name>.json.bak`: when that backup hashes to the manifest's recorded hash, the rewritten
-agent file and its backup are both removed and listed. A matching backup next to an
-unchanged agent file is removed too. A backup that does not match is never touched, and
-`.bak` files anywhere else are ignored. The `--json` result keeps `diverged_deleted` and
-`diverged_paths` (now only Kiro-rewritten agent files) and adds `kept_changed` (a count),
-`kept_changed_paths` and `kiro_backups_removed`; removed backups also count in
-`files_deleted`.
+agent file is removed and listed. Uninstall never deletes a `.bak` file. It prints a
+warning listing, by full path, each backup that matches the manifest (next to a rewritten
+or an unchanged agent file) and suggests removing them by hand. A backup that does not
+match is neither touched nor listed, and `.bak` files anywhere else are ignored. This rule
+cannot tell Kiro's rewrite from an edit you make after `kiro-cli agent upgrade`: the backup
+still matches, so an agent file edited after the upgrade is removed too. The `--json`
+result keeps `diverged_deleted` and `diverged_paths` (now only Kiro-rewritten agent files)
+and adds `kept_changed` (a count), `kept_changed_paths` and `kept_backups` (absolute paths);
+the warnings are not printed under `--json`.
 
 Exit codes: `0` on success, `64` (`EXIT_USAGE_ERROR`) on any usage error (including the
 2+-tracked-installs ambiguity case), `65` (`EXIT_VERIFY_FAILED`) on an unsupported index
