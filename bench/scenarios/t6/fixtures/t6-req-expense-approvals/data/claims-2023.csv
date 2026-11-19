@@ -1,0 +1,31 @@
+Claim ID,Staff Name,Department,Expense Date,Amount,Description,Category,Grant Code,Approver 1,Approver 2,Status,Submitted Date,Paid Date
+2023-001,James Wilson,Operations,2023-01-05,£142.50,London travel - train,TRAVEL,GEN,Mark Taylor,,APPROVED,2023-01-10,2023-01-15
+2023-002,Priya Patel,Programmes,2023-01-12,£89.99,Team lunch meeting,SUBSISTENCE,YEP,Sarah Chen,,APPROVED,2023-01-15,2023-01-31
+2023-003,David Lee,Fundraising,2023-01-18,£320.00,Conference registration,TRAINING,GEN,James Wilson,Sarah Chen,APPROVED,2023-01-20,2023-02-15
+2023-004,Mark Taylor,Finance,2023-01-22,£15.50,Taxi from station,TRAVEL,GEN,Sarah Chen,,APPROVED,2023-01-25,2023-02-15
+2023-005,Emma Brown,Operations,2023-02-03,£650.00,Projector purchase,EQUIPMENT,CEP,James Wilson,Sarah Chen,APPROVED,2023-02-10,2023-02-28
+2023-006,James Wilson,Operations,2023-02-14,£210.75,Birmingham - hotel,ACCOMMODATION,GEN,Mark Taylor,,APPROVED,2023-02-20,2023-03-15
+2023-007,Sarah Chen,Finance,2023-02-25,£42.30,Client dinner,SUBSISTENCE,GEN,Mark Taylor,,APPROVED,2023-03-01,2023-03-15
+2023-008,David Lee,Fundraising,2023-03-05,£1,250.00,Event venue deposit,EVENT,YEP,James Wilson,Sarah Chen,APPROVED,2023-03-10,2023-03-31
+2023-009,Priya Patel,Programmes,2023-03-12,£35.20,Office supplies,SUPPLIES,CEP,James Wilson,,APPROVED,2023-03-15,2023-03-31
+2023-010,Mark Taylor,Finance,2023-03-18,£480.00,Software subscription,SOFTWARE,GEN,Sarah Chen,,APPROVED,2023-03-20,2023-04-15
+2023-011,Emma Brown,Operations,2023-04-02,£85.00,Mileage claim - 170 miles,TRAVEL,GEN,James Wilson,,APPROVED,2023-04-05,2023-04-15
+2023-012,James Wilson,Operations,2023-04-10,£320.50,Manchester travel,TRAVEL,GEN,Mark Taylor,,APPROVED,2023-04-12,2023-04-30
+2023-013,David Lee,Fundraising,2023-04-15,£95.00,Printing costs,SUPPLIES,YEP,James Wilson,,APPROVED,2023-04-18,2023-04-30
+2023-014,Sarah Chen,Finance,2023-05-03,£1,800.00,Training course for team,TRAINING,GEN,Mark Taylor,,APPROVED,2023-05-05,2023-05-31
+2023-015,Priya Patel,Programmes,2023-05-12,£65.40,Team snacks,SUBSISTENCE,CEP,James Wilson,,APPROVED,2023-05-15,2023-05-31
+2023-016,Mark Taylor,Finance,2023-05-20,£25.00,Parking,TRAVEL,GEN,Sarah Chen,,APPROVED,2023-05-22,2023-05-31
+2023-017,Emma Brown,Operations,2023-06-01,£420.00,Tablet for field work,EQUIPMENT,CEP,James Wilson,Sarah Chen,APPROVED,2023-06-05,2023-06-30
+2023-018,James Wilson,Operations,2023-06-08,£150.00,Client lunch,SUBSISTENCE,GEN,Mark Taylor,,APPROVED,2023-06-10,2023-06-30
+2023-019,David Lee,Fundraising,2023-06-15,£2,500.00,Gala dinner sponsorship,EVENT,YEP,James Wilson,Sarah Chen,APPROVED,2023-06-18,2023-06-30
+2023-020,Priya Patel,Programmes,2023-07-03,£75.60,Books for research,SUPPLIES,CEP,James Wilson,,APPROVED,2023-07-05,2023-07-31
+2023-021,Sarah Chen,Finance,2023-07-10,£35.00,Team coffee,SUBSISTENCE,GEN,Mark Taylor,,APPROVED,2023-07-12,2023-07-31
+2023-022,Mark Taylor,Finance,2023-08-01,£600.00,Accounting software,SOFTWARE,GEN,Sarah Chen,,APPROVED,2023-08-03,2023-08-15
+2023-023,Emma Brown,Operations,2023-08-10,£110.25,Mileage claim - 245 miles,TRAVEL,GEN,James Wilson,,APPROVED,2023-08-12,2023-08-31
+2023-024,James Wilson,Operations,2023-09-05,£850.00,Team building event,TEAM,GEN,Mark Taylor,Sarah Chen,APPROVED,2023-09-08,2023-09-30
+2023-025,David Lee,Fundraising,2023-09-12,£45.00,Postage,SUPPLIES,YEP,James Wilson,,APPROVED,2023-09-15,2023-09-30
+2023-026,Priya Patel,Programmes,2023-10-03,£180.00,Conference fees,TRAINING,CEP,James Wilson,,APPROVED,2023-10-05,2023-10-31
+2023-027,Sarah Chen,Finance,2023-10-10,£28.50,Team breakfast,SUBSISTENCE,GEN,Mark Taylor,,APPROVED,2023-10-12,2023-10-31
+2023-028,Mark Taylor,Finance,2023-11-01,£375.00,Professional membership,PROFESSIONAL,GEN,Sarah Chen,,APPROVED,2023-11-03,2023-11-15
+2023-029,Emma Brown,Operations,2023-11-08,£95.00,Mileage claim - 190 miles,TRAVEL,GEN,James Wilson,,APPROVED,2023-11-10,2023-11-30
+2023-030,James Wilson,Operations,2023-12-05,£1,200.00,Year-end function,EVENT,GEN,Mark Taylor,Sarah Chen,APPROVED,2023-12-08,2023-12-22

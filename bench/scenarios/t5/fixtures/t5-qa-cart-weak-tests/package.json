@@ -1,0 +1,9 @@
+{
+  "name": "small-shop-checkout",
+  "version": "1.4.0",
+  "private": true,
+  "description": "Pricing and cart services for a small online shop",
+  "main": "src/index.js",
+  "scripts": {"test": "node --test", "catalog:check": "node scripts/check-catalog.js"},
+  "engines": {"node": ">=24"}
+}

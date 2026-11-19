@@ -1,0 +1,5 @@
+[
+  { "id": "u-100", "name": "Mira Chen", "email": "mira@example.test", "team": "billing" },
+  { "id": "u-101", "name": "Jon Bell", "email": "jon@example.test", "team": "support" },
+  { "id": "u-102", "name": "Asha Rao", "email": "asha@example.test", "team": "platform" }
+]

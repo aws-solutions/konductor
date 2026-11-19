@@ -1,0 +1,11 @@
+{
+  "name": "nightly-ledger-export",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Nightly ledger export job",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "test": "node --test",
+    "lint": "node --check src/*.js tests/*.js scripts/*.js"
+  }
+}

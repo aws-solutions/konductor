@@ -1,0 +1,19 @@
+response_id,submitted_at,plan,reason,free_text,flow
+cs-1001,2025-06-02,solo,price,need to cut monthly costs,cancel_flow
+cs-1002,2025-06-02,family,too much food,freezer is full,cancel_flow
+cs-1003,2025-06-03,solo,price,travelling this month,cancel_flow
+cs-1004,2025-06-04,family,missing recipes,wanted more vegetarian meals,cancel_flow
+cs-1005,2025-06-05,solo,price,trying a cheaper service,cancel_flow
+cs-1006,2025-06-06,family,too much food,summer schedule changed,cancel_flow
+cs-1007,2025-06-08,solo,other,temporarily away,cancel_flow
+cs-1008,2025-06-09,family,price,too expensive for two people,cancel_flow
+cs-1009,2025-06-11,solo,price,not cooking enough,cancel_flow
+cs-1010,2025-06-12,family,too much food,too many portions,cancel_flow
+cs-1011,2025-06-14,solo,price,watching expenses,cancel_flow
+cs-1012,2025-06-16,family,missing recipes,delivery choices,cancel_flow
+cs-1013,2025-06-18,solo,price,going on leave,cancel_flow
+cs-1014,2025-06-20,family,too much food,household changed,cancel_flow
+cs-1015,2025-06-22,solo,price,monthly bill,cancel_flow
+cs-1016,2025-06-25,family,other,not sure,cancel_flow
+# Export contains 214 rows in the full file; this excerpt is retained for quick inspection.
+# All responses are collected after a member starts the cancellation flow.

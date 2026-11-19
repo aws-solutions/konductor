@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "tenants": [
+    {
+      "id": "tenant-01",
+      "tier": "standard",
+      "displayName": "Workspace 01"
+    },
+    {
+      "id": "tenant-02",
+      "tier": "standard",
+      "displayName": "Workspace 02"
+    },
+    {
+      "id": "tenant-03",
+      "tier": "standard",
+      "displayName": "Workspace 03"
+    },
+    {
+      "id": "tenant-04",
+      "tier": "premium",
+      "displayName": "Workspace 04"
+    },
+    {
+      "id": "tenant-05",
+      "tier": "standard",
+      "displayName": "Workspace 05"
+    },
+    {
+      "id": "tenant-06",
+      "tier": "standard",
+      "displayName": "Workspace 06"
+    },
+    {
+      "id": "tenant-07",
+      "tier": "standard",
+      "displayName": "Workspace 07"
+    },
+    {
+      "id": "tenant-08",
+      "tier": "premium",
+      "displayName": "Workspace 08"
+    },
+    {
+      "id": "tenant-09",
+      "tier": "standard",
+      "displayName": "Workspace 09"
+    },
+    {
+      "id": "tenant-10",
+      "tier": "standard",
+      "displayName": "Workspace 10"
+    },
+    {
+      "id": "tenant-11",
+      "tier": "standard",
+      "displayName": "Workspace 11"
+    },
+    {
+      "id": "tenant-12",
+      "tier": "premium",
+      "displayName": "Workspace 12"
+    },
+    {
+      "id": "tenant-13",
+      "tier": "standard",
+      "displayName": "Workspace 13"
+    },
+    {
+      "id": "tenant-14",
+      "tier": "standard",
+      "displayName": "Workspace 14"
+    },
+    {
+      "id": "tenant-15",
+      "tier": "standard",
+      "displayName": "Workspace 15"
+    },
+    {
+      "id": "tenant-16",
+      "tier": "premium",
+      "displayName": "Workspace 16"
+    },
+    {
+      "id": "tenant-17",
+      "tier": "standard",
+      "displayName": "Workspace 17"
+    },
+    {
+      "id": "tenant-18",
+      "tier": "standard",
+      "displayName": "Workspace 18"
+    },
+    {
+      "id": "tenant-19",
+      "tier": "standard",
+      "displayName": "Workspace 19"
+    },
+    {
+      "id": "tenant-20",
+      "tier": "premium",
+      "displayName": "Workspace 20"
+    },
+    {
+      "id": "tenant-21",
+      "tier": "standard",
+      "displayName": "Workspace 21"
+    },
+    {
+      "id": "tenant-22",
+      "tier": "standard",
+      "displayName": "Workspace 22"
+    },
+    {
+      "id": "tenant-23",
+      "tier": "standard",
+      "displayName": "Workspace 23"
+    },
+    {
+      "id": "tenant-24",
+      "tier": "premium",
+      "displayName": "Workspace 24"
+    },
+    {
+      "id": "tenant-25",
+      "tier": "standard",
+      "displayName": "Workspace 25"
+    },
+    {
+      "id": "tenant-26",
+      "tier": "standard",
+      "displayName": "Workspace 26"
+    },
+    {
+      "id": "tenant-27",
+      "tier": "standard",
+      "displayName": "Workspace 27"
+    },
+    {
+      "id": "tenant-28",
+      "tier": "premium",
+      "displayName": "Workspace 28"
+    },
+    {
+      "id": "tenant-29",
+      "tier": "standard",
+      "displayName": "Workspace 29"
+    },
+    {
+      "id": "tenant-30",
+      "tier": "standard",
+      "displayName": "Workspace 30"
+    },
+    {
+      "id": "tenant-31",
+      "tier": "standard",
+      "displayName": "Workspace 31"
+    },
+    {
+      "id": "tenant-32",
+      "tier": "premium",
+      "displayName": "Workspace 32"
+    },
+    {
+      "id": "tenant-33",
+      "tier": "standard",
+      "displayName": "Workspace 33"
+    },
+    {
+      "id": "tenant-34",
+      "tier": "standard",
+      "displayName": "Workspace 34"
+    },
+    {
+      "id": "tenant-35",
+      "tier": "standard",
+      "displayName": "Workspace 35"
+    },
+    {
+      "id": "tenant-36",
+      "tier": "premium",
+      "displayName": "Workspace 36"
+    },
+    {
+      "id": "tenant-37",
+      "tier": "standard",
+      "displayName": "Workspace 37"
+    },
+    {
+      "id": "tenant-38",
+      "tier": "standard",
+      "displayName": "Workspace 38"
+    },
+    {
+      "id": "tenant-39",
+      "tier": "standard",
+      "displayName": "Workspace 39"
+    },
+    {
+      "id": "tenant-40",
+      "tier": "premium",
+      "displayName": "Workspace 40"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "home": { "accountId": "111122223333", "region": "us-east-1" },
+  "integrations": {
+    "monitoring": { "accountId": "222233334444", "roleName": "TelemetryReader" },
+    "backup": { "accountId": "333344445555", "roleName": "VaultBackupVendor" },
+    "partnerCi": { "accountId": "444455556666", "roleName": "BuildReleaseRole" },
+    "deployment": { "accountId": "555566667777", "roleName": "DeploymentAutomation" }
+  }
+}

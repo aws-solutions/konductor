@@ -1,0 +1,5 @@
+customer_id,customer_name,email,order_id,order_date,total_cents
+1,Ada Lovelace,ada@example.com,1001,2024-01-05,2500
+1,Ada Lovelace,ada@example.com,1002,2024-01-19,1250
+2,Grace Hopper,grace@example.com,1003,2024-01-10,5000
+3,Alan Turing,alan@example.com,1004,2024-01-20,3100

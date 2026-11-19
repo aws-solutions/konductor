@@ -108,7 +108,8 @@ function newConversation(autonomy) {
     if (conv.turns === 1) conv.askedFirstTurn = asked;
     if (!asked) return null;
     const text = extractQuestion(summary);
-    const q = { turn: conv.turns, text: clip(text.replace(/\s+/g, ' ').trim(), QUESTION_CHARS), matched: [], answered: false, reply: '' };
+    // count: questions in this turn (question marks in the full text, at least 1); the text itself is clipped.
+    const q = { turn: conv.turns, text: clip(text.replace(/\s+/g, ' ').trim(), QUESTION_CHARS), count: Math.max(1, (text.match(/\?/g) || []).length), matched: [], answered: false, reply: '' };
     conv.questions.push(q);
     const r = oracle.reply(text);
     if (!r) return null;
