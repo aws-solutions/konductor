@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { lineWindow, YAML_WINDOW_LINES } from './line-window';
+import {
+  lineWindow,
+  newlyShown,
+  shiftWindow,
+  YAML_WINDOW_LINES,
+} from './line-window';
 
 describe('lineWindow', () => {
   it('shows a text that fits whole', () => {
@@ -55,5 +60,54 @@ describe('lineWindow', () => {
     const { first, last } = lineWindow(262_144, undefined);
 
     expect(last - first + 1).toBe(YAML_WINDOW_LINES);
+  });
+});
+
+describe('shiftWindow', () => {
+  it('moves down then up back to the first window', () => {
+    const start = lineWindow(3000, undefined, 500);
+    const down = shiftWindow(start, 3000, 1, 500);
+    expect(down).toEqual({ first: 501, last: 1000 });
+    expect(shiftWindow(down, 3000, -1, 500)).toEqual(start);
+  });
+
+  it('reaches the last line of a file near the size limit, one window at a time', () => {
+    const total = 262_000;
+    let window = lineWindow(total, undefined);
+    let moves = 0;
+    while (newlyShown(window, total, 1) && moves < 1000) {
+      const next = shiftWindow(window, total, 1);
+      expect(next.first).toBeGreaterThan(window.first);
+      window = next;
+      moves += 1;
+    }
+    expect(window.last).toBe(total);
+    expect(window.last - window.first + 1).toBe(YAML_WINDOW_LINES);
+  });
+
+  it('stops at the end and at the start of the text', () => {
+    expect(shiftWindow({ first: 2401, last: 2900 }, 3000, 1, 500)).toEqual({
+      first: 2501,
+      last: 3000,
+    });
+    expect(shiftWindow({ first: 101, last: 600 }, 3000, -1, 500)).toEqual({
+      first: 1,
+      last: 500,
+    });
+  });
+});
+
+describe('newlyShown', () => {
+  it('names the lines a move brings into view, or none at an edge', () => {
+    const window = { first: 101, last: 600 };
+    expect(newlyShown(window, 3000, -1, 500)).toEqual({ first: 1, last: 100 });
+    expect(newlyShown(window, 3000, 1, 500)).toEqual({
+      first: 601,
+      last: 1100,
+    });
+    expect(newlyShown({ first: 1, last: 500 }, 3000, -1, 500)).toBeUndefined();
+    expect(
+      newlyShown({ first: 2501, last: 3000 }, 3000, 1, 500),
+    ).toBeUndefined();
   });
 });
