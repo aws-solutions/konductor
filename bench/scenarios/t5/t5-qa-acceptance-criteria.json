@@ -1,0 +1,171 @@
+{
+  "id": "t5-qa-acceptance-criteria",
+  "class": "hard",
+  "version": 1,
+  "phase": "requirements",
+  "role": "qa",
+  "phases2": [
+    "testing"
+  ],
+  "questions": "scripted",
+  "prompt": "I’m the QA lead for the web shop, and I need acceptance criteria for the refund request feature so we can start writing test cases. The current note in docs/FEATURE-NOTE.md is thin, so the product owner is available to answer questions and confirm the behavior you need. Create docs/ACCEPTANCE.md as a clear Markdown document with concrete, observable criteria that test authors can use, including the relevant conditions, actions, outcomes, and boundaries. Use the existing documents and docs/ACCEPTANCE-TEMPLATE.md for context and style, but do not change the template or any existing feature notes. Keep docs/FEATURE-NOTE.md and docs/GLOSSARY.md unchanged, and do not add code, dependencies, or unrelated files. Write the result for customer, support, and operational scenarios rather than describing an implementation. The acceptance document should be specific enough that another tester can determine pass or fail from each criterion.",
+  "fixture": "t5-qa-acceptance-criteria",
+  "hidden": "t5-qa-acceptance-criteria",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 acceptance.test.js",
+      "min": 12,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/ACCEPTANCE.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/FEATURE-NOTE.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/GLOSSARY.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/ACCEPTANCE.md",
+      "pattern": "^\\s*[-*+]\\s+\\*\\*[^\\n]+\\*\\*",
+      "min": 8,
+      "weight": 3,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/ACCEPTANCE.md",
+      "pattern": "Finance\\s+Operations",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/ACCEPTANCE.md",
+      "pattern": "audit\\s+log",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decision-quality",
+      "criterion": "The document reads like a settled product contract and separates confirmed behavior from unsupported implementation assumptions (code cannot check this because it cannot judge the meaning or appropriateness of the written decisions)",
+      "weight": 2
+    }
+  ],
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "refund-window",
+        "topics": [
+          "refund",
+          "window",
+          "days",
+          "delivery",
+          "eligible"
+        ],
+        "answer": "A refund request is allowed through 30 calendar days after the delivery date. The glossary's fourteen-day wording is outdated and must not be used for this feature."
+      },
+      {
+        "id": "bundle-partial-refund",
+        "topics": [
+          "bundle",
+          "partial",
+          "item",
+          "amount",
+          "price"
+        ],
+        "answer": "A customer can request a refund for an individual item in a bundle. The refund uses that item's allocated bundle price, rather than refunding the whole bundle."
+      },
+      {
+        "id": "coupon-treatment",
+        "topics": [
+          "coupon",
+          "discount",
+          "code",
+          "restore",
+          "refund amount"
+        ],
+        "answer": "When coupon code SAVE10 was used, the refund excludes the coupon discount and the coupon is not restored."
+      },
+      {
+        "id": "approval-threshold",
+        "topics": [
+          "approval",
+          "threshold",
+          "amount",
+          "team",
+          "high value"
+        ],
+        "answer": "A refund above $500 requires approval from Finance Operations before it is issued."
+      },
+      {
+        "id": "decision-notification",
+        "topics": [
+          "customer",
+          "email",
+          "notification",
+          "decision",
+          "timing"
+        ],
+        "answer": "After a refund request is approved or rejected, the customer receives an email stating the decision within 15 minutes."
+      },
+      {
+        "id": "audit-retention",
+        "topics": [
+          "audit",
+          "log",
+          "record",
+          "retention",
+          "history"
+        ],
+        "answer": "The request and its decision are written to an audit log, and each refund audit record is retained for 7 years."
+      }
+    ],
+    "defaultReply": "I do not have a further policy detail to add. Please use the product note and keep the criterion observable."
+  },
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/cucumber/cucumber-js",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}

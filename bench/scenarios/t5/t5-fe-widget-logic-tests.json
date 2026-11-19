@@ -47,12 +47,18 @@
       "weight": 1
     }
   ],
-  "targetSkills": [],
+  "targetSkills": [
+    "test-coverage-analysis",
+    "verification"
+  ],
   "targetSop": null,
-  "targetAgent": null,
+  "targetAgent": "k-developer",
   "controlKind": "none",
   "loadCheck": {
-    "mustLoad": [],
+    "mustLoad": [
+      "test-coverage-analysis",
+      "verification"
+    ],
     "mustNotLoad": []
   },
   "effectSubset": false,
@@ -69,6 +75,37 @@
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
     }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for tests on specific modules without naming test frameworks, mutation testing, or particular test patterns; it describes what to test, not how."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly identifies all six modules and the behaviors to cover (calendar edges, validation boundaries, pricing rounding, debounce cancellation, retry limits, store unsubscription); the hidden tests align with these documented behaviors."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The source files contain no comments revealing test cases; the existing tests cover only happy paths, and the mutants represent realistic bugs that follow from the documented behavior."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The existing fixture kills only 1/10 mutants (m05), so broad assertions will fail; each mutant targets a specific edge case (year rollover, disabled-date interior, boundary conditions, rounding direction, retry count, listener snapshot) requiring targeted tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All mutants are realistic defects that would break production behavior; the behaviors are discoverable from reading the source, and the task is achievable within the constraints (reference solution kills 10/10)."
+      }
+    ]
   },
   "pilot": null,
   "lockedAt": null

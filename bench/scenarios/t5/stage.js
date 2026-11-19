@@ -59,7 +59,7 @@ function normalize(id) {
 function map(id) {
   const draft = readJson(work(id, 'task-draft.json'));
   const catalog = readJson(path.join(AUTH, 'catalog.json')).map((c) => `- ${c.kind} ${c.name}${c.description ? `: ${c.description}` : ''}`).join('\n');
-  const task = JSON.stringify({ request: draft.prompt, checks: draft.checks, rubric: withExpertRubric(draft.rubric, b.expertKey), notes: draft.notes }, null, 1);
+  const task = JSON.stringify({ request: draft.prompt, checks: draft.checks, rubric: draft.rubric, notes: draft.notes }, null, 1);
   const prompt = fs.readFileSync(path.join(DIR, '../t1/prompts/map.md'), 'utf8').replace('{{TASK}}', () => task).replace('{{CATALOG}}', () => catalog);
   const { credits, finalText } = call('glm-5', work(`${id}-map`), prompt, `${id}.map`);
   logCall(id, 'map', 'glm-5', credits);
