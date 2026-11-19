@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-expense-approvals",
+ "wave": 1,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "pm",
+ "out": "docs/requirements.md",
+ "repo": "a document folder for a mid-size charity replacing an emailed spreadsheet process for staff expense claims: the current claim form, a finance handbook excerpt, an export of last year's claims (CSV), org chart, grant list, audit findings letter, meeting notes, a vendor feature list. About 25 files.",
+ "idea": "Requirements gathering where finance rules live in people's heads. Hidden facts could cover: approval thresholds and a second approver, self-approval, receipts, restricted-grant coding, payment run dates, record retention, mileage rates, delegation when an approver is away. The fixture should hint where rules are missing (the audit letter mentions findings without the new rule; claims data shows large claims) without giving values.",
+ "source": {
+  "url": "https://www.gov.uk/service-manual/user-research/start-by-learning-user-needs",
+  "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "deepseek-3.2",
+ "reviewer": "minimax-m2.5"
+}

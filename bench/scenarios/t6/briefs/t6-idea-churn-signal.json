@@ -1,0 +1,18 @@
+{
+ "id": "t6-idea-churn-signal",
+ "wave": 1,
+ "kind": "doc",
+ "phase": "ideation",
+ "role": "pm",
+ "out": "docs/framing.md",
+ "repo": "a document folder for a subscription meal-kit startup: a founder's request for a 'cancellation save offer' flow, cancellation survey CSV, billing events CSV, support ticket export, a product metrics dashboard export, an interview synthesis, past experiment notes. About 25 files.",
+ "idea": "Problem framing before solutioning: the data must show that most lost subscribers leave through failed card payments that never get retried (involuntary churn) rather than through the cancel button, plus one more trap of your design (for example a survey sample that is biased, or a week of missing tracking). The output is a framing doc ending with a JSON block that a hidden script scores: the main problem, the evidence numbers, at least three options including doing nothing, a recommendation, and a success measure with baseline.",
+ "source": {
+  "url": "https://github.com/18F/methods",
+  "licence": "CC0-1.0 (US federal work, public domain)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

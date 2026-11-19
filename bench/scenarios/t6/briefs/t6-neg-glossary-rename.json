@@ -1,0 +1,13 @@
+{
+ "id": "t6-neg-glossary-rename",
+ "wave": 1,
+ "kind": "negative",
+ "phase": "requirements",
+ "role": "pm",
+ "out": "docs/glossary.md",
+ "repo": "a small product docs folder for a note-taking app: glossary, PRD, release notes, FAQ, onboarding copy, metrics definitions. About 20 files.",
+ "idea": "A small, clear request that needs no questions and no special method: the team renamed 'Workspace' to 'Project' in the product; update the glossary entry and the PRD's metrics table to the new term, and leave every other file unchanged. Seed one trap: 'workspace' also appears in an unrelated sense (a desk 'workspace' in a persona) that must stay, and a code identifier in backticks that must not change.",
+ "source": "original",
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

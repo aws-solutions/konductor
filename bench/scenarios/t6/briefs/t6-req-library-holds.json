@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-library-holds",
+ "wave": 2,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "pm",
+ "out": "docs/requirements.md",
+ "repo": "a document folder for a county library service adding an online holds and waitlist feature for physical books and e-books: circulation policy excerpt, branch list, a patron survey summary, an export of last month's holds (CSV), the e-book vendor's licence summary, a board memo, accessibility statement. About 25 files.",
+ "idea": "Requirements with policy rules a librarian knows. Hidden facts could cover: hold limits per card type, pickup window, children's cards, e-book licence lending model (one copy one user), notifications, fines policy changes, accessibility standard, branches excluded from launch.",
+ "source": {
+  "url": "https://www.gov.uk/service-manual/user-research/start-by-learning-user-needs",
+  "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "deepseek-3.2",
+ "reviewer": "minimax-m2.5"
+}

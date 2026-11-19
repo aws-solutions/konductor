@@ -1,0 +1,6 @@
+visit_date,clinic,scheduled,completed,no_show,cancelled,source_note
+2024-09-02,Cedar Grove Rehab,126,111,9,6,desk tally
+2024-09-03,Harbor Point Therapy,98,88,7,3,exported late
+2024-09-03,Northgate Mobility,74,62,8,4,includes one duplicate
+2024-09-04,Cedar Grove Rehab,131,119,5,7,desk tally
+2024-09-04,Harbor Point Therapy,105,94,6,5,exported late
