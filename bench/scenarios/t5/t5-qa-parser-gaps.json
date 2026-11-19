@@ -1,0 +1,70 @@
+{
+  "id": "t5-qa-parser-gaps",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "prompt": "A bad input reached production last week even though the parser tests look healthy and coverage is high. The suite under test/ for Tide Config, our small configuration format, only uses short, well-formed inputs, and I no longer trust it. Please strengthen it for the tokenizer, parser, validator and printer: add new test files under test/ (you may also extend the existing ones), keep the suite runnable with `node --test --test-timeout=4000 test/*.test.js`, and assert on public results and error messages rather than private details. Do not change anything under src/, package.json or docs/, do not add dependencies, and keep every existing test working.",
+  "fixture": "t5-qa-parser-gaps",
+  "hidden": "t5-qa-parser-gaps",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test --test-timeout=4000 test/*.test.js && test \"$(cat test/*.js | grep -cE '^[[:space:]]*(test|it)\\(')\" -ge 32",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/parser.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "The regression cases make the important boundary and state assumptions clear in their descriptions (code cannot check this because it can verify outcomes but not the explanation of why each case matters).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/stryker-mutator/stryker-js",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}
