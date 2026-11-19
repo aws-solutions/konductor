@@ -27,14 +27,17 @@ Would remove Konductor 1.0.0 from Kiro CLI:
   SOPs            19
   context files    2
 
-  skills/backend-review/SKILL.md   (local edits would be destroyed)
+  skills/backend-review/SKILL.md   (changed since install; kept)
 
 Project files under .konductor/ would be left in place.
 ```
 
-`--dry-run` touches the filesystem in no way at all. It flags each individual path whose
-content has diverged from the hash recorded in the manifest — that is, a file you hand-edited
-after install — in plain text as above, or as a per-path `"diverged"` boolean under `--json`.
+`--dry-run` touches the filesystem in no way at all. It marks each path whose content changed
+since install, a file you hand-edited, as `(changed since install; kept)`, and a Kiro agent file
+that `kiro-cli agent upgrade` rewrote as `(rewritten by Kiro; removed)`. It also lists the Kiro
+agent backups a real run would leave. Under `--json`, `would_delete` holds only the files a real
+run removes and `would_keep` the changed files it keeps, each with a count
+(`would_delete_count`, `would_keep_count`), and `kept_backups` lists the backups.
 
 ### Then remove it
 
@@ -54,9 +57,20 @@ target's entry in `~/.konductor/installs`. `~/.konductor/installs` itself is nev
 even when its last entry goes. If the install used `--link-bin`, the symlink at
 `$HOME/.local/bin/konductor` is removed too.
 
-A real run also names the specific files it deleted whose hash had diverged from the
-manifest. That is a disclosure after the fact, not a safeguard — it does not block the
-deletion, which is why `--dry-run` exists.
+A file you changed after install is kept. `uninstall` prints a warning naming it and still
+exits `0`. The kept file is still live, so your runtime keeps loading it, but it is no longer
+tracked: delete it yourself if you do not want it. For a kept Kiro CLI v3 hooks document, the
+warning also names the Konductor hook entries to remove from it.
+
+Kiro CLI's `kiro-cli agent upgrade` rewrites each `.kiro/agents/<name>.json` and saves the
+original as `<name>.json.bak`. When that backup matches what Konductor installed, `uninstall`
+removes the rewritten agent file. It never deletes a `.bak` file: it prints a warning listing
+each matching backup by full path, and you can remove them by hand. A backup that does not
+match is left alone and not listed.
+
+`uninstall` cannot tell Kiro's rewrite from an edit you made after running
+`kiro-cli agent upgrade`, because the backup still matches in both cases. An agent file you
+edited after the upgrade is removed too. Copy it somewhere else first if you want to keep it.
 
 ### Choosing which install to remove
 

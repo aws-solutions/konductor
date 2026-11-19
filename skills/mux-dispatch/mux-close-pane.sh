@@ -46,9 +46,8 @@ if [[ "$BACKEND" == "zellij" ]]; then
   [[ -z "$SESSION" ]] && { echo "ERROR: no live zellij session found" >&2; exit 1; }
 fi
 
-# KONDUCTOR_MUX_REGISTRY_DIR lets tests point at an isolated directory
-# instead of the real shared production registry; unset (the default) for
-# every real usage. Must match tmux-dispatch.sh/zellij-dispatch.sh's default
+# KONDUCTOR_MUX_REGISTRY_DIR overrides the registry: a per-user one on a shared host,
+# or an isolated one in tests. Must match tmux-dispatch.sh/zellij-dispatch.sh's default
 # and override so this script locks/reads the same registry they write.
 REGISTRY_DIR="${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}"
 REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
@@ -115,6 +114,9 @@ close_pane() {
     rm -f "$REGISTRY_DIR/launcher-${ws_id}.sh" \
            "$REGISTRY_DIR/task-text-${ws_id}.txt" \
            "$REGISTRY_DIR/${ws_id}.done" 2>/dev/null || true
+    # The dispatch's own directory (brief, result, .done), through the same
+    # helper the orchestrator uses, which validates the id and the registry.
+    bash "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mux-cleanup-dispatch.sh" --id "$ws_id" >/dev/null || true
   fi
 
   # Remove entry from registry (only when we have a workspace_id)

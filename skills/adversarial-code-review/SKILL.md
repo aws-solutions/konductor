@@ -1,7 +1,7 @@
 ---
 name: adversarial-code-review
-description: 'Targets the three gap categories standard review misses: information disclosure, data integrity, and schema validation. Use as a second pass after code review, as the checker in a maker-checker cycle, or before submitting a change to auth, data writes or external APIs.'
-version: 1.1.0
+description: 'Targets the three gap categories standard review misses: information disclosure, data integrity, and schema validation. Use for a second pass after code review, as the checker in a maker-checker cycle, or before submitting a change to auth, data writes or external APIs.'
+version: 1.1.1
 tags:
   [
     skill,
