@@ -37,3 +37,12 @@
 | t3-adr-queue-choice | author | deepseek-3.2 | 10.46 |
 | t3-adr-queue-choice | map | glm-5 | 0.63 |
 | t3-adr-queue-choice | review | minimax-m2.5 | 2.51 |
+| t3-adr-multiregion-dr | author | deepseek-3.2 | 10.60 |
+| t3-adr-batch-vs-stream | author | deepseek-3.2 | 6.67 |
+| t3-pm-feature-scope | author | deepseek-3.2 | 12.21 |
+| t3-pm-feature-scope | map | glm-5 | 0.63 |
+| t3-pm-feature-scope | review | minimax-m2.5 | 3.66 |
+| t3-pm-feature-scope | author | deepseek-3.2 | 12.21 |
+| t3-pm-feature-scope | map | glm-5 | 0.63 |
+| t3-pm-feature-scope | review | minimax-m2.5 | 2.59 |
+| t3-pm-feature-scope | expertKey | glm-5 | 1.60 |

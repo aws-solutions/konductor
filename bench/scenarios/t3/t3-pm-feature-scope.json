@@ -1,0 +1,164 @@
+{
+  "id": "t3-pm-feature-scope",
+  "class": "design",
+  "target": null,
+  "prompt": "As the product manager for AnalyticsHub, I need to decide on the implementation approach for our new report export feature. Users need to download large datasets from our web application, and we have several constraints to consider.\n\nBased on the requirements documents, traffic analysis, and technical constraints, I need you to analyze the options and make a recommendation. The feature must handle reports up to 10 million rows while staying within our $1,200 monthly budget and meeting performance expectations.\n\nPlease deliver your analysis and decision in `docs/export-approach.md`. Your output must contain a fenced block whose info string is `decision` holding JSON with exactly these keys:\n\n- \"chosen\" (the option id: \"A\", \"B\", \"C\", or \"hybrid\")\n- \"options\" (array of option ids considered, e.g., [\"A\", \"B\", \"C\"])\n- \"limits\" (object where each key is a limit name and value is {\"limit\": number, \"value\": number} - include one entry per hard limit in the inputs, with value being your computed figure for the chosen option)\n- \"monthly_cost_usd\" (number, the chosen option's monthly cost computed from the price sheet)\n\nMake sure to:\n1. Analyze all three options presented in the documents\n2. Consider the performance constraints, especially timeout limits\n3. Calculate costs based on the projected 500,000 reports per month\n4. Address the risk of the 99th percentile reports failing\n5. Provide clear reasoning for your choice\n\nThe deliverable should be a professional document suitable for sharing with engineering leadership, explaining your decision and the tradeoffs considered.",
+  "fixture": "t3-pm-feature-scope",
+  "timeoutSec": 900,
+  "hidden": "t3-pm-feature-scope",
+  "phase": "architecture",
+  "role": "pm",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 23
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/export-approach.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of reasoning about tradeoffs between options (not code-checkable: Code can check if limits are obeyed and costs calculated, but cannot evaluate the quality of reasoning about user experience, implementation complexity, and strategic tradeoffs between different architectural approaches.)",
+      "weight": 1
+    },
+    {
+      "id": "explanation_clarity",
+      "criterion": "Clarity and completeness of explanation for the chosen approach (not code-checkable: While code can verify JSON structure and numeric values, it cannot assess whether the explanation clearly communicates the decision rationale to engineering leadership, covers all relevant considerations, and provides actionable next steps.)",
+      "weight": 1
+    },
+    {
+      "id": "stakeholder_alignment",
+      "criterion": "Alignment with user needs and business constraints beyond hard limits (not code-checkable: Tests can verify compliance with hard limits (timeout, budget) but cannot evaluate how well the solution balances competing stakeholder needs (user experience vs. reliability vs. cost) or addresses soft constraints like team capacity and implementation timeline.)",
+      "weight": 1
+    },
+    {
+      "id": "risk_assessment",
+      "criterion": "Thoroughness of risk assessment and mitigation planning (not code-checkable: Code can check if limits are obeyed but cannot evaluate the identification of implementation risks, consideration of failure modes, or quality of proposed mitigation strategies for issues like email delivery failures, queue delays, or user education needs.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "skill:decision-writing",
+    "skill:cost-estimation",
+    "skill:trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing",
+      "skill:cost-estimation",
+      "skill:trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt presents the PM problem neutrally without naming or hinting the correct option; user must analyze fixture to discover options and tradeoffs."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Problem is well-defined with clear constraints: 29s timeout, $1200 budget, 10M row max. The p99 timing calculation (34s = 6.8M rows × 0.4s/100k render + 6.8M rows × 0.1s/100k upload) is explicitly derivable from fixture data."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture documents provide all data needed to reason through the decision but do not state the answer. OPTIONS_ANALYSIS.md lists pros/cons but does not recommend an option."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Simple cost minimization would fail: Option A ($85/month) violates p99 timeout (34s > 29s); tests verify the chosen option obeys limits. The trap is explicitly documented in meta.json notes."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Output format is clearly specified (fenced decision block with JSON containing chosen, options, limits, monthly_cost_usd). All required data exists in fixture (pricing, timing, constraints)."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that Option A (synchronous) fails the 99th percentile timeout constraint because the p99 report (6.8M rows) requires 34 seconds total processing time (27.2s render + 6.8s upload) which exceeds the 29-second API Gateway hard limit.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Identifies that the 0.5 seconds per 100k rows figure from Q4 2023 legacy testing must not be used, because TRAFFIC_ANALYSIS.md explicitly states it is superseded by the current 0.4 seconds per 100k rows measurement.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "Notes that the $1,500/month budget figure from Q1 2024 is superseded by the current $1,200/month constraint, as documented in pricing_notes.md.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "Calculates monthly cost for Option B at approximately $96-$141 (Lambda ~$2-3, API Gateway ~$1.75, Data Transfer ~$40, S3 ~$2.30, SQS ~$0.20, SES ~$50), demonstrating all options are well under the $1,200 budget ceiling.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Addresses the failure mode for Option A: approximately 5,000 reports per month (1% of 500,000 projected volume) would fail at the 99th percentile due to timeout, creating user frustration and support burden.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Identifies that Option B or hybrid approaches become necessary when reliability requirements exceed 99% success rate, because Option A cannot meet 99.9% availability SLA due to the 1% failure rate on large reports.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Discusses operational concerns for the chosen approach: email delivery failures (SES rate limits), queue processing delays, and need for fallback mechanisms like in-app notifications or auto-scaling workers.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "Notes that the decision would change if API Gateway timeout could be extended (not possible for HTTP APIs) or if p99 report sizes were smaller than 6.8M rows, making Option A viable.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Picks Option A because it has the lowest cost (~$85/month) without analyzing the p99 timeout failure",
+      "Calculates p99 processing time as 6.8M × 0.5s/100k = 34s but fails to compare against the 29s timeout limit",
+      "Uses the superseded $1,500/month budget figure instead of the current $1,200 constraint",
+      "Selects Option A claiming 99% success rate is acceptable without discussing the 5,000 failed reports per month impact",
+      "Recommends Option C for real-time ad-hoc exports without recognizing it only supports pre-defined scheduled reports"
+    ]
+  }
+}

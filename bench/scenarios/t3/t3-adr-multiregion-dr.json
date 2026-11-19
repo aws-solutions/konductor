@@ -1,0 +1,61 @@
+{
+  "id": "t3-adr-multiregion-dr",
+  "class": "design",
+  "target": null,
+  "prompt": "Our GlobalSaaS platform needs to improve its disaster recovery capabilities. The current pilot light implementation doesn't meet our tightened recovery time objectives, and we're approaching our budget limits.\n\nReview the documentation in the fixture directory to understand our requirements, constraints, and the options available. We need you to analyze the three disaster recovery approaches: nightly backup copy to the second region, pilot light with continuous replication, and warm standby.\n\nBased on your analysis, write an Architecture Decision Record at docs/adr/0001-dr.md that recommends the best option. Your decision should consider all business requirements, technical constraints, and financial limitations documented in the fixture files.\n\nThe ADR must include a fenced code block with info string \"decision\" containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option\n- \"options\": array of option IDs you considered\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} - include one entry for each hard limit in the inputs, with value being your computed figure for the chosen option\n- \"monthly_cost_usd\": the chosen option's monthly cost computed from the pricing data\n\nMake sure your numbers are consistent across the documentation and your calculations are correct. Check that the chosen option meets all hard limits including RPO and RTO requirements while staying within budget.",
+  "fixture": "t3-adr-multiregion-dr",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-multiregion-dr",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 22
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-dr.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The ADR demonstrates clear, logical reasoning that connects requirements to the chosen option, explaining why alternatives were rejected. (not code-checkable: Automated tests can verify numerical calculations and limit compliance, but cannot evaluate the quality of explanatory prose, logical flow, or persuasiveness of arguments.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff-explanation",
+      "criterion": "The decision record explains tradeoffs between options beyond just cost, including complexity, operational overhead, risk factors, and implementation considerations. (not code-checkable: While tests can verify that all options were considered, they cannot assess whether the analysis discusses meaningful tradeoffs or merely lists pros/cons without substantive comparison.)",
+      "weight": 1
+    },
+    {
+      "id": "documentation-clarity",
+      "criterion": "The ADR is well-structured, clearly written, and accessible to both technical and non-technical stakeholders, with appropriate section headers and consistent formatting. (not code-checkable: Automated validation focuses on data correctness and structure, not on writing quality, organization, or communication effectiveness for human readers.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1
+}
