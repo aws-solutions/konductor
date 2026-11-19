@@ -58,3 +58,10 @@
 | t3-adr-batch-vs-stream | review | minimax-m2.5 | 3.02 |
 | t3-adr-queue-choice | expertKey | glm-5 | 1.88 |
 | t3-adr-batch-vs-stream | expertKey | glm-5 | 1.85 |
+| t3-dev-lib-choice | author | deepseek-3.2 | 0.00 |
+| t3-api-booking | expertKey | glm-5 | 1.75 |
+| t3-dev-lib-choice | map | glm-5 | 0.62 |
+| t3-api-ingest-batch | expertKey | glm-5 | 3.07 |
+| t3-dev-lib-choice | review | minimax-m2.5 | 4.08 |
+| t3-api-search-pagination | expertKey | glm-5 | 1.73 |
+| t3-dev-lib-choice | expertKey | glm-5 | 2.29 |
