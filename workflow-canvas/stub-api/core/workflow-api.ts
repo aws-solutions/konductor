@@ -8,6 +8,7 @@ import {
 } from './contract.ts';
 import { AGENTS, type Agent } from './agents.ts';
 import { ApiError, badName } from './errors.ts';
+import { STAGE_FIELDS } from './fields.ts';
 import type {
   CheckResult,
   Run,
@@ -70,6 +71,7 @@ export class WorkflowApi {
       read_only: false,
       view: check.view,
       diagnostics: check.diagnostics,
+      stage_fields: STAGE_FIELDS,
     };
   }
 
@@ -181,6 +183,7 @@ function emptyDocument(name: string): WorkflowDocument {
     read_only: false,
     view: null,
     diagnostics: [],
+    stage_fields: STAGE_FIELDS,
   };
 }
 
