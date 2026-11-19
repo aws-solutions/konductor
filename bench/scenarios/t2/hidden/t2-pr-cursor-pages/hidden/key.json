@@ -12,7 +12,8 @@
         "advance cursor",
         "greater than"
       ],
-      "finding": "The next cursor is encoded from the last row while the next query includes that row with a greater-or-equal comparison, so every non-final page repeats its last item."
+      "finding": "The next cursor is encoded from the last row while the next query includes that row with a greater-or-equal comparison, so every non-final page repeats its last item.",
+      "slack": 1
     },
     {
       "id": "k2",
@@ -25,7 +26,8 @@
         "stable ordering",
         "createdAt and id"
       ],
-      "finding": "Sorting only by createdAt leaves equal-time rows without a deterministic order, so inserts or store order changes can make cursor pages skip or repeat issues."
+      "finding": "Sorting only by createdAt leaves equal-time rows without a deterministic order, so inserts or store order changes can make cursor pages skip or repeat issues.",
+      "slack": 1
     },
     {
       "id": "k3",
@@ -51,7 +53,8 @@
         "cap limit",
         "reject oversized"
       ],
-      "finding": "The handler accepts any positive limit and never applies the configured or documented maximum of 100, allowing an unbounded response from a public list endpoint."
+      "finding": "The handler accepts any positive limit and never applies the configured or documented maximum of 100, allowing an unbounded response from a public list endpoint.",
+      "slack": 1
     },
     {
       "id": "k5",
@@ -64,7 +67,8 @@
         "versioned endpoint",
         "v2"
       ],
-      "finding": "The change replaces the documented v1 top-level issues and nextOffset fields with a data/page envelope without moving the breaking contract to a new version or negotiated media type."
+      "finding": "The change replaces the documented v1 top-level issues and nextOffset fields with a data/page envelope without moving the breaking contract to a new version or negotiated media type.",
+      "slack": 1
     },
     {
       "id": "k6",
@@ -77,7 +81,8 @@
         "deprecation window",
         "translate offset"
       ],
-      "finding": "The new handler reads cursor but no longer reads the documented offset parameter, so existing clients receive the first page during the promised deprecation window instead of being migrated or supported."
+      "finding": "The new handler reads cursor but no longer reads the documented offset parameter, so existing clients receive the first page during the promised deprecation window instead of being migrated or supported.",
+      "slack": 1
     }
   ],
   "decoys": [
