@@ -45,12 +45,16 @@
       "weight": 2
     }
   ],
-  "targetSkills": [],
+  "targetSkills": [
+    "test-coverage-analysis"
+  ],
   "targetSop": null,
   "targetAgent": null,
   "controlKind": "none",
   "loadCheck": {
-    "mustLoad": [],
+    "mustLoad": [
+      "test-coverage-analysis"
+    ],
     "mustNotLoad": []
   },
   "effectSubset": false,
@@ -67,6 +71,37 @@
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
     }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks the agent to write characterization tests for existing behavior without naming specific methods, mutants, or implementation details. It correctly directs the agent to discover the behavior from reading the code."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly states the goal: pin down current behavior as the contract. The agent can read all code and must keep the existing suite passing. The requirement for at least 13 tests and the mutation test minimum of 10 provide clear success criteria."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no hints about the specific edge cases targeted by mutants. The comments in calendar_rules.py mention leap day as a holiday, but this is documentation of actual behavior, not a leak. The agent must discover boundary conditions by reading the code carefully."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is appropriately difficult. The existing smoke tests (5 tests) kill 0/10 mutants. A shallow approach adding tests that only exercise happy paths would not meet the mutation threshold. Each mutant targets a specific edge case: boundary inclusion (weight bands), fallback zone selection, calculation order (fuel rounding), leap day handling, zero weight validation, state between calls, next business day logic, postal code normalization, CLI error status, and currency rounding. These require careful reading and specific test values."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is fair. The behavior is fully defined in the code and discoverable by reading. No contradictory requirements. The mutants represent realistic bugs that characterization tests should catch. The solution demonstrates that focused tests with specific values can kill all mutants without special knowledge."
+      }
+    ]
   },
   "pilot": null,
   "lockedAt": null
