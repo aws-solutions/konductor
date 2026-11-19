@@ -1182,6 +1182,16 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   the kiro backend (argv). Records written under the old limits keep the limits they carry. `cap plan` sizes
   the budget as the largest of 1.5x the estimate, estimate plus the largest observed run, and a pass with one such run before the last cell.
 
+## Scenario pack tools
+The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) has free authoring tools. None calls a model.
+
+- `node bench/runner/bench.js scenarios lint DIR --base REF|dir:PATH` is the prompt leak lint. It refuses a task prompt that names a skill, SOP or
+  agent of the konductor tree at `--base`, uses a term from the fixed method list (`bench/scenarios/lint.js`: STRIDE, RICE, MoSCoW, Given/When/Then and
+  others), or says "do not ask" on a task where questions are allowed (the default). A hyphenated unit name (`threat-modeling`) is caught as written; a
+  one-word name (`verification`) is caught only in backticks or quotes, or next to the word skill, SOP or agent, because it is also an everyday word. It also refuses a
+  v3 task (one with a `phase`) that has no `authorship.source`, or a public source with an empty licence. Plain deliverable names (ADR, postmortem,
+  threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks. Exit 1 on any finding.
+
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.
 - Efficiency cells are `median [95% bootstrap CI of the median]` over clean passes only: status success,

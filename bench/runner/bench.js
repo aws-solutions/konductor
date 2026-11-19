@@ -9,6 +9,7 @@
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
+ *   node bench/runner/bench.js scenarios lint|coverage|prereg ...   (the scenario pack's authoring tools; free, no credits)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -21,6 +22,7 @@ const { cmdRun, repoRootOf } = require('./lib/run-cmd.js');
 const { planPr } = require('./lib/pr-plan.js');
 const evalCommands = require('./eval-commands.js');
 const { cmdCap } = require('../cap/cli.js');
+const { cmdScenarios } = require('../scenarios/cli.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
 const cleanup = require('./lib/cleanup-cmd.js');
 
@@ -232,6 +234,10 @@ const USAGE = `Usage:
        (exit 0 no regression, 1 regression, 2 refused or error)
   node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json] [--extra-tasks DIR,DIR]
        (skill and SOP loads recomputed from stream.jsonl; read-only, works on old and in-progress runs)
+  node bench/runner/bench.js scenarios lint DIR --base REF|dir:PATH [--repo-root DIR] [--json]
+       (the prompt leak lint: refuses a task prompt that names a skill, SOP or agent of the konductor tree at --base, uses a term from the fixed method
+       list, or says "do not ask" on a task where questions are allowed; also refuses a v3 task (one with a phase) with no authorship.source or an empty
+       licence. DIR holds task files, or batch directories of them. Exit 1 when there is any finding. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger
@@ -436,6 +442,7 @@ async function main(argv) {
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
   if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);
   if (cmd === 'cap') return cmdCap(opts);
+  if (cmd === 'scenarios') return cmdScenarios(opts);
   if (cmd === 'gc') return cleanup.cmdGc(opts);
   if (cmd === 'archive') return cleanup.cmdArchive(opts);
   console.error(USAGE);
