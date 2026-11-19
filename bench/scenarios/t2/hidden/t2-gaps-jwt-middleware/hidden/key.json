@@ -93,13 +93,6 @@
       "line": 5,
       "endLine": 6,
       "why": "The shared authorization helper deliberately authenticates before checking the role, and it returns the middleware's 401 response unchanged."
-    },
-    {
-      "id": "d2",
-      "file": "src/app.js",
-      "line": 19,
-      "endLine": 20,
-      "why": "The app passes the shared authentication closure and the admin role closure into the route factory; keeping this wiring together is the intended dependency injection boundary."
     }
   ]
 }

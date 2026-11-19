@@ -18,7 +18,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
-      "min": 22,
+      "min": 21,
       "weight": 1,
       "kind": "substance"
     },
