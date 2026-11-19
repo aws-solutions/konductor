@@ -8,7 +8,7 @@
     "code-review"
   ],
   "questions": "allowed",
-  "prompt": "Coverage is at 92%, but we still shipped a billing calculation bug. Please audit the existing test suite and tell me which tests give us false confidence. Read the implementation, the tests, and the project history closely enough to explain why each test could pass while the behavior is wrong, then say what the test should check instead. I only need the audit, not product changes or new tests. Do not change source files or existing tests. Put the finished report in docs/TEST-AUDIT.md. End the report with one fenced JSON block containing a list of findings. Each object in that list must have a location naming the test file or place, a severity of critical, high, medium, or low, and a fix describing the test to add or change. Keep the JSON block as the final content in the file.",
+  "prompt": "Coverage is at 92%, but we still shipped a billing calculation bug. Please audit the existing test suite and tell me which tests give us false confidence. Read the implementation, the tests, and the project history closely enough to explain why each test could pass while the behavior is wrong, then say what the test should check instead. I only need the audit, not product changes or new tests. Do not change source files or existing tests. Put the finished report in docs/TEST-AUDIT.md. End the report with one fenced JSON block containing a list of findings. Each object in that list must have a location naming the test file or place, a severity of critical, high, medium, or low, and a fix describing the test to add or change. Keep the JSON block as the final content in the file. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
   "fixture": "t5-qa-suite-audit",
   "hidden": "t5-qa-suite-audit",
   "timeoutSec": 1200,
@@ -173,12 +173,20 @@
       "fixMin": 2
     }
   ],
-  "targetSkills": [],
-  "targetSop": null,
-  "targetAgent": null,
+  "targetSkills": [
+    "test-coverage-analysis",
+    "code-review",
+    "backend-review"
+  ],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": "k-quality-assurance",
   "controlKind": "none",
   "loadCheck": {
-    "mustLoad": [],
+    "mustLoad": [
+      "test-coverage-analysis",
+      "code-review",
+      "backend-review"
+    ],
     "mustNotLoad": []
   },
   "effectSubset": false,
@@ -195,6 +203,37 @@
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
     }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a test audit without naming specific methods, tools, or processes. It describes the goal (find tests that give false confidence) and output format but leaves the approach to the agent."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly specifies the output file path, format (JSON block with location, severity, fix), and the task (audit tests, explain why each could pass while behavior is wrong). The 8 seeded findings have unambiguous location strings matching actual test files."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, docs, or stubs reveal the specific weak patterns. The test files look ordinary; the flaws (self-comparison, recomputed expected values, stubbed unit under test, swallowed errors, empty loop body, snapshot overwrite) require careful reading of test vs implementation to identify."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A superficial scan would miss the weak patterns. The two large test files (long-reconciliation.test.js with 240 entries, adapters-payment.test.js with mocks) are noted as sound decoys. Finding all 8 issues requires understanding why each test could pass incorrectly, not just listing files."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable: the prompt gives clear direction, the fixture has 22 test files to examine, the implementation files are readable, and the reference report demonstrates the expected depth. No contradictory requirements, flaky tests, or hidden dependencies."
+      }
+    ]
   },
   "pilot": null,
   "lockedAt": null

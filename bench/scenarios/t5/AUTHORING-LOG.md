@@ -44,3 +44,16 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t5-qa-cart-twin-config | map | glm-5 | 0.16 | |
 | t5-qa-acceptance-criteria | review | glm-5 | 5.30 | |
 | t5-qa-cart-twin-config | review | glm-5 | 5.05 | |
+| t5-qa-parser-gaps | author | gpt-5.6-luna | 3.20 | fixture held a placeholder test file named like the solution file; renamed, request reduced to module level, checks reduced to counts |
+| t5-qa-sync-strategy | author | gpt-5.6-luna | 2.02 | request and keyword checks tightened by hand |
+| t5-dev-legacy-characterize | author | gpt-5.6-luna | 4.11 | request and checks reduced; file-name checks removed |
+| t5-fe-widget-logic-tests | author | gpt-5.6-luna | 3.83 |  |
+| t5-qa-acceptance-criteria | author | gpt-5.6-luna | 2.98 |  |
+| t5-qa-cart-twin-config | author | gpt-5.6-luna | 1.45 | hidden folder layout and one check fixed by hand |
+| t5-qa-suite-audit | author (discarded) | deepseek-3.2 | 16.14 | several key items shared one test file and the request carried an example with real paths; re-authored |
+| t5-qa-suite-audit | author | gpt-5.6-luna | 2.23 | fix keywords need 2 matches; a wrong path prefix in a check fixed |
+| t5-qa-scheduler-gaps | author | gpt-5.6-luna | 3.32 |  |
+| t5-qa-scheduler-gaps | map | glm-5 | 0.16 | |
+| t5-qa-suite-audit | map | glm-5 | 0.16 | |
+| t5-qa-scheduler-gaps | review | glm-5 | 5.22 | |
+| t5-qa-suite-audit | review | glm-5 | 5.57 | |
