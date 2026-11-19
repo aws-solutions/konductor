@@ -1,0 +1,5 @@
+route,planned_date,asset_tag,window,lead,status
+North,2025-02-24,HY-044,07:00-10:00,Mara Venn,planned
+West,2025-02-24,IN-007,09:00-13:00,Rhea Sol,planned
+South,2025-02-25,CL-003,08:00-11:00,Mara Venn,held
+North,2025-02-25,PS-018,13:00-16:00,Rhea Sol,planned

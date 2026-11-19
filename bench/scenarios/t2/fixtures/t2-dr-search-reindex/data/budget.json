@@ -1,0 +1,17 @@
+{
+  "project": "product-search-2025-03-index",
+  "currency": "USD",
+  "monthly_cluster_budget": 18400,
+  "current_monthly_cluster_cost": 16120,
+  "temporary_capacity": {
+    "data_node_count": 3,
+    "hours": 12,
+    "monthly_equivalent": 420
+  },
+  "approved_one_time_total": 900,
+  "cost_notes": [
+    "temporary capacity may be used for one rehearsal and one production run",
+    "storage expansion requires a separate approval",
+    "the budget includes snapshots but not a second search cluster"
+  ]
+}

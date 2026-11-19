@@ -1,0 +1,5 @@
+scan_id,form_revision,received_date,route,legibility,notes
+F-301,3,2024-10-04,North,good,signature clear
+F-302,3,2024-10-06,West,fair,reading overwritten
+F-303,3,2024-10-10,South,poor,photo reference hard to read
+F-304,3,2024-10-12,North,good,red tray mark

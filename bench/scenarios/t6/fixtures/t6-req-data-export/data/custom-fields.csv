@@ -1,0 +1,4 @@
+field_id,account_id,field_label,entity,value,visible_to_customer
+CF-1,A-104,Referral source,appointment,community event,true
+CF-2,A-104,Internal routing,appointment,blue queue,false
+CF-7,A-219,Preferred language,user,en, true

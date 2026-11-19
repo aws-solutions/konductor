@@ -1,0 +1,6 @@
+request_id,received_on,segment,request,region,confidence
+FR-104,2025-01-08,enterprise,"send payment state to our reconciliation service",NA,high
+FR-119,2025-01-29,growth,"notify us when refunds are created",EU,medium
+FR-127,2025-02-03,enterprise,"callback for failed payments; duplicate-safe would help",EU,high
+FR-133,2025-02-20,midmarket,"a sandbox endpoint or delivery preview",NA,low
+FR-141,2025-03-07,enterprise,"regional processing for our European ledger",EU,high

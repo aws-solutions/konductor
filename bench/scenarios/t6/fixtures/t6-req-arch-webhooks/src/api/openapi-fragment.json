@@ -1,0 +1,12 @@
+{
+  "openapi": "3.0.3",
+  "paths": {
+    "/v2/payments": { "post": { "operationId": "createPayment" } },
+    "/v2/refunds": { "post": { "operationId": "createRefund" } }
+  },
+  "components": {
+    "schemas": {
+      "Problem": { "type": "object", "required": ["code", "message"] }
+    }
+  }
+}

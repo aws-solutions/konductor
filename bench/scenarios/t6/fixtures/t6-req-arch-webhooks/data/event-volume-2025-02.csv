@@ -1,0 +1,7 @@
+day,account_group,events,peak_per_second,notes
+2025-02-01,small,18420,7,normal weekday
+2025-02-01,large,91840,31,month start
+2025-02-14,small,20110,8,card campaign
+2025-02-14,large,110240,38,partial export
+2025-02-28,small,17210,6,month end
+2025-02-28,large,104880,35,late settlement batch

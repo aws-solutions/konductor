@@ -1,0 +1,151 @@
+{
+  "output": "release/go-no-go.md",
+  "block": "release-decision",
+  "assertions": [
+    {
+      "id": "decision",
+      "desc": "the release decision is no-go when unresolved release evidence remains",
+      "op": "equals",
+      "path": "decision",
+      "value": "no-go"
+    },
+    {
+      "id": "blocker-precision",
+      "desc": "the blockers list is focused on the derived actionable tickets",
+      "op": "precision",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-112",
+        "REL-118",
+        "REL-131"
+      ],
+      "min": 0.5,
+      "maxCount": 6
+    },
+    {
+      "id": "blocker-rel-112",
+      "desc": "the blockers list cites REL-112",
+      "op": "cites",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-112"
+      ]
+    },
+    {
+      "id": "blocker-rel-118",
+      "desc": "the blockers list cites REL-118",
+      "op": "cites",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-118"
+      ]
+    },
+    {
+      "id": "blocker-rel-131",
+      "desc": "the blockers list cites REL-131",
+      "op": "cites",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-131"
+      ]
+    },
+    {
+      "id": "owner-rel-112",
+      "desc": "the blocker entry for REL-112 names its owner",
+      "op": "cites",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-112"
+      ],
+      "where": {
+        "owner": "Mira Sol"
+      }
+    },
+    {
+      "id": "owner-rel-118",
+      "desc": "the blocker entry for REL-118 names its owner",
+      "op": "cites",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-118"
+      ],
+      "where": {
+        "owner": "Jon Bell"
+      }
+    },
+    {
+      "id": "owner-rel-131",
+      "desc": "the blocker entry for REL-131 names its owner",
+      "op": "cites",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-131"
+      ],
+      "where": {
+        "owner": "Asha Nair"
+      }
+    },
+    {
+      "id": "failing-jobs",
+      "desc": "repeatedly failing required jobs are named",
+      "op": "includes",
+      "path": "failing_jobs",
+      "ids": [
+        "linux-integration"
+      ]
+    },
+    {
+      "id": "flaky-jobs",
+      "desc": "intermittent required jobs are named",
+      "op": "includes",
+      "path": "flaky_jobs",
+      "ids": [
+        "windows-smoke"
+      ]
+    },
+    {
+      "id": "late-cherry-picks",
+      "desc": "the late approved cherry-picks are named",
+      "op": "includes",
+      "path": "late_cherry_picks",
+      "ids": [
+        "REL-118"
+      ]
+    },
+    {
+      "id": "notes-corrections",
+      "desc": "reverted promises are marked for notes correction",
+      "op": "includes",
+      "path": "notes_corrections",
+      "ids": [
+        "REL-127"
+      ]
+    },
+    {
+      "id": "demoted-absent",
+      "desc": "demoted release labels are not treated as blockers",
+      "op": "absent",
+      "path": "blockers",
+      "field": "tickets",
+      "ids": [
+        "REL-145",
+        "REL-153"
+      ]
+    },
+    {
+      "id": "earliest-slot",
+      "desc": "the earliest defensible release slot is reported",
+      "op": "date",
+      "path": "earliest_release_date",
+      "value": "2027-05-13",
+      "tolDays": 0
+    }
+  ]
+}

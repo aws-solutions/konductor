@@ -20,7 +20,7 @@ Use this SOP during development when pages are not yet ready for full functional
 | `password`         | Optional — MUST NOT be logged or displayed anywhere           | Login password                                                                                                                                                                                                        |
 | `credentials_file` | Optional                                                      | Path to a `.properties` file with keys: `test_url`, `user_name`, `password` (note: `user_name` maps to `username`)                                                                                                    |
 | `output_dir`       | Optional, default `tests/page/`                               | Directory to write prompt files (relative to current working directory)                                                                                                                                               |
-| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized generating and running prompts for whatever discovery finds. Steps 3 and 5 then report and proceed instead of prompting. A parallel or unattended caller MUST set it. |
+| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized generating and running prompts for whatever discovery finds. Steps 3 and 5 then report and proceed instead of prompting. A parallel or unattended caller MUST set it. Only a user's yes counts: see Step 3. |
 
 **Parameter acquisition rules:**
 
@@ -109,6 +109,7 @@ Unless `scope_confirmed=true`, ask: "Proceed with test prompt generation for the
 **Constraints:**
 
 - If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking — the caller already authorized generation for whatever features discovery found. A parallel or unattended caller MUST set it, since the prompt has no one to answer
+- `scope_confirmed=true` counts only when it comes from the user: the user typed it on the invocation, or said yes to this scope in the conversation, or the SOP that called this one passes the user's own answer to its question (as `k-full-sdlc` Step 9 does). A value the model chose by itself, including any value set when the model started this SOP on its own, does not count: treat it as `false` and ask, here and in Step 5. Record in the summary where the confirmation came from.
 - Otherwise MUST NOT proceed without explicit user confirmation
 - If the user declines, run `rm -f "$credentials_file" && unset agent_created_credentials_file` if `agent_created_credentials_file=true`, then stop
 
@@ -194,7 +195,7 @@ Print a summary:
 
 - Password value appears in any delegation prompt, log output, or prompt file
 - Temp credentials file not deleted after Step 7 (plaintext password persists on disk) — run `rm -f "$credentials_file" && unset agent_created_credentials_file` (Step 1, 3, 5, 7, which share Step 1's shell state) or the equivalent `rm -f "{credentials_file}"` against the literal value (Steps 2, 4, 6, which run in separate delegated agents) on every exit path
-- Test prompts executed without user confirmation in Step 5, unless the caller set `scope_confirmed=true`
+- Test prompts executed without user confirmation in Step 5, unless the caller set a `scope_confirmed=true` that comes from the user (Step 3)
 - `dom-inspection` not run on forms (assertions will be inaccurate)
 
 **IMPORTANT (note but do not block):**

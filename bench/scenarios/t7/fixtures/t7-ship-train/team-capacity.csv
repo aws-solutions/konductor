@@ -1,0 +1,6 @@
+team,person,role,from_date,to_date,people_days_per_week,allocation,comment
+Storage Platform,Ari,Engineer,2027-02-01,2027-05-07,5,0.72,Primary engine work
+Storage Platform,Bea,Engineer,2027-02-01,2027-05-07,4,0.65,Shared with operations
+Storage Platform,Cato,Engineer,2027-02-01,2027-05-07,3,0.48,Part-time allocation
+Runtime,Deni,Engineer,2027-02-01,2027-05-07,6,0.8,Shared services
+Quality,Eli,Tester,2027-02-01,2027-05-07,2,0.5,Release verification

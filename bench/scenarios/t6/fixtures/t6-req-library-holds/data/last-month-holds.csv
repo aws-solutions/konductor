@@ -1,0 +1,33 @@
+hold_id,patron_id,card_type,item_type,branch,date_placed,date_available,date_picked_up,wait_days,status,notes
+1001,P23891,regular,physical_book,central,2023-12-01,2023-12-05,2023-12-06,4,completed,
+1002,P18234,student,e-book,westside,2023-12-02,2023-12-02,2023-12-02,0,completed,instant access
+1003,P67219,senior,physical_book,eastside,2023-12-03,2023-12-10,2023-12-12,7,completed,
+1004,P89123,regular,physical_book,central,2023-12-03,2023-12-08,,5,expired,not picked up
+1005,P45612,child,physical_book,north_hill,2023-12-04,2023-12-11,2023-12-13,7,completed,
+1006,P78234,regular,e-book,central,2023-12-05,2023-12-05,2023-12-05,0,completed,
+1007,P12389,institutional,physical_book,westside,2023-12-06,2023-12-15,2023-12-18,9,completed,
+1008,P56712,regular,physical_book,central,2023-12-07,2023-12-14,,7,active,
+1009,P89234,senior,e-book,eastside,2023-12-08,2023-12-08,2023-12-08,0,completed,
+1010,P34567,student,physical_book,westside,2023-12-09,2023-12-16,2023-12-18,7,completed,
+1011,P78912,regular,physical_book,central,2023-12-10,2023-12-17,,7,active,
+1012,P23456,child,physical_book,north_hill,2023-12-11,2023-12-18,2023-12-20,7,completed,
+1013,P67891,regular,e-book,westside,2023-12-12,2023-12-12,,0,expired,patron didn't access
+1014,P12345,senior,physical_book,eastside,2023-12-13,2023-12-20,,7,active,
+1015,P56789,regular,physical_book,central,2023-12-14,2023-12-21,2023-12-22,7,completed,
+1016,P23478,student,e-book,westside,2023-12-15,2023-12-15,2023-12-15,0,completed,
+1017,P89127,institutional,physical_book,central,2023-12-16,2023-12-23,,7,active,
+1018,P34589,regular,physical_book,eastside,2023-12-17,2023-12-24,,7,active,
+1019,P78923,child,physical_book,north_hill,2023-12-18,2023-12-25,,7,active,
+1020,P12378,regular,e-book,central,2023-12-19,2023-12-19,,0,active,
+1021,P56723,senior,physical_book,westside,2023-12-20,2023-12-27,,7,active,
+1022,P23489,regular,physical_book,central,2023-12-21,2023-12-28,,7,active,
+1023,P67812,student,physical_book,westside,2023-12-22,2023-12-29,,7,active,
+1024,P12367,regular,e-book,eastside,2023-12-23,2023-12-23,,0,active,
+1025,P56734,regular,physical_book,central,2023-12-24,2023-12-31,,7,active,
+1026,P23412,institutional,physical_book,westside,2023-12-25,2024-01-01,,7,active,
+1027,P67845,senior,e-book,central,2023-12-26,2023-12-26,,0,active,
+1028,P12389,regular,physical_book,eastside,2023-12-27,2024-01-03,,7,active,
+1029,P56756,child,physical_book,north_hill,2023-12-28,2024-01-04,,7,active,
+1030,P23467,student,physical_book,westside,2023-12-29,2024-01-05,,7,active,
+1031,P67878,regular,e-book,central,2023-12-30,2023-12-30,,0,active,
+1032,P12399,regular,physical_book,central,2023-12-31,2024-01-07,,7,active

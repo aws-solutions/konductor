@@ -135,5 +135,45 @@
         "note": "The fixture contains the raw data but requires analysis to draw the right conclusions. The prompt and task notes give hints about what to look for, but the agent must still correctly interpret the data relationships and avoid common analytical mistakes."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats the requested save offer as a proposed solution and restates the ask as a problem to solve (how to keep subscribers the business is losing), including what is not part of the problem.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-problem",
+        "text": "Puts a value on the problem (for example revenue or subscribers lost per month to failed payments) so the cost of each option can be weighed against it.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "hypothesis",
+        "text": "States the recommended test as a hypothesis: the change, the outcome it should move, and the assumption behind it, so the result can confirm or refute it.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "segments",
+        "text": "Looks at the loss by segment (plan, tenure, payment method or provider) rather than one overall average, or names segmentation as the next analysis.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "stop-is-allowed",
+        "text": "Says what result would mean stopping or not building the save offer, and treats stopping as a valid outcome rather than a failure.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "mixed-sources",
+        "text": "Combines analytics with qualitative evidence (interviews, support tickets) and says where they agree or conflict, rather than relying on one source.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Build the cancellation save offer with a discount for anyone who clicks cancel.",
+      "Price is the main reason people leave, because the survey says so.",
+      "Run an A/B test of discount sizes and pick the winner.",
+      "Improve onboarding and engagement to reduce churn in general."
+    ]
   }
 }

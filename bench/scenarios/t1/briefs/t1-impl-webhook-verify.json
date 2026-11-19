@@ -1,0 +1,16 @@
+{
+  "id": "t1-impl-webhook-verify",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "30 to 40",
+  "source": {
+    "url": "https://github.com/stripe/stripe-node",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Node.js 24 service with no dependencies that receives webhooks from a payment provider on node:http, with a router, handlers that update an in-memory ledger, a config module, tests, CI config and docs. About 35 files. Inspiration (idea only): public payment SDKs that verify a webhook by recomputing an HMAC over a timestamp and the raw body, allow a time tolerance, and accept several signatures during key rotation. Build a task where the owner asks for signature verification on the webhook route, with wrinkles of your own design (the raw body must be used, not the parsed one; constant-time comparison; a replay window with an injected clock; two active secrets during rotation; duplicate event ids ignored safely; clear 400 and 401 answers that do not leak which part failed)."
+}

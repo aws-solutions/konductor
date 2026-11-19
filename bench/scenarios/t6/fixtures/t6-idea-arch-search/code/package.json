@@ -1,0 +1,21 @@
+{
+  "name": "autoparts-search",
+  "version": "1.0.0",
+  "description": "Search module for AutoPartsDirect",
+  "main": "search.js",
+  "scripts": {
+    "test": "node --test search.test.js",
+    "start": "node search.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "author": "AutoPartsDirect Engineering",
+  "license": "MIT"
+}

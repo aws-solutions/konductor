@@ -1,0 +1,8 @@
+week,tag,tickets,share_of_onboarding_tickets,examples
+2025-01-06,email_not_received,8,11%,verification message missing
+2025-01-13,email_not_received,10,12%,verification message missing
+2025-01-20,email_not_received,26,28%,no message after signup
+2025-01-27,email_not_received,64,49%,link never arrives
+2025-02-03,email_not_received,71,52%,nothing in inbox
+2025-02-10,email_not_received,39,35%,late or missing message
+2025-02-10,profile_confusion,8,7%,which category should I choose

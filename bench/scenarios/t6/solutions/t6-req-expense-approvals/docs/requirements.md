@@ -39,8 +39,8 @@ BrightHope Charity requires a new digital expense claims system to replace the c
 
 ### 3.3 Grant Compliance
 **R13:** The system must validate grant codes against the active grants list and prevent submission to inactive or invalid grants.
-**R14:** Grant restriction checking must enforce daily rate caps, including the £75 daily subsistence limit per person for the Youth Empowerment Programme (YEP) grant.
-**R15:** The system must enforce the Community Engagement Programme (CEP) accommodation limit of £120 per night and food limit of £45 daily.
+**R14:** Grant restriction checking must enforce daily rate caps, including the £60 daily subsistence limit per person for the Youth Empowerment Programme (YEP) grant (renewed terms from April).
+**R15:** The system must enforce the Community Engagement Programme (CEP) accommodation limit of £95 per night and food limit of £35 daily (renewed terms from April).
 **R16:** Pre-approval requirements for specific grant expenditures (e.g., equipment over £300 for YEP) must be checked before submission.
 **R17:** Expenses incompatible with grant purposes (e.g., fundraising costs on CEP) must be blocked or flagged for manual override.
 
@@ -109,8 +109,8 @@ BrightHope Charity requires a new digital expense claims system to replace the c
     {"id": "R11", "text": "The system must support delegation setup in advance for when approvers are away, routing to deputies or department heads as configured."},
     {"id": "R12", "text": "Automatic escalation must occur after 2 working days without action on a claim."},
     {"id": "R13", "text": "The system must validate grant codes against the active grants list and prevent submission to inactive or invalid grants."},
-    {"id": "R14", "text": "Grant restriction checking must enforce daily rate caps, including the £75 daily subsistence limit per person for the Youth Empowerment Programme (YEP) grant."},
-    {"id": "R15", "text": "The system must enforce the Community Engagement Programme (CEP) accommodation limit of £120 per night and food limit of £45 daily."},
+    {"id": "R14", "text": "Grant restriction checking must enforce daily rate caps, including the £60 daily subsistence limit per person for the Youth Empowerment Programme (YEP) grant (renewed terms from April)."},
+    {"id": "R15", "text": "The system must enforce the Community Engagement Programme (CEP) accommodation limit of £95 per night and food limit of £35 daily (renewed terms from April)."},
     {"id": "R16", "text": "Pre-approval requirements for specific grant expenditures must be checked before submission."},
     {"id": "R17", "text": "Expenses incompatible with grant purposes must be blocked or flagged for manual override."},
     {"id": "R18", "text": "Digital receipts must be acceptable for all claims, provided they are legible and show required details."},

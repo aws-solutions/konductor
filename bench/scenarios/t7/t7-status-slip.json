@@ -1,0 +1,118 @@
+{
+  "id": "t7-status-slip",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "The payments-and-checkout launch slipped. Review the ticket export, roadmap, capacity sheet, holidays, and last week's note, then write this week's leadership update for me. Put the deliverable in status/leadership-update.md. Lead with the honest overall status, revised date, main reasons, and actions leadership should take. Include one fenced JSON block whose info string is status because our tooling reads that block. Its shape is: overall (green, amber, or red); risks (an array of objects with tickets, kind, summary, and owner, where kind is critical-path, date-conflict, over-allocation, scope-creep, or other); critical_path (ticket IDs in order); revised_launch_date (YYYY-MM-DD); reasoning with remaining_points_on_critical_path, team_velocity_points_per_sprint, and sprints_needed as numbers; capacity_by_sprint (sprint names mapped to numbers); and scope_added_after_lock_points as a number. Keep the prose useful to leadership and make the JSON agree with it.",
+  "fixture": "t7-status-slip",
+  "hidden": "t7-status-slip",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "status/leadership-update.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tickets.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "status/leadership-update.md",
+      "pattern": "```\\s*status",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The prose leads with an honest bottom line and explains the forecast assumptions in terms a director can act on (code cannot check this because it only reads the structured block)",
+      "weight": 2
+    },
+    {
+      "id": "actionable-context",
+      "criterion": "The prose gives clear actions and distinguishes active risks from resolved workflow noise (code cannot check this because it cannot judge prose meaning)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "status-reporting",
+    "risk-management",
+    "sprint-planning"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "status-reporting",
+      "risk-management",
+      "sprint-planning"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/sig-release",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies the exact JSON shape and risk kinds required, but does not name specific tickets, dates, or trap mechanisms. The notes field in task-draft.json hints at trap types but is metadata not shown to the agent."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt explicitly lists all risk kind values (critical-path, date-conflict, over-allocation, scope-creep, other), the JSON shape, and the tolerance values. Key values (24 points on critical path, 10 late-added points, 23.58 S28 capacity) derive unambiguously from the fixture data and stated conventions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file contains columns or notes revealing the critical path, date conflicts, or scope-creep tickets. The blocked-ticket decoy (CHK-040) shows its dependency CHK-041 is Done, but this requires cross-referencing, not a direct label."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that trusts status labels and obvious launch-epic rows passes only 3 of 17 tests (overall-red, velocity, sprints-needed), well under the half threshold. Finding the unassigned PLT-014 prerequisite and holiday-adjusted capacity requires following dependency chains and applying the stated conventions."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from fixture data: critical path (PLT-014→PAY-021→CHK-017→CHK-026) via depends_on column; 24 points sum; PAY-028/PAY-021 date conflict (2027-06-26 < 2027-06-28); Jon Bell's 13 points vs 0.9 adjusted capacity; 10 scope-creep points (PAY-034, CHK-037, RISK-023 created after 2027-05-28 lock). Tolerances are reasonable."
+      }
+    ]
+  }
+}

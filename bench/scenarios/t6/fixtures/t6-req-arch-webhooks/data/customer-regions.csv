@@ -1,0 +1,6 @@
+account_id,contracted_cell,endpoint_hosting,notes
+acct_aurora,EU,EU,contract annotation present
+acct_birch,NA,NA,default placement
+acct_cedar,EU,NA,endpoint location not validated
+acct_dahlia,NA,EU,endpoint location not validated
+acct_elm,EU,EU,renewal pending

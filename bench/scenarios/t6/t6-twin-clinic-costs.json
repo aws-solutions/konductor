@@ -1,0 +1,135 @@
+{
+  "id": "t6-twin-clinic-costs",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "Please put a concise cost summary at docs/cost-summary.md. Use the vendor quote and the booking volumes in this folder to calculate the expected monthly outbound text-message cost for each of the three clinics, then state which clinic costs most. Treat the quoted monthly platform fee as a shared cost apportioned across clinics by their booking volume, and include any message overage that the quoted pricing makes applicable. Keep the one-time and still-unpriced parts of the quote out of the known monthly total, and state the assumptions behind the calculation. End the file with one JSON block in exactly this shape: {\"clinics\":[{\"name\":\"clinic name\",\"bookedAppointments\":number,\"monthlyCostUsd\":number}],\"totalMonthlyCostUsd\":number,\"highestCostClinic\":\"clinic name\",\"assumptions\":[\"short explanation strings\"]}. Include one clinics item for each clinic, with the booking count and that clinic's expected monthly cost; use numbers for the numeric fields and the clinic's full name for highestCostClinic.",
+  "fixture": "t6-req-clinic-reminders",
+  "hidden": "t6-twin-clinic-costs",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 13,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/cost-summary.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "archive",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/cost-summary.md",
+      "pattern": "\\\"highestCostClinic\\\"\\s*:\\s*\\\"Cedar Grove Rehab\\\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/cost-summary.md",
+      "pattern": "\\\"monthlyCostUsd\\\"\\s*:",
+      "min": 3,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/cost-summary.md",
+      "pattern": "\\\"monthlyCostUsd\\\"\\s*:\\s*(?:1250|1430)|\\\"totalMonthlyCostUsd\\\"\\s*:\\s*(?:1250|1430)",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); if(fs.statSync('docs/cost-summary.md').size < 200) process.exit(1)\"",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-explanation",
+      "criterion": "The prose clearly explains the proportional allocation and labels the result as an estimate rather than a commitment (code cannot check this because it cannot judge explanation quality reliably).",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    },
+    {
+      "id": "reader-fit",
+      "criterion": "The document is usable by the people the request names: it is clear which items need a decision and from whom (code cannot check this because usefulness to a reader is a judgement).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "twin",
+  "twinOf": "t6-req-clinic-reminders",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": [
+      "skill:kiro-requirements-generation",
+      "skill:requirements-extraction"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies only the deliverable (cost summary with JSON block) and allocation method (proportional by booking volume), without naming frameworks, templates, or processes to follow."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies using vendor quote and booking volumes, clinic names are in clinic-directory.csv, and JSON shape is given. The cancelled row trap is a fair test of reading the status column."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires multiple steps: parsing CSV correctly (excluding cancelled), understanding tiered pricing, proportional allocation, and precise JSON formatting. Quick answers would likely fail multiple hidden tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required data is in fixture files. No scripted user or hidden facts. The reference passes all 13 tests, confirming the task is solvable with reasonable effort."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains raw data that must be processed; no answer key or solution is present. The vendor quote and appointment export require interpretation and calculation."
+      }
+    ]
+  }
+}

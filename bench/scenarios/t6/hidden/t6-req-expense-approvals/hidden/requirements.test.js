@@ -22,8 +22,8 @@ scriptedSuite(test, assert, {
     },
     { 
       id: 'F4', 
-      all: [/\b75\b|\b£75\b|\bseventy.*five/i, /\bdaily.*limit|\bdaily.*rate|\bper.*diem/i],
-      wrong: [/\b45\b.*daily.*limit/i, /\b90\b.*daily.*limit/i]
+      all: [/£?\b60\b|\bsixty\b/i, /\bdaily|\bper.*diem|subsistence/i],
+      wrong: [/£?\b75\b[^.]{0,40}(daily|subsistence)/i, /(daily|subsistence)[^.]{0,40}£?\b75\b/i]
     },
     { 
       id: 'F5', 

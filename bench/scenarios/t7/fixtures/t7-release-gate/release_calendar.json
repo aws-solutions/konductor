@@ -1,0 +1,40 @@
+{
+  "calendar_as_of": "2027-04-30",
+  "timezone": "UTC",
+  "current_release": "27.05",
+  "release_slots": [
+    {
+      "version": "27.05",
+      "release_date": "2027-05-06",
+      "weekday": "Thursday",
+      "code_freeze": "2027-04-29 17:00",
+      "cherry_pick_deadline": "2027-04-28 17:00",
+      "validation_start": "2027-05-03",
+      "validation_end": "2027-05-05",
+      "status": "planned"
+    },
+    {
+      "version": "27.06",
+      "release_date": "2027-05-13",
+      "weekday": "Thursday",
+      "code_freeze": "2027-05-06 17:00",
+      "cherry_pick_deadline": "2027-05-05 17:00",
+      "validation_start": "2027-05-10",
+      "validation_end": "2027-05-12",
+      "status": "planned"
+    },
+    {
+      "version": "27.07",
+      "release_date": "2027-05-20",
+      "weekday": "Thursday",
+      "code_freeze": "2027-05-13 17:00",
+      "cherry_pick_deadline": "2027-05-12 17:00",
+      "validation_start": "2027-05-17",
+      "validation_end": "2027-05-19",
+      "status": "planned"
+    }
+  ],
+  "blackout_dates": [
+    "2027-05-31"
+  ]
+}

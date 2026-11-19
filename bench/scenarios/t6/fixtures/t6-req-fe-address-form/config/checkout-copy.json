@@ -1,0 +1,9 @@
+{
+  "address": {
+    "title": "Where should we send your order?",
+    "continue": "Continue to delivery",
+    "back": "Back to cart",
+    "lookup": "Search for an address",
+    "manual": "Enter address manually"
+  }
+}

@@ -92,9 +92,9 @@ use serde::Serialize;
 
 use super::content_writers::{write_all_context, write_all_skills, write_all_sops};
 use super::kiro_cli_v2::{
-    match_skill_resource, write_skill_scopes_sidecar, write_sop_scopes_sidecar,
-    AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR,
-    SOPS_CONTENT_TYPE_DIR,
+    match_skill_resource, with_registry_mcp_servers, write_skill_scopes_sidecar,
+    write_sop_scopes_sidecar, AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR,
+    SKILLS_CONTENT_TYPE_DIR, SOPS_CONTENT_TYPE_DIR,
 };
 use super::model::CanonicalModel;
 use super::parse_canonical::skill_names_from_dependencies;
@@ -131,6 +131,10 @@ use super::HarnessTransformer;
 /// It is a Kiro-only field, so it lives in the Kiro client config -- exactly
 /// the "corresponding `KiroCliConfig` field plus a matching addition here"
 /// the note above calls for.
+///
+/// `hooks` is omitted when the agent has none. Kiro accepts a file without
+/// the key, and the Kiro IDE docs say it does not show agents that carry
+/// `hooks`, so only agents with real hooks pay that cost.
 #[derive(Serialize)]
 struct KiroV3AgentFile<'a> {
     name: &'a str,
@@ -145,8 +149,13 @@ struct KiroV3AgentFile<'a> {
     permissions: PermissionsBlock,
     #[serde(rename = "mcpServers")]
     mcp_servers: serde_json::Value,
+    #[serde(skip_serializing_if = "is_empty_hook_list")]
     hooks: serde_json::Value,
     resources: Vec<String>,
+}
+
+fn is_empty_hook_list(hooks: &serde_json::Value) -> bool {
+    hooks.as_array().is_some_and(Vec::is_empty)
 }
 
 /// The V3 `permissions` block. `rules` mirrors the shape confirmed on
@@ -386,6 +395,7 @@ impl HarnessTransformer for KiroCliV3Transformer {
                 {
                     eprintln!("konductor: warning: {warning}");
                 }
+                let kiro = with_registry_mcp_servers(kiro, &agent.dependencies.mcp_registry);
                 let declared: Vec<&str> =
                     skill_names_from_dependencies(&agent.dependencies.skills).collect();
                 let prompt = skill_index::kiro_skill_block(&agent.name, &declared, &model.skills)
@@ -393,7 +403,7 @@ impl HarnessTransformer for KiroCliV3Transformer {
                 let mut file = render_agent_file(
                     &agent.name,
                     &agent.config,
-                    kiro,
+                    &kiro,
                     &agent.dependencies.context.context_names,
                     &skill_names,
                 )?;
@@ -1420,9 +1430,10 @@ mod tests {
     use super::*;
     use crate::cli::synth::kiro_cli_v2::{SKILL_SCOPES_SIDECAR_FILE, SOP_SCOPES_SIDECAR_FILE};
     use crate::cli::synth::parser::{
-        AgentConfig, AgentDependencies, ClientConfig, ParsedAgentSpec,
+        AgentConfig, AgentDependencies, ClientConfig, McpServerDef, ParsedAgentSpec,
     };
     use crate::cli::synth::spawn_policy::KIRO_SPAWN_TOOL_IDS;
+    use std::collections::BTreeMap;
 
     fn agent_with_kiro(name: &str, kiro: KiroCliConfig) -> ParsedAgentSpec {
         ParsedAgentSpec {
@@ -2570,8 +2581,8 @@ mod tests {
     }
 
     /// An empty `hooks` object converts to an empty array -- KAS rejects
-    /// `{}` but accepts `[]` -- matching this module's existing
-    /// "minimal valid output" contract for `permissions`.
+    /// `{}` but accepts `[]`. `KiroV3AgentFile` then leaves the empty list
+    /// out of the written file.
     #[test]
     fn convert_hooks_for_v3_empty_object_becomes_empty_array() {
         let hooks = indexmap::IndexMap::new();
@@ -2582,8 +2593,8 @@ mod tests {
     /// End-to-end guard, at the `transform` level rather than the unit
     /// level: a `hooks` object anywhere in the installed V3 agent file
     /// is exactly the shape KAS's own validator rejects (see this
-    /// module's header comment), so the file `render_agent_file`
-    /// produces must always carry `hooks` as an array.
+    /// module's header comment), so an agent with hooks must get them
+    /// as an array in the file `render_agent_file` produces.
     #[test]
     fn transform_emits_hooks_as_array_not_object() {
         let mut hooks_map = indexmap::IndexMap::new();
@@ -2616,6 +2627,23 @@ mod tests {
             "got: {}",
             parsed["hooks"]
         );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transform_omits_hooks_key_when_the_agent_has_no_hooks() {
+        let dir = temp_dir("no-hooks");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("k-unhooked", KiroCliConfig::default())],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+
+        let agent_file = dir.join(expected_output_dir()).join("k-unhooked.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&agent_file).unwrap()).unwrap();
+        assert!(parsed.get("hooks").is_none(), "got: {parsed}");
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -3127,5 +3155,96 @@ mod tests {
         assert!(!absolute_escape.exists());
 
         let _ = fs::remove_dir_all(&output_root);
+    }
+
+    fn aws_mcp_registry_entry() -> McpServerDef {
+        McpServerDef {
+            command: Some("uvx".to_string()),
+            args: vec![
+                "mcp-proxy-for-aws-cli==1.7.0".to_string(),
+                "https://aws-mcp.us-east-1.api.aws/mcp".to_string(),
+            ],
+            url: None,
+        }
+    }
+
+    fn agent_with_mcp_registry(
+        name: &str,
+        kiro: KiroCliConfig,
+        registry: BTreeMap<String, McpServerDef>,
+    ) -> ParsedAgentSpec {
+        let mut agent = agent_with_kiro(name, kiro);
+        agent.dependencies.mcp_registry = registry;
+        agent
+    }
+
+    fn transform_and_read_agent(label: &str, agent: ParsedAgentSpec) -> serde_json::Value {
+        let dir = temp_dir(label);
+        let file_name = format!("{}.json", agent.name);
+        let model = CanonicalModel {
+            agents: vec![agent],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+        let written = fs::read_to_string(dir.join(expected_output_dir()).join(file_name)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+        serde_json::from_str(&written).unwrap()
+    }
+
+    #[test]
+    fn transform_renders_mcp_servers_from_dependencies_mcp_registry() {
+        let registry = BTreeMap::from([("aws-mcp".to_string(), aws_mcp_registry_entry())]);
+        let agent = agent_with_mcp_registry("k-developer", KiroCliConfig::default(), registry);
+
+        let file = transform_and_read_agent("mcp-registry", agent);
+
+        assert_eq!(file["mcpServers"]["aws-mcp"]["command"], "uvx");
+        assert_eq!(
+            file["mcpServers"]["aws-mcp"]["args"],
+            serde_json::json!([
+                "mcp-proxy-for-aws-cli==1.7.0",
+                "https://aws-mcp.us-east-1.api.aws/mcp"
+            ])
+        );
+    }
+
+    #[test]
+    fn kiro_cli_mcp_servers_entry_overrides_the_same_named_registry_entry() {
+        let registry = BTreeMap::from([
+            ("aws-mcp".to_string(), aws_mcp_registry_entry()),
+            (
+                "other-mcp".to_string(),
+                McpServerDef {
+                    command: Some("other".to_string()),
+                    ..Default::default()
+                },
+            ),
+        ]);
+        let mut kiro_servers = indexmap::IndexMap::new();
+        kiro_servers.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("kiro-specific".to_string()),
+                ..Default::default()
+            },
+        );
+        let kiro = KiroCliConfig {
+            mcp_servers: kiro_servers,
+            ..Default::default()
+        };
+
+        let file = transform_and_read_agent(
+            "mcp-registry-override",
+            agent_with_mcp_registry("k-developer", kiro, registry),
+        );
+
+        let servers = file["mcpServers"].as_object().unwrap();
+        assert_eq!(
+            servers.keys().collect::<Vec<_>>(),
+            ["aws-mcp", "other-mcp"],
+            "the kiroCli entry replaces the registry entry in place"
+        );
+        assert_eq!(servers["aws-mcp"]["command"], "kiro-specific");
+        assert_eq!(servers["aws-mcp"]["args"], serde_json::json!([]));
     }
 }

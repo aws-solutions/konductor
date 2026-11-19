@@ -1,0 +1,141 @@
+{
+  "output": "docs/multi-currency-plan.md",
+  "block": "breakdown",
+  "assertions": [
+    {
+      "id": "migration-file",
+      "desc": "plan names the new price-record migration",
+      "op": "includes",
+      "path": "files_to_change",
+      "ids": [
+        "db/migrations/005_add_product_prices.sql"
+      ]
+    },
+    {
+      "id": "read-files",
+      "desc": "plan names the repository, service, and route read paths",
+      "op": "includes",
+      "path": "files_to_change",
+      "ids": [
+        "src/storage/product-repository.js",
+        "src/services/catalog-service.js",
+        "src/http/products-route.js"
+      ]
+    },
+    {
+      "id": "cache-file",
+      "desc": "plan names the product cache",
+      "op": "includes",
+      "path": "files_to_change",
+      "ids": [
+        "src/cache/product-cache.js"
+      ]
+    },
+    {
+      "id": "all-renderers",
+      "desc": "plan names both non-API price renderers",
+      "op": "includes",
+      "path": "files_to_change",
+      "ids": [
+        "src/export/products-csv.js",
+        "src/notifications/price-email.js"
+      ]
+    },
+    {
+      "id": "shared-helper",
+      "desc": "plan names the shared product test helper",
+      "op": "includes",
+      "path": "files_to_change",
+      "ids": [
+        "tests/helpers/product-fixture.js"
+      ]
+    },
+    {
+      "id": "legacy-excluded",
+      "desc": "dead legacy pricing module is left alone",
+      "op": "excludes",
+      "path": "files_to_change",
+      "ids": [
+        "src/legacy/pricing-legacy.js"
+      ]
+    },
+    {
+      "id": "migration-before-read",
+      "desc": "storage migration precedes repository reads",
+      "op": "order",
+      "path": "change_order",
+      "ids": [
+        "db/migrations/005_add_product_prices.sql",
+        "src/storage/product-repository.js"
+      ]
+    },
+    {
+      "id": "read-before-cache",
+      "desc": "repository read work precedes cache isolation",
+      "op": "order",
+      "path": "change_order",
+      "ids": [
+        "src/storage/product-repository.js",
+        "src/cache/product-cache.js"
+      ]
+    },
+    {
+      "id": "read-before-export",
+      "desc": "repository read work precedes the partner export",
+      "op": "order",
+      "path": "change_order",
+      "ids": [
+        "src/storage/product-repository.js",
+        "src/export/products-csv.js"
+      ]
+    },
+    {
+      "id": "read-before-email",
+      "desc": "repository read work precedes the price notification",
+      "op": "order",
+      "path": "change_order",
+      "ids": [
+        "src/storage/product-repository.js",
+        "src/notifications/price-email.js"
+      ]
+    },
+    {
+      "id": "files-precise",
+      "desc": "file list is focused on the implementation",
+      "op": "precision",
+      "path": "files_to_change",
+      "ids": [
+        "db/migrations/005_add_product_prices.sql",
+        "docs/data-dictionary.md",
+        "src/storage/product-repository.js",
+        "src/services/catalog-service.js",
+        "src/http/serializers/product.js",
+        "src/services/money.js",
+        "tests/unit/money.test.js",
+        "src/config.js",
+        "src/cache/product-cache.js",
+        "tests/unit/cache.test.js",
+        "src/export/products-csv.js",
+        "tests/integration/export.test.js",
+        "src/notifications/price-email.js",
+        "tests/integration/price-email.test.js",
+        "tests/helpers/product-fixture.js",
+        "tests/fixtures/products.json",
+        "src/validation/currency.js",
+        "src/http/products-route.js",
+        "tests/integration/products-route.test.js",
+        "tests/unit/catalog-service.test.js"
+      ],
+      "min": 0.7,
+      "maxCount": 24
+    },
+    {
+      "id": "workday-total",
+      "desc": "total estimate follows the team guide",
+      "op": "number",
+      "path": "total_estimate_days",
+      "value": 17.0,
+      "tolPct": 20
+    }
+  ]
+}

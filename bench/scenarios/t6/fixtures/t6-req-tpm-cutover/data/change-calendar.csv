@@ -1,0 +1,18 @@
+Date,Type,Description,Owner,Freeze Window,Duration (hours),Notes
+2025-01-15,Freeze,Quarterly financial close,Finance Team,18:00-06:00 UTC,12,No changes to billing systems
+2025-01-20,Maintenance,Database upgrade,Platform,22:00-04:00 UTC,6,Affects order history
+2025-02-10,Freeze,Board meeting prep,Exec Team,00:00-24:00 UTC,24,All changes require VP approval
+2025-02-15,Event,Marketing campaign launch,Marketing,20:00-02:00 UTC,6,High traffic expected
+2025-03-01,Freeze,Q1 end close,Finance Team,18:00-06:00 UTC,12,No financial system changes
+2025-03-15,Maintenance,Network upgrade,Infrastructure,22:00-06:00 UTC,8,Potential connectivity issues
+2025-03-20,Freeze,Audit period,Compliance,00:00-24:00 UTC,24,All changes logged and reviewed
+2025-04-01,Event,Product launch,Product Team,14:00-22:00 UTC,8,Critical systems must be stable
+2025-04-15,Freeze,Tax filing,Finance Team,00:00-24:00 UTC,24,Absolute freeze - no exceptions
+2025-04-20,Maintenance,CDN refresh,Platform,01:00-04:00 UTC,3,Minor impact expected
+2025-04-25,Window,Migration candidate,Project Apex,20:00-04:00 UTC,8,Tentative cutover window
+2025-04-26,Window,Migration backup,Project Apex,20:00-04:00 UTC,8,Backup date if 25th fails
+2025-05-01,Freeze,May Day holiday,Company,00:00-24:00 UTC,24,EMEA team unavailable
+2025-05-10,Maintenance,Monitoring upgrade,Platform,22:00-02:00 UTC,4,Alerting may be delayed
+2025-05-15,Freeze,Q2 mid-review,Exec Team,08:00-20:00 UTC,12,Reduced change capacity
+2025-06-15,Deadline,RabbitMQ contract ends,Vendor,23:59 UTC,N/A,Must be migrated by this date
+2025-06-30,Deadline,Compliance deadline,Legal,23:59 UTC,N/A,New data retention policy effective

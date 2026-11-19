@@ -1,0 +1,31 @@
+{
+ "id": "t2-dr-search-reindex",
+ "reference": {
+  "score": 100,
+  "checks": [
+   "pass tests 20/20",
+   "pass file_exists",
+   "pass cmd",
+   "pass cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
+ "stub": {
+  "score": 7.1,
+  "checks": [
+   "FAIL tests 0/20",
+   "FAIL file_exists",
+   "FAIL cmd",
+   "FAIL cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
+ "gates": {
+  "reference": true,
+  "referenceAllChecks": true,
+  "stub": true,
+  "repeatable": true
+ }
+}

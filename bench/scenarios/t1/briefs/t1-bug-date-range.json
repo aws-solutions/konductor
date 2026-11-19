@@ -1,0 +1,16 @@
+{
+  "id": "t1-bug-date-range",
+  "phase": "bugfix",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/moment/luxon",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: bug fix. Role: developer. Repo kind: a Node.js 24 room-booking service with no dependencies (bookings, availability, a report module, a small date helper module, tests, CI config, docs). About 30 files. Inspiration (a bug class only, nothing copied): public date libraries have repeatedly fixed defects in inclusive and exclusive range ends, month arithmetic at month ends, and daylight saving shifts. Build a task where the owner reports the symptoms the way a support engineer would (a booking that ends at midnight blocks the next day, a month report that misses the 31st, a stay across a clock change is a night short), with no diagnosis. The code should hold two or three separate defects that interact, one of them subtle. Visible tests must pass today and not point at the defects."
+}

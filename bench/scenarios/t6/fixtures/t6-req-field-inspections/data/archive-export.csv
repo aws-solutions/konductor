@@ -1,0 +1,5 @@
+record_id,asset_tag,completed_date,retention_class,hold,timezone
+A-991,PS-018,2020-04-19,operational,no,America/Chicago
+A-992,IN-007,2020-04-22,operational,no,America/Chicago
+A-993,CL-003,2020-05-02,operational,yes,America/Chicago
+A-994,HY-044,2020-05-11,operational,no,America/Chicago

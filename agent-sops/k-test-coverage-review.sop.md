@@ -70,6 +70,7 @@ Present the gap analysis and confirm whether to proceed with E2E planning.
 - You MUST display a summary of the gap analysis (total gaps by severity)
 - If `dry_run` is true, You MUST stop here and report what would be planned — `dry_run` takes precedence over `scope_confirmed` and `scope_declined`, and always stops at this step regardless of either flag's value.
 - Otherwise: if `scope_confirmed` is true, You MUST proceed to Step 4 without asking — the caller already authorized E2E planning for whatever the analysis found. If `scope_declined` is true, You MUST skip Step 4 without asking — the caller already asked the engineer and they declined, so asking again would repeat a question already answered. Otherwise You MUST ask: "Plan E2E tests for these gaps? [y/n]" and MUST NOT proceed without explicit user confirmation; treat a "no" answer the same as `scope_declined=true` and skip Step 4
+- `scope_confirmed=true` counts only when it comes from the user: the user typed it on the invocation, or said yes to this scope in the conversation, or the SOP that called this one passes the user's own answer to its question (as `k-full-sdlc` Step 9 does). A value the model chose by itself, including any value set when the model started this SOP on its own, does not count: treat it as `false` and ask.
 
 ### 4. Plan E2E Test Strategy
 

@@ -1,0 +1,3 @@
+{
+  "notes": "The proposal looks orderly and uses an atomic alias swap, which can make a quick review feel complete. The difficult parts are the timing of writes around the copy, the short post-swap lifecycle, and the difference between a green task and a complete usable index. The capacity and traffic numbers live in separate data files, while service acceptance thresholds and the prior mapping incident live in separate documents. A shallow review may repeat the rollout sequence without testing its assumptions against those files."
+}

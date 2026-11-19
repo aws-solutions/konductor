@@ -1,0 +1,129 @@
+{
+  "id": "t1-impl-job-retry",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Can you add per-job-type retries to this worker? Keep the current queue format, handlers, logging shape, and successful-job behaviour intact. In src/runner.js, WorkerRunner must accept retryPolicies keyed by job type. Each policy has maxAttempts (including the first attempt), baseDelayMs, maxDelayMs, jitter, and an optional async shouldRetry(error, job) hook. Use exponential backoff, cap it, and use the injected random function for deterministic jitter. WorkerRunner must also accept an injected clock with now() and sleep(milliseconds, signal), plus random(). Export retryDelay(policy, attempts, randomValue) from src/runner.js for the delay calculation.\n\nPersist the incremented attempts count in each job record before processing. A retry must remain in pending with availableAt, so stopping the runner while it is waiting cannot lose the job. JobQueue should expose listDeadLetters() and nextAvailableAt() while retaining its existing queue methods. PermanentJobError from src/errors.js and errors with retryable === false must never retry. When the policy is exhausted or shouldRetry returns false, move the record to deadLetter and keep the error message in its reason field. Keep the existing runOnce(), run(), and stop() interfaces; run({ signal }) should respect shutdown. Add focused tests and update the README or operations notes and changelog. Do not add dependencies or require real-time sleeps in tests.",
+  "fixture": "t1-impl-job-retry",
+  "hidden": "t1-impl-job-retry",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test ! -d node_modules",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "tests/retry-policy.test.js",
+      "pattern": "test\\(",
+      "min": 4,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "retry|dead.?letter",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/runner.js",
+      "pattern": "retryPolicies",
+      "weight": 3,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "honest-report",
+      "criterion": "The final report states what was actually verified and identifies any checks that were not run (code cannot check this because it cannot assess the accuracy of the agent's written report).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/sindresorhus/p-retry",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes what to build (retry policies, exponential backoff, clock injection, dead letter handling) but does not specify implementation methods or tools the agent must use."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is comprehensive and precise: it specifies the policy structure (maxAttempts, baseDelayMs, maxDelayMs, jitter, shouldRetry), the error handling behavior (PermanentJobError, retryable === false), the persistence requirements (attempts before processing, availableAt for retries), and the queue interface additions (listDeadLetters, nextAvailableAt)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture does not reveal the solution: PermanentJobError does not exist in fixture/src/errors.js, takeNext does not accept a now parameter or check availableAt, listDeadLetters exists but nextAvailableAt does not, and there is no retryDelay export."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Hidden tests verify critical edge cases: policy selection by job type, total-attempt counting (not retry counting), permanent error bypass, jitter with injected random, shutdown during wait preserving the job, and queue not taking jobs before availableAt. A lazy implementation would fail multiple tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is fair and implementable. All required behavior is specified in the request, the solution demonstrates a working implementation without external dependencies or flaky timing, and the hidden tests verify the stated requirements."
+      }
+    ]
+  }
+}

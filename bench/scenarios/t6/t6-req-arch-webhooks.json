@@ -1,0 +1,212 @@
+{
+  "id": "t6-req-arch-webhooks",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "architect",
+  "questions": "scripted",
+  "prompt": "We want outbound webhooks for Ledgerline Payments, and I need a requirements document an architect can design from. Read the project material, reconcile the current event module with the rest of the material, and capture the behavior and open decisions clearly. Put the result at docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "peak",
+          "throughput",
+          "events per minute",
+          "events/minute"
+        ],
+        "answer": "Plan for a sustained peak of 2,400 events per minute per account, with bursts up to 4,000 events per minute per account."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "delivery guarantee",
+          "at-least-once",
+          "duplicate",
+          "idempotency",
+          "deduplicate",
+          "stable event id"
+        ],
+        "answer": "Delivery is at-least-once. Keep a stable event ID for 30 days so consumers can deduplicate; retries must never create a new event ID."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "retry",
+          "backoff",
+          "redeliver",
+          "retry window",
+          "how long delivery"
+        ],
+        "answer": "Retry for 48 hours with exponential backoff and stop after that window; expose the final failure."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "signature",
+          "hmac",
+          "key rotation",
+          "signing key",
+          "rotate keys"
+        ],
+        "answer": "Sign every request with HMAC-SHA256. Keep the previous signing key valid for a 7-day overlap after rotation."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "ordering",
+          "order of events",
+          "sequence",
+          "out of order"
+        ],
+        "answer": "Guarantee ordering per account and endpoint for events in the same stream, but make no ordering promise across streams."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "data residency",
+          "region",
+          "europe",
+          "cross-border",
+          "residency",
+          "european"
+        ],
+        "answer": "A customer in the EU may only send webhook payloads to an endpoint hosted in the EU; do not transfer those payloads outside the EU."
+      },
+      {
+        "id": "F7",
+        "topics": [
+          "endpoint verification",
+          "challenge",
+          "verify endpoint",
+          "activation",
+          "ownership"
+        ],
+        "answer": "Require HTTPS endpoint verification with a signed challenge before activation; reject activation until the challenge returns the expected token."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-arch-webhooks",
+  "hidden": "t6-req-arch-webhooks",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 13,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\"); const t=fs.readFileSync(\"docs/requirements.md\",\"utf8\"); const m=[...t.matchAll(/```json[^\\n]*\\n([\\s\\S]*?)\\n\\s*```/g)]; const b=JSON.parse(m.at(-1)[1]); if(!Array.isArray(b.requirements)||b.requirements.length<5||b.requirements.some(r=>!r.id)) process.exit(1)'",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "assumptions|open points",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "RUBRIC-QUALITY",
+      "criterion": "Requirements are specific enough to guide an implementation, separate customer-visible guarantees from implementation choices, and preserve the important constraints and gaps in the source material (code cannot check this because it requires judging technical precision and usefulness).",
+      "weight": 2
+    },
+    {
+      "id": "RUBRIC-COHERENCE",
+      "criterion": "The document is coherent for an architect: related delivery, security, lifecycle, ordering, and residency rules do not contradict one another, and assumptions or unresolved decisions are clearly bounded (code cannot check this because it requires reading the document as a whole).",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "design-doc-guidelines",
+    "decision-research"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:design-doc-guidelines",
+      "skill:decision-research"
+    ],
+    "mustNotLoad": [
+      "skill:external-research",
+      "skill:requirements-extraction"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/standard-webhooks/standard-webhooks",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "fixed",
+        "note": "Reviewer passed it; the lead removed \"regional\" (and the list of constraint areas) from the prompt because it pointed at the data-residency fact."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly states what to deliver (requirements document at docs/requirements.md with specific JSON block format). Hidden tests check for content that matches the scripted facts, and the facts' topics are intuitive (e.g., 'throughput', 'retry', 'signature')."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires gathering information from many fixture files and asking targeted questions to unlock 7 non-obvious facts (e.g., 2,400/4,000 events per minute, 48-hour retry window, 7-day key overlap). A quick answer would miss most facts and fail tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All facts have discoverable topics that match natural questions a person would ask. The reference solution passes all 13 hidden tests. No impossible requirements or unfair constraints detected."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains event names (from code), SLO values (99.9%, 60s), and security constraints (TLS, no card data in logs), but the critical webhook contract details (throughput, retry window, ordering, key rotation, etc.) are only in scripted facts. The event-volume CSV shows peak_per_second values (31-38) that don't match the scripted answer (2,400-4,000/minute = 40-67/second), so guessing from fixture would fail."
+      }
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "output": "docs/program-brief.md",
+  "block": "program",
+  "assertions": [
+    {
+      "id": "identity-ticket",
+      "desc": "Names the shared identity dependency ticket",
+      "op": "includes",
+      "path": "shared_dependencies",
+      "ids": [
+        "REQ-012"
+      ]
+    },
+    {
+      "id": "identity-owner",
+      "desc": "Names the single identity service owner",
+      "op": "includes",
+      "path": "shared_dependencies",
+      "ids": [
+        "Identity Services"
+      ]
+    },
+    {
+      "id": "shared-dep-in-workstreams",
+      "desc": "A workstream depends on the shared identity ticket",
+      "op": "cites",
+      "path": "workstreams",
+      "field": "depends_on",
+      "ids": [
+        "REQ-012"
+      ]
+    },
+    {
+      "id": "roadmap-teams",
+      "desc": "Names both teams in the roadmap conflict",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "between",
+      "ids": [
+        "Atlas",
+        "Beacon"
+      ],
+      "min": 2
+    },
+    {
+      "id": "conflict-precision",
+      "desc": "Keeps the conflicts list focused on the seeded conflict",
+      "op": "precision",
+      "path": "conflicts",
+      "field": "between",
+      "ids": [
+        "Atlas",
+        "Beacon"
+      ],
+      "min": 0.5,
+      "maxCount": 3
+    },
+    {
+      "id": "staffing-gap",
+      "desc": "Reports the engineering staffing gap",
+      "op": "number",
+      "path": "headcount_gap",
+      "value": 3,
+      "tol": 0
+    },
+    {
+      "id": "retention-constraint",
+      "desc": "Carries the audit retention floor",
+      "op": "includes",
+      "path": "constraints",
+      "ids": [
+        "365 days"
+      ]
+    },
+    {
+      "id": "auth-constraint",
+      "desc": "Carries the required sign-in constraint",
+      "op": "includes",
+      "path": "constraints",
+      "ids": [
+        "OIDC"
+      ]
+    },
+    {
+      "id": "final-milestone-date",
+      "desc": "Dates the all-teams checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        "2027-08-27"
+      ]
+    },
+    {
+      "id": "feature-flag-decoy",
+      "desc": "Does not turn the out-of-scope high-vote request into a workstream",
+      "op": "absent",
+      "path": "workstreams",
+      "ids": [
+        "REQ-068"
+      ]
+    },
+    {
+      "id": "decoy-out-of-scope",
+      "desc": "Lists the high-vote request as out of scope",
+      "op": "includes",
+      "path": "out_of_scope",
+      "ids": [
+        "REQ-068"
+      ]
+    }
+  ]
+}

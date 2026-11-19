@@ -1,0 +1,5 @@
+{
+  "dataFile": "data/bookings.json",
+  "defaultRoom": "cedar-1",
+  "reportLocale": "en-GB"
+}

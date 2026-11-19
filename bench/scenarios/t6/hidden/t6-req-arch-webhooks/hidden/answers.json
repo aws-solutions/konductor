@@ -1,0 +1,9 @@
+[
+  "Plan for a sustained peak of 2,400 events per minute per account, with bursts up to 4,000 events per minute per account.",
+  "Delivery is at-least-once. Keep a stable event ID for 30 days so consumers can deduplicate; retries must never create a new event ID.",
+  "Retry for 48 hours with exponential backoff and stop after that window; expose the final failure.",
+  "Sign every request with HMAC-SHA256. Keep the previous signing key valid for a 7-day overlap after rotation.",
+  "Guarantee ordering per account and endpoint for events in the same stream, but make no ordering promise across streams.",
+  "A customer in the EU may only send webhook payloads to an endpoint hosted in the EU; do not transfer those payloads outside the EU.",
+  "Require HTTPS endpoint verification with a signed challenge before activation; reject activation until the challenge returns the expected token."
+]

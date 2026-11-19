@@ -1,0 +1,169 @@
+ticket_id,title,epic,status,created,points,labels,parent_id,depends_on,comments,owner
+PRJ-1001,Adjust workspace search,Compliance,Review,2027-04-10,1,platform,,,Follow up with design.,Talia
+PRJ-1002,Adjust retry handling,Messaging,Cancelled,2027-05-26,6,"security,cleanup",,,Small wording pass remains.,Talia
+PRJ-1003,Polish import summary,Compliance,Closed,2027-05-14,7,,,,Small wording pass remains.,Nora
+PRJ-1004,Clarify settings drawer,Data,In Progress,2027-04-08,5,data,,,Estimate adjusted from 8 to 5 after splitting 3 points to PRJ-1019.,Nora
+PRJ-1005,Update export history,Billing,Open,2027-05-02,5,api,,,No external dependency.,Mira
+PRJ-1006,Refresh retry handling,Collaboration,Open,2027-04-19,3,"data,cleanup",,,Small wording pass remains.,Ravi
+PRJ-1007,Update error details,Collaboration,Review,2027-04-07,3,,,,Follow up with design.,Eli
+PRJ-1008,Enable account export permission,Access,In Progress,2027-05-10,3,"security,customer",,,Requested for an account with an existing export workflow.,Mira
+PRJ-1009,Polish import summary,Access,Open,2027-04-17,5,api,,,No external dependency.,Nora
+PRJ-1010,Add empty state,Onboarding,Cancelled,2027-05-13,4,security,,,Small wording pass remains.,Ravi
+PRJ-1011,Validate member table,Messaging,Review,2027-04-18,8,"docs,small",,,No external dependency.,Jon
+PRJ-1012,Simplify import summary,Messaging,Open,2027-04-03,8,data,,,Small wording pass remains.,Talia
+PRJ-1013,Track member table,Access,Review,2027-04-24,3,data,,,No external dependency.,Ravi
+PRJ-1014,Track notification copy,Messaging,Closed,2027-05-15,3,platform,,,Check the old behavior before merging.,Mira
+PRJ-1015,Simplify activity feed,Onboarding,Open,2027-05-06,8,ui,,,Small wording pass remains.,Talia
+PRJ-1016,Review import summary,Messaging,Closed,2027-05-31,7,ops,,,No external dependency.,Nora
+PRJ-1017,Tune settings drawer,Messaging,Open,2027-04-09,2,ops,,,Check the old behavior before merging.,Nora
+PRJ-1018,Refresh date selector,Access,Open,2027-04-02,5,quality,,,Check the old behavior before merging.,Talia
+PRJ-1019,Handle retry state after import split,Data,In Progress,2027-05-13,3,bugfix,PRJ-1004,,Split follow-up for the import retry issue.,Ravi
+PRJ-1020,Tune audit view,Platform,In Progress,2027-04-18,6,api,,,Acceptance notes are in the ticket.,Eli
+PRJ-1021,Add role picker,Platform,Open,2027-04-13,1,ui,,,,Jon
+PRJ-1022,Handle notification copy,Platform,Open,2027-04-19,3,quality,,,Estimate adjusted from 5 to 3 after splitting 2 points to PRJ-1073.,Ravi
+PRJ-1023,Refresh import summary,Onboarding,In Progress,2027-04-25,7,platform,,,,Mira
+PRJ-1024,Simplify settings drawer,Data,Open,2027-05-06,3,platform,,,,Jon
+PRJ-1025,Validate member table,Billing,Review,2027-05-02,1,ui,,,Acceptance notes are in the ticket.,Nora
+PRJ-1026,Handle empty state,Access,Open,2027-04-17,1,security,,,No external dependency.,Mira
+PRJ-1027,Refresh workspace search,Onboarding,Review,2027-04-10,6,"quality,q2",,,Small wording pass remains.,Ravi
+PRJ-1028,Support empty state,Billing,Review,2027-04-29,2,,,,No external dependency.,Talia
+PRJ-1029,Clarify date selector,Data,In Progress,2027-04-17,6,data,,,No external dependency.,Mira
+PRJ-1030,Tune quota panel,Messaging,In Progress,2027-04-05,,data,,,Check the old behavior before merging.,Talia
+PRJ-1031,Add audit event filters,Compliance,Open,2027-05-12,5,observability,,,The audit view needs filters for the requested review workflow.,Nora
+PRJ-1032,Track notification copy,Access,In Progress,2027-04-26,1,platform,,,Check the old behavior before merging.,Mira
+PRJ-1033,Clarify retry handling,Compliance,Closed,2027-05-11,6,data,,,Acceptance notes are in the ticket.,Mira
+PRJ-1034,Clarify webhook status,Access,In Progress,2027-04-30,7,data,,,Acceptance notes are in the ticket.,Jon
+PRJ-1035,Validate role picker,Access,Open,2027-04-16,,security,,,No external dependency.,Mira
+PRJ-1036,Refresh audit view,Access,Open,2027-04-02,,security,,,No external dependency.,Talia
+PRJ-1037,Validate empty state,Billing,Open,2027-04-09,2,docs,,,Follow up with design.,Ravi
+PRJ-1038,Tune retry handling,Onboarding,Open,2027-05-05,7,ui,,,No external dependency.,Ravi
+PRJ-1039,Update empty state,Onboarding,Review,2027-04-18,5,quality,,,No external dependency.,Eli
+PRJ-1040,Simplify retry handling,Billing,Open,2027-04-13,5,api,,,Check the old behavior before merging.,Mira
+PRJ-1041,Refresh audit view,Billing,In Progress,2027-04-16,6,data,,,Check the old behavior before merging.,Ravi
+PRJ-1042,Tune error details,Platform,Open,2027-04-27,2,platform,,,,Talia
+PRJ-1043,Clarify date selector,Onboarding,In Progress,2027-04-24,1,ops,,,Small wording pass remains.,Eli
+PRJ-1044,Adjust settings drawer,Access,Review,2027-04-19,,docs,,,,Mira
+PRJ-1045,Simplify member table,Data,In Progress,2027-05-01,4,platform,,,,Mira
+PRJ-1046,Polish permission summary panel,Access,Open,2027-04-22,7,"stretch,ui",,,A small presentation pass for the permission summary.,Mira
+PRJ-1047,Update export history,Data,Cancelled,2027-05-23,3,,,,,Jon
+PRJ-1048,Support member table,Compliance,Closed,2027-05-11,2,docs,,,,Talia
+PRJ-1049,Handle role picker,Billing,Open,2027-05-02,3,api,,,,Nora
+PRJ-1050,Support retry handling,Access,Open,2027-04-06,3,docs,,,Check the old behavior before merging.,Jon
+PRJ-1051,Expose export history,Platform,Open,2027-04-07,6,api,,,No external dependency.,Mira
+PRJ-1052,Clarify settings drawer,Collaboration,In Progress,2027-04-05,6,"quality,small",,,Follow up with design.,Ravi
+PRJ-1053,Clarify export history,Platform,Review,2027-05-02,6,"ops,cleanup",,,Acceptance notes are in the ticket.,Mira
+PRJ-1054,Polish import summary,Access,Cancelled,2027-05-23,3,platform,,,,Jon
+PRJ-1055,Track workspace search,Onboarding,Open,2027-04-15,2,api,,,Follow up with design.,Nora
+PRJ-1056,Review import summary,Collaboration,Closed,2027-05-14,7,security,,,Follow up with design.,Nora
+PRJ-1057,Update notification copy,Collaboration,Open,2027-04-22,7,docs,,,No external dependency.,Mira
+PRJ-1058,Simplify import summary,Compliance,Open,2027-04-14,6,security,,,,Talia
+PRJ-1059,Expose activity feed,Onboarding,Open,2027-05-02,4,quality,,,Acceptance notes are in the ticket.,Ravi
+PRJ-1060,Update import summary,Collaboration,Closed,2027-05-28,4,quality,,,Check the old behavior before merging.,Eli
+PRJ-1061,Tune workspace search,Platform,Open,2027-04-01,8,quality,,,No external dependency.,Mira
+PRJ-1062,Add empty state,Onboarding,Closed,2027-05-09,5,,,,Check the old behavior before merging.,Ravi
+PRJ-1063,Review settings drawer,Messaging,In Progress,2027-04-23,7,platform,,,Check the old behavior before merging.,Mira
+PRJ-1064,Validate bulk member invitations,Onboarding,In Progress,2027-05-14,8,"admin,scope-added",,,Reject duplicate and expired invitations before sending.,Talia
+PRJ-1065,Support notification copy,Compliance,Open,2027-04-23,6,docs,,,No external dependency.,Nora
+PRJ-1066,Handle member table,Data,Cancelled,2027-05-14,4,quality,,,,Eli
+PRJ-1067,Expose import summary,Onboarding,Open,2027-05-03,4,quality,,,Check the old behavior before merging.,Nora
+PRJ-1068,Tune member table,Compliance,Closed,2027-05-26,6,ui,,,Follow up with design.,Ravi
+PRJ-1069,Track export history,Platform,In Progress,2027-04-10,3,,,,Check the old behavior before merging.,Nora
+PRJ-1070,Support quota panel,Collaboration,Open,2027-04-22,1,quality,,,Follow up with design.,Ravi
+PRJ-1071,Clarify workspace search,Collaboration,Review,2027-04-23,8,ops,,,Acceptance notes are in the ticket.,Jon
+PRJ-1072,Track audit view,Collaboration,Open,2027-04-11,6,"platform,small",,,Acceptance notes are in the ticket.,Eli
+PRJ-1073,Separate webhook retry bug follow-up,Platform,Open,2027-05-22,2,bugfix,PRJ-1022,,Split follow-up for the webhook retry issue.,Eli
+PRJ-1074,Clarify activity feed,Onboarding,In Progress,2027-04-19,5,quality,,,Small wording pass remains.,Ravi
+PRJ-1075,Update error details,Data,Open,2027-04-01,1,ops,,,Acceptance notes are in the ticket.,Jon
+PRJ-1076,Add retry handling,Data,Review,2027-04-05,1,"docs,cleanup",,,Acceptance notes are in the ticket.,Nora
+PRJ-1077,Simplify quota panel,Data,Open,2027-04-15,5,api,,,Follow up with design.,Nora
+PRJ-1078,Handle error details,Onboarding,In Progress,2027-04-09,7,platform,,,,Mira
+PRJ-1079,Handle empty state,Data,Review,2027-04-26,3,platform,,,No external dependency.,Jon
+PRJ-1080,Improve member table,Compliance,In Progress,2027-04-21,8,ui,,,No external dependency.,Mira
+PRJ-1081,Clarify error details,Messaging,Closed,2027-05-09,2,quality,,,No external dependency.,Mira
+PRJ-1082,Expose activity feed,Platform,Open,2027-04-29,7,"data,q2",,,Acceptance notes are in the ticket.,Talia
+PRJ-1083,Validate member table,Collaboration,Review,2027-04-02,7,"data,q2",,,,Nora
+PRJ-1084,Polish webhook status,Onboarding,Open,2027-04-04,4,docs,,,Follow up with design.,Talia
+PRJ-1085,Review export history,Collaboration,Cancelled,2027-05-31,6,ops,,,No external dependency.,Mira
+PRJ-1086,Adjust notification copy,Billing,In Progress,2027-05-06,3,api,,,Follow up with design.,Mira
+PRJ-1087,Polish error details,Collaboration,Cancelled,2027-05-13,1,platform,,,Follow up with design.,Nora
+PRJ-1088,Review audit view,Onboarding,Review,2027-04-13,3,docs,,,Check the old behavior before merging.,Eli
+PRJ-1089,Polish error details,Compliance,In Progress,2027-04-12,2,platform,,,Acceptance notes are in the ticket.,Ravi
+PRJ-1090,Track role picker,Messaging,Review,2027-04-05,3,api,,,No external dependency.,Ravi
+PRJ-1091,Update empty state,Data,Closed,2027-05-16,4,docs,,,No external dependency.,Jon
+PRJ-1092,Expose webhook status,Collaboration,Open,2027-04-04,7,ops,,,Small wording pass remains.,Talia
+PRJ-1093,Polish member table,Platform,In Progress,2027-04-29,3,data,,,Follow up with design.,Talia
+PRJ-1094,Add error details,Collaboration,Closed,2027-05-28,1,ops,,,Small wording pass remains.,Ravi
+PRJ-1095,Polish audit view,Compliance,Open,2027-04-21,8,docs,,,Check the old behavior before merging.,Ravi
+PRJ-1096,Expose webhook status,Onboarding,Review,2027-05-01,3,security,,,Follow up with design.,Mira
+PRJ-1097,Send mobile approval notice,Messaging,Open,2027-05-20,5,"messaging,scope-added",,,Use the existing approval notification template.,Jon
+PRJ-1098,Handle audit view,Access,In Progress,2027-04-30,7,"api,q2",,,Follow up with design.,Talia
+PRJ-1099,Review retry handling,Compliance,Closed,2027-05-31,1,ops,,,,Mira
+PRJ-1100,Refresh empty state,Billing,Closed,2027-05-12,4,ui,,,Acceptance notes are in the ticket.,Jon
+PRJ-1101,Expose workspace search,Data,Open,2027-04-12,3,data,,,,Eli
+PRJ-1102,Retain approval audit trail,Compliance,Open,2027-04-26,4,"must-have,api",,PRJ-1046,The release audit record needs the permission summary data.,Nora
+PRJ-1103,Track role picker,Messaging,Cancelled,2027-06-01,3,ui,,,Acceptance notes are in the ticket.,Jon
+PRJ-1104,Track role picker,Messaging,In Progress,2027-04-27,3,ops,,,Check the old behavior before merging.,Jon
+PRJ-1105,Handle error details,Platform,In Progress,2027-05-03,1,ui,,,Small wording pass remains.,Mira
+PRJ-1106,Tune workspace search,Data,Review,2027-04-08,6,ops,,,Check the old behavior before merging.,Ravi
+PRJ-1107,Validate export history,Compliance,Open,2027-05-05,3,,,,Acceptance notes are in the ticket.,Nora
+PRJ-1108,Track member table,Billing,Open,2027-04-22,4,ops,,,Check the old behavior before merging.,Eli
+PRJ-1109,Handle quota panel,Platform,Open,2027-05-05,7,quality,,,No external dependency.,Eli
+PRJ-1110,Review quota panel,Billing,Closed,2027-05-27,8,data,,,Acceptance notes are in the ticket.,Jon
+PRJ-1111,Validate role picker,Access,In Progress,2027-04-11,2,data,,,,Eli
+PRJ-1112,Refresh webhook status,Messaging,Open,2027-04-10,,platform,,,,Mira
+PRJ-1113,Update webhook status,Onboarding,Open,2027-04-12,2,data,,,Acceptance notes are in the ticket.,Jon
+PRJ-1114,Refresh legacy import help text,Data,Open,2027-04-30,5,"stretch,docs",,,Update examples in the legacy import help panel.,Ravi
+PRJ-1115,Validate member table,Data,Open,2027-04-11,3,quality,,,Acceptance notes are in the ticket.,Nora
+PRJ-1116,Expose quota panel,Access,In Progress,2027-04-19,5,docs,,,,Ravi
+PRJ-1117,Handle role picker,Billing,Open,2027-04-01,4,data,,,No external dependency.,Talia
+PRJ-1118,Polish webhook status,Compliance,In Progress,2027-04-24,5,ops,,,,Eli
+PRJ-1119,Add audit view,Billing,Open,2027-04-15,3,security,,,Small wording pass remains.,Eli
+PRJ-1120,Update activity feed,Billing,In Progress,2027-04-02,8,platform,,,Follow up with design.,Jon
+PRJ-1121,Validate role picker,Data,Closed,2027-05-17,4,ui,,,Small wording pass remains.,Talia
+PRJ-1122,Polish date selector,Messaging,Open,2027-04-22,1,security,,,Acceptance notes are in the ticket.,Talia
+PRJ-1123,Refresh role picker,Compliance,Open,2027-04-18,4,platform,,,Check the old behavior before merging.,Ravi
+PRJ-1124,Track member table,Billing,Closed,2027-05-21,2,ops,,,Small wording pass remains.,Nora
+PRJ-1125,Validate retry handling,Platform,Closed,2027-05-09,5,security,,,Check the old behavior before merging.,Nora
+PRJ-1126,Support quota panel,Messaging,Open,2027-04-24,,data,,,Check the old behavior before merging.,Eli
+PRJ-1127,Update date selector,Access,Closed,2027-05-26,1,ops,,,Acceptance notes are in the ticket.,Eli
+PRJ-1128,Configure regional retention settings,Compliance,In Progress,2027-05-27,5,compliance,,,Requested for regional retention configuration.,Nora
+PRJ-1129,Handle webhook status,Access,In Progress,2027-04-04,,api,,,No external dependency.,Nora
+PRJ-1130,Polish export history,Collaboration,Review,2027-04-21,4,security,,,Follow up with design.,Eli
+PRJ-1131,Clarify notification copy,Compliance,Open,2027-05-04,3,ops,,,Follow up with design.,Talia
+PRJ-1132,Expose role picker,Collaboration,In Progress,2027-05-03,7,"api,q2",,,No external dependency.,Jon
+PRJ-1133,Expose export history,Onboarding,In Progress,2027-04-21,1,"ui,q2",,,No external dependency.,Ravi
+PRJ-1134,Handle quota panel,Data,Cancelled,2027-05-20,6,data,,,Small wording pass remains.,Talia
+PRJ-1135,Improve date selector,Platform,In Progress,2027-04-20,4,docs,,,No external dependency.,Talia
+PRJ-1136,Add audit view,Billing,In Progress,2027-04-26,4,quality,,,Acceptance notes are in the ticket.,Eli
+PRJ-1137,Review notfication copy,Access,In Progress,2027-05-01,6,data,,,Follow up with design.,Jon
+PRJ-1138,Add role picker,Platform,Review,2027-04-16,1,platform,,,Small wording pass remains.,Nora
+PRJ-1139,Support export history,Onboarding,Open,2027-04-16,3,api,,,Follow up with design.,Talia
+PRJ-1140,Add empty state,Messaging,Cancelled,2027-05-24,1,,,,Follow up with design.,Jon
+PRJ-1141,Support import summary,Messaging,Open,2027-04-03,2,quality,,,Check the old behavior before merging.,Eli
+PRJ-1142,Support webhook status,Collaboration,Closed,2027-05-25,,ui,,,,Talia
+PRJ-1143,Tune settings drawer,Onboarding,Open,2027-04-19,4,security,,,Small wording pass remains.,Ravi
+PRJ-1144,Support empty state,Messaging,Open,2027-04-12,4,security,,,Small wording pass remains.,Nora
+PRJ-1145,Track import summary,Messaging,Open,2027-05-05,2,"ui,cleanup",,,Small wording pass remains.,Mira
+PRJ-1146,Add quota panel,Platform,Open,2027-04-13,2,data,,,Small wording pass remains.,Jon
+PRJ-1147,Simplify export history,Messaging,Review,2027-04-08,4,ops,,,Small wording pass remains.,Mira
+PRJ-1148,Tune import summary,Billing,In Progress,2027-04-27,7,,,,Small wording pass remains.,Talia
+PRJ-1149,Simplify workspace search,Access,Open,2027-05-05,1,platform,,,Acceptance notes are in the ticket.,Jon
+PRJ-1150,Tune workspace search,Messaging,Open,2027-04-18,8,docs,,,Small wording pass remains.,Mira
+PRJ-1151,Track settings drawer,Messaging,Open,2027-04-19,4,,,,Check the old behavior before merging.,Mira
+PRJ-1152,Clarify quota panel,Onboarding,Cancelled,2027-05-25,6,"ui,cleanup",,,Acceptance notes are in the ticket.,Eli
+PRJ-1153,Review export history,Onboarding,Closed,2027-05-29,5,quality,,,Check the old behavior before merging.,Eli
+PRJ-1154,Track retry handling,Compliance,Open,2027-05-02,4,docs,,,Follow up with design.,Nora
+PRJ-1155,Refresh member table,Billing,Review,2027-04-24,5,ui,,,,Mira
+PRJ-1156,Show usage threshold alert,Billing,Open,2027-06-02,3,"billing,scope-added",,,Add a warning before a workspace reaches its usage threshold.,Jon
+PRJ-1157,Adjust export history,Data,In Progress,2027-05-01,7,"quality,cleanup",,,,Jon
+PRJ-1158,Review audit view,Onboarding,In Progress,2027-05-02,3,,,,,Nora
+PRJ-1159,Validate error details,Collaboration,Open,2027-04-10,7,docs,,,No external dependency.,Nora
+PRJ-1160,Adjust workspace search,Collaboration,Closed,2027-05-22,5,ui,,,Check the old behavior before merging.,Eli
+PRJ-1161,Support empty state,Platform,Open,2027-04-02,,security,,,Acceptance notes are in the ticket.,Eli
+PRJ-1162,Clean up old provisioning notes,Platform,Open,2027-05-04,7,"stretch,cleanup",,,Remove stale provisioning examples from the operator notes.,Eli
+PRJ-1163,Clarify error details,Platform,In Progress,2027-04-25,5,"quality,cleanup",,,Acceptance notes are in the ticket.,Nora
+PRJ-1164,Add notification copy,Access,Open,2027-04-21,,platform,,,Check the old behavior before merging.,Nora
+PRJ-1165,Tune audit view,Collaboration,Closed,2027-06-03,2,security,,,Small wording pass remains.,Nora
+PRJ-1166,Review role picker,Messaging,Open,2027-05-01,7,api,,,,Jon
+PRJ-1167,Review activity feed,Collaboration,Open,2027-04-24,2,,,,No external dependency.,Mira
+PRJ-1168,Tune date selector,Billing,Open,2027-04-27,1,"docs,cleanup",,,Follow up with design.,Jon

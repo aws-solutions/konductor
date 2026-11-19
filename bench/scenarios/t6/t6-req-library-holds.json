@@ -1,0 +1,239 @@
+{
+  "id": "t6-req-library-holds",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "scripted",
+  "prompt": "Mark here. We're adding online holds and waitlists for physical books and e-books across the county library service. I've gathered all the documents in this folder – circulation policies, branch info, patron survey, last month's holds data, e-book vendor license, board memo, accessibility statement, meeting notes, etc. I need you to write up the requirements for the new system. Focus on what it should do for patrons and staff, policy rules librarians know, and constraints from the board and technical team. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}. Put it in docs/requirements.md.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "answer": "After the board review, the final hold limits are: regular cards 12 items, student cards 15 items during school year, senior cards 10 items, children's cards 5 items, institutional cards 20 items with manager approval over 10.",
+        "topics": [
+          "hold limit",
+          "maximum holds",
+          "card type",
+          "how many items"
+        ]
+      },
+      {
+        "id": "F2",
+        "answer": "The pickup window is 7 days for all branches except North Hill which gets 10 days due to limited hours, and Central which stays at 7 days but allows after-hours pickup lockers.",
+        "topics": [
+          "pickup window",
+          "how many days",
+          "pickup time",
+          "collection period",
+          "when to pick up"
+        ]
+      },
+      {
+        "id": "F3",
+        "answer": "For children's cards under 12, parents must receive separate notifications by default, and can opt out only in person at the branch with ID verification.",
+        "topics": [
+          "children",
+          "parent",
+          "child account",
+          "under 12",
+          "minor",
+          "parental",
+          "kids",
+          "children's card"
+        ]
+      },
+      {
+        "id": "F4",
+        "answer": "E-book waitlists for One Copy One User titles have a 24-hour checkout window after notification, not 48 hours as in the vendor summary, and patrons get one automatic renewal if no one is waiting.",
+        "topics": [
+          "e-book",
+          "waitlist",
+          "checkout window",
+          "one copy one user",
+          "oco",
+          "ebook"
+        ]
+      },
+      {
+        "id": "F5",
+        "answer": "Notification channels priority: email primary, SMS backup for holds ready, phone call only for seniors who opt in and for institutional holds. All notifications must include pickup branch and deadline.",
+        "topics": [
+          "email",
+          "sms",
+          "phone call",
+          "alert",
+          "how notified",
+          "notification channel",
+          "how patrons are told",
+          "contacted"
+        ]
+      },
+      {
+        "id": "F6",
+        "answer": "The fines waiver starting March 1 applies only to holds placed after that date. Existing fines from before March 1 will still be collected but patrons can appeal for waiver if they use the new system within 60 days.",
+        "topics": [
+          "fines",
+          "waiver",
+          "March 1",
+          "policy change",
+          "old fines"
+        ]
+      },
+      {
+        "id": "F7",
+        "answer": "WCAG 2.1 AA compliance is required at launch for core hold placement and management. Advanced features like analytics dashboard have 6-month grace period but must meet basic accessibility immediately.",
+        "topics": [
+          "accessibility",
+          "wcag",
+          "compliance",
+          "when required",
+          "deadline"
+        ]
+      },
+      {
+        "id": "F8",
+        "answer": "All physical branches launch together in Phase 1. Bookmobile is Phase 2, scheduled for August 2024. School delivery service is excluded entirely – stays manual.",
+        "topics": [
+          "branches",
+          "bookmobile",
+          "excluded",
+          "not included",
+          "school delivery"
+        ]
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-library-holds",
+  "hidden": "t6-req-library-holds",
+  "timeoutSec": 3600,
+  "limits": {
+    "softSec": 1800,
+    "hardSec": 3600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 11,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "policy",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "grep -q '\"requirements\":' docs/requirements.md && tail -n 50 docs/requirements.md | grep -q '```'",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "assumptions",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/requirements.md",
+      "pattern": "R\\d+",
+      "min": 5,
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "R1",
+      "criterion": "Requirements show understanding of both patron needs and staff workflows, not just restating documents.",
+      "weight": 2
+    },
+    {
+      "id": "R2",
+      "criterion": "Clear distinction between mandatory requirements and optional enhancements.",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": "k-product-manager",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "agent:k-product-manager"
+    ],
+    "mustNotLoad": [
+      "skill:kiro-requirements-generation",
+      "skill:user-story-writing"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://www.gov.uk/service-manual/user-research/start-by-learning-user-needs",
+      "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "fixed",
+        "note": "The lead removed the prompt sentence inviting questions (a scripted task does not mention questions) and trimmed overbroad topics."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "Fix round tightened the wrong-value patterns that flagged correct statements; the reference now passes all 16 hidden tests. Earlier note: Hidden tests fail reference: regex /regular.*15/i incorrectly matches '15 items' (the correct value). Contradiction test too aggressive."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Task requires reading 8 fixture subdirs and asking 8 scripted facts; not a quick answer."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "Fix round tightened the wrong-value patterns that flagged correct statements; the reference now passes all 16 hidden tests. Earlier note: Reference fails 2 hidden tests: contradiction check (false positives on numbers in context) and question count (ASKS.json has 4 questions matching 8 facts, but test expects <=6 total)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Facts only in scriptedUser, fixture has 'under review' placeholders requiring clarification."
+      }
+    ]
+  }
+}

@@ -47,3 +47,11 @@ TMPDIR=/tmp nice -n 19 node bench/scenarios/t6/tools/dryrun.js [--write] [id ...
 The reference must score at least 95 and the stub (untouched fixture, no conversation) 20 or less, the same over 3
 repeats, on code parts only (hidden 0.5, checks 0.2). `--write` refreshes the hidden `doc-key.js` copies and
 `answers.json`. Unit tests: `node --test bench/runner/test/scenarios-t6-tools.test.js`.
+
+## Expert answer key
+
+Framing, ideation and planning tasks (the ones scored by a findings script, not the requirements tasks scored by
+hidden facts) carry `expertKey`: `items` (risks and trade-offs a good answer addresses, each with its public source
+by name, URL and licence) and 3 to 5 `weakAnswers`. It is for the judges only and sits inside the rubric share. The
+lead writes the keys in `tools/expert-keys.json`; `tools/stage.js` copies them into the task. Items do not repeat
+what a hidden test already checks. The judge does not read the key yet (DEBT D-62).

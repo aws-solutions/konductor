@@ -151,5 +151,40 @@
         "note": "Fixture contains raw data (backlog, calendar, emails, contract) but no explicit instruction to look for specific traps. The request does not reveal the answer, only the desired output format."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "hard-soft-constraints",
+        "text": "Separates hard constraints (the contractual date and contractual scope) from soft ones (leadership preferences, internal process) and treats them differently in the cut.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "plan-at-right-level",
+        "text": "Plans the next sprints in detail and later work at a high level, and says the plan will be revisited as the team learns, rather than fixing every sprint up front.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "objectives-measurable",
+        "text": "Ties the MVP to a small set of objectives with measurable results, so stakeholders can tell whether the launch scope does what it is meant to.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "dependencies-visible",
+        "text": "Makes cross-team or third-party dependencies visible in the plan and names who owns each, not only the dependencies inside the backlog file.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "deadline-focus",
+        "text": "With a fixed deadline, frames the roadmap around what can be delivered by that date and states what moves to after launch and when it is next reviewed.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Ask the team to work harder or add overtime to fit everything in.",
+      "Keep every must-have and hope velocity improves.",
+      "Cut the lowest-priority items until the points fit, without checking dependencies or the contract.",
+      "Move the launch date."
+    ]
   }
 }

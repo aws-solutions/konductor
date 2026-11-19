@@ -5,20 +5,20 @@
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
-  "prompt": "Hi, I'm Sarah from Finance. We're replacing our old emailed spreadsheet expense process with a proper system. I've put all the relevant documents in this folder – policy excerpts, last year's claims data, meeting notes, audit findings, vendor info. Could you read through it all and draft a requirements document for the new system? Focus on what it must do, not how to build it. We need something to give to vendors. Put the output in docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
+  "prompt": "Hi, I'm Sarah from Finance. We're replacing our old emailed spreadsheet expense process with a proper system. I've put all the relevant documents in this folder \u2013 policy excerpts, last year's claims data, meeting notes, audit findings, vendor info. Could you read through it all and draft a requirements document for the new system? Focus on what it must do, not how to build it. We need something to give to vendors. Put the output in docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}.",
   "scriptedUser": {
     "facts": [
       {
         "id": "F1",
         "topics": [
           "large claim",
-          "over £",
+          "over \u00a3",
           "threshold",
           "dual",
           "finance approver",
           "head of finance"
         ],
-        "answer": "For claims over £1,000, we need a second approver from Finance even if the first approver is at the right level. The Head of Finance can be the second approver for any claim over £1,000."
+        "answer": "For claims over \u00a31,000, we need a second approver from Finance even if the first approver is at the right level. The Head of Finance can be the second approver for any claim over \u00a31,000."
       },
       {
         "id": "F2",
@@ -30,7 +30,7 @@
           "no approver",
           "auto approve"
         ],
-        "answer": "Managers can approve their own expenses up to £100 without needing another approver. Over £100, it goes to their line manager or the Head of Finance if they have no line manager."
+        "answer": "Managers can approve their own expenses up to \u00a3100 without needing another approver. Over \u00a3100, it goes to their line manager or the Head of Finance if they have no line manager."
       },
       {
         "id": "F3",
@@ -55,7 +55,7 @@
           "meal",
           "daily maximum"
         ],
-        "answer": "The Youth Empowerment Programme grant has a £75 daily subsistence limit per person. The Community Engagement Programme allows £120 per night for accommodation but no more than £45 daily for food."
+        "answer": "The grant renewals changed the caps from April: the Youth Empowerment Programme grant now has a \u00a360 daily subsistence limit per person. The Community Engagement Programme allows \u00a395 per night for accommodation and no more than \u00a335 daily for food."
       },
       {
         "id": "F5",
@@ -218,7 +218,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "Fixture contains gaps: audit mentions 'missing delegation procedures' but no rule; claims data shows £1,000+ with single approver but no threshold; grants-list has restrictions but not daily caps; payment timing issues mentioned but not dates. Hidden tests require precise values not in fixture."
+        "note": "Fixture contains gaps: audit mentions 'missing delegation procedures' but no rule; claims data shows \u00a31,000+ with single approver but no threshold; grants-list has restrictions but not daily caps; payment timing issues mentioned but not dates. Hidden tests require precise values not in fixture."
       },
       {
         "check": "floor",
@@ -228,7 +228,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "Fixture contains partial information and hints but NOT the exact scripted facts (no £1,000 threshold, no £100 self-approval, no 10th/25th payment dates stated anywhere). Prompt explicitly says requirements 'must not contain any of the facts'."
+        "note": "Fixture contains partial information and hints but NOT the exact scripted facts (no \u00a31,000 threshold, no \u00a3100 self-approval, no 10th/25th payment dates stated anywhere). Prompt explicitly says requirements 'must not contain any of the facts'."
       }
     ]
   }

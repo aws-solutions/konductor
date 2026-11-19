@@ -1,0 +1,217 @@
+{
+  "t6-idea-churn-signal": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats the requested save offer as a proposed solution and restates the ask as a problem to solve (how to keep subscribers the business is losing), including what is not part of the problem.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-problem",
+        "text": "Puts a value on the problem (for example revenue or subscribers lost per month to failed payments) so the cost of each option can be weighed against it.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "hypothesis",
+        "text": "States the recommended test as a hypothesis: the change, the outcome it should move, and the assumption behind it, so the result can confirm or refute it.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "segments",
+        "text": "Looks at the loss by segment (plan, tenure, payment method or provider) rather than one overall average, or names segmentation as the next analysis.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "stop-is-allowed",
+        "text": "Says what result would mean stopping or not building the save offer, and treats stopping as a valid outcome rather than a failure.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "mixed-sources",
+        "text": "Combines analytics with qualitative evidence (interviews, support tickets) and says where they agree or conflict, rather than relying on one source.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Build the cancellation save offer with a discount for anyone who clicks cancel.",
+      "Price is the main reason people leave, because the survey says so.",
+      "Run an A/B test of discount sizes and pick the winner.",
+      "Improve onboarding and engagement to reduce churn in general."
+    ]
+  },
+  "t6-plan-mvp-cut": {
+    "items": [
+      {
+        "id": "hard-soft-constraints",
+        "text": "Separates hard constraints (the contractual date and contractual scope) from soft ones (leadership preferences, internal process) and treats them differently in the cut.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "plan-at-right-level",
+        "text": "Plans the next sprints in detail and later work at a high level, and says the plan will be revisited as the team learns, rather than fixing every sprint up front.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "objectives-measurable",
+        "text": "Ties the MVP to a small set of objectives with measurable results, so stakeholders can tell whether the launch scope does what it is meant to.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "dependencies-visible",
+        "text": "Makes cross-team or third-party dependencies visible in the plan and names who owns each, not only the dependencies inside the backlog file.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "deadline-focus",
+        "text": "With a fixed deadline, frames the roadmap around what can be delivered by that date and states what moves to after launch and when it is next reviewed.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Ask the team to work harder or add overtime to fit everything in.",
+      "Keep every must-have and hope velocity improves.",
+      "Cut the lowest-priority items until the points fit, without checking dependencies or the contract.",
+      "Move the launch date."
+    ]
+  },
+  "t6-idea-onboarding-dropoff": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats \"redesign onboarding\" as a proposed solution and restates the ask as the problem of people not completing signup, before choosing what to change.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-problem",
+        "text": "Puts a size on the problem (signups or customers lost per week since the change) so the effort of each option can be weighed against it.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "trend-not-snapshot",
+        "text": "Reads the drop against the weekly trend before and after the change rather than one before/after snapshot, and says what else changed in the same weeks.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "hypothesis",
+        "text": "States the recommended fix as a hypothesis (the change, the outcome it should move, the assumption) with a result that would show it was wrong.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "qualitative-confirms",
+        "text": "Uses user-reported evidence (reviews, support contacts) to confirm or question what the funnel numbers suggest, and says where they agree.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Redesign the onboarding screens to make them simpler and shorter.",
+      "Signups fell because of the analytics outage, so nothing really changed.",
+      "Add a progress bar and fewer form fields.",
+      "Run a round of user interviews before deciding anything."
+    ]
+  },
+  "t6-idea-arch-search": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats \"a proper search engine\" as a proposed solution and restates the ask as the problem of customers not finding parts, including what is out of scope.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "normalise-once",
+        "text": "Normalises part numbers once when they are stored (an indexed canonical key) and applies the same rule to the query, rather than cleaning text differently in each query.",
+        "source": "PostgreSQL documentation, 12.1 Introduction (full text search), https://www.postgresql.org/docs/current/textsearch-intro.html (PostgreSQL Licence)"
+      },
+      {
+        "id": "in-database-text-search",
+        "text": "Names the database's own full-text search (preprocessed, indexed documents with ranking) as a middle option for the smaller share of real text queries, before a separate engine.",
+        "source": "PostgreSQL documentation, 12.1 Introduction (full text search), https://www.postgresql.org/docs/current/textsearch-intro.html (PostgreSQL Licence)"
+      },
+      {
+        "id": "like-limits",
+        "text": "Notes why the current pattern-matching search falls short for text queries (no ranking, no index support, no handling of word forms), so the text-search share is not ignored.",
+        "source": "PostgreSQL documentation, 12.1 Introduction (full text search), https://www.postgresql.org/docs/current/textsearch-intro.html (PostgreSQL Licence)"
+      },
+      {
+        "id": "measure-by-segment",
+        "text": "Measures part-number lookups and text queries as separate segments with their own baselines, rather than one overall success rate.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "running-cost",
+        "text": "Weighs the ongoing cost of a new service (a second store to keep in sync, reindexing, on-call) against the size of the problem, not only the purchase price.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Buy a hosted search engine; the current search is old.",
+      "Add fuzzy matching to every query.",
+      "Train customers and support staff to type part numbers correctly.",
+      "Add more synonyms to the search."
+    ]
+  },
+  "t6-idea-pricing-test": {
+    "items": [
+      {
+        "id": "hypothesis-first",
+        "text": "States the hypothesis the pricing change was meant to test and judges the result against it, rather than against whichever metric moved.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "sample-and-duration",
+        "text": "Says whether the test had enough users and ran long enough for the expected change, and sets sample size and duration before the repeat test starts.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "other-outcomes",
+        "text": "Names outcomes the test did not measure that the change could harm (for example satisfaction, support contacts or longer-term retention) and how to watch them after release.",
+        "source": "GOV.UK, A/B testing: comparative studies (Evaluating digital health products), https://www.gov.uk/guidance/ab-testing-comparative-studies (OGL-3.0)"
+      },
+      {
+        "id": "significance",
+        "text": "Checks whether the difference is statistically significant, or says the evidence is inconclusive, before calling a winner.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Variant B won on paid conversion, so roll it out.",
+      "Roll out Variant B to half of users and see what happens.",
+      "The test is flawed, so drop the pricing change entirely.",
+      "Average the two results and ship the better one."
+    ]
+  },
+  "t6-idea-feature-bets": {
+    "items": [
+      {
+        "id": "cost-vs-value",
+        "text": "Weighs what each option costs to build and run against the value it brings, not the value side alone.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "objectives",
+        "text": "Ties the choice to the quarter's objectives and the measurable results those objectives name.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      },
+      {
+        "id": "success-measure",
+        "text": "Says how the chosen feature's success will be measured after release, with a current baseline and a target.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "mixed-sources",
+        "text": "Combines usage data with what customers and support say, and notes where the sources disagree.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "revisit",
+        "text": "Says when the choice will be revisited and what would make the team switch to another option.",
+        "source": "GOV.UK Service Manual, Planning in agile, https://www.gov.uk/service-manual/agile-delivery/planning-agile (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Build the feature with the most requests.",
+      "Build all three features in parallel.",
+      "Pick the option with the biggest revenue number in the sales sheet.",
+      "Ask customers to vote on the next feature."
+    ]
+  }
+}

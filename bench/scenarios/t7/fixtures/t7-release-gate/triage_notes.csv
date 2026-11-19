@@ -1,0 +1,7 @@
+ticket_id,triage_disposition,reviewer,note
+REL-105,active,Mira Sol,Keep in the release review.
+REL-112,active,Mira Sol,Keep in the release review.
+REL-118,active,Jon Bell,Keep in the release review.
+REL-131,active,Asha Nair,Keep in the release review.
+REL-145,demoted,Pavel Chen,Track in the normal maintenance queue.
+REL-153,demoted,Ruth Ives,Cancelled during scope review.

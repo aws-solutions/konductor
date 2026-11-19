@@ -1,0 +1,13 @@
+date,provider,domain,sent,bounced,delivered
+2025-01-20,Cloudmail,mail.harborlight.app,2200,19,2181
+2025-01-21,Cloudmail,verify.harborlight.app,2250,390,1860
+2025-01-22,Cloudmail,verify.harborlight.app,2310,521,1789
+2025-01-23,Cloudmail,verify.harborlight.app,2400,587,1813
+2025-01-24,Cloudmail,verify.harborlight.app,2380,602,1775
+2025-01-27,Cloudmail,verify.harborlight.app,2450,566,1884
+2025-01-28,Cloudmail,verify.harborlight.app,2470,571,1892
+2025-01-29,Cloudmail,verify.harborlight.app,2500,592,1908
+2025-02-03,Cloudmail,verify.harborlight.app,2510,580,1926
+2025-02-04,Cloudmail,verify.harborlight.app,2490,571,1910
+2025-02-05,Cloudmail,verify.harborlight.app,2500,576,1924
+2025-02-10,Cloudmail,verify.harborlight.app,2520,584,1936

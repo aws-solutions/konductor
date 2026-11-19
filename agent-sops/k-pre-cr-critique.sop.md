@@ -2,6 +2,8 @@
 
 ## Overview
 
+Fast, read-only critique of local changes. Use before a code review; lighter than k-code-review-workflow.
+
 This SOP performs a lightweight, read-only pre-submission code critique on local changes. Unlike the full `k-code-review-workflow` SOP (which runs multi-skill reviews and generates a review report), this is faster, focused on local changes, and produces a structured critique document with issue-level resolution tracking.
 
 Use this SOP before creating a CR, after finishing a feature, or when you want a quick sanity check on uncommitted work.
