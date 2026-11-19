@@ -11,7 +11,7 @@ const FLAGS = {
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'suites-dir', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
     'oracle-skills', 'oracle-manifest', 'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict', 'max-auth-failures', 'timeout-sec',
-    'plant-release', 'plant-release-sha256', 'plant-python', 'python', 'strands-python', 'strands-agent', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'introspect',
+    'plant-release', 'plant-release-sha256', 'plant-python', 'python', 'strands-python', 'strands-agent', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'introspect', 'prereg',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
@@ -27,7 +27,7 @@ const FLAGS = {
   'plant-trace': ['run', 'vs', 'out'],
   'plant-policy-test': ['release', 'python'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
-  'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'cell', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
+  'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'cell', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack', 'prereg'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
   'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'budget-usd', 'out', 'seed', 'repo-root', 'bench-dir'],
@@ -69,6 +69,7 @@ const FLAGS = {
   'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json'],
   'scenarios lint': ['base', 'repo-root', 'json'],
+  'scenarios prereg': ['date'],
   'scenarios coverage': ['base', 'repo-root', 'selection-only', 'out', 'fail-on-hole'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
@@ -77,7 +78,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'] };
+const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
@@ -86,7 +87,7 @@ const BOOLEAN_FLAGS = new Set([
 ]);
 
 // Positional arguments a command takes after its name (and subcommand): the directory of `scenarios lint DIR`.
-const POSITIONALS = { 'scenarios lint': 1, 'scenarios coverage': 1 };
+const POSITIONALS = { 'scenarios lint': 1, 'scenarios coverage': 1, 'scenarios prereg': 2 };
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];
 

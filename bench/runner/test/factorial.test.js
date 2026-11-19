@@ -508,3 +508,29 @@ test('the 2x2 page names the evidence-quote rule and shows the cells under both 
     assert.match(toMarkdown(renderFactorial(strict)), /Evidence-quote rule: strict \(every segment between ellipses/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('report-2x2 --prereg accepts tasks that match the lock and refuses a task that is not in it or has changed', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  // The pack: the five tasks move out of the bench into a batch directory and get a version, as scenario tasks have.
+  const batch = path.join(root, 'pack', 'b1');
+  for (const id of TASKS) {
+    const file = path.join(bench, 'tasks', `${id}.json`);
+    write(path.join(batch, `${id}.json`), JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), version: 1 }));
+    fs.rmSync(file);
+  }
+  const freeze = spawnSync(process.execPath, [BENCH_JS, 'scenarios', 'prereg', 'freeze', path.join(root, 'pack'), '--date', '2026-11-19'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: tmp(), TMPDIR: process.env.TMPDIR } });
+  assert.equal(freeze.status, 0, freeze.stderr);
+  const lock = path.join(root, 'pack', 'PREREG.json');
+  const args = [...flags(bench, d), '--extra-tasks', batch, '--prereg', lock];
+  const ok = cli(args);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /^# 2x2 pilot/);
+  const t = JSON.parse(fs.readFileSync(path.join(batch, 't2.json'), 'utf8'));
+  write(path.join(batch, 't2.json'), JSON.stringify({ ...t, prompt: 'changed after the lock' }));
+  const bad = cli(args);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /report-2x2: the run does not match the pre-registration lock[\s\S]*t2: the task file differs/);
+  assert.equal(bad.stdout, '');
+});

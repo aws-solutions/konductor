@@ -11,8 +11,9 @@ const { repoRootOf, textFlag } = require('../runner/lib/flag-values.js');
 const { lintDir, catalogOfScan } = require('./lint.js');
 const { loadTaskFiles } = require('./files.js');
 const { buildCoverage, renderCoverageMd } = require('./coverage.js');
+const prereg = require('./prereg.js');
 
-const SUBCOMMANDS = ['lint', 'coverage'];
+const SUBCOMMANDS = ['lint', 'coverage', 'prereg'];
 
 /** Runs `fn(scan, base)` on the konductor tree --base names, and removes the temporary export afterwards. */
 function withTree(opts, fn) {
@@ -22,8 +23,8 @@ function withTree(opts, fn) {
   try { return fn(scanRepo(b.dir), b, loadAgentSpecs(b.dir)); } finally { b.cleanup(); }
 }
 
-function dirArg(opts, sub) {
-  const dir = opts._[1];
+function dirArg(opts, sub, at = 1) {
+  const dir = opts._[at];
   if (!dir) throw new Error(`scenarios ${sub} needs the task directory: bench.js scenarios ${sub} DIR`);
   return dir;
 }
@@ -70,12 +71,30 @@ function cmdCoverage(opts) {
   }
 }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
+function cmdPrereg(opts) {
+  const action = opts._[1];
+  if (action !== 'freeze' && action !== 'check') throw new Error('scenarios prereg takes freeze or check: bench.js scenarios prereg freeze|check DIR');
+  const dir = dirArg(opts, `prereg ${action}`, 2);
+  if (action === 'freeze') {
+    const rec = prereg.freezePrereg(dir, { date: textFlag(opts.date) ?? today() });
+    console.log(`wrote ${path.join(path.resolve(dir), prereg.FILE)}: ${rec.tasks.length} task(s) (${rec.split.dev.length} DEV, ${rec.split.heldOut.length} HELD-OUT), lock hash ${rec.lockHash}`);
+    return;
+  }
+  const file = path.join(path.resolve(dir), prereg.FILE);
+  const problems = prereg.checkPrereg(file, dir);
+  if (problems.length) { for (const x of problems) console.error(`prereg: ${x}`); process.exitCode = 1; return; }
+  console.log(`${file} matches the task files and the rules`);
+}
+
 function cmdScenarios(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: scenarios takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
   try {
     if (sub === 'lint') cmdLint(opts);
     else if (sub === 'coverage') cmdCoverage(opts);
+    else if (sub === 'prereg') cmdPrereg(opts);
   } catch (e) {
     console.error(`scenarios ${sub}: ${e.message}`);
     process.exitCode = 2;

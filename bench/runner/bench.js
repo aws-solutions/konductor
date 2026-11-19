@@ -33,7 +33,7 @@ const USAGE = `Usage:
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
-       [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
+       [--extra-tasks DIR,DIR] [--prereg FILE] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
        [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
@@ -67,6 +67,8 @@ const USAGE = `Usage:
        interpreter with strands-agents, default python3; --strands-agent FILE holds build_agent(model, tools), default a plain Agent; --model must be
        fake:<script.json>, the only model provider enabled. Before any trial a hook census refuses a counted suite whose plain arms carry tool hooks)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
+       (--prereg FILE is a PREREG.json from "scenarios prereg freeze": the run refuses to start unless every selected task is in the lock with the same
+       file bytes, as read from the --extra-tasks directories)
        (--suites-dir DIR looks for the suite file DIR/<suite>.json first and then in <bench-dir>/suites, so a generated skilleval-* suite needs no file in the checkout)
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits
        arrive once, at the end of a turn, so a one-shot run always finishes: over X it gets creditLimitExceeded and creditOvershoot, nothing is killed;
@@ -182,12 +184,13 @@ const USAGE = `Usage:
        Spawns, spawn depth, review rounds and reworks after a pass are always shown (read from result.json, else from stream.jsonl). --phases counts the phase
        documents of the listed phases (profiles/phase-documents.json), or all of them; leave it off for tasks that are not SDLC tasks)
   node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...][:ARM] --kiro-konductor DIR[,DIR...][:ARM] --cc-vanilla DIR[,DIR...][:ARM] --cc-konductor DIR[,DIR...][:ARM]
-       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality]
+       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality] [--prereg FILE]
        (the 2x2 pilot table, harness by konductor on one model, from four judged run directories, one harness each; prints markdown, or JSON with --json,
        and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. A cell whose directories hold several arms names the one it
        reads with :ARM, for example --kiro-konductor /runs/kiro:main; --cell kiroVanilla=DIR:vanilla does the same and may replace any of the four flags. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
        across cells; cost only as konductor over vanilla inside a harness. Intervals appear only with 5 or more tasks of 2 or more replicates per cell, otherwise
-       the table says "descriptive only" and the charts carry no whiskers. Reads run directories and writes nothing but --out)
+       the table says "descriptive only" and the charts carry no whiskers. --prereg FILE refuses the report unless every task in it is in the pre-registration
+       lock with the same file bytes (as read from --extra-tasks). Reads run directories and writes nothing but --out)
   node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task] [--phases ID,ID|all]
        [--detail quick|full] [--format md|html|both] [--out DIR] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md, contrast.json, contrast.html
@@ -238,6 +241,11 @@ const USAGE = `Usage:
        (the prompt leak lint: refuses a task prompt that names a skill, SOP or agent of the konductor tree at --base, uses a term from the fixed method
        list, or says "do not ask" on a task where questions are allowed; also refuses a v3 task (one with a phase) with no authorship.source or an empty
        licence. DIR holds task files, or batch directories of them. Exit 1 when there is any finding. No credits)
+  node bench/runner/bench.js scenarios prereg freeze|check DIR [--date YYYY-MM-DD]
+       (freeze writes DIR/PREREG.json: every task's id, version and file sha256, the SR-32 DEV and HELD-OUT lists recomputed from the ids, and the fixed
+       protocol of bench/scenarios/protocol.js (margin, verdict words, bootstrap draws and seed, reps, stop rules), with a hash of the whole record. It
+       refuses a task with no integer version and never overwrites a lock. check recomputes everything and exits 1, naming each task whose file changed,
+       a task added or missing, a split list or protocol that no longer matches, or an edited lock)
   node bench/runner/bench.js scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole] [--repo-root DIR]
        (writes coverage.json and coverage.md into --out (default DIR) from the task files under DIR: the phase by role counts of real tasks against the
        target counts, and one row per skill, SOP and agent of the tree at --base with its targeted DEV and HELD-OUT tasks, twins and controls, effect

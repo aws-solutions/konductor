@@ -46,6 +46,7 @@ const { profileCredentials } = require('./aws-creds.js');
 const { writeRunConfig, readRunConfigs } = require('./run-configs.js');
 const { preloadSchemas } = require('./schema.js');
 const { snapshotTaskInputs } = require('./task-inputs.js');
+const { requirePrereg } = require('../../scenarios/prereg.js');
 const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
@@ -221,6 +222,7 @@ async function cmdRun(opts, deps = {}) {
     return timeoutOverride === null ? t : { ...t, timeoutSec: timeoutOverride };
   });
   if (!tasks.length) throw new Error('no tasks selected');
+  if (opts.prereg !== undefined) requirePrereg(opts, { taskIds: tasks.map((t) => t.id), extraDirs });
   // Real tasks read their base tree from a local cache filled beforehand; stop here, not after the arms are built.
   const prepareOnly = Boolean(opts['prepare-only']);
   const realTasks = prepareOnly ? [] : tasks.filter((t) => t.real);

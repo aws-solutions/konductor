@@ -38,6 +38,7 @@ const { buildTrace, renderMarkdown: renderTrace, locateRun } = require('./lib/tr
 const { recheckAll } = require('./lib/recheck.js');
 const { backfillAll } = require('./lib/backfill.js');
 const { backfillSkills, summarizeSkillsBackfill, renderSkillsBackfill } = require('./lib/backfill-skills.js');
+const { requirePrereg } = require('../scenarios/prereg.js');
 const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../report/skills.js');
 const { compareRuns, formatCompare } = require('../report/compare.js');
 const { contrastRun, renderContrast } = require('../report/contrast.js');
@@ -664,6 +665,7 @@ function cmdReport2x2(opts) {
   try {
     const { dirs, arms } = factorialCellsOf(opts);
     const res = buildFactorial({ dirs, arms, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts), qualityPack: packOf(opts) });
+    if (opts.prereg !== undefined) requirePrereg(opts, { taskIds: res.tasks, extraDirs: extraDirsOf(opts) });
     const writing = Boolean(opts.out && opts.out !== true);
     const charts = writing ? factorialCharts(res) : null;
     const md = toMarkdown(renderFactorial(res, { charts }));
