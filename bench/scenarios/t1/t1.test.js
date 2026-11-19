@@ -55,3 +55,14 @@ test('no task file or fixture names a host path or an internal tool', () => {
     for (const f of files) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), bad, f);
   }
 });
+
+test('every task passes the task schema and the v3 rules (needs the scoring schema with check weight and kind)', () => {
+  const { validate, loadSchema } = require('../../runner/lib/schema.js');
+  const { v3Errors } = require('../../runner/lib/task-v3.js');
+  const schema = loadSchema('task');
+  for (const id of ids) {
+    const task = JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8'));
+    assert.deepEqual(validate(schema, task), [], id);
+    assert.deepEqual(v3Errors(task), [], id);
+  }
+});

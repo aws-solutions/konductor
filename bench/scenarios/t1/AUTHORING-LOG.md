@@ -30,3 +30,6 @@ Credits of the discarded calls (not counted as tasks): t1-impl-rate-limit 2.88, 
 | t1-impl-rate-limit | author | gpt-5.6-luna | 0.00 |
 | t1-impl-env-expand | author | deepseek-3.2 | 0.00 |
 | t1-bug-cache-ttl | author | gpt-5.6-luna | 0.00 |
+| t1-impl-rate-limit | author | gpt-5.6-luna | 3.44 |
+| t1-impl-rate-limit | map | glm-5 | 0.16 |
+| t1-impl-rate-limit | review | glm-5 | 7.58 |
