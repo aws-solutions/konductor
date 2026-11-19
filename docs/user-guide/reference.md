@@ -66,7 +66,9 @@ Claude Code each one is additionally converted into `<target>/.claude/skills/sop
 a skill that both you (`/sop-<name>`) and Claude (its `Skill` tool) can invoke, the same reach
 the `.kiro/skills/sop-<name>/SKILL.md` copy has on Kiro CLI. The three SOPs that commit and
 push, open pull requests, or act on a live app (`k-e2e-test-generation`, `k-full-sdlc`,
-`k-light-ui-testing`) carry `disable-model-invocation: true`, so only you can start them.
+`k-light-ui-testing`) carry `disable-model-invocation: true`, so Claude cannot start them through its
+`Skill` tool. You start them with `/sop-<name>`. `k-full-sdlc`, which you start yourself, also
+runs the other two when you say yes to its UI test question in Step 9.
 Kiro CLI has no per-SOP setting for this, so there the model can load those three too; their
 behavior differs by runtime on purpose.
 Context files install too, into `<target>/.kiro/context/`.

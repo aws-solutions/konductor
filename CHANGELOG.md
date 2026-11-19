@@ -81,7 +81,9 @@ not per individual commit.
   CLI already could through its `.kiro/skills/sop-<name>` copy. `/sop-<name>` still works.
   The three SOPs that commit and push, open pull requests, or act on a live app
   (`k-e2e-test-generation`, `k-full-sdlc`, `k-light-ui-testing`) are marked
-  `Invocation: user-only` and keep the key, so only the user can start them.
+  `Invocation: user-only` and keep the key, so Claude's `Skill` tool refuses them. The user starts
+  one with `/sop-<name>`, or by saying yes to `k-full-sdlc` Step 9's scope question, which then
+  runs it.
   The skill listing budget test now counts the 16 other SOP descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).

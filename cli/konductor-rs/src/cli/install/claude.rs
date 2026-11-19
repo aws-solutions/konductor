@@ -714,8 +714,8 @@ pub(super) fn install_sop_skills_into(
 /// - no `disable-model-invocation` key, so both the user (`/sop-<name>`)
 ///   and the model (`Skill` tool) can invoke it, as on Kiro CLI, unless
 ///   the SOP carries the `Invocation: user-only` marker line (see
-///   `is_user_only_sop`); then the key is emitted and only the user
-///   can start it
+///   `is_user_only_sop`); then the key is emitted and the model cannot
+///   load it through `Skill`
 /// - a body wrapping the original SOP text in
 ///   `<agent-sop name="...">`/`<content>`/`<user-input>` tags, with
 ///   `sop_name` XML-attribute-escaped and the body guarded against a
@@ -748,9 +748,11 @@ const MAX_DESCRIPTION_CHARS: usize = 400;
 /// the user on both. The exception is a SOP marked `Invocation:
 /// user-only` (it commits and pushes, opens pull requests, or acts on a
 /// live app): on Claude Code it gets `disable-model-invocation: true`,
-/// which the harness enforces, so the model cannot start it, whether
-/// from the main thread or from a subagent that has no one to ask. Kiro
-/// has no per-skill key to emit, so the Kiro path never writes it.
+/// which the harness enforces on the `Skill` tool, so the model cannot
+/// load it on its own, from the main thread or from a subagent that has
+/// no one to ask. The user starts it, directly or through a parent SOP's
+/// scope question (`k-full-sdlc` Step 9). Kiro has no per-skill key to
+/// emit, so the Kiro path never writes it.
 ///
 /// Kiro's skill frontmatter schema is limited to `name`, `description`,
 /// `license`, `compatibility`, `metadata`, and the unrelated
