@@ -83,7 +83,10 @@ not per individual commit.
   (`k-e2e-test-generation`, `k-full-sdlc`, `k-light-ui-testing`) are marked
   `Invocation: user-only` and keep the key, so Claude's `Skill` tool refuses them. The user starts
   one with `/sop-<name>`, or by saying yes to `k-full-sdlc` Step 9's scope question, which then
-  runs it.
+  reads its installed `sop-<name>/SKILL.md` (Claude Code) or `sop-<name>` skill (Kiro CLI) and runs
+  it. Step 9 starts neither SOP without that yes, and an unattended run never gets one.
+  The user guide now says which files each harness installs: a Claude Code install has no
+  `.sop.md` copy.
   The skill listing budget test now counts the 16 other SOP descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).

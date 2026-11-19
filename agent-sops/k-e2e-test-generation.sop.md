@@ -1,6 +1,6 @@
 # Web App Functional Test Generation
 
-Invocation: user-only (commits and pushes the generated tests). On Claude Code the model cannot start it on its own. The user types `/sop-k-e2e-test-generation`, or says yes to the scope question of a SOP the user started (`k-full-sdlc` Step 9), which then runs it from this file.
+Invocation: user-only (commits and pushes the generated tests). On Claude Code the model cannot start it on its own. The user types `/sop-k-e2e-test-generation`, or says yes to the scope question of a SOP the user started (`k-full-sdlc` Step 9), which then runs it from its installed `sop-<name>` copy.
 
 ## Overview
 

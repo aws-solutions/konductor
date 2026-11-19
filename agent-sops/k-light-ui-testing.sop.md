@@ -1,6 +1,6 @@
 # Light UI Testing
 
-Invocation: user-only (runs the test prompts against a live web app). On Claude Code the model cannot start it on its own. The user types `/sop-k-light-ui-testing`, or says yes to the scope question of a SOP the user started (`k-full-sdlc` Step 9), which then runs it from this file.
+Invocation: user-only (runs the test prompts against a live web app). On Claude Code the model cannot start it on its own. The user types `/sop-k-light-ui-testing`, or says yes to the scope question of a SOP the user started (`k-full-sdlc` Step 9), which then runs it from its installed `sop-<name>` copy.
 
 ## Overview
 
