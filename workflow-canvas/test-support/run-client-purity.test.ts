@@ -18,6 +18,7 @@ const RULES: PurityRules = {
   allowedPackages: new Set([
     '../execution/core/run-follow',
     '../execution/core/ports',
+    '../execution/core/timestamp',
   ]),
   allowedNames: { '../api/api': ['canRetryStatus'] },
 };

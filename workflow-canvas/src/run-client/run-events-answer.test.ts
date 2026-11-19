@@ -151,6 +151,30 @@ describe('parseRunEventsAnswer', () => {
       ]),
     ],
     [
+      'a run_finished on a day past the end of its month',
+      answerWith([
+        {
+          seq: 1,
+          type: 'run_finished',
+          at: '2026-02-30T04:12:05Z',
+          status: 'passed',
+          exit_code: 0,
+        },
+      ]),
+    ],
+    [
+      'a run_finished at a time that is not a timestamp',
+      answerWith([
+        {
+          seq: 1,
+          type: 'run_finished',
+          at: 'yesterday',
+          status: 'passed',
+          exit_code: 0,
+        },
+      ]),
+    ],
+    [
       'a run_finished with no exit code',
       answerWith([{ seq: 1, type: 'run_finished', status: 'passed' }]),
     ],
