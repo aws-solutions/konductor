@@ -276,11 +276,21 @@ fn find_skills_tool() -> Tool {
 /// Most close names a `get_skill` not-found message suggests.
 const MAX_CLOSE_NAMES: usize = 3;
 
+/// Shortest name the substring rule accepts. A name below this length is a
+/// substring of too many unrelated names to mean anything: `git` sits inside
+/// every request that mentions git, and a two-character request sits inside
+/// much of the index.
+const MIN_SUBSTRING_NAME_LEN: usize = 4;
+
 /// Up to `MAX_CLOSE_NAMES` of `candidates` close to `requested`, closest
-/// first. A candidate is close when one name contains the other, or when
-/// its edit distance is at most a third of the longer name (minimum 2),
-/// so a typo or a missing prefix matches but an unrelated name does not.
-/// Matching ignores case and treats spaces and underscores as hyphens.
+/// first. A candidate is close when one name contains the other and the
+/// contained one is at least `MIN_SUBSTRING_NAME_LEN` characters, or when
+/// their edit distance is at most a third of the longer name. Both rules
+/// scale with length, so a typo or a missing prefix in a real skill name
+/// matches while a short coincidence does not. A suggestion the agent acts
+/// on is worse than no suggestion, because it loads the wrong skill instead
+/// of reporting the skill unavailable. Matching ignores case and treats
+/// spaces and underscores as hyphens.
 fn close_skill_names(requested: &str, candidates: &[String]) -> Vec<String> {
     let normalize = |s: &str| s.trim().to_lowercase().replace([' ', '_'], "-");
     let wanted = normalize(requested);
@@ -292,9 +302,16 @@ fn close_skill_names(requested: &str, candidates: &[String]) -> Vec<String> {
         .filter_map(|candidate| {
             let have = normalize(candidate);
             let distance = edit_distance(&wanted, &have);
-            let longer = wanted.chars().count().max(have.chars().count());
-            let close =
-                have.contains(&wanted) || wanted.contains(&have) || distance <= (longer / 3).max(2);
+            let wanted_len = wanted.chars().count();
+            let have_len = have.chars().count();
+            let longer = wanted_len.max(have_len);
+            let shorter = wanted_len.min(have_len);
+            let substring = shorter >= MIN_SUBSTRING_NAME_LEN
+                && (have.contains(&wanted) || wanted.contains(&have));
+            // No floor under this budget: a floor of 2 made any pair of two-
+            // or three-character names close to each other.
+            let typo = distance <= longer / 3;
+            let close = substring || typo;
             close.then_some((distance, candidate))
         })
         .collect();
@@ -1436,6 +1453,45 @@ mod tool_handlers {
         assert_eq!(close_skill_names("workflow", &names), vec!["git-workflow"]);
         assert!(close_skill_names("threat-modeling", &names).is_empty());
         assert!(close_skill_names("  ", &names).is_empty());
+    }
+
+    // A suggestion the agent acts on is worse than no suggestion: it loads
+    // the wrong skill instead of reporting the skill unavailable. Short
+    // names are where that goes wrong, so they get their own test.
+    #[test]
+    fn close_skill_names_rejects_short_names_that_are_not_really_close() {
+        let names: Vec<String> = ["git", "qa", "database-design", "backend-review"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        // `git` is a substring of plenty of requests it has nothing to do
+        // with, so being contained in one does not make it a suggestion.
+        assert!(
+            close_skill_names("git-worktree-cleanup", &names).is_empty(),
+            "{:?}",
+            close_skill_names("git-worktree-cleanup", &names)
+        );
+        // Same in the other direction: a two-character request is a
+        // substring of unrelated names.
+        assert!(
+            close_skill_names("ab", &names).is_empty(),
+            "{:?}",
+            close_skill_names("ab", &names)
+        );
+        // Two short names are not close just because the edit budget had a
+        // floor under it. One edit out of two characters is half the name.
+        assert!(
+            close_skill_names("qb", &names).is_empty(),
+            "{:?}",
+            close_skill_names("qb", &names)
+        );
+
+        // A real typo in a name long enough to be distinctive still matches.
+        assert_eq!(
+            close_skill_names("backend-reveiw", &names),
+            vec!["backend-review"]
+        );
     }
 
     #[test]
