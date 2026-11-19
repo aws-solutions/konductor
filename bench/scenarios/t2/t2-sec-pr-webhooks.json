@@ -62,7 +62,7 @@
   "findingsKey": [
     {
       "id": "k1",
-      "finding": "Signature verification uses re-serialized parsed JSON instead of the raw request body, which can cause verification failures if the client signed a different JSON serialization.",
+      "finding": "Signature verification uses re-serialized parsed JSON instead of the raw request body, so a body with duplicate keys or different number formatting can pass signature check, and legitimate deliveries with valid signatures can fail.",
       "weight": 1
     },
     {
@@ -72,12 +72,12 @@
     },
     {
       "id": "k3",
-      "finding": "Delivery ID tracking has no time window - IDs are stored indefinitely in memory, violating the replay protection requirement in docs/security.md for a configured window.",
+      "finding": "Missing replay attack protection: delivery IDs have no expiration (stored forever) and X-Timestamp header is read but never validated, allowing unlimited replay attacks contrary to docs requirements for 5-minute windows.",
       "weight": 1
     },
     {
       "id": "k4",
-      "finding": "The handler ignores the X-Timestamp header and never validates timestamp age, allowing replay attacks beyond the 5-minute window specified in docs/provider-spec.md.",
+      "finding": "The /notify endpoint forwards to ANY customer-provided URL without validation, allowing SSRF attacks to internal networks (10.x, 172.16-31.x, 192.168.x) and cloud metadata endpoints (169.254.169.254).",
       "weight": 1
     },
     {
@@ -92,7 +92,7 @@
     },
     {
       "id": "k7",
-      "finding": "The server startup log prints whether the webhook secret is configured, which could indicate to an attacker whether the default secret is being used.",
+      "finding": "Error log prints the full signature header when verification fails, exposing the secret-bearing HMAC in error logs.",
       "weight": 1
     }
   ],
@@ -125,5 +125,36 @@
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
     }
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt focuses on security areas (signature verification, replay protection, callback safety) without naming specific planted problems or their locations. Does not hint at number of issues."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear scope: review new generic handler in src/handlers/generic.js, compare with GitHub/Stripe handlers, write findings to REVIEW.md. Output format explicitly specified with location, severity, issue, fix fields."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Several issues require cross-file comparison (raw body usage, timingSafeEqual), reading config defaults (env.js), understanding security requirements from docs, and connecting header reading to missing validation. Not surface-level obvious."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All 7 key items verified against fixture code. k1: line 30 uses JSON.stringify(parsedBody) not raw body. k2: line 38 uses === not timingSafeEqual. k3: lines 49-65 have no time window, only size-based cleanup. k4: timestamp read at line ~112-115 but never validated. k5: env.js:8 has hardcoded fallback. k6: line ~120-124 logs signature in debug. k7: index.js:52-56 logs secret config status. All findings are defensible from fixture evidence."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No TODOs, FIXMEs, or bug comments in code. Test file uses correct test data. Docs describe requirements generically. security.js provides constants (MAX_TIMESTAMP_AGE_MS, DELIVERY_ID_WINDOW_MS) but no hints at the bugs themselves. File names are normal."
+      }
+    ]
   }
 }

@@ -23,9 +23,9 @@
   "repeatable": true
  },
  "dump": {
-  "score": 31.8,
+  "score": 28.6,
   "checks": [
-   "FAIL tests 1/22",
+   "FAIL tests 0/22",
    "pass file_exists",
    "pass cmd",
    "pass cmd",

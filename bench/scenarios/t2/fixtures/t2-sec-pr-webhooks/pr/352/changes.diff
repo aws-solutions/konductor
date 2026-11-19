@@ -28,10 +28,10 @@ index 0000000..f17f3ae
 \ No newline at end of file
 diff --git a/src/handlers/generic.js b/src/handlers/generic.js
 new file mode 100644
-index 0000000..b7e569b
+index 0000000..33ca0fe
 --- /dev/null
 +++ b/src/handlers/generic.js
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,205 @@
 +/**
 + * Generic webhook handler with signature verification
 + * Supports multiple providers through configuration
@@ -137,6 +137,41 @@ index 0000000..b7e569b
 +}
 +
 +/**
++ * Forward webhook payload to a notification endpoint (customer-provided)
++ * This is used for the new /notify endpoint that customers can configure
++ * @param {string} url - Notification endpoint URL
++ * @param {Object} payload - Webhook payload to forward
++ * @returns {Promise<Object>} Response from notification endpoint
++ */
++export async function forwardToNotificationEndpoint(url, payload) {
++  logger.info(`Forwarding to notification endpoint: ${url}`);
++  
++  try {
++    const response = await fetch(url, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++        'X-Forwarded-By': 'Webhook-Integration-Service'
++      },
++      body: JSON.stringify(payload),
++      timeout: 15000
++    });
++    
++    if (!response.ok) {
++      throw new Error(`Notification endpoint responded with ${response.status}`);
++    }
++    
++    return {
++      status: response.status,
++      data: await response.json().catch(() => null)
++    };
++  } catch (error) {
++    logger.error(`Notification forwarding failed: ${error.message}`);
++    throw error;
++  }
++}
++
++/**
 + * Handle generic webhook
 + * @param {Object} req - Express request
 + * @param {Object} res - Express response
@@ -203,19 +238,83 @@ index 0000000..b7e569b
 +  }
 +}
 \ No newline at end of file
+diff --git a/src/handlers/notify.js b/src/handlers/notify.js
+new file mode 100644
+index 0000000..e8cc08a
+--- /dev/null
++++ b/src/handlers/notify.js
+@@ -0,0 +1,56 @@
++/**
++ * Notification forwarding handler
++ * Allows customers to configure endpoints where webhook payloads are forwarded
++ */
++
++import { logger } from '../utils/logger.js';
++import { forwardToNotificationEndpoint } from './generic.js';
++
++/**
++ * Handle notification forwarding request
++ * @param {Object} req - Express request
++ * @param {Object} res - Express response
++ */
++export async function handleNotify(req, res) {
++  const { url, payload, secret } = req.body;
++  
++  // Validate required fields
++  if (!url || !payload || !secret) {
++    res.status(400).json({ error: 'Missing required fields: url, payload, secret' });
++    return;
++  }
++  
++  // Simple secret check (in production would be more robust)
++  if (secret !== process.env.NOTIFY_SECRET) {
++    res.status(401).json({ error: 'Invalid secret' });
++    return;
++  }
++  
++  try {
++    // Forward to the customer-provided URL
++    // NOTE: This does NOT validate the URL - it will fetch ANY URL provided!
++    const result = await forwardToNotificationEndpoint(url, payload);
++    
++    logger.info('Notification forwarded successfully', {
++      url,
++      status: result.status
++    });
++    
++    res.status(200).json({
++      success: true,
++      forwarded: true,
++      endpointResponse: result
++    });
++    
++  } catch (error) {
++    logger.error('Notification forwarding failed', {
++      url,
++      error: error.message
++    });
++    
++    res.status(500).json({
++      error: 'Failed to forward notification',
++      details: error.message
++    });
++  }
++}
+\ No newline at end of file
 diff --git a/src/index.js b/src/index.js
-index 86ecb34..24d5fd0 100644
+index 54f39b9..eb4d85b 100644
 --- a/src/index.js
 +++ b/src/index.js
-@@ -7,6 +7,7 @@ import { ENV } from './config/env.js';
+@@ -7,6 +7,8 @@ import { ENV } from './config/env.js';
  import { logger } from './utils/logger.js';
  import { handleGitHubWebhook } from './handlers/github.js';
  import { handleStripeWebhook } from './handlers/stripe.js';
 +import { handleGenericWebhook } from './handlers/generic.js';
++import { handleNotify } from './handlers/notify.js';
  
  const app = express();
  
-@@ -18,12 +19,26 @@ app.use(express.json({
+@@ -18,12 +20,27 @@ app.use(express.json({
    }
  }));
  
@@ -232,6 +331,7 @@ index 86ecb34..24d5fd0 100644
  app.post('/webhooks/github', handleGitHubWebhook);
  app.post('/webhooks/stripe', handleStripeWebhook);
 +app.post('/webhooks/generic', handleGenericWebhook);
++app.post('/notify', handleNotify);
  
  app.get('/health', (req, res) => {
 -  res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -243,13 +343,124 @@ index 86ecb34..24d5fd0 100644
  });
  
  // Error handling middleware
-@@ -35,5 +50,7 @@ app.use((err, req, res, next) => {
+@@ -35,5 +52,7 @@ app.use((err, req, res, next) => {
  // Start server
  const PORT = ENV.PORT;
  app.listen(PORT, () => {
 -  logger.info(`Server running on port ${PORT}`);
+-});
 +  logger.info(`Server running on port ${PORT}`, {
 +    webhookSecret: ENV.WEBHOOK_SECRET ? 'configured' : 'using default'
 +  });
- });
++});
+\ No newline at end of file
+diff --git a/test/notify.test.js b/test/notify.test.js
+new file mode 100644
+index 0000000..701aca6
+--- /dev/null
++++ b/test/notify.test.js
+@@ -0,0 +1,103 @@
++import { describe, it, beforeEach, afterEach } from 'node:test';
++import assert from 'node:assert';
++import { handleNotify } from '../src/handlers/notify.js';
++
++describe('Notification handler', () => {
++  const originalSecret = process.env.NOTIFY_SECRET;
++  
++  beforeEach(() => {
++    process.env.NOTIFY_SECRET = 'test_notify_secret_789';
++    // Mock fetch globally
++    global.fetch = async (url, options) => {
++      return {
++        ok: true,
++        status: 200,
++        json: async () => ({ received: true }),
++        headers: new Map([['content-type', 'application/json']])
++      };
++    };
++  });
++  
++  afterEach(() => {
++    process.env.NOTIFY_SECRET = originalSecret;
++    delete global.fetch;
++  });
++  
++  it('forwards notification to provided URL', async () => {
++    const req = {
++      body: {
++        url: 'https://api.customer.com/webhook',
++        payload: { event: 'test', data: { id: 123 } },
++        secret: 'test_notify_secret_789'
++      }
++    };
++    
++    const res = {
++      status: function(code) {
++        this.statusCode = code;
++        return this;
++      },
++      json: function(data) {
++        this.body = data;
++        return this;
++      }
++    };
++    
++    await handleNotify(req, res);
++    
++    assert.strictEqual(res.statusCode, 200);
++    assert.strictEqual(res.body.success, true);
++    assert.strictEqual(res.body.forwarded, true);
++  });
++  
++  it('rejects invalid secret', async () => {
++    const req = {
++      body: {
++        url: 'https://api.customer.com/webhook',
++        payload: { event: 'test' },
++        secret: 'wrong_secret'
++      }
++    };
++    
++    const res = {
++      status: function(code) {
++        this.statusCode = code;
++        return this;
++      },
++      json: function(data) {
++        this.body = data;
++        return this;
++      }
++    };
++    
++    await handleNotify(req, res);
++    
++    assert.strictEqual(res.statusCode, 401);
++    assert.strictEqual(res.body.error, 'Invalid secret');
++  });
++  
++  it('requires all fields', async () => {
++    const req = {
++      body: {
++        url: 'https://api.customer.com/webhook',
++        // Missing payload and secret
++      }
++    };
++    
++    const res = {
++      status: function(code) {
++        this.statusCode = code;
++        return this;
++      },
++      json: function(data) {
++        this.body = data;
++        return this;
++      }
++    };
++    
++    await handleNotify(req, res);
++    
++    assert.strictEqual(res.statusCode, 400);
++    assert.strictEqual(res.body.error, 'Missing required fields: url, payload, secret');
++  });
++});
 \ No newline at end of file

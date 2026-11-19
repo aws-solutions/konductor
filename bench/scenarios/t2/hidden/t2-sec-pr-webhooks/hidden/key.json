@@ -13,7 +13,7 @@
         "buffer",
         "original"
       ],
-      "finding": "Signature verification uses re-serialized parsed JSON instead of the raw request body, which can cause verification failures if the client signed a different JSON serialization."
+      "finding": "Signature verification uses re-serialized parsed JSON instead of the raw request body, so a body with duplicate keys or different number formatting can pass signature check, and legitimate deliveries with valid signatures can fail."
     },
     {
       "id": "k2",
@@ -31,30 +31,31 @@
     {
       "id": "k3",
       "file": "src/handlers/generic.js",
-      "line": 49,
-      "endLine": 65,
-      "severity": "high",
+      "line": 46,
+      "endLine": 63,
+      "severity": "critical",
       "fix": [
-        "timestamp",
+        "replay protection",
+        "timestamp validation",
         "time window",
         "expiry",
         "ttl"
       ],
-      "finding": "Delivery ID tracking has no time window - IDs are stored indefinitely in memory, violating the replay protection requirement in docs/security.md for a configured window."
+      "finding": "Missing replay attack protection: delivery IDs have no expiration (stored forever) and X-Timestamp header is read but never validated, allowing unlimited replay attacks contrary to docs requirements for 5-minute windows."
     },
     {
       "id": "k4",
-      "file": "src/handlers/generic.js",
-      "line": 100,
-      "endLine": 115,
+      "file": "src/handlers/notify.js",
+      "line": 25,
+      "endLine": 26,
       "severity": "critical",
       "fix": [
-        "timestamp validation",
-        "X-Timestamp",
-        "5 minutes",
-        "age check"
+        "url validation",
+        "internal network",
+        "cloud metadata",
+        "restrict"
       ],
-      "finding": "The handler ignores the X-Timestamp header and never validates timestamp age, allowing replay attacks beyond the 5-minute window specified in docs/provider-spec.md."
+      "finding": "The /notify endpoint forwards to ANY customer-provided URL without validation, allowing SSRF attacks to internal networks (10.x, 172.16-31.x, 192.168.x) and cloud metadata endpoints (169.254.169.254)."
     },
     {
       "id": "k5",
@@ -86,17 +87,17 @@
     },
     {
       "id": "k7",
-      "file": "src/index.js",
-      "line": 52,
-      "endLine": 56,
-      "severity": "low",
+      "file": "src/handlers/generic.js",
+      "line": 24,
+      "endLine": 24,
+      "severity": "medium",
       "fix": [
-        "not log",
         "redact",
+        "mask",
         "omit",
-        "mask"
+        "not log"
       ],
-      "finding": "The server startup log prints whether the webhook secret is configured, which could indicate to an attacker whether the default secret is being used."
+      "finding": "Error log prints the full signature header when verification fails, exposing the secret-bearing HMAC in error logs."
     }
   ],
   "decoys": [

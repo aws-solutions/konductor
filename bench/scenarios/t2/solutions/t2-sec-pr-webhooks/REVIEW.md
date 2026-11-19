@@ -4,29 +4,29 @@ This PR adds a generic webhook handler to support custom providers. While the fe
 
 ## Critical Findings
 
-### 1. Missing Timestamp Validation (Critical)
-**Location**: `src/handlers/generic.js:100-115`
-The handler reads the `X-Timestamp` header but never validates it against the current time. According to `docs/provider-spec.md`, generic webhooks must validate timestamps within 5 minutes when present. Without this check, attackers can replay old webhooks indefinitely.
+### 1. Missing Replay Attack Protection (Critical)
+**Location**: `src/handlers/generic.js:46-63`
+The generic handler has no replay protection: delivery IDs are stored forever (no TTL cleanup) and the `X-Timestamp` header is read but never validated. This allows unlimited replay attacks, violating documented requirements for 5-10 minute windows in `docs/security.md` and `docs/provider-spec.md`.
 
-**Fix**: Parse the timestamp header and reject if older than 5 minutes (or use `MAX_TIMESTAMP_AGE_MS` from `security.js`).
+**Fix**: Implement timestamp validation (reject if older than 5 minutes) and add TTL to delivery ID storage using `DELIVERY_ID_WINDOW_MS` from `security.js`.
 
-### 2. Hard-coded Secret Fallback (High)
+### 2. Unvalidated Callback URL SSRF (Critical)
+**Location**: `src/handlers/notify.js:25-26`
+The new `/notify` endpoint forwards to ANY customer-provided URL without validation, enabling SSRF attacks to internal networks (10.x, 172.16-31.x, 192.168.x), localhost, and cloud metadata endpoints (169.254.169.254).
+
+**Fix**: Apply the same URL validation as `notifyCallback()` or restrict to public HTTPS endpoints with domain allowlists.
+
+### 3. Signature Uses Parsed JSON (High)
+**Location**: `src/handlers/generic.js:30-35`
+The `verifyWebhookSignature` function computes HMAC over `JSON.stringify(parsedBody)` instead of the raw request body. Different JSON serializations (duplicate keys, number formatting, whitespace) will produce different hashes, allowing malicious payloads to pass or causing legitimate deliveries to fail.
+
+**Fix**: Use the raw request body (`req.rawBody`) that Express middleware stores, matching what the client signed.
+
+### 4. Hard-coded Secret Fallback (High)
 **Location**: `src/config/env.js:8`
 The `WEBHOOK_SECRET` configuration falls back to `'dev_default_secret_123'` when the environment variable is missing. In production, this would mean all deployments share the same weak secret by default, making signature verification useless.
 
 **Fix**: Require the secret in production (throw an error if missing) or generate a secure random secret at startup.
-
-### 3. Signature Uses Parsed JSON (High)
-**Location**: `src/handlers/generic.js:30-35`
-The `verifyWebhookSignature` function computes the HMAC over `JSON.stringify(parsedBody)` instead of the raw request body. Different JSON serializations (whitespace, key order) will produce different hashes, causing valid signatures to fail. The documentation explicitly states to use the "raw body".
-
-**Fix**: Use the raw request body (`req.rawBody`) that Express middleware stores, matching what the client signed.
-
-### 4. No Delivery ID Time Window (High)
-**Location**: `src/handlers/generic.js:49-65`
-Delivery IDs are stored in a Set with simple size-based cleanup but no expiration. The documentation requires a "configured window" for replay protection, and other handlers (GitHub: 10min, Stripe: 15min) implement time windows.
-
-**Fix**: Store delivery IDs with timestamps and implement TTL cleanup using the `DELIVERY_ID_WINDOW_MS` constant from `security.js`.
 
 ## Medium Severity
 
@@ -42,13 +42,11 @@ The debug log prints the signature header (truncated, but still sensitive). If `
 
 **Fix**: Never log signature headers, or redact them completely in log messages.
 
-## Low Severity
+### 7. Secret-Bearing Header in Error Logs (Medium)
+**Location**: `src/handlers/generic.js:24`
+The error log prints the full signature header when verification fails, exposing the secret-bearing HMAC in error logs that are often collected in production.
 
-### 7. Configuration Status in Startup Log (Low)
-**Location**: `src/index.js:36-39`
-The startup log indicates whether the webhook secret is "configured" or "using default". This information could help an attacker know if the default secret is in use.
-
-**Fix**: Don't log configuration status, or use a generic message.
+**Fix**: Redact or omit signature from all logs, including error logs.
 
 ## Overall Verdict
 
@@ -61,7 +59,7 @@ The code structure is good and tests exist, but security implementation needs si
   {
     "location": "src/handlers/generic.js:30",
     "severity": "high",
-    "issue": "Signature verification uses re-serialized parsed JSON instead of the raw request body, which can cause verification failures if the client signed a different JSON serialization.",
+    "issue": "Signature verification uses re-serialized parsed JSON instead of the raw request body, so a body with duplicate keys or different number formatting can pass signature check, and legitimate deliveries with valid signatures can fail.",
     "fix": "Use raw request body (req.rawBody) not JSON.stringify(parsedBody)"
   },
   {
@@ -71,16 +69,16 @@ The code structure is good and tests exist, but security implementation needs si
     "fix": "Use crypto.timingSafeEqual() like the GitHub and Stripe handlers"
   },
   {
-    "location": "src/handlers/generic.js:49",
-    "severity": "high",
-    "issue": "Delivery ID tracking has no time window - IDs are stored indefinitely in memory, violating the replay protection requirement in docs/security.md for a configured window.",
-    "fix": "Implement TTL cleanup using DELIVERY_ID_WINDOW_MS from security.js"
+    "location": "src/handlers/generic.js:46",
+    "severity": "critical",
+    "issue": "Missing replay attack protection: delivery IDs have no expiration (stored forever) and X-Timestamp header is read but never validated, allowing unlimited replay attacks contrary to docs requirements for 5-minute windows.",
+    "fix": "Implement replay protection with timestamp validation and TTL cleanup"
   },
   {
-    "location": "src/handlers/generic.js:100",
+    "location": "src/handlers/notify.js:25",
     "severity": "critical",
-    "issue": "The handler ignores the X-Timestamp header and never validates timestamp age, allowing replay attacks beyond the 5-minute window specified in docs/provider-spec.md.",
-    "fix": "Validate X-Timestamp header if present, reject if older than MAX_TIMESTAMP_AGE_MS"
+    "issue": "The /notify endpoint forwards to ANY customer-provided URL without validation, allowing SSRF attacks to internal networks (10.x, 172.16-31.x, 192.168.x) and cloud metadata endpoints (169.254.169.254).",
+    "fix": "Validate URLs to restrict to public endpoints or use allowlists"
   },
   {
     "location": "src/config/env.js:8",
@@ -95,10 +93,10 @@ The code structure is good and tests exist, but security implementation needs si
     "fix": "Remove or redact signature from debug logs"
   },
   {
-    "location": "src/index.js:52",
-    "severity": "low",
-    "issue": "The server startup log prints whether the webhook secret is configured, which could indicate to an attacker whether the default secret is being used.",
-    "fix": "Do not log webhook secret configuration status"
+    "location": "src/handlers/generic.js:24",
+    "severity": "medium",
+    "issue": "Error log prints the full signature header when verification fails, exposing the secret-bearing HMAC in error logs.",
+    "fix": "Do not log signature headers in error messages"
   }
 ]
 ```

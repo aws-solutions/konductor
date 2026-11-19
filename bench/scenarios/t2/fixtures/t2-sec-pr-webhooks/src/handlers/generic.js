@@ -103,6 +103,41 @@ export async function notifyCallback(callbackUrl, payload) {
 }
 
 /**
+ * Forward webhook payload to a notification endpoint (customer-provided)
+ * This is used for the new /notify endpoint that customers can configure
+ * @param {string} url - Notification endpoint URL
+ * @param {Object} payload - Webhook payload to forward
+ * @returns {Promise<Object>} Response from notification endpoint
+ */
+export async function forwardToNotificationEndpoint(url, payload) {
+  logger.info(`Forwarding to notification endpoint: ${url}`);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-By': 'Webhook-Integration-Service'
+      },
+      body: JSON.stringify(payload),
+      timeout: 15000
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Notification endpoint responded with ${response.status}`);
+    }
+    
+    return {
+      status: response.status,
+      data: await response.json().catch(() => null)
+    };
+  } catch (error) {
+    logger.error(`Notification forwarding failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Handle generic webhook
  * @param {Object} req - Express request
  * @param {Object} res - Express response

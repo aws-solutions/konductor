@@ -8,6 +8,7 @@ import { logger } from './utils/logger.js';
 import { handleGitHubWebhook } from './handlers/github.js';
 import { handleStripeWebhook } from './handlers/stripe.js';
 import { handleGenericWebhook } from './handlers/generic.js';
+import { handleNotify } from './handlers/notify.js';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use((req, res, next) => {
 app.post('/webhooks/github', handleGitHubWebhook);
 app.post('/webhooks/stripe', handleStripeWebhook);
 app.post('/webhooks/generic', handleGenericWebhook);
+app.post('/notify', handleNotify);
 
 app.get('/health', (req, res) => {
   res.json({ 

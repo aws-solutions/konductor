@@ -1,0 +1,31 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt focuses on security areas (signature verification, replay protection, callback safety) without naming specific planted problems or their locations. Does not hint at number of issues."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear scope: review new generic handler in src/handlers/generic.js, compare with GitHub/Stripe handlers, write findings to REVIEW.md. Output format explicitly specified with location, severity, issue, fix fields."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Several issues require cross-file comparison (raw body usage, timingSafeEqual), reading config defaults (env.js), understanding security requirements from docs, and connecting header reading to missing validation. Not surface-level obvious."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 7 key items verified against fixture code. k1: line 30 uses JSON.stringify(parsedBody) not raw body. k2: line 38 uses === not timingSafeEqual. k3: lines 49-65 have no time window, only size-based cleanup. k4: timestamp read at line ~112-115 but never validated. k5: env.js:8 has hardcoded fallback. k6: line ~120-124 logs signature in debug. k7: index.js:52-56 logs secret config status. All findings are defensible from fixture evidence."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No TODOs, FIXMEs, or bug comments in code. Test file uses correct test data. Docs describe requirements generically. security.js provides constants (MAX_TIMESTAMP_AGE_MS, DELIVERY_ID_WINDOW_MS) but no hints at the bugs themselves. File names are normal."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}
