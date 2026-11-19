@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { AA_GRAPHIC, AA_TEXT, contrastRatio } from '../src/theme/contrast.ts';
 import {
@@ -8,29 +7,14 @@ import {
   RADIUS,
   type ThemeMode,
 } from '../src/theme/tokens.ts';
+import { COLOUR_LITERAL, HEX_COLOUR, readStyleSheet } from './css-variables.ts';
 
-const css = readFileSync(
+const sheet = readStyleSheet(
   new URL('../src/canvas/canvas.css', import.meta.url),
-  'utf8',
 );
-
-// The declarations of the rule that starts with `selector`.
-function block(selector: string): string {
-  return css.split(`${selector} {`)[1]?.split('}')[0] ?? '';
-}
-
-// Every `--wf-*` declaration of the rule, whatever its value.
-function declarations(selector: string): Record<string, string> {
-  return Object.fromEntries(
-    [...block(selector).matchAll(/(--wf-[\w-]+):\s*([^;]+);/g)].map((m) => [
-      m[1],
-      m[2]!.trim(),
-    ]),
-  );
-}
+const { block, declarations } = sheet;
 
 const VARIABLE_BLOCKS = ['.wf-canvas', ":root[data-theme='dark'] .wf-canvas"];
-const HEX_COLOUR = /^#[0-9a-f]{6}$/;
 
 const light = declarations('.wf-canvas');
 const dark = {
@@ -132,9 +116,6 @@ describe('canvas.css shapes', () => {
 // A colour must be a 6-digit hex variable that the theme module is checked
 // against, so that a hand-copied value cannot drift from the palette.
 describe('canvas.css colours come only from the checked variables', () => {
-  const COLOUR_LITERAL =
-    /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(/i;
-
   it.each(VARIABLE_BLOCKS)('declares %s colours as 6-digit hex', (selector) => {
     for (const [name, value] of Object.entries(declarations(selector))) {
       expect(value, name).toMatch(HEX_COLOUR);
@@ -142,7 +123,7 @@ describe('canvas.css colours come only from the checked variables', () => {
   });
 
   it('writes no colour outside the two variable blocks', () => {
-    const outside = css
+    const outside = sheet.text
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\.wf-canvas \{[^}]*\}/g, '');
 

@@ -18,7 +18,13 @@ const PASSING: readonly RunEvent[] = [
   { seq: 4, type: 'stage_state', stage: 'review', status: 'running' },
   { seq: 5, type: 'console', stage: 'review', n: 1, text: 'Reading PLAN.md' },
   { seq: 6, type: 'stage_state', stage: 'review', status: 'passed' },
-  { seq: 7, type: 'run_finished', status: 'passed', exit_code: 0 },
+  {
+    seq: 7,
+    type: 'run_finished',
+    at: '2026-10-24T04:12:23Z',
+    status: 'passed',
+    exit_code: 0,
+  },
 ];
 
 function follow(events: readonly RunEvent[]): FollowedRun {
@@ -73,6 +79,7 @@ describe('applyRunEvents', () => {
         },
       ],
       outcome: { status: 'passed', exitCode: 0 },
+      finishedAt: Date.parse('2026-10-24T04:12:23Z'),
       next: 7,
       consoleOrder: ['draft', 'review'],
     });
@@ -88,9 +95,16 @@ describe('applyRunEvents', () => {
         status: 'blocked',
         reason: 'OUTPUT_MISSING',
       },
-      { seq: 3, type: 'run_finished', status: 'halted', exit_code: 1 },
+      {
+        seq: 3,
+        type: 'run_finished',
+        at: '2026-10-24T04:12:49Z',
+        status: 'halted',
+        exit_code: 1,
+      },
     ]);
 
+    expect(run.finishedAt).toBe(Date.parse('2026-10-24T04:12:49Z'));
     expect(stage(run, 'draft')).toMatchObject({
       status: 'blocked',
       reason: 'OUTPUT_MISSING',
