@@ -139,3 +139,11 @@ test('result schema rejects an unknown status', () => {
   const r = skippedResult({ arm: ARM, task: TASK, replicate: 1, config: CONFIG, env: ENV });
   assert.ok(validateResult({ ...r, status: 'maybe' }).length);
 });
+
+test('task schema accepts pilot.dryRun with the reference, stub, lazy and alternative answer scores', () => {
+  const schema = loadSchema('task');
+  const pilot = { scores: {}, decision: 'keep', date: '2026-11-19', dryRun: { reference: 100, stub: 0, lazy: 25, alt: 94, date: '2026-11-19' } };
+  assert.deepEqual(validate(schema, { ...TASK, pilot }), []);
+  assert.ok(validate(schema, { ...TASK, pilot: { ...pilot, dryRun: { reference: 100, stub: 0 } } }).length);
+  assert.ok(validate(schema, { ...TASK, pilot: { ...pilot, dryRun: { ...pilot.dryRun, lazy: -1 } } }).length);
+});

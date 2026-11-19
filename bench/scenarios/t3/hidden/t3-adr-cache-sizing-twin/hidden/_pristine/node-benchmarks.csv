@@ -1,0 +1,4 @@
+node_id,memory_gb,p95_latency_ms,primary_throughput_rps
+cache-52,52,55,450
+cache-105,105,32,900
+cache-209,209,24,1600

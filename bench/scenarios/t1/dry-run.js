@@ -44,20 +44,19 @@ function copyTree(src, dest) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
-// A workspace: the fixture, plus the reference overlay when `reference` is set.
 // `dir` is the batch directory; a task may name another task's fixture (a near-miss twin shares its real task's).
 const fixtureOf = (dir, task) => path.join(dir, 'fixtures', task.fixture || task.id);
 
-function workspace(root, task, reference, dir) {
-  const ws = path.join(root, reference ? 'ref' : 'stub');
+// A workspace named `name`: the fixture, plus an overlay dir when one is given (DELETE.txt in it lists paths to remove).
+function workspace(root, task, name, overlay, dir) {
+  const ws = path.join(root, name);
   copyTree(fixtureOf(dir, task), ws);
-  if (reference) {
-    const sol = path.join(dir, 'solutions', task.id);
-    const del = path.join(sol, 'DELETE.txt');
+  if (overlay) {
+    const del = path.join(overlay, 'DELETE.txt');
     if (fs.existsSync(del)) {
       for (const p of fs.readFileSync(del, 'utf8').split('\n').filter(Boolean)) fs.rmSync(path.join(ws, p), { recursive: true, force: true });
     }
-    fs.cpSync(sol, ws, { recursive: true, filter: (p) => path.basename(p) !== 'DELETE.txt' });
+    fs.cpSync(overlay, ws, { recursive: true, filter: (p) => path.basename(p) !== 'DELETE.txt' });
   }
   return ws;
 }
@@ -102,11 +101,16 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
     const py = resolvePython({ env, want: wantedVersion(path.join(DIR, '..', '..')) });
     if (py.executable) env.PATH = [linkPython(root, py.executable, py.version), env.PATH].join(path.delimiter);
     const hiddenDir = path.join(dir, 'hidden', id);
-    const out = { id, repeat, reference: null, stub: null, deterministic: true, canary: null };
-    for (const [mode, ref] of [['reference', true], ['stub', false]]) {
-      const ws = workspace(root, task, ref, dir);
+    const out = { id, repeat, reference: null, stub: null, lazy: null, alt: null, deterministic: true, canary: null };
+    // The lazy and alternative answers (answers/<id>/lazy and answers/<id>/alt) are scored once each when present.
+    const answerDir = (k) => path.join(dir, 'answers', id, k);
+    const modes = [['reference', path.join(dir, 'solutions', id)], ['stub', null]];
+    for (const k of ['lazy', 'alt']) if (fs.existsSync(answerDir(k))) modes.push([k, answerDir(k)]);
+    for (const [mode, overlay] of modes) {
+      const ref = mode === 'reference';
+      const ws = workspace(root, task, mode, overlay, dir);
       const runs = [];
-      for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, hiddenDir, dir, env, path.join(root, 'scratch')));
+      for (let i = 0; i < (ref || mode === 'stub' ? repeat : 1); i++) runs.push(runChecks(task, ws, hiddenDir, dir, env, path.join(root, 'scratch')));
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
       out[mode] = { ...scoreOf(runs[0]), checks_: runs[0].map((r) => ({ type: r.type, kind: r.kind, weight: r.weight, passed: r.passed, detail: r.detail })) };
       if (ref) {
@@ -115,6 +119,9 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
       }
     }
     out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic && out.canary.ok;
+    // Gates added 2026-11-19: a lazy answer scores 40 or less, an alternative correct answer 80 or more (each only when present).
+    out.answersPass = (!out.lazy || out.lazy.score <= 40) && (!out.alt || out.alt.score >= 80);
+    out.answersPresent = Boolean(out.lazy && out.alt);
     return out;
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -127,9 +134,9 @@ if (require.main === module) {
   const repeat = args.includes('--repeat') ? Number(args[args.indexOf('--repeat') + 1]) : 3;
   const dir = args.includes('--dir') ? path.resolve(args[args.indexOf('--dir') + 1]) : DIR;
   const res = dryRun(id, { repeat, dir });
-  const brief = (m) => ({ score: Number(m.score.toFixed(1)), hidden: m.hidden, checks: m.checks });
-  console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), deterministic: res.deterministic, canary: res.canary, pass: res.pass }, null, 2));
-  if (!res.pass) process.exitCode = 1;
+  const brief = (m) => (m ? { score: Number(m.score.toFixed(1)), hidden: m.hidden, checks: m.checks } : null);
+  console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), lazy: brief(res.lazy), alt: brief(res.alt), deterministic: res.deterministic, canary: res.canary, pass: res.pass, answersPass: res.answersPass }, null, 2));
+  if (!res.pass || !res.answersPass) process.exitCode = 1;
 }
 
 module.exports = { scoreOf, dryRun };
