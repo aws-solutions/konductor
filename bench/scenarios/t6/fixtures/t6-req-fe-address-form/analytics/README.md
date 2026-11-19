@@ -1,0 +1,1 @@
+The dashboard owner, Mira Sol, treats the names and payload keys in `events.json` as a public interface. A checkout release once changed a name while keeping the old chart, so the chart went flat for a week. The export does not say whether a redesigned component should add events; that decision belongs in the next set of requirements.

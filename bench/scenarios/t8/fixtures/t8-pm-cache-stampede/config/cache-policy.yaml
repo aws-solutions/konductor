@@ -1,0 +1,11 @@
+service: cache-gateway
+nodes:
+  - cache-1
+  - cache-2
+  - cache-3
+policy:
+  default_ttl_seconds: 1800
+  jitter_seconds: 0
+  warmup_on_reload: true
+  warmup_batch_size: 800
+  max_refill_queue: 600

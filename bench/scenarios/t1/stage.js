@@ -131,7 +131,7 @@ function assemble(id) {
     timeoutSec: limitsOf(draft.limits).hardSec,
     limits: limitsOf(draft.limits),
     checks: draft.checks,
-    rubric: draft.rubric,
+    rubric: draft.rubric.map((r) => ({ weight: 1, ...r })),
     targetSkills: mapping.targetSkills,
     targetSop: mapping.targetSop,
     targetAgent: mapping.targetAgent,

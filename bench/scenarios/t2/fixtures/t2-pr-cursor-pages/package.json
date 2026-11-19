@@ -1,0 +1,12 @@
+{
+  "name": "trailhead-api",
+  "version": "1.8.0",
+  "description": "Small REST API for tracking work items",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check-format.js"
+  }
+}

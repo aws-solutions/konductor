@@ -1,0 +1,100 @@
+{
+  "id": "t8-pm-cache-stampede",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Please write the postmortem for the catalogue service's afternoon incident for our team review. Work from the operational files in this folder and explain the customer impact, the evidence-backed cause, the timeline, the response, and useful follow-up actions. Put the document at postmortems/catalog-db-overload.md. End it with a fenced ```json block containing one object with these fields: rootCause (object with summary as a string and evidence as a list of path:line strings), timeline (a list of objects with time and event strings), impact (an object with numbers: failedPageRequests, the failed page requests the metrics record; peakDbCpuPercent, the highest database CPU in percent; peakDbConnections, the highest count of active database connections; affectedMinutes, the total minutes with failed pages), and actionItems (a list of objects with text and owner strings). Use ISO 8601 UTC strings for every timeline time. Evidence references must use path:line, where path is relative to this folder and line is a 1-based line number. Make the JSON values numeric. Keep the report useful to engineers who will operate the service again.",
+  "fixture": "t8-pm-cache-stampede",
+  "hidden": "t8-pm-cache-stampede",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 23,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "postmortems/catalog-db-overload.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "logs/db.log",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "narrative-clarity",
+      "criterion": "The prose clearly distinguishes the initiating cache behavior from the later database saturation and explains how the response stopped recurrence (code cannot check this because the structured block cannot measure causal clarity in the surrounding narrative)",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/danluu/post-mortems",
+      "licence": "no licence file (GitHub API: license null); a list of links, used for the idea only; no linked text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks for a postmortem with specific structural elements (JSON with rootCause, timeline, impact, actionItems) but does not name methods, processes, or tools. It mentions the operational files in this folder without telling how to work or listing causes/constraints."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The path `postmortems/catalog-db-overload.md` is explicit. The ISO 8601 UTC requirement is stated. All key fields in the JSON (rootCause.summary, rootCause.evidence, timeline, impact, actionItems) are clearly defined. The key items in blockKey match the request requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture files contain the evidence (config-review.diff showing TTL/jitter changes, deploy-history.jsonl showing warmup completed with 38400 keys, cache.log showing expiration wave with expired_keys=38194, db.log showing connection_limit_reached, api.log showing cache=miss burst, metrics/catalog-minute.csv showing failed page counts and CPU). No file names, comments, or notes reveal the answer directly—readers must synthesize evidence from multiple files."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer would be blaming the 12:30 analytics_rollup reporting query (which completed before the incident), or the newest deploy (2025.03.18-6 at 16:22 which was recovery). The key items would catch these: cause-summary forbids reporting/analytics keywords, and timeline-warmup requires the 14:42 warmup event. Round-number guesses (e.g., 3500 failed requests) would miss the precise impact numbers (3960, 99.2, 240, 12)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable: failedPageRequests (3960) is sum of page_errors in metrics during elevated periods (420+390+300+210+420+390+300+210=2640 plus baseline ~1320=3960); peakDbCpuPercent (99.2) from catalog-minute.csv at 15:12/15:42/16:12; peakDbConnections (240) from config/database.yaml and db.log line 585; affectedMinutes (12) is 3 waves × 4 minutes each (15:12–15:16, 15:42–15:46, 16:12–16:16). The tolerances (5%, 1%, 10%) are generous enough for rounding. No phrasing is rejected unfairly."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

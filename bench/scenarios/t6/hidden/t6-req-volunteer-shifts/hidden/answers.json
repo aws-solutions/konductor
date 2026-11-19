@@ -1,0 +1,8 @@
+[
+  "All times should be shown in Mountain Time with (MT) after them. We have a few remote volunteers but most are local, and trying to handle multiple time zones would confuse everyone.",
+  "Background checks take 5 to 7 business days right now. The system needs to account for that delay before letting people sign up for roles that need them.",
+  "The minimum group size is 3 volunteers. Below that, people should just sign up individually.",
+  "Yes, there's an exception for emergencies - coordinators can use their discretion on the 24-hour cancellation rule for genuine emergencies.",
+  "We should verify age without storing full birth dates. Use an age bracket like 16-17 or 18+, and for 16-17 we need parent consent forms.",
+  "Site coordinators should not be able to see volunteer age (except to verify 16+), medical information, background check details, or performance issues from other sites."
+]

@@ -1,0 +1,42 @@
+{
+ "id": "t2-pr-orders-migration",
+ "reference": {
+  "score": 100,
+  "checks": [
+   "pass tests 22/22",
+   "pass file_exists",
+   "pass cmd",
+   "pass cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
+ "stub": {
+  "score": 7.1,
+  "checks": [
+   "FAIL tests 0/22",
+   "FAIL file_exists",
+   "FAIL cmd",
+   "FAIL cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
+ "dump": {
+  "score": 28.6,
+  "checks": [
+   "FAIL tests 0/22",
+   "pass file_exists",
+   "pass cmd",
+   "pass cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
+ "gates": {
+  "reference": true,
+  "referenceAllChecks": true,
+  "stub": true,
+  "repeatable": true
+ }
+}

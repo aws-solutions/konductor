@@ -1,0 +1,1119 @@
+2025-03-18T12:00:03.000Z INFO api.catalog request_id=req-000000-75 route=/health status=200 latency_ms=4
+2025-03-18T12:00:11.000Z INFO api.catalog request_id=req-000000-75 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T12:00:29.000Z INFO api.catalog request_id=req-000000-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T12:00:44.000Z WARN api.catalog request_id=req-000000-09 route=/v2/products status=200 cache=miss latency_ms=355 retry=0
+2025-03-18T12:01:03.000Z INFO api.catalog request_id=req-000001-88 route=/health status=200 latency_ms=3
+2025-03-18T12:01:11.000Z INFO api.catalog request_id=req-000001-88 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T12:01:29.000Z INFO api.catalog request_id=req-000001-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:02:03.000Z INFO api.catalog request_id=req-000002-6d route=/health status=200 latency_ms=6
+2025-03-18T12:02:11.000Z INFO api.catalog request_id=req-000002-6d route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T12:02:29.000Z INFO api.catalog request_id=req-000002-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T12:03:03.000Z INFO api.catalog request_id=req-000003-dd route=/health status=200 latency_ms=9
+2025-03-18T12:03:11.000Z INFO api.catalog request_id=req-000003-dd route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T12:03:29.000Z INFO api.catalog request_id=req-000003-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:04:03.000Z INFO api.catalog request_id=req-000004-a1 route=/health status=200 latency_ms=4
+2025-03-18T12:04:11.000Z INFO api.catalog request_id=req-000004-a1 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T12:04:29.000Z INFO api.catalog request_id=req-000004-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:05:03.000Z INFO api.catalog request_id=req-000005-ec route=/health status=200 latency_ms=3
+2025-03-18T12:05:11.000Z INFO api.catalog request_id=req-000005-ec route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T12:05:29.000Z INFO api.catalog request_id=req-000005-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T12:06:03.000Z INFO api.catalog request_id=req-000006-fa route=/health status=200 latency_ms=7
+2025-03-18T12:06:11.000Z INFO api.catalog request_id=req-000006-fa route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T12:06:29.000Z INFO api.catalog request_id=req-000006-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T12:07:03.000Z INFO api.catalog request_id=req-000007-95 route=/health status=200 latency_ms=7
+2025-03-18T12:07:11.000Z INFO api.catalog request_id=req-000007-95 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T12:07:29.000Z INFO api.catalog request_id=req-000007-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T12:08:03.000Z INFO api.catalog request_id=req-000008-e3 route=/health status=200 latency_ms=5
+2025-03-18T12:08:11.000Z INFO api.catalog request_id=req-000008-e3 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T12:08:29.000Z INFO api.catalog request_id=req-000008-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:08:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T12:09:03.000Z INFO api.catalog request_id=req-000009-bd route=/health status=200 latency_ms=6
+2025-03-18T12:09:11.000Z INFO api.catalog request_id=req-000009-bd route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T12:09:29.000Z INFO api.catalog request_id=req-000009-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:10:03.000Z INFO api.catalog request_id=req-000010-bb route=/health status=200 latency_ms=8
+2025-03-18T12:10:11.000Z INFO api.catalog request_id=req-000010-bb route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T12:10:29.000Z INFO api.catalog request_id=req-000010-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:11:03.000Z INFO api.catalog request_id=req-000011-19 route=/health status=200 latency_ms=2
+2025-03-18T12:11:11.000Z INFO api.catalog request_id=req-000011-19 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T12:11:29.000Z INFO api.catalog request_id=req-000011-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:12:03.000Z INFO api.catalog request_id=req-000012-75 route=/health status=200 latency_ms=7
+2025-03-18T12:12:11.000Z INFO api.catalog request_id=req-000012-75 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T12:12:29.000Z INFO api.catalog request_id=req-000012-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:13:03.000Z INFO api.catalog request_id=req-000013-3c route=/health status=200 latency_ms=8
+2025-03-18T12:13:11.000Z INFO api.catalog request_id=req-000013-3c route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T12:13:29.000Z INFO api.catalog request_id=req-000013-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T12:14:03.000Z INFO api.catalog request_id=req-000014-22 route=/health status=200 latency_ms=6
+2025-03-18T12:14:11.000Z INFO api.catalog request_id=req-000014-22 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T12:14:29.000Z INFO api.catalog request_id=req-000014-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:15:03.000Z INFO api.catalog request_id=req-000015-8e route=/health status=200 latency_ms=6
+2025-03-18T12:15:11.000Z INFO api.catalog request_id=req-000015-8e route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T12:15:29.000Z INFO api.catalog request_id=req-000015-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:16:03.000Z INFO api.catalog request_id=req-000016-3b route=/health status=200 latency_ms=5
+2025-03-18T12:16:11.000Z INFO api.catalog request_id=req-000016-3b route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T12:16:29.000Z INFO api.catalog request_id=req-000016-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T12:17:03.000Z INFO api.catalog request_id=req-000017-4a route=/health status=200 latency_ms=4
+2025-03-18T12:17:11.000Z INFO api.catalog request_id=req-000017-4a route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T12:17:29.000Z INFO api.catalog request_id=req-000017-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T12:17:57.000Z WARN api.catalog route=/v2/search status=499 client_cancelled=true
+2025-03-18T12:18:03.000Z INFO api.catalog request_id=req-000018-bf route=/health status=200 latency_ms=8
+2025-03-18T12:18:11.000Z INFO api.catalog request_id=req-000018-bf route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T12:18:29.000Z INFO api.catalog request_id=req-000018-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T12:19:03.000Z INFO api.catalog request_id=req-000019-64 route=/health status=200 latency_ms=9
+2025-03-18T12:19:11.000Z INFO api.catalog request_id=req-000019-64 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T12:19:29.000Z INFO api.catalog request_id=req-000019-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T12:20:03.000Z INFO api.catalog request_id=req-000020-92 route=/health status=200 latency_ms=5
+2025-03-18T12:20:11.000Z INFO api.catalog request_id=req-000020-92 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T12:20:29.000Z INFO api.catalog request_id=req-000020-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T12:21:03.000Z INFO api.catalog request_id=req-000021-78 route=/health status=200 latency_ms=5
+2025-03-18T12:21:11.000Z INFO api.catalog request_id=req-000021-78 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T12:21:29.000Z INFO api.catalog request_id=req-000021-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:22:03.000Z INFO api.catalog request_id=req-000022-a6 route=/health status=200 latency_ms=9
+2025-03-18T12:22:11.000Z INFO api.catalog request_id=req-000022-a6 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T12:22:29.000Z INFO api.catalog request_id=req-000022-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T12:23:03.000Z INFO api.catalog request_id=req-000023-78 route=/health status=200 latency_ms=8
+2025-03-18T12:23:11.000Z INFO api.catalog request_id=req-000023-78 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T12:23:29.000Z INFO api.catalog request_id=req-000023-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T12:24:03.000Z INFO api.catalog request_id=req-000024-a5 route=/health status=200 latency_ms=8
+2025-03-18T12:24:11.000Z INFO api.catalog request_id=req-000024-a5 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T12:24:29.000Z INFO api.catalog request_id=req-000024-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:25:03.000Z INFO api.catalog request_id=req-000025-5c route=/health status=200 latency_ms=6
+2025-03-18T12:25:11.000Z INFO api.catalog request_id=req-000025-5c route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T12:25:29.000Z INFO api.catalog request_id=req-000025-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T12:26:03.000Z INFO api.catalog request_id=req-000026-bf route=/health status=200 latency_ms=2
+2025-03-18T12:26:11.000Z INFO api.catalog request_id=req-000026-bf route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T12:26:29.000Z INFO api.catalog request_id=req-000026-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T12:27:03.000Z INFO api.catalog request_id=req-000027-fd route=/health status=200 latency_ms=8
+2025-03-18T12:27:11.000Z INFO api.catalog request_id=req-000027-fd route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T12:27:29.000Z INFO api.catalog request_id=req-000027-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T12:28:03.000Z INFO api.catalog request_id=req-000028-77 route=/health status=200 latency_ms=4
+2025-03-18T12:28:11.000Z INFO api.catalog request_id=req-000028-77 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T12:28:29.000Z INFO api.catalog request_id=req-000028-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T12:29:03.000Z INFO api.catalog request_id=req-000029-aa route=/health status=200 latency_ms=4
+2025-03-18T12:29:11.000Z INFO api.catalog request_id=req-000029-aa route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T12:29:29.000Z INFO api.catalog request_id=req-000029-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:30:03.000Z INFO api.catalog request_id=req-000030-44 route=/health status=200 latency_ms=8
+2025-03-18T12:30:11.000Z INFO api.catalog request_id=req-000030-44 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T12:30:29.000Z INFO api.catalog request_id=req-000030-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T12:31:03.000Z INFO api.catalog request_id=req-000031-d3 route=/health status=200 latency_ms=4
+2025-03-18T12:31:11.000Z INFO api.catalog request_id=req-000031-d3 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T12:31:29.000Z INFO api.catalog request_id=req-000031-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T12:32:03.000Z INFO api.catalog request_id=req-000032-92 route=/health status=200 latency_ms=4
+2025-03-18T12:32:11.000Z INFO api.catalog request_id=req-000032-92 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T12:32:29.000Z INFO api.catalog request_id=req-000032-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T12:33:03.000Z INFO api.catalog request_id=req-000033-7a route=/health status=200 latency_ms=7
+2025-03-18T12:33:11.000Z INFO api.catalog request_id=req-000033-7a route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T12:33:29.000Z INFO api.catalog request_id=req-000033-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:34:03.000Z INFO api.catalog request_id=req-000034-ed route=/health status=200 latency_ms=5
+2025-03-18T12:34:11.000Z INFO api.catalog request_id=req-000034-ed route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T12:34:29.000Z INFO api.catalog request_id=req-000034-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T12:35:03.000Z INFO api.catalog request_id=req-000035-c8 route=/health status=200 latency_ms=6
+2025-03-18T12:35:11.000Z INFO api.catalog request_id=req-000035-c8 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T12:35:29.000Z INFO api.catalog request_id=req-000035-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:36:03.000Z INFO api.catalog request_id=req-000036-31 route=/health status=200 latency_ms=3
+2025-03-18T12:36:11.000Z INFO api.catalog request_id=req-000036-31 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T12:36:29.000Z INFO api.catalog request_id=req-000036-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T12:37:03.000Z INFO api.catalog request_id=req-000037-1d route=/health status=200 latency_ms=2
+2025-03-18T12:37:11.000Z INFO api.catalog request_id=req-000037-1d route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T12:37:29.000Z INFO api.catalog request_id=req-000037-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:37:44.000Z WARN api.catalog request_id=req-000037-09 route=/v2/products status=200 cache=miss latency_ms=412 retry=0
+2025-03-18T12:38:03.000Z INFO api.catalog request_id=req-000038-7b route=/health status=200 latency_ms=8
+2025-03-18T12:38:11.000Z INFO api.catalog request_id=req-000038-7b route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T12:38:29.000Z INFO api.catalog request_id=req-000038-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:39:03.000Z INFO api.catalog request_id=req-000039-e2 route=/health status=200 latency_ms=6
+2025-03-18T12:39:11.000Z INFO api.catalog request_id=req-000039-e2 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T12:39:29.000Z INFO api.catalog request_id=req-000039-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:40:03.000Z INFO api.catalog request_id=req-000040-92 route=/health status=200 latency_ms=3
+2025-03-18T12:40:11.000Z INFO api.catalog request_id=req-000040-92 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T12:40:29.000Z INFO api.catalog request_id=req-000040-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T12:41:03.000Z INFO api.catalog request_id=req-000041-85 route=/health status=200 latency_ms=4
+2025-03-18T12:41:11.000Z INFO api.catalog request_id=req-000041-85 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T12:41:29.000Z INFO api.catalog request_id=req-000041-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:42:03.000Z INFO api.catalog request_id=req-000042-37 route=/health status=200 latency_ms=3
+2025-03-18T12:42:11.000Z INFO api.catalog request_id=req-000042-37 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T12:42:29.000Z INFO api.catalog request_id=req-000042-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T12:43:03.000Z INFO api.catalog request_id=req-000043-1a route=/health status=200 latency_ms=3
+2025-03-18T12:43:11.000Z INFO api.catalog request_id=req-000043-1a route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T12:43:29.000Z INFO api.catalog request_id=req-000043-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T12:44:03.000Z INFO api.catalog request_id=req-000044-9b route=/health status=200 latency_ms=6
+2025-03-18T12:44:11.000Z INFO api.catalog request_id=req-000044-9b route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T12:44:29.000Z INFO api.catalog request_id=req-000044-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T12:45:03.000Z INFO api.catalog request_id=req-000045-c9 route=/health status=200 latency_ms=8
+2025-03-18T12:45:11.000Z INFO api.catalog request_id=req-000045-c9 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T12:45:29.000Z INFO api.catalog request_id=req-000045-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:46:03.000Z INFO api.catalog request_id=req-000046-a1 route=/health status=200 latency_ms=2
+2025-03-18T12:46:11.000Z INFO api.catalog request_id=req-000046-a1 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T12:46:29.000Z INFO api.catalog request_id=req-000046-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T12:47:03.000Z INFO api.catalog request_id=req-000047-d8 route=/health status=200 latency_ms=2
+2025-03-18T12:47:11.000Z INFO api.catalog request_id=req-000047-d8 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T12:47:29.000Z INFO api.catalog request_id=req-000047-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T12:48:03.000Z INFO api.catalog request_id=req-000048-79 route=/health status=200 latency_ms=6
+2025-03-18T12:48:11.000Z INFO api.catalog request_id=req-000048-79 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T12:48:29.000Z INFO api.catalog request_id=req-000048-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T12:49:03.000Z INFO api.catalog request_id=req-000049-a8 route=/health status=200 latency_ms=4
+2025-03-18T12:49:11.000Z INFO api.catalog request_id=req-000049-a8 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T12:49:29.000Z INFO api.catalog request_id=req-000049-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T12:50:03.000Z INFO api.catalog request_id=req-000050-d6 route=/health status=200 latency_ms=2
+2025-03-18T12:50:11.000Z INFO api.catalog request_id=req-000050-d6 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T12:50:29.000Z INFO api.catalog request_id=req-000050-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T12:51:03.000Z INFO api.catalog request_id=req-000051-2f route=/health status=200 latency_ms=9
+2025-03-18T12:51:11.000Z INFO api.catalog request_id=req-000051-2f route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T12:51:29.000Z INFO api.catalog request_id=req-000051-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T12:52:03.000Z INFO api.catalog request_id=req-000052-16 route=/health status=200 latency_ms=9
+2025-03-18T12:52:11.000Z INFO api.catalog request_id=req-000052-16 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T12:52:29.000Z INFO api.catalog request_id=req-000052-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T12:53:03.000Z INFO api.catalog request_id=req-000053-ba route=/health status=200 latency_ms=9
+2025-03-18T12:53:11.000Z INFO api.catalog request_id=req-000053-ba route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T12:53:29.000Z INFO api.catalog request_id=req-000053-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:54:03.000Z INFO api.catalog request_id=req-000054-19 route=/health status=200 latency_ms=2
+2025-03-18T12:54:11.000Z INFO api.catalog request_id=req-000054-19 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T12:54:29.000Z INFO api.catalog request_id=req-000054-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T12:55:03.000Z INFO api.catalog request_id=req-000055-f3 route=/health status=200 latency_ms=2
+2025-03-18T12:55:11.000Z INFO api.catalog request_id=req-000055-f3 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T12:55:29.000Z INFO api.catalog request_id=req-000055-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T12:56:03.000Z INFO api.catalog request_id=req-000056-e7 route=/health status=200 latency_ms=2
+2025-03-18T12:56:11.000Z INFO api.catalog request_id=req-000056-e7 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T12:56:29.000Z INFO api.catalog request_id=req-000056-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T12:57:03.000Z INFO api.catalog request_id=req-000057-d6 route=/health status=200 latency_ms=4
+2025-03-18T12:57:11.000Z INFO api.catalog request_id=req-000057-d6 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T12:57:29.000Z INFO api.catalog request_id=req-000057-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T12:58:03.000Z INFO api.catalog request_id=req-000058-17 route=/health status=200 latency_ms=5
+2025-03-18T12:58:11.000Z INFO api.catalog request_id=req-000058-17 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T12:58:29.000Z INFO api.catalog request_id=req-000058-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T12:59:03.000Z INFO api.catalog request_id=req-000059-be route=/health status=200 latency_ms=2
+2025-03-18T12:59:11.000Z INFO api.catalog request_id=req-000059-be route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T12:59:29.000Z INFO api.catalog request_id=req-000059-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:00:03.000Z INFO api.catalog request_id=req-000060-35 route=/health status=200 latency_ms=3
+2025-03-18T13:00:11.000Z INFO api.catalog request_id=req-000060-35 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T13:00:29.000Z INFO api.catalog request_id=req-000060-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:01:03.000Z INFO api.catalog request_id=req-000061-99 route=/health status=200 latency_ms=7
+2025-03-18T13:01:11.000Z INFO api.catalog request_id=req-000061-99 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T13:01:29.000Z INFO api.catalog request_id=req-000061-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T13:01:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T13:02:03.000Z INFO api.catalog request_id=req-000062-6f route=/health status=200 latency_ms=7
+2025-03-18T13:02:11.000Z INFO api.catalog request_id=req-000062-6f route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T13:02:29.000Z INFO api.catalog request_id=req-000062-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:03:03.000Z INFO api.catalog request_id=req-000063-b9 route=/health status=200 latency_ms=6
+2025-03-18T13:03:11.000Z INFO api.catalog request_id=req-000063-b9 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T13:03:29.000Z INFO api.catalog request_id=req-000063-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:04:03.000Z INFO api.catalog request_id=req-000064-68 route=/health status=200 latency_ms=7
+2025-03-18T13:04:11.000Z INFO api.catalog request_id=req-000064-68 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T13:04:29.000Z INFO api.catalog request_id=req-000064-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:05:03.000Z INFO api.catalog request_id=req-000065-a2 route=/health status=200 latency_ms=5
+2025-03-18T13:05:11.000Z INFO api.catalog request_id=req-000065-a2 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T13:05:29.000Z INFO api.catalog request_id=req-000065-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T13:06:03.000Z INFO api.catalog request_id=req-000066-8d route=/health status=200 latency_ms=4
+2025-03-18T13:06:11.000Z INFO api.catalog request_id=req-000066-8d route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T13:06:29.000Z INFO api.catalog request_id=req-000066-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T13:07:03.000Z INFO api.catalog request_id=req-000067-53 route=/health status=200 latency_ms=2
+2025-03-18T13:07:11.000Z INFO api.catalog request_id=req-000067-53 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T13:07:29.000Z INFO api.catalog request_id=req-000067-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T13:08:03.000Z INFO api.catalog request_id=req-000068-a8 route=/health status=200 latency_ms=9
+2025-03-18T13:08:11.000Z INFO api.catalog request_id=req-000068-a8 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T13:08:29.000Z INFO api.catalog request_id=req-000068-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T13:09:03.000Z INFO api.catalog request_id=req-000069-eb route=/health status=200 latency_ms=3
+2025-03-18T13:09:11.000Z INFO api.catalog request_id=req-000069-eb route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T13:09:29.000Z INFO api.catalog request_id=req-000069-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T13:10:03.000Z INFO api.catalog request_id=req-000070-f5 route=/health status=200 latency_ms=3
+2025-03-18T13:10:11.000Z INFO api.catalog request_id=req-000070-f5 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T13:10:29.000Z INFO api.catalog request_id=req-000070-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T13:11:03.000Z INFO api.catalog request_id=req-000071-d8 route=/health status=200 latency_ms=2
+2025-03-18T13:11:11.000Z INFO api.catalog request_id=req-000071-d8 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T13:11:29.000Z INFO api.catalog request_id=req-000071-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:12:03.000Z INFO api.catalog request_id=req-000072-4a route=/health status=200 latency_ms=6
+2025-03-18T13:12:11.000Z INFO api.catalog request_id=req-000072-4a route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T13:12:29.000Z INFO api.catalog request_id=req-000072-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:13:03.000Z INFO api.catalog request_id=req-000073-c3 route=/health status=200 latency_ms=4
+2025-03-18T13:13:11.000Z INFO api.catalog request_id=req-000073-c3 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T13:13:29.000Z INFO api.catalog request_id=req-000073-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T13:14:03.000Z INFO api.catalog request_id=req-000074-58 route=/health status=200 latency_ms=8
+2025-03-18T13:14:11.000Z INFO api.catalog request_id=req-000074-58 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T13:14:29.000Z INFO api.catalog request_id=req-000074-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T13:14:44.000Z WARN api.catalog request_id=req-000074-09 route=/v2/products status=200 cache=miss latency_ms=205 retry=0
+2025-03-18T13:15:03.000Z INFO api.catalog request_id=req-000075-a2 route=/health status=200 latency_ms=9
+2025-03-18T13:15:11.000Z INFO api.catalog request_id=req-000075-a2 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T13:15:29.000Z INFO api.catalog request_id=req-000075-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:16:03.000Z INFO api.catalog request_id=req-000076-97 route=/health status=200 latency_ms=8
+2025-03-18T13:16:11.000Z INFO api.catalog request_id=req-000076-97 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T13:16:29.000Z INFO api.catalog request_id=req-000076-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T13:17:03.000Z INFO api.catalog request_id=req-000077-fb route=/health status=200 latency_ms=4
+2025-03-18T13:17:11.000Z INFO api.catalog request_id=req-000077-fb route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T13:17:29.000Z INFO api.catalog request_id=req-000077-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:18:03.000Z INFO api.catalog request_id=req-000078-1e route=/health status=200 latency_ms=4
+2025-03-18T13:18:11.000Z INFO api.catalog request_id=req-000078-1e route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T13:18:29.000Z INFO api.catalog request_id=req-000078-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T13:18:57.000Z WARN api.catalog route=/v2/search status=499 client_cancelled=true
+2025-03-18T13:19:03.000Z INFO api.catalog request_id=req-000079-8e route=/health status=200 latency_ms=7
+2025-03-18T13:19:11.000Z INFO api.catalog request_id=req-000079-8e route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T13:19:29.000Z INFO api.catalog request_id=req-000079-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:20:03.000Z INFO api.catalog request_id=req-000080-e8 route=/health status=200 latency_ms=9
+2025-03-18T13:20:11.000Z INFO api.catalog request_id=req-000080-e8 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T13:20:29.000Z INFO api.catalog request_id=req-000080-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:21:03.000Z INFO api.catalog request_id=req-000081-b5 route=/health status=200 latency_ms=7
+2025-03-18T13:21:11.000Z INFO api.catalog request_id=req-000081-b5 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T13:21:29.000Z INFO api.catalog request_id=req-000081-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T13:22:03.000Z INFO api.catalog request_id=req-000082-da route=/health status=200 latency_ms=9
+2025-03-18T13:22:11.000Z INFO api.catalog request_id=req-000082-da route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T13:22:29.000Z INFO api.catalog request_id=req-000082-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:23:03.000Z INFO api.catalog request_id=req-000083-d1 route=/health status=200 latency_ms=2
+2025-03-18T13:23:11.000Z INFO api.catalog request_id=req-000083-d1 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T13:23:29.000Z INFO api.catalog request_id=req-000083-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T13:24:03.000Z INFO api.catalog request_id=req-000084-48 route=/health status=200 latency_ms=7
+2025-03-18T13:24:11.000Z INFO api.catalog request_id=req-000084-48 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T13:24:29.000Z INFO api.catalog request_id=req-000084-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:25:03.000Z INFO api.catalog request_id=req-000085-21 route=/health status=200 latency_ms=6
+2025-03-18T13:25:11.000Z INFO api.catalog request_id=req-000085-21 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T13:25:29.000Z INFO api.catalog request_id=req-000085-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T13:26:03.000Z INFO api.catalog request_id=req-000086-28 route=/health status=200 latency_ms=3
+2025-03-18T13:26:11.000Z INFO api.catalog request_id=req-000086-28 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T13:26:29.000Z INFO api.catalog request_id=req-000086-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T13:27:03.000Z INFO api.catalog request_id=req-000087-39 route=/health status=200 latency_ms=8
+2025-03-18T13:27:11.000Z INFO api.catalog request_id=req-000087-39 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T13:27:29.000Z INFO api.catalog request_id=req-000087-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T13:28:03.000Z INFO api.catalog request_id=req-000088-bd route=/health status=200 latency_ms=9
+2025-03-18T13:28:11.000Z INFO api.catalog request_id=req-000088-bd route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T13:28:29.000Z INFO api.catalog request_id=req-000088-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T13:29:03.000Z INFO api.catalog request_id=req-000089-4e route=/health status=200 latency_ms=3
+2025-03-18T13:29:11.000Z INFO api.catalog request_id=req-000089-4e route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T13:29:29.000Z INFO api.catalog request_id=req-000089-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T13:30:03.000Z INFO api.catalog request_id=req-000090-63 route=/health status=200 latency_ms=3
+2025-03-18T13:30:11.000Z INFO api.catalog request_id=req-000090-63 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T13:30:29.000Z INFO api.catalog request_id=req-000090-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:31:03.000Z INFO api.catalog request_id=req-000091-a7 route=/health status=200 latency_ms=8
+2025-03-18T13:31:11.000Z INFO api.catalog request_id=req-000091-a7 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T13:31:29.000Z INFO api.catalog request_id=req-000091-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T13:32:03.000Z INFO api.catalog request_id=req-000092-ee route=/health status=200 latency_ms=9
+2025-03-18T13:32:11.000Z INFO api.catalog request_id=req-000092-ee route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T13:32:29.000Z INFO api.catalog request_id=req-000092-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T13:33:03.000Z INFO api.catalog request_id=req-000093-8e route=/health status=200 latency_ms=6
+2025-03-18T13:33:11.000Z INFO api.catalog request_id=req-000093-8e route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T13:33:29.000Z INFO api.catalog request_id=req-000093-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T13:34:03.000Z INFO api.catalog request_id=req-000094-bb route=/health status=200 latency_ms=4
+2025-03-18T13:34:11.000Z INFO api.catalog request_id=req-000094-bb route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T13:34:29.000Z INFO api.catalog request_id=req-000094-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T13:35:03.000Z INFO api.catalog request_id=req-000095-ec route=/health status=200 latency_ms=9
+2025-03-18T13:35:11.000Z INFO api.catalog request_id=req-000095-ec route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T13:35:29.000Z INFO api.catalog request_id=req-000095-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T13:36:03.000Z INFO api.catalog request_id=req-000096-96 route=/health status=200 latency_ms=4
+2025-03-18T13:36:11.000Z INFO api.catalog request_id=req-000096-96 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T13:36:29.000Z INFO api.catalog request_id=req-000096-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T13:37:03.000Z INFO api.catalog request_id=req-000097-86 route=/health status=200 latency_ms=6
+2025-03-18T13:37:11.000Z INFO api.catalog request_id=req-000097-86 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T13:37:29.000Z INFO api.catalog request_id=req-000097-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:38:03.000Z INFO api.catalog request_id=req-000098-54 route=/health status=200 latency_ms=8
+2025-03-18T13:38:11.000Z INFO api.catalog request_id=req-000098-54 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T13:38:29.000Z INFO api.catalog request_id=req-000098-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T13:39:03.000Z INFO api.catalog request_id=req-000099-98 route=/health status=200 latency_ms=3
+2025-03-18T13:39:11.000Z INFO api.catalog request_id=req-000099-98 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T13:39:29.000Z INFO api.catalog request_id=req-000099-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T13:40:03.000Z INFO api.catalog request_id=req-000100-d6 route=/health status=200 latency_ms=6
+2025-03-18T13:40:11.000Z INFO api.catalog request_id=req-000100-d6 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T13:40:29.000Z INFO api.catalog request_id=req-000100-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T13:41:03.000Z INFO api.catalog request_id=req-000101-91 route=/health status=200 latency_ms=4
+2025-03-18T13:41:11.000Z INFO api.catalog request_id=req-000101-91 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T13:41:29.000Z INFO api.catalog request_id=req-000101-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:42:03.000Z INFO api.catalog request_id=req-000102-fa route=/health status=200 latency_ms=7
+2025-03-18T13:42:11.000Z INFO api.catalog request_id=req-000102-fa route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T13:42:29.000Z INFO api.catalog request_id=req-000102-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:43:03.000Z INFO api.catalog request_id=req-000103-82 route=/health status=200 latency_ms=2
+2025-03-18T13:43:11.000Z INFO api.catalog request_id=req-000103-82 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T13:43:29.000Z INFO api.catalog request_id=req-000103-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T13:44:03.000Z INFO api.catalog request_id=req-000104-be route=/health status=200 latency_ms=3
+2025-03-18T13:44:11.000Z INFO api.catalog request_id=req-000104-be route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T13:44:29.000Z INFO api.catalog request_id=req-000104-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T13:45:03.000Z INFO api.catalog request_id=req-000105-68 route=/health status=200 latency_ms=7
+2025-03-18T13:45:11.000Z INFO api.catalog request_id=req-000105-68 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T13:45:29.000Z INFO api.catalog request_id=req-000105-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:46:03.000Z INFO api.catalog request_id=req-000106-60 route=/health status=200 latency_ms=2
+2025-03-18T13:46:11.000Z INFO api.catalog request_id=req-000106-60 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T13:46:29.000Z INFO api.catalog request_id=req-000106-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:47:03.000Z INFO api.catalog request_id=req-000107-b6 route=/health status=200 latency_ms=7
+2025-03-18T13:47:11.000Z INFO api.catalog request_id=req-000107-b6 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T13:47:29.000Z INFO api.catalog request_id=req-000107-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:48:03.000Z INFO api.catalog request_id=req-000108-83 route=/health status=200 latency_ms=6
+2025-03-18T13:48:11.000Z INFO api.catalog request_id=req-000108-83 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T13:48:29.000Z INFO api.catalog request_id=req-000108-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T13:49:03.000Z INFO api.catalog request_id=req-000109-c6 route=/health status=200 latency_ms=6
+2025-03-18T13:49:11.000Z INFO api.catalog request_id=req-000109-c6 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T13:49:29.000Z INFO api.catalog request_id=req-000109-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:50:03.000Z INFO api.catalog request_id=req-000110-11 route=/health status=200 latency_ms=9
+2025-03-18T13:50:11.000Z INFO api.catalog request_id=req-000110-11 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T13:50:29.000Z INFO api.catalog request_id=req-000110-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T13:51:03.000Z INFO api.catalog request_id=req-000111-34 route=/health status=200 latency_ms=4
+2025-03-18T13:51:11.000Z INFO api.catalog request_id=req-000111-34 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T13:51:29.000Z INFO api.catalog request_id=req-000111-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:51:44.000Z WARN api.catalog request_id=req-000111-09 route=/v2/products status=200 cache=miss latency_ms=244 retry=0
+2025-03-18T13:52:03.000Z INFO api.catalog request_id=req-000112-a8 route=/health status=200 latency_ms=3
+2025-03-18T13:52:11.000Z INFO api.catalog request_id=req-000112-a8 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T13:52:29.000Z INFO api.catalog request_id=req-000112-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T13:53:03.000Z INFO api.catalog request_id=req-000113-85 route=/health status=200 latency_ms=4
+2025-03-18T13:53:11.000Z INFO api.catalog request_id=req-000113-85 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T13:53:29.000Z INFO api.catalog request_id=req-000113-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T13:54:03.000Z INFO api.catalog request_id=req-000114-55 route=/health status=200 latency_ms=7
+2025-03-18T13:54:11.000Z INFO api.catalog request_id=req-000114-55 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T13:54:29.000Z INFO api.catalog request_id=req-000114-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T13:54:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T13:55:03.000Z INFO api.catalog request_id=req-000115-ef route=/health status=200 latency_ms=2
+2025-03-18T13:55:11.000Z INFO api.catalog request_id=req-000115-ef route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T13:55:29.000Z INFO api.catalog request_id=req-000115-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T13:56:03.000Z INFO api.catalog request_id=req-000116-47 route=/health status=200 latency_ms=8
+2025-03-18T13:56:11.000Z INFO api.catalog request_id=req-000116-47 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T13:56:29.000Z INFO api.catalog request_id=req-000116-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T13:57:03.000Z INFO api.catalog request_id=req-000117-d5 route=/health status=200 latency_ms=5
+2025-03-18T13:57:11.000Z INFO api.catalog request_id=req-000117-d5 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T13:57:29.000Z INFO api.catalog request_id=req-000117-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T13:58:03.000Z INFO api.catalog request_id=req-000118-63 route=/health status=200 latency_ms=4
+2025-03-18T13:58:11.000Z INFO api.catalog request_id=req-000118-63 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T13:58:29.000Z INFO api.catalog request_id=req-000118-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T13:59:03.000Z INFO api.catalog request_id=req-000119-25 route=/health status=200 latency_ms=2
+2025-03-18T13:59:11.000Z INFO api.catalog request_id=req-000119-25 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T13:59:29.000Z INFO api.catalog request_id=req-000119-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T14:00:03.000Z INFO api.catalog request_id=req-000120-21 route=/health status=200 latency_ms=8
+2025-03-18T14:00:11.000Z INFO api.catalog request_id=req-000120-21 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T14:00:29.000Z INFO api.catalog request_id=req-000120-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T14:01:03.000Z INFO api.catalog request_id=req-000121-3f route=/health status=200 latency_ms=6
+2025-03-18T14:01:11.000Z INFO api.catalog request_id=req-000121-3f route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T14:01:29.000Z INFO api.catalog request_id=req-000121-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T14:02:03.000Z INFO api.catalog request_id=req-000122-75 route=/health status=200 latency_ms=2
+2025-03-18T14:02:11.000Z INFO api.catalog request_id=req-000122-75 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T14:02:29.000Z INFO api.catalog request_id=req-000122-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T14:03:03.000Z INFO api.catalog request_id=req-000123-62 route=/health status=200 latency_ms=3
+2025-03-18T14:03:11.000Z INFO api.catalog request_id=req-000123-62 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T14:03:29.000Z INFO api.catalog request_id=req-000123-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:04:03.000Z INFO api.catalog request_id=req-000124-16 route=/health status=200 latency_ms=7
+2025-03-18T14:04:11.000Z INFO api.catalog request_id=req-000124-16 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T14:04:29.000Z INFO api.catalog request_id=req-000124-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T14:05:03.000Z INFO api.catalog request_id=req-000125-a6 route=/health status=200 latency_ms=8
+2025-03-18T14:05:11.000Z INFO api.catalog request_id=req-000125-a6 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:05:29.000Z INFO api.catalog request_id=req-000125-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T14:06:03.000Z INFO api.catalog request_id=req-000126-2e route=/health status=200 latency_ms=9
+2025-03-18T14:06:11.000Z INFO api.catalog request_id=req-000126-2e route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:06:29.000Z INFO api.catalog request_id=req-000126-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T14:07:03.000Z INFO api.catalog request_id=req-000127-9b route=/health status=200 latency_ms=7
+2025-03-18T14:07:11.000Z INFO api.catalog request_id=req-000127-9b route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T14:07:29.000Z INFO api.catalog request_id=req-000127-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T14:08:03.000Z INFO api.catalog request_id=req-000128-b7 route=/health status=200 latency_ms=2
+2025-03-18T14:08:11.000Z INFO api.catalog request_id=req-000128-b7 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T14:08:29.000Z INFO api.catalog request_id=req-000128-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T14:09:03.000Z INFO api.catalog request_id=req-000129-dc route=/health status=200 latency_ms=4
+2025-03-18T14:09:11.000Z INFO api.catalog request_id=req-000129-dc route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T14:09:29.000Z INFO api.catalog request_id=req-000129-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:10:03.000Z INFO api.catalog request_id=req-000130-bc route=/health status=200 latency_ms=8
+2025-03-18T14:10:11.000Z INFO api.catalog request_id=req-000130-bc route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:10:29.000Z INFO api.catalog request_id=req-000130-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:11:03.000Z INFO api.catalog request_id=req-000131-3b route=/health status=200 latency_ms=4
+2025-03-18T14:11:11.000Z INFO api.catalog request_id=req-000131-3b route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:11:29.000Z INFO api.catalog request_id=req-000131-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T14:12:03.000Z INFO api.catalog request_id=req-000132-b7 route=/health status=200 latency_ms=4
+2025-03-18T14:12:11.000Z INFO api.catalog request_id=req-000132-b7 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T14:12:29.000Z INFO api.catalog request_id=req-000132-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T14:13:03.000Z INFO api.catalog request_id=req-000133-21 route=/health status=200 latency_ms=9
+2025-03-18T14:13:11.000Z INFO api.catalog request_id=req-000133-21 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T14:13:29.000Z INFO api.catalog request_id=req-000133-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T14:14:03.000Z INFO api.catalog request_id=req-000134-a6 route=/health status=200 latency_ms=4
+2025-03-18T14:14:11.000Z INFO api.catalog request_id=req-000134-a6 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T14:14:29.000Z INFO api.catalog request_id=req-000134-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T14:15:03.000Z INFO api.catalog request_id=req-000135-14 route=/health status=200 latency_ms=5
+2025-03-18T14:15:11.000Z INFO api.catalog request_id=req-000135-14 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T14:15:29.000Z INFO api.catalog request_id=req-000135-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T14:16:03.000Z INFO api.catalog request_id=req-000136-a6 route=/health status=200 latency_ms=4
+2025-03-18T14:16:11.000Z INFO api.catalog request_id=req-000136-a6 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T14:16:29.000Z INFO api.catalog request_id=req-000136-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:17:03.000Z INFO api.catalog request_id=req-000137-3b route=/health status=200 latency_ms=8
+2025-03-18T14:17:11.000Z INFO api.catalog request_id=req-000137-3b route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T14:17:29.000Z INFO api.catalog request_id=req-000137-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T14:18:03.000Z INFO api.catalog request_id=req-000138-c8 route=/health status=200 latency_ms=6
+2025-03-18T14:18:11.000Z INFO api.catalog request_id=req-000138-c8 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T14:18:29.000Z INFO api.catalog request_id=req-000138-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T14:19:03.000Z INFO api.catalog request_id=req-000139-df route=/health status=200 latency_ms=8
+2025-03-18T14:19:11.000Z INFO api.catalog request_id=req-000139-df route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T14:19:29.000Z INFO api.catalog request_id=req-000139-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T14:19:57.000Z WARN api.catalog route=/v2/search status=499 client_cancelled=true
+2025-03-18T14:20:03.000Z INFO api.catalog request_id=req-000140-13 route=/health status=200 latency_ms=8
+2025-03-18T14:20:11.000Z INFO api.catalog request_id=req-000140-13 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T14:20:29.000Z INFO api.catalog request_id=req-000140-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T14:21:03.000Z INFO api.catalog request_id=req-000141-be route=/health status=200 latency_ms=2
+2025-03-18T14:21:11.000Z INFO api.catalog request_id=req-000141-be route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:21:29.000Z INFO api.catalog request_id=req-000141-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T14:22:03.000Z INFO api.catalog request_id=req-000142-24 route=/health status=200 latency_ms=9
+2025-03-18T14:22:11.000Z INFO api.catalog request_id=req-000142-24 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T14:22:29.000Z INFO api.catalog request_id=req-000142-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:23:03.000Z INFO api.catalog request_id=req-000143-fe route=/health status=200 latency_ms=9
+2025-03-18T14:23:11.000Z INFO api.catalog request_id=req-000143-fe route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:23:29.000Z INFO api.catalog request_id=req-000143-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T14:24:03.000Z INFO api.catalog request_id=req-000144-fe route=/health status=200 latency_ms=3
+2025-03-18T14:24:11.000Z INFO api.catalog request_id=req-000144-fe route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T14:24:29.000Z INFO api.catalog request_id=req-000144-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:25:03.000Z INFO api.catalog request_id=req-000145-8b route=/health status=200 latency_ms=2
+2025-03-18T14:25:11.000Z INFO api.catalog request_id=req-000145-8b route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:25:29.000Z INFO api.catalog request_id=req-000145-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T14:26:03.000Z INFO api.catalog request_id=req-000146-3f route=/health status=200 latency_ms=7
+2025-03-18T14:26:11.000Z INFO api.catalog request_id=req-000146-3f route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T14:26:29.000Z INFO api.catalog request_id=req-000146-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:27:03.000Z INFO api.catalog request_id=req-000147-b6 route=/health status=200 latency_ms=6
+2025-03-18T14:27:11.000Z INFO api.catalog request_id=req-000147-b6 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T14:27:29.000Z INFO api.catalog request_id=req-000147-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:28:03.000Z INFO api.catalog request_id=req-000148-9e route=/health status=200 latency_ms=8
+2025-03-18T14:28:11.000Z INFO api.catalog request_id=req-000148-9e route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T14:28:29.000Z INFO api.catalog request_id=req-000148-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T14:28:44.000Z WARN api.catalog request_id=req-000148-09 route=/v2/products status=200 cache=miss latency_ms=348 retry=0
+2025-03-18T14:29:03.000Z INFO api.catalog request_id=req-000149-9a route=/health status=200 latency_ms=7
+2025-03-18T14:29:11.000Z INFO api.catalog request_id=req-000149-9a route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:29:29.000Z INFO api.catalog request_id=req-000149-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:30:03.000Z INFO api.catalog request_id=req-000150-c8 route=/health status=200 latency_ms=3
+2025-03-18T14:30:11.000Z INFO api.catalog request_id=req-000150-c8 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T14:30:29.000Z INFO api.catalog request_id=req-000150-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:31:03.000Z INFO api.catalog request_id=req-000151-81 route=/health status=200 latency_ms=5
+2025-03-18T14:31:11.000Z INFO api.catalog request_id=req-000151-81 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:31:29.000Z INFO api.catalog request_id=req-000151-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:32:03.000Z INFO api.catalog request_id=req-000152-62 route=/health status=200 latency_ms=4
+2025-03-18T14:32:11.000Z INFO api.catalog request_id=req-000152-62 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:32:29.000Z INFO api.catalog request_id=req-000152-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T14:33:03.000Z INFO api.catalog request_id=req-000153-6c route=/health status=200 latency_ms=6
+2025-03-18T14:33:11.000Z INFO api.catalog request_id=req-000153-6c route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:33:29.000Z INFO api.catalog request_id=req-000153-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:34:03.000Z INFO api.catalog request_id=req-000154-4c route=/health status=200 latency_ms=3
+2025-03-18T14:34:11.000Z INFO api.catalog request_id=req-000154-4c route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T14:34:29.000Z INFO api.catalog request_id=req-000154-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:35:03.000Z INFO api.catalog request_id=req-000155-ee route=/health status=200 latency_ms=7
+2025-03-18T14:35:11.000Z INFO api.catalog request_id=req-000155-ee route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T14:35:29.000Z INFO api.catalog request_id=req-000155-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T14:36:03.000Z INFO api.catalog request_id=req-000156-77 route=/health status=200 latency_ms=3
+2025-03-18T14:36:11.000Z INFO api.catalog request_id=req-000156-77 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T14:36:29.000Z INFO api.catalog request_id=req-000156-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:37:03.000Z INFO api.catalog request_id=req-000157-41 route=/health status=200 latency_ms=2
+2025-03-18T14:37:11.000Z INFO api.catalog request_id=req-000157-41 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T14:37:29.000Z INFO api.catalog request_id=req-000157-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T14:38:03.000Z INFO api.catalog request_id=req-000158-c2 route=/health status=200 latency_ms=3
+2025-03-18T14:38:11.000Z INFO api.catalog request_id=req-000158-c2 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:38:29.000Z INFO api.catalog request_id=req-000158-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T14:39:03.000Z INFO api.catalog request_id=req-000159-cb route=/health status=200 latency_ms=9
+2025-03-18T14:39:11.000Z INFO api.catalog request_id=req-000159-cb route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T14:39:29.000Z INFO api.catalog request_id=req-000159-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T14:40:03.000Z INFO api.catalog request_id=req-000160-42 route=/health status=200 latency_ms=3
+2025-03-18T14:40:11.000Z INFO api.catalog request_id=req-000160-42 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:40:29.000Z INFO api.catalog request_id=req-000160-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:41:03.000Z INFO api.catalog request_id=req-000161-d1 route=/health status=200 latency_ms=7
+2025-03-18T14:41:11.000Z INFO api.catalog request_id=req-000161-d1 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T14:41:29.000Z INFO api.catalog request_id=req-000161-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T14:42:03.000Z INFO api.catalog request_id=req-000162-fa route=/health status=200 latency_ms=5
+2025-03-18T14:42:11.000Z INFO api.catalog request_id=req-000162-fa route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T14:42:29.000Z INFO api.catalog request_id=req-000162-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T14:43:03.000Z INFO api.catalog request_id=req-000163-7f route=/health status=200 latency_ms=6
+2025-03-18T14:43:11.000Z INFO api.catalog request_id=req-000163-7f route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T14:43:29.000Z INFO api.catalog request_id=req-000163-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:44:03.000Z INFO api.catalog request_id=req-000164-7c route=/health status=200 latency_ms=3
+2025-03-18T14:44:11.000Z INFO api.catalog request_id=req-000164-7c route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T14:44:29.000Z INFO api.catalog request_id=req-000164-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T14:45:03.000Z INFO api.catalog request_id=req-000165-f1 route=/health status=200 latency_ms=4
+2025-03-18T14:45:11.000Z INFO api.catalog request_id=req-000165-f1 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:45:29.000Z INFO api.catalog request_id=req-000165-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:46:03.000Z INFO api.catalog request_id=req-000166-d5 route=/health status=200 latency_ms=3
+2025-03-18T14:46:11.000Z INFO api.catalog request_id=req-000166-d5 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T14:46:29.000Z INFO api.catalog request_id=req-000166-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T14:47:03.000Z INFO api.catalog request_id=req-000167-f1 route=/health status=200 latency_ms=8
+2025-03-18T14:47:11.000Z INFO api.catalog request_id=req-000167-f1 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:47:29.000Z INFO api.catalog request_id=req-000167-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T14:47:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T14:48:03.000Z INFO api.catalog request_id=req-000168-bd route=/health status=200 latency_ms=8
+2025-03-18T14:48:11.000Z INFO api.catalog request_id=req-000168-bd route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T14:48:29.000Z INFO api.catalog request_id=req-000168-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T14:49:03.000Z INFO api.catalog request_id=req-000169-b9 route=/health status=200 latency_ms=6
+2025-03-18T14:49:11.000Z INFO api.catalog request_id=req-000169-b9 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:49:29.000Z INFO api.catalog request_id=req-000169-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:50:03.000Z INFO api.catalog request_id=req-000170-95 route=/health status=200 latency_ms=4
+2025-03-18T14:50:11.000Z INFO api.catalog request_id=req-000170-95 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T14:50:29.000Z INFO api.catalog request_id=req-000170-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T14:51:03.000Z INFO api.catalog request_id=req-000171-a2 route=/health status=200 latency_ms=9
+2025-03-18T14:51:11.000Z INFO api.catalog request_id=req-000171-a2 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T14:51:29.000Z INFO api.catalog request_id=req-000171-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:52:03.000Z INFO api.catalog request_id=req-000172-b8 route=/health status=200 latency_ms=7
+2025-03-18T14:52:11.000Z INFO api.catalog request_id=req-000172-b8 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T14:52:29.000Z INFO api.catalog request_id=req-000172-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T14:53:03.000Z INFO api.catalog request_id=req-000173-98 route=/health status=200 latency_ms=6
+2025-03-18T14:53:11.000Z INFO api.catalog request_id=req-000173-98 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T14:53:29.000Z INFO api.catalog request_id=req-000173-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T14:54:03.000Z INFO api.catalog request_id=req-000174-68 route=/health status=200 latency_ms=4
+2025-03-18T14:54:11.000Z INFO api.catalog request_id=req-000174-68 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T14:54:29.000Z INFO api.catalog request_id=req-000174-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T14:55:03.000Z INFO api.catalog request_id=req-000175-e0 route=/health status=200 latency_ms=3
+2025-03-18T14:55:11.000Z INFO api.catalog request_id=req-000175-e0 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T14:55:29.000Z INFO api.catalog request_id=req-000175-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T14:56:03.000Z INFO api.catalog request_id=req-000176-f6 route=/health status=200 latency_ms=5
+2025-03-18T14:56:11.000Z INFO api.catalog request_id=req-000176-f6 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T14:56:29.000Z INFO api.catalog request_id=req-000176-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T14:57:03.000Z INFO api.catalog request_id=req-000177-84 route=/health status=200 latency_ms=8
+2025-03-18T14:57:11.000Z INFO api.catalog request_id=req-000177-84 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T14:57:29.000Z INFO api.catalog request_id=req-000177-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T14:58:03.000Z INFO api.catalog request_id=req-000178-e2 route=/health status=200 latency_ms=4
+2025-03-18T14:58:11.000Z INFO api.catalog request_id=req-000178-e2 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T14:58:29.000Z INFO api.catalog request_id=req-000178-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T14:59:03.000Z INFO api.catalog request_id=req-000179-f4 route=/health status=200 latency_ms=9
+2025-03-18T14:59:11.000Z INFO api.catalog request_id=req-000179-f4 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T14:59:29.000Z INFO api.catalog request_id=req-000179-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T15:00:03.000Z INFO api.catalog request_id=req-000180-af route=/health status=200 latency_ms=2
+2025-03-18T15:00:11.000Z INFO api.catalog request_id=req-000180-af route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T15:00:29.000Z INFO api.catalog request_id=req-000180-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T15:01:03.000Z INFO api.catalog request_id=req-000181-b5 route=/health status=200 latency_ms=4
+2025-03-18T15:01:11.000Z INFO api.catalog request_id=req-000181-b5 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T15:01:29.000Z INFO api.catalog request_id=req-000181-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T15:02:03.000Z INFO api.catalog request_id=req-000182-aa route=/health status=200 latency_ms=6
+2025-03-18T15:02:11.000Z INFO api.catalog request_id=req-000182-aa route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T15:02:29.000Z INFO api.catalog request_id=req-000182-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T15:03:03.000Z INFO api.catalog request_id=req-000183-c9 route=/health status=200 latency_ms=4
+2025-03-18T15:03:11.000Z INFO api.catalog request_id=req-000183-c9 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:03:29.000Z INFO api.catalog request_id=req-000183-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T15:04:03.000Z INFO api.catalog request_id=req-000184-c8 route=/health status=200 latency_ms=6
+2025-03-18T15:04:11.000Z INFO api.catalog request_id=req-000184-c8 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T15:04:29.000Z INFO api.catalog request_id=req-000184-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T15:05:03.000Z INFO api.catalog request_id=req-000185-b3 route=/health status=200 latency_ms=3
+2025-03-18T15:05:11.000Z INFO api.catalog request_id=req-000185-b3 route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T15:05:29.000Z INFO api.catalog request_id=req-000185-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:05:44.000Z WARN api.catalog request_id=req-000185-09 route=/v2/products status=200 cache=miss latency_ms=213 retry=0
+2025-03-18T15:06:03.000Z INFO api.catalog request_id=req-000186-74 route=/health status=200 latency_ms=2
+2025-03-18T15:06:11.000Z INFO api.catalog request_id=req-000186-74 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T15:06:29.000Z INFO api.catalog request_id=req-000186-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T15:07:03.000Z INFO api.catalog request_id=req-000187-34 route=/health status=200 latency_ms=9
+2025-03-18T15:07:11.000Z INFO api.catalog request_id=req-000187-34 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T15:07:29.000Z INFO api.catalog request_id=req-000187-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T15:08:03.000Z INFO api.catalog request_id=req-000188-f1 route=/health status=200 latency_ms=8
+2025-03-18T15:08:11.000Z INFO api.catalog request_id=req-000188-f1 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T15:08:29.000Z INFO api.catalog request_id=req-000188-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T15:09:03.000Z INFO api.catalog request_id=req-000189-e5 route=/health status=200 latency_ms=5
+2025-03-18T15:09:11.000Z INFO api.catalog request_id=req-000189-e5 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T15:09:29.000Z INFO api.catalog request_id=req-000189-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T15:10:03.000Z INFO api.catalog request_id=req-000190-6c route=/health status=200 latency_ms=3
+2025-03-18T15:10:11.000Z INFO api.catalog request_id=req-000190-6c route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T15:10:29.000Z INFO api.catalog request_id=req-000190-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T15:11:03.000Z INFO api.catalog request_id=req-000191-b2 route=/health status=200 latency_ms=6
+2025-03-18T15:11:11.000Z INFO api.catalog request_id=req-000191-b2 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T15:11:29.000Z INFO api.catalog request_id=req-000191-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T15:12:03.000Z INFO api.catalog request_id=req-000192-fd route=/health status=200 latency_ms=9
+2025-03-18T15:12:11.000Z INFO api.catalog request_id=req-000192-fd route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T15:12:29.000Z INFO api.catalog request_id=req-000192-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T15:13:01.000Z WARN api.catalog request_id=req-000192-5b route=/v2/products cache=miss burst=all-workers pending_db_requests=486
+2025-03-18T15:13:14.000Z ERROR api.catalog request_id=req-000192-5c route=/v2/products status=503 error=database_connection_timeout pool_wait_ms=2000
+2025-03-18T15:13:03.000Z INFO api.catalog request_id=req-000193-1b route=/health status=200 latency_ms=5
+2025-03-18T15:13:11.000Z INFO api.catalog request_id=req-000193-1b route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:13:29.000Z INFO api.catalog request_id=req-000193-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:14:00.000Z WARN api.catalog request_id=req-000193-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T15:14:03.000Z INFO api.catalog request_id=req-000194-98 route=/health status=200 latency_ms=9
+2025-03-18T15:14:11.000Z INFO api.catalog request_id=req-000194-98 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T15:14:29.000Z INFO api.catalog request_id=req-000194-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T15:15:00.000Z WARN api.catalog request_id=req-000194-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T15:15:03.000Z INFO api.catalog request_id=req-000195-85 route=/health status=200 latency_ms=3
+2025-03-18T15:15:11.000Z INFO api.catalog request_id=req-000195-85 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T15:15:29.000Z INFO api.catalog request_id=req-000195-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T15:16:00.000Z WARN api.catalog request_id=req-000195-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T15:16:03.000Z INFO api.catalog request_id=req-000196-51 route=/health status=200 latency_ms=2
+2025-03-18T15:16:11.000Z INFO api.catalog request_id=req-000196-51 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:16:29.000Z INFO api.catalog request_id=req-000196-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T15:17:03.000Z INFO api.catalog request_id=req-000197-39 route=/health status=200 latency_ms=4
+2025-03-18T15:17:11.000Z INFO api.catalog request_id=req-000197-39 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T15:17:29.000Z INFO api.catalog request_id=req-000197-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T15:18:03.000Z INFO api.catalog request_id=req-000198-fb route=/health status=200 latency_ms=7
+2025-03-18T15:18:11.000Z INFO api.catalog request_id=req-000198-fb route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T15:18:29.000Z INFO api.catalog request_id=req-000198-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T15:19:03.000Z INFO api.catalog request_id=req-000199-68 route=/health status=200 latency_ms=8
+2025-03-18T15:19:11.000Z INFO api.catalog request_id=req-000199-68 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T15:19:29.000Z INFO api.catalog request_id=req-000199-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T15:20:03.000Z INFO api.catalog request_id=req-000200-e1 route=/health status=200 latency_ms=5
+2025-03-18T15:20:11.000Z INFO api.catalog request_id=req-000200-e1 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T15:20:29.000Z INFO api.catalog request_id=req-000200-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:20:57.000Z WARN api.catalog route=/v2/search status=499 client_cancelled=true
+2025-03-18T15:21:03.000Z INFO api.catalog request_id=req-000201-fa route=/health status=200 latency_ms=9
+2025-03-18T15:21:11.000Z INFO api.catalog request_id=req-000201-fa route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T15:21:29.000Z INFO api.catalog request_id=req-000201-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T15:22:03.000Z INFO api.catalog request_id=req-000202-28 route=/health status=200 latency_ms=9
+2025-03-18T15:22:11.000Z INFO api.catalog request_id=req-000202-28 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T15:22:29.000Z INFO api.catalog request_id=req-000202-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T15:23:03.000Z INFO api.catalog request_id=req-000203-e3 route=/health status=200 latency_ms=9
+2025-03-18T15:23:11.000Z INFO api.catalog request_id=req-000203-e3 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T15:23:29.000Z INFO api.catalog request_id=req-000203-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:24:03.000Z INFO api.catalog request_id=req-000204-db route=/health status=200 latency_ms=3
+2025-03-18T15:24:11.000Z INFO api.catalog request_id=req-000204-db route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T15:24:29.000Z INFO api.catalog request_id=req-000204-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T15:25:03.000Z INFO api.catalog request_id=req-000205-7e route=/health status=200 latency_ms=2
+2025-03-18T15:25:11.000Z INFO api.catalog request_id=req-000205-7e route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T15:25:29.000Z INFO api.catalog request_id=req-000205-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T15:26:03.000Z INFO api.catalog request_id=req-000206-2c route=/health status=200 latency_ms=5
+2025-03-18T15:26:11.000Z INFO api.catalog request_id=req-000206-2c route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:26:29.000Z INFO api.catalog request_id=req-000206-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T15:27:03.000Z INFO api.catalog request_id=req-000207-ee route=/health status=200 latency_ms=3
+2025-03-18T15:27:11.000Z INFO api.catalog request_id=req-000207-ee route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T15:27:29.000Z INFO api.catalog request_id=req-000207-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:28:03.000Z INFO api.catalog request_id=req-000208-be route=/health status=200 latency_ms=6
+2025-03-18T15:28:11.000Z INFO api.catalog request_id=req-000208-be route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T15:28:29.000Z INFO api.catalog request_id=req-000208-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T15:29:03.000Z INFO api.catalog request_id=req-000209-81 route=/health status=200 latency_ms=4
+2025-03-18T15:29:11.000Z INFO api.catalog request_id=req-000209-81 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T15:29:29.000Z INFO api.catalog request_id=req-000209-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T15:30:03.000Z INFO api.catalog request_id=req-000210-d0 route=/health status=200 latency_ms=7
+2025-03-18T15:30:11.000Z INFO api.catalog request_id=req-000210-d0 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T15:30:29.000Z INFO api.catalog request_id=req-000210-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:31:03.000Z INFO api.catalog request_id=req-000211-cd route=/health status=200 latency_ms=2
+2025-03-18T15:31:11.000Z INFO api.catalog request_id=req-000211-cd route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T15:31:29.000Z INFO api.catalog request_id=req-000211-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T15:32:03.000Z INFO api.catalog request_id=req-000212-ac route=/health status=200 latency_ms=6
+2025-03-18T15:32:11.000Z INFO api.catalog request_id=req-000212-ac route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T15:32:29.000Z INFO api.catalog request_id=req-000212-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T15:33:03.000Z INFO api.catalog request_id=req-000213-c8 route=/health status=200 latency_ms=7
+2025-03-18T15:33:11.000Z INFO api.catalog request_id=req-000213-c8 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:33:29.000Z INFO api.catalog request_id=req-000213-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T15:34:03.000Z INFO api.catalog request_id=req-000214-36 route=/health status=200 latency_ms=6
+2025-03-18T15:34:11.000Z INFO api.catalog request_id=req-000214-36 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T15:34:29.000Z INFO api.catalog request_id=req-000214-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T15:35:03.000Z INFO api.catalog request_id=req-000215-67 route=/health status=200 latency_ms=7
+2025-03-18T15:35:11.000Z INFO api.catalog request_id=req-000215-67 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T15:35:29.000Z INFO api.catalog request_id=req-000215-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T15:36:03.000Z INFO api.catalog request_id=req-000216-b2 route=/health status=200 latency_ms=5
+2025-03-18T15:36:11.000Z INFO api.catalog request_id=req-000216-b2 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T15:36:29.000Z INFO api.catalog request_id=req-000216-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:37:03.000Z INFO api.catalog request_id=req-000217-1f route=/health status=200 latency_ms=6
+2025-03-18T15:37:11.000Z INFO api.catalog request_id=req-000217-1f route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T15:37:29.000Z INFO api.catalog request_id=req-000217-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T15:38:03.000Z INFO api.catalog request_id=req-000218-ea route=/health status=200 latency_ms=6
+2025-03-18T15:38:11.000Z INFO api.catalog request_id=req-000218-ea route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T15:38:29.000Z INFO api.catalog request_id=req-000218-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T15:39:03.000Z INFO api.catalog request_id=req-000219-8f route=/health status=200 latency_ms=2
+2025-03-18T15:39:11.000Z INFO api.catalog request_id=req-000219-8f route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T15:39:29.000Z INFO api.catalog request_id=req-000219-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T15:40:03.000Z INFO api.catalog request_id=req-000220-bb route=/health status=200 latency_ms=8
+2025-03-18T15:40:11.000Z INFO api.catalog request_id=req-000220-bb route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T15:40:29.000Z INFO api.catalog request_id=req-000220-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T15:40:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T15:41:03.000Z INFO api.catalog request_id=req-000221-82 route=/health status=200 latency_ms=8
+2025-03-18T15:41:11.000Z INFO api.catalog request_id=req-000221-82 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T15:41:29.000Z INFO api.catalog request_id=req-000221-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T15:42:03.000Z INFO api.catalog request_id=req-000222-fa route=/health status=200 latency_ms=8
+2025-03-18T15:42:11.000Z INFO api.catalog request_id=req-000222-fa route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T15:42:29.000Z INFO api.catalog request_id=req-000222-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T15:42:44.000Z WARN api.catalog request_id=req-000222-09 route=/v2/products status=200 cache=miss latency_ms=415 retry=0
+2025-03-18T15:43:01.000Z WARN api.catalog request_id=req-000222-5b route=/v2/products cache=miss burst=all-workers pending_db_requests=486
+2025-03-18T15:43:14.000Z ERROR api.catalog request_id=req-000222-5c route=/v2/products status=503 error=database_connection_timeout pool_wait_ms=2000
+2025-03-18T15:43:03.000Z INFO api.catalog request_id=req-000223-94 route=/health status=200 latency_ms=2
+2025-03-18T15:43:11.000Z INFO api.catalog request_id=req-000223-94 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T15:43:29.000Z INFO api.catalog request_id=req-000223-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T15:44:00.000Z WARN api.catalog request_id=req-000223-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T15:44:03.000Z INFO api.catalog request_id=req-000224-e7 route=/health status=200 latency_ms=6
+2025-03-18T15:44:11.000Z INFO api.catalog request_id=req-000224-e7 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T15:44:29.000Z INFO api.catalog request_id=req-000224-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T15:45:00.000Z WARN api.catalog request_id=req-000224-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T15:45:03.000Z INFO api.catalog request_id=req-000225-fa route=/health status=200 latency_ms=5
+2025-03-18T15:45:11.000Z INFO api.catalog request_id=req-000225-fa route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T15:45:29.000Z INFO api.catalog request_id=req-000225-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:46:00.000Z WARN api.catalog request_id=req-000225-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T15:46:03.000Z INFO api.catalog request_id=req-000226-fd route=/health status=200 latency_ms=7
+2025-03-18T15:46:11.000Z INFO api.catalog request_id=req-000226-fd route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T15:46:29.000Z INFO api.catalog request_id=req-000226-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T15:47:03.000Z INFO api.catalog request_id=req-000227-17 route=/health status=200 latency_ms=4
+2025-03-18T15:47:11.000Z INFO api.catalog request_id=req-000227-17 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T15:47:29.000Z INFO api.catalog request_id=req-000227-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:48:03.000Z INFO api.catalog request_id=req-000228-70 route=/health status=200 latency_ms=4
+2025-03-18T15:48:11.000Z INFO api.catalog request_id=req-000228-70 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T15:48:29.000Z INFO api.catalog request_id=req-000228-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T15:49:03.000Z INFO api.catalog request_id=req-000229-79 route=/health status=200 latency_ms=3
+2025-03-18T15:49:11.000Z INFO api.catalog request_id=req-000229-79 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:49:29.000Z INFO api.catalog request_id=req-000229-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T15:50:03.000Z INFO api.catalog request_id=req-000230-39 route=/health status=200 latency_ms=8
+2025-03-18T15:50:11.000Z INFO api.catalog request_id=req-000230-39 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T15:50:29.000Z INFO api.catalog request_id=req-000230-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T15:51:03.000Z INFO api.catalog request_id=req-000231-b8 route=/health status=200 latency_ms=7
+2025-03-18T15:51:11.000Z INFO api.catalog request_id=req-000231-b8 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T15:51:29.000Z INFO api.catalog request_id=req-000231-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:52:03.000Z INFO api.catalog request_id=req-000232-94 route=/health status=200 latency_ms=7
+2025-03-18T15:52:11.000Z INFO api.catalog request_id=req-000232-94 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T15:52:29.000Z INFO api.catalog request_id=req-000232-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T15:53:03.000Z INFO api.catalog request_id=req-000233-1e route=/health status=200 latency_ms=9
+2025-03-18T15:53:11.000Z INFO api.catalog request_id=req-000233-1e route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T15:53:29.000Z INFO api.catalog request_id=req-000233-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T15:54:03.000Z INFO api.catalog request_id=req-000234-66 route=/health status=200 latency_ms=7
+2025-03-18T15:54:11.000Z INFO api.catalog request_id=req-000234-66 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T15:54:29.000Z INFO api.catalog request_id=req-000234-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T15:55:03.000Z INFO api.catalog request_id=req-000235-ae route=/health status=200 latency_ms=5
+2025-03-18T15:55:11.000Z INFO api.catalog request_id=req-000235-ae route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T15:55:29.000Z INFO api.catalog request_id=req-000235-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T15:56:03.000Z INFO api.catalog request_id=req-000236-62 route=/health status=200 latency_ms=8
+2025-03-18T15:56:11.000Z INFO api.catalog request_id=req-000236-62 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T15:56:29.000Z INFO api.catalog request_id=req-000236-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T15:57:03.000Z INFO api.catalog request_id=req-000237-47 route=/health status=200 latency_ms=8
+2025-03-18T15:57:11.000Z INFO api.catalog request_id=req-000237-47 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T15:57:29.000Z INFO api.catalog request_id=req-000237-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T15:58:03.000Z INFO api.catalog request_id=req-000238-89 route=/health status=200 latency_ms=3
+2025-03-18T15:58:11.000Z INFO api.catalog request_id=req-000238-89 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T15:58:29.000Z INFO api.catalog request_id=req-000238-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T15:59:03.000Z INFO api.catalog request_id=req-000239-40 route=/health status=200 latency_ms=6
+2025-03-18T15:59:11.000Z INFO api.catalog request_id=req-000239-40 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T15:59:29.000Z INFO api.catalog request_id=req-000239-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T16:00:03.000Z INFO api.catalog request_id=req-000240-37 route=/health status=200 latency_ms=3
+2025-03-18T16:00:11.000Z INFO api.catalog request_id=req-000240-37 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T16:00:29.000Z INFO api.catalog request_id=req-000240-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T16:01:03.000Z INFO api.catalog request_id=req-000241-e0 route=/health status=200 latency_ms=9
+2025-03-18T16:01:11.000Z INFO api.catalog request_id=req-000241-e0 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:01:29.000Z INFO api.catalog request_id=req-000241-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T16:02:03.000Z INFO api.catalog request_id=req-000242-6f route=/health status=200 latency_ms=7
+2025-03-18T16:02:11.000Z INFO api.catalog request_id=req-000242-6f route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:02:29.000Z INFO api.catalog request_id=req-000242-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T16:03:03.000Z INFO api.catalog request_id=req-000243-a6 route=/health status=200 latency_ms=9
+2025-03-18T16:03:11.000Z INFO api.catalog request_id=req-000243-a6 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T16:03:29.000Z INFO api.catalog request_id=req-000243-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T16:04:03.000Z INFO api.catalog request_id=req-000244-8e route=/health status=200 latency_ms=5
+2025-03-18T16:04:11.000Z INFO api.catalog request_id=req-000244-8e route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T16:04:29.000Z INFO api.catalog request_id=req-000244-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:05:03.000Z INFO api.catalog request_id=req-000245-97 route=/health status=200 latency_ms=9
+2025-03-18T16:05:11.000Z INFO api.catalog request_id=req-000245-97 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T16:05:29.000Z INFO api.catalog request_id=req-000245-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T16:06:03.000Z INFO api.catalog request_id=req-000246-cc route=/health status=200 latency_ms=6
+2025-03-18T16:06:11.000Z INFO api.catalog request_id=req-000246-cc route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T16:06:29.000Z INFO api.catalog request_id=req-000246-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T16:07:03.000Z INFO api.catalog request_id=req-000247-ce route=/health status=200 latency_ms=2
+2025-03-18T16:07:11.000Z INFO api.catalog request_id=req-000247-ce route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T16:07:29.000Z INFO api.catalog request_id=req-000247-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T16:08:03.000Z INFO api.catalog request_id=req-000248-ad route=/health status=200 latency_ms=5
+2025-03-18T16:08:11.000Z INFO api.catalog request_id=req-000248-ad route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T16:08:29.000Z INFO api.catalog request_id=req-000248-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T16:09:03.000Z INFO api.catalog request_id=req-000249-d7 route=/health status=200 latency_ms=9
+2025-03-18T16:09:11.000Z INFO api.catalog request_id=req-000249-d7 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T16:09:29.000Z INFO api.catalog request_id=req-000249-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T16:10:03.000Z INFO api.catalog request_id=req-000250-9c route=/health status=200 latency_ms=7
+2025-03-18T16:10:11.000Z INFO api.catalog request_id=req-000250-9c route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T16:10:29.000Z INFO api.catalog request_id=req-000250-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T16:11:03.000Z INFO api.catalog request_id=req-000251-52 route=/health status=200 latency_ms=2
+2025-03-18T16:11:11.000Z INFO api.catalog request_id=req-000251-52 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T16:11:29.000Z INFO api.catalog request_id=req-000251-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T16:12:03.000Z INFO api.catalog request_id=req-000252-f4 route=/health status=200 latency_ms=3
+2025-03-18T16:12:11.000Z INFO api.catalog request_id=req-000252-f4 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:12:29.000Z INFO api.catalog request_id=req-000252-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T16:13:01.000Z WARN api.catalog request_id=req-000252-5b route=/v2/products cache=miss burst=all-workers pending_db_requests=486
+2025-03-18T16:13:14.000Z ERROR api.catalog request_id=req-000252-5c route=/v2/products status=503 error=database_connection_timeout pool_wait_ms=2000
+2025-03-18T16:13:03.000Z INFO api.catalog request_id=req-000253-a1 route=/health status=200 latency_ms=9
+2025-03-18T16:13:11.000Z INFO api.catalog request_id=req-000253-a1 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T16:13:29.000Z INFO api.catalog request_id=req-000253-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T16:14:00.000Z WARN api.catalog request_id=req-000253-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T16:14:03.000Z INFO api.catalog request_id=req-000254-57 route=/health status=200 latency_ms=3
+2025-03-18T16:14:11.000Z INFO api.catalog request_id=req-000254-57 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T16:14:29.000Z INFO api.catalog request_id=req-000254-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:15:00.000Z WARN api.catalog request_id=req-000254-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T16:15:03.000Z INFO api.catalog request_id=req-000255-6b route=/health status=200 latency_ms=2
+2025-03-18T16:15:11.000Z INFO api.catalog request_id=req-000255-6b route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:15:29.000Z INFO api.catalog request_id=req-000255-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:16:00.000Z WARN api.catalog request_id=req-000255-5b route=/v2/products status=503 error=database_connection_timeout retry=1
+2025-03-18T16:16:03.000Z INFO api.catalog request_id=req-000256-23 route=/health status=200 latency_ms=6
+2025-03-18T16:16:11.000Z INFO api.catalog request_id=req-000256-23 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T16:16:29.000Z INFO api.catalog request_id=req-000256-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:17:03.000Z INFO api.catalog request_id=req-000257-73 route=/health status=200 latency_ms=5
+2025-03-18T16:17:11.000Z INFO api.catalog request_id=req-000257-73 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T16:17:29.000Z INFO api.catalog request_id=req-000257-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:18:03.000Z INFO api.catalog request_id=req-000258-cb route=/health status=200 latency_ms=4
+2025-03-18T16:18:11.000Z INFO api.catalog request_id=req-000258-cb route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T16:18:29.000Z INFO api.catalog request_id=req-000258-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T16:19:03.000Z INFO api.catalog request_id=req-000259-47 route=/health status=200 latency_ms=5
+2025-03-18T16:19:11.000Z INFO api.catalog request_id=req-000259-47 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:19:29.000Z INFO api.catalog request_id=req-000259-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T16:19:44.000Z WARN api.catalog request_id=req-000259-09 route=/v2/products status=200 cache=miss latency_ms=198 retry=0
+2025-03-18T16:20:03.000Z INFO api.catalog request_id=req-000260-14 route=/health status=200 latency_ms=7
+2025-03-18T16:20:11.000Z INFO api.catalog request_id=req-000260-14 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T16:20:29.000Z INFO api.catalog request_id=req-000260-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T16:21:03.000Z INFO api.catalog request_id=req-000261-52 route=/health status=200 latency_ms=4
+2025-03-18T16:21:11.000Z INFO api.catalog request_id=req-000261-52 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T16:21:29.000Z INFO api.catalog request_id=req-000261-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:21:57.000Z WARN api.catalog route=/v2/search status=499 client_cancelled=true
+2025-03-18T16:22:03.000Z INFO api.catalog request_id=req-000262-d0 route=/health status=200 latency_ms=7
+2025-03-18T16:22:11.000Z INFO api.catalog request_id=req-000262-d0 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:22:29.000Z INFO api.catalog request_id=req-000262-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T16:22:18.000Z INFO api.catalog recovery_check status=200 cache=hit error_rate=0.2pct
+2025-03-18T16:23:03.000Z INFO api.catalog request_id=req-000263-c6 route=/health status=200 latency_ms=8
+2025-03-18T16:23:11.000Z INFO api.catalog request_id=req-000263-c6 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T16:23:29.000Z INFO api.catalog request_id=req-000263-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T16:24:03.000Z INFO api.catalog request_id=req-000264-13 route=/health status=200 latency_ms=5
+2025-03-18T16:24:11.000Z INFO api.catalog request_id=req-000264-13 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T16:24:29.000Z INFO api.catalog request_id=req-000264-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T16:25:03.000Z INFO api.catalog request_id=req-000265-29 route=/health status=200 latency_ms=2
+2025-03-18T16:25:11.000Z INFO api.catalog request_id=req-000265-29 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T16:25:29.000Z INFO api.catalog request_id=req-000265-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T16:26:03.000Z INFO api.catalog request_id=req-000266-4c route=/health status=200 latency_ms=3
+2025-03-18T16:26:11.000Z INFO api.catalog request_id=req-000266-4c route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T16:26:29.000Z INFO api.catalog request_id=req-000266-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T16:27:03.000Z INFO api.catalog request_id=req-000267-8f route=/health status=200 latency_ms=6
+2025-03-18T16:27:11.000Z INFO api.catalog request_id=req-000267-8f route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T16:27:29.000Z INFO api.catalog request_id=req-000267-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T16:28:03.000Z INFO api.catalog request_id=req-000268-4f route=/health status=200 latency_ms=9
+2025-03-18T16:28:11.000Z INFO api.catalog request_id=req-000268-4f route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T16:28:29.000Z INFO api.catalog request_id=req-000268-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T16:29:03.000Z INFO api.catalog request_id=req-000269-27 route=/health status=200 latency_ms=3
+2025-03-18T16:29:11.000Z INFO api.catalog request_id=req-000269-27 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T16:29:29.000Z INFO api.catalog request_id=req-000269-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T16:30:03.000Z INFO api.catalog request_id=req-000270-67 route=/health status=200 latency_ms=8
+2025-03-18T16:30:11.000Z INFO api.catalog request_id=req-000270-67 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T16:30:29.000Z INFO api.catalog request_id=req-000270-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T16:31:03.000Z INFO api.catalog request_id=req-000271-8d route=/health status=200 latency_ms=6
+2025-03-18T16:31:11.000Z INFO api.catalog request_id=req-000271-8d route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T16:31:29.000Z INFO api.catalog request_id=req-000271-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:32:03.000Z INFO api.catalog request_id=req-000272-8d route=/health status=200 latency_ms=6
+2025-03-18T16:32:11.000Z INFO api.catalog request_id=req-000272-8d route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T16:32:29.000Z INFO api.catalog request_id=req-000272-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T16:33:03.000Z INFO api.catalog request_id=req-000273-87 route=/health status=200 latency_ms=6
+2025-03-18T16:33:11.000Z INFO api.catalog request_id=req-000273-87 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T16:33:29.000Z INFO api.catalog request_id=req-000273-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T16:33:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T16:34:03.000Z INFO api.catalog request_id=req-000274-61 route=/health status=200 latency_ms=2
+2025-03-18T16:34:11.000Z INFO api.catalog request_id=req-000274-61 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T16:34:29.000Z INFO api.catalog request_id=req-000274-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T16:35:03.000Z INFO api.catalog request_id=req-000275-4f route=/health status=200 latency_ms=9
+2025-03-18T16:35:11.000Z INFO api.catalog request_id=req-000275-4f route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T16:35:29.000Z INFO api.catalog request_id=req-000275-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T16:36:03.000Z INFO api.catalog request_id=req-000276-eb route=/health status=200 latency_ms=5
+2025-03-18T16:36:11.000Z INFO api.catalog request_id=req-000276-eb route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T16:36:29.000Z INFO api.catalog request_id=req-000276-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T16:37:03.000Z INFO api.catalog request_id=req-000277-e6 route=/health status=200 latency_ms=5
+2025-03-18T16:37:11.000Z INFO api.catalog request_id=req-000277-e6 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:37:29.000Z INFO api.catalog request_id=req-000277-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:38:03.000Z INFO api.catalog request_id=req-000278-4c route=/health status=200 latency_ms=7
+2025-03-18T16:38:11.000Z INFO api.catalog request_id=req-000278-4c route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T16:38:29.000Z INFO api.catalog request_id=req-000278-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T16:39:03.000Z INFO api.catalog request_id=req-000279-16 route=/health status=200 latency_ms=8
+2025-03-18T16:39:11.000Z INFO api.catalog request_id=req-000279-16 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T16:39:29.000Z INFO api.catalog request_id=req-000279-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T16:40:03.000Z INFO api.catalog request_id=req-000280-63 route=/health status=200 latency_ms=5
+2025-03-18T16:40:11.000Z INFO api.catalog request_id=req-000280-63 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:40:29.000Z INFO api.catalog request_id=req-000280-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T16:41:03.000Z INFO api.catalog request_id=req-000281-e3 route=/health status=200 latency_ms=9
+2025-03-18T16:41:11.000Z INFO api.catalog request_id=req-000281-e3 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T16:41:29.000Z INFO api.catalog request_id=req-000281-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T16:42:03.000Z INFO api.catalog request_id=req-000282-ed route=/health status=200 latency_ms=5
+2025-03-18T16:42:11.000Z INFO api.catalog request_id=req-000282-ed route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T16:42:29.000Z INFO api.catalog request_id=req-000282-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T16:43:03.000Z INFO api.catalog request_id=req-000283-b5 route=/health status=200 latency_ms=9
+2025-03-18T16:43:11.000Z INFO api.catalog request_id=req-000283-b5 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T16:43:29.000Z INFO api.catalog request_id=req-000283-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:44:03.000Z INFO api.catalog request_id=req-000284-be route=/health status=200 latency_ms=6
+2025-03-18T16:44:11.000Z INFO api.catalog request_id=req-000284-be route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:44:29.000Z INFO api.catalog request_id=req-000284-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:45:03.000Z INFO api.catalog request_id=req-000285-96 route=/health status=200 latency_ms=6
+2025-03-18T16:45:11.000Z INFO api.catalog request_id=req-000285-96 route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T16:45:29.000Z INFO api.catalog request_id=req-000285-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T16:46:03.000Z INFO api.catalog request_id=req-000286-d6 route=/health status=200 latency_ms=4
+2025-03-18T16:46:11.000Z INFO api.catalog request_id=req-000286-d6 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:46:29.000Z INFO api.catalog request_id=req-000286-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:47:03.000Z INFO api.catalog request_id=req-000287-4c route=/health status=200 latency_ms=7
+2025-03-18T16:47:11.000Z INFO api.catalog request_id=req-000287-4c route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T16:47:29.000Z INFO api.catalog request_id=req-000287-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T16:48:03.000Z INFO api.catalog request_id=req-000288-2f route=/health status=200 latency_ms=7
+2025-03-18T16:48:11.000Z INFO api.catalog request_id=req-000288-2f route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T16:48:29.000Z INFO api.catalog request_id=req-000288-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T16:49:03.000Z INFO api.catalog request_id=req-000289-a4 route=/health status=200 latency_ms=9
+2025-03-18T16:49:11.000Z INFO api.catalog request_id=req-000289-a4 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:49:29.000Z INFO api.catalog request_id=req-000289-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T16:50:03.000Z INFO api.catalog request_id=req-000290-cf route=/health status=200 latency_ms=6
+2025-03-18T16:50:11.000Z INFO api.catalog request_id=req-000290-cf route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:50:29.000Z INFO api.catalog request_id=req-000290-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T16:51:03.000Z INFO api.catalog request_id=req-000291-85 route=/health status=200 latency_ms=3
+2025-03-18T16:51:11.000Z INFO api.catalog request_id=req-000291-85 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T16:51:29.000Z INFO api.catalog request_id=req-000291-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:52:03.000Z INFO api.catalog request_id=req-000292-a1 route=/health status=200 latency_ms=7
+2025-03-18T16:52:11.000Z INFO api.catalog request_id=req-000292-a1 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T16:52:29.000Z INFO api.catalog request_id=req-000292-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T16:53:03.000Z INFO api.catalog request_id=req-000293-ca route=/health status=200 latency_ms=2
+2025-03-18T16:53:11.000Z INFO api.catalog request_id=req-000293-ca route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T16:53:29.000Z INFO api.catalog request_id=req-000293-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T16:54:03.000Z INFO api.catalog request_id=req-000294-96 route=/health status=200 latency_ms=7
+2025-03-18T16:54:11.000Z INFO api.catalog request_id=req-000294-96 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T16:54:29.000Z INFO api.catalog request_id=req-000294-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T16:55:03.000Z INFO api.catalog request_id=req-000295-a2 route=/health status=200 latency_ms=9
+2025-03-18T16:55:11.000Z INFO api.catalog request_id=req-000295-a2 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T16:55:29.000Z INFO api.catalog request_id=req-000295-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T16:56:03.000Z INFO api.catalog request_id=req-000296-9c route=/health status=200 latency_ms=4
+2025-03-18T16:56:11.000Z INFO api.catalog request_id=req-000296-9c route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T16:56:29.000Z INFO api.catalog request_id=req-000296-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T16:56:44.000Z WARN api.catalog request_id=req-000296-09 route=/v2/products status=200 cache=miss latency_ms=279 retry=0
+2025-03-18T16:57:03.000Z INFO api.catalog request_id=req-000297-d5 route=/health status=200 latency_ms=8
+2025-03-18T16:57:11.000Z INFO api.catalog request_id=req-000297-d5 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T16:57:29.000Z INFO api.catalog request_id=req-000297-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T16:58:03.000Z INFO api.catalog request_id=req-000298-e5 route=/health status=200 latency_ms=9
+2025-03-18T16:58:11.000Z INFO api.catalog request_id=req-000298-e5 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T16:58:29.000Z INFO api.catalog request_id=req-000298-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T16:59:03.000Z INFO api.catalog request_id=req-000299-dd route=/health status=200 latency_ms=7
+2025-03-18T16:59:11.000Z INFO api.catalog request_id=req-000299-dd route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T16:59:29.000Z INFO api.catalog request_id=req-000299-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:00:03.000Z INFO api.catalog request_id=req-000300-13 route=/health status=200 latency_ms=7
+2025-03-18T17:00:11.000Z INFO api.catalog request_id=req-000300-13 route=/v2/products status=200 cache=hit latency_ms=19
+2025-03-18T17:00:29.000Z INFO api.catalog request_id=req-000300-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:01:03.000Z INFO api.catalog request_id=req-000301-47 route=/health status=200 latency_ms=2
+2025-03-18T17:01:11.000Z INFO api.catalog request_id=req-000301-47 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T17:01:29.000Z INFO api.catalog request_id=req-000301-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T17:02:03.000Z INFO api.catalog request_id=req-000302-67 route=/health status=200 latency_ms=2
+2025-03-18T17:02:11.000Z INFO api.catalog request_id=req-000302-67 route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T17:02:29.000Z INFO api.catalog request_id=req-000302-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T17:03:03.000Z INFO api.catalog request_id=req-000303-28 route=/health status=200 latency_ms=7
+2025-03-18T17:03:11.000Z INFO api.catalog request_id=req-000303-28 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T17:03:29.000Z INFO api.catalog request_id=req-000303-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T17:04:03.000Z INFO api.catalog request_id=req-000304-22 route=/health status=200 latency_ms=7
+2025-03-18T17:04:11.000Z INFO api.catalog request_id=req-000304-22 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T17:04:29.000Z INFO api.catalog request_id=req-000304-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T17:05:03.000Z INFO api.catalog request_id=req-000305-24 route=/health status=200 latency_ms=2
+2025-03-18T17:05:11.000Z INFO api.catalog request_id=req-000305-24 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T17:05:29.000Z INFO api.catalog request_id=req-000305-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:06:03.000Z INFO api.catalog request_id=req-000306-b9 route=/health status=200 latency_ms=7
+2025-03-18T17:06:11.000Z INFO api.catalog request_id=req-000306-b9 route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T17:06:29.000Z INFO api.catalog request_id=req-000306-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T17:07:03.000Z INFO api.catalog request_id=req-000307-bf route=/health status=200 latency_ms=2
+2025-03-18T17:07:11.000Z INFO api.catalog request_id=req-000307-bf route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T17:07:29.000Z INFO api.catalog request_id=req-000307-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T17:08:03.000Z INFO api.catalog request_id=req-000308-a8 route=/health status=200 latency_ms=9
+2025-03-18T17:08:11.000Z INFO api.catalog request_id=req-000308-a8 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T17:08:29.000Z INFO api.catalog request_id=req-000308-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T17:09:03.000Z INFO api.catalog request_id=req-000309-58 route=/health status=200 latency_ms=6
+2025-03-18T17:09:11.000Z INFO api.catalog request_id=req-000309-58 route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T17:09:29.000Z INFO api.catalog request_id=req-000309-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T17:10:03.000Z INFO api.catalog request_id=req-000310-13 route=/health status=200 latency_ms=9
+2025-03-18T17:10:11.000Z INFO api.catalog request_id=req-000310-13 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T17:10:29.000Z INFO api.catalog request_id=req-000310-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T17:11:03.000Z INFO api.catalog request_id=req-000311-b5 route=/health status=200 latency_ms=8
+2025-03-18T17:11:11.000Z INFO api.catalog request_id=req-000311-b5 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T17:11:29.000Z INFO api.catalog request_id=req-000311-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T17:12:03.000Z INFO api.catalog request_id=req-000312-69 route=/health status=200 latency_ms=6
+2025-03-18T17:12:11.000Z INFO api.catalog request_id=req-000312-69 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:12:29.000Z INFO api.catalog request_id=req-000312-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T17:13:03.000Z INFO api.catalog request_id=req-000313-5a route=/health status=200 latency_ms=9
+2025-03-18T17:13:11.000Z INFO api.catalog request_id=req-000313-5a route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:13:29.000Z INFO api.catalog request_id=req-000313-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T17:14:03.000Z INFO api.catalog request_id=req-000314-49 route=/health status=200 latency_ms=5
+2025-03-18T17:14:11.000Z INFO api.catalog request_id=req-000314-49 route=/v2/products status=200 cache=hit latency_ms=14
+2025-03-18T17:14:29.000Z INFO api.catalog request_id=req-000314-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T17:15:03.000Z INFO api.catalog request_id=req-000315-fe route=/health status=200 latency_ms=6
+2025-03-18T17:15:11.000Z INFO api.catalog request_id=req-000315-fe route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:15:29.000Z INFO api.catalog request_id=req-000315-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:16:03.000Z INFO api.catalog request_id=req-000316-ba route=/health status=200 latency_ms=4
+2025-03-18T17:16:11.000Z INFO api.catalog request_id=req-000316-ba route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T17:16:29.000Z INFO api.catalog request_id=req-000316-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T17:17:03.000Z INFO api.catalog request_id=req-000317-af route=/health status=200 latency_ms=2
+2025-03-18T17:17:11.000Z INFO api.catalog request_id=req-000317-af route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T17:17:29.000Z INFO api.catalog request_id=req-000317-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T17:18:03.000Z INFO api.catalog request_id=req-000318-55 route=/health status=200 latency_ms=6
+2025-03-18T17:18:11.000Z INFO api.catalog request_id=req-000318-55 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T17:18:29.000Z INFO api.catalog request_id=req-000318-07 route=/v2/categories status=200 cache=hit latency_ms=15
+2025-03-18T17:19:03.000Z INFO api.catalog request_id=req-000319-87 route=/health status=200 latency_ms=5
+2025-03-18T17:19:11.000Z INFO api.catalog request_id=req-000319-87 route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T17:19:29.000Z INFO api.catalog request_id=req-000319-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T17:20:03.000Z INFO api.catalog request_id=req-000320-5d route=/health status=200 latency_ms=3
+2025-03-18T17:20:11.000Z INFO api.catalog request_id=req-000320-5d route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T17:20:29.000Z INFO api.catalog request_id=req-000320-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T17:21:03.000Z INFO api.catalog request_id=req-000321-19 route=/health status=200 latency_ms=8
+2025-03-18T17:21:11.000Z INFO api.catalog request_id=req-000321-19 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:21:29.000Z INFO api.catalog request_id=req-000321-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T17:22:03.000Z INFO api.catalog request_id=req-000322-8e route=/health status=200 latency_ms=5
+2025-03-18T17:22:11.000Z INFO api.catalog request_id=req-000322-8e route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:22:29.000Z INFO api.catalog request_id=req-000322-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T17:22:57.000Z WARN api.catalog route=/v2/search status=499 client_cancelled=true
+2025-03-18T17:23:03.000Z INFO api.catalog request_id=req-000323-b9 route=/health status=200 latency_ms=7
+2025-03-18T17:23:11.000Z INFO api.catalog request_id=req-000323-b9 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T17:23:29.000Z INFO api.catalog request_id=req-000323-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T17:24:03.000Z INFO api.catalog request_id=req-000324-c3 route=/health status=200 latency_ms=6
+2025-03-18T17:24:11.000Z INFO api.catalog request_id=req-000324-c3 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T17:24:29.000Z INFO api.catalog request_id=req-000324-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T17:25:03.000Z INFO api.catalog request_id=req-000325-dc route=/health status=200 latency_ms=6
+2025-03-18T17:25:11.000Z INFO api.catalog request_id=req-000325-dc route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:25:29.000Z INFO api.catalog request_id=req-000325-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:26:03.000Z INFO api.catalog request_id=req-000326-25 route=/health status=200 latency_ms=2
+2025-03-18T17:26:11.000Z INFO api.catalog request_id=req-000326-25 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T17:26:29.000Z INFO api.catalog request_id=req-000326-07 route=/v2/categories status=200 cache=hit latency_ms=18
+2025-03-18T17:26:52.000Z INFO api.catalog dependency=pricing timeout_ms=800 retries=1 outcome=success
+2025-03-18T17:27:03.000Z INFO api.catalog request_id=req-000327-16 route=/health status=200 latency_ms=8
+2025-03-18T17:27:11.000Z INFO api.catalog request_id=req-000327-16 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:27:29.000Z INFO api.catalog request_id=req-000327-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T17:28:03.000Z INFO api.catalog request_id=req-000328-3a route=/health status=200 latency_ms=5
+2025-03-18T17:28:11.000Z INFO api.catalog request_id=req-000328-3a route=/v2/products status=200 cache=hit latency_ms=13
+2025-03-18T17:28:29.000Z INFO api.catalog request_id=req-000328-07 route=/v2/categories status=200 cache=hit latency_ms=10
+2025-03-18T17:29:03.000Z INFO api.catalog request_id=req-000329-7c route=/health status=200 latency_ms=9
+2025-03-18T17:29:11.000Z INFO api.catalog request_id=req-000329-7c route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T17:29:29.000Z INFO api.catalog request_id=req-000329-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:30:03.000Z INFO api.catalog request_id=req-000330-1b route=/health status=200 latency_ms=5
+2025-03-18T17:30:11.000Z INFO api.catalog request_id=req-000330-1b route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T17:30:29.000Z INFO api.catalog request_id=req-000330-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T17:31:03.000Z INFO api.catalog request_id=req-000331-e1 route=/health status=200 latency_ms=3
+2025-03-18T17:31:11.000Z INFO api.catalog request_id=req-000331-e1 route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T17:31:29.000Z INFO api.catalog request_id=req-000331-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:32:03.000Z INFO api.catalog request_id=req-000332-ba route=/health status=200 latency_ms=8
+2025-03-18T17:32:11.000Z INFO api.catalog request_id=req-000332-ba route=/v2/products status=200 cache=hit latency_ms=20
+2025-03-18T17:32:29.000Z INFO api.catalog request_id=req-000332-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T17:33:03.000Z INFO api.catalog request_id=req-000333-9f route=/health status=200 latency_ms=7
+2025-03-18T17:33:11.000Z INFO api.catalog request_id=req-000333-9f route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:33:29.000Z INFO api.catalog request_id=req-000333-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T17:33:44.000Z WARN api.catalog request_id=req-000333-09 route=/v2/products status=200 cache=miss latency_ms=285 retry=0
+2025-03-18T17:34:03.000Z INFO api.catalog request_id=req-000334-4f route=/health status=200 latency_ms=2
+2025-03-18T17:34:11.000Z INFO api.catalog request_id=req-000334-4f route=/v2/products status=200 cache=hit latency_ms=17
+2025-03-18T17:34:29.000Z INFO api.catalog request_id=req-000334-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:35:03.000Z INFO api.catalog request_id=req-000335-dd route=/health status=200 latency_ms=3
+2025-03-18T17:35:11.000Z INFO api.catalog request_id=req-000335-dd route=/v2/products status=200 cache=hit latency_ms=16
+2025-03-18T17:35:29.000Z INFO api.catalog request_id=req-000335-07 route=/v2/categories status=200 cache=hit latency_ms=14
+2025-03-18T17:36:03.000Z INFO api.catalog request_id=req-000336-a1 route=/health status=200 latency_ms=9
+2025-03-18T17:36:11.000Z INFO api.catalog request_id=req-000336-a1 route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T17:36:29.000Z INFO api.catalog request_id=req-000336-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T17:37:03.000Z INFO api.catalog request_id=req-000337-4c route=/health status=200 latency_ms=7
+2025-03-18T17:37:11.000Z INFO api.catalog request_id=req-000337-4c route=/v2/products status=200 cache=hit latency_ms=21
+2025-03-18T17:37:29.000Z INFO api.catalog request_id=req-000337-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T17:38:03.000Z INFO api.catalog request_id=req-000338-22 route=/health status=200 latency_ms=2
+2025-03-18T17:38:11.000Z INFO api.catalog request_id=req-000338-22 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:38:29.000Z INFO api.catalog request_id=req-000338-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T17:39:03.000Z INFO api.catalog request_id=req-000339-9c route=/health status=200 latency_ms=9
+2025-03-18T17:39:11.000Z INFO api.catalog request_id=req-000339-9c route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:39:29.000Z INFO api.catalog request_id=req-000339-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T17:40:03.000Z INFO api.catalog request_id=req-000340-e0 route=/health status=200 latency_ms=7
+2025-03-18T17:40:11.000Z INFO api.catalog request_id=req-000340-e0 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:40:29.000Z INFO api.catalog request_id=req-000340-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T17:41:03.000Z INFO api.catalog request_id=req-000341-8b route=/health status=200 latency_ms=2
+2025-03-18T17:41:11.000Z INFO api.catalog request_id=req-000341-8b route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T17:41:29.000Z INFO api.catalog request_id=req-000341-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T17:42:03.000Z INFO api.catalog request_id=req-000342-81 route=/health status=200 latency_ms=7
+2025-03-18T17:42:11.000Z INFO api.catalog request_id=req-000342-81 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T17:42:29.000Z INFO api.catalog request_id=req-000342-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:43:03.000Z INFO api.catalog request_id=req-000343-5d route=/health status=200 latency_ms=6
+2025-03-18T17:43:11.000Z INFO api.catalog request_id=req-000343-5d route=/v2/products status=200 cache=hit latency_ms=11
+2025-03-18T17:43:29.000Z INFO api.catalog request_id=req-000343-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T17:44:03.000Z INFO api.catalog request_id=req-000344-67 route=/health status=200 latency_ms=9
+2025-03-18T17:44:11.000Z INFO api.catalog request_id=req-000344-67 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:44:29.000Z INFO api.catalog request_id=req-000344-07 route=/v2/categories status=200 cache=hit latency_ms=5
+2025-03-18T17:45:03.000Z INFO api.catalog request_id=req-000345-15 route=/health status=200 latency_ms=5
+2025-03-18T17:45:11.000Z INFO api.catalog request_id=req-000345-15 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T17:45:29.000Z INFO api.catalog request_id=req-000345-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T17:46:03.000Z INFO api.catalog request_id=req-000346-53 route=/health status=200 latency_ms=5
+2025-03-18T17:46:11.000Z INFO api.catalog request_id=req-000346-53 route=/v2/products status=200 cache=hit latency_ms=9
+2025-03-18T17:46:29.000Z INFO api.catalog request_id=req-000346-07 route=/v2/categories status=200 cache=hit latency_ms=16
+2025-03-18T17:47:03.000Z INFO api.catalog request_id=req-000347-19 route=/health status=200 latency_ms=8
+2025-03-18T17:47:11.000Z INFO api.catalog request_id=req-000347-19 route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:47:29.000Z INFO api.catalog request_id=req-000347-07 route=/v2/categories status=200 cache=hit latency_ms=11
+2025-03-18T17:48:03.000Z INFO api.catalog request_id=req-000348-bd route=/health status=200 latency_ms=2
+2025-03-18T17:48:11.000Z INFO api.catalog request_id=req-000348-bd route=/v2/products status=200 cache=hit latency_ms=12
+2025-03-18T17:48:29.000Z INFO api.catalog request_id=req-000348-07 route=/v2/categories status=200 cache=hit latency_ms=9
+2025-03-18T17:49:03.000Z INFO api.catalog request_id=req-000349-41 route=/health status=200 latency_ms=3
+2025-03-18T17:49:11.000Z INFO api.catalog request_id=req-000349-41 route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T17:49:29.000Z INFO api.catalog request_id=req-000349-07 route=/v2/categories status=200 cache=hit latency_ms=13
+2025-03-18T17:50:03.000Z INFO api.catalog request_id=req-000350-6a route=/health status=200 latency_ms=7
+2025-03-18T17:50:11.000Z INFO api.catalog request_id=req-000350-6a route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T17:50:29.000Z INFO api.catalog request_id=req-000350-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:51:03.000Z INFO api.catalog request_id=req-000351-50 route=/health status=200 latency_ms=2
+2025-03-18T17:51:11.000Z INFO api.catalog request_id=req-000351-50 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T17:51:29.000Z INFO api.catalog request_id=req-000351-07 route=/v2/categories status=200 cache=hit latency_ms=8
+2025-03-18T17:52:03.000Z INFO api.catalog request_id=req-000352-7e route=/health status=200 latency_ms=8
+2025-03-18T17:52:11.000Z INFO api.catalog request_id=req-000352-7e route=/v2/products status=200 cache=hit latency_ms=23
+2025-03-18T17:52:29.000Z INFO api.catalog request_id=req-000352-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:53:03.000Z INFO api.catalog request_id=req-000353-9d route=/health status=200 latency_ms=9
+2025-03-18T17:53:11.000Z INFO api.catalog request_id=req-000353-9d route=/v2/products status=200 cache=hit latency_ms=10
+2025-03-18T17:53:29.000Z INFO api.catalog request_id=req-000353-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T17:54:03.000Z INFO api.catalog request_id=req-000354-95 route=/health status=200 latency_ms=2
+2025-03-18T17:54:11.000Z INFO api.catalog request_id=req-000354-95 route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:54:29.000Z INFO api.catalog request_id=req-000354-07 route=/v2/categories status=200 cache=hit latency_ms=7
+2025-03-18T17:55:03.000Z INFO api.catalog request_id=req-000355-7e route=/health status=200 latency_ms=6
+2025-03-18T17:55:11.000Z INFO api.catalog request_id=req-000355-7e route=/v2/products status=200 cache=hit latency_ms=22
+2025-03-18T17:55:29.000Z INFO api.catalog request_id=req-000355-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:56:03.000Z INFO api.catalog request_id=req-000356-94 route=/health status=200 latency_ms=5
+2025-03-18T17:56:11.000Z INFO api.catalog request_id=req-000356-94 route=/v2/products status=200 cache=hit latency_ms=15
+2025-03-18T17:56:29.000Z INFO api.catalog request_id=req-000356-07 route=/v2/categories status=200 cache=hit latency_ms=6
+2025-03-18T17:57:03.000Z INFO api.catalog request_id=req-000357-2a route=/health status=200 latency_ms=7
+2025-03-18T17:57:11.000Z INFO api.catalog request_id=req-000357-2a route=/v2/products status=200 cache=hit latency_ms=24
+2025-03-18T17:57:29.000Z INFO api.catalog request_id=req-000357-07 route=/v2/categories status=200 cache=hit latency_ms=17
+2025-03-18T17:58:03.000Z INFO api.catalog request_id=req-000358-e1 route=/health status=200 latency_ms=4
+2025-03-18T17:58:11.000Z INFO api.catalog request_id=req-000358-e1 route=/v2/products status=200 cache=hit latency_ms=8
+2025-03-18T17:58:29.000Z INFO api.catalog request_id=req-000358-07 route=/v2/categories status=200 cache=hit latency_ms=12
+2025-03-18T17:59:03.000Z INFO api.catalog request_id=req-000359-49 route=/health status=200 latency_ms=9
+2025-03-18T17:59:11.000Z INFO api.catalog request_id=req-000359-49 route=/v2/products status=200 cache=hit latency_ms=18
+2025-03-18T17:59:29.000Z INFO api.catalog request_id=req-000359-07 route=/v2/categories status=200 cache=hit latency_ms=14

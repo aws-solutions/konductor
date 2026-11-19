@@ -1,0 +1,97 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/api/issues.js",
+      "line": 18,
+      "endLine": 18,
+      "severity": "high",
+      "fix": [
+        "exclusive",
+        "advance cursor",
+        "greater than"
+      ],
+      "finding": "The next cursor is encoded from the last row while the next query includes that row with a greater-or-equal comparison, so every non-final page repeats its last item.",
+      "slack": 1
+    },
+    {
+      "id": "k2",
+      "file": "src/api/issues.js",
+      "line": 15,
+      "endLine": 15,
+      "severity": "medium",
+      "fix": [
+        "tie-breaker",
+        "stable ordering",
+        "createdAt and id"
+      ],
+      "finding": "Sorting only by createdAt leaves equal-time rows without a deterministic order, so inserts or store order changes can make cursor pages skip or repeat issues.",
+      "slack": 1
+    },
+    {
+      "id": "k3",
+      "file": "src/pagination/cursor.js",
+      "line": 4,
+      "endLine": 4,
+      "severity": "low",
+      "fix": [
+        "opaque token",
+        "signed cursor",
+        "validate cursor"
+      ],
+      "finding": "The cursor is merely base64 text containing an internal row offset, so clients can decode and alter it to request arbitrary positions rather than using a validated opaque continuation token."
+    },
+    {
+      "id": "k4",
+      "file": "src/api/issues.js",
+      "line": 10,
+      "endLine": 10,
+      "severity": "medium",
+      "fix": [
+        "maxPageSize",
+        "cap limit",
+        "reject oversized"
+      ],
+      "finding": "The handler accepts any positive limit and never applies the configured or documented maximum of 100, allowing an unbounded response from a public list endpoint.",
+      "slack": 1
+    },
+    {
+      "id": "k5",
+      "file": "src/api/issues.js",
+      "line": 22,
+      "endLine": 23,
+      "severity": "high",
+      "fix": [
+        "preserve v1",
+        "versioned endpoint",
+        "v2"
+      ],
+      "finding": "The change replaces the documented v1 top-level issues and nextOffset fields with a data/page envelope without moving the breaking contract to a new version or negotiated media type.",
+      "slack": 1
+    },
+    {
+      "id": "k6",
+      "file": "src/api/issues.js",
+      "line": 17,
+      "endLine": 18,
+      "severity": "medium",
+      "fix": [
+        "support offset",
+        "deprecation window",
+        "translate offset"
+      ],
+      "finding": "The new handler reads cursor but no longer reads the documented offset parameter, so existing clients receive the first page during the promised deprecation window instead of being migrated or supported.",
+      "slack": 1
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "tests/cursor-token.test.js",
+      "line": 25,
+      "endLine": 25,
+      "why": "This encodes a deliberately malformed token into a valid base64 test fixture so the decoder's invalid-content path is exercised; it is not production cursor construction."
+    }
+  ]
+}

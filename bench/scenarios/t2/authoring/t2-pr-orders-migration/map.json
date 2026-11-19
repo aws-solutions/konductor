@@ -1,0 +1,11 @@
+{
+  "targetSkills": ["code-review", "adversarial-code-review", "backend-review"],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": ["code-review", "adversarial-code-review"],
+    "mustNotLoad": ["frontend-review", "e2e-test-strategy"]
+  },
+  "twinIdea": "Add unit tests for the new fulfilment status reporting endpoints.",
+  "why": "This is a PR review for a database migration with production traffic concerns. code-review handles standard review, adversarial-code-review catches the data integrity and security traps (rolling deployments, SQL injection, N+1 queries), and backend-review covers the Python/backend patterns. The adversarial PR review SOP matches this maker-checker scenario perfectly."
+}

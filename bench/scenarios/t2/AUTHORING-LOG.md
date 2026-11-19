@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 137.41 credits over 48 calls.
+Total captured: 175.78 credits over 64 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -54,3 +54,19 @@ Total captured: 137.41 credits over 48 calls.
 | 2026-11-19T21:00:38.818Z | t2-dr-rate-limits | expert | deepseek-3.2 | 46 | 0.93 | ok |
 | 2026-11-19T21:01:06Z | t2-dr-rate-limits | map | glm-5 | 23 | 0.52 | ok |
 | 2026-11-19T21:07:14Z | t2-dr-rate-limits | review | minimax-m2.5 | 367 | 1.26 | ok |
+| 2026-11-19T21:21:48Z | t2-pr-orders-migration | author | deepseek-3.2 | 850 | 10.49 | ok |
+| 2026-11-19T21:22:07Z | t2-pr-orders-migration | map | glm-5 | 16 | 0.51 | ok |
+| 2026-11-19T21:27:27Z | t2-pr-orders-migration | review | minimax-m2.5 | 319 | 2.04 | ok |
+| 2026-11-19T21:35:45.825Z | t2-pr-orders-migration | fix | deepseek-3.2 | 499 | 9.22 | ok |
+| 2026-11-19T21:40:00Z | t2-pr-orders-migration | review | minimax-m2.5 | 252 | 0.71 | ok |
+| 2026-11-19T21:41:48Z | t2-dr-data-erasure | author | gpt-5.6-luna | 107 | 1.83 | ok |
+| 2026-11-19T21:42:02.582Z | t2-dr-data-erasure | expert | gpt-5.6-luna | 14 | 0.42 | ok |
+| 2026-11-19T21:42:29Z | t2-dr-data-erasure | map | glm-5 | 24 | 0.51 | ok |
+| 2026-11-19T21:43:11Z | t2-dr-data-erasure | review | qwen3-coder-next | 42 | 0.17 | ok |
+| 2026-11-19T21:45:22Z | t2-pr-cursor-pages | author | gpt-5.6-luna | 131 | 2.66 | ok |
+| 2026-11-19T21:45:40Z | t2-pr-cursor-pages | map | glm-5 | 16 | 0.52 | ok |
+| 2026-11-19T21:46:18Z | t2-pr-cursor-pages | review | glm-5 | 38 | 1.08 | ok |
+| 2026-11-19T21:56:28Z | t2-arch-dr-two-regions | author | deepseek-3.2 | 610 | 4.55 | ok |
+| 2026-11-19T21:57:33.673Z | t2-arch-dr-two-regions | expert | deepseek-3.2 | 65 | 1.30 | ok |
+| 2026-11-19T21:58:00Z | t2-arch-dr-two-regions | map | glm-5 | 24 | 0.53 | ok |
+| 2026-11-19T22:06:10Z | t2-arch-dr-two-regions | review | minimax-m2.5 | 489 | 1.81 | ok |

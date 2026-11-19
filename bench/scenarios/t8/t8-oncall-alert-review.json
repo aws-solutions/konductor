@@ -1,0 +1,94 @@
+{
+  "id": "t8-oncall-alert-review",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "The on-call rotation is spending too much time acknowledging alerts, and I need a practical review before the next handoff. Please inspect the monitoring folder and recommend which alert rules to keep, change, or remove. For every rule you recommend changing or removing, explain what is wrong today and give a concrete replacement expression, threshold, duration, routing, or disposition. Tie each recommendation to the evidence in the folder. Write the review to oncall/alert-review.md as Markdown and end it with one fenced json block. The JSON object must have alerts, a list of objects with name (string, exactly as in alerts/alert-rules.yml), problem (string), change (string), and severity (the string page, ticket, or remove), plus keep, a list of alert-name strings that are fine as they are. Include numeric thresholds and durations with their units. Any times must be ISO 8601 UTC.",
+  "fixture": "t8-oncall-alert-review",
+  "hidden": "t8-oncall-alert-review",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 24,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "oncall/alert-review.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "alerts/alert-rules.yml",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks for a practical review based on evidence but does not prescribe methods, processes, or tools; it specifies deliverables (Markdown document with JSON) and criteria (evidence, thresholds, durations) without limiting how the agent determines them."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The key items use explicit metric names (http_request_duration_p95_ms, db_pool_in_use_ratio), numeric thresholds (1200, 0.90), durations (10m, 15m, 3m, 5m), and severities (page, ticket, remove) that match the fixture and catalogue; ISO 8601 UTC is the only time format used in the fixture."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no hints about the correct recommendations; the notes are explicitly disclaimed as not source of truth, the runbooks reference only general procedures, and file names do not reveal the root causes—everything must be inferred from cross-referencing logs, alerts, incidents, and history."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer would be to blame the Feb 14 deploy, keep all 18 rules, or remove the newest rule (DbConnectionPoolExhaustion with the typo); but the key requires identifying specific issues (wrong metric, duplicate rule, noisy symptom), proposing concrete replacements, and citing log lines—none of which a generic approach would achieve."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items are derivable from the fixture: metrics.csv lists the correct pool metric name, alert-firings.csv shows no incident linked to ApiNoTraffic (44 firings), the deployment history shows the Feb 18 rollback, and logs/api-gateway.log:1800-1804 shows db_pool_in_use_ratio=1.00 and the CPU value of 0.41 during the incident."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

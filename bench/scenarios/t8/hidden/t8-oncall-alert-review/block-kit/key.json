@@ -1,0 +1,192 @@
+{
+  "outputFile": "oncall/alert-review.md",
+  "items": [
+    {
+      "id": "latency-noise-and-replacement",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"ApiLatencyP95\"",
+          "\"problem\":\"[^\"]*(normal|baseline|expected|every (day|evening)|daily|peak)"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "cpu-cause-not-impact",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"ApiCpuSaturation\"",
+          "\"problem\":\"[^\"]*(cause|user impact|customer|symptom|no (incident|impact))",
+          "\"severity\":\"(ticket|remove)\""
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "stale-pool-metric",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"DbConnectionPoolExhaustion\"",
+          "\"problem\":\"[^\"]*(missing|absent|stale|renamed|does not exist|no longer|never fires|no data)"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "duplicate-fivexx",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"Api5xxBurst\"",
+          "\"problem\":\"[^\"]*(duplicat|overlap|same as|redundant)",
+          "\"severity\":\"remove\""
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "no-traffic-symptom",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"ApiNoTraffic\"",
+          "\"problem\":\"[^\"]*(runbook|ack|ignored|noise|false)",
+          "\"severity\":\"(remove|ticket)\""
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "timeout-ticket",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"RequestTimeoutRate\"",
+          "\"problem\":\"[^\"]*(ticket|non.?urgent|not urgent|page)",
+          "\"severity\":\"ticket\""
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "queue-duration",
+      "type": "some",
+      "path": "alerts",
+      "match": {
+        "all": [
+          "\"name\":\"QueueDepthSpike\"",
+          "\"problem\":\"[^\"]*(duration|flap|brief|short|for:|transient)"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "sound-alerts-not-removed",
+      "type": "none",
+      "path": "alerts",
+      "match": {
+        "field": "name",
+        "all": [
+          "^(ApiHigh5xxRate|HealthCheckDown|QueueAgeHigh|WorkerErrorRate|CacheHitRateLow|LoginFailureSpike|PaymentProviderLatency|SearchIndexLag|DiskSpaceLow|DeploymentFailure|TLSCertificateExpiry)$"
+        ]
+      }
+    },
+    {
+      "id": "valid-severities",
+      "type": "every",
+      "path": "alerts",
+      "match": {
+        "field": "severity",
+        "all": [
+          "^(page|ticket|remove)$"
+        ]
+      },
+      "min": 6
+    },
+    {
+      "id": "alert-names-are-rules",
+      "type": "inSet",
+      "path": "alerts",
+      "field": "name",
+      "fromFile": "alerts/alert-rules.yml",
+      "pattern": "^\\s*- name:\\s*([A-Za-z0-9_-]+)$",
+      "min": 6
+    },
+    {
+      "id": "review-precision",
+      "type": "maxLen",
+      "path": "alerts",
+      "min": 6,
+      "max": 10
+    },
+    {
+      "id": "keep-api-errors",
+      "type": "some",
+      "path": "keep",
+      "match": {
+        "all": [
+          "^ApiHigh5xxRate$"
+        ]
+      }
+    },
+    {
+      "id": "keep-health-check",
+      "type": "some",
+      "path": "keep",
+      "match": {
+        "all": [
+          "^HealthCheckDown$"
+        ]
+      }
+    },
+    {
+      "id": "keep-queue-age",
+      "type": "some",
+      "path": "keep",
+      "match": {
+        "all": [
+          "^QueueAgeHigh$"
+        ]
+      }
+    },
+    {
+      "id": "keep-worker-errors",
+      "type": "some",
+      "path": "keep",
+      "match": {
+        "all": [
+          "^WorkerErrorRate$"
+        ]
+      }
+    },
+    {
+      "id": "keep-provider-latency",
+      "type": "some",
+      "path": "keep",
+      "match": {
+        "all": [
+          "^PaymentProviderLatency$"
+        ]
+      }
+    },
+    {
+      "id": "keep-deploy-failure",
+      "type": "some",
+      "path": "keep",
+      "match": {
+        "all": [
+          "^DeploymentFailure$"
+        ]
+      }
+    }
+  ]
+}

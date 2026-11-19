@@ -1,0 +1,12 @@
+{
+  "name": "harbor-http-client",
+  "version": "2.4.1",
+  "description": "Small internal HTTP client for service-to-service calls",
+  "main": "src/index.js",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test",
+    "lint": "node scripts/check-format.js"
+  },
+  "license": "MIT"
+}

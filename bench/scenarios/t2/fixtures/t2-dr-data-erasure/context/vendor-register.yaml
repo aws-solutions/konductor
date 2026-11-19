@@ -1,0 +1,13 @@
+messaging_vendor:
+  system: Notification vendor
+  data: email address, bounce status, delivery metadata
+  owner: Messaging
+  removal_endpoint: /v2/recipients/remove
+  authentication: service token held by Notification service
+  response_target: 5 calendar days
+  contract_note: delete or suppress recipient data after a verified account erasure request
+storage_provider:
+  system: Object Storage
+  data: avatar bytes, export archives, object metadata
+  owner: Media Platform
+  api: internal storage gateway

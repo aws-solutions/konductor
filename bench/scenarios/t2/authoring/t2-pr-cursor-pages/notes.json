@@ -1,0 +1,3 @@
+{
+  "notes": "The repeated-row bug is easy to miss because the cursor is built from the final item. The timestamp ordering issue needs attention to the stability of equal values, not just the presence of a sort. The page-size contract is split between the handler, config/default.json, and docs/api.md. The response compatibility and old offset behavior require comparing the new handler with the API document and its existing callers. The base64 token is functional for the happy path but is not an opaque continuation value."
+}
