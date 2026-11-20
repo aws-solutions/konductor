@@ -1,0 +1,209 @@
+{
+  "id": "t8-heldout-rollback-decision",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "tpm",
+  "phases2": [
+    "decisions"
+  ],
+  "questions": "allowed",
+  "prompt": "orders-api 4.18.0 has been on half the fleet since early this afternoon and the release channel cannot agree on what to do next. I have to make one call before 14:45 UTC today: roll back, hold at half, or roll forward. Please go through this folder and write the decision up at release/decisions/4.18.0-rollback.md: what we do and why, what is and is not the release's fault, what the call puts at risk, and a short note for each group that needs to hear about it. End the file with a fenced ```json block holding one object with these fields: decision (one of rollback, hold, roll-forward); targetVersion (the version that should serve all traffic once the call is carried out); cause (short text: what in the release does harm, if anything); evidence (list of path:line strings, the path relative to this folder and the line 1-based, citing the lines that prove it); harm (object: metric, a name exactly as metrics/catalogue.csv spells it; newVersionPct and oldVersionPct, that metric in percent for the hosts on 4.18.0 and the hosts on 4.17.3 since 4.18.0 started taking traffic; affectedCheckouts, the number of checkout attempts the release itself made fail in that time); notCausedByRelease (list of objects with signal and reason; may be empty); rejected (list of objects with option and reason, for the options you did not pick); rollbackSafe (true or false); rollbackRisks (list of strings); watchMetric (the catalogue metric that will show the call worked); stakeholders (list of objects with audience and message, audiences named as in comms/stakeholders.md). Give units with numbers in the prose and times in UTC.",
+  "fixture": "t8-heldout-rollback-decision",
+  "hidden": "t8-heldout-rollback-decision",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "release/decisions/4.18.0-rollback.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "release/rollout.yaml",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "metrics/per-minute.csv",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decision-clarity",
+      "criterion": "The prose gives the release manager a call they can act on and defend. Fail: the record gives no single call, or picks rollback or hold for a reason the folder disproves (the latency spike, the green dashboard, the old 4.9 retro), or has no numbers. Partial: it rolls back for the right reason but leaves out one of: the per-version decline rates with units, why roll forward is not available now, why the schema allows the rollback, or what marketing must do about the 18:00 UTC email. Pass: it rolls back to 4.17.3 because of the per-version payment decline rate, with the rates and the affected checkout count, shows the latency spike and the flat 5xx rate are not the release, rejects roll forward on the red 4.18.1 builds and hold on the ongoing harm, shows 0042 is expand-only, and tells each audience what changes for them and when. (code cannot check this because the key reads only the JSON block, not whether the prose argues the call in a way a release manager could defend)",
+      "weight": 1
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "per-version-compare",
+        "text": "Separates the release's own harm from signals both versions share by comparing hosts on each version over the same window, not the fleet-wide dashboard against yesterday.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "rollback-data-safety",
+        "text": "Checks that the previous version can run on the data and schema the new version has written (the shipped migration is additive) before committing to the rollback, and names what the new version wrote that the old one will ignore.",
+        "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "forward-needs-verified-fix",
+        "text": "Weighs rolling forward on whether a fix is verified and deployable now (green build, a soak on one host), not on whether a fix exists, and compares that delay with the ongoing harm.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "harm-rate",
+        "text": "Puts the ongoing harm as a rate (customers per minute or budget burned) and ties the urgency of the call to it.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "business-trade-off",
+        "text": "Faces the business cost of the call (the promo feature and the 18:00 UTC email) openly and gives the owner a concrete choice, instead of letting it decide the technical call.",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "done-signal",
+        "text": "States the signal, the level and the watch time that show the call worked, and when the next update goes out.",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "The dashboard is green and 5xx is flat, so hold and keep watching.",
+      "Latency jumped right after the rollout, so roll back because of latency.",
+      "A fix is ready in 4.18.1, so roll forward.",
+      "Rolling back broke things last time, so rollback is too risky.",
+      "Roll back, with no numbers, no evidence and no word to marketing."
+    ]
+  },
+  "targetSkills": [
+    "risk-management",
+    "status-reporting"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "risk-management",
+      "status-reporting"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude (kirocrew-mate-worker, CV-E session)",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://sre.google/workbook/canarying-releases/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "fixture, generator, key, reference and prompt written by hand; key numbers computed by authoring/t8-heldout-rollback-decision/gen/key_values.py; held-out under the SR-32 split (hash 1850953913)"
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not name a specific method, process, or tool the agent should use. It asks for a decision report with specific content but does not prescribe how to derive it or list constraints/causes to find."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear about the required output format (release/decisions/4.18.0-rollback.md with a JSON block) and fields. The key uses exact path names and metric names defined in metrics/catalogue.csv. No path, field, unit, or format is left unspecified."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The idempotency lines are the evidence the agent must find: 82 orders-api and 82 gateway lines among about 6,200 log lines in six files; no note, doc or file name states the cause, the release notes describe PAY-2291 only as a move onto the middleware, and the chat names no cause. (reviewer: The fixture contains explicit evidence of the root cause in multiple files: logs/orders-api/oa-3.log:741 and logs/orders-api/oa-4.log:727 show idempotency_key_reused declines; logs/payments-gateway.log:756/759 show IDEMPOTENCY_KEY_REUSED; chat/release-channel-2026-11-20.txt and notes from release-bot directly state when 4.18.0 started and that some builds are red. This gives away the root cause, the numbers (82 IDEMPOTENCY_KEY_REUSED in gateway logs), and the key decision.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The quick wrong answers the reviewer lists (blame the vendor latency, hold on the green dashboard, roll forward to 4.18.1) all fail: the decision and cause items are gates, and the rejected and notCausedByRelease items catch the rest; the mechanical shallow answer scores 12.5. (reviewer: The task is too easy. A quick wrong answer would blame the maps-geo vendor latency spike (mentioned in vendor/maps-geo-status.md and chat), pick hold because 'green dashboard' (overview-2026-11-20T1425Z.md), or roll forward to 4.18.1 (chat says '4.18.1 is basically ready'). These are decoys explicitly laid out in task-draft.json notes, and the key's evidence and notCausedByRelease items would catch them.)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The key values are all derivable from the fixture. The harm rates (2.436% new, 0.418% old) match the CSV data (66/2634=2.506% and 14/2513=0.557% for 13:10-14:00, close to the stated tolerances). The 82 affected checkouts equals the count of IDEMPOTENCY_KEY_REUSED in payments-gateway.log. The 0.2 tolerance on newVersionPct (2.436±0.2) covers 2.506, and the 0.12 tolerance on oldVersionPct (0.418±0.12) covers 0.557. All evidence paths (logs/orders-api, logs/payments-gateway, release/RELEASE-4.18.0.md) are present."
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt only requests a decision document with specific JSON fields; it names no method or decoy information."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains raw data (logs, metrics, release notes) and no pre-written solution; solution/ and alt/ are empty."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key items (id, type, path, matching criteria) align with the fixture data and task requirements; harm-old-version-rate correctly uses tol=0.2."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture provides all needed data: rollout plan, metrics, logs, release notes, and comms stakeholders to write the decision document."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (CV-E worker session)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 12.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

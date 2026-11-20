@@ -1,0 +1,6 @@
+{
+  "port": 8080,
+  "maxBodyBytes": 1048576,
+  "logLevel": "info",
+  "deliveryTimeoutMs": 5000
+}

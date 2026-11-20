@@ -1,0 +1,13 @@
+service: orders-api
+release: 4.18.0
+previous: 4.17.3
+stages:
+  - name: half
+    hosts: [oa-3, oa-4]
+    started: 2026-11-20T13:10:00Z
+    state: running
+  - name: full
+    hosts: [oa-1, oa-2, oa-3, oa-4]
+    planned: 2026-11-20T15:00:00Z
+    state: pending
+traffic: round-robin across healthy hosts (edge proxy)

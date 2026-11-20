@@ -1,0 +1,8 @@
+# Flag defaults, re-applied by the flags-sync job
+flags:
+  new_invoice_editor: { enabled: true, segments: [smb-eu] }
+  dark_mode: { enabled: true, segments: [all], pct: 25 }
+  pdf_watermark: { enabled: false }
+  bulk_tax_recalc: { enabled: true, segments: [enterprise-us] }   # TAX-512
+  tax_rules_v2: { enabled: false }
+  legacy_csv_export: { enabled: true, segments: [all] }

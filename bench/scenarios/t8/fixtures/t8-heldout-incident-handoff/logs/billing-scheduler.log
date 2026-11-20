@@ -1,0 +1,122 @@
+2026-11-20T12:00:04.221Z INFO billing-scheduler job=dunning-emails run started tenants=53
+2026-11-20T12:02:57.655Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T12:10:04.833Z INFO billing-scheduler job=dunning-emails run started tenants=46
+2026-11-20T12:20:05.505Z INFO billing-scheduler job=dunning-emails run started tenants=56
+2026-11-20T12:23:00.430Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T12:26:09.352Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T12:30:05.805Z INFO billing-scheduler job=dunning-emails run started tenants=56
+2026-11-20T12:34:47.827Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T12:40:05.883Z INFO billing-scheduler job=dunning-emails run started tenants=60
+2026-11-20T12:50:05.588Z INFO billing-scheduler job=dunning-emails run started tenants=47
+2026-11-20T13:00:01.160Z INFO billing-scheduler job=dunning-emails run started tenants=46
+2026-11-20T13:01:40.691Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T13:03:19.317Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T13:10:05.704Z INFO billing-scheduler job=dunning-emails run started tenants=49
+2026-11-20T13:15:33.966Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T13:20:04.856Z INFO billing-scheduler job=dunning-emails run started tenants=55
+2026-11-20T13:30:04.532Z INFO billing-scheduler job=dunning-emails run started tenants=47
+2026-11-20T13:40:01.943Z INFO billing-scheduler job=dunning-emails run started tenants=58
+2026-11-20T13:42:01.317Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T13:50:02.970Z INFO billing-scheduler job=dunning-emails run started tenants=43
+2026-11-20T14:00:04.994Z INFO billing-scheduler job=dunning-emails run started tenants=52
+2026-11-20T14:03:57.900Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T14:04:36.566Z INFO billing-scheduler job=tax-recalc tenant=t132 batch=19 rows=35930 started
+2026-11-20T14:06:30.880Z INFO billing-scheduler job=tax-recalc tenant=t160 batch=11 rows=38740 started
+2026-11-20T14:08:16.542Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=27 rows=89701 started
+2026-11-20T14:10:02.283Z INFO billing-scheduler job=dunning-emails run started tenants=45
+2026-11-20T14:10:10.462Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=36 rows=41252 started
+2026-11-20T14:12:36.072Z INFO billing-scheduler job=tax-recalc tenant=t112 batch=40 rows=21964 started
+2026-11-20T14:14:32.076Z INFO billing-scheduler job=tax-recalc tenant=t104 batch=10 rows=27034 started
+2026-11-20T14:16:33.491Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=6 rows=32061 started
+2026-11-20T14:18:26.213Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=25 rows=64747 started
+2026-11-20T14:19:31.382Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T14:20:04.962Z INFO billing-scheduler job=dunning-emails run started tenants=42
+2026-11-20T14:20:42.007Z INFO billing-scheduler job=tax-recalc tenant=t152 batch=26 rows=45808 started
+2026-11-20T14:22:44.797Z INFO billing-scheduler job=tax-recalc tenant=t140 batch=17 rows=29318 started
+2026-11-20T14:24:22.788Z INFO billing-scheduler job=tax-recalc tenant=t108 batch=18 rows=74882 started
+2026-11-20T14:25:38.873Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T14:26:56.862Z INFO billing-scheduler job=tax-recalc tenant=t156 batch=26 rows=21261 started
+2026-11-20T14:28:03.810Z INFO billing-scheduler job=tax-recalc tenant=t156 batch=24 rows=30067 started
+2026-11-20T14:30:00.937Z INFO billing-scheduler job=dunning-emails run started tenants=58
+2026-11-20T14:30:29.724Z INFO billing-scheduler job=tax-recalc tenant=t120 batch=1 rows=29311 started
+2026-11-20T14:32:08.104Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=2 rows=24723 started
+2026-11-20T14:32:22.103Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T14:34:51.764Z INFO billing-scheduler job=tax-recalc tenant=t136 batch=34 rows=39277 started
+2026-11-20T14:36:01.550Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T14:36:57.762Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=14 rows=62529 started
+2026-11-20T14:37:29.611Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T14:38:40.886Z INFO billing-scheduler job=tax-recalc tenant=t152 batch=40 rows=82338 started
+2026-11-20T14:40:03.837Z INFO billing-scheduler job=dunning-emails run started tenants=52
+2026-11-20T14:40:38.291Z INFO billing-scheduler job=tax-recalc tenant=t116 batch=35 rows=31715 started
+2026-11-20T14:42:36.582Z INFO billing-scheduler job=tax-recalc tenant=t160 batch=1 rows=48603 started
+2026-11-20T14:44:27.071Z INFO billing-scheduler job=tax-recalc tenant=t104 batch=19 rows=89400 started
+2026-11-20T14:46:39.114Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=32 rows=85514 started
+2026-11-20T14:48:17.198Z INFO billing-scheduler job=tax-recalc tenant=t112 batch=9 rows=27781 started
+2026-11-20T14:50:04.006Z INFO billing-scheduler job=dunning-emails run started tenants=50
+2026-11-20T14:50:43.137Z INFO billing-scheduler job=tax-recalc tenant=t140 batch=11 rows=37170 started
+2026-11-20T14:52:04.845Z INFO billing-scheduler job=tax-recalc tenant=t108 batch=19 rows=81002 started
+2026-11-20T14:54:02.107Z INFO billing-scheduler job=tax-recalc tenant=t132 batch=13 rows=75150 started
+2026-11-20T14:56:09.311Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=1 rows=48370 started
+2026-11-20T14:58:58.107Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=34 rows=72732 started
+2026-11-20T15:00:03.762Z INFO billing-scheduler job=dunning-emails run started tenants=48
+2026-11-20T15:00:27.823Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=36 rows=69389 started
+2026-11-20T15:01:38.002Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T15:02:51.731Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=23 rows=35628 started
+2026-11-20T15:04:42.563Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=24 rows=67214 started
+2026-11-20T15:06:51.153Z INFO billing-scheduler job=tax-recalc tenant=t156 batch=29 rows=52404 started
+2026-11-20T15:08:51.011Z INFO billing-scheduler job=tax-recalc tenant=t120 batch=39 rows=70000 started
+2026-11-20T15:10:04.196Z INFO billing-scheduler job=tax-recalc tenant=t108 batch=32 rows=71343 started
+2026-11-20T15:10:04.215Z INFO billing-scheduler job=dunning-emails run started tenants=56
+2026-11-20T15:12:06.410Z INFO billing-scheduler job=tax-recalc tenant=t120 batch=35 rows=89772 started
+2026-11-20T15:14:59.849Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=16 rows=57665 started
+2026-11-20T15:16:44.733Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=4 rows=64432 started
+2026-11-20T15:18:45.053Z INFO billing-scheduler job=tax-recalc tenant=t140 batch=27 rows=89381 started
+2026-11-20T15:19:00.996Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T15:20:04.208Z INFO billing-scheduler job=dunning-emails run started tenants=56
+2026-11-20T15:20:47.854Z INFO billing-scheduler job=tax-recalc tenant=t104 batch=30 rows=44745 started
+2026-11-20T15:22:21.249Z INFO billing-scheduler job=tax-recalc tenant=t136 batch=7 rows=63506 started
+2026-11-20T15:24:18.696Z INFO billing-scheduler job=tax-recalc tenant=t124 batch=21 rows=61872 started
+2026-11-20T15:26:02.020Z INFO billing-scheduler job=tax-recalc tenant=t160 batch=32 rows=66928 started
+2026-11-20T15:27:39.966Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T15:28:45.295Z INFO billing-scheduler job=tax-recalc tenant=t120 batch=23 rows=55007 started
+2026-11-20T15:30:02.713Z INFO billing-scheduler job=dunning-emails run started tenants=46
+2026-11-20T15:30:21.010Z INFO billing-scheduler job=tax-recalc tenant=t124 batch=28 rows=68856 started
+2026-11-20T15:32:05.342Z INFO billing-scheduler job=tax-recalc tenant=t112 batch=15 rows=59421 started
+2026-11-20T15:32:35.533Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T15:34:40.992Z INFO billing-scheduler job=tax-recalc tenant=t136 batch=24 rows=42267 started
+2026-11-20T15:36:10.512Z INFO billing-scheduler job=tax-recalc tenant=t140 batch=21 rows=83859 started
+2026-11-20T15:36:19.817Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T15:38:20.190Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=30 rows=41464 started
+2026-11-20T15:40:02.033Z INFO billing-scheduler job=dunning-emails run started tenants=55
+2026-11-20T15:40:52.492Z INFO billing-scheduler job=tax-recalc tenant=t132 batch=23 rows=83180 started
+2026-11-20T15:42:47.722Z INFO billing-scheduler job=tax-recalc tenant=t104 batch=7 rows=40654 started
+2026-11-20T15:44:01.753Z INFO billing-scheduler job=tax-recalc tenant=t124 batch=17 rows=55466 started
+2026-11-20T15:46:38.929Z INFO billing-scheduler job=tax-recalc tenant=t152 batch=20 rows=36328 started
+2026-11-20T15:48:57.572Z INFO billing-scheduler job=tax-recalc tenant=t160 batch=27 rows=57517 started
+2026-11-20T15:50:05.347Z INFO billing-scheduler job=dunning-emails run started tenants=46
+2026-11-20T15:50:43.241Z INFO billing-scheduler job=tax-recalc tenant=t136 batch=1 rows=81163 started
+2026-11-20T15:52:18.574Z INFO billing-scheduler job=tax-recalc tenant=t112 batch=2 rows=36163 started
+2026-11-20T15:54:06.047Z INFO billing-scheduler job=tax-recalc tenant=t160 batch=14 rows=25503 started
+2026-11-20T15:56:16.800Z INFO billing-scheduler job=tax-recalc tenant=t112 batch=35 rows=81934 started
+2026-11-20T15:58:26.134Z INFO billing-scheduler job=tax-recalc tenant=t156 batch=14 rows=28854 started
+2026-11-20T15:59:23.584Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T16:00:01.130Z INFO billing-scheduler job=dunning-emails run started tenants=54
+2026-11-20T16:00:40.166Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=23 rows=54673 started
+2026-11-20T16:02:51.522Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=39 rows=55286 started
+2026-11-20T16:04:13.247Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=4 rows=86020 started
+2026-11-20T16:06:01.901Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=32 rows=38977 started
+2026-11-20T16:08:03.484Z INFO billing-scheduler job=tax-recalc tenant=t124 batch=27 rows=25136 started
+2026-11-20T16:10:00.049Z INFO billing-scheduler job=dunning-emails run started tenants=57
+2026-11-20T16:10:54.565Z INFO billing-scheduler job=tax-recalc tenant=t124 batch=28 rows=52117 started
+2026-11-20T16:12:22.171Z INFO billing-scheduler job=tax-recalc tenant=t104 batch=1 rows=77137 started
+2026-11-20T16:14:42.473Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=12 rows=64483 started
+2026-11-20T16:16:11.317Z INFO billing-scheduler job=tax-recalc tenant=t152 batch=8 rows=23820 started
+2026-11-20T16:17:33.999Z WARN billing-scheduler job=fx-rates provider slow, using cached rates
+2026-11-20T16:18:35.346Z INFO billing-scheduler job=tax-recalc tenant=t136 batch=17 rows=72762 started
+2026-11-20T16:20:04.183Z INFO billing-scheduler job=dunning-emails run started tenants=60
+2026-11-20T16:20:09.596Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=12 rows=53560 started
+2026-11-20T16:22:14.137Z INFO billing-scheduler job=tax-recalc tenant=t144 batch=25 rows=70993 started
+2026-11-20T16:24:52.348Z INFO billing-scheduler job=tax-recalc tenant=t128 batch=33 rows=46933 started
+2026-11-20T16:26:31.587Z INFO billing-scheduler job=tax-recalc tenant=t104 batch=7 rows=89215 started
+2026-11-20T16:28:01.625Z INFO billing-scheduler job=tax-recalc tenant=t148 batch=27 rows=69679 started
+2026-11-20T16:28:49.758Z WARN billing-scheduler job=fx-rates provider slow, using cached rates

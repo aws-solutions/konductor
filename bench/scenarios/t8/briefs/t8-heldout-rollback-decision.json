@@ -1,0 +1,40 @@
+{
+  "id": "t8-heldout-rollback-decision",
+  "kind": "doc",
+  "phase": "release-ops",
+  "role": "tpm",
+  "phases2": [
+    "decisions"
+  ],
+  "author": "claude",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "size": "20 to 30",
+  "loglines": 6000,
+  "split": { "set": "HELD-OUT", "hash": 1850953913, "rule": "bench/scenarios/split.js (SR-32 v1), checked 2026-11-20 before the id was used" },
+  "source": {
+    "url": "https://sre.google/workbook/canarying-releases/",
+    "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "outFile": "release/decisions/4.18.0-rollback.md",
+  "brief": "Phase: release, ops and incident. Role: release manager (TPM). Folder: the release folder of a grocery delivery app's orders service, half-way through a staged rollout. Signals conflict: a latency spike right after the rollout (a vendor outage that hits both versions), a green fleet-wide dashboard (the harm is answered with HTTP 200), a per-version payment decline rate that only the per-minute export shows, a hotfix that is 'ready' but red in CI, product pressure from a promo email at 18:00 UTC, and a stale retro saying rollback broke last time (an old contract migration; this release's migration is expand-only). The request: the release manager needs one call (roll back, hold, roll forward) written up with the evidence, the risks of the call and short notes for each stakeholder. Written by hand (Claude); the key values come from gen/key_values.py.",
+  "expertKey": {
+    "items": [
+      { "id": "per-version-compare", "text": "Separates the release's own harm from signals both versions share by comparing hosts on each version over the same window, not the fleet-wide dashboard against yesterday.", "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)" },
+      { "id": "rollback-data-safety", "text": "Checks that the previous version can run on the data and schema the new version has written (the shipped migration is additive) before committing to the rollback, and names what the new version wrote that the old one will ignore.", "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)" },
+      { "id": "forward-needs-verified-fix", "text": "Weighs rolling forward on whether a fix is verified and deployable now (green build, a soak on one host), not on whether a fix exists, and compares that delay with the ongoing harm.", "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)" },
+      { "id": "harm-rate", "text": "Puts the ongoing harm as a rate (customers per minute or budget burned) and ties the urgency of the call to it.", "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)" },
+      { "id": "business-trade-off", "text": "Faces the business cost of the call (the promo feature and the 18:00 UTC email) openly and gives the owner a concrete choice, instead of letting it decide the technical call.", "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)" },
+      { "id": "done-signal", "text": "States the signal, the level and the watch time that show the call worked, and when the next update goes out.", "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)" }
+    ],
+    "weakAnswers": [
+      "The dashboard is green and 5xx is flat, so hold and keep watching.",
+      "Latency jumped right after the rollout, so roll back because of latency.",
+      "A fix is ready in 4.18.1, so roll forward.",
+      "Rolling back broke things last time, so rollback is too risky.",
+      "Roll back, with no numbers, no evidence and no word to marketing."
+    ]
+  }
+}

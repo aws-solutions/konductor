@@ -1,0 +1,15 @@
+# billing-scheduler jobs (times UTC)
+jobs:
+  - name: dunning-emails
+    every: 10m
+  - name: fx-rates
+    cron: "0 * * * *"
+  - name: tax-recalc
+    trigger: flag bulk_tax_recalc
+    batch_rows: 90000
+    transaction: per-batch
+  - name: flags-sync
+    cron: "0 18 * * *"
+    action: reapply config/flag-defaults.yaml to flag-service (overwrites manual changes)
+  - name: ledger-export
+    cron: "30 1 * * *"
