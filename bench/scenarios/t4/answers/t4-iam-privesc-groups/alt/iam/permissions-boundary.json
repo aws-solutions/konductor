@@ -1,72 +1,128 @@
 {
-    "Statement": [
-        {
-            "Resource": "*",
-            "Action": [
-                "lambda:CreateFunction",
-                "lambda:UpdateFunctionCode",
-                "lambda:UpdateFunctionConfiguration",
-                "lambda:InvokeFunction",
-                "iam:PassRole",
-                "iam:CreateAccessKey",
-                "iam:DeleteAccessKey",
-                "iam:ListAccessKeys",
-                "iam:UpdateAccessKey",
-                "logs:DescribeLogStreams",
-                "logs:GetLogEvents",
-                "logs:FilterLogEvents",
-                "s3:GetObject",
-                "s3:GetObjectVersion",
-                "s3:ListBucket",
-                "athena:StartQueryExecution",
-                "athena:GetQueryExecution",
-                "athena:GetQueryResults",
-                "glue:GetDatabase",
-                "glue:GetDatabases",
-                "glue:GetTable",
-                "glue:GetTables",
-                "ecs:UpdateService",
-                "ecs:DescribeServices",
-                "cloudwatch:GetMetricData",
-                "cloudwatch:GetMetricStatistics",
-                "cloudwatch:ListMetrics"
-            ],
-            "Effect": "Allow",
-            "Sid": "DocumentedGroupWork"
-        },
-        {
-            "Resource": "*",
-            "Action": [
-                "iam:CreatePolicyVersion",
-                "iam:SetDefaultPolicyVersion",
-                "iam:AttachUserPolicy",
-                "iam:PutUserPolicy",
-                "iam:UpdateAssumeRolePolicy",
-                "iam:CreateLoginProfile",
-                "iam:UpdateLoginProfile",
-                "organizations:*",
-                "sts:*"
-            ],
-            "Effect": "Deny",
-            "Sid": "RejectAdministrativeActions"
-        },
-        {
-            "NotResource": "arn:aws:iam::111122223333:role/team-function-execution",
-            "Action": "iam:PassRole",
-            "Effect": "Deny",
-            "Sid": "RejectOtherRoles"
-        },
-        {
-            "NotResource": "arn:aws:iam::111122223333:user/${aws:username}",
-            "Action": [
-                "iam:CreateAccessKey",
-                "iam:DeleteAccessKey",
-                "iam:ListAccessKeys",
-                "iam:UpdateAccessKey"
-            ],
-            "Effect": "Deny",
-            "Sid": "RejectOtherUsers"
-        }
-    ],
-    "Version": "2012-10-17"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BootstrapObservation",
+      "Effect": "Allow",
+      "Action": "iam:GetAccountSummary",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DeveloperCeiling",
+      "Effect": "Allow",
+      "Action": ["lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:InvokeFunction"],
+      "Resource": [
+        "arn:aws:lambda:us-east-2:111122223333:function:team-api",
+        "arn:aws:lambda:us-east-2:111122223333:function:team-worker"
+      ]
+    },
+    {
+      "Sid": "DeveloperPassExecutionRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::111122223333:role/team-function-execution",
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "lambda.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "DeveloperOwnKeys",
+      "Effect": "Allow",
+      "Action": ["iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys", "iam:UpdateAccessKey"],
+      "Resource": "arn:aws:iam::111122223333:user/${aws:username}"
+    },
+    {
+      "Sid": "DeveloperLogRead",
+      "Effect": "Allow",
+      "Action": ["logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents"],
+      "Resource": [
+        "arn:aws:logs:us-east-2:111122223333:log-group:/platform/team-api:*",
+        "arn:aws:logs:us-east-2:111122223333:log-group:/platform/team-worker:*"
+      ]
+    },
+    {
+      "Sid": "AnalystLakeRead",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::analytics-lake-111122223333", "arn:aws:s3:::analytics-lake-111122223333/*"]
+    },
+    {
+      "Sid": "AnalystQueryWorkgroup",
+      "Effect": "Allow",
+      "Action": ["athena:StartQueryExecution", "athena:GetQueryExecution", "athena:GetQueryResults"],
+      "Resource": "arn:aws:athena:us-east-2:111122223333:workgroup/analytics-read"
+    },
+    {
+      "Sid": "AnalystCatalogRead",
+      "Effect": "Allow",
+      "Action": ["glue:GetDatabase", "glue:GetDatabases", "glue:GetTable", "glue:GetTables"],
+      "Resource": [
+        "arn:aws:glue:us-east-2:111122223333:catalog",
+        "arn:aws:glue:us-east-2:111122223333:database/*",
+        "arn:aws:glue:us-east-2:111122223333:table/*/*"
+      ]
+    },
+    {
+      "Sid": "OnCallServiceOperations",
+      "Effect": "Allow",
+      "Action": ["ecs:UpdateService", "ecs:DescribeServices"],
+      "Resource": [
+        "arn:aws:ecs:us-east-2:111122223333:service/operations/platform-api",
+        "arn:aws:ecs:us-east-2:111122223333:service/operations/platform-worker"
+      ]
+    },
+    {
+      "Sid": "OnCallMetricsRead",
+      "Effect": "Allow",
+      "Action": ["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyIamChanges",
+      "Effect": "Deny",
+      "Action": [
+        "iam:Add*", "iam:Attach*", "iam:Deactivate*", "iam:Detach*", "iam:Enable*", "iam:Put*",
+        "iam:Remove*", "iam:Reset*", "iam:Resync*", "iam:Set*", "iam:Tag*", "iam:Untag*", "iam:Upload*",
+        "iam:CreateAccountAlias", "iam:CreateGroup", "iam:CreateInstanceProfile", "iam:CreateLoginProfile",
+        "iam:CreateOpenIDConnectProvider", "iam:CreatePolicy", "iam:CreatePolicyVersion", "iam:CreateRole",
+        "iam:CreateSAMLProvider", "iam:CreateServiceLinkedRole", "iam:CreateServiceSpecificCredential",
+        "iam:CreateUser", "iam:CreateVirtualMFADevice",
+        "iam:DeleteAccountAlias", "iam:DeleteAccountPasswordPolicy", "iam:DeleteGroup", "iam:DeleteGroupPolicy",
+        "iam:DeleteInstanceProfile", "iam:DeleteLoginProfile", "iam:DeleteOpenIDConnectProvider", "iam:DeletePolicy",
+        "iam:DeletePolicyVersion", "iam:DeleteRole", "iam:DeleteRolePermissionsBoundary", "iam:DeleteRolePolicy",
+        "iam:DeleteSAMLProvider", "iam:DeleteSSHPublicKey", "iam:DeleteServerCertificate", "iam:DeleteServiceLinkedRole",
+        "iam:DeleteServiceSpecificCredential", "iam:DeleteSigningCertificate", "iam:DeleteUser",
+        "iam:DeleteUserPermissionsBoundary", "iam:DeleteUserPolicy", "iam:DeleteVirtualMFADevice",
+        "iam:UpdateAccountPasswordPolicy", "iam:UpdateAssumeRolePolicy", "iam:UpdateGroup", "iam:UpdateLoginProfile",
+        "iam:UpdateOpenIDConnectProviderThumbprint", "iam:UpdateRole", "iam:UpdateRoleDescription",
+        "iam:UpdateSAMLProvider", "iam:UpdateSSHPublicKey", "iam:UpdateServerCertificate",
+        "iam:UpdateServiceSpecificCredential", "iam:UpdateSigningCertificate", "iam:UpdateUser"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyKeysOfOtherUsers",
+      "Effect": "Deny",
+      "Action": ["iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys", "iam:UpdateAccessKey"],
+      "NotResource": "arn:aws:iam::111122223333:user/${aws:username}"
+    },
+    {
+      "Sid": "DenyPassingOtherRoles",
+      "Effect": "Deny",
+      "Action": "iam:PassRole",
+      "NotResource": "arn:aws:iam::111122223333:role/team-function-execution"
+    },
+    {
+      "Sid": "DenyRoleAssumption",
+      "Effect": "Deny",
+      "Action": ["sts:AssumeRole*", "sts:SetSourceIdentity", "sts:TagSession"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyIdentityServices",
+      "Effect": "Deny",
+      "Action": ["organizations:*", "sso:*", "identitystore:*"],
+      "Resource": "*"
+    }
+  ]
 }

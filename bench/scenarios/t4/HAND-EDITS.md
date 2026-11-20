@@ -209,3 +209,31 @@ Tasks: none (every task already had a dry run).
 ## Not edited
 
 None.
+
+## Edits after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task review of 2026-11-19
+(T1 to T4 report, finding 1). Each task's `version` is bumped and `handEdited` names this session. No paid call ran,
+so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench/DEBT.md` D-107.
+
+### t4-arch-tenant-abac
+
+- What: no task change. The shared evaluator `lib/hidden/iam-eval.js` now keeps `${*}`, `${?}` and `${$}` as literal
+  characters through `globToRegExp` (with a unit test in `t4/lib/iam-eval.test.js`). Before, `${*}` became a wildcard,
+  so a correct deny on a literal `*` tenant matched every tenant and 38 allow tests failed (pilot score 69).
+  `answers/t4-arch-tenant-abac/alt` is now an independent design (the pilot's vanilla answer, with an escaped-literal
+  deny), not the reference with its keys reordered.
+- Why: the tests rejected a policy that real IAM accepts.
+- Dry run: reference 100, stub 14.7, lazy 14.7, alt 96.7. The five other IAM tasks score as before.
+
+### t4-iam-privesc-groups
+
+- What: the hidden "cannot" tests check the outcome (`decide` over identity plus boundary refuses the request), not
+  that the group policy holds an explicit Deny. Each refusal counts only when the group can still do its guide's work,
+  so a boundary that allows nothing earns nothing. One new test: the boundary is a real ceiling (an allow-everything
+  member still cannot create policy versions, attach user policies or pass the admin role). PassRole requests carry
+  `iam:PassedToService` as IAM sends it. Tests check `min` 26 to 27. `answers/.../alt` is now an independent
+  boundary-deny design (the pilot's vanilla answer).
+- Why: the old tests demanded where the Deny sits; the prompt says the boundary applies to every group, so a
+  boundary deny is refused the same way in IAM (pilot score 67 for a correct answer).
+- Dry run: reference 100, stub 17.7, lazy 17.7, alt 100.
