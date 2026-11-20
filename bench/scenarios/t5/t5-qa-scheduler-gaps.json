@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-scheduler-gaps",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -44,7 +44,7 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The added tests make their expected scheduling and retry contracts clear to a maintainer (code cannot check this because intent and clarity are not observable from execution.)",
+      "criterion": "The added tests make their expected scheduling and retry contracts clear to a maintainer. Fail: tests call the calendar rule parser, next-run calculation, queue, limiter, retry policy or state file and assert only that it does not fail. Partial: expected dates and delays are shown, but without naming the rule (month end, leap year, the day after a short month, the retry cap) or without fixing the clock. Pass: each test names its contract (such as a job on day 31 firing on the last day of a short month, the retry delay at each attempt, the limiter window edge), fixes the time it uses, asserts the exact run time or delay, and cleans up its state file.",
       "weight": 1
     },
     {
@@ -159,7 +159,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

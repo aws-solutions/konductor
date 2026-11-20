@@ -1063,8 +1063,14 @@
           "signal": {
             "enum": [
               "marker",
+              "prose",
+              "cut-off",
               "heuristic"
             ]
+          },
+          "markerLines": {
+            "type": "integer",
+            "minimum": 0
           },
           "matched": {
             "type": "array",

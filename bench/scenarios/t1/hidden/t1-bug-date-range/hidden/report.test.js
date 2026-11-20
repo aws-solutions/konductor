@@ -8,14 +8,10 @@ const { monthlySummary } = require('../src/report');
 
 const booking = (id, start, end) => ({ id, room: 'cedar-1', start, end, name: id });
 
-test('January reports contain all 31 calendar days', () => {
-  const report = monthlySummary([], 2025, 1);
+test('January reports contain all 31 calendar days, including a booking on the last day', () => {
+  const report = monthlySummary([booking('last', '2025-01-31T09:00:00', '2025-02-01T00:00:00')], 2025, 1);
   assert.equal(report.days.length, 31);
   assert.equal(report.days.at(-1).date, '2025-01-31');
-});
-
-test('a booking on the last day appears in the report', () => {
-  const report = monthlySummary([booking('last', '2025-01-31T09:00:00', '2025-02-01T00:00:00')], 2025, 1);
   assert.deepEqual(report.days.at(-1).bookingIds, ['last']);
 });
 
@@ -25,14 +21,11 @@ test('leap-day reports contain February 29', () => {
   assert.equal(report.days.at(-1).date, '2024-02-29');
 });
 
-test('a midnight ending booking is absent from the next day', () => {
-  const report = monthlySummary([booking('one', '2025-06-10T18:00:00', '2025-06-11T00:00:00')], 2025, 6);
-  assert.deepEqual(report.days.find(day => day.date === '2025-06-11').bookingIds, []);
-});
-
-test('a spring clock change does not remove a night from the report', () => {
-  const report = monthlySummary([booking('dst', '2025-03-08', '2025-03-10')], 2025, 3);
-  assert.equal(report.totalNights, 2);
+test('report nights stop at the booking end', () => {
+  const june = monthlySummary([booking('one', '2025-06-10T18:00:00', '2025-06-11T00:00:00')], 2025, 6);
+  assert.deepEqual(june.days.find(day => day.date === '2025-06-11').bookingIds, []);
+  const march = monthlySummary([booking('dst', '2025-03-08', '2025-03-10')], 2025, 3);
+  assert.equal(march.totalNights, 2);
 });
 
 test('the report command prints the last day of the selected month', () => {

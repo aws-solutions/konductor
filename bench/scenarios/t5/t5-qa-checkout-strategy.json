@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-checkout-strategy",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "phases2": [
@@ -55,7 +55,7 @@
   "rubric": [
     {
       "id": "prioritization",
-      "criterion": "The plan makes a defensible time-based priority choice and explains the customer or operational consequence for the highest risks (code cannot check this because it cannot judge the quality of the reasoning).",
+      "criterion": "The plan makes a defensible time-based priority choice and explains the customer or operational consequence for the highest risks. Fail: it lists files or modules with no ranking, or ranks the large generated tax table or the messy admin script near the top. Partial: it ranks by severity, but does not say what happens to the customer or the business if the top risks fail, or does not choose what to leave out for lack of time. Pass: the risks are ordered by likelihood and impact, the highest ones (money moved, duplicate or lost charges, stock reservation, payment retries and webhooks) state the customer or operational harm, low-value areas are named as skipped and why, and the order fits the limited time with a minimum set to run before release. The severity of each item in the closing JSON list matches the text.",
       "weight": 2
     },
     {
@@ -342,7 +342,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

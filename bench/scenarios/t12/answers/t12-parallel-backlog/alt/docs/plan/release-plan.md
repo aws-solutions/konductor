@@ -11,6 +11,9 @@ Overlaps found in the code:
 
 Day 1: Ana on A1, Cy on A5, Bo on A3. Day 2: Ana on A2, Cy on A4, Bo on A6.
 
+Every package is built alone in `work/<package>/` from the code merged before it, then merged in `mergeOrder`. The
+merge log is `docs/plan/merge-log.md`.
+
 ```json
 {
   "waves": [["A3", "A5", "A1"], ["A6", "A4", "A2"]],

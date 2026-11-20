@@ -1,7 +1,7 @@
 {
   "id": "t6-req-data-export",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -152,17 +152,17 @@
   "rubric": [
     {
       "id": "Q1",
-      "criterion": "Requirements distinguish customer-visible scope from Northstar-only material and explain the resulting product behavior (code cannot check this because semantic scope and rationale require human review)",
+      "criterion": "Requirements distinguish customer-visible scope from Northstar-only material and explain the resulting product behavior. Fail: the archive scope is stated loosely ('all data'), or it includes Northstar internal support notes or payment card numbers. Partial: internal notes and card numbers are excluded, but the other scope rules are missing: records deleted before the request are excluded, cancelled appointments stay in scope, other tenants and secrets are kept out, UTC times with a trailing Z. Pass: the document defines the customer record families in the archive, excludes payment card numbers, Northstar internal support notes and records deleted before the request, keeps cancelled appointments in, and states who may request (an account owner or a user with the Account Data Export permission, not Support), the plan limit (Pro and Enterprise, not Starter) and the reason for each exclusion. (code cannot check this because semantic scope and rationale require human review)",
       "weight": 2
     },
     {
       "id": "Q2",
-      "criterion": "Assumptions and open points are honest about decisions that the source folder does not settle (code cannot check this because it cannot judge whether uncertainty was represented faithfully)",
+      "criterion": "Assumptions and open points are honest about decisions that the source folder does not settle. Fail: the assumptions list is empty or restates decided facts, or an invented decision is written as settled (for example splitting an archive over 2 GB). Partial: some assumptions are listed, but they are generic, or a decided limit (the one active background job, the 72-hour delivery, the 7-day link expiry, the 2 GB archive limit with a route to Support) is shown as an open question. Pass: the assumptions name what the folder does not settle, each says what the requirement depends on it, and the decided limits are written as requirements. (code cannot check this because it cannot judge whether uncertainty was represented faithfully)",
       "weight": 1
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the decisions the folder does not settle stay unmentioned, or it does not say that docs/requirements.md was written. Partial: it names docs/requirements.md and what it holds, but lists no assumptions, or leaves out the decisions the folder does not settle. Pass: it names docs/requirements.md and its closing JSON block, lists the assumptions made, says the decisions the folder does not settle still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -254,7 +254,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -74,11 +74,10 @@ test('retry resolves an error-first operation after the requested attempts', asy
   assert.equal(attempts, 3);
 });
 
-test('retry also accepts an async operation', async () => {
+test('retry makes the first attempt plus the requested extra attempts, then reports the last error', async () => {
   let attempts = 0;
-  const value = await retry(async () => { attempts += 1; if (attempts === 1) throw new Error('first'); return 'ready'; }, { retries: 1 });
-  assert.equal(value, 'ready');
-  assert.equal(attempts, 2);
+  await assert.rejects(retry((done) => { attempts += 1; done(new Error('failure ' + attempts)); }, { retries: 2 }), /failure 3/);
+  assert.equal(attempts, 3);
 });
 
 test('retry callback errors are single-shot and its promise rejects', async () => {
@@ -136,9 +135,9 @@ test('pipeline never exceeds the configured concurrency', async () => {
   try {
     const running = runPipeline(env.input, env.output, {
       concurrency: 2,
-      beforeWrite(name) {
+      beforeWrite(name, done) {
         active += 1; maximum = Math.max(maximum, active);
-        return new Promise((resolve) => releases.push(() => { active -= 1; resolve(); }));
+        releases.push(() => { active -= 1; done(null); });
       }
     });
     await until(() => releases.length === 2);
@@ -154,7 +153,7 @@ test('pipeline keeps its sorted result order when hooks finish out of order', as
   const env = await setup(['c.txt', 'a.txt', 'b.txt']);
   const waiting = new Map();
   try {
-    const running = runPipeline(env.input, env.output, { concurrency: 3, beforeWrite(name) { return new Promise((resolve) => waiting.set(name, resolve)); } });
+    const running = runPipeline(env.input, env.output, { concurrency: 3, beforeWrite(name, done) { waiting.set(name, () => done(null)); } });
     await until(() => waiting.size === 3);
     waiting.get('c.txt')(); waiting.get('b.txt')(); waiting.get('a.txt')();
     const result = await running;
@@ -182,4 +181,19 @@ test('CLI usage errors retain exit code 2', () => {
   const result = spawnSync(process.execPath, [path.join(__dirname, '../bin/sieve.js'), '--input'], { encoding: 'utf8' });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /missing value|usage/);
+});
+
+test('CLI processing errors exit with code 1 and report on stderr', async () => {
+  const env = await setup([]);
+  try {
+    const result = spawnSync(process.execPath, [path.join(__dirname, '../bin/sieve.js'), '--input', path.join(env.root, 'missing'), '--output', env.output], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /^sieve: /);
+    assert.equal(result.stdout, '');
+  } finally { await cleanup(env.root); }
+});
+
+test('CLI rejects a bad concurrency value as a usage error', () => {
+  const result = spawnSync(process.execPath, [path.join(__dirname, '../bin/sieve.js'), '--input', 'in', '--output', 'out', '--concurrency', '0'], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
 });

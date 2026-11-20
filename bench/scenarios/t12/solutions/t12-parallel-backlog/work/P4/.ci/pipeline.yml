@@ -1,0 +1,5 @@
+steps:
+  - name: test (UTC)
+    run: TZ=UTC node --test test/
+  - name: test (Europe/Berlin)
+    run: TZ=Europe/Berlin node --test test/

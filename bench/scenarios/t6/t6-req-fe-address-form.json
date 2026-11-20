@@ -1,7 +1,7 @@
 {
   "id": "t6-req-fe-address-form",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "frontend",
   "questions": "scripted",
@@ -141,17 +141,17 @@
   "rubric": [
     {
       "id": "quality",
-      "criterion": "Requirements are clear, testable, scoped to the frontend, and distinguish commitments from unresolved decisions (code cannot check this because judgment of clarity and usefulness requires a human reader)",
+      "criterion": "Requirements are clear, testable, scoped to the frontend, and distinguish commitments from unresolved decisions. Fail: requirements are visual wishes ('easy to use') or include backend work (changing the ParcelPin service), with no split between decided and open. Partial: most are testable, but several of these are missing or not testable: US, Canada and UK only in the first release with Australia deferred to 2026-04-15, format checks on blur with server validation authoritative, at most 3 lookups per checkout session then manual entry that does not block checkout, WCAG 2.2 AA with error summary focus, a 360px viewport with 48px controls. Pass: each appears as a testable frontend requirement with its number, and decisions the notes leave open are listed separately as assumptions. (code cannot check this because judgment of clarity and usefulness requires a human reader)",
       "weight": 2
     },
     {
       "id": "coverage",
-      "criterion": "The document turns the mixed notes into a coherent implementation-ready contract without silently inventing policy (code cannot check this because completeness and faithful synthesis require reviewing the source material)",
+      "criterion": "The document turns the mixed notes into a coherent implementation-ready contract without silently inventing policy. Fail: it drops the existing contracts or invents policy (for example a PO box rule or a country the notes do not give). Partial: it carries most contracts, but misses the analytics events or the privacy logging rule, or gives a rule from the notes a different value. Pass: it carries over the existing checkout_address_viewed, checkout_address_submitted and checkout_address_lookup_used events with their payload keys unchanged, the privacy logging rule, the current core field contract and the accessibility and mobile rules, and marks as assumptions any point the notes do not settle. (code cannot check this because completeness and faithful synthesis require reviewing the source material)",
       "weight": 2
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the points the notes leave undecided, such as PO box handling stay unmentioned, or it does not say that docs/requirements.md was written. Partial: it names docs/requirements.md and what it holds, but lists no assumptions, or leaves out the points the notes leave undecided, such as PO box handling. Pass: it names docs/requirements.md and its closing JSON block, lists the assumptions made, says the points the notes leave undecided, such as PO box handling still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -248,7 +248,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

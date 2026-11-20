@@ -1,0 +1,5 @@
+steps:
+  - name: test
+    matrix:
+      TZ: [UTC, Europe/Berlin]
+    run: node --test test/*.test.js

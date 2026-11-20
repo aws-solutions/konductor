@@ -1,7 +1,7 @@
 {
   "id": "t12-spec-rate-limits",
   "class": "orchestration",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "phases2": [
     "architecture",
@@ -117,7 +117,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

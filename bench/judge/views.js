@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { unquotedVerdict, rubricScore } = require('./score.js');
 const { makeQuoteMatcher, DEFAULT_QUOTE_RULE, QUOTE_RULES } = require('./quote.js');
+const { EXPERT_PREFIX } = require('../runner/lib/expert-rubric.js');
 
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
 
@@ -21,9 +22,24 @@ function checkRule(rule, flag = '--quote-match') {
   return rule;
 }
 
-/** quote => boolean for each rule, over one bundle text. */
-function matchersFor(text) {
-  return { strict: makeQuoteMatcher(text, { lenient: false }), lenient: makeQuoteMatcher(text, { lenient: true }) };
+/**
+ * quote => boolean for each rule, over one bundle text. `expertText` is the deliverables-only text (bundle.expertText):
+ * an expert: criterion's quote is matched against it alone. It defaults to `text` for callers with no bundle.
+ */
+function matchersFor(text, expertText = text) {
+  return {
+    strict: makeQuoteMatcher(text, { lenient: false }), lenient: makeQuoteMatcher(text, { lenient: true }),
+    expert: { strict: makeQuoteMatcher(expertText, { lenient: false }), lenient: makeQuoteMatcher(expertText, { lenient: true }) },
+  };
+}
+
+const isExpert = (id) => String(id ?? '').startsWith(EXPERT_PREFIX);
+
+/** (quote, id) => boolean under one rule, over a built bundle: expert: ids match its deliverables only. */
+function bundleMatcher(bundle, { lenient }) {
+  const full = makeQuoteMatcher(bundle.text, { lenient });
+  const expert = makeQuoteMatcher(bundle.expertText ?? bundle.text, { lenient });
+  return (quote, id) => (isExpert(id) ? expert(quote) : full(quote));
 }
 
 /**
@@ -34,9 +50,10 @@ function dualCriteria(replyCriteria, matchers, rule = DEFAULT_QUOTE_RULE) {
   return replyCriteria.map((c) => {
     const raw = c.verdictRaw ?? c.verdict;
     const evidence = c.evidence ?? '';
+    const m = isExpert(c.id) && matchers.expert ? matchers.expert : matchers;
     // "(nothing in the output)" cites no evidence, so a pass or partial that rests on it drops a level under either rule.
     const none = NO_EVIDENCE.test(evidence);
-    const quoteFound = { strict: none ? false : matchers.strict(evidence), lenient: none ? false : matchers.lenient(evidence) };
+    const quoteFound = { strict: none ? false : m.strict(evidence), lenient: none ? false : m.lenient(evidence) };
     const verdictOf = (r) => (quoteFound[r] === false && raw !== 'fail' ? unquotedVerdict(c.id, raw) : raw);
     const verdictScored = verdictOf(rule);
     const downgraded = quoteFound[rule] === false && raw !== 'fail';
@@ -99,7 +116,7 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
       if (rebuildable) {
         try {
           red = red ?? loadRedactions(undefined);
-          m = makeQuoteMatcher(buildBundle({ runDir: entry.dir, result: entry.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, j.limits ?? {}, {}), redactions: red }).text, { lenient: true });
+          m = bundleMatcher(buildBundle({ runDir: entry.dir, result: entry.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, j.limits ?? {}, {}), redactions: red }), { lenient: true });
         } catch { m = null; }
       }
       bundles.set(k, m);
@@ -125,4 +142,4 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
   return { judgments: { ...j, rubric }, rule: missing === records && records > 0 && rule === 'lenient' ? 'strict' : rule, requested: rule, rebuilt, missing, records, switched };
 }
 
-module.exports = { dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, checkRule, otherRule, NO_EVIDENCE };
+module.exports = { dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };

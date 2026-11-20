@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-parser-gaps",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -38,7 +38,7 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The regression cases make the important boundary and state assumptions clear in their descriptions (code cannot check this because it can verify outcomes but not the explanation of why each case matters).",
+      "criterion": "The regression cases make the important boundary and state assumptions clear in their descriptions. Fail: cases are named by input (\"case 3\", \"long input\") and the tokenizer, parser, validator and printer inputs are short and well-formed as before. Partial: names describe the input, but not the boundary or the rule it protects, or the error message assertions are missing for malformed Tide Config input. Pass: each new case is named for the rule and boundary it tests (for example an unterminated string, nesting depth, a duplicate key, a round trip through the printer), asserts the public result or exact error message, and states any assumption about the format in its description.",
       "weight": 1
     },
     {
@@ -149,7 +149,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

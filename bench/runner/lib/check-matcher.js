@@ -94,11 +94,14 @@ function parseNodeTestSummary(text) {
 }
 
 // A `node --test` command gets a per-test timeout and the TAP reporter (its lines can be counted when the whole run is killed).
-// A command that sets its own --test-timeout, or does not run `node --test`, is left as it is.
+// Node options before `--test` are kept (`node --require ./setup.js --test`); an option that takes a separate value
+// (NODE_VALUE_FLAGS) carries it along. A command that sets its own --test-timeout, or does not run `node --test`, is left as it is.
 // shortcut: no pytest-timeout flag is added, the plugin may be missing in the sandbox; add it when the hidden suites include pytest.
+const NODE_VALUE_FLAGS = ['-r', '--require', '--import', '--loader', '--experimental-loader', '--env-file', '-C', '--conditions', '--test-reporter', '--test-reporter-destination', '--test-name-pattern', '--test-concurrency'];
+const NODE_TEST = new RegExp(String.raw`\bnode((?:\s+(?:(?:${NODE_VALUE_FLAGS.join('|')})\s+(?!-)\S+|-(?!-test(?![-\w=]))\S*))*?)\s+--test(?![-\w=])`, 'g');
 function withPerTestTimeout(cmd, ms = PER_TEST_TIMEOUT_MS) {
   if (/--test-timeout/.test(cmd)) return cmd;
-  return cmd.replace(/\bnode --test\b(?![-\w])/g, `node --test --test-timeout=${ms} --test-reporter=tap`);
+  return cmd.replace(NODE_TEST, (_m, flags) => `node${flags} --test --test-timeout=${ms}${/--test-reporter(?![-\w])/.test(flags) ? '' : ' --test-reporter=tap'}`);
 }
 
 // Tests finished so far in (possibly cut-off) TAP output: leaf tests only, suites are skipped. For a run that was killed.

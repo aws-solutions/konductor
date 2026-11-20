@@ -82,9 +82,50 @@ test('when both keys are present the new key wins and warning count stays one', 
   assert.equal(result.messages.length, 1);
 });
 
+test('the test environment config with only the old key is normalized and warns once', () => {
+  const result = captureWarnings(() => withConfig(testConfigPath, {
+    queueFile: 'data/test-jobs.json',
+    pollIntervalMs: 9,
+    logLevel: 'silent'
+  }, () => loadConfig('test')));
+
+  assert.equal(result.value.pollingIntervalMs, 9);
+  assert.equal(result.value.pollIntervalMs, 9);
+  assert.equal(result.value.logLevel, 'silent');
+  assert.equal(result.messages.length, 1);
+});
+
+test('every load of a config with the old key warns once', () => {
+  const result = captureWarnings(() => withConfig(defaultConfigPath, {
+    queueFile: 'data/jobs.json',
+    pollIntervalMs: 60,
+    logLevel: 'silent'
+  }, () => [loadConfig('development'), loadConfig('development')]));
+
+  assert.equal(result.messages.length, 2);
+  for (const message of result.messages) {
+    assert.match(message, /pollIntervalMs/);
+    assert.match(message, /pollingIntervalMs/);
+  }
+});
+
+test('other settings are kept when the old key is normalized', () => {
+  const result = captureWarnings(() => withConfig(defaultConfigPath, {
+    queueFile: 'data/other.json',
+    pollIntervalMs: 12,
+    logLevel: 'warn'
+  }, () => loadConfig('development')));
+
+  assert.equal(result.value.pollingIntervalMs, 12);
+  assert.equal(result.value.queueFile, 'data/other.json');
+  assert.equal(result.value.logLevel, 'warn');
+  assert.equal(result.value.environment, 'development');
+});
+
 test('worker startup passes the renamed setting to the runner', () => {
   const source = fs.readFileSync(path.join(root, 'src', 'index.js'), 'utf8');
-  assert.match(source, /intervalMs:\s*config\.pollingIntervalMs/);
+  assert.match(source, /config\.pollingIntervalMs/);
+  assert.doesNotMatch(source, /config\.pollIntervalMs/);
 });
 
 test('the operational documentation names the new setting and its alias', () => {

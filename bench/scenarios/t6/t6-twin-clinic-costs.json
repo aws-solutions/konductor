@@ -1,7 +1,7 @@
 {
   "id": "t6-twin-clinic-costs",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -65,17 +65,17 @@
   "rubric": [
     {
       "id": "clear-explanation",
-      "criterion": "The prose clearly explains the proportional allocation and labels the result as an estimate rather than a commitment (code cannot check this because it cannot judge explanation quality reliably).",
+      "criterion": "The prose clearly explains the proportional allocation and labels the result as an estimate rather than a commitment. Fail: the cost summary gives per-clinic numbers with no allocation method, or states them as fixed costs. Partial: it explains the allocation of the shared platform fee by booking volume, but does not mention overage or does not say the result is an estimate. Pass: it shows the shared monthly platform fee split in proportion to each clinic's bookings, adds any message overage the quote makes applicable, states which clinic costs most, labels the totals as an estimate based on the quote and booking volumes, and says that one-time and unpriced parts are left out of the known monthly total. (code cannot check this because it cannot judge explanation quality reliably)",
       "weight": 1
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the one-time and unpriced quote items kept out of the total stay unmentioned, or it does not say that docs/cost-summary.md was written. Partial: it names docs/cost-summary.md and what it holds, but lists no assumptions, or leaves out the one-time and unpriced quote items kept out of the total. Pass: it names docs/cost-summary.md and its closing JSON block, lists the assumptions made, says the one-time and unpriced quote items kept out of the total still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     },
     {
       "id": "reader-fit",
-      "criterion": "The document is usable by the people the request names: it is clear which items need a decision and from whom (code cannot check this because usefulness to a reader is a judgement).",
+      "criterion": "The document is usable by the people the request names: it is clear which items need a decision and from whom. Fail: the summary lists figures only, so the reader cannot tell what still needs a decision. Partial: it names an open item (for example an unpriced part of the quote) but not who decides it. Pass: it separates the known monthly total from the unpriced and one-time items, says which of them need a decision, and names who (for example operations or the vendor) provides or decides each. (code cannot check this because usefulness to a reader is a judgement)",
       "weight": 1
     }
   ],
@@ -161,7 +161,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

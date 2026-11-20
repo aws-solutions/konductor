@@ -1,7 +1,7 @@
 {
   "id": "t5-fe-widget-logic-tests",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "frontend",
   "questions": "allowed",
@@ -43,7 +43,7 @@
   "rubric": [
     {
       "id": "readable-coverage",
-      "criterion": "The added tests use clear behavior-focused names and precise assertions that make failures useful to a maintainer (code cannot check this because it cannot judge diagnostic clarity).",
+      "criterion": "The added tests use clear behavior-focused names and precise assertions that make failures useful to a maintainer. Fail: names like \"test 1\" or \"works\", or assertions that only check a value is truthy or an object exists. Partial: names describe the widget, but assertions on several modules (date-range picker, validation, price, timing, store, view model) check only part of the result or not the message callers receive. Pass: each test name states the widget rule (for example what the picker does at a range boundary, or which message validation returns for which field), and assertions check the exact value, message or call order, so a failure points to one widget feature.",
       "weight": 1
     },
     {
@@ -129,7 +129,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

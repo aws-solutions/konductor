@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-flaky-fix",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "phases2": [
@@ -42,7 +42,7 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The added coverage is clear enough for the next teammate to maintain (code cannot check this because clarity and maintenance quality require human review).",
+      "criterion": "The added coverage is clear enough for the next teammate to maintain. Fail: new tests have no explanation of what race or shared state they guard, or they depend on real time or on files left by other tests. Partial: the regression tests pass, but names or comments do not say which source of flakiness each guards (shared clock, shared data files, ordering, timers), or they set up state in a way that is hard to follow. Pass: each regression test is named for the failure it prevents, uses an injected clock or isolated temporary data that it cleans up, and a short comment or name tells the next teammate which flaky cause it covers, with the existing tests and assertions kept.",
       "weight": 1
     }
   ],
@@ -148,7 +148,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

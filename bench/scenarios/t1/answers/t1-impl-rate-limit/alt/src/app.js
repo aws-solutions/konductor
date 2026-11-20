@@ -43,13 +43,13 @@ function createApp(options = {}) {
     try {
       const route = router.match(request.method, url.pathname);
       if (!route) throw new HttpError(404, 'not_found', 'Route was not found');
-      request.params = route.params;
-      request.body = await readJson(request);
-
       if (rateLimiter && isBookingRoute(url.pathname)) {
         const result = rateLimiter.checkLimit(request, response);
         if (!result.allowed) return;
       }
+
+      request.params = route.params;
+      request.body = await readJson(request);
 
       await route.handler(request, response);
     } catch (error) {

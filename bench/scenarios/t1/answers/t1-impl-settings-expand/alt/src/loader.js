@@ -77,31 +77,32 @@ function expandOneValue(value, context) {
         i += 1;
       }
       
-      // Resolve the name
+      // Resolve the name: settings from the merged files first, then names supplied only by env
       const sourceKey = name;
+      const inValues = Object.prototype.hasOwnProperty.call(values, sourceKey);
+      const inEnv = !inValues && Object.prototype.hasOwnProperty.call(context.env, sourceKey);
       
-      if (!Object.prototype.hasOwnProperty.call(values, sourceKey)) {
+      if (!inValues && !inEnv && !hasDefault) {
         throw new ExpansionError(
           `missing reference: ${name}`,
-          expandStack[expandStack.length - 1] || name,
+          expandStack[0] || name,
           currentSource
         );
       }
       
-      let resolvedValue = values[sourceKey];
-      const refSource = sources[sourceKey] || currentSource;
+      let resolvedValue = inValues ? values[sourceKey] : (inEnv ? String(context.env[sourceKey]) : '');
       
       // Check for cycles
-      if (visited.has(sourceKey)) {
+      if (inValues && visited.has(sourceKey)) {
         throw new ExpansionError(
           `reference cycle detected: ${[...expandStack, sourceKey].join(' -> ')}`,
-          sourceKey,
-          refSource
+          expandStack[0] || sourceKey,
+          currentSource
         );
       }
       
       // Expand the referenced value if it contains placeholders
-      if (resolvedValue.includes('${')) {
+      if (inValues && resolvedValue.includes('${')) {
         visited.add(sourceKey);
         expandStack.push(sourceKey);
         resolvedValue = expandOneValue(resolvedValue, context);
@@ -128,14 +129,15 @@ function expandOneValue(value, context) {
   return result;
 }
 
-function expandValues(values, sources) {
+function expandValues(values, sources, env = {}) {
   const expanded = {};
   const context = {
     values,
     sources,
     visited: new Set(),
     expandStack: [],
-    currentSource: null
+    currentSource: null,
+    env
   };
   
   for (const key of Object.keys(values)) {
@@ -175,7 +177,7 @@ function loadSettings(options = {}) {
       sources[key] = '<environment>';
     }
   }
-  const finalValues = expand ? expandValues(values, sources) : values;
+  const finalValues = expand ? expandValues(values, sources, env) : values;
   return new Settings(finalValues, { sources });
 }
 

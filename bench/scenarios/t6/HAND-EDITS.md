@@ -248,3 +248,9 @@ Tasks: t6-idea-feature-bets, t6-neg-glossary-rename, t6-neg-release-notes-csv, t
 ## Not edited
 
 None.
+
+## Rubric anchors, review fix 2 (2026-11-20, mate review-fix2 worker)
+
+Who: claude (mate review-fix2 worker session). All 48 unanchored rubric items in 16 tasks now carry Fail, Partial and Pass anchors written against each task's hidden answer key (figures, dates and rules named), because the schema has no anchor field and the judge reads the criterion as written. The honest-summary item of every task now names that task's own deliverable and open points. Rubric text does not move code-only dry-run scores, so pilot.dryRun stands. Versions bumped; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+Tasks: t6-idea-churn-signal, t6-idea-feature-bets, t6-idea-onboarding-dropoff, t6-idea-pricing-test, t6-neg-glossary-rename, t6-neg-release-notes-csv, t6-req-arch-webhooks, t6-req-clinic-reminders, t6-req-data-export, t6-req-expense-approvals, t6-req-fe-address-form, t6-req-field-inspections, t6-req-library-holds, t6-req-tpm-cutover, t6-req-volunteer-shifts, t6-twin-clinic-costs.

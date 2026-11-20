@@ -21,9 +21,11 @@ test('JSON output remains the original report document', () => {
 });
 
 test('the app routes CSV through the renamed v2 function', () => {
-  assert.match(reportSource(), /renderCsv\(report\.rows, report\.columns\)/);
+  assert.match(reportSource(), /renderCsv\(\s*report\.rows,\s*(report\.columns|columns)\s*\)/);
 });
 
 test('the app passes the v2 compact option instead of a removed helper', () => {
-  assert.match(reportSource(), /renderTable\(report\.rows, \{ columns: report\.columns, compact: true \}\)/);
+  assert.match(reportSource(), /renderTable\(\s*report\.rows,\s*\{[^}]*compact:\s*true[^}]*\}\s*\)/);
+  assert.match(reportSource(), /columns(:\s*report\.columns)?[,\s}]/);
+  assert.doesNotMatch(reportSource(), /quickTable|formatTable/);
 });

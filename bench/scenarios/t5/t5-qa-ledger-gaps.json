@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-ledger-gaps",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -38,7 +38,7 @@
   "rubric": [
     {
       "id": "clarity",
-      "criterion": "The added cases clearly state the expected result for each boundary and invalid-input behavior (code cannot check this because readable intent is not observable from pass or fail results alone).",
+      "criterion": "The added cases clearly state the expected result for each boundary and invalid-input behavior. Fail: tests exercise interest, fees, overdrafts, posting, reversal, statements or the CSV export with no stated expected amount, or with assertions on only the type of result. Partial: expected values are shown for normal cases, but boundary cases (zero balance, the overdraft limit, a reversal of a reversal) or invalid inputs are checked with a bare assertRaises and no reason. Pass: every case states the exact expected amount or error for its boundary or invalid input, and its name says which rule it protects, so a changed interest or fee figure fails a test with a clear message.",
       "weight": 1
     },
     {
@@ -151,7 +151,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }
