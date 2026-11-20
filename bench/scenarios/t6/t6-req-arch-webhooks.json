@@ -1,7 +1,7 @@
 {
   "id": "t6-req-arch-webhooks",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "architect",
   "questions": "scripted",
@@ -209,48 +209,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates requirement specificity and coherence without imposing a framework; scripted answers provide the technical constraints. Earlier glm-5 check of the request, fixture and key: pass (The prompt specifies the goal (create requirements document), input sources, and output format without naming a method, tool, or pointing at the hidden test facts.)."
+          "note": "Prompt asks to read project material and capture behavior, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors are the scripted facts (2,400 events/min, 48-hour retry, HMAC-SHA256, etc.) which the agent must collect from scripted user; conclusion not revealed. Earlier glm-5 check of the request, fixture and key: pass (Fixture provides event types, SLO values, and security/data guidelines but does not list the throughput numbers, retry window, signing method, ordering rules, or verification requirements that the hidden tests check.)."
+          "note": "Fixture contains raw material (event module, docs, notes) but not the synthesized requirements."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: 2,400 events/min with 4,000 bursts, 30-day event ID retention, 48-hour retry, HMAC-SHA256 with 7-day overlap, EU residency rule. Earlier glm-5 check of the request, fixture and key: pass (The grounded.test.js requirements (event names from event-types.js, payment-data restriction from data-handling.md and security-standard.md, SLO values from slo.md) all exist in the fixture. The scriptedUser facts (F1-F7) are user-provided answers, not contradicted by fixture.)."
+          "note": "Hidden tests check patterns matching scripted facts; rubric asks for specific requirements present in prompt/fixture."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement numbering and organization can still Pass if all constraints appear as testable requirements with customer-visible vs implementation split. Earlier glm-5 check of the request, fixture and key: pass (An engineer can read the fixture, ask about gaps (throughput, retry policy, signing, ordering, residency, verification), receive scripted user answers, and combine fixture evidence with user facts to produce requirements. The solution demonstrates this path.)."
+          "note": "Competent architect could synthesize requirements from fixture material; alternative wording would pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 5.5,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 5.5,
-      "lazy": 16.9,
+      "stub": 0,
+      "lazy": 11.4,
       "alt": 100,
       "date": "2026-11-20"
     }

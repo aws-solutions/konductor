@@ -1,7 +1,7 @@
 {
   "id": "t6-req-tpm-cutover",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "tpm",
   "questions": "scripted",
@@ -216,22 +216,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for cutover requirements based on the folder and identifies the required output format, without prescribing a requirements or decision-writing method or planting a decoy."
+          "note": "The request asks for a document based on the supplied folder and scripted sponsor conversation, but does not prescribe a framework or requirements-writing method. It contains no prompt-level decoy that points away from the cutover requirements."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains migration plans, policies, runbooks, metrics and drafts, including older or conflicting planning values, but no finished requirements document containing the scripted sponsor decisions."
+          "note": "The fixture contains source material, drafts, alternatives, and unresolved historical positions rather than a finished requirements answer. The old draft explicitly marks several cutover details as missing, so the requested synthesis is not handed over as a completed answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden ground list names existing fixture data, policy and documentation paths, and the scriptedUser supplies the six current decisions; rubric R1 and R2 match the requested sponsor decisions and technical/business synthesis."
+          "note": "The hidden ground paths all exist, and the six tested sponsor facts are stated in scriptedUser; the additional contract, weekend-window, ordering, and communication checks are supported by the fixture. The rubric rewards the requested cutover decisions and synthesis, not the reference document's IDs or layout."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The migration one-pager, communication plan, change policy, dependency list, roster and runbooks expose the required context, while task.json supplies unresolved decisions; the tests permit equivalent prose and requirement ordering."
+          "note": "A competent TPM can use the prompt's scripted answers together with the named fixture documents to produce the required JSON block and requirements, while distinguishing drafts and alternatives from the sponsor's current answers. No hidden test or reference wording is needed, and the checks accept equivalent requirement structure."
         }
       ]
     }
@@ -244,13 +244,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 5.5,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 5.5,
-      "lazy": 15,
+      "stub": 0,
+      "lazy": 9.5,
       "alt": 100,
       "date": "2026-11-20"
     }

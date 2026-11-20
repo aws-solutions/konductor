@@ -1,7 +1,7 @@
 {
   "id": "t6-req-clinic-reminders",
   "class": "design",
-  "version": 3,
+  "version": 5,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -114,7 +114,7 @@
       "type": "fixture_unchanged",
       "path": "archive",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -217,22 +217,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to 'read the working folder and turn it into a practical requirements document' - no specific method or framework required, no misleading hints."
+          "note": "Prompt asks to read working folder and create requirements, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains working materials (interviews, process docs, exports) but not the complete solution or requirement list."
+          "note": "Fixture contains clinic profiles, booking process, exports but not synthesized requirements."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check scripted facts F1-F7 from prompt's scriptedUser section; rubric anchors reference same facts; all match fixture content and prompt."
+          "note": "Hidden tests check patterns matching scripted facts; rubric aligns with prompt and fixture content."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM could extract requirements from fixture files; different wording/structure would pass tests that accept variants (edits.md shows pattern fixes)."
+          "note": "Competent PM could create requirements from fixture; different structure would pass if captures essentials."
         }
       ]
     }
@@ -245,13 +245,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 10.3,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 10.3,
-      "lazy": 19.8,
+      "stub": 0,
+      "lazy": 11.4,
       "alt": 100,
       "date": "2026-11-20"
     }

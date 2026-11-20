@@ -128,6 +128,8 @@ function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), 
     assert.ok((r.length - invented.length) / r.length >= minPrecision, `${invented.length} of ${r.length} use a number from nowhere: ${invented.slice(0, 3).join(' | ')}`);
   });
   test(`asks at most ${maxQuestions} questions`, () => {
+    // Only a document with requirements earns this test, so an empty answer does not get it for free.
+    assert.ok(reqs().length >= minRequirements, `${reqs().length} requirements, need ${minRequirements}`);
     const n = questionCount(conversation());
     assert.ok(n <= maxQuestions, `${n} questions`);
   });

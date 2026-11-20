@@ -7,7 +7,7 @@ scriptedSuite(test, assert, {
   facts: [
     {
       id: 'F1',
-      all: [/8\s*hours?/i, /offline|without (?:a )?signal|queue.*(?:sync|submit)/i],
+      all: [/\b8\s*(?:hours?|h\b|hrs?)|\beight hours?/i, /offline|without (?:a )?signal|queue.*(?:sync|submit)/i],
       wrong: [/4\s*hours?/i, /24\s*hours?/i]
     },
     {

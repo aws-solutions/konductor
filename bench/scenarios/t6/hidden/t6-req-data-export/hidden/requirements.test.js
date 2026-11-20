@@ -37,7 +37,7 @@ scriptedSuite(test, assert, {
     },
     {
       id: 'F7',
-      all: [/Pro\s+(?:and|or|&)\s+Enterprise|Enterprise\s+(?:and|or|&)\s+Pro/i, /Starter/i],
+      all: [/\bPro\b/i, /Enterprise/i, /Starter/i],
       wrong: [/Starter[^.]{0,40}included/i]
     },
     {
