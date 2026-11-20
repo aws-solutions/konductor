@@ -124,5 +124,10 @@
         "note": "The task is fair and solvable. Tests are deterministic, not timing-dependent, and check the specified TTLCache contract. The reference fixes replace stale weight, refresh expiry on overwrite, and make sweep inspect entries without using get."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "t1-worker",
+    "log": "HAND-EDITS.md"
   }
 }
