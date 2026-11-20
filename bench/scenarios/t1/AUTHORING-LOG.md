@@ -170,3 +170,7 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-impl-settings-expand | review | qwen3-coder-next | 1.08 |
 | t1-impl-settings-expand | lazy+alt answers | glm-5 | 5.24 |
 | t1-bug-csv-import | author-data | minimax-m2.5 | 15.00 (estimate: stopped at the 60-tool-call cap before it reported; logged at the 15-credit abort limit) |
+| t1-impl-cli-envprefix | author | gpt-5.6-luna | 2.64 |
+| t1-impl-cli-envprefix | map | glm-5 | 0.16 |
+| t1-impl-cli-envprefix | review | qwen3-coder-next | 3.25 |
+| t1-impl-cli-envprefix | lazy+alt answers | glm-5 | 15.59 |

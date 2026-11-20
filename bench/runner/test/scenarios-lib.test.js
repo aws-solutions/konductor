@@ -205,6 +205,36 @@ test('fold-helpers turns committed byte copies of shared helpers into .bench-lib
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a stopped call counts at the abort limit, a refused call throws, and the run script follows runEnv', () => {
+  const root = tmp();
+  const was = { a: process.env.TY_AUTH, r: process.env.TY_RUN };
+  try {
+    const auth = path.join(root, 'auth');
+    process.env.TY_AUTH = auth;
+    const dir = path.join(root, 'ty');
+    write(path.join(dir, 'briefs', 'x.json'), JSON.stringify({ author: 'glm-5' }));
+    const s = stageOf(loadConfig({ dir, stage: { runEnv: 'TY_RUN', abortCredits: 15 } }));
+    assert.equal(s.runScript(), 'run.sh');
+    process.env.TY_RUN = 'checked.sh';
+    assert.equal(s.runScript(), 'checked.sh');
+    write(path.join(auth, 'work', 'cut.out'), `${JSON.stringify({ type: 'event' })}\n`);
+    assert.deepEqual([s.creditsOf(path.join(auth, 'work', 'cut.out')).credits, s.creditsOf(path.join(auth, 'work', 'cut.out')).estimated], [15, true]);
+    write(path.join(auth, 'checked.sh'), 'touch "$4.refused"\n');
+    write(path.join(auth, 'work', 'x.prompt.txt'), '');
+    assert.throws(() => s.call('m', path.join(auth, 'work', 'x'), 'p', 'x'), /spend check refused the x call/);
+    assert.equal(COMMANDS['log-author'](s, 'x', 'none').refused, true);
+  } finally {
+    for (const [k, v] of [['TY_AUTH', was.a], ['TY_RUN', was.r]]) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('pilot.dryRun takes the higher of the lazy and the shallow score', () => {
+  const res = { scores: { reference: 100, stub: 5, lazy: 20, alt: 90, shallow: 38 }, pass: true };
+  assert.equal(pilotWith(null, res, 'd').dryRun.lazy, 38);
+  assert.equal(pilotWith(null, { ...res, scores: { ...res.scores, shallow: undefined } }, 'd').dryRun.lazy, 20);
+});
+
 test('the stage assembles a task from the batch builder and lays out its parts, with no model call', () => {
   const root = tmp();
   const was = process.env.TX_AUTH;

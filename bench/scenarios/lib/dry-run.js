@@ -126,7 +126,7 @@ function dryRun(id, cfg, { repeat = 3 } = {}) {
         }
       }
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
-      const sc = codeScore(runs[0]);
+      const sc = (cfg.score || codeScore)(runs[0]);
       out.scores[m.name] = sc.score === null ? null : round1(sc.score);
       out.modes[m.name] = { ...sc, results: runs[0] };
     }
@@ -142,7 +142,9 @@ function dryRun(id, cfg, { repeat = 3 } = {}) {
 function pilotWith(pilot, res, date) {
   const s = res.scores;
   if (![s.reference, s.stub, s.lazy, s.alt].every((v) => typeof v === 'number')) return null;
-  const dryRun = { reference: s.reference, stub: s.stub, lazy: s.lazy, alt: s.alt, date };
+  // With a free shallow answer the lazy figure is the higher of the two, so neither can hide.
+  const lazy = typeof s.shallow === 'number' ? Math.max(s.lazy, s.shallow) : s.lazy;
+  const dryRun = { reference: s.reference, stub: s.stub, lazy, alt: s.alt, date };
   return { scores: {}, ...(pilot || {}), reference: s.reference, stub: s.stub, dryRun, decision: res.pass ? 'keep' : 'fix', date };
 }
 
