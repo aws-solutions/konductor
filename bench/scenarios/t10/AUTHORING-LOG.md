@@ -91,3 +91,11 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-neg-rename-field | author (stopped) | deepseek-3.2 | 16.00 | stopped at the 70 tool-call cap after about 22 minutes (estimate at 0.012 credits/s; a stopped stream reports none) |
 | t10-neg-rename-field | free dry run | - | 0.00 | reference 77.3, stub 43.7, lazy 52.1, alt 77.3 and a schema error in the checks. DROPPED (deepseek-3.2, no fix round: stub and reference both off the gates); files removed, brief kept |
 | t10-dev-csv-export | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: ~139.9 of 500 |
+| t10-dev-csv-export | author | gpt-5.6-luna | 6.19 |  |
+| t10-dev-csv-export | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: ~147 of 500; reason: lazy 64 |
+| t10-dev-csv-export | fix | gpt-5.6-luna | 3.73 |  |
+| t10-dev-csv-export | free dry run | - | 0.00 | first run: reference 100, stub 2.9, lazy 64, alt 100; after the one fix round: lazy 52.6 (gate 40). DROPPED, no map or review; files removed, brief kept |
+
+## Totals (wave 1, 2026-11-20)
+
+Estimate 250, stop 500. Spend about 148.5 credits for 8 briefs: 4 tasks landed (t10-pm-plan-limits, t10-arch-outbox, t10-tpm-ring-rollout, t10-dev-config-reload; all gpt-5.6-luna) and 4 dropped (t10-dev-quiet-hours-digest: lazy 54.8; t10-dev-audit-trail: second-family two-step failed; t10-neg-rename-field: deepseek-3.2 off the gates; t10-dev-csv-export: lazy 52.6 after the fix round). Credits marked "estimate" are for streams cut at the tool-call cap, which report none (DEBT D-67). The second-family attempts (qwen3-coder-next, minimax-m2.5, deepseek-3.2) all failed: this batch has no second-family task and is not ready to lock until one lands. Left: t10-dev-idempotency-keys (second family, two-step), a negative control (second family), one more developer task.
