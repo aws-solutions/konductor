@@ -208,3 +208,14 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-nfr-bounded-fanout | map | glm-5 | 0.16 |
 | t1-nfr-bounded-fanout | review | gpt-5.6-luna | 1.19 |
 | t1-nfr-bounded-fanout | lazy+alt answers | gpt-5.6-luna | 3.10 |
+| t1-twin-booking-export | author-data | minimax-m2.5 | 1.27 |
+| t1-twin-booking-export | author-key | minimax-m2.5 | 6.88 |
+| t1-twin-booking-export | map | glm-5 | 0.16 |
+| t1-twin-booking-export | review | gpt-5.6-luna | 1.02 |
+| t1-twin-booking-export | lazy+alt answers | gpt-5.6-luna | 1.13 |
+| t1-nfr-cache-bound | author-data | qwen3-coder-next | 1.11 |
+| t1-nfr-cache-bound | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-ref-package-split | author-data | qwen3-coder-next | 0.12 |
+| t1-twin-booking-export | fix | minimax-m2.5 | 5.12 |
+| t1-twin-booking-export | review | gpt-5.6-luna | 0.97 |
+| t1-twin-booking-export | lazy+alt answers | gpt-5.6-luna | 1.24 |
