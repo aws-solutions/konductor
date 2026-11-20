@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-glossary-rename",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -47,15 +47,16 @@
     },
     {
       "type": "contains",
-      "path": "docs/glossary.md",
-      "pattern": "\\\"term\\\"\\s*:\\s*\\\"Project\\\"",
+      "path": "docs/product-prd.md",
+      "pattern": "\\|\\s*Project activation rate\\s*\\|[^\\n]*31%[^\\n]*40%",
       "weight": 2,
       "kind": "substance"
     },
     {
-      "type": "not_contains",
+      "type": "min_matches",
       "path": "docs/product-prd.md",
-      "pattern": "\\|\\s*Workspace\\s+(?:activation|active)",
+      "pattern": "^\\|\\s*(Project activation rate|Weekly active Projects|Invited-member conversion)\\s*\\|",
+      "min": 3,
       "weight": 2,
       "kind": "substance"
     }
@@ -127,6 +128,52 @@
         "verdict": "pass",
         "note": "Fixture shows current term (Workspace) but prompt explicitly provides the new term (Project) - these are specifications, not an answer key."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal, files, constraints, and JSON block shapes without naming any method, technique, tool, or decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain the current 'Workspace' terminology to be renamed, but no notes listing expected outputs or hidden test expectations."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests expect term='Project' with previous_term='Workspace', metrics baselines/targets match fixture (31%, 2,400, 40%, 3,000), and persona-mara.md 'desk workspace' and engineering-notes.md 'workspaceId' are present."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Engineer can determine all required changes from prompt (rename Workspace to Project, retain former name in structured record, update only metrics table) by reading fixture files."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 15.3,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 15.3,
+      "lazy": 30.6,
+      "alt": 94.9,
+      "date": "2026-11-20"
+    }
   }
 }

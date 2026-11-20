@@ -1,0 +1,56 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringEquals": {
+                    "aws:SourceAccount": "111122223333"
+                }
+            },
+            "Resource": [
+                "arn:aws:s3:::logs-bucket-staging/cloudfront-logs/*",
+                "arn:aws:s3:::logs-bucket-staging/s3-access-logs/*",
+                "arn:aws:s3:::logs-bucket-prod/cloudfront-logs/*",
+                "arn:aws:s3:::logs-bucket-prod/s3-access-logs/*"
+            ],
+            "Action": "s3:PutObject",
+            "Principal": {
+                "Service": "delivery.logs.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowLogDelivery"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            },
+            "Resource": [
+                "arn:aws:s3:::logs-bucket-staging",
+                "arn:aws:s3:::logs-bucket-staging/*",
+                "arn:aws:s3:::logs-bucket-prod",
+                "arn:aws:s3:::logs-bucket-prod/*"
+            ],
+            "Action": "s3:*",
+            "Principal": "*",
+            "Effect": "Deny",
+            "Sid": "DenyNonTLS"
+        },
+        {
+            "Resource": [
+                "arn:aws:s3:::logs-bucket-staging/*",
+                "arn:aws:s3:::logs-bucket-prod/*"
+            ],
+            "Action": "s3:PutObject",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Effect": "Deny",
+            "Sid": "DenyOtherWrites"
+        }
+    ],
+    "Version": "2012-10-17"
+}

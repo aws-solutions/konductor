@@ -1,0 +1,88 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "Null": {
+                    "aws:PrincipalTag/tenant": "true"
+                }
+            },
+            "Resource": [
+                "arn:aws:s3:::ledger-tenant-documents-example",
+                "arn:aws:s3:::ledger-tenant-documents-example/*"
+            ],
+            "Action": "s3:*",
+            "Effect": "Deny",
+            "Sid": "DenyS3WhenTenantTagIsMissing"
+        },
+        {
+            "Condition": {
+                "Null": {
+                    "aws:PrincipalTag/tenant": "true"
+                }
+            },
+            "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
+            "Action": "dynamodb:*",
+            "Effect": "Deny",
+            "Sid": "DenyMetadataWhenTenantTagIsMissing"
+        },
+        {
+            "Resource": "arn:aws:s3:::ledger-tenant-documents-example/tenants/${aws:PrincipalTag/tenant}/*",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Effect": "Allow",
+            "Sid": "TenantObjects"
+        },
+        {
+            "Condition": {
+                "ForAllValues:StringLike": {
+                    "s3:prefix": [
+                        "tenants/${aws:PrincipalTag/tenant}",
+                        "tenants/${aws:PrincipalTag/tenant}/*"
+                    ]
+                },
+                "Null": {
+                    "s3:prefix": "false"
+                }
+            },
+            "Resource": "arn:aws:s3:::ledger-tenant-documents-example",
+            "Action": "s3:ListBucket",
+            "Effect": "Allow",
+            "Sid": "TenantListing"
+        },
+        {
+            "Condition": {
+                "StringEquals": {
+                    "aws:PrincipalTag/tier": "premium"
+                }
+            },
+            "Resource": "arn:aws:s3:::ledger-tenant-documents-example/exports/${aws:PrincipalTag/tenant}/*",
+            "Action": "s3:PutObject",
+            "Effect": "Allow",
+            "Sid": "PremiumExportWrites"
+        },
+        {
+            "Condition": {
+                "ForAllValues:StringEquals": {
+                    "dynamodb:LeadingKeys": "${aws:PrincipalTag/tenant}"
+                },
+                "Null": {
+                    "dynamodb:LeadingKeys": "false"
+                }
+            },
+            "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
+            "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Query"
+            ],
+            "Effect": "Allow",
+            "Sid": "TenantMetadata"
+        }
+    ],
+    "Version": "2012-10-17"
+}

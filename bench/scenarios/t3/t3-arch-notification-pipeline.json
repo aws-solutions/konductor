@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 17
     },
     {
@@ -56,8 +56,21 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 12,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -154,5 +167,10 @@
       "Assumes adding workers to single-queue-pool increases throughput capacity, missing that the quota is per-queue and workers do not affect ingress limits.",
       "Reports monthly cost without showing the traffic-weighted calculation, making it impossible to audit against the source files."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

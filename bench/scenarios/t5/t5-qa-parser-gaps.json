@@ -98,8 +98,53 @@
         "verdict": "pass",
         "note": "All mutants represent realistic bugs that sound tests of documented behavior would catch. None are equivalent mutants. The documentation clearly specifies the expected behavior for each: escape sequences must be complete, empty documents return empty object, numeric range is inclusive, conversion rounds to two decimals, duplicate keys are rejected, max nesting is 8, validation errors include locations, print preserves types, tokenizer resets state, and timeout requires a time unit. A careful tester reading the docs would naturally test these boundaries."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (strengthen tests for tokenizer, parser, validator, printer) and constraints without naming methods or pointing to the mutants."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file lists the bugs or expected findings; only the format spec, API docs, source code, and existing tests exist."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Each mutant tests a behavior documented in format.md or observable from src/ files: escape handling, section depth, numeric range, duplicate keys, location tracking, quantity conversion, printer quoting, tokenizer reuse, and timeout validation."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "format.md documents the grammar and constraints (escape sequences, quantity range 0-1000000, eight levels of nesting, two decimal places); api.md documents error line/column; src/ files implement these, so gaps are discoverable through careful reading."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.7,
+      "lazy": 28.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }

@@ -146,6 +146,56 @@
         "verdict": "fixed",
         "note": "Fix round (author): src/__init__.py added so hidden tests import from the repository root."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "gpt",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json prompt states the security goal, interfaces, and behavioral constraints, but does not prescribe parameterization, allowlists, escaping, or another method."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/src/database.py contains the vulnerable query construction, but no fixture file states the expected findings or fix; fixture/docs/security.md is empty."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "hidden/hidden/py/test_security.py lines 151-160 and 315-321 require wildcard characters to be literal, while fixture/src/database.py lines 66 and 81-82 document and implement name_filter as a LIKE pattern; fixture/docs/api.md lines 11 and 55 also promise LIKE search."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The prompt requires normal filters to keep working, and fixture/src/database.py lines 66 and 78-81 plus fixture/docs/api.md lines 11 and 55 establish wildcard LIKE semantics. Nothing visible tells an engineer to change '%' and '_' into literal searches, so the hidden wildcard expectations cannot be derived without hidden files."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 13.3,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: key-matches-fixture: hidden/hidden/py/test_security.py lines 151-160 and 315-321 require wildcard characters to be literal, while fixture/src/database.py lines 66 and 81-82 document and implement name_filter as a LIKE pattern; fixture/docs/api.md lines 11 and 5",
+      "recheck-failed: solvable-from-fixture: The prompt requires normal filters to keep working, and fixture/src/database.py lines 66 and 78-81 plus fixture/docs/api.md lines 11 and 55 establish wildcard LIKE semantics. Nothing visible tells an engineer to change '%' and '_' into lite"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 13.3,
+      "lazy": 13.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

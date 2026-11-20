@@ -1,0 +1,72 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringNotLike": {
+                    "s3:prefix": "private/*"
+                },
+                "StringEquals": {
+                    "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/E1A2B3C4D5E6F7"
+                }
+            },
+            "Resource": "arn:aws:s3:::downloads-bucket-staging/*",
+            "Action": "s3:GetObject",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowCloudFrontStagingPublic"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringNotLike": {
+                    "s3:prefix": "private/*"
+                },
+                "StringEquals": {
+                    "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/F8E7D6C5B4A3F2"
+                }
+            },
+            "Resource": "arn:aws:s3:::downloads-bucket-prod/*",
+            "Action": "s3:GetObject",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowCloudFrontProductionPublic"
+        },
+        {
+            "Resource": [
+                "arn:aws:s3:::downloads-bucket-staging/private/*",
+                "arn:aws:s3:::downloads-bucket-prod/private/*"
+            ],
+            "Action": "s3:GetObject",
+            "Principal": "*",
+            "Effect": "Deny",
+            "Sid": "DenyPrivateDownloads"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            },
+            "Resource": [
+                "arn:aws:s3:::downloads-bucket-staging",
+                "arn:aws:s3:::downloads-bucket-staging/*",
+                "arn:aws:s3:::downloads-bucket-prod",
+                "arn:aws:s3:::downloads-bucket-prod/*"
+            ],
+            "Action": "s3:*",
+            "Principal": "*",
+            "Effect": "Deny",
+            "Sid": "DenyNonTLS"
+        }
+    ],
+    "Version": "2012-10-17"
+}

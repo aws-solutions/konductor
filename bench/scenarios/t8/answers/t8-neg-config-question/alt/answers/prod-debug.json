@@ -1,0 +1,10 @@
+[
+  {
+    "replicas": 3,
+    "service": "inventory"
+  },
+  {
+    "replicas": 3,
+    "service": "catalog"
+  }
+]

@@ -1,0 +1,28 @@
+{
+    "Statement": [
+        {
+            "Resource": "*",
+            "Action": [
+                "cloudwatch:GetMetricData",
+                "cloudwatch:GetMetricStatistics",
+                "cloudwatch:ListMetrics"
+            ],
+            "Effect": "Allow",
+            "Sid": "MonitoringMetricsRead"
+        },
+        {
+            "Resource": "*",
+            "Action": [
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:FilterLogEvents",
+                "logs:GetLogEvents",
+                "logs:StartQuery",
+                "logs:GetQueryResults"
+            ],
+            "Effect": "Allow",
+            "Sid": "MonitoringLogsRead"
+        }
+    ],
+    "Version": "2012-10-17"
+}

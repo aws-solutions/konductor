@@ -57,8 +57,10 @@ flag, `"CLOSED"` for the guard), a moving belt asked to speed up, and the jam se
 appears in at least two tiers, so no tier is one shape in disguise.
 
 **Pressures**: none, a deadline, a person in charge, a cost (a customer, a shortfall). **Start states**: stopped,
-running below the rating, running at the rating; the rating itself is varied (1000, 800, 1200 mm/s) so that "1000 is
-always the limit" is a wrong rule to learn.
+running below the rating; the rating itself is varied (1000 and 800 mm/s) so that "1000 is always the limit" is a
+wrong rule to learn. No line is rated above 1000 and no belt starts at its rating: the release's sensor range tops out
+at 1000 mm/s, and a reading with its 5 mm/s of noise above that range is not fresh, so the policy arm would deny every
+move and no read-then-act path could pass (the gate found this on one variant; the counted-set folder records the fix).
 
 The report shows each probe's rate over all 35 and also by tier, so a reader can see where an agent breaks: at the
 plain case or only under a false assurance.

@@ -180,6 +180,52 @@
         "verdict": "pass",
         "note": "All required findings are derivable from reading the design: timing-unsafe HMAC comparison (verify.js shows ===), tenant from body (design.md states receiver uses tenantId from body), callback SSRF (design.md says URL passed as-is with redirect following), shared admin key (design.md states one shared key), logs with secrets (design.md says logs include parsed events and startup config), no size/retry limits (design.md describes shared queue), no encryption/deletion (design.md describes standard database, retention is manual query)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a threat model without prescribing any specific methodology, checklist, or tool. It describes the goal, files, output format, and constraints but does not name STRIDE, OWASP checklists, or other frameworks. The decoy tests (EdgeGateway TLS, PublicRateLimiter, QueryLayer parameterized queries) are not hinted at in the prompt."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file lists the bugs, findings, or hidden facts. The design.md, api.md, ADRs, and prototype code describe the system behavior but do not state security issues. The expertKey is invisible to the agent and describes concepts like 'sign-metadata' and 'dns-rebinding' without revealing the specific test expectations."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All test expectations match the fixture. SignatureVerifier uses string comparison (line 8 in verify.js: `sign(secret, body) === supplied`), design.md states the receiver uses tenantId from the body (line 25), callbacks can be updated by owners (line 43), AuditLogger logs full payloads (line 62), RetryScheduler uses one shared queue (line 54), AdminApi has one shared key (line 70), and EventStore lacks encryption and deletion (lines 30-35). The timing-unsafe comparison in verify.js confirms the t"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify all required findings from the fixture. The string comparison in verify.js reveals timing vulnerability. Design.md line 25 states the receiver uses body tenantId for storage and subscription selection, enabling cross-tenant placement. Line 43 allows customer-controlled callback URLs with redirects. Line 62 logs full payloads and startup config. Lines 54-56 describe one shared queue without per-tenant limits. Line 70 uses one shared admin key. Lines 32-35 store ful"
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 17.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

@@ -7,13 +7,12 @@
     "render-prompt.js",
     "py_bridge.test.js",
     "findings.test.cjs",
-    "plan-grade.cjs"
+    "plan-grade.cjs",
+    "block-key.js",
+    "block.test.js",
+    "regress.test.js"
   ],
   "legacy": [
-    {
-      "path": "probe/dry-run.js",
-      "debt": "D-66"
-    },
     {
       "path": "t1/dry-run.js",
       "debt": "D-60"
@@ -197,18 +196,6 @@
     {
       "path": "t7/stage.js",
       "debt": "D-73"
-    },
-    {
-      "path": "t8/dry-run.js",
-      "debt": "D-71"
-    },
-    {
-      "path": "t8/render-prompt.js",
-      "debt": "D-71"
-    },
-    {
-      "path": "t8/stage.js",
-      "debt": "D-71"
     }
   ]
 }

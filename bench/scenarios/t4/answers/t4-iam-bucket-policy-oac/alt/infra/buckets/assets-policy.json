@@ -1,0 +1,113 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringEquals": {
+                    "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/E1A2B3C4D5E6F7"
+                }
+            },
+            "Resource": "arn:aws:s3:::assets-bucket-staging/*",
+            "Action": "s3:GetObject",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowCloudFrontStaging"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringEquals": {
+                    "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/F8E7D6C5B4A3F2"
+                }
+            },
+            "Resource": "arn:aws:s3:::assets-bucket-prod/*",
+            "Action": "s3:GetObject",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowCloudFrontProduction"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringEquals": {
+                    "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/E1A2B3C4D5E6F7"
+                }
+            },
+            "Resource": "arn:aws:s3:::assets-bucket-staging",
+            "Action": "s3:ListBucket",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowCloudFrontListStaging"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                },
+                "StringEquals": {
+                    "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/F8E7D6C5B4A3F2"
+                }
+            },
+            "Resource": "arn:aws:s3:::assets-bucket-prod",
+            "Action": "s3:ListBucket",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowCloudFrontListProduction"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                }
+            },
+            "Resource": [
+                "arn:aws:s3:::assets-bucket-staging",
+                "arn:aws:s3:::assets-bucket-staging/*",
+                "arn:aws:s3:::assets-bucket-prod",
+                "arn:aws:s3:::assets-bucket-prod/*"
+            ],
+            "Action": [
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
+            "Principal": {
+                "AWS": "arn:aws:iam::111122223333:role/deploy-role"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowDeployRole"
+        },
+        {
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "false"
+                }
+            },
+            "Resource": [
+                "arn:aws:s3:::assets-bucket-staging",
+                "arn:aws:s3:::assets-bucket-staging/*",
+                "arn:aws:s3:::assets-bucket-prod",
+                "arn:aws:s3:::assets-bucket-prod/*"
+            ],
+            "Action": "s3:*",
+            "Principal": "*",
+            "Effect": "Deny",
+            "Sid": "DenyNonTLS"
+        }
+    ],
+    "Version": "2012-10-17"
+}
