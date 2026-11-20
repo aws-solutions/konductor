@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // orchestration_hook.rs: `konductor __orchestration-hook`, run by a
-// session-start hook. For a `konductor` session whose user config says
-// `orchestration.mode: coordinator`, it prints the coordinator persona:
+// session-start hook. For a mode agent's session (see `is_mode_agent`)
+// whose user config says `orchestration.mode: coordinator`, it prints the
+// coordinator persona:
 // a header, a line telling the agent to read the installed routing rules
 // file, and the installed coordinator digest. Hook stdout is capped by
 // the harnesses (about 3,000 bytes on Kiro CLI v3), so the full rules
 // file is named, not printed.
 //
 // It never fails the harness: every path exits 0 and nothing goes to
-// stderr. A session that is not Konductor's `konductor`, or whose mode is
+// stderr. A session that is not a mode agent's, or whose mode is
 // `auto` or unset, gets no output, except that a Claude Code `resume` or
 // `compact` under `auto` prints `Orchestration: auto`, so a session that
 // was a coordinator before the user changed the mode can see the change.
@@ -27,9 +28,17 @@ use super::telemetry_hook::{
     same_dir, AgentLayout, HookPayload, InstallIndex,
 };
 
-/// The one agent the mode applies to: the agent that loads
+/// The mode agent Konductor ships: the agent that loads
 /// `k-direct-work.md` (pinned by `tests/test_konductor_prompt_mode_neutral.py`).
 pub(crate) const MODE_AGENT: &str = "konductor";
+
+/// The context file the coordinator persona replaces. An installed agent
+/// that loads it is a mode agent under any name, so a renamed orchestrator
+/// gets the mode too.
+pub(crate) const DIRECT_WORK_CONTEXT_FILE_NAME: &str = "k-direct-work.md";
+
+/// Cap on an installed agent file read to find its context files.
+const MAX_AGENT_FILE_BYTES: u64 = 1024 * 1024;
 
 pub(crate) const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
 pub(crate) const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
@@ -143,6 +152,75 @@ fn layout_for_harness(harness: Option<&str>) -> Option<AgentLayout> {
     } else {
         None
     }
+}
+
+/// Whether a Kiro agent definition lists the Direct Work context among
+/// its `file://` resources, in synth's relative form or the absolute form
+/// install rewrites it to.
+pub(crate) fn kiro_agent_loads_direct_work(agent: &serde_json::Value) -> bool {
+    agent
+        .get("resources")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .filter_map(|resource| resource.strip_prefix("file://"))
+        .map(Path::new)
+        .any(|path| {
+            path.file_name()
+                .is_some_and(|name| name == DIRECT_WORK_CONTEXT_FILE_NAME)
+                && path
+                    .parent()
+                    .and_then(Path::file_name)
+                    .is_some_and(|dir| dir == "context")
+        })
+}
+
+/// Whether a Claude agent file inlines the Direct Work context. Synth
+/// opens each inlined context with a `<Context: name>` line of its own.
+fn claude_agent_loads_direct_work(body: &str) -> bool {
+    let opening = format!("<Context: {DIRECT_WORK_CONTEXT_FILE_NAME}>");
+    body.lines().any(|line| line == opening)
+}
+
+/// Whether the agent file `root` holds for `agent` in `layout` (either
+/// layout when `None`) loads the Direct Work context. `agent` is a name
+/// the install's manifest lists, so it is a single path component.
+fn installed_agent_loads_direct_work(
+    root: &Path,
+    layout: Option<AgentLayout>,
+    agent: &str,
+) -> bool {
+    let read = |relative: String| {
+        let file = std::fs::File::open(root.join(relative)).ok()?;
+        let mut text = String::new();
+        file.take(MAX_AGENT_FILE_BYTES)
+            .read_to_string(&mut text)
+            .ok()?;
+        Some(text)
+    };
+    let kiro = || {
+        read(format!(".kiro/agents/{agent}.json"))
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .is_some_and(|value| kiro_agent_loads_direct_work(&value))
+    };
+    let claude = || {
+        read(format!(".claude/agents/{agent}.md"))
+            .is_some_and(|text| claude_agent_loads_direct_work(&text))
+    };
+    match layout {
+        Some(AgentLayout::Kiro) => kiro(),
+        Some(AgentLayout::Claude) => claude(),
+        None => kiro() || claude(),
+    }
+}
+
+/// A mode agent is `MODE_AGENT`, or any agent whose definition in the
+/// install that owns it loads the Direct Work context. This only decides
+/// which sessions get the persona; the persona text still comes from that
+/// install's trusted context directories.
+fn is_mode_agent(owning_root: &Path, layout: Option<AgentLayout>, agent: &str) -> bool {
+    agent == MODE_AGENT || installed_agent_loads_direct_work(owning_root, layout, agent)
 }
 
 /// Calls `load_persona` only for `coordinator`, so other sessions never
@@ -461,10 +539,10 @@ fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>) -> bool {
         })
 }
 
-/// Event, identity and ownership are checked before the config file is
+/// Event, ownership and identity are checked before the config file is
 /// opened, so other agents' sessions cost no YAML parse. `own_install` is
 /// the install that wired this hook; only the nearest install that owns
-/// `konductor` for the firing `harness` prints, so two installs never
+/// the session's agent for the firing `harness` prints, so two installs never
 /// inject twice and an install for another harness never silences this one.
 /// A shadowed hook stays silent only while the owner's own hook is wired;
 /// otherwise it prints a fallback line naming the owner, so the mode is
@@ -491,19 +569,21 @@ pub(crate) fn dispatch_orchestration_hook(
             .as_deref()
             .and_then(|root| kiro_session_agent_mode(root, session_id))
     };
-    if resolve_session_agent(&payload, agent_arg, &kiro_session_agent).as_deref()
-        != Some(MODE_AGENT)
-    {
+    let Some(agent) = resolve_session_agent(&payload, agent_arg, &kiro_session_agent) else {
         return;
-    }
+    };
     let index = InstallIndex::new(candidate_install_roots(cwd, home.as_deref()));
-    let owning_root = match layout_for_harness(harness) {
-        Some(layout) => index.install_for_layout(MODE_AGENT, layout),
-        None => index.install_for(MODE_AGENT),
+    let layout = layout_for_harness(harness);
+    let owning_root = match layout {
+        Some(layout) => index.install_for_layout(&agent, layout),
+        None => index.install_for(&agent),
     };
     let Some(owning_root) = owning_root else {
         return;
     };
+    if !is_mode_agent(owning_root, layout, &agent) {
+        return;
+    }
     let shadowed = own_install.is_some_and(|own| !same_dir(own, owning_root));
     if shadowed && owner_hook_is_wired(owning_root, harness) {
         return;
@@ -746,6 +826,71 @@ mod tests {
             decide(&ModeResolution::Default, false, must_not_load),
             HookOutput::Nothing
         );
+    }
+
+    #[test]
+    fn a_kiro_agent_loads_direct_work_through_a_context_resource() {
+        let loads = |resources: serde_json::Value| {
+            kiro_agent_loads_direct_work(&serde_json::json!({ "resources": resources }))
+        };
+        assert!(loads(serde_json::json!([
+            "file://context/k-direct-work.md"
+        ])));
+        assert!(loads(serde_json::json!([
+            "skill://x",
+            "file:///home/u/.kiro/context/k-direct-work.md"
+        ])));
+        assert!(!loads(serde_json::json!([
+            "file:///home/u/.kiro/context/k-orchestrator-routing-rules.md"
+        ])));
+        assert!(!loads(serde_json::json!([
+            "file:///home/u/notes/k-direct-work.md"
+        ])));
+        assert!(!loads(serde_json::json!(["context/k-direct-work.md"])));
+        assert!(!kiro_agent_loads_direct_work(&serde_json::json!({})));
+    }
+
+    #[test]
+    fn a_claude_agent_loads_direct_work_only_through_its_context_block() {
+        assert!(claude_agent_loads_direct_work(
+            "Help.\n\n<Context: k-direct-work.md>\nrules\n</Context: k-direct-work.md>"
+        ));
+        assert!(!claude_agent_loads_direct_work(
+            "Shape rules live here and in `k-direct-work.md`.\n\
+             <Context: k-orchestrator-routing-rules.md>\nx\n</Context: k-orchestrator-routing-rules.md>"
+        ));
+    }
+
+    #[test]
+    fn a_mode_agent_is_konductor_or_an_installed_agent_that_loads_direct_work() {
+        let root = scratch_dir("mode-agent");
+        let kiro = |name: &str, resource: &str| {
+            let file = root.join(format!(".kiro/agents/{name}.json"));
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(
+                file,
+                serde_json::json!({ "name": name, "resources": [resource] }).to_string(),
+            )
+            .unwrap();
+        };
+        kiro("acme", "file://context/k-direct-work.md");
+        kiro("acme-mux", "file://context/k-orchestrator-routing-rules.md");
+        let claude = root.join(".claude/agents/acme.md");
+        std::fs::create_dir_all(claude.parent().unwrap()).unwrap();
+        std::fs::write(
+            &claude,
+            "<Context: k-direct-work.md>\nx\n</Context: k-direct-work.md>\n",
+        )
+        .unwrap();
+
+        assert!(is_mode_agent(&root, Some(AgentLayout::Kiro), MODE_AGENT));
+        assert!(is_mode_agent(&root, Some(AgentLayout::Kiro), "acme"));
+        assert!(is_mode_agent(&root, Some(AgentLayout::Claude), "acme"));
+        assert!(is_mode_agent(&root, None, "acme"));
+        assert!(!is_mode_agent(&root, Some(AgentLayout::Kiro), "acme-mux"));
+        assert!(!is_mode_agent(&root, Some(AgentLayout::Claude), "acme-mux"));
+        assert!(!is_mode_agent(&root, None, "k-developer"));
+        std::fs::remove_dir_all(&root).ok();
     }
 
     #[test]

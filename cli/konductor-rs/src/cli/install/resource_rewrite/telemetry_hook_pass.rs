@@ -53,21 +53,25 @@ impl ResourceRewritePass for TelemetryHookPass {
     }
 }
 
-/// Wires `konductor __orchestration-hook --agent konductor` into the V2
-/// `konductor` agent's inline `hooks.agentSpawn` array. Independent of
-/// `--no-telemetry`; no other agent gets it.
+/// Wires `konductor __orchestration-hook --agent <name>` into a V2 mode
+/// agent's inline `hooks.agentSpawn` array: `konductor`, or any agent that
+/// loads the Direct Work context. Independent of `--no-telemetry`; no
+/// other agent gets it.
 pub(super) struct OrchestrationHookPass;
 
 impl ResourceRewritePass for OrchestrationHookPass {
     fn matches(&self, value: &serde_json::Value, _ctx: &RewriteContext<'_>) -> bool {
-        value.get("name").and_then(|name| name.as_str())
-            == Some(crate::cli::orchestration_hook::MODE_AGENT)
+        v2_mode_agent_name(value).is_some()
     }
 
     fn rewrite(&self, value: &mut serde_json::Value, ctx: &RewriteContext<'_>) {
+        let Some(agent) = v2_mode_agent_name(value).map(str::to_string) else {
+            return;
+        };
         wire_v2_orchestration_hook(
             value,
             &super::claude_settings::resolve_konductor_exe_path(),
+            &agent,
             ctx.install_root(),
             Some(crate::cli::install::kiro_cli::STRATEGY_NAME),
         );
@@ -89,15 +93,24 @@ impl ResourceRewritePass for OrchestrationHookPass {
     }
 }
 
+/// The agent's `name` when it is a mode agent.
+pub(super) fn v2_mode_agent_name(value: &serde_json::Value) -> Option<&str> {
+    let name = value.get("name").and_then(|name| name.as_str())?;
+    (name == crate::cli::orchestration_hook::MODE_AGENT
+        || crate::cli::orchestration_hook::kiro_agent_loads_direct_work(value))
+    .then_some(name)
+}
+
 pub(super) fn wire_v2_orchestration_hook(
     value: &mut serde_json::Value,
     exe: &str,
+    agent: &str,
     install_root: Option<&Path>,
     harness: Option<&str>,
 ) {
     let command = super::claude_settings::orchestration_hook_command(
         &super::claude_settings::shell_quote_for_hook_command(exe),
-        Some(crate::cli::orchestration_hook::MODE_AGENT),
+        Some(agent),
         install_root,
         harness,
     );

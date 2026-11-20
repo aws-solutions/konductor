@@ -65,6 +65,11 @@ not per individual commit.
 - `make test-py` now checks every skill's frontmatter, description, size, code fences, and
   `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
   `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
+- The orchestration-mode session-start hook now applies `orchestration.mode` to any installed
+  agent that loads the `k-direct-work.md` context, not only to `konductor`, so forks and custom
+  distributions that rename the orchestrator still get `coordinator` mode. On Kiro CLI v2 the
+  renamed agent's own file gets the hook. Agents that load the routing rules instead, like the
+  mux and cmux orchestrators, are unchanged.
 
 ### Changed
 
