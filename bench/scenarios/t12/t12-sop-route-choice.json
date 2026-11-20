@@ -1,0 +1,182 @@
+{
+  "id": "t12-sop-route-choice",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "multi-phase",
+  "phases2": [
+    "bugfix",
+    "implementation",
+    "requirements",
+    "code-review"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "It's Monday and the team channel has piled up; I copied it into docs/inbox.md. Please work through all of it the way this team works (CONTRIBUTING.md has our rules). Commit each finished piece of work on main on its own as you go. When you are done, main should be checked out with everything committed and node --test test/*.test.js passing.",
+  "fixture": "t12-sop-route-choice",
+  "hidden": "t12-sop-route-choice",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=120000 work.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/inbox.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/policy.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "route-fits-request",
+      "weight": 1,
+      "criterion": "Each request got the kind of work it needed, at the size it needed. Fail: the unsigned waitlist got code, the patch was applied by the reviewer, or the live refund bug waited behind other work. Partial: every request took the right route, but one artifact is thin for its route: the spec's design or tasks do not follow from its requirements, or the review's findings give no line or no way to see the fault (for example 'room logic looks off'). Pass: the refund fix is small and first, with a test at the 24 and 48 hour edges; the BK-215 change has its test and changelog line and nothing more; the spec traces tasks to requirements and leaves the loyalty question to Dana; the review shows each fault concretely (a failing test or an example) and suggests a fix. (code cannot check this because fit and size are judgements)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "incident-first",
+        "text": "Treats the refund bug as a live incident costing money and fixes it before anything else, with the smallest change and a regression test at the tier edges.",
+        "source": "https://sre.google/sre-book/managing-incidents/"
+      },
+      {
+        "id": "spec-before-code",
+        "text": "Writes the waitlist as requirements, design and tasks under docs/specs/waitlist/ and no code, because product has not signed it off; the loyalty-member ordering is left as an open question for Dana.",
+        "source": "original"
+      },
+      {
+        "id": "review-not-apply",
+        "text": "Reviews Ravi's patch without applying it, finds the dropped room check and the back-to-back clash (both visible by running the existing tests against the patched code), and requests changes.",
+        "source": "https://google.github.io/eng-practices/review/reviewer/looking-for.html"
+      },
+      {
+        "id": "agreed-change-shipped",
+        "text": "Ships BK-215 directly, since it is fully agreed: nights from UTC calendar dates, 0 for day use, a test and a changelog line.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Implements the waitlist right away because the requirements look clear enough.",
+      "Applies Ravi's patch since it is a performance improvement and the author asked for help.",
+      "Works through the inbox top to bottom, so the refund fix lands last.",
+      "Writes one combined commit for all four requests."
+    ]
+  },
+  "targetSkills": [
+    "sdlc-navigator",
+    "pre-planning-analysis"
+  ],
+  "targetSop": null,
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate CV-A worker (owner-approved coverage review addition 2); needs the non-Claude recheck in review.recheck"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-A worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 36.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt instructs to follow CONTRIBUTING.md rules and commit work on main, which defines the required workflow (separate workers on branches, merge each, clean up). The expertKey describes what each route should produce but doesn't name helper tools, skills, procedures, or agents beyond git/terminal. The four request types (repair, change, spec, review) are derived from the inbox and CONTRIBUTING.md, not revealed as traps."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The hidden tests require 4 distinct routes (repair, change, spec, review), each leaving specific artifacts (src/refund.js changes, src/summary.js changes, docs/specs/waitlist/ spec files, docs/reviews/0001-overlap-check.md review). CONTRIBUTING.md clearly defines each route: bug fix + regression test, changelog line, spec before code, review in specific format with json block. The tests verify order (refund first) and that each route's artifact is present."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture (inbox.md, CONTRIBUTING.md, policy.md) doesn't reveal the solution. inbox.md lists 4 requests; CONTRIBUTING.md defines 4 routes but doesn't say which request maps to which route; policy.md just states refund tiers. The hidden tests verify behavior that must be derived: 48/24 hour refund tiers, nights calculation, spec content including open questions about loyalty, review findings for dropped room check and back-to-back logic."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Not too easy: a quick wrong answer would be implementing waitlist code before sign-off or applying Ravi's patch without review. Hidden tests catch these: 'unsigned feature: no waitlist code before sign-off' fails if code is written; 'patch review: the patch is not applied' fails if patch or overlap.js is changed. Also, order matters: 'order: the live bug is fixed first' catches top-to-bottom processing."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Not unfair or impossible: every hidden test's expected value derives from fixture. Policy.md's tiers imply 48h full, 24h half; BK-215 request defines nights as date difference; inbox specifies 5 people limit, 2-hour offer, loyalty question for Dana; Ravi's patch clearly has bugs visible from tests. Alt solution shows multiple valid commit orders are acceptable (test first, then fix, etc.)."
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt doesn't name methods (tools/skills/procedures) beyond 'the way this team works' (CONTRIBUTING.md) and 'commit each finished piece of work on main on its own'. ExpertKey describes outcomes (e.g., 'writes waitlist as requirements, design and tasks') without naming helper tools."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files don't list answers. inbox.md contains 4 requests without indicating which route each needs; CONTRIBUTING.md defines 4 routes but doesn't map requests to routes or reveal the 48/24 tier values, nights formula, or review findings. The spec's open question format (5 limit, 2-hour offer, loyalty for Dana) must be derived from inbox text."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Every hidden test value derives from fixture: refund tiers from policy.md (48h full, 24h half); BK-215 nights from request text (UTC dates, 0 for same-day); waitlist limits from inbox (5 per room/date, 2-hour offer, loyalty question for Dana); review findings from patch bugs (missing room check, back-to-back >= vs < logic). The alt solution shows acceptable variations in wording."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Task is fully solvable from fixture alone. All information needed is in docs/policy.md, docs/inbox.md, CONTRIBUTING.md, patches/0001-overlap-check.patch, and src/refund.js (which has incomplete TIERS array hinting at missing tiers). No external files or context needed."
+        }
+      ]
+    }
+  }
+}

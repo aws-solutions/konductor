@@ -1,0 +1,9 @@
+{
+  "name": "harborline-dispatch",
+  "version": "3.8.1",
+  "private": true,
+  "description": "Back-office tools for Harborline freight operations",
+  "main": "lib/index.js",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test test/*.test.js" }
+}

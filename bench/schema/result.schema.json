@@ -1029,6 +1029,36 @@
         }
       }
     },
+    "sessions": {
+      "description": "Fresh-session tasks only: one entry per session that started, in order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "session",
+          "stream",
+          "sessionId",
+          "runFinishedStatus",
+          "exitCode",
+          "timedOut",
+          "wallClockMs"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "session": { "type": "integer", "minimum": 1 },
+          "stream": { "type": "string" },
+          "sessionId": { "type": ["string", "null"] },
+          "runFinishedStatus": { "type": ["string", "null"] },
+          "exitCode": { "type": ["integer", "null"] },
+          "timedOut": { "type": "boolean" },
+          "wallClockMs": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "sessionsPlanned": {
+      "type": "integer",
+      "minimum": 2
+    },
     "turns": {
       "type": "integer",
       "minimum": 0

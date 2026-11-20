@@ -1,0 +1,5 @@
+[
+  { "code": "N6", "name": "North loop", "stops": 18 },
+  { "code": "S2", "name": "South loop", "stops": 11 },
+  { "code": "E4", "name": "East loop", "stops": 9 }
+]

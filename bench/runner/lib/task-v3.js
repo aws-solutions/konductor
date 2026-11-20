@@ -53,6 +53,7 @@ function v3Errors(task) {
   if (task.questions === 'scripted' && !task.scriptedUser) errors.push('questions "scripted" needs scriptedUser');
   if (task.scriptedUser && task.autonomy) errors.push('scriptedUser and autonomy cannot both be set: a scripted task plays its own facts');
   if (task.scriptedUser && task.questions !== 'scripted') errors.push('scriptedUser is only for questions "scripted"');
+  if (task.freshSessions && (task.autonomy || task.scriptedUser)) errors.push('freshSessions cannot be combined with autonomy or scriptedUser: each later session is a new conversation, not a reply');
   if (task.limits && task.limits.softSec > task.limits.hardSec) errors.push('limits.softSec must not exceed limits.hardSec');
   if (task.phase && (task.phases2 ?? []).includes(task.phase)) errors.push('phases2 must not repeat the main phase');
   const must = task.loadCheck?.mustLoad ?? [];

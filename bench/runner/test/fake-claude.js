@@ -65,6 +65,7 @@ try { turn = fs.readdirSync(cfg.dir).filter((f) => /^started-\\d+\\.json$/.test(
 const startedText = JSON.stringify({
   turn: turn + 1, pid: process.pid, cwd: process.cwd(), home: process.env.HOME, configDir: cfgDir, args, env: process.env, envKeys: Object.keys(process.env),
   rules: list(path.join(cfgDir, 'rules')), agents: list(path.join(cfgDir, 'agents')), configFiles: list(cfgDir),
+  seen: (cfg.probeFiles || []).filter((f) => fs.existsSync(f)),
   stdinIsTty: require('tty').isatty(0),
   stdin: require('tty').isatty(0) ? null : fs.readFileSync(0, 'utf8'),
 });
@@ -83,6 +84,7 @@ for (const name of cfg.foreign || []) fs.mkdirSync(path.join(cfg.foreignBase, 'c
 fs.writeFileSync(path.join(cfg.dir, 'made-' + process.pid + '.json'), JSON.stringify(made));
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
 fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), cfg.helloText || 'hello\\n');
+for (const [f, text] of Object.entries((cfg.turnFiles || [])[turn] || {})) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); }
 if (cfg.leak) console.log(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: process.env.AWS_SECRET_ACCESS_KEY + ' ' + process.env.AWS_SESSION_TOKEN }] }, parent_tool_use_id: null }));
 const finish = () => { process.stdout.write(fs.readFileSync(streamFile, 'utf8')); process.exit(cfg.exitCode || 0); };
 // With otlpLogsFile set and an OTLP logs endpoint in the environment, posts that file's JSON body there first.

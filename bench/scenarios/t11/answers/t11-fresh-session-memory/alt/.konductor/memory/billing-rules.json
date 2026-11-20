@@ -1,0 +1,6 @@
+{
+  "source": "billing review 2026-11-19 (Priya, Tomasz); replaces the September notes in docs/billing-notes.md",
+  "lateFees": "business days after the due date, 0.1% per day rounded down, cap 10%",
+  "reminderBusinessDaysBefore": 3,
+  "reminderMinAmountCents": 500
+}

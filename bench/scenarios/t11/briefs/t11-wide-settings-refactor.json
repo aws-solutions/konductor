@@ -1,0 +1,21 @@
+{
+  "id": "t11-wide-settings-refactor",
+  "kind": "code",
+  "twoStep": true,
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "size": "70 to 85",
+  "ntests": "10 to 14",
+  "ntrap": 4,
+  "voice": "a platform engineer asking a service team to finish a configuration migration",
+  "source": {
+    "url": "https://nodejs.org/api/deprecations.html",
+    "licence": "MIT (Node.js LICENSE, https://github.com/nodejs/node/blob/main/LICENSE, checked 2026-11-20); idea only: a deprecated API is replaced at every call site by a new one with a different signature; no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "briefLine": "Move every caller of the old configuration reader `conf.read('section.key', fallback)` in `lib/conf.js` to the new `config.value('section', 'key', { fallback })` in `lib/config.js` across 60 or more module files, delete `lib/conf.js`, keep every module's behaviour, and leave `third_party/` untouched. Keep the work small in tool calls: ONE hidden test file loops over a table (module path, expected return value) that a script under `gen/` computes by requiring each fixture module before the change; the reference and the alternative answer are produced by scripts under `gen/` that rewrite a copy of the fixture, and only their changed files go into `solution/` and `alt/`.",
+  "brief": "Phase: refactor. Role: developer. Repo: a Node.js logistics back office with modules under `apps/dispatch/`, `apps/warehouse/`, `apps/billing/`, `jobs/` and `lib/`, all reading configuration through an old reader, `conf.read('section.key', fallback)` from `lib/conf.js`, which loads `config/app.json`. The platform team added `lib/config.js` with `config.value(section, key, { fallback })` and wants the old reader gone. The old reader is called in 60 to 64 module files outside `third_party/`. Write them with ONE generator, `gen/make-fixture.js`, from a table of entries: each module is short and real (an exported function that returns an object of the settings it reads, plus one line of logic such as a computed timeout or a joined URL). Seed these traps: (1) some keys are built at run time (a template string such as `queues.${region}.url`, or concatenation), which must split into section and key while keeping the variable part; (2) the old reader is imported under other names in some files (`const readSetting = require('../../lib/conf').read`, destructuring `{ read }`, and a re-export through `lib/index.js`), so a search for `conf.read(` alone misses them; (3) `third_party/` holds a vendored copy of a small library with its own unrelated `conf.read(` method and must not change; (4) a few calls pass a falsy fallback (`0`, `false`, empty string) where the new reader uses the fallback only when the value is `undefined`, the same as the old one, so a change that writes `fallback || x` or drops the fallback changes behaviour; and a few keys have three parts (`a.b.c`), where the section is the first part and the key is the rest joined by dots (state this rule in `lib/config.js`'s doc comment, nowhere in the request). README and `docs/config.md` mention the old reader and should be updated. The request: move every caller to the new reader, delete `lib/conf.js`, keep behaviour, keep the visible suite green, leave `third_party/` as it is. Hidden checks: no file outside `third_party/` requires `lib/conf` under any name; `lib/conf.js` is gone; every caller module's exported function returns the same value as before for the fixed `config/app.json` (from the table); `third_party/` is byte for byte unchanged; the visible suite still passes. Keep the work small in tool calls: the generator, a fixed `config/app.json`, the two readers, `lib/index.js`, the docs and 6 to 8 visible tests named `*.test.js`. Run the generator once, run it again to check it gives the same bytes, and read a sample of three modules. Do not write module files one by one."
+}

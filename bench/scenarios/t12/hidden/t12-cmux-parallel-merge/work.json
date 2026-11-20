@@ -1,0 +1,12 @@
+{
+  "base": "cfb15b94b44e38633e5b3cf01b7ed98b0544e702",
+  "tickets": [
+    { "id": "CMX-1", "files": ["src/format.js"], "test": "hidden-tests/CMX-1.test.js" },
+    { "id": "CMX-2", "files": ["src/commands/tag.js"], "test": "hidden-tests/CMX-2.test.js" },
+    { "id": "CMX-3", "files": ["src/commands/stats.js"], "test": "hidden-tests/CMX-3.test.js" }
+  ],
+  "extra": [
+    { "name": "merged: tag and stats both registered, stats writes reading time as the list does", "test": "hidden-tests/merged.test.js" }
+  ],
+  "hidden": ["work.test.js", "work.json", "git-work.js", "hidden-tests/"]
+}

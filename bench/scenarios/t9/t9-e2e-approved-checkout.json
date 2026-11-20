@@ -1,0 +1,111 @@
+{
+  "id": "t9-e2e-approved-checkout",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "The Larkspur Tea checkout page (static files in site/, rules in docs/checkout.md) only has one browser smoke test in e2e/. Before 1.5 goes out I want real end-to-end coverage of what a shopper does at checkout: changing quantities and removing lines, an empty basket, the delivery choice, promo codes that work and ones that don't, the details form when something is wrong, and the confirmation. Put the new tests in e2e/ as *.e2e.test.js files on top of the existing set-up in e2e/support/browser.js, so that `node --test --test-timeout=20000 e2e/*.e2e.test.js` runs them, and they must pass on the page as it is today. Design is about to rework the markup, so element ids and class names will change; the labels, button names and text shoppers see will stay. Leave site/ and the unit tests alone: if a test shows a real bug, tell me rather than fixing the page. No need to push. Yes, go ahead with tests for that whole checkout journey. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "fixture": "t9-e2e-approved-checkout",
+  "hidden": "t9-e2e-approved-checkout",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 kills-a.test.js",
+      "min": 4,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 kills-b.test.js",
+      "min": 4,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 kills-c.test.js",
+      "min": 3,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git --git-dir=remote.git rev-parse refs/heads/main)\" = 364fb4780742325d6341a36612eb4980b9a3f498 && git diff --quiet 364fb4780742325d6341a36612eb4980b9a3f498 HEAD -- site test && git diff --quiet -- site test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git branch --show-current)\" = feature/checkout-e2e && test \"$(git rev-list --count b97e02b7d12fa18f81c563582f811498c934e64e..HEAD)\" -ge 1 && git diff --name-only b97e02b7d12fa18f81c563582f811498c934e64e HEAD | grep -q '^e2e/.*\\.e2e\\.test\\.js$' && test -z \"$(git status --porcelain -- e2e site test)\"",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git grep -h -E '^[[:space:]]*(test|it)[[:space:]]*\\(' HEAD -- 'e2e/*.e2e.test.js' | wc -l)\" -ge 6",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test 'test/*.test.mjs'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "report",
+      "criterion": "The final message says what the new tests cover, which command was run with what result, and that the work was committed on feature/checkout-e2e, without claiming a page bug it did not show (code cannot check this because it reads the agent's message, not the repository). Fail: no account of the run, or a claimed result that did not happen. Partial: lists the tests but gives no command or result, or does not say where the commit went. Pass: names the areas covered, the command and its pass count, and the branch and commit.",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "e2e-test-strategy"
+  ],
+  "targetSop": "k-e2e-test-generation",
+  "targetAgent": "k-browser",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "k-e2e-test-generation"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "kirocrew-mate-worker",
+    "date": "2026-11-20",
+    "source": "original"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 4.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 4.1,
+      "lazy": 22.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

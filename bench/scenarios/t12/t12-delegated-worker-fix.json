@@ -1,0 +1,151 @@
+{
+  "id": "t12-delegated-worker-fix",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "multi-phase",
+  "phases2": [
+    "bugfix",
+    "code-review"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Two bugs came in from the counter: docs/issues/PD-41.md and docs/issues/PD-44.md. I want each one handed to its own worker, a separate agent that gets only what it needs for its issue, and not fixed by you directly. Each worker works in its own git worktree on its own branch made from main and changes only the files its issue needs. Every fix comes with a regression test under test/ that fails without the fix. Review each worker's change against CONTRIBUTING.md before you merge it, and send it back if it breaks a house rule. Then merge each branch into main with its own merge commit (no fast-forward, no squash); node --test test/*.test.js must pass after each merge. When you are done, remove the extra worktrees, delete the worker branches, and leave main checked out with a clean working tree.",
+  "fixture": "t12-delegated-worker-fix",
+  "hidden": "t12-delegated-worker-fix",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=120000 work.test.js",
+      "min": 9,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/issues",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "CONTRIBUTING.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "worker-briefs-and-review",
+      "weight": 1,
+      "criterion": "The history shows two separate pieces of work that were each checked before they were merged. Fail: one branch or commit holds both fixes, or a branch's commit messages say nothing about its issue. Partial: each branch holds one fix with a message naming its issue, but nothing in the history or the merge messages shows the change was checked against CONTRIBUTING.md (for example a merge message that only says 'merge'). Pass: each branch's commits name the issue and what changed, and each merge message or a commit on main records what was checked (the house rule kept, the tests run) before the merge. (code cannot check this because whether a message is a real review is a judgement)"
+    }
+  ],
+  "targetSkills": [
+    "delegation-protocol",
+    "git-merge",
+    "code-review"
+  ],
+  "targetSop": "k-delegate",
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate CV-A worker (owner-approved coverage review addition 1); needs the non-Claude recheck in review.recheck"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-A worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 33.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "review": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt requires a specific orchestration approach (separate workers, branches, worktrees, merge commits) which is the educational goal of the task, not a leak of helper tools or skills."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements are clear: two specific bugs in issue files, each fixed by separate worker on separate branch with regression test, reviewed against CONTRIBUTING.md, merged with separate merge commits, worktrees cleaned up."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture shows what's wrong (buggy weight.js and eta.js, detailed issue descriptions) but not how to fix it; hidden tests specify expected behavior, not implementation."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Quick wrong answers (fixing on main, skipping tests, or merging incorrectly) are caught by git-work.js checking for separate worker merges and the rubric's requirement for reviewed separate work."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All test expectations derive from fixture: PD-41 conversions from issue math, PD-44 dates from holidays.json and weekend logic from issue description."
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt does not name a specific method, helper tool, or decoy beyond git and the required orchestration pattern."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows buggy code and describes problems in issue tickets, but does not provide the corrected implementation."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden test values (1.361 for 3 lb, specific delivery dates) follow directly from issue descriptions, holidays.json, and basic arithmetic."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Task can be solved entirely from fixture: bugs clearly described, CONTRIBUTING.md provides rules, existing tests show patterns, code shows what needs changing."
+        }
+      ]
+    }
+  }
+}

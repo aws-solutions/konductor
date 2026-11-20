@@ -1,0 +1,9 @@
+{
+  "note": "one agent did all three tickets itself, straight on main in one commit: right code, no worker branches, no merges",
+  "direct": [
+    "MUX-1",
+    "MUX-2",
+    "MUX-3"
+  ],
+  "message": "MUX-1, MUX-2, MUX-3"
+}

@@ -1,0 +1,14 @@
+{
+  "invoices": [
+    { "id": "INV-2031", "customer": "Northwind-Studio", "amountCents": 125000, "issuedOn": "2026-10-07", "dueOn": "2026-11-06", "paidOn": null },
+    { "id": "INV-2032", "customer": "Harbor-Lane-Design", "amountCents": 48000, "issuedOn": "2026-10-09", "dueOn": "2026-11-09", "paidOn": "2026-11-05" },
+    { "id": "INV-2033", "customer": "Okafor-Legal", "amountCents": 260000, "issuedOn": "2026-10-14", "dueOn": "2026-11-13", "paidOn": "2026-11-18" },
+    { "id": "INV-2034", "customer": "Bluefin-Labs", "amountCents": 9900, "issuedOn": "2026-10-20", "dueOn": "2026-11-19", "paidOn": null },
+    { "id": "INV-2035", "customer": "Marlow-and-Pike", "amountCents": 450, "issuedOn": "2026-10-26", "dueOn": "2026-11-25", "paidOn": null },
+    { "id": "INV-2036", "customer": "Quill-Coffee", "amountCents": 31500, "issuedOn": "2026-10-26", "dueOn": "2026-11-25", "paidOn": null },
+    { "id": "INV-2037", "customer": "Tern-Analytics", "amountCents": 72000, "issuedOn": "2026-10-30", "dueOn": "2026-11-30", "paidOn": null },
+    { "id": "INV-2038", "customer": "Northwind-Studio", "amountCents": 125000, "issuedOn": "2026-11-02", "dueOn": "2026-12-02", "paidOn": null },
+    { "id": "INV-2039", "customer": "Vale-Robotics", "amountCents": 500, "issuedOn": "2026-11-03", "dueOn": "2026-12-03", "paidOn": null },
+    { "id": "INV-2040", "customer": "Okafor-Legal", "amountCents": 260000, "issuedOn": "2026-11-09", "dueOn": "2026-12-09", "paidOn": null }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "note": "half done: the refund fix first and the patch review; BK-215 and the waitlist spec never started",
+  "commits": [
+    { "dir": "1-repair", "message": "Fix refunds 24 to 48 hours before check-in" },
+    { "dir": "2-review", "message": "Review of the overlap patch" }
+  ]
+}

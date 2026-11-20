@@ -475,7 +475,7 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `medium`, `high`, `xhigh` or `max`; default `high`, the same as Kiro CLI arms), and recorded in each result, `run-config.json`
   (`effort`, `claudeCode.effort`), `env.json` and the report header. A claude whose binary has no `--effort` flag is refused.
   Runs made before this record `effort: default` (claude's own default, not passed). `--stop-on`, `--max-tool-calls`,
-  `--run-credit-limit`, `--aws-creds-file` and `--agent-engine` are refused for these arms. Multi-turn (autonomy) tasks are not supported yet and are refused when the run starts.
+  `--run-credit-limit`, `--aws-creds-file` and `--agent-engine` are refused for these arms. Multi-turn (autonomy or fresh-session) tasks are not supported yet and are refused when the run starts.
 - Credentials come from the environment of the shell that starts the bench: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
   `AWS_SESSION_TOKEN`, for example from `aws configure export-credentials --format env`. They go to claude through its
   process environment only; no file is written. `AWS_PROFILE`, `AWS_DEFAULT_PROFILE`, `AWS_CONFIG_FILE` and
@@ -1087,6 +1087,15 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   answer. It names no method, skill or agent, so it favours no arm. The marker earns nothing over plain prose: an arm that asks in prose is
   read by the same extractor and answered the same way. Chosen over an answers file in the workspace (an agent would read every answer without asking, so asking is not
   measured) and over dropping `--no-interactive` (the runner drives each turn as a headless process). Not run on a real model yet.
+- Fresh-session tasks (`freshSessions: [{prompt}, ...]`, the prompts of the sessions after the first, at most 3). Session 1 runs
+  the task's `prompt` and ends; each later prompt starts a NEW conversation (no `--resume` on Kiro CLI or Claude Code) in the
+  same workspace and scratch HOME, so files the agent saved (for example under `.konductor/memory`) are still there. A session
+  that does not end cleanly ends the task. The timeout and `--run-credit-limit` cover all sessions together. Per-session
+  streams are `stream-N.jsonl`, joined into `stream.jsonl`; `result.json` lists each session in `sessions` (stream file,
+  session id, finish status, exit code, wall clock) and `sessionsPlanned`. Claude Code cost and tokens are summed over the
+  conversations (its result totals are cumulative within one); on Kiro CLI the model of every top-level session joins the
+  model check. Not with `autonomy` or `scriptedUser`; refused on opencode and Strands arms (`supports.freshSessions`). Covered by
+  `runner/test/fresh-sessions.test.js` with fake agents; not run on a real model yet.
 - Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
   `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,
   questions on the no-question task and unmatched questions (shown apart), cap hits, intended and invariant tests,

@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-schema-migrate",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 17,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
@@ -26,27 +26,27 @@
       "cmd": "node --test",
       "expectExit": 0,
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
       "cmd": "test \"$(cat test/*.test.js | grep -c \"^test(\")\" -ge 9",
       "expectExit": 0,
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
       "cmd": "node -e \"const p=require('./package.json'); process.exit(p.dependencies || p.devDependencies ? 1 : 0)\"",
       "expectExit": 0,
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "file_exists",
       "path": "migrations/013-split-customer-address.js",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "contains",
@@ -166,13 +166,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 16.5,
-    "decision": "fix",
+    "stub": 0,
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 15.6,
-      "lazy": 49.2,
+      "stub": 0,
+      "lazy": 33.3,
       "alt": 100,
       "date": "2026-11-20"
     }

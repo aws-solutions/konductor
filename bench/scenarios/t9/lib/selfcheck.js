@@ -39,7 +39,10 @@ function buildHidden(draftDir, draft) {
 function runTests(ws, cmd) {
   const env = { ...process.env, TMPDIR: fs.mkdtempSync(path.join(os.tmpdir(), 't9-self-tmp-')) };
   delete env.NODE_TEST_CONTEXT;
-  const r = spawnSync('sh', ['-c', cmd], { cwd: ws, env, encoding: 'utf8', timeout: 300000 });
+  // On a shared host, browser runs take the host's heavy-work lock so only one browser runs at a time.
+  const lock = '/var/tmp/konductor-heavy.lock';
+  const argv = fs.existsSync(lock) ? ['flock', ['-x', lock, 'sh', '-c', cmd]] : ['sh', ['-c', cmd]];
+  const r = spawnSync(argv[0], argv[1], { cwd: ws, env, encoding: 'utf8', timeout: 600000 });
   fs.rmSync(env.TMPDIR, { recursive: true, force: true });
   const out = `${r.stdout || ''}\n${r.stderr || ''}`;
   const pass = Number((/^(?:#|ℹ) pass (\d+)/m.exec(out) || [])[1] || 0);

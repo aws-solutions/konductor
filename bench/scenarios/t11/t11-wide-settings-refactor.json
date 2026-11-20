@@ -1,0 +1,168 @@
+{
+  "id": "t11-wide-settings-refactor",
+  "class": "hard",
+  "version": 1,
+  "phase": "refactor",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please finish the configuration migration in this service. Every settings caller outside `third_party/` must use the interface in `lib/config.js`, whose `value` entry takes a section, a key, and an options object with a `fallback` field. Preserve each module's returned settings and its derived value against the fixed data in `config/app.json`. Remove `lib/conf.js`, remove the old `read` export from `lib/index.js`, and update its settings export to use the current interface. Refresh the old-reader wording in `README.md` and `docs/config.md`. Leave `.github/workflows/ci.yml`, `CHANGELOG.md`, `docs/operations.md`, and `config/app.json` intact. Keep `config/app.json` as valid JSON, keep the CommonJS module format, leave every byte under `third_party/` unchanged, and keep all existing files in `test/*.test.js` passing. Do not add packages or change unrelated behavior.",
+  "fixture": "t11-wide-settings-refactor",
+  "hidden": "t11-wide-settings-refactor",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "third_party/tiny-settings/index.js",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "not_contains",
+      "path": "lib/index.js",
+      "pattern": "require\\(['\"]\\.\\/conf['\"]\\)",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('node:fs'); const text=fs.readFileSync('README.md','utf8')+fs.readFileSync('docs/config.md','utf8'); if(/conf\\.read/i.test(text)) process.exit(1); const files=[]; function walk(d){for(const n of fs.readdirSync(d)){if(d==='.'&&n==='third_party') continue; const p=d==='.'?n:d+'/'+n; if(fs.statSync(p).isDirectory()) walk(p); else if(p.endsWith('.js')) files.push(p);}} walk('.'); const requirePattern=/require\\s*\\(\\s*(['\\\"])([^'\\\"]+)\\1\\s*\\)/g; if(files.some(p=>{const source=fs.readFileSync(p,'utf8'); return [...source.matchAll(requirePattern)].some(match=>{const target=match[2]; return target==='conf' || target.endsWith('/conf') || target.endsWith('/conf.js');});})) process.exit(1);\"",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "migration-clarity",
+      "criterion": "The documentation explains the current settings interface in terms that an operator can apply. Fail: README.md or docs/config.md still describes conf.read as the way to read settings, or says nothing usable about config.value. Partial: both files name config.value, but leave out how a dotted key becomes a section and a key, or how the fallback behaves. Pass: both files describe config.value(section, key, { fallback }) with a worked example, how a key with more than two parts is split, and that the fallback applies only when the value is missing, and neither presents the removed reader as current. (code cannot check this because execution cannot judge whether prose is clear to its intended reader)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "agents-md-authoring",
+    "workspace-skills"
+  ],
+  "targetSop": "k-codebase-analysis",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "agents-md-authoring",
+      "workspace-skills",
+      "k-codebase-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://nodejs.org/api/deprecations.html",
+      "licence": "MIT (Node.js LICENSE, https://github.com/nodejs/node/blob/main/LICENSE, checked 2026-11-20); idea only: a deprecated API is replaced at every call site by a new one with a different signature; no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "note": "two-step: step 1 wrote the fixture and the request, step 2 (a separate call) the hidden checks and answers"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks to migrate callers to config.value() interface without naming specific methods or traps. It only specifies the interface signature and what files to modify."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Fixed in the author's fix round: the request now says the old read export goes away from lib/index.js; 'derived value' is each module's own computed field, which the fixture modules return and the request says to preserve. (reviewer: The request says 'preserve each module's returned settings and its derived value against the fixed data in config/app.json' but doesn't specify what 'derived value' means. However, tests in lib/audit-prefix.js show modules calling read() from lib/index.js, which the fixture exports with both read and value. The hidden tests reveal callers expect the old read interface in lib/index.js, but the request doesn't clarify whether lib/index.js.read should be removed or preserved.)"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The caller table lives in the hidden test, which the agent never sees; nothing in the fixture lists the expected calls. (reviewer: The hidden-behaviour.test.js contains callerTable with 62 caller modules and their exact expected calls to config.value(section, key, {fallback}). This reveals the precise migration pattern (e.g., how dotted keys split into section/key, how queue modules use runtime region). Comments in the hidden test itself also reveal the answer about queue callers needing runtime region in the key.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The reviewer's own note shows a quick answer passes 1 of 10 hidden tests; the dry run scores the plain fixture 7.1 and the lazy answer 14.3. (reviewer: A quick wrong answer would be to just change require('./conf') to require('./config') and call config.value() without properly transforming the dotted keys or handling runtime region for queue callers. Test '#0 tests' in selfcheck shows this would only pass 1/10 hidden tests (the simple ones like config.value with static keys).)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The fixture's callers read the setting when called, so a behaviour-preserving change keeps reading it at run time; the queue modules already take the region as an argument. The worker's own floor finding (a docs check that failed the words legacy or old reader) was fixed in the fix round. (reviewer: The hidden test '#5 caller results respond to a changed reader value' monkey-patches config.value() and expects callers to call it dynamically. This cannot be derived from the request or fixture—users must infer that config.value must be called at runtime, not pre-computed. The fixture's jobs/eu-queue.js uses `queues.${region}.url` as a template literal in conf.read(), but the test expects region to be a runtime parameter passed to the function, not a compile-time constant.)"
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt only mentions the migration task using config.value from lib/config.js. It names no external method or alternative approach as a decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture/test/*.test.js files (7 visible tests) and fixture/lib/* do not contain any solution code or answers—only test cases and the old implementation files."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden/hidden-behaviour.test.js contains callerTable with 62 entries matching the fixture's module structure (apps/, jobs/, lib/), and the test assertions verify the same behavior expected from the fixture code."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The prompt, fixture (lib/config.js with the new interface, config/app.json with data), and documentation define the task completely: replace conf.read imports with config.value calls, update lib/index.js to remove read export, remove lib/conf.js, and refresh README.md/docs/config.md wording."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 14.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (CV-C session)",
+    "log": "HAND-EDITS.md"
+  }
+}

@@ -177,7 +177,7 @@ function auditContamination({ task, arm, ctx, outDir, cwd }) {
 function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tripwire, conv = null }) {
   const checkIso = task.real ? makeIso(ctx, arm, runRoot, task, { offline: true }) : iso;
   const harness = harnessFor(arm);
-  harness.parseResult(outDir, { home, tmpdir: path.join(runRoot, 'tmp'), acc, arm, ctx, config: ctx.config });
+  harness.parseResult(outDir, { home, tmpdir: path.join(runRoot, 'tmp'), acc, arm, ctx, config: ctx.config, freshSessions: Boolean(task.freshSessions) });
 
   try {
     snapshotWorkspace(cwd, path.join(outDir, 'workspace'));
@@ -252,20 +252,36 @@ function concatTurnFiles(outDir, base, name, turns) {
   if (any) fs.writeFileSync(path.join(outDir, base), parts.join(''));
 }
 
+// One session of a fresh-session task, as result.json records it. `stream` is its own stdout file in the out dir.
+const sessionEntry = (exec, n, summary) => ({
+  session: n, stream: streamFile(true, n), sessionId: summary?.sessionId ?? null, runFinishedStatus: summary?.runFinishedStatus ?? null,
+  exitCode: exec.exitCode ?? null, timedOut: Boolean(exec.timedOut), wallClockMs: exec.wallClockMs ?? null,
+});
+
 /**
  * Runs the agent: once, or for an autonomy task as a conversation. After a turn that ended cleanly and asked
  * something, the scripted user answers and the same session resumes (same cwd, same scratch HOME, so the credential
  * copy is still there). The task timeout is one budget for all turns. Every turn goes through the same isolation.
- * Fills `conv` as it goes; returns the combined exec record.
+ * A task with `freshSessions` runs each of those prompts after the first, once the previous session ended cleanly, as a NEW
+ * conversation (no resume) in the same cwd and scratch HOME, so whatever the agent saved in the workspace is still there.
+ * Fills `conv` as it goes; returns the combined exec record, with one entry per session in `sessions` for a fresh-session task.
  */
 async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt, plantRun = null }) {
-  const multi = Boolean(task.autonomy);
+  const fresh = task.freshSessions ?? [];
+  const multi = Boolean(task.autonomy) || fresh.length > 0;
   const deadline = Date.now() + task.timeoutSec * 1000;
   const execs = [];
   let resume = null;
   let sessionId = null;
   let turn = 0;
   let spent = 0;
+  // Credits that only arrive when a turn ends (engine v3) can be checked here, so the next turn is not started.
+  const overLimitAfter = (exec) => {
+    if (ctx.runCreditLimit == null || spent <= ctx.runCreditLimit) return false;
+    exec.creditLimitHit = true;
+    exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${spent.toFixed(3)} credits (checked when turn ${turn} ended; no further turn was started)`;
+    return true;
+  };
   try {
     for (;;) {
       turn++;
@@ -274,11 +290,12 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         execs.push({ exitCode: null, timedOut: true, wallClockMs: 0, error: null });
         break;
       }
-      const cmd = harness.buildCommand({ arm, task, config, ctx, cwd, resume });
+      const turnTask = fresh.length && turn > 1 ? { ...task, prompt: fresh[turn - 2].prompt } : task;
+      const cmd = harness.buildCommand({ arm, task: turnTask, config, ctx, cwd, resume });
       if (turn === 1) {
         fs.writeFileSync(path.join(outDir, 'command.txt'), `${cmd.display}\n(cwd=<fresh copy of ${task.real ? `real task ${task.real}` : `fixture ${task.fixture}`}>, isolation=${iso.mode})\n`);
       } else {
-        fs.appendFileSync(path.join(outDir, 'command.txt'), `--- turn ${turn} (resumed) ---\n${cmd.display}\n`);
+        fs.appendFileSync(path.join(outDir, 'command.txt'), `--- turn ${turn} (${resume ? 'resumed' : 'fresh session, same workspace'}) ---\n${cmd.display}\n`);
       }
       const w = iso.wrap(cmd.file, cmd.args);
       // A harness that takes its prompt on stdin keeps it out of argv; the runner opens the file, so the mask on outDir does not matter.
@@ -309,14 +326,15 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       const clean = exec.exitCode === 0 && !exec.timedOut && !exec.error;
       const summary = clean ? harness.turnSummary(readIfPresent(path.join(outDir, streamFile(multi, turn)))) : null;
       const finished = summary && summary.runFinishedStatus === 'success' ? summary : null;
+      if (fresh.length) {
+        exec.session = sessionEntry(exec, turn, summary);
+        // A session that did not finish cleanly ends the task: the next one would start from a half-written state.
+        if (!finished || turn > fresh.length || overLimitAfter(exec)) break;
+        continue; // resume stays null: the next prompt opens a new conversation
+      }
       const reply = conv.record(finished);
       if (!reply) break;
-      // Credits that only arrive when a turn ends (engine v3) can be checked here, so the next turn is not started.
-      if (ctx.runCreditLimit != null && spent > ctx.runCreditLimit) {
-        exec.creditLimitHit = true;
-        exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${spent.toFixed(3)} credits (checked when turn ${turn} ended; no further turn was started)`;
-        break;
-      }
+      if (overLimitAfter(exec)) break;
       sessionId = finished.sessionId ?? sessionId;
       resume = { sessionId, prompt: reply.text };
     }
@@ -337,6 +355,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     wallClockMs: execs.reduce((n, e) => n + (e.wallClockMs ?? 0), 0),
     error: last.error ?? null,
     startedAt,
+    ...(fresh.length ? { sessions: execs.map((e, i) => e.session ?? sessionEntry(e, i + 1, null)), sessionsPlanned: fresh.length + 1 } : {}),
   };
 }
 

@@ -32,7 +32,7 @@ let turn = 0;
 try { turn = fs.readdirSync(cfg.dir).filter((f) => /^started-\\d+\\.json$/.test(f)).length; } catch { /* read-only probe directory */ }
 const tc = { ...cfg, ...((cfg.turns || [])[Math.min(turn, (cfg.turns || []).length - 1)] || {}) };
 const authFile = path.join(process.env.HOME, process.platform === 'darwin' ? 'Library/Application Support/kiro-cli' : '.local/share/kiro-cli', 'data.sqlite3');
-const started = JSON.stringify({ pid: process.pid, cwd: process.cwd(), home: process.env.HOME, args, envKeys: Object.keys(process.env), authPresent: fs.existsSync(authFile), turn: turn + 1 });
+const started = JSON.stringify({ pid: process.pid, cwd: process.cwd(), home: process.env.HOME, args, envKeys: Object.keys(process.env), authPresent: fs.existsSync(authFile), turn: turn + 1, seen: (cfg.probeFiles || []).filter((f) => fs.existsSync(f)) });
 // startDelayMs: a slow boot on a busy host, so a short timeout can kill the agent before it writes started.json.
 if (cfg.startDelayMs) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, cfg.startDelayMs);
 try { writeAtomic(path.join(cfg.dir, 'started.json'), started); writeAtomic(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), started); } catch { /* the probe directory is read-only inside a namespace */ }
@@ -49,7 +49,7 @@ if (tc.dumpRequests && process.env.KIRO_DUMP_REQUESTS_DIR) {
   fs.writeFileSync(path.join(d, '0000-1000.json'), JSON.stringify({ cwd: process.cwd(), home: process.env.HOME, dumpDir: process.env.KIRO_DUMP_REQUESTS_DIR }));
 }
 for (const [f, text] of Object.entries(tc.files || {})) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); }
-const sid = cfg.sessionId || 's1';
+const sid = tc.sessionId || 's1';
 // Engine v3 titles a call instead of naming the tool, marks a sub-agent call with its own subtask id, and reports
 // credits once, in a turn_completion summary.
 const V3_TITLES = { read_file: 'Read File', fs_write: 'Write File', execute_bash: 'Run Command' };

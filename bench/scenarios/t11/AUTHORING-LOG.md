@@ -57,3 +57,28 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-docx-room-booking-reqs | review | glm-5 | 3.56 |  |
 | t11-docx-room-booking-reqs | fix | gpt-5.6-luna | 1.99 |  |
 | t11-twin-pricing-validation | recheck | qwen3-coder-next | 0.15 |  |
+
+## CV-C calls (2026-11-20)
+
+Worker CV-C: `t11-fresh-session-memory` (written by hand, Claude) and `t11-wide-settings-refactor` (gpt-5.6-luna, two steps).
+Spend rule: every paid call is counted at 15 credits before it starts, one call at a time; estimate 90, stop 180.
+Calls run through a spend-checked wrapper in a scratch HOME holding only the Kiro login (settings: memory off,
+reflection off, knowledge off; no steering, skills, MCP or agents), from a working directory outside every git worktree,
+with a cleared environment, a tool-call cap of 150 (glm-5 80) and an abort at 15 credits. The credits column is what
+the call reported.
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t11-wide-settings-refactor | step1 | gpt-5.6-luna | 4.77 |  |
+| t11-wide-settings-refactor | step2 | gpt-5.6-luna | 4.79 |  |
+| t11-wide-settings-refactor | map | glm-5 | 0.16 | proposed backend-development, code-review, verification; the task keeps the targets of the approved coverage review (agents-md-authoring, workspace-skills, SOP k-codebase-analysis) |
+| t11-fresh-session-memory | map | glm-5 | 0.16 | proposed no target; the task keeps the targets of the approved coverage review (persistent-memory, sop-state-management, workspace-skills) |
+| t11-wide-settings-refactor | review | qwen3-coder-next | 0.40 |  |
+| t11-fresh-session-memory | review | qwen3-coder-next | 0.60 |  |
+| t11-wide-settings-refactor | fix | gpt-5.6-luna | 1.07 |  |
+| t11-wide-settings-refactor | recheck (after the rubric hand edit) | qwen3-coder-next | 0.20 | 4 of 4 pass |
+
+CV-C blindness audit (`stage.js audit`, every stream of both tasks): 0 reads of a konductor skills/, agent-sops/, agents/ or
+context/ path. The only paths outside the authoring dir are this batch's own `t11/lib/selfcheck.js` (through
+`kit/selfcheck.js`) and the authoring dir's own root, which the audit lists as "other batch" only because the authoring
+dir is not named `<worktree>auth`. Total for CV-C: 8 calls, 12.15 credits reported, 120 counted against the stop of 180.

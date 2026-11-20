@@ -1,0 +1,32 @@
+{
+  "note": "glue only: the author's per-ticket work (step 2) done by three workers on their own worktrees and branches, merged in ticket order, cleaned up",
+  "workers": [
+    {
+      "branch": "mux-1",
+      "steps": [
+        "MUX-1"
+      ],
+      "message": "MUX-1"
+    },
+    {
+      "branch": "mux-2",
+      "steps": [
+        "MUX-2"
+      ],
+      "message": "MUX-2"
+    },
+    {
+      "branch": "mux-3",
+      "steps": [
+        "MUX-3"
+      ],
+      "message": "MUX-3"
+    }
+  ],
+  "merge": [
+    "mux-1",
+    "mux-2",
+    "mux-3"
+  ],
+  "cleanup": true
+}

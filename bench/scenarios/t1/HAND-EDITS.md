@@ -69,6 +69,17 @@ Hand-written lazy answers (the review-fix2 lead). Five model-written lazy answer
 
 The merge with the other session's gate fixes (d4d31105) had no conflicts; all of its lazy, alternative and anchor changes are kept as they are. One follow-up, in the `pilot` field only (no prompt, fixture, key, check or rubric change): `pilot.decision` was still `fix` on tasks whose recorded `pilot.dryRun` now meets every free gate (reference 95+, stub 20-, lazy 40-, alternative 80+), so it was set to `keep` on: t1-bug-cache-ttl, t1-bug-date-range, t1-bug-event-listeners, t1-impl-cli-envprefix, t1-impl-job-retry, t1-impl-money-split, t1-impl-rate-limit, t1-impl-settings-expand, t1-impl-webhook-verify, t1-neg-config-alias, t1-nfr-ndjson-stream, t1-nfr-startup-lazy, t1-ref-dep-upgrade, t1-twin-webhook-routes. t1-ref-callbacks and t1-ref-schema-migrate were left unchanged (owner ruling pending, D-118).
 
+## D-118 scoring fix (2026-11-20, lead session, family claude)
+
+Owner ruling D-118: a half-done answer must score 40 or less. Both tasks keep their hand-written half-done lazy answer. Only the scoring changed, so the lazy answer itself was not touched.
+
+| Task | What changed | Why | Free gates after (reference / stub / lazy / alt) |
+| --- | --- | --- | --- |
+| t1-ref-callbacks (v4) | `hidden/api.test.js`: the four preservation tests are now one test. They are concurrency, result order, the empty summary and CLI success, and the untouched code passes them too. The tests check `min` drops from 18 to 15. The five non-test checks (own suite passes, 8 or more tests, no new dependency, CHANGELOG, README mentions promises) are now `kind: format`: reported, not scored. | The lazy answer migrated only `runPipeline`. It still scored 49.6, because it passed the four keep-behaviour tests and every cheap check. It now passes 5 of 15 hidden tests. | 100 / 0 / 33.3 / 100 |
+| t1-ref-schema-migrate (v4) | `hidden/`: seven one-test files are merged into two tests. `plumbing.test.js` covers the twelve old files kept, the new file exporting both directions, the CLI JSON, and version 13 recorded once. `up-backfill.test.js` covers the table created, legacy columns dropped, fields copied, and duplicates kept apart. The tests check `min` drops from 17 to 12. The five non-test checks are now `kind: format`. | The lazy answer wrote the migration but left the repository untouched. It scored 49.2 on wiring and backfill basics plus cheap checks. It now passes 4 of 12 hidden tests. | 100 / 0 / 33.3 / 100 |
+
+No test was removed: every old assertion still runs inside the merged tests. Both dry runs repeated 3 times with the same result, and the canary and per-test timeouts pass. No model call was made. A non-Claude re-check of this scoring edit has not been run yet.
+
 ## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
 
 Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and

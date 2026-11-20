@@ -31,11 +31,14 @@ node bench/scenarios/lib/stage.js --config bench/scenarios/t11/scenario.config.j
 The second author family writes in two calls (`twoStep` in the brief): step 1 the fixture and the request, step 2,
 from the fixture and step 1's `design.md` only, the hidden checks and the answers.
 
-## Not in this batch
+## Two sessions and wide changes
 
-A task where a second, fresh session must use what a first session learned needs the runner to start a new session
-in the same workspace and HOME. The runner's multi-turn mode resumes the same conversation (`--resume`), and only
-when the agent asked a question, so it cannot test memory across sessions. That task waits for runner support.
+`t11-fresh-session-memory` runs in two sessions (`freshSessions` in the task file, runner reference "Fresh-session
+tasks"): session 1's request carries a billing review's settled rules and asks for part of the work; session 2 is a new
+conversation in the same workspace that asks for the rest and says to follow the review, without restating it. The
+fixture's only rule source for that part is a stale note. Its `answers/<id>/shallow/` is an answer that followed the
+stale note, gated at 40 or less like a lazy answer (`scenario.config.js` `modes`).
 
 `t11-wide-settings-migration` (a change across 60 or more files) was dropped after three second-family tries; its brief
-stays in `briefs/` and the reasons are in `HAND-EDITS.md` under Dropped.
+stays in `briefs/` and the reasons are in `HAND-EDITS.md` under Dropped. `t11-wide-settings-refactor` is the new try
+(a new id), with one generator and the key computed by a script.

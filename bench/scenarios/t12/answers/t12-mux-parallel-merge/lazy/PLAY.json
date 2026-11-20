@@ -1,0 +1,16 @@
+{
+  "note": "a third done: MUX-1 by its own worker, merged and cleaned up; MUX-2 and MUX-3 never started",
+  "workers": [
+    {
+      "branch": "mux-1",
+      "steps": [
+        "MUX-1"
+      ],
+      "message": "MUX-1"
+    }
+  ],
+  "merge": [
+    "mux-1"
+  ],
+  "cleanup": true
+}
