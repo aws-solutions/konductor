@@ -1,7 +1,7 @@
 {
   "id": "t10-arch-outbox",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "multi-phase",
   "role": "architect",
   "phases2": [
@@ -11,7 +11,7 @@
     "release-ops"
   ],
   "questions": "allowed",
-  "prompt": "The checkout team needs payment-status notifications that do not disappear when an order write succeeds and do not create a second event when a caller retries. Please take this from design to release.\n\nFirst write a short design note at docs/design/payment-status-events.md explaining the implementation and operational decisions. Then build the feature in the repository with tests, and update .github/workflows/ci.yml if the new tests need a CI change. The public interfaces are: createJsonStore(filePath) and store.read(name), store.atomicWrite(changes) from src/store.js; createOrder(store, input, clock), updatePaymentStatus(store, orderId, status, options), and getOrder(store, id) from src/orders.js; appendStatusEvent(store, orderId, status, occurredAt, options) and publishPending(store, broker, options) from src/status-events.js; InProcessBroker from src/broker.js; request(method, path, body, dependencies) from src/http.js; and loadConfig(env) from src/config.js. publishPending options include now() returning epoch milliseconds, instanceId, claimMs, concurrency, limit, baseDelayMs, maxAttempts, publishTimeoutMs, and metrics. The publisher result includes attempted, published, failed, and deadLettered. Use STATUS_EVENTS_PUBLISH_BASE_DELAY_MS, STATUS_EVENTS_PUBLISH_CLAIM_MS, STATUS_EVENTS_PUBLISH_MAX_ATTEMPTS, STATUS_EVENTS_PUBLISH_CONCURRENCY, and STATUS_EVENTS_PUBLISH_TIMEOUT_MS and boolean STATUS_EVENTS_PUBLISH_ENABLED; durations are integer milliseconds and counts are unitless. Errors use ORDER_NOT_FOUND, INVALID_STATUS, INVALID_INPUT, BROKER_MESSAGE_TOO_LARGE, and BROKER_TIMEOUT. The HTTP paths are POST /orders (201), PATCH /orders/:id/payment-status (202), GET /orders/:id (200 or 404), and POST /internal/status-events/publish (200).\n\nNext write a rollout plan at docs/rollout/payment-status-events.md, and add a useful Unreleased CHANGELOG entry as the release note. End each document with its last fenced json block. The design block is an object with decisions (topic, choice, reason), risks (risk, mitigation), and evidence (strings). The rollout block has phases (name, audience, gate with metric, unit, threshold, action), rollback (trigger and steps), and evidence. Threshold is numeric; units are strings; evidence cites repository-relative path:line with 1-based lines. Keep the JSON blocks last.",
+  "prompt": "The checkout team needs payment-status notifications that do not disappear when an order write succeeds and do not create a second event when a caller retries. Please take this from design to release.\n\nFirst write a short design note at docs/design/payment-status-events.md explaining the implementation and operational decisions. Then build the feature in the repository with tests, and update .github/workflows/ci.yml if the new tests need a CI change. The public interfaces are: createJsonStore(filePath) and store.read(name), store.atomicWrite(changes) from src/store.js; createOrder(store, input, clock), updatePaymentStatus(store, orderId, status, options), and getOrder(store, id) from src/orders.js; appendStatusEvent(store, orderId, status, occurredAt, options) and publishPending(store, broker, options) from src/status-events.js; InProcessBroker from src/broker.js; request(method, path, body, dependencies) from src/http.js; and loadConfig(env) from src/config.js. publishPending options include now() returning epoch milliseconds, instanceId, claimMs, concurrency, limit, baseDelayMs, maxAttempts, publishTimeoutMs, and metrics. The publisher result includes attempted, published, failed, and deadLettered. It also includes outcomes, a list of {id, code}, one per event attempted. Store events in the statusEvents collection; each event has id (prefixed evt_), orderId, status, occurredAt, attempts, nextAttemptAt (epoch milliseconds), claimedBy (null when unclaimed), claimedUntil, sentAt, deadLetter (boolean), and lastError (the error code). The broker message carries the event's status and a headers object with x-event-id. Use STATUS_EVENTS_PUBLISH_BASE_DELAY_MS, STATUS_EVENTS_PUBLISH_CLAIM_MS, STATUS_EVENTS_PUBLISH_MAX_ATTEMPTS, STATUS_EVENTS_PUBLISH_CONCURRENCY, and STATUS_EVENTS_PUBLISH_TIMEOUT_MS and boolean STATUS_EVENTS_PUBLISH_ENABLED; durations are integer milliseconds and counts are unitless. Errors use ORDER_NOT_FOUND, INVALID_STATUS, INVALID_INPUT, BROKER_MESSAGE_TOO_LARGE, and BROKER_TIMEOUT. The HTTP paths are POST /orders (201), PATCH /orders/:id/payment-status (202), GET /orders/:id (200 or 404), and POST /internal/status-events/publish (200).\n\nNext write a rollout plan at docs/rollout/payment-status-events.md, and add a useful Unreleased CHANGELOG entry as the release note. End each document with its last fenced json block. The design block is an object with decisions (topic, choice, reason), risks (risk, mitigation), and evidence (strings). The rollout block has phases (name, audience, gate with metric, unit, threshold, action), rollback (trigger and steps), and evidence. Threshold is numeric; units are strings; evidence cites repository-relative path:line with 1-based lines. Keep the JSON blocks last.",
   "fixture": "t10-arch-outbox",
   "hidden": "t10-arch-outbox",
   "timeoutSec": 4800,
@@ -77,50 +77,66 @@
       "id": "expert-key",
       "weight": 3,
       "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are design judgment, not a pattern in the text)"
+    },
+    {
+      "id": "design-matches-code",
+      "weight": 1,
+      "criterion": "The design note's decisions match what the code does. Fail: the note describes behaviour the code does not have (for example a claim that is never checked, or a dead letter the code deletes). Partial: one stated setting or default differs from src/config.js or the publisher code. Pass: every decision in the JSON block matches the code and its tests, including claim length, backoff, attempts and the dead-letter rule. (code cannot check this: tests check behaviour, not whether the note describes it truthfully.)"
     }
   ],
   "expertKey": {
     "items": [
       {
         "id": "e1",
-        "text": "Explains how the cut-over handles a status already in flight so the old publisher and new atomic writer cannot both lose or silently fork it.",
-        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+        "source": "https://debezium.io/documentation/reference/stable/transformations/",
+        "text": "States that broker acceptance is not consumer processing, and that a crash after publish but before the sent mark sends a duplicate, which consumers drop by x-event-id (at-least-once). Weak: 'exactly once' or 'at-least-once is fine' with no window."
       },
       {
         "id": "e2",
-        "text": "Distinguishes broker acceptance from consumer processing and describes the duplicate window after publish but before the sent mark.",
-        "source": "https://debezium.io/documentation/reference/stable/transformations/"
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)",
+        "text": "States that the sent mark (or any publisher write) must re-read the file and change only its own event, because store.atomicWrite replaces whole collections and an append made during the broker await would be lost. Also counts: 'lost update between claim and mark'. Weak: 'atomicWrite makes it safe'."
       },
       {
         "id": "e3",
-        "text": "Describes how an operator discovers, inspects, and safely replays or resolves a dead-letter event without deleting later useful records.",
-        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "https://12factor.net (MIT)",
+        "text": "States that a claim must outlast the publish timeout plus the write (claimMs well above publishTimeoutMs), or a slow publish is taken over by the other instance and sent twice. Weak: 'claims prevent duplicates'."
       },
       {
         "id": "e4",
-        "text": "Explains how changing publisher timing or attempt settings is validated and rolled out without making existing claims or retries unsafe.",
-        "source": "https://12factor.net (MIT)"
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)",
+        "text": "Says what a dead-lettered or failing event does to later events of the same order (they wait behind it, or skip it) and that other orders proceed, naming the trade-off with per-order ordering. Weak: 'dead-letter failures'."
       },
       {
         "id": "e5",
-        "text": "Names the consistency risk of restoring the JSON file or taking a backup while a publisher claim is active and gives a recovery action.",
-        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)",
+        "text": "Treats an oversized message (BROKER_MESSAGE_TOO_LARGE, over the 2,048-byte broker limit) as permanent: dead-lettered at once, not retried with backoff. Weak: 'retry everything with backoff'."
       },
       {
         "id": "e6",
-        "text": "Explains how the system behaves when a single order has a poison event, including the trade-off between preserving per-order order and allowing unrelated orders to proceed.",
-        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "Says how an operator finds, inspects and replays or resolves a dead-lettered event without deleting it or later events. Weak: 'alert on dead letters'."
       },
       {
         "id": "e7",
-        "text": "Assigns an owner and a concrete observation period for deciding that lag, broker errors, and the backlog are healthy after cut-over.",
-        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)",
+        "text": "Covers the cut-over: during the rolling deploy (orders-a, then orders-b) an old instance may still publish directly while a new one writes events, so publishing starts disabled until both run new code, or another way both paths avoid loss or a double send. Weak: 'deploy to canary first'."
+      },
+      {
+        "id": "e8",
+        "source": "https://12factor.net (MIT)",
+        "text": "Says how changing claim, timeout or attempt settings is made safe: with publishing paused, or by a rule that live claims and scheduled retries stay valid. Weak: 'settings come from the environment'."
+      },
+      {
+        "id": "e9",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "Names an owner (for example checkout-oncall) and a time window for calling status.lag, broker.errors and the backlog healthy after each phase. Weak: 'monitor after release'."
       }
     ],
     "weakAnswers": [
       "Use status events and retry for reliability; this is scalable and robust.",
       "Add a publisher, monitor metrics, and roll back if anything goes wrong.",
-      "Store events, publish them later, and update the changelog after testing."
+      "Store events, publish them later, and update the changelog after testing.",
+      "Use exactly-once delivery so consumers never see duplicates."
     ]
   },
   "targetSkills": [
@@ -185,6 +201,14 @@
         "verdict": "pass",
         "note": "All test behaviors derive from the stated requirements: atomic persistence prevents loss (implied by 'do not disappear'), idempotent append handles retries (implied by 'do not create a second event'), claim-based coordination handles dual instances (documented in instance-deploy.json), per-order ordering matches consumers.md. No test requires behavior the request does not imply."
       }
+    ],
+    "adjudication": [
+      "A note that says 'one atomicWrite, not a separate later publish' asserts the atomic write; never read it as choosing a separate publish.",
+      "Evidence that cites four of the five source groups is complete enough; the hidden key asks for four.",
+      "A phase action that says STATUS_EVENTS_PUBLISH_ENABLED=false, 'off' or 'dark' before turning it on is the disabled-first phase.",
+      "The README says a data file belongs to one instance at a time while two run; an answer that states its own assumption about sharing (for example overlap during the rolling deploy) passes e3 and e7 either way.",
+      "'Exactly once to the consumer' fails e1: the broker contract is at-least-once.",
+      "A point made in the rollout doc instead of the design note counts for the judge."
     ]
   },
   "pilot": {
@@ -201,5 +225,10 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

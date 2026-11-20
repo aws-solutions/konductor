@@ -36,8 +36,8 @@
       "match": {
         "field": "action",
         "all": [
-          "disabled",
-          "enable"
+          "disabled|disable|ENABLED\\s*=\\s*false|=\\s*false|\\boff\\b|\\bdark\\b",
+          "enabl|turn(ed)? on|\\bon\\b"
         ]
       },
       "weight": 1
