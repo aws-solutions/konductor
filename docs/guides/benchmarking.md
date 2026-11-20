@@ -51,16 +51,14 @@ This does two things, in order:
    Code agent file with every declared skill's `SKILL.md` body inlined
    directly into it, and installs a copy into `~/.claude/agents/` (see
    [How agent files get generated](#how-agent-files-get-generated) below).
-2. Runs every scenario in `tests/asdlc-quality-assurance/` against that
+2. Runs every scenario in `tests/k-quality-assurance/` against that
    agent via `claude --agent k-quality-assurance -p ...`, writes results
    to `benchmark-results/k-quality-assurance.json`, and prints a
    pass/fail summary.
 
-The scenario directory is still named `asdlc-*` while the agent is `k-*`:
 `--agent` is matched against the subset's `name` in `tests/registry.json`, and
 the directory is read from that same entry's `datasetPath`. The two are
 independent, so you always pass the agent name and never the directory name.
-A later phase renames the directories and their `datasetPath` values together.
 
 Flags (all optional except `--agent`):
 

@@ -69,6 +69,9 @@ fn recover_write_lock<'a, T>(
 #[derive(Clone, Debug)]
 pub struct SkillIndex {
     inner: Arc<RwLock<std::collections::HashMap<String, SkillRecord>>>,
+    /// Names the last scan found but `skill_name_filter` removed, so
+    /// `get_skill` can say a skill exists but is not available here.
+    filtered_out: Arc<RwLock<Vec<String>>>,
     skills_dirs: Vec<ResolvedDir>,
     skill_name_filter: Option<String>,
 }
@@ -91,6 +94,7 @@ impl SkillIndex {
         let filtered_out = excluded_names.len();
         let index = Self {
             inner: Arc::new(RwLock::new(filtered_index)),
+            filtered_out: Arc::new(RwLock::new(excluded_names.clone())),
             skills_dirs,
             skill_name_filter,
         };
@@ -128,7 +132,10 @@ impl SkillIndex {
             apply_name_filter(raw_index, &self.skill_name_filter);
         let filtered_out = excluded_names.len();
         let mut guard = recover_write_lock(&self.inner, self.inner.write());
+        let mut excluded_guard = recover_write_lock(&self.filtered_out, self.filtered_out.write());
         *guard = filtered_index;
+        *excluded_guard = excluded_names.clone();
+        drop(excluded_guard);
         drop(guard);
         (diagnostic, filtered_out, excluded_names)
     }
@@ -204,6 +211,30 @@ impl SkillIndex {
             .collect();
         results.sort_by_key(|record| record.name.to_lowercase());
         results
+    }
+
+    /// Whether the last scan found a skill with this name (case-insensitive)
+    /// that `skill_name_filter` then removed from the index.
+    ///
+    /// Called by the `get_skill` tool handler in the consuming server to
+    /// word its not-found error.
+    pub fn is_filtered_out(&self, name: &str) -> bool {
+        let wanted = name.to_lowercase();
+        let guard = recover_read_lock(&self.filtered_out, self.filtered_out.read());
+        guard
+            .iter()
+            .any(|excluded| excluded.to_lowercase() == wanted)
+    }
+
+    /// Every indexed skill name, sorted case-insensitively.
+    ///
+    /// Called by the `get_skill` tool handler in the consuming server to
+    /// suggest close names for one it could not find.
+    pub fn names(&self) -> Vec<String> {
+        let guard = recover_read_lock(&self.inner, self.inner.read());
+        let mut names: Vec<String> = guard.values().map(|record| record.name.clone()).collect();
+        names.sort_by_key(|name| name.to_lowercase());
+        names
     }
 
     /// Number of skills currently indexed.
@@ -554,6 +585,41 @@ mod tests {
         assert!(index.get("keep-also").is_some());
         assert!(index.get("drop-me").is_none());
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn is_filtered_out_tracks_names_the_filter_removed_across_reload() {
+        // Same manifest setup as `reload_reapplies_the_same_immutable_filter`,
+        // so the filter actually removes konductor-installed skills.
+        let base = temp_dir("is-filtered-out");
+        let skills_root = base.join(".konductor").join("skills");
+        fs::create_dir_all(&skills_root).unwrap();
+        write_skill(&skills_root, "keep-me", "d", &[]);
+        write_skill(&skills_root, "drop-me", "d", &[]);
+        write_manifest_marking_installed(&base, &["keep-me", "drop-me"]);
+        let (index, _diag, _filtered, _excluded) =
+            SkillIndex::build(one_root(&skills_root), Some("keep-*".to_string()));
+        assert!(index.is_filtered_out("drop-me"));
+        assert!(index.is_filtered_out("DROP-ME"));
+        assert!(!index.is_filtered_out("keep-me"));
+        assert!(!index.is_filtered_out("never-existed"));
+
+        fs::remove_dir_all(skills_root.join("drop-me")).unwrap();
+        write_manifest_marking_installed(&base, &["keep-me"]);
+        index.reload();
+        assert!(!index.is_filtered_out("drop-me"));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn names_lists_indexed_skills_sorted_case_insensitively() {
+        let dir = temp_dir("names-sorted");
+        write_skill(&dir, "beta", "d", &[]);
+        write_skill(&dir, "Alpha", "d", &[]);
+        write_skill(&dir, "gamma", "d", &[]);
+        let (index, _diag, _filtered, _excluded) = SkillIndex::build(one_root(&dir), None);
+        assert_eq!(index.names(), vec!["Alpha", "beta", "gamma"]);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

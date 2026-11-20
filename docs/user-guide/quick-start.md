@@ -65,9 +65,9 @@ It reports a count per content type and the command to start a session with, and
 | Context | `<target>/.kiro/context/` |
 | Manifest | `<target>/.konductor/manifest` |
 
-On Claude Code, each SOP is **additionally** converted into its own slash-invokable skill at
-`<target>/.claude/skills/sop-<name>/SKILL.md` — Claude Code has no way to serve a `.sop.md`
-directly, so `/sop-<name>` is how you reach one there.
+On Claude Code (`--harness claude`), there is no `.sop.md` copy. Each SOP is converted into its own
+slash-invokable skill at `<target>/.claude/skills/sop-<name>/SKILL.md` — Claude Code has no way to
+serve a `.sop.md` directly, so `/sop-<name>` is how you reach one there.
 
 If you have Claude Code instead, pass `--harness claude`. Claude Code also needs two settings
 before a team of agents can run. See [Install for Claude Code](tasks/install-claude-code.md).

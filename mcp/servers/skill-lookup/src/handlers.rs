@@ -273,6 +273,71 @@ fn find_skills_tool() -> Tool {
     )
 }
 
+/// Most close names a `get_skill` not-found message suggests.
+const MAX_CLOSE_NAMES: usize = 3;
+
+/// Shortest name the substring rule accepts. A name below this length is a
+/// substring of too many unrelated names to mean anything: `git` sits inside
+/// every request that mentions git, and a two-character request sits inside
+/// much of the index.
+const MIN_SUBSTRING_NAME_LEN: usize = 4;
+
+/// Up to `MAX_CLOSE_NAMES` of `candidates` close to `requested`, closest
+/// first. A candidate is close when one name contains the other and the
+/// contained one is at least `MIN_SUBSTRING_NAME_LEN` characters, or when
+/// their edit distance is at most a third of the longer name. Both rules
+/// scale with length, so a typo or a missing prefix in a real skill name
+/// matches while a short coincidence does not. A suggestion the agent acts
+/// on is worse than no suggestion, because it loads the wrong skill instead
+/// of reporting the skill unavailable. Matching ignores case and treats
+/// spaces and underscores as hyphens.
+fn close_skill_names(requested: &str, candidates: &[String]) -> Vec<String> {
+    let normalize = |s: &str| s.trim().to_lowercase().replace([' ', '_'], "-");
+    let wanted = normalize(requested);
+    if wanted.is_empty() {
+        return Vec::new();
+    }
+    let mut scored: Vec<(usize, &String)> = candidates
+        .iter()
+        .filter_map(|candidate| {
+            let have = normalize(candidate);
+            let distance = edit_distance(&wanted, &have);
+            let wanted_len = wanted.chars().count();
+            let have_len = have.chars().count();
+            let longer = wanted_len.max(have_len);
+            let shorter = wanted_len.min(have_len);
+            let substring = shorter >= MIN_SUBSTRING_NAME_LEN
+                && (have.contains(&wanted) || wanted.contains(&have));
+            // No floor under this budget: a floor of 2 would make any pair of
+            // two- or three-character names close to each other.
+            let typo = distance <= longer / 3;
+            let close = substring || typo;
+            close.then_some((distance, candidate))
+        })
+        .collect();
+    scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)));
+    scored
+        .into_iter()
+        .take(MAX_CLOSE_NAMES)
+        .map(|(_, name)| name.clone())
+        .collect()
+}
+
+/// Levenshtein distance over chars.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut previous: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut current = vec![i + 1];
+        for (j, cb) in b.iter().enumerate() {
+            let substitution = previous[j] + usize::from(ca != *cb);
+            current.push(substitution.min(previous[j + 1] + 1).min(current[j] + 1));
+        }
+        previous = current;
+    }
+    previous[b.len()]
+}
+
 /// Builds the `get_skill` tool's advertised schema: a single
 /// required `name`, exact match, no other properties accepted.
 fn get_skill_tool() -> Tool {
@@ -400,7 +465,10 @@ impl SkillLookupServer {
     /// file fresh from disk, mirrored in the
     /// doc comment on this tool's schema). Three distinct,
     /// non-overlapping failure signals:
-    ///   - unknown name: `InvalidParams`, `"skill not found: <name>"`.
+    ///   - unknown name: `InvalidParams`, `"skill not found: <name>"`,
+    ///     plus either a note that `--skill-name-filter` hides an
+    ///     existing skill or up to three close names, never both (see
+    ///     `skill_not_found`).
     ///   - read failure on a name the index does have (file deleted,
     ///     moved, or permissions changed since the last scan):
     ///     `InternalError`, `"skill file unreadable: <name>: <io error>"`.
@@ -432,9 +500,8 @@ impl SkillLookupServer {
                 &format!("get_skill: name={name:?} hit={}", found.is_some()),
             );
         }
-        let record = found.ok_or_else(|| {
-            McpErrorData::invalid_params(format!("{SKILL_NOT_FOUND_PREFIX}{name}"), None)
-        })?;
+        let record =
+            found.ok_or_else(|| McpErrorData::invalid_params(self.skill_not_found(name), None))?;
 
         // First guard: stat the file fresh. Catches grew-after-scan
         // *without* reading the body — the whole point of the ceiling.
@@ -466,6 +533,32 @@ impl SkillLookupServer {
             path: record.path.display().to_string(),
             size_bytes,
         }))
+    }
+
+    /// The `get_skill` not-found message. Always starts with
+    /// `SKILL_NOT_FOUND_PREFIX` and the requested name, which telemetry
+    /// classification matches on. Then exactly one of two things: that
+    /// the skill exists but `--skill-name-filter` hides it from this
+    /// agent, or up to `MAX_CLOSE_NAMES` indexed names close to the one
+    /// requested.
+    fn skill_not_found(&self, name: &str) -> String {
+        let mut message = format!("{SKILL_NOT_FOUND_PREFIX}{name}");
+        // A filtered-out name needs no guess: the server knows which
+        // skill was asked for and that it exists, so the only thing a
+        // close name adds is a different skill for the agent to load
+        // instead of reporting this one unavailable.
+        if self.index.is_filtered_out(name) {
+            message.push_str(
+                " (the skill exists but is not available to this agent: the server's \
+                 --skill-name-filter excludes it)",
+            );
+            return message;
+        }
+        let close = close_skill_names(name, &self.index.names());
+        if !close.is_empty() {
+            message.push_str(&format!(". Did you mean: {}?", close.join(", ")));
+        }
+        message
     }
 
     /// Handles `reload_skills`: forces `SkillIndex::reload` and reports
@@ -1291,6 +1384,196 @@ mod tool_handlers {
         assert_eq!(err.code, rmcp::model::ErrorCode::INVALID_PARAMS);
         assert!(err.message.contains("skill not found: does-not-exist"));
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn get_skill_unknown_name_with_no_close_names_keeps_the_plain_message() {
+        let dir = temp_dir("get-skill-unknown-plain");
+        write_skill(&dir, "alpha", "first", &[]);
+        let err = server(&dir)
+            .get_skill(&args(&[("name", "does-not-exist")]))
+            .unwrap_err();
+        assert_eq!(err.message, "skill not found: does-not-exist");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn get_skill_unknown_name_lists_close_names_closest_first() {
+        let dir = temp_dir("get-skill-close-names");
+        for name in ["code-review", "code-reviews", "threat-modeling"] {
+            write_skill(&dir, name, "d", &[]);
+        }
+        let err = server(&dir)
+            .get_skill(&args(&[("name", "code revew")]))
+            .unwrap_err();
+        assert_eq!(err.code, rmcp::model::ErrorCode::INVALID_PARAMS);
+        assert_eq!(
+            err.message,
+            "skill not found: code revew. Did you mean: code-review, code-reviews?"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn get_skill_suggests_at_most_three_close_names() {
+        let dir = temp_dir("get-skill-close-names-cap");
+        for name in [
+            "backend-review",
+            "code-review",
+            "design-review",
+            "frontend-review",
+            "plan-review",
+        ] {
+            write_skill(&dir, name, "d", &[]);
+        }
+        let err = server(&dir)
+            .get_skill(&args(&[("name", "review")]))
+            .unwrap_err();
+        let suggested = err
+            .message
+            .strip_prefix("skill not found: review. Did you mean: ")
+            .and_then(|rest| rest.strip_suffix('?'))
+            .unwrap_or_else(|| panic!("{}", err.message));
+        assert_eq!(
+            suggested.split(", ").count(),
+            MAX_CLOSE_NAMES,
+            "{}",
+            err.message
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Writes an install manifest at `<base>/.konductor/manifest` marking
+    /// each of `skill_names` konductor-installed, so that
+    /// `--skill-name-filter` actually removes one: the filter only ever
+    /// scopes skills konductor installed, and `installed_by_konductor`
+    /// defaults to false, so without this a filtered server silently
+    /// indexes everything.
+    fn write_manifest_marking_installed(base: &Path, skill_names: &[&str]) {
+        let files: Vec<String> = skill_names
+            .iter()
+            .map(|name| {
+                format!(
+                    r#"{{"path":".konductor/skills/{name}/SKILL.md","sha256":null,"provenance":"created"}}"#
+                )
+            })
+            .collect();
+        fs::write(
+            base.join(".konductor").join("manifest"),
+            format!(
+                r#"{{"schema_version":2,"strategies":[{{"strategy":"kiro-cli-v2","installed_at":"2026-01-01T00:00:00Z","destination":".","source":null,"status":"complete","files":[{}]}}]}}"#,
+                files.join(",")
+            ),
+        )
+        .unwrap();
+    }
+
+    // A filtered-out name is the one case where the server already knows
+    // which skill was asked for, so a close name can only name a different
+    // one. It is also where the suggestions went wrong on the real specs:
+    // `code-review` is filtered out of an agent whose index still holds
+    // `adversarial-code-review` and its pass skills, every one of which
+    // contains the requested name as a substring.
+    #[test]
+    fn get_skill_filtered_out_name_reports_the_filter_and_suggests_nothing() {
+        let names = [
+            "code-review",
+            "adversarial-code-review",
+            "adversarial-code-review-pass-schema",
+        ];
+        let base = temp_dir("get-skill-filtered-out");
+        let skills_root = base.join(".konductor").join("skills");
+        fs::create_dir_all(&skills_root).unwrap();
+        for name in names {
+            write_skill(&skills_root, name, "d", &[]);
+        }
+        write_manifest_marking_installed(&base, &names);
+        let (index, _diag, filtered_out, _excluded) = SkillIndex::build(
+            vec![ResolvedDir::managed(&skills_root)],
+            Some("adversarial-*".to_string()),
+        );
+        assert_eq!(filtered_out, 1, "expected code-review to be the only one");
+
+        let err = SkillLookupServer {
+            index,
+            sops: SopIndex::default(),
+            tool_call_counters: None,
+            initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+        .get_skill(&args(&[("name", "code-review")]))
+        .unwrap_err();
+        assert_eq!(
+            err.message,
+            "skill not found: code-review (the skill exists but is not available to this \
+             agent: the server's --skill-name-filter excludes it)"
+        );
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn close_skill_names_matches_typos_and_substrings_but_not_unrelated_names() {
+        let names: Vec<String> = ["backend-review", "frontend-review", "git-workflow"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert_eq!(
+            close_skill_names("backend-reveiw", &names)[0],
+            "backend-review"
+        );
+        assert_eq!(
+            close_skill_names("BACKEND_REVIEW", &names)[0],
+            "backend-review"
+        );
+        assert_eq!(close_skill_names("workflow", &names), vec!["git-workflow"]);
+        assert!(close_skill_names("threat-modeling", &names).is_empty());
+        assert!(close_skill_names("  ", &names).is_empty());
+    }
+
+    // A suggestion the agent acts on is worse than no suggestion: it loads
+    // the wrong skill instead of reporting the skill unavailable. Short
+    // names are where that goes wrong, so they get their own test.
+    #[test]
+    fn close_skill_names_rejects_short_names_that_are_not_really_close() {
+        let names: Vec<String> = ["git", "qa", "database-design", "backend-review"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        // `git` is a substring of plenty of requests it has nothing to do
+        // with, so being contained in one does not make it a suggestion.
+        assert!(
+            close_skill_names("git-worktree-cleanup", &names).is_empty(),
+            "{:?}",
+            close_skill_names("git-worktree-cleanup", &names)
+        );
+        // Same in the other direction: a two-character request is a
+        // substring of unrelated names.
+        assert!(
+            close_skill_names("ab", &names).is_empty(),
+            "{:?}",
+            close_skill_names("ab", &names)
+        );
+        // Two short names are not close just because the edit budget had a
+        // floor under it. One edit out of two characters is half the name.
+        assert!(
+            close_skill_names("qb", &names).is_empty(),
+            "{:?}",
+            close_skill_names("qb", &names)
+        );
+
+        // A real typo in a name long enough to be distinctive still matches.
+        assert_eq!(
+            close_skill_names("backend-reveiw", &names),
+            vec!["backend-review"]
+        );
+    }
+
+    #[test]
+    fn edit_distance_counts_insertions_deletions_and_substitutions() {
+        assert_eq!(edit_distance("", ""), 0);
+        assert_eq!(edit_distance("abc", ""), 3);
+        assert_eq!(edit_distance("kitten", "sitting"), 3);
+        assert_eq!(edit_distance("review", "reveiw"), 2);
     }
 
     #[test]

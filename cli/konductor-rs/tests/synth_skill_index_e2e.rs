@@ -182,7 +182,23 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                     "{harness}/{name}: {skill} must not be named in the block"
                 );
             }
-            assert!(block.contains("`get_skill`") && block.contains("`tool_load`"));
+            assert!(block.contains("`get_skill`"), "{harness}/{name}");
+            let catalogue_rule = "call it with id `tool::konductor-skills::get_skill`";
+            let native_rule = "call `tool_load` with tool_ids `[\"konductor-skills::get_skill\"]`";
+            if harness == "kiro-v3" {
+                assert!(
+                    block.contains(catalogue_rule) && block.contains(native_rule),
+                    "{harness}/{name}: load rule"
+                );
+            } else {
+                assert!(
+                    block.contains("call `tool_search` with tool_id `konductor-skills::get_skill`")
+                        && !block.contains(catalogue_rule)
+                        && !block.contains("tool_load")
+                        && !block.contains("load_resource"),
+                    "{harness}/{name}: load rule"
+                );
+            }
             assert!(
                 !prompt.contains(ROUTING_PHRASE),
                 "{harness}/{name}: the index must not route a listed skill away"

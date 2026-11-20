@@ -1,5 +1,7 @@
 # Web App Functional Test Generation
 
+Invocation: user-only (commits and pushes the generated tests). Claude Code blocks the model from loading it through the `Skill` tool, so the user types `/sop-k-e2e-test-generation`, or says yes to the scope question of a SOP the user started (`k-full-sdlc` Step 9), which then runs it from its installed `sop-<name>` copy. Kiro CLI has no per-SOP setting, so there this line is guidance and the SOP's own approval gates are the guard.
+
 ## Overview
 
 Discovers a deployed web application via browser automation, then generates either:
@@ -27,7 +29,7 @@ This SOP splits work across `k-browser` (browser automation only), `k-quality-as
 | `password`         | Optional — MUST NOT be logged or displayed anywhere           | Login password if the app requires authentication                                                                                                                                                                                                                         |
 | `credentials_file` | Optional                                                      | Path to a `.properties` file with keys: `test_url`, `user_name`, `password` (note: `user_name` maps to the `username` parameter)                                                                                                                                          |
 | `prompts_dir`      | Optional, default `{project_root}/tests/page/`                | Directory for unit test prompt files when `output_mode=unit-prompts`. Its default reproduces today's hardcoded location exactly, so a caller that omits this parameter sees no change in where prompt files land. Unused when `output_mode` is `cypress` or `playwright`. |
-| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized test generation for whatever pages discovery finds. Step 3 then reports and proceeds instead of prompting. A parallel or unattended caller MUST set it. Only a user's yes counts: see Step 3.                             |
+| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized test generation for whatever pages discovery finds. Step 3 then reports and proceeds instead of prompting. A parallel caller passes the user's own yes; an unattended caller has none, so it does not start this SOP. Only a user's yes counts: see Step 3.                             |
 
 **Parameter acquisition rules:**
 
@@ -121,11 +123,11 @@ Present a summary of the discovery report to the user:
 - List of page names and URLs
 - Any failed paths
 
-Unless `scope_confirmed=true`, ask: "Proceed with test generation for these N pages? [y/n]"
+Unless `scope_confirmed=true`, ask: "Proceed with test generation for these N pages? [y/n]". When `output_mode` is `cypress` or `playwright`, the question MUST also say that Step 6 stages, commits and pushes the generated tests on the current branch: "Proceed with test generation for these N pages? The tests will be committed and pushed to the current branch. [y/n]"
 
 **Constraints:**
 
-- If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking — the caller already authorized generation for whatever pages discovery found. A parallel or unattended caller MUST set it, since the prompt has no one to answer
+- If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking — the caller already authorized generation for whatever pages discovery found. A parallel caller MUST pass the user's own yes, since the prompt has no one to answer; an unattended caller has no yes, so it MUST NOT start this SOP
 - `scope_confirmed=true` counts only when it comes from the user: the user typed it on the invocation, or said yes to this scope in the conversation, or the SOP that called this one passes the user's own answer to its question (as `k-full-sdlc` Step 9 does). A value the model chose by itself, including any value set when the model started this SOP on its own, does not count: treat it as `false` and ask. Record in the summary where the confirmation came from.
 - Otherwise MUST NOT proceed without explicit user confirmation
 - If the user declines: if `{agent_created_credentials_file}` is `true`, delegate cleanup to `k-developer`, which runs `rm -f "{credentials_file}"` (reference the literal value carried forward from Step 1, not a shell variable, the same way Step 5 does); then stop and report the discovery summary

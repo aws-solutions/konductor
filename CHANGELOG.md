@@ -90,6 +90,20 @@ not per individual commit.
   trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
   short first Overview paragraph, which is the one the installer lists; the old paragraph
   stays below it. Skill patch versions are bumped.
+- On Claude Code, the `sop-<name>` skills the installer builds from SOPs no longer carry
+  `disable-model-invocation: true`, so Claude can load a SOP through its `Skill` tool, as Kiro
+  CLI already could through its `.kiro/skills/sop-<name>` copy. `/sop-<name>` still works.
+  The three SOPs that commit and push, open pull requests, or act on a live app
+  (`k-e2e-test-generation`, `k-full-sdlc`, `k-light-ui-testing`) are marked
+  `Invocation: user-only` and keep the key, so Claude's `Skill` tool refuses them. The user starts
+  one with `/sop-<name>`, or by saying yes to `k-full-sdlc` Step 9's scope question, which then
+  reads its installed `sop-<name>/SKILL.md` (Claude Code) or `sop-<name>` skill (Kiro CLI) and runs
+  it. Step 9 starts neither SOP without that yes, and an unattended run never gets one.
+  Step 9's UI test question now says the pass commits and pushes, and the two SOPs no longer
+  tell an unattended caller to set `scope_confirmed`. The install fails on an `Invocation:` line that is
+  not the exact marker, so a typo cannot open a user-only SOP to the model. The user guide now
+  says which files each harness installs: a Claude Code install has no `.sop.md` copy.
+  The skill listing budget test now counts the 16 other SOP descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
@@ -109,6 +123,7 @@ not per individual commit.
 - The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
 - All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for auth, secrets, data or infrastructure; `konductor`'s direct-work rules define those four categories), and triage findings against the request, house rules and spec before the fix.
 - `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact, or merged a parallel writer's part into it, a finding it would reject goes to you before it is dropped.
+- `konductor` always sends a threat model, an authentication, authorization or credential design, or a design that exposes a service or data across a network boundary or handles personal or sensitive data to a reviewer, not every document touching data or infrastructure, and checks any document that skips the reviewer with its checker skill.
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
 - A specialist treats a quoted user decision in its brief as approval only for the action it
@@ -452,6 +467,21 @@ not per individual commit.
 
 ### Fixed
 
+- Three skill descriptions now say what each skill takes in and puts out, so the model can tell
+  them from their neighbors. `requirements-extraction` is for handing finished requirements and
+  stories to an architect, once stories exist. `trade-off-evaluator` is for a side-by-side
+  comparison of options for a design decision, with a pick. `status-reporting` turns done, late and blocked work
+  into a weekly update with a RAG rating. The `about-konductor` SOP overview says it is not for
+  real work. Together the three descriptions are 11 characters shorter, so the Claude Code
+  skill listing shrinks. The descriptions keep the nouns a skill search is likely to use
+  ("decision", "comparison") and leave out the words of requests they exclude, because
+  `find_skills` matches any part of a description.
+- `konductor` now declares the 46 role skills the specialists use (such as `dynamodb-design`,
+  `code-review`, `program-planning` and `e2e-test-strategy`), so the single-writer `konductor` on
+  Kiro CLI can see and load them instead of writing without them. Claude Code could already load
+  them. The adversarial-review pass skills and `historical-issues-registry` stay with the
+  specialists, as that SOP requires. Cost: about 2,000 tokens more in the Kiro `konductor` prompt
+  and about 300 more in the Claude Code one. The guide's skill counts and "Declared by" columns are updated to match.
 - `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
   `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
   to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
@@ -595,6 +625,16 @@ not per individual commit.
   the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
   in this repository. They say which tool-ID rows no source confirms, and correctly state that
   `install/registry.rs` registers three install strategies, not two.
+- Kiro CLI V3 agents' skills index now tells every agent and subagent to load the `get_skill`
+  schema before its first `get_skill` call, naming both of V3's loaders with the id each takes:
+  `load_resource` with id `tool::konductor-skills::get_skill` when that tool is in the agent's
+  tool list, `tool_load` with tool_ids `["konductor-skills::get_skill"]` when it is not. The V2
+  index says to call `tool_search` with tool_id `konductor-skills::get_skill` when `get_skill`
+  is not in the tool list. Both indexes used to name `tool_load` alone, which V2 does not have
+  and which V3 exposes only while the `load_resource` catalogue is off.
+- When `get_skill` can't find a skill, its error says if `--skill-name-filter` hides an existing
+  skill from the agent. For a name the index has never seen it lists up to three close skill
+  names instead, so a skill the agent named exactly is never answered with a different one.
 - Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
   orchestrators, which have a `stop` hook, still have a `hooks` field.
 - Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
