@@ -125,14 +125,14 @@
       "family": "openai",
       "model": "gpt-5.6-luna",
       "date": "2026-11-20",
-      "verdicts": [
+      "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "fail",
           "note": "task.json field prompt (line 3) explicitly names all-hot, all-cold, and mixed strategies, including the exact decoy options and the expected strategy family used by the checks."
         },
         {
-          "check": "fixture-no-answers",
+          "check": "fixture-lists-no-answer",
           "verdict": "pass",
           "note": "The fixture supplies requirements and tier characteristics but does not select a recommendation or state the hidden output; for example, data-flow.md lines 31-61 gives lifecycle inputs rather than a decision."
         },

@@ -148,13 +148,12 @@ test('task schema accepts pilot.dryRun with the reference, stub, lazy and altern
   assert.ok(validate(schema, { ...TASK, pilot: { ...pilot, dryRun: { ...pilot.dryRun, lazy: -1 } } }).length);
 });
 
-test('task schema accepts handEdited, review.recheck and pilot.blockers', () => {
+test('task schema accepts handEdited null (checked, not edited) and pilot.blockers', () => {
   const schema = loadSchema('task');
-  const handEdited = { family: 'claude', editor: 'lead session', log: 'HAND-EDITS.md' };
-  const review = { family: 'zhipu', date: '2026-11-19', verdicts: [], recheck: { family: 'openai', model: 'gpt-5.6-luna', date: '2026-11-19', verdicts: [{ check: 'key-matches-fixture', verdict: 'pass', note: 'ok' }] } };
+  const recheck = { family: 'openai', model: 'gpt-5.6-luna', date: '2026-11-19', items: ['no-method-or-decoy', 'fixture-lists-no-answer', 'key-matches-fixture', 'solvable-from-fixture'].map((check) => ({ check, verdict: 'pass' })) };
+  const review = { family: 'zhipu', date: '2026-11-19', verdicts: [], recheck };
   const pilot = { scores: {}, decision: 'fix', date: '2026-11-19', blockers: ['recheck-failed: key names a value the fixture lacks'] };
-  assert.deepEqual(validate(schema, { ...TASK, handEdited, review, pilot }), []);
+  assert.deepEqual(validate(schema, { ...TASK, handEdited: { family: 'claude', editor: 'lead session', log: 'HAND-EDITS.md' }, review, pilot }), []);
   assert.deepEqual(validate(schema, { ...TASK, handEdited: null }), []);
-  assert.ok(validate(schema, { ...TASK, handEdited: { family: 'claude' } }).length);
-  assert.ok(validate(schema, { ...TASK, review: { ...review, recheck: { ...review.recheck, verdicts: [{ check: 'leak', verdict: 'pass' }] } } }).length);
+  assert.ok(validate(schema, { ...TASK, pilot: { ...pilot, blockers: [''] } }).length);
 });

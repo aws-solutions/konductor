@@ -6,7 +6,7 @@
 // (or every subsection of a design document)
 // three times each with the runner's own check code, and reports whether the scores repeat.
 // Usage: node dry-run.js <task-id>   (prints JSON; exit 1 when a gate fails)
-// Gates: reference >= 95, stub <= 20, dump <= 55, alt (the reference in another valid style) >= 90, every check passes the reference, identical results over 3 repeats.
+// Gates: reference >= 95, stub <= 20, shallow fake <= 40, dump <= 55, alt (the reference in another valid style) >= 90, every check passes the reference, identical results over 3 repeats.
 // Score = (0.5 x hidden-test share + 0.2 x substance-check share) / 0.7 x 100: the default weights with the
 // rubric left out, as a run with no judge is scored.
 
@@ -75,11 +75,26 @@ function altReview() {
   return `# Review\n\nNotes first.\n\n\`\`\`json\n{"verdict": "changes requested"}\n\`\`\`\n\nFindings:\n\n\`\`\`json\n${JSON.stringify({ findings: alt }, null, 1)}\n\`\`\`\n`;
 }
 
+// A shallow fake review: one generic finding per changed file (at its first added line) or per top-level section of
+// the design document (at its first subsection). It names real places and sounds plausible, but finds nothing.
+function shallowReview(root) {
+  const full = JSON.parse(task.class === 'design' ? dumpDesign(root).match(/```json\n([\s\S]*?)```/)[1] : dumpReview(root).match(/```json\n([\s\S]*?)```/)[1]);
+  const seen = new Set();
+  const items = full.filter((f) => {
+    const k = task.class === 'design' ? String(f.location).split('.')[0] : String(f.location).split(':')[0];
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).map((f) => ({ location: f.location, severity: 'medium', issue: 'This part needs more error handling and tests.', fix: 'add tests and handle errors' }));
+  return `# Review\n\nOverall this looks reasonable; a few general points.\n\n\`\`\`json\n${JSON.stringify(items, null, 1)}\n\`\`\`\n`;
+}
+
 function runOnce(kind) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `t2dry-${id}-`));
   try {
     fs.cpSync(fixtureDir, root, { recursive: true });
     if (kind === 'reference') fs.cpSync(solutionDir, root, { recursive: true });
+    if (kind === 'shallow') fs.writeFileSync(path.join(root, 'REVIEW.md'), shallowReview(root));
     if (kind === 'alt') fs.writeFileSync(path.join(root, 'REVIEW.md'), altReview());
     if (kind === 'dump') fs.writeFileSync(path.join(root, 'REVIEW.md'), task.class === 'design' ? dumpDesign(root) : dumpReview(root));
     const results = runChecks(root, task.checks, { pristineDir: fixtureDir, hiddenDir, scratchDir: path.join(root, '..', `${path.basename(root)}-chk`) });
@@ -90,7 +105,7 @@ function runOnce(kind) {
   }
 }
 
-const kinds = ['reference', 'stub', ...(task.controlKind !== 'twin' ? ['alt', 'dump'] : [])];
+const kinds = ['reference', 'stub', ...(task.controlKind !== 'twin' ? ['alt', 'shallow', 'dump'] : [])];
 const out = {};
 for (const k of kinds) {
   const runs = [runOnce(k), runOnce(k), runOnce(k)];
@@ -104,6 +119,7 @@ const gates = {
   // A list that names every changed line or every subsection must not pass for a review.
   ...(out.dump ? { dump: out.dump.score <= 55 } : {}),
   ...(out.alt ? { alt: out.alt.score >= 90 } : {}),
+  ...(out.shallow ? { shallow: out.shallow.score <= 40 } : {}),
 };
 console.log(JSON.stringify({ id, ...out, gates }, null, 1));
 process.exit(Object.values(gates).every(Boolean) ? 0 : 1);

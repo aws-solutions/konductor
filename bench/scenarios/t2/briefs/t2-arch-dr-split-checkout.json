@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: architect. Packet kind: a proposal to extract checkout from a monolith into its own service. Context: current module map, a latency budget, a call graph with timings, team ownership, the database schema with shared tables, an outage history. Plant: the new service keeps writing the monolith's tables directly, so the split is in name only; placing an order spans payment, stock and order writes with no plan for partial failure across services; three new network hops in series break the p99 budget using the given timings; the cut-over has no step where both paths run and are compared; ownership of the shared customer table is undecided; there is no plan for the monolith callers of the checkout module that the call graph lists.",
-  "doc": "docs/design/checkout-service-extraction.md"
+  "doc": "docs/design/checkout-service-extraction.md",
+  "version": 2
 }

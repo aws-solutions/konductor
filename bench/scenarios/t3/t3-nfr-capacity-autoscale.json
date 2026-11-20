@@ -128,14 +128,14 @@
       "family": "openai",
       "model": "gpt-5.6-luna",
       "date": "2026-11-20",
-      "verdicts": [
+      "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
           "note": "The prompt in task.json field prompt states the capacity-planning goal, inputs, deliverable, and output schema, but does not prescribe a method or name a trap or answer."
         },
         {
-          "check": "fixture-no-answers",
+          "check": "fixture-lists-no-answer",
           "verdict": "pass",
           "note": "The fixture provides source data and calculations, including the explicitly outdated worksheet in deployment-guide.md, but no file lists the current hidden findings or expected decision values outright."
         },

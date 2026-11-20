@@ -3,7 +3,7 @@
   "suite": "constraints-probe",
   "suiteFile": "bench/suites/constraints-probe.json",
   "extraTasksDir": "bench/probes",
-  "purpose": "Does the guidance that lives only in the constraints skill reach Kiro agents, and does it change what they do? Five rules are tested by tasks that never mention them. Scored by script from the stream, see bench/docs/studies/CONSTRAINTS-PROBE.md.",
+  "purpose": "Does the guidance that lives only in the constraints skill reach Kiro agents, and does it change what they do? Five rules are tested by tasks that never mention them. Scored by script from the stream, see bench/docs/studies/constraints-probe.md.",
   "rules": [
     { "id": "U1", "probe": "P-U1", "name": "maker-checker", "fingerprint": "validate with the corresponding checker skill before presenting to the user" },
     { "id": "U2", "probe": "P-U2", "name": "severity order", "fingerprint": "Always present findings as CRITICAL \u2192 IMPORTANT \u2192 SUGGESTION" },

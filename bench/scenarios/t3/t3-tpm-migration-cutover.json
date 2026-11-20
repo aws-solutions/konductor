@@ -120,14 +120,14 @@
       "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
-      "verdicts": [
+      "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
           "note": "Prompt describes goals, constraints, and output format without naming methods or revealing which option is correct or which is the tempting decoy."
         },
         {
-          "check": "fixture-no-answers",
+          "check": "fixture-lists-no-answer",
           "verdict": "pass",
           "note": "No fixture file states the correct answer; all files provide evidence (data sizes, costs, limits) that must be reasoned from to reach the decision."
         },

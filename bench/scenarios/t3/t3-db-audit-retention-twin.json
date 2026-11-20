@@ -108,14 +108,14 @@
       "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
-      "verdicts": [
+      "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
           "note": "Prompt specifies goal (list retention figures), format (one per line with source), and classification (current/superseded/archival) without naming methods, tools, or pointing to traps."
         },
         {
-          "check": "fixture-no-answers",
+          "check": "fixture-lists-no-answer",
           "verdict": "pass",
           "note": "Fixture files contain retention policies as evidence (compliance.md and budget-constraints.md) without explicitly stating 'these are the answers.'"
         },

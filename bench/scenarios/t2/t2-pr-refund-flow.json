@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-refund-flow",
-  "version": 1,
+  "version": 2,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -123,7 +123,7 @@
   },
   "review": {
     "family": "glm",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -151,5 +151,24 @@
         "note": "No comments, test names, or file names point directly at the planted problems. The decoy (roundToMinor helper) is plausible but intentionally not a defect. The test file uses generic test data that doesn't reveal issues."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 32,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

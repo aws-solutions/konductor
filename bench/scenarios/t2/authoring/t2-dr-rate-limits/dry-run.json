@@ -33,10 +33,21 @@
   ],
   "repeatable": true
  },
- "dump": {
-  "score": 50,
+ "shallow": {
+  "score": 28.6,
   "checks": [
-   "FAIL tests 6/20",
+   "FAIL tests 0/20",
+   "pass file_exists",
+   "pass cmd",
+   "pass cmd",
+   "pass fixture_unchanged"
+  ],
+  "repeatable": true
+ },
+ "dump": {
+  "score": 32.1,
+  "checks": [
+   "FAIL tests 1/20",
    "pass file_exists",
    "pass cmd",
    "pass cmd",
@@ -50,6 +61,7 @@
   "stub": true,
   "repeatable": true,
   "dump": true,
-  "alt": true
+  "alt": true,
+  "shallow": true
  }
 }

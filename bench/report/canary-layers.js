@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Scores the canary-layers runs (bench/docs/studies/CANARY-LAYERS.md): for each layer token, was it visible in the stream, and where.
+// Scores the canary-layers runs (bench/docs/studies/canary-layers.md): for each layer token, was it visible in the stream, and where.
 // Reads files only: no model, no network, no writes except --out.
 //
 // What the stream can show:

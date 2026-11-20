@@ -31,3 +31,27 @@ test('auditStream flags unit reads and other batches, not the authoring dir', ()
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('overlayOf copies only the files an answer added or changed', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 't8-overlay-'));
+  try {
+    process.env.T8_AUTH = root;
+    const { overlayOf } = require('../../scenarios/t8/stage.js');
+    const fixture = path.join(root, 'fixture');
+    const ws = path.join(root, 'ws');
+    fs.mkdirSync(path.join(fixture, 'logs'), { recursive: true });
+    fs.writeFileSync(path.join(fixture, 'logs/a.log'), 'same\n');
+    fs.writeFileSync(path.join(fixture, 'README.md'), 'old\n');
+    fs.cpSync(fixture, ws, { recursive: true });
+    fs.writeFileSync(path.join(ws, 'README.md'), 'new\n');
+    fs.mkdirSync(path.join(ws, 'docs'));
+    fs.writeFileSync(path.join(ws, 'docs/report.md'), 'answer\n');
+    const to = path.join(root, 'overlay');
+    assert.strictEqual(overlayOf(ws, fixture, to), 2);
+    assert.ok(fs.existsSync(path.join(to, 'docs/report.md')));
+    assert.ok(fs.existsSync(path.join(to, 'README.md')));
+    assert.ok(!fs.existsSync(path.join(to, 'logs/a.log')));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

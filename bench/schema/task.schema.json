@@ -685,8 +685,7 @@
       "items": {
         "type": "object",
         "required": [
-          "id",
-          "finding"
+          "id"
         ],
         "additionalProperties": false,
         "properties": {
@@ -701,6 +700,39 @@
           "weight": {
             "type": "number",
             "minimum": 0
+          },
+          "location": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "nit"
+            ]
+          },
+          "fix": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "fixMin": {
+            "type": "integer",
+            "minimum": 1
           }
         }
       }
@@ -934,13 +966,12 @@
           }
         },
         "recheck": {
-          "description": "Re-review of a hand-edited task by a family other than the editor's, from the four-item checklist.",
           "type": "object",
           "required": [
             "family",
             "model",
             "date",
-            "verdicts"
+            "items"
           ],
           "additionalProperties": false,
           "properties": {
@@ -956,8 +987,9 @@
               "type": "string",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}"
             },
-            "verdicts": {
+            "items": {
               "type": "array",
+              "minItems": 4,
               "items": {
                 "type": "object",
                 "required": [
@@ -969,7 +1001,7 @@
                   "check": {
                     "enum": [
                       "no-method-or-decoy",
-                      "fixture-no-answers",
+                      "fixture-lists-no-answer",
                       "key-matches-fixture",
                       "solvable-from-fixture"
                     ]
@@ -987,38 +1019,18 @@
               }
             }
           }
-        }
-      }
-    },
-    "handEdited": {
-      "description": "Set when anyone other than the recorded author changed the prompt, fixture, key, checks or rubric; the log file in the batch folder says what and why. null: no such change.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "required": [
-        "family",
-        "editor",
-        "log"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "family": {
-          "type": "string",
-          "minLength": 1
         },
-        "editor": {
-          "type": "string",
-          "minLength": 1
-        },
-        "log": {
+        "model": {
           "type": "string",
           "minLength": 1
         }
       }
     },
     "pilot": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "required": [
         "scores",
         "decision",
@@ -1090,8 +1102,35 @@
       }
     },
     "lockedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+    },
+    "handEdited": {
+      "description": "null: checked, no one but the author changed the prompt, fixture, key, checks or rubric.",
+      "type": ["object", "null"],
+      "required": [
+        "family",
+        "editor",
+        "log"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "editor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "log": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   }
 }

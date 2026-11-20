@@ -123,14 +123,14 @@
       "family": "openai",
       "model": "gpt-5.6-luna",
       "date": "2026-11-20",
-      "verdicts": [
+      "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
           "note": "task.json prompt field (line 3) states the checkout goal, inputs, and output schema but names no method, checklist, tool, trap, or answer. It does not point the agent to a particular option."
         },
         {
-          "check": "fixture-no-answers",
+          "check": "fixture-lists-no-answer",
           "verdict": "pass",
           "note": "fixture/README.md lines 45-55 and fixture/architecture-diagram.md lines 26-61 list candidate approaches and evidence, but no fixture file declares a selected option or hidden expected deliverable. The latency and cost figures are source evidence the agent must compare."
         },

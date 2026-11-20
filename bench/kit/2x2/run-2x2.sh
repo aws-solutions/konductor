@@ -93,7 +93,7 @@ freeze() {
   fi
   # The pinned commit's Claude Code skill listing (budget 30,000 chars for Sonnet 5.5) must leave no konductor skill
   # name-only. The estimate is conservative (it ran about 850 chars over the measured listing), so a refusal here can be
-  # checked with the free `claude -p '/context'` recipe in bench/docs/REPEAT.md before anything else changes.
+  # checked with the free `claude -p '/context'` recipe in bench/docs/repeat.md before anything else changes.
   mkdir -p "$S"
   node "$LISTING_JS" "$R" "$commit" --json >"$S/listing.json" || { node "$LISTING_JS" "$R" "$commit" || true; die "konductor commit $commit leaves skills name-only in the Claude Code listing; land the trim PR first, then freeze"; }
   node "$LISTING_JS" "$R" "$commit"

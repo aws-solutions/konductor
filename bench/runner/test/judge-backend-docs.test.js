@@ -16,8 +16,8 @@ test('the README and playbook document the backend, and their judge commands use
   for (const re of [/--judge-backend opencode/, /--budget-usd/, /cannot run at temperature 0/, /One backend per results directory/, /same-named|may also differ from the model kiro serves/, /7\.2k to 11\.4k tokens/, /stdin/]) assert.match(section, re);
   assert.ok(section.includes(JUDGE_SYSTEM_PROMPT));
   for (const [logical, m] of Object.entries(OPENCODE_MODELS)) assert.ok(section.includes(`| ${logical} | ${m.bedrockId} |`), `${logical} row`);
-  assert.match(read('docs/CAP-PLAYBOOK.md'), /## Judge backends/);
-  for (const doc of [section, read('docs/CAP-PLAYBOOK.md')]) {
+  assert.match(read('docs/cap-playbook.md'), /## Judge backends/);
+  for (const doc of [section, read('docs/cap-playbook.md')]) {
     const cmds = doc.split('\n').filter((l) => l.startsWith('node bench/runner/bench.js judge') || l.startsWith('node bench/runner/bench.js report'));
     assert.ok(cmds.length >= 2);
     for (const c of cmds) {

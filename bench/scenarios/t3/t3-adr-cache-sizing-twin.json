@@ -108,14 +108,14 @@
       "family": "openai",
       "model": "gpt-5.6-luna",
       "date": "2026-11-20",
-      "verdicts": [
+      "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
           "note": "The task.json prompt field specifies only the inputs, arithmetic outputs, destination, rounding, and no-recommendation constraint; it names no method, checklist, tool, trap, or expected answer."
         },
         {
-          "check": "fixture-no-answers",
+          "check": "fixture-lists-no-answer",
           "verdict": "pass",
           "note": "fixture/price-sheet.json supplies raw node inputs and fixture/operating-model.md supplies the 25% reservation, while the other fixture files provide context or decoys without stating computed results."
         },
