@@ -125,5 +125,19 @@
         "note": "The task is fair and implementable. All required behavior is specified in the request, the solution demonstrates a working implementation without external dependencies or flaky timing, and the hidden tests verify the stated requirements."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 13,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 13,
+      "lazy": 41.2,
+      "alt": 20.8,
+      "date": "2026-11-20"
+    }
   }
 }

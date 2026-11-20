@@ -1,0 +1,15 @@
+{
+  "id": "t1-twin-booking-export",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "minimax-m2.5",
+  "reviewer": "gpt-5.6-luna",
+  "stack": "node",
+  "size": "existing",
+  "controlKind": "twin",
+  "twinOf": "t1-impl-rate-limit",
+  "onFixture": "t1-impl-rate-limit",
+  "source": "original",
+  "twoStep": true,
+  "brief": "A near-miss twin on an existing repository (the booking API in fixture/). The request shares words with a rate-limiting task (API keys, plans, requests, headers) but asks for one small, well specified addition with no limiting: a GET /api/v1/bookings/export route that returns every booking as CSV (a fixed header line and column order you state in the request, RFC 4180 quoting for commas, quotes and line breaks, Content-Type text/csv), with an optional `from` and `to` date filter that rejects a malformed date with a 400 JSON error. Hidden tests call the route through the app's own createApp."
+}

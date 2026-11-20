@@ -39,6 +39,10 @@ Blindness audit (`audit.js`): every author, map and review stream is scanned for
 
 Shallow answer check (free, 2026-11-20): `dry-run.js` also scores a shallow answer built without a model: the reference's docs, changelog, config and test files with none of its code changes. It must score 40 or less. All 15 tasks in the tree passed (15.2 to 38.1; highest t1-bug-cache-ttl 38.1, t1-ref-esm-migrate 37.8), so no scorer change was needed.
 
+Lazy and alternative answers, first full pass (2026-11-20): qwen3-coder-next wrote lazy answers as complete as its alternatives (the first four tasks), so glm-5 now writes them for gpt-authored tasks; the lazy prompt was tightened (at most two code files, only the first, most obvious case). Of the 15 tasks, 3 pass every gate (reference 95+, stub 20-, lazy and shallow 40-, alternative 80+): t1-bug-http-retry, t1-nfr-report-queries, t1-ref-esm-migrate. The other 12 have `pilot.decision: fix`: in 9 the lazy answer passes most hidden tests (the hidden suite does not separate a shallow fix from a full one, so no check-weight change can bring it to 40 or less without tuning to that answer), and in 6 the alternative answer scores under 80. The scores are in each task's `pilot.dryRun`.
+
+Recheck of the 4 hand-edited tasks (glm-5): three pass all four items. t1-nfr-report-queries got a fail on key-matches-fixture: the reviewer notes the hidden tests pass a `connection` argument that the fixture's `ReportDatabase` lacks. The request asks the agent to add exactly that argument, so the worker reads this as a false finding; it is left as recorded for the owner.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -49,6 +53,8 @@ Shallow answer check (free, 2026-11-20): `dry-run.js` also scores a shallow answ
 | t1-refactor-esm | deepseek-3.2 | the dry run failed: the reference scored 87.4 (42 of 51 hidden tests) and the untouched fixture scored 69.1 (36 of 51 passed before any change); the reviewer's leak and floor verdicts were fail | author 35.52 credits; no fix round, because a deepseek fix round costs about 25 credits and the hidden tests tested the old code as much as the new. Replaced by `t1-ref-esm-migrate`, written by the other author with a smaller scope |
 | t1-impl-cursor-paging | deepseek-3.2 | the reference scored 63.0 and the reviewer's leak, ambiguity, hidden-answer and floor verdicts were fail; no fix round (deepseek fix rounds have not repaired a reference) | see the calls table for credits |
 | t1-nfr-latency-cache | minimax-m2.5 | second-family author stopped at the 90-tool-call cap without writing task-draft.json; dropped, not hand-fixed (owner rule) | see the calls table for credits |
+| t1-impl-flag-rollout | minimax-m2.5 | second-family draft: the reference scored 0 (no hidden test ran) and the reviewer's leak, hidden-answer and ceiling verdicts were fail; dropped without a fix round, because the fix would keep a Python hidden suite and so a new per-task bridge copy, which the owner's no-copies rule forbids until the shared lib lands | see the calls table for credits |
+| t1-ref-split-module | minimax-m2.5 | second-family draft stopped by the 45-minute watchdog before it finished; the reviewer saw a partial draft and failed all five checks; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -129,3 +135,29 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-ref-esm-migrate | author | gpt-5.6-luna | 1.94 |
 | t1-ref-esm-migrate | map | glm-5 | 0.17 |
 | t1-ref-esm-migrate | review | glm-5 | 9.20 |
+| t1-bug-cache-ttl | lazy+alt answers | qwen3-coder-next | 6.80 |
+| t1-bug-date-range | lazy+alt answers | qwen3-coder-next | 1.82 |
+| t1-bug-event-listeners | lazy+alt answers | qwen3-coder-next | 1.90 |
+| t1-bug-http-retry | lazy+alt answers | qwen3-coder-next | 1.14 |
+| t1-impl-job-retry | lazy+alt answers | qwen3-coder-next | 2.00 (estimate: stopped by the worker when the answer writer changed; the four finished qwen3-coder-next answer calls cost 1.14 to 6.80) |
+| t1-bug-cache-ttl | lazy+alt answers | glm-5 | 4.65 |
+| t1-bug-date-range | lazy+alt answers | glm-5 | 2.56 |
+| t1-bug-event-listeners | lazy+alt answers | glm-5 | 3.53 |
+| t1-bug-http-retry | lazy+alt answers | glm-5 | 4.29 |
+| t1-impl-job-retry | lazy+alt answers | glm-5 | 5.97 |
+| t1-impl-money-split | lazy+alt answers | glm-5 | 3.87 |
+| t1-impl-rate-limit | lazy+alt answers | glm-5 | 12.23 |
+| t1-impl-webhook-verify | lazy+alt answers | glm-5 | 4.53 |
+| t1-nfr-ndjson-stream | lazy+alt answers | glm-5 | 12.86 |
+| t1-nfr-report-queries | lazy+alt answers | glm-5 | 5.33 |
+| t1-nfr-startup-lazy | lazy+alt answers | glm-5 | 3.21 |
+| t1-ref-callbacks | lazy+alt answers | glm-5 | 3.53 |
+| t1-ref-dep-upgrade | lazy+alt answers | glm-5 | 2.33 |
+| t1-ref-esm-migrate | lazy+alt answers | glm-5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-ref-schema-migrate | lazy+alt answers | glm-5 | 6.59 |
+| t1-bug-cache-ttl | recheck | glm-5 | 1.29 |
+| t1-nfr-report-queries | recheck | glm-5 | 1.35 |
+| t1-nfr-startup-lazy | recheck | glm-5 | 1.35 |
+| t1-ref-schema-migrate | recheck | glm-5 | 1.57 |
+| t1-impl-settings-expand | author | gpt-5.6-luna | 3.31 |
+| t1-impl-settings-expand | map | glm-5 | 0.16 |

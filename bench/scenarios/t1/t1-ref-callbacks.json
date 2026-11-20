@@ -131,5 +131,19 @@
         "note": "The task is achievable: the reference solution passes all 16 hidden tests and all 7 checks. The requirements are internally consistent and build on the existing callback infrastructure. No contradictory constraints, flaky tests, or timing-dependent behaviors were observed."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 11.6,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 11.6,
+      "lazy": 67.9,
+      "alt": 67.9,
+      "date": "2026-11-20"
+    }
   }
 }

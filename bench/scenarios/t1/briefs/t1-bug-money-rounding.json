@@ -2,9 +2,9 @@
   "id": "t1-bug-money-rounding",
   "phase": "bugfix",
   "role": "developer",
-  "author": "minimax-m2.5",
+  "author": "qwen3-coder-next",
   "reviewer": "gpt-5.6-luna",
-  "stack": "python",
+  "stack": "node",
   "size": "20 to 30",
   "source": {
     "url": "https://github.com/python-babel/babel",
@@ -12,6 +12,6 @@
     "licenceCheckedAt": "2026-11-19",
     "use": "idea"
   },
-  "brief": "Phase: bug fix. Role: developer. Repo kind: a Python 3.12 invoicing library (standard library only, decimal module) with line items, tax rules, discounts, currencies with different minor units, a formatter, tests, CI config and docs. About 25 files. Inspiration (a bug class only, nothing copied): public localisation libraries have repeatedly fixed defects in currency rounding (banker's rounding versus half up, rounding per line versus on the total, currencies with zero or three decimals). Build a task where the owner reports symptoms (totals off by a cent on some invoices, yen invoices shown with decimals, a discount that makes a total negative), with no diagnosis. Two or three interacting defects, one subtle. Visible tests pass today and do not point at them.",
-  "economy": true
+  "brief": "Phase: bug fix. Role: developer. Repo kind: a Node.js 24 invoicing library (no dependencies; amounts as integer minor units or strings, never floats) with line items, tax rules, discounts, currencies with different minor units, a formatter, tests, CI config and docs. About 25 files. Inspiration (a bug class only, nothing copied): public localisation libraries have repeatedly fixed defects in currency rounding (banker's rounding versus half up, rounding per line versus on the total, currencies with zero or three decimals). Build a task where the owner reports symptoms (totals off by a cent on some invoices, yen invoices shown with decimals, a discount that makes a total negative), with no diagnosis. Two or three interacting defects, one subtle. Visible tests pass today and do not point at them.",
+  "twoStep": true
 }

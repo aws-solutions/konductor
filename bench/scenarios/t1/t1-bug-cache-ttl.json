@@ -123,11 +123,52 @@
         "verdict": "pass",
         "note": "The task is fair and solvable. Tests are deterministic, not timing-dependent, and check the specified TTLCache contract. The reference fixes replace stale weight, refresh expiry on overwrite, and make sweep inspect entries without using get."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request describes symptoms (stale data, memory growth, counter mismatch) and specifies APIs to preserve, but never mentions a specific method, framework, or tool for how to work, nor does it contain misleading hints pointing away from the real bugs."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture tests in test/cache.test.js only cover basic happy-path behavior; nothing in comments, docs, or tests describes the corrected TTL refresh, weight replacement, sweep behavior, or counter semantics that the hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All names, paths, and behaviors referenced in the hidden tests (TTLCache constructor options, set/get/has/delete/clear/sweep/stats/close/size/weight, DataStore, ProfileService, PermissionService) exist in the fixture and are stated in the request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can trace the symptoms in the request to the buggy TTLCache implementation in the fixture: the set method fails to refresh expiresAt and miscalculates weight on overwrite, and sweep incorrectly uses get (inflating counters). These bugs are discoverable from reading the fixture code."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
     "editor": "t1-worker",
     "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19,
+      "lazy": 71.4,
+      "alt": 85.7,
+      "date": "2026-11-20"
+    }
   }
 }

@@ -131,5 +131,19 @@
         "note": "The task is achievable: the reference solution passes all tests. The clock injection pattern is explicitly stated. All required behaviors (error codes, headers, exempt routes) are specified. No timing-dependent or flaky tests - the clock is injected. The task is complex but not impossible."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 16.6,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 16.6,
+      "lazy": 83.6,
+      "alt": 83.6,
+      "date": "2026-11-20"
+    }
   }
 }

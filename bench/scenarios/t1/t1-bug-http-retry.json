@@ -118,5 +118,19 @@
         "note": "All requirements are specified in the prompt or discoverable from the code. The hidden tests do not rely on unstated behaviors. No timing-dependent or flaky tests observed. All 14 hidden tests pass with the reference solution."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 39.5,
+      "alt": 90.5,
+      "date": "2026-11-20"
+    }
   }
 }
