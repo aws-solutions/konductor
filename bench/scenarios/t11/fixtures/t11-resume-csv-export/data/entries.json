@@ -1,0 +1,22 @@
+[
+  {
+    "id": "tm-201",
+    "startedAt": "2025-04-02T09:15:00-04:00",
+    "endedAt": "2025-04-02T10:45:00-04:00",
+    "minutes": 90,
+    "project": "Harbor map",
+    "description": "review the second draft",
+    "billable": true,
+    "tags": ["client", "planning"]
+  },
+  {
+    "id": "tm-202",
+    "startedAt": "2025-04-03T13:00:00Z",
+    "endedAt": "2025-04-03T14:10:00Z",
+    "minutes": 70,
+    "project": "Workshop",
+    "description": "pair with Mina",
+    "billable": false,
+    "tags": ["internal"]
+  }
+]

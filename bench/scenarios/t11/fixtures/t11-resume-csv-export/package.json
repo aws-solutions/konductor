@@ -1,0 +1,10 @@
+{
+  "name": "minute-mason",
+  "version": "1.4.0",
+  "description": "A small file-backed time ledger for a quiet team",
+  "main": "index.js",
+  "bin": { "timesheet": "bin/timesheet.js" },
+  "scripts": { "test": "node --test test/" },
+  "engines": { "node": ">=24" },
+  "license": "MIT"
+}

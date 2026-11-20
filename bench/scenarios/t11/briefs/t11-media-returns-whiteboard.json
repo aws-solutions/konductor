@@ -1,0 +1,20 @@
+{
+  "id": "t11-media-returns-whiteboard",
+  "kind": "code",
+  "media": "png",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "30 to 50",
+  "ntests": "14 to 18",
+  "ntrap": 3,
+  "voice": "a tech lead who drew the design in a meeting and is now on leave for a week",
+  "source": {
+    "url": "https://en.wikipedia.org/wiki/UML_state_machine",
+    "licence": "CC BY-SA 4.0 (checked on the page footer, 2026-11-20); idea only: states, events, guards and transitions drawn as a diagram; no text or figure used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation. Role: developer. Repo: a Node.js returns service for a small online shop (a customer asks to return an order line; staff inspect, approve and refund). The team drew the new return lifecycle on a whiteboard, and a photo-like PNG of it sits in the repository (for example `docs/design/returns-whiteboard.png`): states as boxes, transitions as arrows labelled with the event name, some with a guard in square brackets (for example a day limit since delivery, or an amount above which a manager must approve), plus one sticky note with a money rule (for example a restocking fee in percent when the item was opened, with a minimum). The repository has the old, simpler lifecycle module (3 or 4 states) that the new design replaces, and a short design note that points to the photo without repeating it. Seed these traps, all visible only in the image: (1) one arrow is crossed out on the board and must not exist; (2) one guard is small and easy to miss, and changes which state an event leads to; (3) one self-loop (an event that keeps the state but changes a counter or a field). Make the image look like a whiteboard photo (off-white background, marker colours, a handwriting-like system font, slightly uneven lines), but keep every label legible at 100% zoom. The request names the module and its exported functions (for example `createReturn(input)` and `applyEvent(ret, event, ctx)` returning the new return object or throwing an error whose `code` is `INVALID_TRANSITION`), says the photo is the source of truth, and asks to replace the old flow. Hidden tests check every drawn transition, each guard on both sides of its limit, the crossed-out arrow rejected, events not drawn for a state rejected, the self-loop, and the sticky-note money rule in integer cents."
+}
