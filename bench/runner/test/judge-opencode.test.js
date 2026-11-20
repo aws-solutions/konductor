@@ -16,7 +16,8 @@ const CREDS = `[other]\naws_access_key_id = AKIAOTHERPROFILE\naws_secret_access_
 const RUBRIC_PROMPT = 'Grade.\n- id: c1\n- id: c2\nReply with JSON.';
 
 function setup(config = {}, opts = {}) {
-  const root = tmp();
+  // realpath: the fake records process.cwd(), which resolves a symlinked TMPDIR (/home -> /local/home on some hosts).
+  const root = fs.realpathSync(tmp());
   const scratch = path.join(root, 'scratch');
   fs.mkdirSync(scratch);
   const fake = makeFakeOpencodeJudge(path.join(root, 'bin'), { dir: path.join(root, 'calls'), ...config });
