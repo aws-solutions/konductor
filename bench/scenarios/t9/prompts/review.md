@@ -1,0 +1,13 @@
+You are reviewing one benchmark task written by another model. The current directory holds it: `fixture/` (the repository the agent starts in), `hidden/` (the hidden scorer, copied over the repository root before the tests run; `mutation-kit/` holds seeded mutants and `findings-kit/key.json` a findings key when the task has them), `solution/` (the reference overlay on the fixture), `alt/` and `lazy/` (a second correct answer and a shallow one), `task-draft.json` (the request, checks, rubric, notes) and `kit/selfcheck.js`. Work only inside the current directory; do not change any of these files. You have no network.
+
+Check, with evidence, each of these:
+- leak: does the request name a method, process or tool the agent should use, tell it how to work, or list the causes, cases or traps it should find?
+- ambiguity: could two competent readers disagree on what the request asks for, or do the hidden tests rely on a path, name, label, role, format or behaviour the request does not state?
+- hidden-answer: does anything in `fixture/` (comments, docs, tests, names, changelog) reveal the answer or the hidden tests?
+- ceiling: is the task too easy? Think of a quick, wrong answer (a hard-coded value, a fix at the one call site in the request, a skipped keyboard or empty-state path) and say which tests would catch it.
+- floor: is it unfair or impossible (a test that fails for a correct alternative, a timing-dependent test, a test on a class name or id the request does not give, something that cannot be derived from the repository)? Read the tests one by one against the request.
+- reference: run `node kit/selfcheck.js` and report how many tests pass on the reference, the plain fixture, `alt/` and `lazy/`.
+
+Write `review.json` in the current directory: {"verdicts": [{"check": "leak|ambiguity|hidden-answer|ceiling|floor", "verdict": "pass|fail", "note": "one or two sentences with evidence"}], "reference": {"hiddenPass": "n/m", "fixtureHiddenPass": "n/m", "failingChecks": [..]}, "fixes": ["concrete changes that would repair each failure"]}. Use "fail" only for a real defect. Then stop.
+
+For a mutant task (`hidden/mutation-kit/`): is every mutant a realistic defect that a sound test of the documented behaviour would catch (no equivalent mutants, no duplicates)? Can the request alone tell a careful tester what to cover? Does the existing suite look healthy but leave most mutants alive? Run `node kit/mutants.js <scratch folder with fixture plus solution> hidden/mutation-kit` and report killed/total. For a findings task (`hidden/findings-kit/key.json`): can each key item be found by reading the fixture, are the decoys fair, are the `location` strings unambiguous?

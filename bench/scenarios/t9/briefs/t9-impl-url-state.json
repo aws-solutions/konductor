@@ -1,0 +1,20 @@
+{
+  "id": "t9-impl-url-state",
+  "kind": "impl",
+  "phase": "implementation",
+  "role": "frontend",
+  "phases2": [],
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "ts",
+  "size": "25 to 40",
+  "ntests": "12 to 16",
+  "ntrap": 4,
+  "source": {
+    "url": "https://github.com/sindresorhus/query-string",
+    "licence": "MIT (checked on GitHub)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation. Role: frontend developer. Repo: a TypeScript data-table front end for an invoices list (no framework, DOM-free logic modules: table state, sorting, paging, filters, a small router wrapper that takes a URL search string and returns a state). The feature: keep the table state in the URL query string so a list can be shared and the back button works: serialize the state (search text, status filter with several values, date range, sort column and direction, page and page size) to a query string, and parse a query string back into a state, through two exported functions the request names. Defaults must not appear in the URL. Traps: repeated and comma-joined values, encoded characters and plus signs in the search text, unknown or invalid values (a negative page, a sort column that does not exist, a reversed date range, a page size not in the allowed list) that must fall back to defaults without throwing, round trips (parse(serialize(x)) equals x), stable key order so equal states give the same string, and an existing helper that already validates sort columns and must be reused."
+}

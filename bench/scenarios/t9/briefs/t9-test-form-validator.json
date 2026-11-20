@@ -1,0 +1,20 @@
+{
+  "id": "t9-test-form-validator",
+  "kind": "mutants",
+  "phase": "testing",
+  "role": "frontend",
+  "phases2": [],
+  "author": "qwen3-coder-next",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "20 to 35",
+  "nmut": 10,
+  "ntrap": 3,
+  "source": {
+    "url": "https://github.com/validatorjs/validator.js",
+    "licence": "MIT (checked on GitHub)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: testing. Role: frontend developer. Repo kind: a plain JavaScript (ES modules, no browser, no dependencies) signup-form logic package: username normalisation and rules (length in code points, allowed characters, reserved names, case folding), password rules with a strength score and messages, email and phone validation by region, an age gate from a birth date and an injected clock, a form-level validator that collects errors by field, and the message catalogue. The existing suite covers happy paths and looks healthy. The request is from a frontend developer: 'our signup form let bad input through twice last month; add tests under test/ that I can trust'. The source must not change. Behaviours that matter: boundaries of length rules, a reserved name in a different case, an emoji in a username counted by code points, strength score thresholds, a date that is exactly the age limit, empty and whitespace-only fields, errors collected for every field and not only the first."
+}

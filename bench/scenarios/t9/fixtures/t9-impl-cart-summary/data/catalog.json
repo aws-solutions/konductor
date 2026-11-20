@@ -1,0 +1,6 @@
+[
+  { "id": "linen-throw", "name": "Linen throw", "unitAmount": 6800 },
+  { "id": "stone-mug", "name": "Stoneware mug", "unitAmount": 1800 },
+  { "id": "cedar-tray", "name": "Cedar tray", "unitAmount": 4200 },
+  { "id": "wool-coaster", "name": "Wool coaster set", "unitAmount": 1200 }
+]

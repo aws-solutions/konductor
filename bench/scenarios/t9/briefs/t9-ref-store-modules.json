@@ -1,0 +1,20 @@
+{
+  "id": "t9-ref-store-modules",
+  "kind": "refactor",
+  "phase": "refactor",
+  "role": "frontend",
+  "phases2": [],
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "node",
+  "size": "25 to 40",
+  "ntests": "12 to 16",
+  "ntrap": 4,
+  "source": {
+    "url": "https://github.com/reduxjs/redux",
+    "licence": "MIT (checked on GitHub)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor. Role: frontend developer. Repo: a plain JavaScript notes app front end whose state lives in one large `src/store.js` (about 400 lines): notes, tags, a sync queue, user settings and toast notifications, with module-level variables, subscribers called in a fixed order, callbacks that call each other, and a few quirks callers depend on (a subscriber that unsubscribes during a notification, default settings merged shallowly, a toast id counter that is module state, ordering of the sync queue). Many files import `store` from it. The request: split it into separate modules per concern (the request names the new paths and exports: pure reducer-style functions per concern and selector functions), keep `src/store.js` as the one public entry with the same exports and behaviour, and keep all existing tests passing. Hidden tests: characterization tests through the old entry points, and structure tests on the new modules (they work alone and the old entry uses them, checked with an injected fake)."
+}
