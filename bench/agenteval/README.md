@@ -3,7 +3,7 @@
 agenteval prepares scenario candidates for an agent that is not a Konductor agent. It takes the output of the Strands Evals test case generator, filters out what is obviously broken, and writes the rest as a reviewable list. It does not run an agent, and it does not score anything.
 
 > [!IMPORTANT]
-> This is the first step only. Mocks for the agent's tools, negative twins, reference-run grounding, a bench task emitter, trajectory checks and an agent runtime are **not built yet and are not supported**. bench still cannot benchmark an arbitrary agent (see [Other agents](../GUIDE.md#other-agents)). What you get here is a reviewed list of scenario candidates, nothing more.
+> This is the first step only. Mocks for the agent's tools, negative twins, reference-run grounding, a bench task emitter, trajectory checks and an agent runtime are **not built yet and are not supported**. bench still cannot benchmark an arbitrary agent (see [Plug in a new agent type](../docs/agents.md#plug-in-a-new-agent-type)). What you get here is a reviewed list of scenario candidates, nothing more.
 
 ## Why every proposal needs a human
 

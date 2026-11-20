@@ -1,0 +1,5 @@
+{
+  "database": ":memory:",
+  "port": 0,
+  "logLevel": "silent"
+}

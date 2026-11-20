@@ -153,5 +153,20 @@
         "note": "All key values are derivable from fixture data: (1) MOB-089 has blank assignee, due 2027-08-13, depends on MOB-063 - confirms unowned chain risk; (2) Vendor contract states v1 retirement on 2027-08-20, MOB-052 is the compatibility ticket - confirms vendor risk with correct trigger date; (3) Session Bridge chain MOB-014 through MOB-158 all assignee='Priya Nair' - confirms key-person risk. The 2027-09-06 freeze date is confirmed as a Monday public holiday in capacity.csv."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "repeats": 3,
+        "deterministic": true,
+        "reference": 100,
+        "stub": 7.1,
+        "alt": 100
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20"
   }
 }

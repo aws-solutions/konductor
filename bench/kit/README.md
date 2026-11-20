@@ -2,7 +2,7 @@
 
 The scripts that drove the konductor 2x2 study (Kiro CLI and Claude Code, each without and with konductor) and the
 PR #312 skill-access probe. They live here so that any run can be repeated later. The steps, in order, are in
-[../REPEAT.md](../REPEAT.md). This page says what each file is and what it needs.
+[../REPEAT.md](../docs/REPEAT.md). This page says what each file is and what it needs.
 
 Run every kit script from your own terminal, never from an agent shell. The paid stages need the sandbox (`unshare`),
 which an agent shell blocks, and they spend credits or dollars.
@@ -67,4 +67,4 @@ These checks are the point of the kit. Do not weaken them to get a run through.
 
 `bench/runner/test/kit-2x2.test.js` and `bench/runner/test/kit-tools.test.js` check syntax, the free commands, the
 refusals that fire before anything is spent, `gate` on fake results, and the helpers on small fixtures. They start no
-model, no cloud call and no sandbox. Run them as in [../REPEAT.md](../REPEAT.md#test-the-kit).
+model, no cloud call and no sandbox. Run them as in [../REPEAT.md](../docs/REPEAT.md#test-the-kit).

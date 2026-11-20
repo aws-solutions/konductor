@@ -1,0 +1,13 @@
+{
+  "notes": [
+    "The main traps: last-write-wins replication (3.2) allows double booking despite product rules saying it must never happen.",
+    "The claimed RPO (6.3) is smaller than measured replication lag in the CSV data.",
+    "DNS TTL plus health-check timing exceeds the RTO target (6.2).",
+    "Budget (8.1) misses doubled database costs and underestimates cross-region transfer.",
+    "Failback procedure (7.1) lacks specifics for data consistency verification.",
+    "Global seat counter (3.3) has no merge rule for concurrent regional updates.",
+    "Recovery time estimates (6.1) don't account for DNS propagation delay.",
+    "Asynchronous replication conflicts with strong consistency requirements (2.2).",
+    "Quick reviews miss cross-file contradictions: need to check service targets, product rules, and measurements against design claims."
+  ]
+}

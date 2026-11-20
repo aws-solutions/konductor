@@ -1,0 +1,11 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "Prompt does not name review method, checklist, planted problems, or count" },
+    { "check": "ambiguity", "verdict": "pass", "note": "Clear instructions: review docs/design/account-deletion.md, write REVIEW.md with section numbers, severity, issue, fix" },
+    { "check": "ceiling", "verdict": "pass", "note": "Quick review misses legal deadline, warehouse, evidence fields, vendor, queue-ack completion" },
+    { "check": "floor", "verdict": "pass", "note": "All six key items are verifiable at listed sections with defendable severity" },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No fixture file, comment, test, or name points at planted problems" }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

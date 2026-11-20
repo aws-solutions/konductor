@@ -1,0 +1,67 @@
+{
+  "domain": "ticketbooking.example.com",
+  "record_sets": [
+    {
+      "name": "ticketbooking.example.com",
+      "type": "A",
+      "alias_target": {
+        "dns_name": "dualstack.app-lb-east.elb.amazonaws.com",
+        "evaluate_target_health": true
+      },
+      "routing_policy": "latency",
+      "region": "us-east-1",
+      "weight": 50,
+      "health_check_id": "hc-east"
+    },
+    {
+      "name": "ticketbooking.example.com",
+      "type": "A",
+      "alias_target": {
+        "dns_name": "dualstack.app-lb-west.elb.amazonaws.com",
+        "evaluate_target_health": true
+      },
+      "routing_policy": "latency",
+      "region": "us-west-2",
+      "weight": 50,
+      "health_check_id": "hc-west"
+    }
+  ],
+  "health_checks": [
+    {
+      "id": "hc-east",
+      "protocol": "HTTPS",
+      "port": 443,
+      "path": "/health",
+      "interval_seconds": 30,
+      "timeout_seconds": 5,
+      "healthy_threshold": 2,
+      "unhealthy_threshold": 3
+    },
+    {
+      "id": "hc-west",
+      "protocol": "HTTPS",
+      "port": 443,
+      "path": "/health",
+      "interval_seconds": 30,
+      "timeout_seconds": 5,
+      "healthy_threshold": 2,
+      "unhealthy_threshold": 3
+    }
+  ],
+  "ttl_settings": {
+    "default_ttl": 300,
+    "minimum_ttl": 60,
+    "maximum_ttl": 86400
+  },
+  "failover_config": {
+    "primary_region": "us-east-1",
+    "secondary_region": "us-west-2",
+    "failover_delay_seconds": 60,
+    "failback_delay_seconds": 300
+  },
+  "monitoring": {
+    "cloudwatch_alarms_enabled": true,
+    "alert_topic": "dns-health-alerts",
+    "logs_enabled": true
+  }
+}

@@ -41,6 +41,6 @@ claim it must not make.
 `solution/` and `task-draft.json` in an empty dir; `node build-task.js <id> <dir>` turns them into the files above,
 merging the mapper's `map.json` and the reviewer's `review.json` when present. `node dry-run.js <id>` scores the
 reference, an empty stub and a dump that flags every changed line, three times each, with the runner's check code.
-Gates: reference at least 95, stub at most 20, all checks pass the reference, identical repeats.
+Gates: reference at least 95, stub at most 20, dump at most 55, the reference rewritten in another valid style (line ranges, section labels, a {"findings"} wrapper, other order) at least 90, all checks pass the reference, identical repeats.
 
 Tests: `node --test bench/scenarios/t2/test/*.test.js`.

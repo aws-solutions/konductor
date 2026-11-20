@@ -180,3 +180,30 @@ def closure_gaps(agent, spec):
 def test_agent_declares_the_skills_its_skills_load(agent, spec):
     gaps = closure_gaps(agent, spec)
     assert not gaps, f"{agent}: " + "; ".join(gaps)
+
+
+# konductor declares every skill a specialist declares, so single-writer konductor can load
+# them on Kiro CLI, whose skill server serves only declared names. These it must not declare:
+# the coordinator-only dispatch skills, and the skills only the adversarial-review SOP's
+# spawned passes use (the SOP keeps passes and checker in separate sessions).
+KONDUCTOR_NOT_DECLARED = {
+    "mux-dispatch",
+    "cmux-dispatch",
+    "git-merge",
+    "adversarial-code-review-pass-security",
+    "adversarial-code-review-pass-integrity",
+    "adversarial-code-review-pass-schema",
+    "historical-issues-registry",
+}
+
+
+def test_konductor_declares_every_specialist_skill_except_the_ones_it_must_not():
+    specs = dict(_specs())
+    declared, _ = _slots(specs["konductor"])
+    specialist = set().union(*(set().union(*_slots(s)) for name, s in specs.items() if name.startswith("k-")))
+    missing = sorted(specialist - KONDUCTOR_NOT_DECLARED - declared)
+    assert not missing, f"specialists declare skills that konductor does not: {missing}"
+    forbidden = sorted(declared & KONDUCTOR_NOT_DECLARED)
+    assert not forbidden, f"konductor declares skills it must not: {forbidden}"
+    sop = (REPO_ROOT / "agent-sops" / "k-adversarial-pull-request-review.sop.md").read_text(encoding="utf-8")
+    assert "never generates, filters or judges a finding" in sop

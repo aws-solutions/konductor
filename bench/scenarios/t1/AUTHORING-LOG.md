@@ -31,6 +31,12 @@ Notes on hand edits after review (no model call): `t1-bug-cache-ttl` was changed
 
 `limits`: an author guesses its own run time, and every guess was far too short (90 to 240 s), so `stage.js assemble` sets at least 600 s soft and twice the soft limit as hard; the plan sets final limits from the pilot (3x the longest pilot run).
 
+Author families (2026-11-19, after five of six deepseek-3.2 drafts failed): the remaining deepseek briefs, and the re-author of a failed one, go to minimax-m2.5 and qwen3-coder-next in turn, with gpt-5.6-luna as their reviewer, so the batch keeps a second author family. Lazy and alternative answers (`answers/<id>/lazy`, `answers/<id>/alt`) are written by a family other than the author's (qwen3-coder-next for gpt tasks, gpt-5.6-luna otherwise), from the fixture and the request only; `dry-run.js` scores them and requires lazy 40 or less and alt 80 or more; `stage.js record` writes the four scores into `pilot.dryRun`.
+
+Blindness audit (`audit.js`): every author, map and review stream is scanned for tool calls that read a konductor `skills/`, `agent-sops/`, `agents/` or `context/` path, for reads of another batch's scratch dir, and for attached account memories. The 42 streams up to 2026-11-19 22:30 UTC: none.
+
+`t1-ref-schema-migrate`: the reviewer found the request did not say whether a whitespace-only address is blank, which a hidden test relies on; the worker added that sentence to the request (review verdict `fixed`).
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -39,8 +45,9 @@ Notes on hand edits after review (no model call): `t1-bug-cache-ttl` was changed
 | t1-impl-cli-envvars | deepseek-3.2 | the reference scored 14.3: the hidden tests run `python3 -m foldersync` and neither the fixture nor the solution has a `__main__.py`; its existing tests failed on the solution too; the reviewer's ambiguity, hidden-answer, floor and reference verdicts were fail | author 15.48, review 18.57; no fix round (a deepseek fix round has not repaired a reference yet). Replaced by `t1-impl-cli-envprefix`, same idea, other author |
 | t1-bug-csv-import | deepseek-3.2 | the author was stopped after 90 tool calls (the cap for a deepseek call) without writing `task-draft.json` | author 13.66; no task written. Not replaced yet |
 | t1-refactor-esm | deepseek-3.2 | the dry run failed: the reference scored 87.4 (42 of 51 hidden tests) and the untouched fixture scored 69.1 (36 of 51 passed before any change); the reviewer's leak and floor verdicts were fail | author 35.52 credits; no fix round, because a deepseek fix round costs about 25 credits and the hidden tests tested the old code as much as the new. Replaced by `t1-ref-esm-migrate`, written by the other author with a smaller scope |
+| t1-impl-cursor-paging | deepseek-3.2 | the reference scored 63.0 and the reviewer's leak, ambiguity, hidden-answer and floor verdicts were fail; no fix round (deepseek fix rounds have not repaired a reference) | see the calls table for credits |
 
-Drafts of both are kept outside the repo (scratch), not in the tree.
+Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
 ## Calls
 
@@ -82,3 +89,33 @@ Drafts of both are kept outside the repo (scratch), not in the tree.
 | t1-ref-callbacks | author | gpt-5.6-luna | 2.74 |
 | t1-ref-callbacks | map | glm-5 | 0.16 |
 | t1-ref-callbacks | review | glm-5 | 8.28 |
+| t1-nfr-startup-lazy | author | gpt-5.6-luna | 2.57 |
+| t1-nfr-startup-lazy | map | glm-5 | 0.17 |
+| t1-nfr-startup-lazy | review | glm-5 | 5.43 |
+| t1-impl-cursor-paging | author | deepseek-3.2 | 19.79 |
+| t1-impl-cursor-paging | map | glm-5 | 0.16 |
+| t1-impl-cursor-paging | review | minimax-m2.5 | 6.88 |
+| t1-bug-http-retry | author | gpt-5.6-luna | 2.47 |
+| t1-bug-http-retry | map | glm-5 | 0.16 |
+| t1-bug-http-retry | review | glm-5 | 8.05 |
+| t1-ref-dataclasses | author | deepseek-3.2 | 25.00 (estimate: stopped at the 90-tool-call cap before the call reported; deepseek calls cost about 0.3 credits a tool call) |
+| t1-impl-money-split | author | gpt-5.6-luna | 2.21 |
+| t1-impl-money-split | map | glm-5 | 0.16 |
+| t1-impl-money-split | review | glm-5 | 7.95 |
+| t1-nfr-bounded-fanout | author | qwen3-coder-next | 2.00 (estimate: stopped at the 90-tool-call cap before the call reported; qwen3-coder-next is billed at 0.05x) |
+| t1-bug-event-listeners | author | gpt-5.6-luna | 2.88 |
+| t1-bug-event-listeners | map | glm-5 | 0.16 |
+| t1-bug-event-listeners | review | glm-5 | 8.64 |
+| t1-ref-dep-upgrade | author | gpt-5.6-luna | 2.97 |
+| t1-ref-dep-upgrade | map | glm-5 | 0.16 |
+| t1-ref-dep-upgrade | review | glm-5 | 10.95 |
+| t1-impl-flag-rollout | author | minimax-m2.5 | 17.55 |
+| t1-impl-flag-rollout | map | glm-5 | 0.16 |
+| t1-impl-flag-rollout | review | gpt-5.6-luna | 1.22 |
+| t1-bug-money-rounding | author | qwen3-coder-next | 2.00 (estimate: stopped at the 90-tool-call cap before the call reported; qwen3-coder-next is billed at 0.05x) |
+| t1-ref-schema-migrate | author | gpt-5.6-luna | 2.73 |
+| t1-ref-schema-migrate | map | glm-5 | 0.16 |
+| t1-ref-schema-migrate | review | glm-5 | 5.21 |
+| t1-nfr-ndjson-stream | author | gpt-5.6-luna | 3.27 |
+| t1-nfr-ndjson-stream | map | glm-5 | 0.17 |
+| t1-nfr-ndjson-stream | review | glm-5 | 6.19 |

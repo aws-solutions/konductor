@@ -1,0 +1,6 @@
+{
+  "invoices": [
+    { "id": "sample-1", "currency": "USD", "totalMinor": 1250, "paidMinor": 250 },
+    { "id": "sample-2", "currency": "EUR", "totalMinor": 800, "paidMinor": 0 }
+  ]
+}

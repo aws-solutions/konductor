@@ -13,7 +13,7 @@
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
- * environment, optionally inside a read-only mount namespace. See bench/README.md.
+ * environment, optionally inside a read-only mount namespace. See bench/docs/reference.md.
  */
 'use strict';
 
@@ -57,7 +57,7 @@ const USAGE = `Usage:
        arms, one runtime at a time; a Claude Code arm gets the install, model pin and agent checks with --model, and claude itself is not started)
        (--introspect records what each run's agent was sent and did, for diagnosis: Claude Code exports OpenTelemetry, raw API bodies included, to a loopback
        receiver the runner starts per run, and kiro-cli v3 dumps every model request; each run gets <run>/introspect (mode 0700) with probe.json and timeline.md.
-       Nothing goes to a host collector. Off by default; scripts/introspect-summary.js summarizes an out dir; see INTROSPECT.md)
+       Nothing goes to a host collector. Off by default; scripts/introspect-summary.js summarizes an out dir; see bench/docs/INTROSPECT.md)
        (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
        to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3.
        --python is the Python 3.12 interpreter task checks and the gateway's python3 get (default BENCH_PYTHON, then python3.12, then
@@ -112,7 +112,7 @@ const USAGE = `Usage:
        15 minutes remain; a refresh that brings no later expiry is asked again a minute later, and only expired credentials with nothing newer stop the pass. Values are never logged.
        On either source, 3 calls in a row that fail on their credentials stop the pass: the remaining calls are recorded as skipped and the command exits 3)
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
-       Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/QUALITY-PACK.md)
+       Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/docs/QUALITY-PACK.md)
        (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both
        verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
        fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
@@ -139,17 +139,17 @@ const USAGE = `Usage:
   node bench/runner/bench.js refs-report --run DIR[,DIR...] --out DIR
        (scores the runs of the references-read suite from stream.jsonl, with no model call: per arm, how many runs loaded the skill, tried to read a references/ file, were refused,
        failed or read it, and whether the planted fact reached the answer, with Wilson 95% intervals; the verbatim refusal messages; sandbox errno 38 runs, which are excluded
-       from every rate; and a DECISION with fixed thresholds. Writes refs-report.md, refs-report.json and refs-runs.jsonl to --out. See bench/REFERENCES-READ.md)
+       from every rate; and a DECISION with fixed thresholds. Writes refs-report.md, refs-report.json and refs-runs.jsonl to --out. See bench/docs/studies/REFERENCES-READ.md)
   node bench/runner/bench.js probe-report --run DIR[,DIR...] [--run DIR ...] --out DIR [--scoring FILE] [--arms-file FILE] [--canary-token-file FILE]
        (scores the runs of the constraints-probe suite from stream.jsonl and session files, with no model call: per probe, arm and position, the share of runs that applied
        the rule with a Wilson 95% interval; the delegated agent's own actions for runs that went through the orchestrator; skill lookups, deferral failures and fingerprint hits;
        the canary token; sandbox errno 38 runs, which are excluded from every rate; and the DECISION rows with fixed thresholds. Writes probe-report.md, probe-report.json,
        probe-runs.jsonl and judge-queue.json to --out. --scoring takes a scoring profile for the checks quality column; --arms-file or --canary-token-file gives the exact canary token.
-       See bench/CONSTRAINTS-PROBE.md)
+       See bench/docs/studies/CONSTRAINTS-PROBE.md)
   node bench/runner/bench.js canary-report --run DIR[,DIR...] --layers-file FILE --out DIR
        (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
-       declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
+       declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/docs/studies/CANARY-LAYERS.md)
   node bench/runner/bench.js plant-trace --run TRIAL_DIR [--vs TRIAL_DIR] --out FILE.html
        (one static HTML page for a plant trial, with no model and no network: one collapsible line per tool call with the time per step, coloured allowed,
        blocked or unsafe attempt from the gateway log; open, it shows the arguments, the gateway's reason and the plant state after the call; a child agent's calls nest under it,

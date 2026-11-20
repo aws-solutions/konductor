@@ -123,7 +123,7 @@ function buildVerdictDocument(v) {
 
   blocks.push(D.h(2, 'How to read this page'));
   blocks.push(D.list(rulesFor(v)));
-  blocks.push(D.p(`Scoring weights come from profiles/scoring.json (hidden ${v.weights.hidden}, checks ${v.weights.checks}${checksModeNote(v.weights)}, rubric ${v.weights.rubric}); the formulas are in bench/README.md.`));
+  blocks.push(D.p(`Scoring weights come from profiles/scoring.json (hidden ${v.weights.hidden}, checks ${v.weights.checks}${checksModeNote(v.weights)}, rubric ${v.weights.rubric}); the formulas are in bench/docs/reference.md.`));
   blocks.push(D.note(`${NEE} is not a finding that the arm is no better. It means this study cannot say. More replicates, an A/A arm and judged output are what settle it.`));
   return { blocks, charts, title: 'Platform verdict' };
 }

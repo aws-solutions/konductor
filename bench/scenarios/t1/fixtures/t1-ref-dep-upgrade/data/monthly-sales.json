@@ -1,0 +1,13 @@
+{
+  "title": "March sales",
+  "columns": [
+    { "key": "region", "label": "Region" },
+    { "key": "orders", "label": "Orders" },
+    { "key": "revenue", "label": "Revenue" }
+  ],
+  "rows": [
+    { "region": "North", "orders": 12, "revenue": 1234.5 },
+    { "region": "South", "orders": 7, "revenue": 987 },
+    { "region": "West", "orders": 19, "revenue": 4200 }
+  ]
+}

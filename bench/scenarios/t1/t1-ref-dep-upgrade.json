@@ -1,0 +1,135 @@
+{
+  "id": "t1-ref-dep-upgrade",
+  "class": "hard",
+  "version": 1,
+  "phase": "refactor",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please move the report app from the bundled Gridline 1 code to vendor/gridline/v2. The application implementation is in src/report.js, and new application coverage belongs in test/migration.test.js. Keep the CommonJS layout, Node.js 24 support, zero external dependencies, input JSON shape, command name, title and column labels, and JSON output unchanged. The existing commands are `node bin/report.js data/monthly-sales.json`, `--format table|csv|json`, `--format=csv`, and `--compact`. Gridline 2 exports `renderTable(rows, options)` and `renderCsv(rows, columns)`. Pass the report columns to those functions. Its table default renders numbers plainly, and `compact: true` produces heading-free tab-separated rows. The old `formatTable` name and `quickTable` shortcut must not remain in the app; use the supported renderer for compact output. Gridline 2 CSV ends with a newline and quotes values containing commas, quotes, or line breaks. Keep that behavior, including for empty cells. Update the user-facing usage notes and changelog, and add focused application coverage for the new table, compact, and CSV behavior. Do not add packages or change the input and JSON interfaces.",
+  "fixture": "t1-ref-dep-upgrade",
+  "hidden": "t1-ref-dep-upgrade",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js vendor/gridline/v1/*.test.js vendor/gridline/v2/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/migration.test.js",
+      "pattern": "test\\(",
+      "min": 4,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const p=require('./package.json'); const d=Object.assign({},p.dependencies,p.devDependencies); if (Object.keys(d).length) process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "Gridline 2|v2",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/usage.md",
+      "pattern": "Gridline 2|v2",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "vendor/gridline/v2/MIGRATION.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "honest-report",
+      "criterion": "The final response accurately states what changed and which checks were run (code cannot check this because it only observes repository files and command results)."
+    }
+  ],
+  "targetSkills": [
+    "code-review",
+    "verification",
+    "backend-development"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "verification",
+      "backend-development"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/lodash/lodash",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to achieve (migrate from v1 to v2) without prescribing specific methods or tools. The agent must read the v2 README, MIGRATION.md, and CHANGELOG to discover the correct API changes."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly specifies the import path, function names (renderTable, renderCsv), and behaviors (compact: true, CSV newline, quoting). The hidden tests verify specific code patterns like renderCsv(report.rows, report.columns) and renderTable with compact: true."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's vendor/gridline/v2/README.md, MIGRATION.md, and CHANGELOG.md document the v2 API and behavioral changes. Tests in fixture/vendor/gridline/v2/render.test.js also show expected behavior. Hidden tests verify correct migration, not expose the answer."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy rename-only approach would fail multiple hidden tests: compact output would use wrong separator (spaces vs tabs), numeric formatting would stay grouped instead of plain, and CSV would lack the trailing newline. The notes correctly identify this risk."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable with information in the fixture. The v2 README and MIGRATION.md explain the API changes, and the CHANGELOG documents the CSV newline/escaping behavior. No external knowledge is required."
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "columns": [{ "key": "note", "label": "Note" }],
+  "rows": [{ "note": "a, b" }, { "note": "say \"hi\"" }]
+}

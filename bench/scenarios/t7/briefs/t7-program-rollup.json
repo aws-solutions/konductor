@@ -19,5 +19,16 @@
   "controlKind": "none",
   "reviewer": "glm-5",
   "date": "2026-11-19",
-  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass",
+  "version": 1,
+  "rewriteAttempts": [
+    {
+      "version": 2,
+      "author": "qwen3-coder-next",
+      "reviewer": "glm-5",
+      "date": "2026-11-19",
+      "result": "failed once, version 1 kept",
+      "why": "draft 1 ended without a task file (the author removed its hidden dir); no second attempt, to stay under the spend stop"
+    }
+  ]
 }

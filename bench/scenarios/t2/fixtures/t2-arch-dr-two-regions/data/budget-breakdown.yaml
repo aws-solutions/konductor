@@ -1,0 +1,126 @@
+# Budget Breakdown: Active-Active Migration
+
+## Infrastructure Costs (Monthly Recurring)
+
+### Compute
+ec2_instances:
+  type: t3.large
+  count_per_region: 4
+  regions: 2
+  unit_cost: 0.0832  # USD per hour
+  monthly_cost: 489.06  # USD
+  notes: "8 instances total (4 per region)"
+
+rds_instances:
+  type: db.m5.large
+  count_per_region: 1
+  regions: 2
+  unit_cost: 0.171  # USD per hour
+  monthly_cost: 250.92  # USD
+  notes: "Primary database instances"
+
+redis_clusters:
+  type: cache.m5.large
+  count_per_region: 1
+  regions: 2
+  unit_cost: 0.137  # USD per hour
+  monthly_cost: 201.43  # USD
+  notes: "Session storage"
+
+### Networking
+data_transfer:
+  cross_region_gb_per_month: 1000
+  cost_per_gb: 0.02  # USD per GB
+  monthly_cost: 20.00  # USD
+  notes: "Estimated cross-region replication traffic"
+
+load_balancing:
+  alb_count: 2
+  cost_per_alb: 22.50  # USD per month
+  monthly_cost: 45.00  # USD
+
+dns_routing:
+  route53_cost: 0.50  # USD per month per million queries
+  estimated_queries: 50  # millions
+  monthly_cost: 25.00  # USD
+
+### Storage
+database_storage:
+  storage_gb: 1000
+  cost_per_gb: 0.115  # USD per GB-month
+  monthly_cost: 115.00  # USD
+  notes: "GP3 storage for RDS"
+
+backup_storage:
+  storage_gb: 2000
+  cost_per_gb: 0.023  # USD per GB-month
+  monthly_cost: 46.00  # USD
+  notes: "7-year retention for compliance"
+
+## One-Time Migration Costs
+
+### Development
+development_hours: 320
+hourly_rate: 125.00  # USD
+development_cost: 40000.00  # USD
+
+tasks:
+  - "Database schema changes"
+  - "Application logic for cross-region writes"
+  - "Session replication implementation"
+  - "Monitoring and alerting setup"
+
+### Testing
+testing_hours: 40
+hourly_rate: 125.00  # USD
+testing_cost: 5000.00  # USD
+
+test_types:
+  - "Load testing with cross-region traffic"
+  - "Failover testing"
+  - "Data consistency validation"
+  - "Performance benchmarking"
+
+### Other Costs
+training_hours: 16
+hourly_rate: 100.00  # USD
+training_cost: 1600.00  # USD
+
+documentation_hours: 8
+hourly_rate: 100.00  # USD
+documentation_cost: 800.00  # USD
+
+## Summary
+
+### Monthly Recurring Costs
+- Compute: $941.41
+- Networking: $90.00
+- Storage: $161.00
+- **Total Monthly**: $1,192.41
+
+### One-Time Migration Costs
+- Development: $40,000.00
+- Testing: $5,000.00
+- Training: $1,600.00
+- Documentation: $800.00
+- **Total One-Time**: $47,400.00
+
+### Budget Allocation
+- **Approved Budget**: $45,000.00
+- **Estimated Cost**: $47,400.00
+- **Variance**: -$2,400.00 (5.3% over budget)
+
+## Notes
+
+1. Costs based on AWS US East (N. Virginia) and US West (Oregon) pricing
+2. Exchange rates: USD only
+3. All prices exclude taxes
+4. Storage costs assume 30% annual growth
+5. Development costs include 20% contingency buffer
+6. Does not include ongoing operational support costs
+
+## Approval
+
+Prepared by: Finance Department
+Date: 2024-03-10
+Status: Pending Architecture Review

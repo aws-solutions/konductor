@@ -1,0 +1,4 @@
+[
+  {"id":"COM-1","issueId":"ISS-1001","authorId":"u-2","body":"I can take this next week.","createdAt":"2025-01-03T08:00:00.000Z"},
+  {"id":"COM-2","issueId":"ISS-1001","authorId":"u-1","body":"Thanks, assigned.","createdAt":"2025-01-03T09:00:00.000Z"}
+]

@@ -3,7 +3,7 @@
   "suite": "references-read",
   "suiteFile": "bench/suites/references-read.json",
   "extraTasksDir": "bench/refs",
-  "purpose": "Skills are moving detail into references/*.md. Install copies those files, but get_skill returns only the SKILL.md body and its path, so the agent must read references/x.md itself from the skills root outside its workspace. Does a Kiro agent read it, is the read refused, or does the agent skip it? Scored by script from the stream, see bench/REFERENCES-READ.md.",
+  "purpose": "Skills are moving detail into references/*.md. Install copies those files, but get_skill returns only the SKILL.md body and its path, so the agent must read references/x.md itself from the skills root outside its workspace. Does a Kiro agent read it, is the read refused, or does the agent skip it? Scored by script from the stream, see bench/docs/studies/REFERENCES-READ.md.",
   "refs": {
     "main": { "sha": "ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c", "requires": ["skills/dynamodb-design/SKILL.md", "skills/asana-sprint-planning/SKILL.md"], "note": "origin/main when the study was written; the skill bodies are inline" },
     "pr155": { "sha": "5ecf044b3cddaed1c8875b5bde520627b1377d6f", "requires": ["skills/dynamodb-design/SKILL.md", "skills/dynamodb-design/references/aws-best-practices.md"], "note": "head of PR 155 (slim dynamodb-design); references/aws-best-practices.md and three more files" },

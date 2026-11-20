@@ -62,7 +62,14 @@ function gradeFindings(reported, key) {
   const used = new Set();
   const hits = [];
   for (const k of key) {
-    const i = reported.findIndex((r, idx) => !used.has(idx) && locationHit(r, k));
+    // Of the unused reported items at this location, take the one whose severity and fix fit this key item best
+    // (the first on a tie), so two findings a few lines apart are not swapped by the order they were listed in.
+    let i = -1, best = -1;
+    reported.forEach((r, idx) => {
+      if (used.has(idx) || !locationHit(r, k)) return;
+      const fit = severityCredit(k.severity, r.severity) + fixCredit(r, k);
+      if (fit > best) { best = fit; i = idx; }
+    });
     if (i < 0) continue;
     used.add(i);
     hits.push({ id: k.id, sev: severityCredit(k.severity, reported[i].severity), fix: fixCredit(reported[i], k) });

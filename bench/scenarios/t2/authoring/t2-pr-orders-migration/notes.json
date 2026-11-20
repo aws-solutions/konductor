@@ -1,0 +1,3 @@
+{
+  "notes": "The traps: 1) NOT NULL column with DEFAULT still breaks rolling deployments because old code uses explicit column lists, 2) Single-transaction UPDATE on 2.5M rows, 3) Down migration drops data without warning, 4) SQL injection via string formatting, 5) N+1 query pattern in reporting, 6) Missing composite index for date+status queries, 7) Index creation locks table. Cross-file reading needed: deployment.md explains rolling deployment constraints, architecture.md gives table size, existing repository.py shows INSERT patterns."
+}
