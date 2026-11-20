@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `bench.js scenarios lint|coverage|prereg ...`: authoring tools for the scenario pack. Everything here is free: no model call, no credits.
+// `bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...`: authoring tools for the scenario pack. Everything here is free: no model call, no credits.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,8 +12,11 @@ const { lintDir, catalogOfScan } = require('./lint.js');
 const { loadTaskFiles } = require('./files.js');
 const { buildCoverage, renderCoverageMd } = require('./coverage.js');
 const prereg = require('./prereg.js');
+const { cmdPilotTable } = require('./pilot-table.js');
+const { cmdReady } = require('./ready.js');
+const { cmdSpotReview } = require('./spot-review.js');
 
-const SUBCOMMANDS = ['lint', 'coverage', 'prereg'];
+const SUBCOMMANDS = ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review'];
 
 /** Runs `fn(scan, base)` on the konductor tree --base names, and removes the temporary export afterwards. */
 function withTree(opts, fn) {
@@ -95,6 +98,9 @@ function cmdScenarios(opts) {
     if (sub === 'lint') cmdLint(opts);
     else if (sub === 'coverage') cmdCoverage(opts);
     else if (sub === 'prereg') cmdPrereg(opts);
+    else if (sub === 'pilot-table') cmdPilotTable(opts);
+    else if (sub === 'ready') cmdReady(opts);
+    else if (sub === 'spot-review') cmdSpotReview(opts);
   } catch (e) {
     console.error(`scenarios ${sub}: ${e.message}`);
     process.exitCode = 2;

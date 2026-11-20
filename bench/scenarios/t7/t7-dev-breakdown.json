@@ -151,5 +151,25 @@
         "note": "All key values follow from the fixture. Re-deriving: (1) migration filename 005_add_product_prices.sql follows from existing migrations 001-004; (2) total estimate 17 days = 3+3+2+2+1+1+2+3 from estimate-guide.md conversion table applied to reasonable ticket breakdown; (3) legacy/pricing-legacy.js exclusion verified by grep showing no imports; (4) cache, CSV, and email files all use formatMoney and must be updated for currency awareness."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 94,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
   }
 }

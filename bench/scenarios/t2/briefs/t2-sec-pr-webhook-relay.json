@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: security. Repo kind: a Node.js integration service that receives webhooks from a code-hosting provider and a payments provider and can call back to a customer-configured URL. The PR adds a generic webhook receiver with signature checks and an outbound 'notify' callback. Plant security problems: the signature is computed over re-serialized parsed JSON instead of the raw body; the comparison uses plain string equality (timing); there is no timestamp or delivery-id replay window although the provider doc in docs/ describes one; the outbound callback fetches any customer-given URL, so it can reach internal addresses and cloud metadata; the shared secret falls back to a hard-coded default when the env var is missing; the error log prints the secret-bearing header. Add one decoy, such as a constant-looking value that is a public key id and safe to log.",
   "stack": "node",
-  "pr": 361
+  "pr": 361,
+  "version": 2
 }

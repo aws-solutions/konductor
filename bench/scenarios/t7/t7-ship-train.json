@@ -152,5 +152,30 @@
         "note": "I independently re-derived: (1) remaining_points=110 using the median rule for WORK-1008/WORK-1048 blanks, (2) throughput=30 from ordinary sprints (excluding hackathon), (3) sprints_needed=4, (4) likely=2027.06 branch 2027-05-07, (5) committed=2027.07 release 2027-07-30. All match the key."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 52.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }

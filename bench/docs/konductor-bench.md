@@ -220,5 +220,5 @@ The same comparison runs for `konductor` against `konductor-noskills` and for `k
 ## Where to go next
 
 - Run it: [repeat it yourself](repeat-it-yourself.md)
-- The earlier 2x2 study and its kit, step by step: [docs/REPEAT.md](REPEAT.md) and [docs/PILOT-2X2.md](PILOT-2X2.md)
+- The earlier 2x2 study and its kit, step by step: [docs/repeat.md](repeat.md) and [docs/pilot-2x2.md](pilot-2x2.md)
 - How a single skill's keep-or-prune call is made: [benchmark a skill](skills.md)

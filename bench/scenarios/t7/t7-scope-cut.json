@@ -151,5 +151,30 @@
         "note": "All key values are derivable from the fixture: (1) Added tickets: 6 tickets created after 2027-05-07 with active status and no pre-lock parent with split comment = 29 points. (2) Slack: S12(44-0-37) + S13(48-4-41) + S14(45-2-36) = 17 points. (3) Cut: 29-17=12 points, exactly covered by PRJ-1114(5) + PRJ-1162(7). (4) PRJ-1046 protected by PRJ-1102 must-have dependency. (5) PRJ-1008 is customer commitment per product-requests.md. Tolerances are zero but values are integers derived from straightforward calculations."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 42.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }

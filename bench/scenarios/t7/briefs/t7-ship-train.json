@@ -23,5 +23,16 @@
     "The Rust Book, How Rust is Made and Nightly Rust, https://doc.rust-lang.org/book/appendix-07-nightly-rust.html (MIT OR Apache-2.0)",
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
+  ],
+  "version": 1,
+  "rewriteAttempts": [
+    {
+      "version": 2,
+      "author": "minimax-m2.5",
+      "reviewer": "gpt-5.6-luna",
+      "date": "2026-11-19",
+      "result": "failed twice, version 1 kept",
+      "why": "draft 1 named the decoy in the README and its key disagreed with the reviewer (23 against 29 points); after the fix round remaining_points (115) and sprints_needed (2 at 19 a sprint) still disagree (reviewer ambiguity fail)"
+    }
   ]
 }

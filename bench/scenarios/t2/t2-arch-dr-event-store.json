@@ -1,6 +1,6 @@
 {
   "id": "t2-arch-dr-event-store",
-  "version": 1,
+  "version": 2,
   "class": "design",
   "phase": "design-review",
   "phases2": [],
@@ -172,7 +172,7 @@
   },
   "review": {
     "family": "glm",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -200,5 +200,24 @@
         "note": "No comments, tests, or file names point at planted problems. The incident document mentions stale reads but as a past operational issue, not as a hint about the ADR's design flaw."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

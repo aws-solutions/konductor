@@ -150,5 +150,30 @@
         "note": "I independently verified three key values: S1 capacity = 35.23 (matches), Gale Park S1 capacity = 3.6 (matches), T-068 + T-074 bundle = 11 points vs 3.6 capacity (matches). All values follow directly from the stated conventions in capacity_policy.md, team_roster.csv, sprint_calendar.csv, holidays.csv, and on_call.csv."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 42.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }

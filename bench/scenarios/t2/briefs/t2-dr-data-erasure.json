@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: reviewer. Packet kind: a design for honouring account deletion requests within 30 days in a consumer app with a primary database, a search index, an analytics warehouse, object storage, backups and an email vendor. Context: data inventory, legal requirement summary, backup policy, vendor list, current architecture. Plant: backups are kept 90 days and the design does not address deletion from them; the analytics warehouse copy is missing from the deletion steps although the inventory lists it; deletion runs through an async queue with no completion check or report; the audit log of the deletion stores the email and name it deleted; the email vendor is not told; the deadline math uses 30 business days.",
-  "doc": "docs/design/account-deletion.md"
+  "doc": "docs/design/account-deletion.md",
+  "version": 2
 }

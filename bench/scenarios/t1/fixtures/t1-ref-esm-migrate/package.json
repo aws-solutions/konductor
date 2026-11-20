@@ -1,0 +1,11 @@
+{
+  "name": "lantern-kit",
+  "version": "1.4.0",
+  "description": "Small formatting helpers for command-line reports",
+  "main": "index.js",
+  "bin": {"lantern-kit": "bin/lantern.js"},
+  "scripts": {"test": "node --test"},
+  "engines": {"node": ">=24"},
+  "files": ["index.js", "cli.js", "bin", "lib", "plugins"],
+  "keywords": ["formatting", "cli"]
+}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Per-layer canary arm builder (bench/docs/studies/CANARY-LAYERS.md). Extracts a konductor ref into a scratch directory and adds one
+// Per-layer canary arm builder (bench/docs/studies/canary-layers.md). Extracts a konductor ref into a scratch directory and adds one
 // distinct token to each layer of the delivery path, so a run shows which layers reach the model without being forced.
 // Nothing here calls a model and nothing is written into the repository.
 //

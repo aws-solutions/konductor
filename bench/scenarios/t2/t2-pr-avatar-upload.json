@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-avatar-upload",
-  "version": 1,
+  "version": 2,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -127,7 +127,7 @@
   },
   "review": {
     "family": "minimax",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -155,5 +155,24 @@
         "note": "No TODO/FIXME/BUG comments pointing at vulnerabilities. No test names revealing issues. Decoy d1 at lines64-66 explained as safe (not a real TOCTOU). Documentation bug (auto-delete claim) is part of the task, not a hint."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 32,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }
