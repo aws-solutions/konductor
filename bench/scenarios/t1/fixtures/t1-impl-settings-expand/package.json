@@ -1,0 +1,10 @@
+{
+  "name": "layered-settings",
+  "version": "1.4.0",
+  "description": "Small layered service settings loader",
+  "main": "src/index.js",
+  "bin": {"layered-settings": "bin/settings.js"},
+  "scripts": {"test": "node --test", "check": "node scripts/check-format.js"},
+  "engines": {"node": ">=24"},
+  "license": "MIT"
+}

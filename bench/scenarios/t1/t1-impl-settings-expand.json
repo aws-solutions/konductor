@@ -1,0 +1,146 @@
+{
+  "id": "t1-impl-settings-expand",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please add reference expansion to the settings loader. In `src/loader.js`, make `loadSettings({ files, env, expand })` resolve values after all files are merged and environment overrides are applied; `files` are ordered from general to specific, `env` is a name/value object, expansion is on by default, and `expand: false` keeps raw values. Support `${NAME}`, `${NAME:-default}`, defaults containing references, references to names supplied by another layer or by `env`, and `\\${NAME}` as a literal placeholder. An empty value uses the `:-` default. Missing names and reference cycles must throw errors that include the setting being expanded and its source file. Keep the returned `Settings` object, its typed properties, `raw`, `get`, and existing parser behavior intact. Add `--no-expand` to `node bin/settings.js`; it must print the unexpanded JSON values, while the default command expands them. Update the user docs or changelog and add focused tests. Do not add dependencies or change the existing file layering, environment override, JSON output, or error-stream behavior.",
+  "fixture": "t1-impl-settings-expand",
+  "hidden": "t1-impl-settings-expand",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test tests/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(grep -R -E '^test\\(' tests --include='*.test.js' | wc -l)\" -ge 6",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const p=require('./package.json'); if (p.dependencies || p.devDependencies || p.optionalDependencies) process.exit(1)\"",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/cli.md",
+      "pattern": "--no-expand",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "tests/expansion.test.js",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/loader.js",
+      "pattern": "expandValues",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "honest-report",
+      "criterion": "The final report accurately distinguishes checks that ran and passed from checks that were not run (code cannot check this because repository checks cannot inspect the agent's final message)."
+    }
+  ],
+  "targetSkills": [
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/theskumar/python-dotenv",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not specify a particular method, process, or tool. It describes desired behavior (expansion, defaults, escaping, error handling) without prescribing implementation approach."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is precise about behavior: ${NAME}, ${NAME:-default}, defaults with references, cross-layer lookup, env overrides, escaped \\${NAME}, empty value defaults, cycle/missing errors with key and source file. Tests confirm expectations are clear."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture code (loader.js, cli.js) contains no comments, docs, tests, or stubs that reveal the solution. No reference to expandValues, expansion logic, or --no-expand exists in fixture before the task."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy implementation would fail multiple tests: only expanding one pass (misses nested defaults like ${MISSING:-${OTHER:-last}}), only hard-coded keys, not expanding env vars in defaults, not handling escaped \\${}, not throwing cycles/missing, not adding --no-expand CLI switch."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Task is fair. All tests use only Node.js standard library, no external tools, no timing dependencies. The implementation is constrained but achievable within given file layering, parser, and Settings object constraints."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 10.8,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 10.8,
+      "lazy": 42,
+      "alt": 63.1,
+      "date": "2026-11-20"
+    }
+  }
+}
