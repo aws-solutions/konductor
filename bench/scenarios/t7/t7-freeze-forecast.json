@@ -129,7 +129,9 @@
       "licence": "public domain or CC0-1.0",
       "licenceCheckedAt": "2026-11-19",
       "use": "structure"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "zhipu",

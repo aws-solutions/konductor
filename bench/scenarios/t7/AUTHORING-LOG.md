@@ -203,3 +203,5 @@ Round 2 was stopped before any paid call (0 credits) and is replaced by this try
 | t7-sprint-capacity | result | - | - | - | DROPPED after one fix per family: candidate scored reference 95.2, stub 0, lazy 67.8 (gate 40), alternative 95.2; the key fix round (minimax-m2.5) hit the abort limit with no change. Version 1 (now version 2, scorer change) kept |
 | t7-scope-cut | B | minimax-m2.5 | 1078 | 10.66 |  |
 | t7-scope-cut | result | - | - | - | DROPPED: candidate scored reference 100, stub 4.8, lazy 48.5 (gate 40), alternative 100, same twice; the request still hinted at the traps after step A's fix; no key fix or checklist review possible, as any further call could pass the 40-credit cap (spend 34.44). Version 1 (now version 2) kept |
+
+Try total: 34.44 of 40 credits (8 calls: 2 step-A drafts and their fixes by qwen3-coder-next, 3 step-B keys and 1 key fix by minimax-m2.5). Neither task passed every gate, so the try stopped as the owner set: all 13 T7 and all 15 T8 tasks are marked `authorship.singleFamily` with the note, and one DEBT row records why second-family drafts fail.
