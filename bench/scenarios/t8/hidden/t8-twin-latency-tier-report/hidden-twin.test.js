@@ -57,25 +57,36 @@ function expectedTotals() {
   );
 }
 
+// The shape tests count only when the request counts are right: a well-shaped report of wrong numbers is not half an
+// answer. The two count tests stand on their own.
+function rightCounts() {
+  assert.deepStrictEqual(readTotals(), expectedTotals(), 'the totals must match the /checkout records of the log');
+}
+
 test('hourly CSV exists', () => {
+  rightCounts();
   assert.ok(fs.statSync(hourlyPath).isFile());
 });
 
 test('totals JSON exists', () => {
+  rightCounts();
   assert.ok(fs.statSync(totalsPath).isFile());
 });
 
 test('hourly CSV has the requested columns', () => {
+  rightCounts();
   assert.deepStrictEqual(readHourly().header, ['hour', 'requests', 'succeeded']);
 });
 
 test('hourly CSV covers exactly every fixture hour', () => {
+  rightCounts();
   const expected = expectedFromFixture();
   const actual = readHourly().rows;
   assert.strictEqual(actual.length, expected.length);
 });
 
 test('hour values are sorted ISO UTC hour starts', () => {
+  rightCounts();
   const { rows } = readHourly();
   const hours = rows.map((row) => row.hour);
   assert.ok(hours.every((hour) => /^\d{4}-\d{2}-\d{2}T\d{2}:00:00Z$/.test(hour)));
@@ -92,6 +103,7 @@ test('hourly rows contain the fixture-derived counts', () => {
 });
 
 test('hourly count fields use nonnegative decimal integers', () => {
+  rightCounts();
   const { rows } = readHourly();
   for (const row of rows) {
     assert.match(row.requests, /^\d+$/);
@@ -101,6 +113,7 @@ test('hourly count fields use nonnegative decimal integers', () => {
 });
 
 test('totals JSON has exactly the requested keys', () => {
+  rightCounts();
   assert.deepStrictEqual(Object.keys(readTotals()).sort(), ['requests', 'succeeded']);
 });
 
@@ -109,6 +122,7 @@ test('totals JSON contains the fixture-derived counts', () => {
 });
 
 test('totals equal the sums of the hourly CSV', () => {
+  rightCounts();
   const sums = readHourly().rows.reduce(
     (totals, row) => ({
       requests: totals.requests + Number(row.requests),

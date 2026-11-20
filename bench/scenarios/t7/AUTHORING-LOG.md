@@ -205,3 +205,22 @@ Round 2 was stopped before any paid call (0 credits) and is replaced by this try
 | t7-scope-cut | result | - | - | - | DROPPED: candidate scored reference 100, stub 4.8, lazy 48.5 (gate 40), alternative 100, same twice; the request still hinted at the traps after step A's fix; no key fix or checklist review possible, as any further call could pass the 40-credit cap (spend 34.44). Version 1 (now version 2) kept |
 
 Try total: 34.44 of 40 credits (8 calls: 2 step-A drafts and their fixes by qwen3-coder-next, 3 step-B keys and 1 key fix by minimax-m2.5). Neither task passed every gate, so the try stopped as the owner set: all 13 T7 and all 15 T8 tasks are marked `authorship.singleFamily` with the note, and one DEBT row records why second-family drafts fail.
+
+## FX3 fix round (2026-11-20)
+
+Paid calls of the FX3 job (owner-approved, soft cap 60 credits, every call counted at 15 credits in the spend check, abort limit per call as written in its plan line, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t7-program-brief fix by gpt-5.6-luna, abort limit 8 credits, counted at 15, spend so far 10.0 of 60
+- result: t7-program-brief fix gpt-5.6-luna credits=1.426 secs=160
+- plan: t7-program-brief recheck by glm-5, abort limit 3 credits, counted at 15, spend so far 11.4 of 60
+- result: t7-program-brief recheck glm-5 credits=1.893 secs=60
+- plan: t7-release-gate fix by gpt-5.6-luna, abort limit 8 credits, counted at 15, spend so far 13.3 of 60
+- result: t7-release-gate fix gpt-5.6-luna credits=2.764 secs=300
+- plan: t7-release-gate recheck by glm-5, abort limit 3 credits, counted at 15, spend so far 16.1 of 60
+- result: t7-release-gate recheck glm-5 credits=1.684 secs=90
+
+FX3 outcomes (2026-11-20). T7's gates now run through the shared scorer (`scenario.config.js`, landed by another session before this round).
+
+- t7-program-brief: one key fix by gpt-5.6-luna, recheck by glm-5 (zhipu): pass. Version 3; reference 100, empty 4.8, lazy 39.3 (was 80.5), alternative 100. Kept.
+- t7-release-gate: one key fix by gpt-5.6-luna, recheck by glm-5: pass. Version 3; reference 100, empty 4.8, lazy 38.1 (was 84.7), alternative 100. Kept.
+No Claude edit to either task.

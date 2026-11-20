@@ -1,0 +1,5 @@
+[
+  { "key": "changed_mind", "label": "Changed my mind" },
+  { "key": "wrong_size", "label": "Wrong size" },
+  { "key": "arrived_damaged", "label": "Arrived damaged" }
+]

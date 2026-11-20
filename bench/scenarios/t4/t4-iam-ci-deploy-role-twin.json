@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-ci-deploy-role-twin",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "implementation",
   "phases2": [],
@@ -49,7 +49,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "change-explained",
+      "weight": 1,
+      "criterion": "The final message explains how unchanged files are detected and what happens to the rest of the deploy when one upload fails, matching the code. Fail: no explanation, or an explanation the code contradicts. Partial: explains one of the two behaviours, or both without saying where the manifest is kept. Pass: both behaviours explained as the code does them, with the manifest path and the dry-run output named. (code cannot check this because the tests check behaviour, not whether the report matches it)"
+    }
+  ],
   "tiers": [
     "full"
   ],
@@ -144,7 +150,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

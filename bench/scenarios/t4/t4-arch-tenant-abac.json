@@ -1,6 +1,6 @@
 {
   "id": "t4-arch-tenant-abac",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -189,7 +189,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -202,7 +202,7 @@
       "reference": 100,
       "stub": 14.7,
       "lazy": 14.7,
-      "alt": 100,
+      "alt": 96.7,
       "date": "2026-11-20"
     }
   }

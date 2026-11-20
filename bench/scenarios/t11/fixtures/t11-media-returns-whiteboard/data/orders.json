@@ -1,0 +1,4 @@
+[
+  { "id": "ord-1842", "customer": "Mara Bell", "lines": [{ "id": "line-a", "sku": "MUG-SEA", "cents": 2400 }] },
+  { "id": "ord-1843", "customer": "Jon Pruitt", "lines": [{ "id": "line-b", "sku": "LAMP-FOG", "cents": 8800 }, { "id": "line-c", "sku": "CORD-RED", "cents": 900 }] }
+]

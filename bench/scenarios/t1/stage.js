@@ -110,6 +110,9 @@ function fix(id) {
   const dry = fs.existsSync(dryFile) && fs.statSync(dryFile).size ? readJson(dryFile) : null;
   const dryLines = dry ? dry.reference.checks_.filter((c) => !c.passed).map((c) => `- dry run, reference: ${c.type} check failed (${c.detail})`) : [];
   if (dry && dry.stub.score > 20) dryLines.push(`- dry run: the untouched fixture scores ${dry.stub.score.toFixed(1)} (must be 20 or less)`);
+  // Facts the pipeline found that neither the review nor the dry run could report (for example a check list the scorer cannot read).
+  const notesFile = path.join(AUTH, 'work', `${id}.fixnotes`);
+  if (fs.existsSync(notesFile)) dryLines.push(...fs.readFileSync(notesFile, 'utf8').split('\n').filter(Boolean).map((l) => `- ${l}`));
   const problems = [...dryLines, ...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
   const w = path.join(AUTH, 'work', id);
   fs.rmSync(`${w}.v1`, { recursive: true, force: true });
@@ -183,6 +186,17 @@ function record(id, dryFile) {
   return task.pilot;
 }
 
+// Layout only: an author that wrote `checks` as an object keyed by name gets it as the list the schema needs (a
+// `tests` entry, or one whose command runs the hidden suite, is a tests check; any other with a command is a cmd check).
+function checksList(checks) {
+  if (Array.isArray(checks)) return checks;
+  return Object.entries(checks || {}).map(([name, c]) => {
+    if (c.type) return c;
+    const tests = name === 'tests' || /hidden\//.test(c.cmd || '');
+    return { type: tests ? 'tests' : (c.cmd ? 'cmd' : 'file_exists'), ...c };
+  });
+}
+
 const sourceNote = (s) => (s === 'original' ? 'original (author-written; idea only)' : `${s.url} (${s.licence}; idea only, paraphrased)`);
 
 function assemble(id) {
@@ -205,7 +219,7 @@ function assemble(id) {
     hidden: b.id,
     timeoutSec: limitsOf(draft.limits).hardSec,
     limits: limitsOf(draft.limits),
-    checks: draft.checks,
+    checks: checksList(draft.checks),
     rubric: draft.rubric.map((r) => ({ weight: 1, ...r })),
     targetSkills: mapping.targetSkills,
     targetSop: mapping.targetSop,

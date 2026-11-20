@@ -11,6 +11,7 @@
 //   conversation(task, modeName)  a scripted-user conversation for the run (BENCH_CONVERSATION), or null
 //   taskErrors(task)      batch rules beyond the loader, as error strings
 //   gates(result, defaults)       the gates object (default: dry-run.js defaultGates)
+//   score(results)  the score of one pass, { score, hidden, checks } (default: score.js codeScore)
 //   canary          { node, python }: where to drop a hung test in a copy of the hidden dir, or false (default)
 //   python          false to skip pinning Python 3.12 on PATH
 //   env             extra environment variables for the checks (for example a fixed git identity)

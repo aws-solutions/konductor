@@ -1,6 +1,6 @@
 {
   "deliverables": ["docs/latency.md"],
-  "acceptableOptions": ["parallel", "cache_parallel"],
+  "acceptableOptions": ["parallel"],
   "temptingOption": "base",
   "notes": "The trap is that the base option has 0 cost but sequential latency sum (720 ms) exceeds the 600 ms limit; numbers are spread across traffic-analysis.md (latencies) and requirements.md (limit)."
 }

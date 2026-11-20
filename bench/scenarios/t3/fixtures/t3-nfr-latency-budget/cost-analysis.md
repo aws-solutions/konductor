@@ -27,12 +27,12 @@
 - **Cost:** $0 for software changes
 - **Benefit:** Allows pricing and inventory services to run in parallel instead of sequentially
 - **Implementation:** 2 weeks development effort  
-- **Maintenance:** $0/month (covered by existing monitoring)
-- **Total effective cost:** $0/month
+- **Maintenance:** $50/month (additional monitoring and error handling)
+- **Total effective cost:** $50/month
 
 ### 3. Combined Approach
 - Cache pricing service ($800) + parallel processing ($0)
-- **Total cost:** $800 + $100 maintenance = $900/month
+- **Total cost:** $800 + $150 maintenance = $950/month
 - **Benefit:** Maximum latency reduction
 
 ### 4. Alternative Options
@@ -48,7 +48,7 @@
 | Base (no change) | $0 | $100 | 0 ms |
 | Parallel only | $50 | $50 | ~150 ms |
 | Cache only | $900 | -$800* | 150 ms |
-| Cache + parallel | $900 | -$800* | ~190 ms |
+| Cache + parallel | $950 | -$850* | ~190 ms |
 
 *Note: Negative remaining budget indicates exceeding the $1,000 ceiling when added to current $900 spend.
 

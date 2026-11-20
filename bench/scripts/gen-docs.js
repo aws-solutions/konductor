@@ -7,8 +7,10 @@
 //   node bench/scripts/gen-docs.js           rewrite every generated part in place
 //   node bench/scripts/gen-docs.js --check   change nothing; exit 1 and name each part that differs from the code
 // Only facts that change when the code changes are generated: the arms, the runtimes, the suite names, the verdict
-// words and the command list. Counts that move whenever a task or a debt row lands (coverage, DEBT.md) are not:
-// a doc check on them would fail every other change on the branch. Readers run the command for those instead.
+// words, the command list, and the counted-set coverage matrix (structural: which shapes/tiers/dispositions each rule
+// has, from bench/physical/ci/coverage-data.json, so it moves on a new shape or probe, not on a new variant). Raw
+// counts that move whenever a task or a debt row lands (DEBT.md totals) are not: a doc check on them would fail every
+// other change on the branch. Readers run the command for those instead.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -16,8 +18,8 @@ const { execFileSync } = require('node:child_process');
 
 const BENCH = path.join(__dirname, '..');
 const BENCH_JS = path.join(BENCH, 'runner', 'bench.js');
-const DOCS = ['README.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/konductor-bench.md',
-  'docs/repeat-it-yourself.md', 'docs/reference.md'];
+const DOCS = ['README.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/physical-ai-counted-set.md',
+  'docs/konductor-bench.md', 'docs/repeat-it-yourself.md', 'docs/reference.md'];
 
 const cli = (...args) => execFileSync(process.execPath, [BENCH_JS, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const fence = (text) => ['```text', text.trimEnd(), '```'].join('\n');
@@ -58,6 +60,8 @@ const GENERATORS = {
     }
     return [...names].map((n) => `\`${n}\``).join(', ');
   },
+
+  coverage: () => require('../physical/ci/coverage.js').render(),
 };
 
 const REGION = /(<!-- gen:([a-z-]+) -->\n)([\s\S]*?)(<!-- \/gen:\2 -->)/g;

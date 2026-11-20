@@ -1,0 +1,145 @@
+{
+  "id": "t12-sdlc-contact-import",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "multi-phase",
+  "phases2": [
+    "requirements",
+    "architecture",
+    "implementation",
+    "testing"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please take the contact import in docs/requests/contact-import.md from request to done, the way you would before handing it to review: pin down the requirements, decide the design, build it, test it and write the customer help page. Put the code in src/import.js exporting importContacts(csvText, book), where book comes from createBook() in src/contacts.js; it returns { imported: number, skipped: list of { line, reason } } with line the file line (the header is line 1), and throws an Error when the file is over the row limit. Add your tests under test/ (node --test test/ must pass), the help page as docs/help/importing.md, and a feature note docs/features/contact-import.md that ends with one fenced json block holding an object with requirements (list of strings), decisions (list of strings: each design decision and why) and testPlan (list of strings: the cases you test). Do not change src/contacts.js. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "fixture": "t12-sdlc-contact-import",
+  "hidden": "t12-sdlc-contact-import",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden-import.test.js block.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/help/importing.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/contacts.js",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "phases-agree",
+      "weight": 2,
+      "criterion": "The requirements, design, code, tests and help page agree with each other and with the request. Fail: the code does something the note or help page contradicts (for example a partial import over the limit, or line numbers counted from the first data row while the help says file lines). Partial: they agree, but one agreed rule (duplicates within the file, whole-file refusal, line numbers) is in the code without a test, or in the note without code. Pass: every agreed rule appears in the note, the code and a test, the decisions say why (own parser, line numbering, refuse before import), and the help page tells customers what to do with skipped rows. (code cannot check this because agreement across documents and code is a judgement)"
+    },
+    {
+      "id": "tests-protect-rules",
+      "weight": 1,
+      "criterion": "The agent's own tests protect the rules through the public function. Fail: tests only check the happy path or the parser internals. Partial: edge cases are tested, but the limit edge (5,000 versus 5,001) or the line numbering is not. Pass: each agreed rule has a named test, including both limit edges and a line-number case, and the tests use only importContacts and createBook. (code cannot check this because the hidden tests check behaviour, not the agent's own suite)"
+    },
+    {
+      "id": "help-for-customers",
+      "weight": 1,
+      "criterion": "The help page is written for customers. Fail: it describes the code or the function. Partial: it gives the steps but not what to do with skipped rows or the limit. Pass: steps, what the result shows, what to do with skipped rows, and the file limit, in plain words. (code cannot check this because audience fit is a judgement)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "refuse-before-import",
+        "text": "Checks the row limit after parsing and before the first add, so a refused file leaves the address book unchanged.",
+        "source": "original"
+      },
+      {
+        "id": "file-line-numbers",
+        "text": "Counts lines as the file shows them (header line 1), including the extra line of a quoted field that spans two lines.",
+        "source": "https://www.rfc-editor.org/rfc/rfc4180"
+      },
+      {
+        "id": "dup-within-file",
+        "text": "Treats a repeat inside the same file as a duplicate, not only emails already in the book, comparing without case.",
+        "source": "original"
+      },
+      {
+        "id": "reuse-email-rule",
+        "text": "Reuses the address book's email rule instead of a second pattern that could drift.",
+        "source": "original"
+      },
+      {
+        "id": "help-retry-safe",
+        "text": "Tells customers they can fix the skipped lines and import the whole file again, because duplicates are skipped.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Split each line on commas and add the contacts.",
+      "Stop at the first bad row and report an error.",
+      "Import the first 5,000 rows of a bigger file.",
+      "Line numbers count data rows from 1."
+    ]
+  },
+  "targetSkills": [
+    "kiro-requirements-generation",
+    "verification"
+  ],
+  "targetSop": "k-full-sdlc",
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 36.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

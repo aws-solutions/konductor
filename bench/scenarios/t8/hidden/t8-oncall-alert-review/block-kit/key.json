@@ -11,7 +11,8 @@
           "\"problem\":\"[^\"]*(normal|baseline|expected|every (day|evening)|daily|peak)"
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "cpu-cause-not-impact",
@@ -24,7 +25,8 @@
           "\"severity\":\"(ticket|remove)\""
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "stale-pool-metric",
@@ -36,7 +38,8 @@
           "\"problem\":\"[^\"]*(missing|absent|stale|renamed|does not exist|no longer|never fires|no data)"
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "duplicate-fivexx",
@@ -49,7 +52,8 @@
           "\"severity\":\"remove\""
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "no-traffic-symptom",
@@ -62,7 +66,8 @@
           "\"severity\":\"(remove|ticket)\""
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "timeout-ticket",
@@ -75,7 +80,8 @@
           "\"severity\":\"ticket\""
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "queue-duration",
@@ -87,7 +93,8 @@
           "\"problem\":\"[^\"]*(duration|flap|brief|short|for:|transient)"
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "changes"
     },
     {
       "id": "sound-alerts-not-removed",
@@ -98,7 +105,8 @@
         "all": [
           "^(ApiHigh5xxRate|HealthCheckDown|QueueAgeHigh|WorkerErrorRate|CacheHitRateLow|LoginFailureSpike|PaymentProviderLatency|SearchIndexLag|DiskSpaceLow|DeploymentFailure|TLSCertificateExpiry)$"
         ]
-      }
+      },
+      "section": "keeps"
     },
     {
       "id": "valid-severities",
@@ -110,7 +118,8 @@
           "^(page|ticket|remove)$"
         ]
       },
-      "min": 6
+      "min": 6,
+      "section": "hygiene"
     },
     {
       "id": "alert-names-are-rules",
@@ -119,14 +128,16 @@
       "field": "name",
       "fromFile": "alerts/alert-rules.yml",
       "pattern": "^\\s*- name:\\s*([A-Za-z0-9_-]+)$",
-      "min": 6
+      "min": 6,
+      "section": "hygiene"
     },
     {
       "id": "review-precision",
       "type": "maxLen",
       "path": "alerts",
       "min": 6,
-      "max": 10
+      "max": 10,
+      "section": "hygiene"
     },
     {
       "id": "keep-api-errors",
@@ -136,7 +147,8 @@
         "all": [
           "^ApiHigh5xxRate$"
         ]
-      }
+      },
+      "section": "keeps"
     },
     {
       "id": "keep-health-check",
@@ -146,7 +158,8 @@
         "all": [
           "^HealthCheckDown$"
         ]
-      }
+      },
+      "section": "keeps"
     },
     {
       "id": "keep-queue-age",
@@ -156,7 +169,8 @@
         "all": [
           "^QueueAgeHigh$"
         ]
-      }
+      },
+      "section": "keeps"
     },
     {
       "id": "keep-worker-errors",
@@ -166,7 +180,8 @@
         "all": [
           "^WorkerErrorRate$"
         ]
-      }
+      },
+      "section": "keeps"
     },
     {
       "id": "keep-provider-latency",
@@ -176,7 +191,8 @@
         "all": [
           "^PaymentProviderLatency$"
         ]
-      }
+      },
+      "section": "keeps"
     },
     {
       "id": "keep-deploy-failure",
@@ -186,7 +202,9 @@
         "all": [
           "^DeploymentFailure$"
         ]
-      }
+      },
+      "section": "keeps"
     }
-  ]
+  ],
+  "scoring": "sections"
 }

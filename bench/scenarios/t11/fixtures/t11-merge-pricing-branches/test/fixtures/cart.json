@@ -1,0 +1,7 @@
+{
+  "lines": [
+    { "sku": "mug-blue", "quantity": 2, "unitPrice": 8.5 },
+    { "sku": "tea-tin", "quantity": 1, "unitPrice": 14.75 }
+  ],
+  "shippingMethod": "standard"
+}

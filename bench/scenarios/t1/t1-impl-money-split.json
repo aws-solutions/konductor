@@ -1,7 +1,7 @@
 {
   "id": "t1-impl-money-split",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -69,6 +69,11 @@
       "weight": 1,
       "id": "verification-report",
       "criterion": "The final report accurately states which existing, hidden, and reference-overlay checks were run and whether they passed (code cannot check this because it cannot assess the agent's final report)."
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -145,5 +150,10 @@
       "alt": 20.8,
       "date": "2026-11-20"
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

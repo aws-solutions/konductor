@@ -1,0 +1,251 @@
+{
+  "outputFile": ".kiro/specs/api-rate-limits/tasks.md",
+  "scoring": "sections",
+  "items": [
+    {
+      "id": "limit-per-key-not-ip",
+      "section": "requirements",
+      "gate": true,
+      "type": "none",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "\\b(by|per) (client |source )?ip\\b"
+        ],
+        "none": [
+          "\\bnot\\b|never|instead|rather than|superseded"
+        ]
+      }
+    },
+    {
+      "id": "per-key",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "(per|each|every|same|own) (api )?key|key's|keys? (of|in) the same account"
+        ]
+      }
+    },
+    {
+      "id": "starter-figure",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "starter",
+          "\\b90\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
+        ]
+      }
+    },
+    {
+      "id": "studio-figure",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "studio",
+          "\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
+        ]
+      }
+    },
+    {
+      "id": "over-limit-429",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "429",
+          "retry-after",
+          "rate_limited"
+        ]
+      }
+    },
+    {
+      "id": "remaining-header",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "x-ratelimit-remaining"
+        ]
+      }
+    },
+    {
+      "id": "admin-exempt",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "admin|ops key",
+          "never|not (be )?(rate[- ])?limited|exempt|bypass|skip"
+        ]
+      }
+    },
+    {
+      "id": "health-exempt",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "/health|health check|health endpoint",
+          "never|not (be )?(rate[- ])?limited|exempt|bypass|without (a|an api) key|no (api )?key"
+        ]
+      }
+    },
+    {
+      "id": "service-wide-count",
+      "section": "requirements",
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "instance|process|server",
+          "whole service|across|shared|both|single|global|combined|not per instance"
+        ]
+      }
+    },
+    {
+      "id": "requirements-have-criteria",
+      "section": "requirements",
+      "type": "every",
+      "path": "requirements",
+      "min": 5,
+      "match": {
+        "field": "acceptance",
+        "all": [
+          "\\w{3}"
+        ]
+      }
+    },
+    {
+      "id": "requirements-bounded",
+      "section": "requirements",
+      "type": "maxLen",
+      "path": "requirements",
+      "min": 5,
+      "max": 14
+    },
+    {
+      "id": "counter-in-shared-kv",
+      "section": "tasks",
+      "type": "some",
+      "path": "tasks",
+      "match": {
+        "all": [
+          "src/kv\\.js"
+        ]
+      }
+    },
+    {
+      "id": "wired-where-key-is-known",
+      "section": "tasks",
+      "type": "some",
+      "path": "tasks",
+      "match": {
+        "field": "files",
+        "all": [
+          "src/server\\.js|src/auth\\.js"
+        ]
+      }
+    },
+    {
+      "id": "limiter-before-wiring",
+      "section": "tasks",
+      "type": "order",
+      "path": "tasks",
+      "first": {
+        "all": [
+          "src/kv\\.js|limiter|counter"
+        ]
+      },
+      "then": {
+        "field": "files",
+        "all": [
+          "src/server\\.js"
+        ]
+      }
+    },
+    {
+      "id": "test-task",
+      "section": "tasks",
+      "type": "some",
+      "path": "tasks",
+      "match": {
+        "all": [
+          "test",
+          "429|over the limit|over-limit|exceed"
+        ]
+      }
+    },
+    {
+      "id": "remaining-header-task",
+      "section": "tasks",
+      "type": "some",
+      "path": "tasks",
+      "match": {
+        "all": [
+          "x-ratelimit-remaining"
+        ]
+      }
+    },
+    {
+      "id": "store-failure-task",
+      "section": "tasks",
+      "type": "some",
+      "path": "tasks",
+      "match": {
+        "all": [
+          "fail(s|ing)? open|fail(s|ing)? closed|store (is )?(down|unavailable|unreachable)|cannot be reached"
+        ]
+      }
+    },
+    {
+      "id": "tasks-trace-requirements",
+      "section": "tasks",
+      "type": "every",
+      "path": "tasks",
+      "min": 3,
+      "match": {
+        "field": "requirements",
+        "all": [
+          "\\w"
+        ]
+      }
+    },
+    {
+      "id": "tasks-bounded",
+      "section": "tasks",
+      "type": "maxLen",
+      "path": "tasks",
+      "min": 3,
+      "max": 14
+    },
+    {
+      "id": "burst-is-open",
+      "section": "requirements",
+      "type": "some",
+      "path": "openQuestions",
+      "match": {
+        "all": [
+          "burst"
+        ]
+      }
+    },
+    {
+      "id": "open-bounded",
+      "section": "requirements",
+      "type": "maxLen",
+      "path": "openQuestions",
+      "min": 1,
+      "max": 8
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "id": "t4-dev-path-traversal-files",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -50,7 +50,13 @@
       "kind": "format"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "root-cause-containment",
+      "weight": 2,
+      "criterion": "The fix contains every path at one shared place (resolve, then check the result stays under the caller's folder) instead of filtering bad strings, and the final message says which routes were open (download, list, upload name, archive entry) and how each is now closed. Fail: blocks only \"../\" strings or patches handlers one by one, or does not say what was open. Partial: one shared containment check, but the message misses a route (for example absolute archive entries or symlinks) or the check is skipped on one handler. Pass: one shared containment check used by all four handlers, each open route named with how it is closed, and errors that reveal no storage path. (code cannot check this because the hidden probes show the holes are shut, not whether the fix is one coherent rule a reviewer can trust)"
+    }
+  ],
   "expertKey": {
     "items": [
       {
@@ -182,7 +188,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-bucket-policy-oac",
-  "version": 2,
+  "version": 3,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -58,7 +58,7 @@
     },
     {
       "id": "proper_private_handling",
-      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround (code cannot check this because implementation approach varies)",
+      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround. Fail: a separate bucket, a second distribution or a workaround, or private paths still readable. Partial: private paths refused, but by a broad deny that also blocks a needed public path, or with no explanation. Pass: one clear statement keeps downloads/private/ unreadable through the distribution, the public paths still work, and the message says why. (code cannot check this because implementation approach varies)",
       "weight": 1
     }
   ],
@@ -189,7 +189,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

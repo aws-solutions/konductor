@@ -1,6 +1,6 @@
 {
   "id": "t4-iac-review-terraform",
-  "version": 2,
+  "version": 3,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -58,7 +58,7 @@
     },
     {
       "id": "prioritization",
-      "criterion": "Critical and high severity issues are correctly identified and prioritized (code cannot check this because severity assessment requires security expertise)",
+      "criterion": "Critical and high severity issues are correctly identified and prioritized. Fail: critical issues missing from the top of the list, or decoys ranked high. Partial: critical issues found, but ordered below lower-severity ones or with severities off by more than one level. Pass: the critical and high issues come first with defensible severities, and decoys are absent or marked low with a reason. (code cannot check this because severity assessment requires security expertise)",
       "weight": 3
     }
   ],
@@ -194,7 +194,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

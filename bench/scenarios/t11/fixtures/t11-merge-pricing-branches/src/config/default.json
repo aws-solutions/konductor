@@ -1,0 +1,6 @@
+{
+  "shipping": {
+    "standard": 4.99,
+    "express": 12.5
+  }
+}

@@ -81,5 +81,16 @@
       ],
       "note": "calculates tax before applying the discount"
     }
-  ]
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "src/discounts.js"
+      ],
+      "note": "same behaviour, new internals: one reducer per discount kind"
+    }
+  ],
+  "maxTests": 57,
+  "baseTests": 17
 }

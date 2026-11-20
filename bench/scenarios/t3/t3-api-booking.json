@@ -43,6 +43,11 @@
       "id": "source-reconciliation",
       "criterion": "The architecture reconciles current production inputs with the historical partner note and makes the superseded setting's status clear. (not code-checkable: Tests can detect a compliant numeric value but cannot evaluate the quality of the source reconciliation or its explanation.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -79,7 +84,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 2,
   "targetSkills": [
     "smithy-modeling",
     "trade-off-evaluator"
@@ -171,5 +176,9 @@
       "describes pagination trade-offs generically without connecting them to the specific numbers in traffic.json, gateway.json, and service-levels.json."
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

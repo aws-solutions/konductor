@@ -1,0 +1,10 @@
+{
+  "name": "folder-syncer",
+  "version": "1.4.0",
+  "description": "A small command-line folder sync client",
+  "type": "commonjs",
+  "main": "src/cli.js",
+  "bin": {"syncer": "bin/syncer.js"},
+  "engines": {"node": ">=24"},
+  "scripts": {"test": "node --test", "start": "node bin/syncer.js"}
+}

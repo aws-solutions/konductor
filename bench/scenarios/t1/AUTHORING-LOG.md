@@ -49,6 +49,8 @@ Paid calls paused by the lead on 2026-11-20 (the owner's pilot wave 1 shares the
 
 Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an abort limit of 15 credits, set before it starts. `run-capped.sh` stops a call at a tool-call count that stands for about 15 credits for its model, refuses a call when the logged spend plus 15 could pass the T1 stop of 880 credits, waits while the host's 1-minute load is 6 or more (the owner's pilot waves share it), and runs one call at a time. A call stopped before it reports is logged at 15.
 
+Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-nfr-bounded-fanout) wrote checks with `kind` in the place of `type`. The key prompt had named `kind` but not `type`, so part of that failure is the prompt's; it now states the full check shape with an example. Both tasks had already used their one fix attempt and stay dropped.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -61,6 +63,11 @@ Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an 
 | t1-nfr-latency-cache | minimax-m2.5 | second-family author stopped at the 90-tool-call cap without writing task-draft.json; dropped, not hand-fixed (owner rule) | see the calls table for credits |
 | t1-impl-flag-rollout | minimax-m2.5 | second-family draft: the reference scored 0 (no hidden test ran) and the reviewer's leak, hidden-answer and ceiling verdicts were fail; dropped without a fix round, because the fix would keep a Python hidden suite and so a new per-task bridge copy, which the owner's no-copies rule forbids until the shared lib lands | see the calls table for credits |
 | t1-ref-split-module | minimax-m2.5 | second-family draft stopped by the 45-minute watchdog before it finished; the reviewer saw a partial draft and failed all five checks; dropped, not hand-fixed | see the calls table for credits |
+| t1-bug-csv-import | deepseek-3.2, then minimax-m2.5 | no usable draft after its one fix attempt by the second family: deepseek stopped at its cap; minimax wrote the repository outside fixture/ twice (moved, layout only) and its key call stopped at the 60-tool-call cap with no key-draft.json; dropped, not hand-fixed | see the calls table for credits |
+| t1-bug-money-rounding | qwen3-coder-next | second-family (two-step) task: the first key used `kind` for the check type and the reviewer failed all five checks; after its one fix attempt by its own family the reference scored 28.6; dropped, not hand-fixed | see the calls table for credits |
+| t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
+| t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
+| t1-nfr-bounded-fanout | qwen3-coder-next | second-family task: the single-step author stopped at its cap; in its one fix attempt (two-step) the key's checks used `kind` and the check name as the type, so no check could run; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -170,3 +177,34 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-impl-settings-expand | review | qwen3-coder-next | 1.08 |
 | t1-impl-settings-expand | lazy+alt answers | glm-5 | 5.24 |
 | t1-bug-csv-import | author-data | minimax-m2.5 | 15.00 (estimate: stopped at the 60-tool-call cap before it reported; logged at the 15-credit abort limit) |
+| t1-impl-cli-envprefix | author | gpt-5.6-luna | 2.64 |
+| t1-impl-cli-envprefix | map | glm-5 | 0.16 |
+| t1-impl-cli-envprefix | review | qwen3-coder-next | 3.25 |
+| t1-impl-cli-envprefix | lazy+alt answers | glm-5 | 15.59 |
+| t1-bug-csv-import | author-data | minimax-m2.5 | 7.16 |
+| t1-bug-money-rounding | author-data | qwen3-coder-next | 2.26 |
+| t1-bug-money-rounding | author-key | qwen3-coder-next | 10.36 |
+| t1-bug-money-rounding | map | glm-5 | 0.17 |
+| t1-bug-money-rounding | review | gpt-5.6-luna | 1.21 |
+| t1-bug-money-rounding | lazy+alt answers | gpt-5.6-luna | 2.94 |
+| t1-twin-webhook-routes | author | gpt-5.6-luna | 1.40 |
+| t1-twin-webhook-routes | map | glm-5 | 0.16 |
+| t1-twin-webhook-routes | review | qwen3-coder-next | 0.45 |
+| t1-twin-webhook-routes | lazy+alt answers | glm-5 | 1.83 |
+| t1-ref-dataclasses | author-data | minimax-m2.5 | 7.31 |
+| t1-ref-dataclasses | author-key | minimax-m2.5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-bug-csv-import | author-key | minimax-m2.5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-bug-money-rounding | fix | qwen3-coder-next | 8.19 |
+| t1-bug-money-rounding | review | gpt-5.6-luna | 1.04 |
+| t1-bug-money-rounding | lazy+alt answers | gpt-5.6-luna | 1.17 |
+| t1-ref-esm-migrate | recheck | glm-5 | 1.65 |
+| t1-ref-dataclasses | author-key | minimax-m2.5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-neg-config-alias | author | gpt-5.6-luna | 1.22 |
+| t1-neg-config-alias | map | glm-5 | 0.16 |
+| t1-neg-config-alias | review | qwen3-coder-next | 0.43 |
+| t1-neg-config-alias | lazy+alt answers | glm-5 | 1.99 |
+| t1-nfr-bounded-fanout | author-data | qwen3-coder-next | 1.25 |
+| t1-nfr-bounded-fanout | author-key | qwen3-coder-next | 10.17 |
+| t1-nfr-bounded-fanout | map | glm-5 | 0.16 |
+| t1-nfr-bounded-fanout | review | gpt-5.6-luna | 1.19 |
+| t1-nfr-bounded-fanout | lazy+alt answers | gpt-5.6-luna | 3.10 |

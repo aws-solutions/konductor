@@ -15,10 +15,12 @@ function readAnswerKey(fixtureDir) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
 }
 
-// A real-repository task has no answer key; its base tree is identified by the pinned hash in the manifest.
+// A real-repository task has no answer key; its base tree is identified by the pinned hash in the manifest. The expert
+// key's weak answers are judge text too (prompts.js), so a task that has them hashes them; one without hashes as before.
 function taskRevision(task) {
   const answerKey = task.real ? `real:${task.realEntry.contentSha256}` : readAnswerKey(task.fixtureDir);
-  const material = JSON.stringify({ prompt: task.prompt, rubric: task.rubric, answerKey });
+  const weakAnswers = task.expertKey?.weakAnswers?.length ? task.expertKey.weakAnswers : undefined;
+  const material = JSON.stringify({ prompt: task.prompt, rubric: task.rubric, answerKey, weakAnswers });
   return crypto.createHash('sha256').update(material).digest('hex').slice(0, 12);
 }
 
