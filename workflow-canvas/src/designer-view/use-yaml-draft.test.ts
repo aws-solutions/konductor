@@ -104,6 +104,41 @@ describe('useYamlDraft', () => {
     expect(result.current.lastGood).toBeUndefined();
   });
 
+  it.each([
+    ['name', { name: 'other' }],
+    ['baseHash', { baseHash: 'hash-other' }],
+    ['initialText', { initialText: 'w0' }],
+  ] as const)(
+    'opens a fresh draft when only %s changes, cancelling the check and dropping its late answer',
+    async (_, change) => {
+      const { result, validate, scheduler, pause, rerender } = setUp();
+      act(() => result.current.edit('v1'));
+      await pause();
+      await validate.answer(0, GOOD);
+      act(() => result.current.edit('v2'));
+      await pause();
+      expect(validate.inFlight).toBe(1);
+      expect(result.current.lastGood).toBe(GOOD);
+
+      rerender(change);
+      expect(result.current.text).toBe(
+        'initialText' in change ? change.initialText : 'v0',
+      );
+      expect(result.current.status).toBe('unchecked');
+      expect(result.current.lastGood).toBeUndefined();
+      await act(async () => {});
+
+      expect(validate.signals[1]?.aborted).toBe(true);
+      expect(validate.inFlight).toBe(0);
+      expect(scheduler.pendingCount).toBe(0);
+      await validate.answer(1, BAD);
+      await act(async () => scheduler.tick());
+      expect(result.current.status).toBe('unchecked');
+      expect(result.current.answer).toBeUndefined();
+      expect(validate.requests).toHaveLength(2);
+    },
+  );
+
   it('opens a fresh draft for another workflow, dropping its failure', async () => {
     const { result, validate, pause, rerender } = setUp();
     act(() => result.current.edit('v1'));
