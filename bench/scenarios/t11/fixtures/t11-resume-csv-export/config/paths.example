@@ -1,0 +1,3 @@
+# Paths used by local scripts
+data=data/entries.json
+archive=data/archive.json

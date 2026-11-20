@@ -1,0 +1,20 @@
+{
+  "id": "t11-resume-csv-export",
+  "kind": "code",
+  "fixture": "git",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "40 to 70",
+  "ntests": "12 to 16",
+  "ntrap": 3,
+  "voice": "a team lead handing a teammate's unfinished branch to a developer",
+  "source": {
+    "url": "https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging",
+    "licence": "CC BY-NC-SA 3.0 (checked on https://git-scm.com/book/en/v2, 2026-11-20); idea only: work on a branch is interrupted and picked up later; no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation. Role: developer. Repo: a Node.js library and CLI for a small time-tracking tool (timesheet entries kept as JSON files; commands such as `timesheet add`, `timesheet report`, `timesheet export --format json`). A colleague started a CSV export on branch `feature/csv-export` two weeks ago and was then moved to another team. The branch holds 4 to 6 work-in-progress commits on top of main, and a notes file in the repository root (for example `NOTES-csv-export.md`) with their plan as a checklist and a few loose remarks. The agent starts on that branch with a clean working tree. Part of the plan is done, part is half done (a function exists but covers only some columns or cases), and part is not started. Seed these traps: (1) the checklist marks a step as not done that a later commit actually finished, and doing it a second time breaks the output (for example a header row or a column added twice); (2) the notes state one decision, but a later commit message records that the decision changed after review (for example: the notes say local time, a later commit says the export switched to UTC ISO 8601); the later decision wins, and the request does not say which; (3) the half-done helper is wrong for some inputs that the plan names (CSV quoting of commas, double quotes and newlines; cells starting with =, +, - or @ must be neutralised against spreadsheet formula injection, as the notes plan). The request: finish the CSV export the colleague started, so `timesheet export --format csv` and the library function the branch already exports work as their plan intends, and leave the JSON export as it is. Hidden tests call the library function and run the CLI with child_process on fixed data, and check that the JSON export is unchanged and that the work stays on the feature branch (committed or not)."
+}
