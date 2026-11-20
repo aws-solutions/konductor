@@ -1,0 +1,9 @@
+[build-system]
+requires = []
+build-backend = "setuptools.build_meta:__legacy__"
+
+[project]
+name = "logjob"
+version = "1.4.0"
+description = "Small endpoint log report utility"
+requires-python = ">=3.12"

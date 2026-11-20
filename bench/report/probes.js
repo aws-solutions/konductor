@@ -2,7 +2,7 @@
 'use strict';
 
 // Scores the constraints probe runs from their stream.jsonl (primary) and session files (secondary), then tabulates
-// cells with Wilson intervals and evaluates the decision table of bench/CONSTRAINTS-PROBE.md with thresholds fixed
+// cells with Wilson intervals and evaluates the decision table of bench/docs/studies/CONSTRAINTS-PROBE.md with thresholds fixed
 // before any data. Reads files only: no model, no network, no writes except --out.
 
 const fs = require('node:fs');

@@ -114,5 +114,20 @@
         "note": "All key values are derivable from fixture data: critical path (PLT-014→PAY-021→CHK-017→CHK-026) via depends_on column; 24 points sum; PAY-028/PAY-021 date conflict (2027-06-26 < 2027-06-28); Jon Bell's 13 points vs 0.9 adjusted capacity; 10 scope-creep points (PAY-034, CHK-037, RISK-023 created after 2027-05-28 lock). Tolerances are reasonable."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "repeats": 3,
+        "deterministic": true,
+        "reference": 100,
+        "stub": 7.1,
+        "alt": 100
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20"
   }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# run-2x2-kiro.sh: the run kit for the Kiro-only rerun of the konductor 2x2, on a NEW frozen build (see bench/REPEAT.md,
+# run-2x2-kiro.sh: the run kit for the Kiro-only rerun of the konductor 2x2, on a NEW frozen build (see bench/docs/REPEAT.md,
 # 2026-11-19). A variant of run-2x2.sh (same helpers, same safety refusals) with these differences: one set "rerun"
 # with 17 HELD-OUT tasks x 3 replicates, Kiro vanilla against konductor only; one uniform soft time limit (TIMEOUT_SEC, 1800
 # s); soft caps; PY312_BIN first on PATH; no Claude Code step. Two faults of run-2x2.sh are fixed here:
@@ -57,7 +57,7 @@ LISTING_JS=${LISTING_JS:-$KIT_SRC/listing-check.js}
 # stops only at the ceiling, the rest of the approved total (396 credits; $129 of the $151 for judging).
 CAP3_CR=390 CAP3_JUDGE=20 CEIL3_CR=396 CEIL3_JUDGE=129
 TIMEOUT_SEC=1800          # soft limit for BOTH arms and every task (pre-declared before the first run); the report re-scores at 600 and 1200 s
-PY312_BIN=${PY312_BIN:-$S/pybin}         # a dir whose python3 and python are Python 3.12 (see bench/REPEAT.md)
+PY312_BIN=${PY312_BIN:-$S/pybin}         # a dir whose python3 and python are Python 3.12 (see bench/docs/REPEAT.md)
 export PATH=$PY312_BIN:$PATH
 CAP1_CR=80 CAP1_CC=13 CAP1_JUDGE=7       # stage 1, DEV set x 2 reps (load probe, tuning): 80 credits, $20
 CAP2_CR=440 CAP2_CC=90 CAP2_JUDGE=40     # stage 2, HELD-OUT set x 3 reps (the verdict): 440 credits, $130
@@ -103,7 +103,7 @@ freeze() {
   fi
   # The pinned commit's Claude Code skill listing (budget 30,000 chars for Sonnet 5.5) must leave no konductor skill
   # name-only. The estimate is conservative (it ran about 850 chars over the measured listing), so a refusal here can be
-  # checked with the free `claude -p '/context'` recipe in bench/REPEAT.md before anything else changes.
+  # checked with the free `claude -p '/context'` recipe in bench/docs/REPEAT.md before anything else changes.
   mkdir -p "$S"
   node "$LISTING_JS" "$R" "$commit" --json >"$S/listing.json" || { node "$LISTING_JS" "$R" "$commit" || true; die "konductor commit $commit leaves skills name-only in the Claude Code listing; land the trim PR first, then freeze"; }
   node "$LISTING_JS" "$R" "$commit"

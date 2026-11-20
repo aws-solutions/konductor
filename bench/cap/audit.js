@@ -140,7 +140,7 @@ function publicFindings(benchDir, tasks, registryDir) {
   };
   walk(registryDir);
   for (const t of tasks.values()) check(t.extraDir ? `${path.basename(t.extraDir)}/${t.id}.json` : `tasks/${t.id}.json`, t.prompt);
-  for (const doc of ['README.md', 'README-tasks.md']) {
+  for (const doc of ['README.md', 'docs/reference.md', 'docs/tasks.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/konductor-bench.md', 'docs/repeat-it-yourself.md']) {
     const f = path.join(benchDir, doc);
     if (fs.existsSync(f)) check(doc, fs.readFileSync(f, 'utf8'));
   }

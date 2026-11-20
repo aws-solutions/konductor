@@ -5,7 +5,7 @@
 # it. One run per prompt, one arm. PAID (Kiro credits only): soft cap 40 credits (a warning), ceiling 60 (bench stops starting runs).
 # Run it from your own terminal, never from an agent shell. Label of the result: "PR312 functional probe".
 # Needs: S (the probe work dir), R (the konductor repo that holds BUILD_REF, with bench checked out), KIT_SRC or the repo layout
-# (the 2x2 kit is read from ../../2x2), and the pinned kiro-cli of the 2x2 kit under SHARED or S (see bench/REPEAT.md).
+# (the 2x2 kit is read from ../../2x2), and the pinned kiro-cli of the 2x2 kit under SHARED or S (see bench/docs/REPEAT.md).
 #   bash run-probe.sh --dry-run      prints the checks and the bench command, starts nothing
 #   bash run-probe.sh                runs the probe, then prints the table
 #   bash run-probe.sh --table        only prints the table of a finished probe (read only, free)
@@ -28,7 +28,7 @@ if [ "$MODE" = --table ]; then python3 "$HERE/table.py" --run "$OUT"; exit 0; fi
 COMMIT=$(git -C "$R" rev-parse "$BUILD_REF^{commit}") || die "build ref $BUILD_REF not found in $R"
 TASKS=$(ls "$HERE"/tasks/pr312-probe-*.json | xargs -n1 basename | sed 's/\.json$//' | paste -sd, -)
 [ "$(printf '%s\n' "$TASKS" | tr ',' '\n' | wc -l)" = 12 ] || die "expected 12 probe tasks in $HERE/tasks"
-python3 --version 2>&1 | grep -q '^Python 3\.12\.' || die "python3 is not 3.12 on PATH (PY312_BIN=$PY312_BIN): make $S/pybin first, see bench/REPEAT.md"
+python3 --version 2>&1 | grep -q '^Python 3\.12\.' || die "python3 is not 3.12 on PATH (PY312_BIN=$PY312_BIN): make $S/pybin first, see bench/docs/REPEAT.md"
 say "PR312 functional probe: konductor commit $COMMIT ($BUILD_REF), 12 prompts, soft cap $SOFT_CR credits, ceiling $CEIL_CR"
 git -C "$R" merge-base --is-ancestor fc452e64 "$COMMIT" || die "the build does not contain the PR #312 head fc452e64"
 CMD=(node "$BJ" run --suite rootcause --seed "$SEED" --parallel 1 --repo-root "$R" --cache "$SHARED/cache" --cargo-target "$SHARED/cargo-target"

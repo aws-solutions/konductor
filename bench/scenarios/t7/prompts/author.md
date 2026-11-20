@@ -26,6 +26,7 @@ Write these into the current directory. `hidden/plan-grade.cjs` and `hidden/plan
    - Do not make many assertions hang on one detail; one slip should fail only one or two.
    - Never address a list element by position (`risks.1.kind`): the agent may order its list any way. To check a field of the element that names a ticket, use `cites` with `where` (for example `{"op": "cites", "path": "risks", "field": "tickets", "ids": ["X-12"], "where": {"kind": "date-conflict"}}`).
    - Where several methods a strong practitioner might use give different dates or counts (for example finishing only the longest chain against finishing all remaining launch work), set the tolerance to cover them all and to exclude what a lazy reading gives.
+   - Check facts in the data, never the answer's own wording or naming: no assertion on an id, name or label the agent invents (its risk ids, workstream or milestone names), no exact match on a free-text field, no `order` between items that may sit in the same group, and no assertion that only echoes a value the request itself states.
 4. `solution/`: the reference answer as an overlay on the fixture: `solution/{{OUTPUT}}`, written as the real deliverable a strong practitioner would send (plain words, the reasoning and numbers a director needs, honest about uncertainty), with the block. It must pass every assertion.
 5. `task-draft.json`, one JSON object with exactly these keys:
    - `prompt`: the request, in the requester's voice. Plain words, 60 to 200 words. Say what they want and why, name the file `{{OUTPUT}}`, and give the block's info string and every key and allowed value of its shape, as a plain format note (the block is how their tooling reads the answer). Do NOT name any method, framework or process (no "critical path method", "Monte Carlo", "RACI", "MoSCoW", "risk matrix", "write a plan first"). Do NOT hint at any trap. Do NOT tell the agent to ask or not to ask questions. Do not mention hidden scripts, scoring or benchmarks. The agent's folder is not called `fixture`: say "this folder" or name the files.
@@ -37,7 +38,7 @@ Write these into the current directory. `hidden/plan-grade.cjs` and `hidden/plan
 6. Verify before you finish, in a scratch folder inside the current directory (delete it afterwards):
    - copy `fixture/`, overlay `solution/`, copy `hidden/` in, and from that folder run `node --test --test-timeout=15000 hidden/plan.test.cjs`: every test must pass;
    - do the same with the bare `fixture/` (no solution): every test must fail;
-   - write a second, lazy answer of your own (take the obvious reading: trust the status column, count every ticket, use the roadmap's date) and check that it fails at least half of the tests;
+   - write a lazy answer as `lazy/{{OUTPUT}}` (an overlay like `solution/`, kept in the current directory): plausible and shallow, it takes the obvious reading (trusts the status column, counts every ticket, uses the roadmap's date, names the decoy), has the block in the right shape and uses the right words; it must fail at least 60% of the tests;
    - rerun `authoring/compute_key.py` and confirm `hidden/key.json` is unchanged.
    Then print a short list of what you verified, with the pass counts.
 

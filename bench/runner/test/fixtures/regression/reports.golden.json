@@ -691,7 +691,7 @@
      },
      {
       "t": "p",
-      "text": "Scoring weights come from profiles/scoring.json (hidden 0.5, checks 0.2, rubric 0.3); the formulas are in bench/README.md."
+      "text": "Scoring weights come from profiles/scoring.json (hidden 0.5, checks 0.2, rubric 0.3); the formulas are in bench/docs/reference.md."
      },
      {
       "t": "note",
@@ -1551,7 +1551,7 @@
      },
      {
       "t": "p",
-      "text": "Scoring weights come from profiles/scoring.json (hidden 0.5, checks 0.2, rubric 0.3); the formulas are in bench/README.md."
+      "text": "Scoring weights come from profiles/scoring.json (hidden 0.5, checks 0.2, rubric 0.3); the formulas are in bench/docs/reference.md."
      },
      {
       "t": "note",

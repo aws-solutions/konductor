@@ -106,5 +106,20 @@
         "note": "All key values are derivable from the fixture with documented conventions: open epic counts match direct counts of open-status tickets, Eve Grant closed = 3+5+8=16 from RISK-015/031/034, total open points = 597 sums non-blank estimates, Asha Iyer closed = 2 (PAY-018) excluding PAY-007 which is In Progress."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "repeats": 3,
+        "deterministic": true,
+        "reference": 100,
+        "stub": 7.1,
+        "alt": 100
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20"
   }
 }
