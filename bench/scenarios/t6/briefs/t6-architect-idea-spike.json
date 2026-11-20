@@ -1,0 +1,18 @@
+{
+ "id": "t6-architect-idea-spike",
+ "wave": 3,
+ "kind": "doc",
+ "phase": "ideation",
+ "role": "architect",
+ "out": "docs/spike-plan.md",
+ "repo": "a document folder for an invoicing SaaS where a founder pitched, in two lines, 'make invoice PDFs real-time by moving PDF generation to an edge function'. Files: the pitch note, current architecture notes, a per-request latency CSV for PDF generation (invoice page count, milliseconds, about 3,000 rows, mostly small invoices), a support-ticket export (complaints are about large invoices only), a cost sheet, a vendor free-tier limits note (CPU seconds and memory per call), a team calendar (two engineers, one on leave for two of the five working days before a quarter freeze), an incident postmortem, a README. About 22 files.",
+ "idea": "An architect turns a vague idea into a bounded spike with a falsifiable result. Seed: the headline average latency (dominated by small invoices) is a decoy; the complaints and the support target (a stated p95 for large invoices) concern invoices over 20 pages, whose p95 a script computes from the CSV; the vendor limits would break above a page count the CSV shows exists; only 8 engineer-days are free, not 10. Output: a spike plan ending with a JSON block: question, hypothesis, metric, baseline {value, sample, source}, pass_threshold, kill_threshold, timebox_days, engineer_days, steps (each with name, days), scope_in, scope_out, decision_rule. A hidden script checks that the baseline is the large-invoice p95 from the data (about 5%), the pass threshold is tied to the support target, the plan fits the free engineer-days, and the kill criterion is numeric and different from the pass one.",
+ "source": {
+  "url": "https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works",
+  "licence": "OGL-3.0 (GOV.UK Service Manual, Open Government Licence v3.0 stated in the page footer)",
+  "licenceCheckedAt": "2026-11-20",
+  "use": "idea"
+ },
+ "author": "claude-sonnet-5.5",
+ "reviewer": "glm-5"
+}

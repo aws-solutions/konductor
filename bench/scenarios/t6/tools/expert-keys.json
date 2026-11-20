@@ -138,5 +138,65 @@
       "Pick the option with the biggest revenue number in the sales sheet.",
       "Ask customers to vote on the next feature."
     ]
+  },
+  "t6-architect-idea-spike": {
+    "items": [
+      {
+        "id": "learning-goal",
+        "text": "States what the team will learn from the spike, and that the result may be that the idea should not go ahead.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "riskiest-assumption",
+        "text": "Picks the riskiest assumption to test first rather than building a piece of the final system.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "throwaway",
+        "text": "Says the spike's code is throwaway and what happens to it after the decision.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "who-decides",
+        "text": "Names who makes the go or no-go call from the result and when, so the spike ends in a decision.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Describes a migration plan for the whole feature under the name of a spike.",
+      "Sets the pass line at the average latency or at no figure, so any result passes.",
+      "Gives steps with no days or owners, or more days than the team has free.",
+      "Leaves out what is not being tested."
+    ]
+  },
+  "t6-developer-feasibility-spike": {
+    "items": [
+      {
+        "id": "reproducible",
+        "text": "Says how to rerun the measurement (command, input, expected output) so someone else can reproduce the evidence.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "limits-of-evidence",
+        "text": "Says what three sample files cannot show about real customer files, and how a wider sample would be gathered.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-alternative",
+        "text": "Weighs the cost of the alternative (read more rows, or the whole file) against the preview promise instead of only rejecting the premise.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "decision-owner",
+        "text": "Gives the product owner a plain choice with a recommendation, in terms the owner can act on.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Says the premise holds because the first 500 rows of one file looked stable.",
+      "Reports timing figures with no input size or command.",
+      "Rejects the premise with no number from the data.",
+      "Writes the measure script to print the fixture's numbers without reading its argument."
+    ]
   }
 }

@@ -99,7 +99,13 @@ export function setupRouter(root = document) {
     link.addEventListener('keydown', activate);
   });
 
-  if (typeof window !== 'undefined') window.addEventListener('hashchange', () => showFromLocation());
+  if (typeof window !== 'undefined') window.addEventListener('hashchange', () => {
+    const name = parseSectionHash(location.hash, available) || available[0];
+    const panel = panelByName.get(name) || panelByName.get(available[0]);
+    panels.forEach((candidate) => {
+      candidate.hidden = candidate !== panel;
+    });
+  });
   showFromLocation(false);
 
   return { render, showFromLocation };

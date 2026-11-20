@@ -3,25 +3,25 @@ import assert from 'node:assert/strict';
 
 const routerReady = import('./src/router.js');
 
-test('section hashes accept trimmed safe names', async () => {
+test('section hashes accept trimmed safe names', async (t) => {
   const { parseSectionHash } = await routerReady;
   assert.equal(parseSectionHash('  #billing  '), 'billing');
   assert.equal(parseSectionHash('#GETTING-STARTED'), 'getting-started');
 });
 
-test('section hashes decode an encoded safe name', async () => {
+test('section hashes decode an encoded safe name', async (t) => {
   const { parseSectionHash } = await routerReady;
   assert.equal(parseSectionHash('#getting%2Dstarted'), 'getting-started');
 });
 
-test('section hashes reject malformed and non-hash values', async () => {
+test('section hashes reject malformed and non-hash values', async (t) => {
   const { parseSectionHash } = await routerReady;
   assert.equal(parseSectionHash('billing'), null);
   assert.equal(parseSectionHash('#two words'), null);
   assert.equal(parseSectionHash('#bad%2Fpath'), null);
 });
 
-test('section hashes reject names outside the allowed page sections', async () => {
+test('section hashes reject names outside the allowed page sections', async (t) => {
   const { parseSectionHash } = await routerReady;
   assert.equal(parseSectionHash('#notifications', ['profile', 'security']), null);
   assert.equal(parseSectionHash('#security', ['profile', 'security']), 'security');
@@ -53,7 +53,7 @@ class Link {
   addEventListener(type, handler) { this.handlers[type] = handler; }
 }
 
-function pageFor(slugs) {
+function pageFor(slugs, testContext) {
   const page = {
     title: '',
     location: { hash: `#${slugs[0]}` },
@@ -62,13 +62,44 @@ function pageFor(slugs) {
   };
   page.sections = slugs.map((slug) => new Section(page, slug, slug === 'getting-started' ? 'Getting started' : slug[0].toUpperCase() + slug.slice(1)));
   page.links = slugs.map((slug) => new Link(slug));
-  page.defaultView = {
+
+  const view = {
     listeners: {},
+    location: page.location,
     history: { pushState: (_state, _title, hash) => { page.location.hash = hash; } },
-    addEventListener(type, handler) { this.listeners[type] = handler; },
-    restore() { this.listeners.popstate?.({ type: 'popstate' }); },
+    onpopstate: null,
+    onhashchange: null,
+    addEventListener(type, handler) {
+      (this.listeners[type] ||= []).push(handler);
+    },
+    dispatch(type, event) {
+      for (const handler of this.listeners[type] || []) handler(event);
+      this[`on${type}`]?.(event);
+    },
+    // A same-document browser traversal dispatches both events in this order.
+    restore() {
+      this.dispatch('popstate', { type: 'popstate' });
+      this.dispatch('hashchange', { type: 'hashchange' });
+    },
   };
+  page.defaultView = view;
   page.querySelectorAll = (selector) => selector === '[data-section]' ? page.sections : page.links;
+
+  const globals = ['window', 'history', 'location'].map((name) => ({
+    name,
+    present: Object.prototype.hasOwnProperty.call(globalThis, name),
+    value: globalThis[name],
+  }));
+  globalThis.window = view;
+  globalThis.history = view.history;
+  globalThis.location = page.location;
+  testContext.after(() => {
+    for (const { name, present, value } of globals) {
+      if (present) globalThis[name] = value;
+      else delete globalThis[name];
+    }
+  });
+
   return page;
 }
 
@@ -77,9 +108,9 @@ function restore(page, hash) {
   page.defaultView.restore();
 }
 
-test('restored article changes visibility, selection, title, and focus together', async () => {
+test('restored article changes visibility, selection, title, and focus together', async (t) => {
   const { setupRouter } = await routerReady;
-  const page = pageFor(['getting-started', 'billing', 'security']);
+  const page = pageFor(['getting-started', 'billing', 'security'], t);
   setupRouter(page);
   restore(page, '#billing');
   assert.equal(page.sections[0].hidden, true);
@@ -89,9 +120,9 @@ test('restored article changes visibility, selection, title, and focus together'
   assert.equal(page.activeElement, page.sections[1].heading);
 });
 
-test('restoring forward navigation selects the later article', async () => {
+test('restoring forward navigation selects the later article', async (t) => {
   const { setupRouter } = await routerReady;
-  const page = pageFor(['getting-started', 'billing', 'security']);
+  const page = pageFor(['getting-started', 'billing', 'security'], t);
   setupRouter(page);
   restore(page, '#billing');
   restore(page, '#security');
@@ -101,9 +132,9 @@ test('restoring forward navigation selects the later article', async () => {
   assert.equal(page.activeElement, page.sections[2].heading);
 });
 
-test('account sections use the same restored-state behavior', async () => {
+test('account sections use the same restored-state behavior', async (t) => {
   const { setupRouter } = await routerReady;
-  const page = pageFor(['profile', 'security', 'notifications']);
+  const page = pageFor(['profile', 'security', 'notifications'], t);
   setupRouter(page);
   restore(page, '#notifications');
   assert.equal(page.sections[2].hidden, false);
@@ -112,9 +143,9 @@ test('account sections use the same restored-state behavior', async () => {
   assert.equal(page.activeElement, page.sections[2].heading);
 });
 
-test('enter activation adds one history state and later restoration works', async () => {
+test('enter activation adds one history state and later restoration works', async (t) => {
   const { setupRouter } = await routerReady;
-  const page = pageFor(['getting-started', 'billing']);
+  const page = pageFor(['getting-started', 'billing'], t);
   setupRouter(page);
   let entries = 0;
   const originalPush = page.defaultView.history.pushState;
@@ -128,9 +159,9 @@ test('enter activation adds one history state and later restoration works', asyn
   assert.equal(page.links[0].getAttribute('aria-selected'), 'true');
 });
 
-test('an invalid restored hash still renders the page default consistently', async () => {
+test('an invalid restored hash still renders the page default consistently', async (t) => {
   const { setupRouter } = await routerReady;
-  const page = pageFor(['getting-started', 'billing']);
+  const page = pageFor(['getting-started', 'billing'], t);
   setupRouter(page);
   restore(page, '#not-a-section');
   assert.equal(page.sections[0].hidden, false);
@@ -139,9 +170,9 @@ test('an invalid restored hash still renders the page default consistently', asy
   assert.equal(page.activeElement, page.sections[0].heading);
 });
 
-test('repeated history restores keep the shared title in step with the section', async () => {
+test('repeated history restores keep the shared title in step with the section', async (t) => {
   const { setupRouter } = await routerReady;
-  const page = pageFor(['profile', 'security', 'notifications']);
+  const page = pageFor(['profile', 'security', 'notifications'], t);
   setupRouter(page);
   restore(page, '#security');
   assert.equal(page.title, 'Security | Northstar Help Centre');

@@ -2,7 +2,7 @@
   "id": "t3-arch-notification-pipeline",
   "class": "design",
   "target": null,
-  "prompt": "Review the files under `fixture/` and make the production architecture decision for the notification fan-out pipeline. Write the decision to `docs/architecture.md`, including a components table and a concise explanation of the tradeoffs among all candidate options. The document must contain a fenced block whose info string is exactly `decision`; that block must contain JSON with exactly these keys: `chosen` (the option id), `options` (the array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`, with one entry per hard limit in the inputs and the chosen option's computed value), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the traffic schedule, service quotas, recovery objectives, and billing inputs together rather than relying on a single headline figure. Make the reported figures clear enough to audit against the source files. Keep the architecture practical for the stated peak and operational objectives.",
+  "prompt": "Review the files under `fixture/` and make the production architecture decision for the notification fan-out pipeline. Write the decision to `docs/architecture.md`, including a components table and a concise explanation of the tradeoffs among all candidate options. The document must contain a fenced block whose info string is exactly `decision`; that block must contain JSON with exactly these keys: `chosen` (the option id), `options` (the array of option ids considered), `limits` (an object mapping each hard-limit name to {\"limit\": number, \"value\": number}, with one entry per hard limit in the inputs and the chosen option's computed value), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use these exact `limits` keys: `throughput_msg_s`, `p99_delivery_seconds`, `monthly_budget_usd`, `payload_bytes`, `rpo_seconds`, and `rto_minutes`. Use option id `single-queue-pool` for the one managed queue with a consumer pool option, `topic-regional-queues` for the one topic with a queue in each service region option, and `stream-partitions` for the partitioned stream with independent delivery workers option, and list all three ids in `options`. Use the traffic schedule, service quotas, recovery objectives, and billing inputs together rather than relying on a single headline figure. Make the reported figures clear enough to audit against the source files. Keep the architecture practical for the stated peak and operational objectives.",
   "fixture": "t3-arch-notification-pipeline",
   "timeoutSec": 900,
   "hidden": "t3-arch-notification-pipeline",
@@ -68,12 +68,9 @@
       "lazy": 12,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit name throughput_msg_s is not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 4,
+  "version": 5,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -120,29 +117,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates tradeoff analysis and architecture coherence within the decision scope requested. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json prompt names the fixture sources, required deliverable structure, and constraints but does not prescribe a method or disclose a candidate answer or hidden trap.)."
+          "note": "Prompt asks for architecture decision without prescribing specific method or framework, and contains no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides requirements and options; no pre-selected answer visible. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture provides source facts and explicitly labels the staging and sandbox figures as superseded in requirements.md and service-limits.md, but contains no answer key or findings list.)."
+          "note": "Fixture provides constraints and data but does not reveal the solution or describe finished behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric figures match fixture: 3,000 msg/s per-queue quota (not sandbox 2,500), 6,000 msg/s peak, 3-second p99 (not superseded 8s), $4,500 budget. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expected capacity, production quotas, objectives, traffic schedule, recovery values, and pricing all appear in traffic.csv, service-limits.json, requirements-limits.json, options.json, and price-sheet.json; the expected cost follows from those values.)."
+          "note": "Prompt specifies limit key 'throughput_msg_s' but edit note indicates it's not in fixture; key mismatch. (disposition: the request now states this limit key (D-127 fix), and the item passes a name the request states; the reviewer compared it with the fixture's own field name)"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Either topic-regional-queues or stream-partitions can be chosen with valid reasoning; different component tables and tradeoffs can Pass. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can compare all three options, derive capacity and traffic-weighted monthly cost, and populate the requested decision block from the prompt and fixture alone.)."
+          "note": "All necessary data exists in fixture files to compute decision, cost, and design architecture; competent developer could solve."
         }
       ]
     }

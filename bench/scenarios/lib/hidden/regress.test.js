@@ -40,8 +40,15 @@ function runSuite(withOriginal) {
   }
 }
 
-// One test, so a suite that only passes (or only fails) earns nothing.
-test('the suite passes on the fixed code and fails when the original code is put back', () => {
-  assert.strictEqual(runSuite(false), 0, 'the suite fails on the fixed code');
-  assert.notStrictEqual(runSuite(true), 0, 'no test catches the original bug');
-});
+// One check, so a suite that only passes (or only fails) earns nothing. `counts` in config.json (default 1) registers
+// it that many times, run once: the hidden share counts tests, so this sets how much the requested regression test
+// weighs against the behaviour tests (t8-bug-retry-storm: a fix with no such test must stay under the lazy gate).
+const counts = JSON.parse(fs.readFileSync(path.join(kit, 'config.json'), 'utf8')).counts ?? 1;
+let outcome = null;
+const proof = () => (outcome ??= { fixed: runSuite(false), original: runSuite(true) });
+for (let i = 1; i <= counts; i += 1) {
+  test(`the suite passes on the fixed code and fails when the original code is put back${counts > 1 ? ` (${i} of ${counts})` : ''}`, () => {
+    assert.strictEqual(proof().fixed, 0, 'the suite fails on the fixed code');
+    assert.notStrictEqual(proof().original, 0, 'no test catches the original bug');
+  });
+}

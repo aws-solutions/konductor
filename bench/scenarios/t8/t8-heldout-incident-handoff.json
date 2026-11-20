@@ -1,7 +1,7 @@
 {
   "id": "t8-heldout-incident-handoff",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "developer",
   "phases2": [
@@ -109,7 +109,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture. The first failure timestamp (14:03:08Z) is visible in the first 504 errors in invoice-api.log after the flag enable at 14:02:11Z. The 157 failed requests and 15 affected tenants are counted in per-minute.csv (15 enterprise-us tenants in tenants.csv, 5xx errors starting 14:03Z). The metric name is explicitly in metrics/catalogue.csv, and 1500ms is the SLO threshold defined in docs/slo.md. The owner 'Tax Engine' is in docs/ownership.md."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for handoff document with JSON block format, doesn't prescribe specific method or tool. Edits mention test refinement, not decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains logs showing lock waits, flag config, ownership docs, but answer (disable bulk_tax_recalc flag) requires analysis of evidence chain."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "key.json expects evidence from flag-defaults.yaml, postgres-primary.log, invoice-api.log, metrics/catalogue.csv - all exist in fixture. Rubric anchors reward requested outcome."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can analyze 504 errors with lock waits, postgres logs showing tax-recalc holding locks, flag config, and determine to disable flag and handle flag-sync risk."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
@@ -125,5 +152,10 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

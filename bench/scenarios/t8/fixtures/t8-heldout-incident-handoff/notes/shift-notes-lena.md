@@ -5,4 +5,4 @@
 - render-worker errors everywhere, Documents says not theirs.
 - 14:44 restarted invoice-api, short relief.
 - Next: maybe fail over the DB? Ask Data Platform.
-- Did not get to the flags or the scheduler.
+- Ran out of time before the rest of the folder.

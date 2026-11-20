@@ -2,7 +2,7 @@
   "id": "t3-adr-batch-vs-stream",
   "class": "design",
   "target": null,
-  "prompt": "Our nightly reporting pipeline needs an architectural decision to handle projected growth through 2025. Currently processing 1.4 TB in 2.1 hours, we have a strict 4-hour processing window ending at 6 AM. Data is growing 35% per quarter, and we need a solution that works for the next 4 quarters.\n\nThe business has set a hard monthly budget limit of $10,000 for infrastructure. We must maintain 99.5% uptime and 99.9% data accuracy. The team has expertise in batch processing but would need training for streaming technologies.\n\nI need you to analyze the options and make a recommendation. Create an Architecture Decision Record at docs/adr/0001-processing.md that documents your analysis and decision.\n\nThe ADR must include a fenced code block with info string `decision` containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option\n- \"options\": array of option IDs you considered\n- \"limits\": object where each key is a limit name and value is {\"limit\": number, \"value\": number} - include every hard limit from the requirements\n- \"monthly_cost_usd\": the monthly cost for your chosen option, computed from the pricing data\n\nBase your analysis on the documents in the fixture/ directory. Consider all constraints including processing window, budget, and growth projections. The solution must work through Q4 2025.",
+  "prompt": "Our nightly reporting pipeline needs an architectural decision to handle projected growth through 2025. Currently processing 1.4 TB in 2.1 hours, we have a strict 4-hour processing window ending at 6 AM. Data is growing 35% per quarter, and we need a solution that works for the next 4 quarters.\n\nThe business has set a hard monthly budget limit of $10,000 for infrastructure. We must maintain 99.5% uptime and 99.9% data accuracy. The team has expertise in batch processing but would need training for streaming technologies.\n\nI need you to analyze the options and make a recommendation. Create an Architecture Decision Record at docs/adr/0001-processing.md that documents your analysis and decision.\n\nThe ADR must include a fenced code block with info string `decision` containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option (must be one of: batch_current, batch_2x_scaling, batch_3x_scaling, streaming)\n- \"options\": array of option IDs you considered (must include all of: batch_current, batch_2x_scaling, batch_3x_scaling, streaming)\n- \"limits\": object where each key is a limit name and value is {\"limit\": number, \"value\": number} - include every hard limit from the requirements. The limit keys you must use are: data_accuracy_percent, data_volume_tb_q4_2025, monthly_budget_usd, processing_window_hours, system_uptime_percent\n- \"monthly_cost_usd\": the monthly cost for your chosen option, computed from the pricing data\n\nBase your analysis on the documents in the fixture/ directory. Consider all constraints including processing window, budget, and growth projections. The solution must work through Q4 2025.",
   "fixture": "t3-adr-batch-vs-stream",
   "timeoutSec": 900,
   "hidden": "t3-adr-batch-vs-stream",
@@ -60,7 +60,7 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "keep",
+    "decision": "fix",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
@@ -70,10 +70,10 @@
       "date": "2026-11-20"
     },
     "blockers": [
-      "key-names: the gate needs option id batch_2x_scaling and the tests need limit names processing_window_hours, monthly_budget_usd, system_uptime_percent, data_accuracy_percent, data_volume_tb_q4_2025, none of them in the fixture or prompt (free key scan 2026-11-20, D-127)"
+      "recheck-failed: key-matches-fixture, solvable-from-fixture (gpt-5.6-luna v1, 2026-11-20): the request says Q4 2025 but the key is sized for 4.65 TB; the fixture gives 4.65 TB and 6.28 TB for Q4 2025 (D-127)"
     ]
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -119,29 +119,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to analyze options and recommend without naming a method. No decoys present - the fixture data accurately presents the constraints."
+          "note": "The request asks for analysis and an ADR deliverable but prescribes no working method, framework, or tool, and contains no decoy instruction."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains traffic-analysis.md (projected volumes), pricing.json, requirements.md but does not state the answer. Correct choice requires computing that batch_current fails window (6.98h > 4h) and batch_3x_scaling exceeds budget ($12948 > $10000)."
+          "note": "The fixture provides option metrics, projections, and decision criteria but does not explicitly select an option or provide a completed ADR."
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "pass",
-          "note": "Hidden meta.json acceptableOptions=['batch_2x_scaling', 'streaming']. Rubric rewards showing batch_current fails 4-hour window (6.98h) and batch_3x_scaling exceeds $10000 budget. Tests verify chosen option and cost calculation."
+          "verdict": "fail",
+          "note": "The request says the solution must work through Q4 2025 (task.json:5), and the fixture has 6.28 TB for 2025-Q4 (fixture/data-growth.csv:7; traffic-analysis.md:31). Hidden tests instead select 2025-Q3/4.65 at hidden/hidden/decision.test.js:152-177, while the rubric and expert key call that Q4 (task.json:30,86), so the key and rubric target a different horizon."
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "pass",
-          "note": "A developer can read traffic-analysis.md for Q3 2025 projection (4.65 TB), compute 4.65 * 1.5 = 6.98h > 4h for batch_current, and verify batch_2x_scaling fits both constraints."
+          "verdict": "fail",
+          "note": "A solution correctly sized for the stated Q4 2025 requirement would use the fixture's 6.28 TB value, but the hidden cost and limit assertions require 4.65 TB from 2025-Q3 (hidden/hidden/decision.test.js:152-177). Thus a correct answer to the request can fail the tests."
         }
       ]
     }

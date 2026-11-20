@@ -246,3 +246,15 @@ CV-E outcomes (2026-11-20):
   path. The only outside paths are the call's own scratch-home tool outputs and two `/tmp/t8-*.sha` files the step `a`
   author wrote (removed by the worker).
 - Total for CV-E: 6 calls, 11.30 credits reported, 90 counted against the stop of 95.
+
+CV-FIX (2026-11-20, owner-approved CV-E2 gate fix; stop 60 credits counted, 15 per call minimum):
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t8-heldout-rollback-decision, t8-heldout-incident-handoff, t8-inc-memory-leak, t8-inc-queue-backlog, t8-pm-cache-stampede, t8-pm-cert-expiry-region, t8-rollout-ledger-migration | recheck (after the negation-safe gate edit, one call for all seven) | deepseek-3.2 | 15.19 | 28 of 28 pass; 15.19 counted of the 60 stop |
+
+- The edit is in HAND-EDITS.md ("Negation-safe cause gates"). Free gates re-recorded: all seven reference 100, alternative 100.
+- The spot review's test answers now score: rollback own answer ("keys each authorisation by cart") 100 (was 0), with
+  "Not the maps-geo latency." 100 (was 0), plain 100 (was 100); incident-handoff reference plus "The 2.41.0 deploy is not
+  the cause." 100 (was 0).
+- Blindness audit of the recheck stream: 0 reads of a konductor skills/, agent-sops/, agents/ or context/ path.

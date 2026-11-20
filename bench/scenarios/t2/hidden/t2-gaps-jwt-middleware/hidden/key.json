@@ -13,21 +13,32 @@
         "algorithm",
         "verification key"
       ],
-      "finding": "The verifier accepts the token-selected algorithm while using a shared verification key, allowing an attacker to present an HS256 token signed with the RSA public key and forge claims."
+      "finding": "The verifier accepts the token-selected algorithm while using a shared verification key, allowing an attacker to present an HS256 token signed with the RSA public key and forge claims. The same header-chosen algorithm is the default in token.js verifyToken and is passed again by the refresh route.",
+      "also": [
+        {
+          "file": "src/security/token.js",
+          "line": 37
+        },
+        {
+          "file": "src/routes/session-routes.js",
+          "line": 30
+        }
+      ]
     },
     {
       "id": "k2",
       "file": "src/middleware/bearer-auth.js",
       "line": 36,
       "endLine": 38,
-      "severity": "high",
+      "severity": "critical",
       "fix": [
         "seconds",
         "NumericDate",
         "divide",
-        "1000"
+        "1000",
+        "Math.floor"
       ],
-      "finding": "The expiry claim is in epoch seconds but is compared directly with Date.now() milliseconds, so normal access tokens remain valid after their intended expiry."
+      "finding": "The expiry check compares exp, a NumericDate in epoch seconds, with Date.now() in milliseconds (Date.now() <= payload.exp), so every token that carries exp is rejected as expired. Login issues every access and refresh token with expiresIn, so after the rollout every real client gets 401 on every request; the PR's tests pass only because they sign tokens without expiresIn."
     },
     {
       "id": "k3",
@@ -69,7 +80,13 @@
         "generic error",
         "do not echo"
       ],
-      "finding": "The 401 response includes the raw bearer token, leaking a reusable credential into clients, logs, or error telemetry that records response bodies."
+      "finding": "The 401 response includes the raw bearer token, leaking a reusable credential into clients, logs, or error telemetry that records response bodies.",
+      "also": [
+        {
+          "file": "src/middleware/bearer-auth.js",
+          "line": 32
+        }
+      ]
     },
     {
       "id": "k6",

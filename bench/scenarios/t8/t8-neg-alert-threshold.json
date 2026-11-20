@@ -98,7 +98,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the task request. The thresholds, durations, and runbook URL are explicitly provided. The hidden test validates against known expected values that match the request description. No value is impossible to derive from the fixture plus the request."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request is straightforward JSON edit with specific values; no process or framework named, no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows current values (0.8, 10m, no runbook) but doesn't reveal target values or describe solution behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden test checks for exact requested values (1.2, 15m, runbook URL) which match the prompt; all fields exist in fixture JSON."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Simple JSON edit task; developer can make requested changes without seeing hidden tests or solution."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

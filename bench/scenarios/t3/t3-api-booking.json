@@ -2,7 +2,7 @@
   "id": "t3-api-booking",
   "class": "design",
   "target": null,
-  "prompt": "Design the public room-booking API from the inputs in `fixture/`. Write the API description to `api/openapi.json` and record the pagination decision in `docs/decision.md`. Cover listing bookings for a room and date range, retrieving one booking, and creating a booking with a required idempotency key, including request parameters, response schemas, and an error schema. Compare the pagination options in the inputs and recompute the response-size, latency, capacity, continuity, and cost figures from the current production data rather than copying an obsolete partner setting. The output must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object: name -> {\"limit\": number, \"value\": number}, one entry per hard limit in the inputs, value = your computed figure for the chosen option), and `monthly_cost_usd` (number, the chosen option's monthly cost computed from the price sheet). Keep the contract implementable and explain the tradeoff behind the selected option in the decision document.",
+  "prompt": "Design the public room-booking API from the inputs in `fixture/`. Write the API description to `api/openapi.json` and record the pagination decision in `docs/decision.md`. Cover listing bookings for a room and date range, retrieving one booking, and creating a booking with a required idempotency key, including request parameters, response schemas, and an error schema. Compare the pagination options in the inputs and recompute the response-size, latency, capacity, continuity, and cost figures from the current production data rather than copying an obsolete partner setting. The output must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object: name -> {\"limit\": number, \"value\": number}, one entry per hard limit in the inputs, value = your computed figure for the chosen option), and `monthly_cost_usd` (number, the chosen option's monthly cost computed from the price sheet). Use these exact `limits` keys: `response_body_bytes`, `list_p95_latency_ms`, `peak_capacity_rps`, `monthly_budget_usd`, `rpo_minutes`, and `rto_minutes`. Use option id `cursor` for the cursor pagination option and `offset` for the offset pagination option, and list both ids in `options`. Keep the contract implementable and explain the tradeoff behind the selected option in the decision document.",
   "fixture": "t3-api-booking",
   "timeoutSec": 900,
   "hidden": "t3-api-booking",
@@ -36,7 +36,7 @@
     },
     {
       "id": "contract-boundary-reasoning",
-      "criterion": "The API design clearly separates public client inputs from server-owned booking fields and explains retry-safe creation behavior. Fail: the client can set server fields, or idempotency is just mentioned. Partial: clear separation of fields but no retry reasoning. Pass: lists client inputs (roomId, memberId, startsAt, endsAt, idempotency key, page size) and server-owned fields (id, status), and explains that the required idempotency key makes retries after network failure or regional failover return the first booking rather than create a second one. (not code-checkable: A schema can check field presence, but it cannot reliably assess whether the documented boundary and retry rationale are coherent.)",
+      "criterion": "The API design clearly separates public client inputs from server-owned booking fields and explains retry-safe creation behavior. Fail: the client can set server fields, or idempotency is just mentioned. Partial: clear separation of fields but no retry reasoning. Pass: lists client inputs for the room, member, start time, end time, idempotency key, and page size, and server-owned fields for the booking identifier and status, and explains that the required idempotency key makes retries after network failure or regional failover return the first booking rather than create a second one. (not code-checkable: A schema can check field presence, but it cannot reliably assess whether the documented boundary and retry rationale are coherent.)",
       "weight": 1
     },
     {
@@ -82,12 +82,9 @@
       "lazy": 28,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit name response_body_bytes is not in the fixture or prompt; the contract-boundary-reasoning Pass anchor lists the reference field names (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "smithy-modeling",
     "trade-off-evaluator"
@@ -133,29 +130,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to design an API with pagination choice, naming no framework or tool; fixture partner-migration.md's superseded page-size-500 warning is a legitimate trap the task tests for (offset with 500 exceeds gateway limit), not a decoy pointing away from the real problem."
+          "note": "Prompt asks for API design, OpenAPI spec, and decision record without prescribing specific method or framework, and contains no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides traffic.json (pagination options with page sizes, capacities, latencies), prices.json (cost rates), gateway.json (1 MiB limit), requirements.md (constraints) - the agent must compute 160 x 6,144 = 983,040 bytes vs 500 x 6,144 = 3,072,000 bytes and monthly cost to choose correctly."
+          "note": "Fixture provides constraints and data (traffic, gateway, prices, service levels) but does not reveal the solution or describe finished behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden test booking.test.js reads fixture files and verifies decision.chosen = 'cursor', computed response body, latency, capacity, and monthly cost against derived values; rubric's Pass anchor specifies comparing cursor (~$311.38) vs offset (~$266.98) with offset's consistency failure mode, matching fixture data."
+          "note": "Prompt specifies limit key 'response_body_bytes' but fixture gateway.json has 'response_body_limit_bytes'; edit note confirms mismatch. (disposition: the request now states this limit key (D-127 fix), and the item passes a name the request states; the reviewer compared it with the fixture's own field name)"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can compute page-size limits from traffic.json booking_item_serialized_bytes (6,144) x page_size against gateway.json response_body_limit_bytes (1,048,576), derive monthly cost from prices.json rates and traffic.json volumes, and choose cursor for consistency; alternative valid API structures with correct pagination would pass."
+          "note": "All necessary data exists in fixture files to compute pagination decision, cost, and design API; competent developer could solve."
         }
       ]
     }

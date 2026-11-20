@@ -1,0 +1,16 @@
+date,weekday,person,availability,note
+2025-09-22,Mon,Tomas Ribeiro,available,
+2025-09-22,Mon,Priya Anand,available,
+2025-09-23,Tue,Tomas Ribeiro,available,
+2025-09-23,Tue,Priya Anand,available,
+2025-09-24,Wed,Tomas Ribeiro,available,sprint review 15:00-16:00
+2025-09-24,Wed,Priya Anand,available,sprint review 15:00-16:00
+2025-09-25,Thu,Tomas Ribeiro,available,
+2025-09-25,Thu,Priya Anand,leave,annual leave (booked in July)
+2025-09-26,Fri,Tomas Ribeiro,available,park / merge everything by EOD (freeze)
+2025-09-26,Fri,Priya Anand,leave,annual leave (booked in July)
+2025-09-29,Mon,Tomas Ribeiro,freeze,quarter freeze starts
+2025-09-29,Mon,Priya Anand,freeze,quarter freeze starts
+2025-09-22,Mon,Marguerite Oyelaran,available,founder; investor call 10:00
+2025-09-24,Wed,Dana Kowalczyk,available,support lead; available for questions
+2025-09-23,Tue,Ines Varga,leave,finance; back Wed

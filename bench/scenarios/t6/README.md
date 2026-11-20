@@ -57,3 +57,7 @@ hidden facts) carry `expertKey`: `items` (risks and trade-offs a good answer add
 by name, URL and licence) and 3 to 5 `weakAnswers`. It is for the judges only and sits inside the rubric share. The
 lead writes the keys in `tools/expert-keys.json`; `lib/stage.js assemble` copies them into the task. Items do not repeat
 what a hidden test already checks. The judge does not read the key yet (DEBT D-62).
+
+## Coverage-review tasks (CV-D, 2026-11-20)
+
+`t6-architect-idea-spike` (a vague idea turned into a bounded spike plan) and `t6-developer-feasibility-spike` (a product premise proved or rejected with a script the hidden tests run on files they generate) were added by the coverage review. Both were written by claude-sonnet-5.5 in one call, so they carry `authorship.singleFamily: true`; the planned second-family task `t6-research-backed-framing` was dropped (see DROPPED.md). `prompts/author-data.md` and `prompts/author-key.md` are the two-step author prompts (`prompt.js ... <id> data|key`): step `data` writes the fixture and the request, step `key` writes the hidden tests, the reference and the checks.

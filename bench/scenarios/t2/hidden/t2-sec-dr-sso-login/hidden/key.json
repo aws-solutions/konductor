@@ -78,18 +78,6 @@
         "uri"
       ],
       "finding": "Wildcard redirect URI pattern allows any subdomain to receive authentication codes, enabling potential open redirect attacks if subdomains are compromised."
-    },
-    {
-      "id": "k8",
-      "section": "3.5.2",
-      "severity": "low",
-      "fix": [
-        "32",
-        "bytes",
-        "clarify",
-        "range"
-      ],
-      "finding": "State parameter described as 32 bytes but RFC 6749 recommends a minimum of 128 bits (16 bytes) with 256 bits (32 bytes) being reasonable for high-security applications, though not strictly a violation."
     }
   ],
   "decoys": []

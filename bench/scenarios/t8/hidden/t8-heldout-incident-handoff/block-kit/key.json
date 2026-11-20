@@ -2,7 +2,7 @@
   "outputFile": "handoff/incident-handoff.md",
   "items": [
     {"id":"status-investigating","type":"text","path":"status","all":["^\\s*investigating\\s*$"],"section":"diagnosis"},
-    {"id":"cause-recalc-locks","type":"text","path":"rootCause.summary","all":["bulk_tax_recalc|tax[- _]?recalc|TAX-512","lock|contention|blocking|long(-running)? transaction"],"none":["2\\.41|footer|render[- ]?worker"],"section":"diagnosis","gate":true},
+    {"id":"cause-recalc-locks","type":"text","path":"rootCause.summary","all":["bulk_tax_recalc|tax[- _]?recalc|TAX-512","lock|contention|blocking|long(-running)? transaction"],"section":"diagnosis","gate":true},
     {"id":"cause-evidence","type":"evidence","path":"rootCause.evidence","groups":[{"all":["bulk_tax_recalc","enable"],"file":"flag-service"},{"all":["tax-recalc|still waiting for|UPDATE invoice_lines"],"file":"postgres-primary"},{"all":["status=504","lock wait"],"file":"invoice-api"}],"min":3,"section":"diagnosis"},
     {"id":"evidence-precise","type":"evidencePrecision","path":"rootCause.evidence","relevant":["bulk_tax_recalc","tax-recalc","still waiting for","invoice_lines","status=504"],"min":0.5,"section":"diagnosis"},
     {"id":"impact-since","type":"some","path":"impact","match":{"field":"since","timeNear":{"time":"2026-11-20T14:03:08Z","tolMin":5}},"section":"diagnosis"},
@@ -10,7 +10,7 @@
     {"id":"impact-tenants","type":"number","path":"impact.affectedTenants","value":15,"tol":1,"section":"impact"},
     {"id":"verify-metric","type":"text","path":"verification.metric","all":["^\\s*invoice_create_p99_ms\\s*$"],"section":"impact"},
     {"id":"verify-threshold","type":"number","path":"verification.healthyBelow","value":1500,"tol":1,"section":"impact"},
-    {"id":"mitigation-flag-off","type":"text","path":"mitigation.action","all":["bulk_tax_recalc|tax[- _]?recalc|TAX-512","disabl|turn(ed|ing)? (it )?off|switch(ed|ing)? (it )?off|\\boff\\b|stop|pause|kill"],"none":["promot|fail ?over"],"section":"mitigation"},
+    {"id":"mitigation-flag-off","type":"text","path":"mitigation.action","all":["bulk_tax_recalc|tax[- _]?recalc|TAX-512","disabl|turn(ed|ing)? (it )?off|switch(ed|ing)? (it )?off|\\boff\\b|stop|pause|kill"],"section":"mitigation"},
     {"id":"reject-failover-lag","type":"some","path":"mitigation.rejected","match":{"all":["fail ?over|promot|replica","lag|behind|los[es]|lost|replay|30 ?s"]},"section":"mitigation"},
     {"id":"reject-restart","type":"some","path":"mitigation.rejected","match":{"all":["restart","return|came back|short|brief|temporar|not (fix|help)|lock|cause|again|minutes"]},"section":"mitigation"},
     {"id":"reject-rollback-decoy","type":"some","path":"mitigation.rejected","match":{"all":["roll ?back|2\\.41","footer|email|template|log|no change|unrelated|not (the )?cause|harmless|13 min|before|segment|does not|doesn't"]},"section":"mitigation"},

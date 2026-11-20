@@ -118,3 +118,49 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t8-runbook-db-failover | glm-5 (r3, rubric) | confirmed |  |
 | t8-tpm-rollout-regions | glm-5 (r3, rubric) | confirmed |  |
 | t8-twin-latency-tier-report | glm-5 (c12, full) | confirmed |  |
+
+## Negation-safe cause gates (2026-11-20, CV-FIX worker, owner-approved CV-E2)
+
+- Who: claude (kirocrew-mate-worker, CV-FIX session).
+- Why: a gate's `none` word list failed any correct answer that also said what the cause is NOT ("Not the maps-geo
+  latency.", "The 2.41.0 deploy is not the cause.", "not caused by the analytics rollup"), and the whole task then
+  scored 0. Found by the spot review (reports/spot-review-fixes-2026-11-20.md, addendum on the two held-out tasks);
+  the same pattern was then searched across T7, T8, T10, T11 and T12 keys.
+- What:
+  - `t8-heldout-rollback-decision`: `cause-reused-key` (gate) drops its `none` list, and its first pattern widens from
+    `idempoten|request key|payment key` to `idempoten|\bkey(s|ed)?\b`, so a correct cause that says "keys each
+    authorisation by cart" passes. `risk-migration-additive` drops `none` ("0042 ... does not block the rollback" failed).
+    The alternative answer is rewritten as a different correct answer (other structure, a 14:00 UTC window with
+    2.49 % / 0.54 % / 84, other evidence lines, three audiences, a denial of the decoy in the cause).
+  - `t8-heldout-incident-handoff`: `cause-recalc-locks` (gate) and `mitigation-flag-off` drop their `none` lists
+    ("turn the flag off; do not fail over" missed). `notes/shift-notes-lena.md:8` no longer points at the flags and the
+    scheduler ("Ran out of time before the rest of the folder."). The alternative answer is rewritten as a different
+    correct answer (three evidence lines, other wording, a denial of the 2.41.0 decoy).
+  - `t8-inc-memory-leak`, `t8-inc-queue-backlog`, `t8-pm-cache-stampede` (`cause-summary`, gates),
+    `t8-pm-cert-expiry-region` (`root-cause-summary`, gate) and `t8-rollout-ledger-migration`
+    (`cause-is-compatibility-null`, weight 2): `none` list dropped. Each reference with a denial of its decoy appended
+    scored 0 (97.6 for rollout-ledger) before and 100 after (87.5 for cert-expiry, see below).
+- Left, one item each and not a gate (bench/DEBT.md): `t8-heldout-incident-handoff` `item-fix-job`,
+  `t8-pm-cert-expiry-region` `summary-does-not-blame-release`, `t8-inc-checkout-latency` `cause-summary`,
+  `t8-rollout-ledger-migration` `rota-gap-covered`.
+- Gates re-recorded with `dry-run.js --record`: all seven reference 100, stub 0 (7.1 rollout-ledger), lazy 12.5 to 38.1,
+  alternative 100. Versions bumped; `handEdited` names this session; recheck in `review.recheck`.
+
+## t8-bug-retry-storm: the regression test weighs more (2026-11-20, mate hand-edit recheck worker, claude)
+
+Owner decision: fix it free, then recheck. Version 2 to 3.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t8-bug-retry-storm | 2026-11-20 | `regress-kit/config.json` gains `counts: 15`, and the shared `lib/hidden/regress.test.js` registers its one proof (the agent's suite passes on its code and fails on the original) that many times, run once; the tests check's `min` 11 to 25 | the hidden share counts tests, so a one-line fix with no regression test passed 10 of 11 and scored 72.1; the request asks for that test. Now lazy 35.7 |
+| t8-bug-retry-storm | 2026-11-20 | new `answers/t8-bug-retry-storm/alt/`, written by hand: the same root-cause fix held in a named delay, and its own test file `test/backoff-units.test.js` (503 base delay and doubling) | no alternative answer was recorded. Free gates: reference 100, empty 10, lazy 35.7, alternative 100 |
+
+## Non-Claude recheck, round 2 (D-108, D-127, 2026-11-20, mate hand-edit recheck worker)
+
+These rows replace the round 1 rows above for the same tasks.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t8-bug-retry-storm | deepseek-3.2 (c16, full) | confirmed after fix | regression proof counted 15 times (lazy 72.1 to 35.7) and a hand-written alternative answer; deepseek-3.2 (c16) passes all four |
+| t8-neg-alert-threshold | deepseek-3.2 (c16, full) | confirmed |  |
+| t8-nfr-slo-burn | deepseek-3.2 (c16, full) | confirmed |  |

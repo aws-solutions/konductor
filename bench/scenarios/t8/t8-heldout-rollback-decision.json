@@ -1,7 +1,7 @@
 {
   "id": "t8-heldout-rollback-decision",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "tpm",
   "phases2": [
@@ -159,36 +159,36 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt only requests a decision document with specific JSON fields; it names no method or decoy information."
+          "note": "Prompt asks for rollback decision document with JSON block, doesn't prescribe method. Edits mention test refinement."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains raw data (logs, metrics, release notes) and no pre-written solution; solution/ and alt/ are empty."
+          "note": "Fixture contains logs showing idempotency_key_reused only on 4.18.0 hosts, payments gateway logs, CI failures, additive migration, but answer requires connecting evidence."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden key items (id, type, path, matching criteria) align with the fixture data and task requirements; harm-old-version-rate correctly uses tol=0.2."
+          "note": "key.json expects evidence from orders-api logs, payments-gateway.log, payment_auth_soft_decline_rate metric - all exist. Rubric anchors reward decision analysis."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture provides all needed data: rollout plan, metrics, logs, release notes, and comms stakeholders to write the decision document."
+          "note": "Developer can analyze per-version decline rates, idempotency errors, CI failures, additive migration, and make rollback decision with proper metrics."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (CV-E worker session)",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -1,0 +1,14 @@
+alias,source,rows_approx,size_mb,delimiter,has_header,sample_held,comment
+halden,freight system export,60000,9.4,comma,yes,no,
+ostrand,hand-built spreadsheet,152000,31,comma,yes,no,"several tabs pasted, per Ines"
+kestlow,ERP export,41000,6.2,semicolon,yes,no,semicolon - out of scope v1
+brightwell,spreadsheet,12000,1.8,comma,yes,no,windows-1252
+orme,accounting package,5500,0.7,comma,yes,no,
+penhallow,ERP export,31000,5.0,comma,yes,no,
+tarn valley,unknown,7400,,comma,?,no,never replied
+marlow,POS export,64000,8.1,comma,yes,no,
+dunmore,clinic system,3150,0.4,comma,yes,no,
+fenwick,practice software,27000,3.9,comma,yes,no,
+quill,report tool,1000,0.2,comma,no,no,title page
+,,,,,,,
+total,,~410000,,,,,"rough, from the ticket export only"
