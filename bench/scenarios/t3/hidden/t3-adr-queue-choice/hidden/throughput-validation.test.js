@@ -39,8 +39,8 @@ describe('Throughput requirement validation', () => {
       const peakThroughput = 400;
       
       if (decision.chosen === 'sqs_fifo') {
-        // FIFO is limited to 300/s per message group
-        const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_group.value;
+        // FIFO is limited to 300/s per queue
+        const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_queue.value;
         assert.strictEqual(fifoLimit, 300, 'FIFO throughput limit should be 300/s');
         
         // This is why FIFO is tempting but wrong choice
@@ -60,7 +60,7 @@ describe('Throughput requirement validation', () => {
 
   describe('FIFO throughput limit trap', () => {
     it('should expose FIFO throughput limit', () => {
-      const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_group.value;
+      const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_queue.value;
       assert.strictEqual(fifoLimit, 300, 'FIFO throughput limit should be 300 messages/second');
     });
 
@@ -76,7 +76,7 @@ describe('Throughput requirement validation', () => {
 
     it('FIFO fails peak throughput requirement', () => {
       const peakThroughput = 400;
-      const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_group.value;
+      const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_queue.value;
       
       assert(
         peakThroughput > fifoLimit,

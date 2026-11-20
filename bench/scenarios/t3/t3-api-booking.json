@@ -2,7 +2,7 @@
   "id": "t3-api-booking",
   "class": "design",
   "target": null,
-  "prompt": "Design the public room-booking API from the inputs in `fixture/`. Write the API description to `api/openapi.json` and record the pagination decision in `docs/decision.md`. Cover listing bookings for a room and date range, retrieving one booking, and creating a booking with a required idempotency key, including request parameters, response schemas, and an error schema. Compare the pagination options in the inputs and recompute the response-size, latency, capacity, continuity, and cost figures from the current production data rather than copying an obsolete partner setting. The output must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object: name -> {\"limit\": number, \"value\": number}, one entry per hard limit in the inputs, value = your computed figure for the chosen option), and `monthly_cost_usd` (number, the chosen option's monthly cost computed from the price sheet). Use these exact `limits` keys: `response_body_bytes`, `list_p95_latency_ms`, `peak_capacity_rps`, `monthly_budget_usd`, `rpo_minutes`, and `rto_minutes`. Use option id `cursor` for the cursor pagination option and `offset` for the offset pagination option, and list both ids in `options`. Keep the contract implementable and explain the tradeoff behind the selected option in the decision document.",
+  "prompt": "Design the public room-booking API from the inputs in `fixture/`. Write the API description to `api/openapi.json` and record the pagination decision in `docs/decision.md`. Cover listing bookings for a room and date range, retrieving one booking, and creating a booking with a required idempotency key, including request parameters, response schemas, and an error schema. Compare the pagination options in the inputs and recompute the response-size, latency, capacity, continuity, and cost figures from the current production data rather than copying an obsolete partner setting. The output must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object: name -> {\"limit\": number, \"value\": number}, one entry per hard limit in the inputs, value = your computed figure for the chosen option), and `monthly_cost_usd` (number, the chosen option's monthly cost computed from the price sheet). Use these exact `limits` keys: `response_body_bytes`, `list_p95_latency_ms`, `peak_capacity_rps`, `monthly_budget_usd`, `rpo_minutes`, and `rto_minutes`. Use option id `cursor` for the cursor pagination option and `offset` for the offset pagination option, and list both ids in `options`. Keep the contract implementable and explain the tradeoff behind the selected option in the decision document. In `api/openapi.json` use the paths `/rooms/{roomId}/bookings` (GET, list a room's bookings), `/bookings/{bookingId}` (GET, one booking) and `/bookings` (POST, create); the list takes the path parameter `roomId` and the query parameters `from`, `to`, `cursor` and `pageSize`; the create takes an `Idempotency-Key` header; and name the error schema `Error` under `components.schemas`.",
   "fixture": "t3-api-booking",
   "timeoutSec": 900,
   "hidden": "t3-api-booking",
@@ -84,7 +84,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 4,
+  "version": 5,
   "targetSkills": [
     "smithy-modeling",
     "trade-off-evaluator"
@@ -137,22 +137,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for API design, OpenAPI spec, and decision record without prescribing specific method or framework, and contains no misleading hints."
+          "note": "Request specifies OpenAPI paths, parameters, and required JSON structure but doesn't prescribe method/framework. Partner note with page size 500 is a decoy pointing to wrong answer, but edits.md shows it was intentionally included as misleading information."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides constraints and data (traffic, gateway, prices, service levels) but does not reveal the solution or describe finished behavior."
+          "note": "Fixture provides data (traffic.json, gateway.json, etc.) but doesn't state which pagination option to choose. Requirements mention constraints but not the decision."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Prompt specifies limit key 'response_body_bytes' but fixture gateway.json has 'response_body_limit_bytes'; edit note confirms mismatch. (disposition: the request now states this limit key (D-127 fix), and the item passes a name the request states; the reviewer compared it with the fixture's own field name)"
+          "note": "Prompt specifies limit keys that match fixture data fields (response_body_bytes from gateway.json, list_p95_latency_ms from service-levels.json, etc.). Rubric anchors reference fixture values and validate correct calculations."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "All necessary data exists in fixture files to compute pagination decision, cost, and design API; competent developer could solve."
+          "note": "Competent developer can compute cursor vs offset choice using traffic.json, gateway.json, prices.json. Must identify offset's page size 500 exceeds gateway limit (500*6144=3,072,000 > 1,048,576). Different valid OpenAPI structures would pass."
         }
       ]
     }
@@ -205,7 +205,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

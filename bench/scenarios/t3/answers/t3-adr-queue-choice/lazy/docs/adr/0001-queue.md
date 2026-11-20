@@ -83,7 +83,7 @@ This section covers compliance. We reviewed the relevant files and this follows 
       "limit": 500,
       "value": 500
     },
-    "fifo_throughput_per_group": {
+    "fifo_throughput_per_queue": {
       "limit": 375,
       "value": 0
     }

@@ -2,7 +2,7 @@
   "id": "t3-db-tenant-isolation",
   "class": "design",
   "target": null,
-  "prompt": "Design the tenant-isolated ticket data model for this B2B ticketing service using the files in fixture/. Write the SQLite schema to db/schema.sql and the architecture decision to docs/decision.md. The schema must support tenant-scoped ticket-key lookups, status queues, recent-ticket access, and reuse of the same human-readable ticket key in different tenants without cross-tenant results. Explain the chosen option, its tradeoffs, the access paths, recovery and capacity calculations, and the monthly cost. In docs/decision.md, include a fenced block whose info string is exactly `decision` and whose JSON has exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (number). Compute the reported values from the fixture inputs and make the decision block valid JSON.",
+  "prompt": "Design the tenant-isolated ticket data model for this B2B ticketing service using the files in fixture/. Write the SQLite schema to db/schema.sql and the architecture decision to docs/decision.md. The schema must support tenant-scoped ticket-key lookups, status queues, recent-ticket access, and reuse of the same human-readable ticket key in different tenants without cross-tenant results. Explain the chosen option, its tradeoffs, the access paths, recovery and capacity calculations, and the monthly cost. In docs/decision.md, include a fenced block whose info string is exactly `decision` and whose JSON has exactly these keys: `chosen` (the option id), `options` (array of option ids considered), `limits` (object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (number). Compute the reported values from the fixture inputs and make the decision block valid JSON. Name the ticket table `tickets` with at least the columns `ticket_id`, `tenant_id`, `ticket_key`, `title`, `status`, `priority`, `created_at`, `updated_at` and `assignee`.",
   "fixture": "t3-db-tenant-isolation",
   "timeoutSec": 900,
   "hidden": "t3-db-tenant-isolation",
@@ -79,7 +79,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "dynamodb-design",
     "trade-off-evaluator"
@@ -125,29 +125,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to design tenant-isolated data model without naming a method. The 80ms sandbox target in requirements.md is explicitly marked superseded - this is a distractor for correct reasoning, not a decoy."
+          "note": "Request specifies SQLite schema requirements and table/column names but doesn't prescribe implementation method. 80 ms EU sandbox target is a decoy pointing to wrong latency target."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains options.json, service-levels.json (1000 max_logical_databases), operations.md (connection-pool budget) but does not explicitly state the answer. Correct choice requires recognizing 12000 > 1000."
+          "note": "Fixture provides data (options.json, service-levels.json, etc.) but doesn't state which option to choose. Options.md presents worksheet but doesn't select option."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden schema.test.js verifies tenant_id-first indexes and (tenant_id, ticket_key) uniqueness. decision.test.js checks shared-composite against acceptableOptions. Rubric rewards rejecting per-customer for exceeding the 1000 database limit."
+          "note": "Prompt specifies table and column names that match hidden seed inserts (ticket_id, tenant_id, etc.). Edits.md shows prompt was updated to name columns after test failures."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can read options.json (12000 databases), service-levels.json (max 1000), and compute that per-customer exceeds the limit. The schema requirements (tenant_id-first indexes) are derivable from requirements.md."
+          "note": "Competent developer can identify per-customer option exceeds 1,000 database limit (12,000 > 1,000). Must design shared schema with tenant_id prefixing all indexes. Different valid SQLite schemas would pass."
         }
       ]
     }
@@ -205,7 +205,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

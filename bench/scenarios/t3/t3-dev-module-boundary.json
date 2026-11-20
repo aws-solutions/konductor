@@ -2,7 +2,7 @@
   "id": "t3-dev-module-boundary",
   "class": "design",
   "target": null,
-  "prompt": "Review the production requirements and option data in `fixture/` and design retry handling for outbound webhooks. Write the architecture decision record to `solution/docs/design.md`, including the selected option, the alternatives, calculations, and tradeoffs. The document must contain a fenced block whose info string is exactly `decision`; its JSON must contain exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to an option id, `options` to the option ids considered, and set `limits` to an object whose entries are named hard limits with `{ \"limit\": number, \"value\": number }`, using the computed value for the chosen option. Set `monthly_cost_usd` to the chosen option's monthly cost computed from the supplied price sheet.",
+  "prompt": "Review the production requirements and option data in `fixture/` and design retry handling for outbound webhooks. Write the architecture decision record to `docs/design.md`, including the selected option, the alternatives, calculations, and tradeoffs. The document must contain a fenced block whose info string is exactly `decision`; its JSON must contain exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to an option id, `options` to the option ids considered, and set `limits` to an object whose entries are named hard limits with `{ \"limit\": number, \"value\": number }`, using the computed value for the chosen option. Use exactly these `limits` keys: `memory_mb`, `latency_p95_seconds`, `throughput_per_second`, `payload_kb`, `rpo_minutes`, `rto_minutes` and `monthly_budget_usd`, and use the option ids of `option-matrix.json`. Set `monthly_cost_usd` to the chosen option's monthly cost computed from the supplied price sheet.",
   "fixture": "t3-dev-module-boundary",
   "timeoutSec": 900,
   "hidden": "t3-dev-module-boundary",
@@ -75,7 +75,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "cost-estimation"
@@ -121,29 +121,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to design retry handling without naming a method. The 120s staging latency in requirements.md is marked superseded - this is a distractor, not a decoy pointing away from the real problem."
+          "note": "Request specifies decision structure and limit keys but doesn't prescribe implementation method. Prompt points to option-matrix.json for option ids and specifies exact limit keys."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains traffic.json (peak_pending_retries: 120000, payload_kb: 8), runtime-limits.json (retry_memory_limit_mb: 312), option-matrix.json but does not state the answer."
+          "note": "Fixture provides data (option-matrix.json, runtime-limits.json, etc.) but doesn't state which option to choose. Requirements mention constraints but not the decision."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests compute expected memory (base_memory + batch_records * payload) and verify in_memory_delay_queue exceeds 312MB limit. Rubric rewards rejecting in-memory for exceeding memory limit (960MB > 312MB)."
+          "note": "Prompt specifies exact limit keys (memory_mb, latency_p95_seconds, etc.) that match fixture data fields. Edits.md shows prompt was updated to name keys after test failures."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can compute 120000 * 8KB = 960MB > 312MB to reject in-memory, and verify database_retry_table/external_retry_queue fit. The memory_model field in option-matrix.json explains the calculation."
+          "note": "Competent developer can compute in-memory option exceeds memory limit (120,000*8KB=960MB > 312MB). Must choose between database_retry_table and external_retry_queue using latency/cost tradeoffs."
         }
       ]
     }
@@ -201,7 +201,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

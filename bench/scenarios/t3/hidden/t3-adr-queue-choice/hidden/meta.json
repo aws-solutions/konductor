@@ -2,5 +2,5 @@
   "deliverables": ["docs/adr/0001-queue.md"],
   "acceptableOptions": ["kinesis_streams"],
   "temptingOption": "sqs_fifo",
-  "notes": "The trap is that SQS FIFO appears cheaper than Standard ($0.45 vs $0.50 per million requests) but fails the 400 messages/second peak throughput requirement due to its 300 messages/second per message group limit, while appearing attractive due to ordering guarantees (though ordering is not strictly required). SQS Standard also fails due to cost exceeding the $900 monthly budget at 11 million daily events."
+  "notes": "The trap is that SQS FIFO appears cheaper than Standard ($0.45 vs $0.50 per million requests) but fails the 400 messages/second peak throughput requirement due to its 300 messages/second per queue limit, while appearing attractive due to ordering guarantees (though ordering is not strictly required). SQS Standard also fails due to cost exceeding the $900 monthly budget at 11 million daily events."
 }

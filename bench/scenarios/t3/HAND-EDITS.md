@@ -286,3 +286,17 @@ recheck-pending blocker.
 Recheck of the f5 rewrite: gpt-5.6-luna (v5, 2026-11-20) passes all four items. Its recheck.json lacked one closing
 brace, which the worker added before reading it; the raw file is kept with the job's results. `pilot.decision` is
 keep and the recheck-pending blocker is cleared (D-127 closed).
+
+## Pilot wave 4 fixes (2026-11-20, mate hand-edit recheck worker, claude)
+
+Pilot wave 4 ran plain Claude (vanilla, claude-sonnet-5.5) on 16 T3 tasks at 1072fc5d. Re-running each hidden suite on
+the run's own workspace showed that five low scores came from the task, not from the answer. Each fix changes the
+request (or one test), and the free gates are unchanged afterwards: reference 100, alternative 100, lazy 40 or less.
+
+| Task | Date | What changed | Why (pilot evidence) |
+| --- | --- | --- | --- |
+| t3-dev-module-boundary | 2026-11-20 | prompt: the ADR goes to `docs/design.md` (was `solution/docs/design.md`); prompt names the seven `limits` keys (`memory_mb`, `latency_p95_seconds`, `throughput_per_second`, `payload_kb`, `rpo_minutes`, `rto_minutes`, `monthly_budget_usd`) and points at option-matrix.json for option ids | the agent wrote `solution/docs/design.md` as told, so the check command's `ln -sfn . solution` hit a real folder and exited 1 before any test ran ("hidden suite did not parse", score 14). With the file moved, its answer passes 11 of 19: the rest are limit key names the request never gave (`retry_memory_mb`, `dispatch_latency_p95_seconds`) |
+| t3-adr-queue-choice | 2026-11-20 | fixture (and `_pristine`), tests, reference, answers, prompt, rubric, expertKey: SQS FIFO's 300 msg/s limit is per queue, because high-throughput mode is not enabled in this account; the runbook test held 300/s with 1 and with 8 groups; limit key `fifo_throughput_per_group` renamed to `fifo_throughput_per_queue`, and pricing-data `throughput_per_group` renamed to `throughput_per_queue` | the agent chose SQS FIFO with 2 or more message groups (200/s per group) and scored 32. The fixture only said "per message group", so its reading was correct and the trap was unfair |
+| t3-api-booking | 2026-11-20 | prompt names the three paths, the list parameters (`roomId`, `from`, `to`, `cursor`, `pageSize`), the `Idempotency-Key` header and the `Error` schema | the agent's `limit` query parameter failed the two `pageSize` tests |
+| t3-api-ingest-batch | 2026-11-20 | prompt names `/v1/ingest-batches` and `/v1/ingest-batches/{batchId}`, the `readings`, `results` and `state` fields, and the `Idempotency-Key` header; the hidden test accepts any OpenAPI 3.x (was exactly 3.1.0, like t3-api-booking now) | the agent's `/v1/batches` paths and `openapi: 3.0.3` failed 6 of 19 tests |
+| t3-db-tenant-isolation | 2026-11-20 | prompt names the `tickets` table and the nine columns the hidden seed inserts | the seed inserts `ticket_id`, `title`, `priority` and `assignee`; the agent's schema used other names, so 5 of 20 tests failed on the insert |

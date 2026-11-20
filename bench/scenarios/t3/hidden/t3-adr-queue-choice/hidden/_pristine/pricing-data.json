@@ -28,16 +28,16 @@
         "unit": "requests"
       },
       "limits": {
-        "throughput_per_group": {
+        "throughput_per_queue": {
           "value": 300,
           "unit": "messages_per_second",
-          "description": "Maximum throughput per message group"
+          "description": "Maximum throughput per queue (high-throughput mode is not enabled in this account, so adding message groups does not raise it)"
         }
       },
       "notes": [
         "Each 64KB chunk counts as one request",
         "Supports exactly-once processing",
-        "Limited to 300 messages/second per message group"
+        "Limited to 300 messages/second per queue (high-throughput mode is not enabled in this account)"
       ]
     },
     "kinesis_streams": {
