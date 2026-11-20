@@ -29,7 +29,7 @@ function check(draftDir, { fixtureDir = null } = {}) {
   const cfg = loadConfig({
     dir, ids: () => [id],
     fixtureDir: () => fixtureDir || path.join(dir, 'fixture'), hiddenDir: () => path.join(dir, 'hidden'),
-    modes: () => modesOf({ solution: path.join(dir, 'solution'), lazy: path.join(dir, 'lazy'), alt: path.join(dir, 'alt') }),
+    modes: () => modesOf({ solution: path.join(dir, 'solution'), lazy: path.join(dir, 'lazy'), alt: path.join(dir, 'alt'), shallow: path.join(dir, 'shallow') }),
     env: GIT_ENV,
   });
   cfg.readTask = () => task;

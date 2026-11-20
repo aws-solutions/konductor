@@ -28,13 +28,14 @@ function overlayOf(dir) {
   };
 }
 
-/** reference and stub (repeated), then lazy and alt when present. `dirs` gives the answer dirs of one task. */
+/** reference and stub (repeated), then lazy, alt and shallow when present. `dirs` gives the answer dirs of one task. */
 function modesOf(dirs) {
   const modes = [
     { name: 'reference', overlay: overlayOf(dirs.solution), repeat: true },
     { name: 'stub', overlay: null, repeat: true },
   ];
-  for (const kind of ['lazy', 'alt']) {
+  // shallow: an answer that misses the point (for a memory task, one that follows the stale notes); gated at 40 or less.
+  for (const kind of ['lazy', 'alt', 'shallow']) {
     const o = overlayOf(dirs[kind]);
     if (o) modes.push({ name: kind, overlay: o });
   }

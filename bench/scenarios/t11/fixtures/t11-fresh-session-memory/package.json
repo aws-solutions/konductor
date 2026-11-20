@@ -1,0 +1,12 @@
+{
+  "name": "tally",
+  "version": "0.4.1",
+  "private": true,
+  "description": "Billing helpers for the Ferry Street co-working space",
+  "bin": { "tally": "bin/tally.js" },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=24" },
+  "license": "UNLICENSED"
+}

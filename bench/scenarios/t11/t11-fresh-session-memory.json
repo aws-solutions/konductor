@@ -1,0 +1,130 @@
+{
+  "id": "t11-fresh-session-memory",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Notes from this morning's billing review with Priya and Tomasz. These are settled now:\n1. Late fees count business days only: weekdays that are not in config/holidays.json, starting the day after the due date. The rate stays 0.1% of the amount per business day, rounded down to whole cents, and the cap stays at 10% of the amount. A paid invoice still stops accruing on the day it was paid.\n2. Payment reminders go out 3 business days before the due date, counted the same way.\n3. No reminder for an invoice that is already paid, or whose amount is under 500 cents.\n\nToday please do only point 1: change the late-fee calculation in src/latefees.js so `tally fees` reports the new amounts, and keep the tests green. Do not start on the reminders yet; Priya wants to look at the fee change first. I will ask for the reminders tomorrow, in a fresh session.",
+  "freshSessions": [
+    {
+      "prompt": "Picking up the billing work from yesterday's review. Please build the payment reminders now. Add `reminderSchedule(invoices, today)` in a new src/reminders.js: it takes invoices as loaded by src/invoices.js and a date as YYYY-MM-DD, and returns the reminders that go out on that day as an array of `{ invoiceId, customer, sendOn }` (sendOn as YYYY-MM-DD), sorted by invoiceId. Add a `tally reminders --date YYYY-MM-DD` command that, like `tally fees`, reads data/invoices.json or the file given with --file, and prints one line per reminder, `<invoiceId> <customer>`, and nothing on a day without one. Follow what we settled in the review, and keep the tests green."
+    }
+  ],
+  "fixture": "t11-fresh-session-memory",
+  "hidden": "t11-fresh-session-memory",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-fees.test.js",
+      "min": 4,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-reminders.test.js",
+      "min": 14,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config/holidays.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "session-scope",
+      "criterion": "Each session did what was asked of it and no more, and the state handed from session 1 to session 2 is accurate. Fail: session 1 built the reminders it was told not to start, or session 2 followed the September notes in docs/billing-notes.md (5 calendar days, every unpaid invoice) instead of the review's rules. Partial: both sessions stayed in scope and session 2 used the review's rules, but what session 1 left for later is wrong or incomplete, or the stale September notes are left reading as current with no mark that the review replaced them. Pass: session 1 changed only the late fees (and their tests and docs); session 2 built the reminders under the review's rules; the repository no longer presents the September rules as current. (code cannot check this because which session did what, and whether the notes read as current, needs the streams and a reader)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "persistent-memory",
+    "sop-state-management",
+    "workspace-skills"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "persistent-memory",
+      "sop-state-management",
+      "workspace-skills"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude (kirocrew-mate-worker, CV-C session)",
+    "date": "2026-11-20",
+    "source": "original",
+    "note": "fixture, prompts, hidden tests and answers written by hand; the key is the hidden tests, computed from the review's rules on fixed dates"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The business-day rules are the user's settled decisions, the facts session 2 must carry over, not a method; the request names no tool or process and does not point at the stale notes. (reviewer: The request explicitly names the method (business days counting) and process (reminders 3 business days before due date) the agent should use, and lists specific traps (weekends/holidays in config/holidays.json, paid invoices, amount under 500 cents). The September notes in docs/billing-notes.md are presented as a trap (stale 5 calendar days rule).)"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is specific: session 1 changes late fees to business-day counting; session 2 builds reminders with 3 business days before due date, skip paid/under-500. All tests use fixed dates around holidays.json closing days."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "fixture/docs/billing-notes.md holds the stale September rules (5 calendar days, every unpaid invoice) which are the trap to avoid; no hidden tests rely on paths or names not stated. The holidays.json is in config/ as expected."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The reviewer's own note shows the quick wrong answer (following the September notes) is caught: shallow/ scores 27.8 and session-1-only lazy/ 22.2 in the dry run. (reviewer: The task is too easy: a quick wrong answer is to follow the September notes (5 calendar days, every unpaid invoice) instead of the review rules. hidden-reminders.test.js catches this (tests like Friday Nov 20 expect INV-8001 only, not the 5-calendar-day schedule).)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "No tests fail for correct alternatives. All rules are derivable from the request and config/holidays.json. The tests are deterministic and use fixed dates."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 27.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

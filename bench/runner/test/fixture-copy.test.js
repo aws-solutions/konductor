@@ -42,3 +42,27 @@ test('copyFixture renames a fixture dotgit directory to .git', () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('a committed dotgit whose refs are all packed (git kept no empty refs/) copies as a working repository', () => {
+  const { execFileSync } = require('node:child_process');
+  const root = mkScratch('fixcopy-packed-');
+  try {
+    const src = path.join(root, 'src');
+    fs.mkdirSync(src);
+    const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8' }).trim();
+    git(src, 'init', '-q', '-b', 'main');
+    fs.writeFileSync(path.join(src, 'a.txt'), 'a\n');
+    git(src, 'add', '.');
+    git(src, 'commit', '-q', '-m', 'one');
+    git(src, 'pack-refs', '--all');
+    fs.renameSync(path.join(src, '.git'), path.join(src, 'dotgit'));
+    // What a checkout of the bench repository holds: the empty refs/ directories are gone.
+    fs.rmSync(path.join(src, 'dotgit', 'refs'), { recursive: true, force: true });
+    const dest = path.join(root, 'dest');
+    copyFixture(src, dest);
+    assert.match(git(dest, 'rev-parse', 'HEAD'), /^[0-9a-f]{40}$/);
+    assert.equal(git(dest, 'branch', '--show-current'), 'main');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

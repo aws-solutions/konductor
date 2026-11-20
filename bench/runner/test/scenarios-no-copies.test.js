@@ -26,7 +26,10 @@ function walk(dir, rel = '') {
 test('no new per-batch copy of a scenario tool or test helper outside bench/scenarios/lib', () => {
   const names = new Set(doc.names);
   const legacy = new Set(doc.legacy.map((l) => l.path));
-  const found = walk(ROOT).filter((r) => names.has(path.basename(r)) && !r.startsWith('lib/'));
+  // A task fixture is the agent's own project, so a module there may share a tool's name (a logistics `jobs/dry-run.js`);
+  // a byte copy of a helper in it is still caught by the next test.
+  const fixture = (r) => /^[^/]+\/fixtures\//.test(r);
+  const found = walk(ROOT).filter((r) => names.has(path.basename(r)) && !r.startsWith('lib/') && !fixture(r));
   const extra = found.filter((r) => !legacy.has(r));
   assert.deepEqual(extra, [], `new copies; extend the shared module instead: ${extra.join(', ')}`);
 });

@@ -102,7 +102,7 @@ function buildTask(s, id) {
 module.exports = {
   dir: __dirname,
   env: GIT_ENV,
-  modes: (task, cfg) => modesOf({ solution: cfg.solutionDir(task.id), lazy: cfg.answerDir(task.id, 'lazy'), alt: cfg.answerDir(task.id, 'alt') }),
+  modes: (task, cfg) => modesOf({ solution: cfg.solutionDir(task.id), lazy: cfg.answerDir(task.id, 'lazy'), alt: cfg.answerDir(task.id, 'alt'), shallow: cfg.answerDir(task.id, 'shallow') }),
   prompt: { render },
   stage: {
     authEnv: 'T11_AUTH',

@@ -1,0 +1,69 @@
+{
+  "dispatch": {
+    "timeout": 4500,
+    "routes": { "primary": "/v1/routes" },
+    "labels": { "prefix": "D-" },
+    "retries": 3,
+    "webhook": { "url": "https://hooks.fleet.test/dispatch", "timeout": 1500 },
+    "cutoff": { "hour": 19 },
+    "tls": { "required": true },
+    "region": "north",
+    "batch": { "size": 80 },
+    "callback": { "path": "/callbacks/dispatch" },
+    "carrier": { "code": "N6" },
+    "maxStops": 12,
+    "alert": { "enabled": true },
+    "currency": "USD",
+    "schedule": { "window": 25 },
+    "print": { "prefix": "Manifest-" }
+  },
+  "warehouse": {
+    "timeout": 2200,
+    "zones": { "primary": "north-2" },
+    "labels": { "prefix": "WH-" },
+    "capacity": 640,
+    "scanner": { "endpoint": "https://scanner.fleet.test/v2" },
+    "aisle": { "default": "A-04" },
+    "cold": { "maxCelsius": 5 },
+    "cycle": { "days": 14 },
+    "packing": { "station": "P7" },
+    "manifest": { "version": "v2" },
+    "bin": { "prefix": "BIN-" },
+    "handoff": { "delay": 90 },
+    "timezone": "UTC",
+    "reserve": { "percent": 12.5 }
+  },
+  "queues": {
+    "eu": { "url": "https://queue-eu.fleet.test" },
+    "us": { "url": "https://queue-us.fleet.test" }
+  },
+  "jobs": {
+    "nightly": { "hour": 2 },
+    "cleanup": { "interval": 3600 },
+    "retries": 4,
+    "report": { "prefix": "night-" },
+    "heartbeat": { "interval": 30 }
+  },
+  "billing": {
+    "currency": "EUR",
+    "invoices": { "prefix": "INV-" },
+    "tax": { "rate": 0.2 },
+    "timeout": 1800,
+    "ledger": { "path": "/ledger/v3" },
+    "rounding": { "mode": "half-up" },
+    "export": { "format": "csv" },
+    "page": { "size": 100 },
+    "receipt": { "prefix": "R-" },
+    "due": { "days": 30 },
+    "email": { "from": "billing@harborline.test" },
+    "archive": { "enabled": true },
+    "precision": 2
+  },
+  "runtime": {
+    "cache": { "ttl": 900 },
+    "host": "dispatch.internal",
+    "request": { "timeout": 1200 }
+  },
+  "audit": { "enabled": true, "file": { "prefix": "audit-" } },
+  "features": { "ledger": true }
+}

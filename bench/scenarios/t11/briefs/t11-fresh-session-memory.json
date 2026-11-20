@@ -1,0 +1,12 @@
+{
+  "id": "t11-fresh-session-memory",
+  "kind": "code",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "claude",
+  "reviewer": "qwen3-coder-next",
+  "size": "15 to 25",
+  "source": "original",
+  "brief": "Phase: implementation. Role: developer. Two sessions on one small Node.js billing tool (invoices, late fees). Session 1's request carries a billing review's three settled rules (late fees count business days; reminders go out 3 business days before the due date; no reminder for paid invoices or amounts under 500 cents) and asks for the late-fee change only, saying the reminders come tomorrow in a fresh session. Session 2 is a new conversation in the same workspace: it asks for the reminder schedule and command and says to follow what the review settled, without restating the rules. The fixture's only rule source for reminders is a stale September note (5 calendar days, every unpaid invoice). Hidden tests check the late fees and the reminder schedule and command on fixed dates around office closing days, so an answer that follows the stale note fails most reminder tests.",
+  "note": "written by hand by the CV-C worker (Claude); no author model call"
+}
