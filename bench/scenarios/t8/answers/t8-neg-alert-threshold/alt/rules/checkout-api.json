@@ -1,0 +1,56 @@
+{
+  "rules": [
+    {
+      "annotations": {
+        "description": "In short: No checkout requests have been observed in the evaluation window.",
+        "summary": "In short: Checkout traffic has stopped"
+      },
+      "labels": {
+        "team": "checkout",
+        "severity": "warning"
+      },
+      "duration": "12m",
+      "operator": "==",
+      "threshold": 0,
+      "metric": "http_requests_total",
+      "kind": "absence",
+      "name": "CheckoutTrafficAbsent"
+    },
+    {
+      "annotations": {
+        "description": "In short: The checkout error ratio needs attention.",
+        "summary": "In short: Checkout errors are elevated"
+      },
+      "labels": {
+        "team": "checkout",
+        "severity": "critical"
+      },
+      "duration": "8m",
+      "operator": ">",
+      "threshold": 0.03,
+      "metric": "http_requests_total",
+      "kind": "ratio",
+      "name": "CheckoutErrorRateHigh"
+    },
+    {
+      "annotations": {
+        "description": "In short: The checkout p95 latency has exceeded the warning level.",
+        "summary": "In short: Checkout requests are taking longer than expected"
+      },
+      "labels": {
+        "runbook": "https://ops.example.test/runbooks/checkout-latency-high",
+        "team": "checkout",
+        "severity": "warning"
+      },
+      "duration": "15m",
+      "operator": ">",
+      "threshold": 1.2,
+      "metric": "http_request_duration_seconds_p95",
+      "kind": "threshold",
+      "name": "CheckoutLatencyHigh"
+    }
+  ],
+  "schemaVersion": 3,
+  "owner": "payments-platform",
+  "service": "checkout-api"
+}

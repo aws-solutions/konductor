@@ -1,0 +1,6 @@
+[
+  {
+    "service": "catalog",
+    "replicas": 2
+  }
+]

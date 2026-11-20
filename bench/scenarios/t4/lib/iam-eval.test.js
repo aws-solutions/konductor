@@ -3,7 +3,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { evaluate, isAllowed, decide, lint, inCidr } = require('./iam-eval.js');
+const { evaluate, isAllowed, decide, lint, inCidr } = require('../../lib/hidden/iam-eval.js');
 
 const doc = (...Statement) => ({ Version: '2012-10-17', Statement });
 const ACCT = '111122223333';
