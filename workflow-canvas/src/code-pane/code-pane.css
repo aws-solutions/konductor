@@ -1,0 +1,90 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * A pane of numbered plain-text lines, for the light and the dark mode. A
+ * test (code-pane-contrast.test.ts) checks that these colours are the
+ * theme's and reach WCAG AA in both modes.
+ */
+.wf-code-pane {
+  --wf-code-bg: #faf8f4;
+  --wf-code-border: #e0dad0;
+  --wf-code-text: #16131f;
+  --wf-code-text-muted: #56516a;
+  --wf-code-focus: #6236f0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  color: var(--wf-code-text);
+}
+
+:root[data-theme='dark'] .wf-code-pane {
+  --wf-code-bg: #1c1740;
+  --wf-code-border: #2a2450;
+  --wf-code-text: #f5f3ee;
+  --wf-code-text-muted: #9c93b8;
+  --wf-code-focus: #a78bfa;
+}
+
+.wf-code-pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.wf-code-pane-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wf-code-note {
+  margin: 0;
+  color: var(--wf-code-text-muted);
+  font-size: 12px;
+}
+
+.wf-code-scroll {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--wf-code-border);
+  border-radius: 8px;
+  background: var(--wf-code-bg);
+}
+
+.wf-code-scroll:focus-visible {
+  outline: 2px solid var(--wf-code-focus);
+  outline-offset: 2px;
+}
+
+.wf-code-lines {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  font: 12px/1.6 var(--wf-font-code);
+}
+
+.wf-code-line {
+  display: flex;
+  padding: 0 10px;
+}
+
+.wf-code-n {
+  flex: 0 0 auto;
+  min-width: 4ch;
+  padding-right: 12px;
+  color: var(--wf-code-text-muted);
+  text-align: right;
+  user-select: none;
+}
+
+.wf-code-text {
+  white-space: pre;
+}
+
+/* An empty line keeps its height. Generated content is not copied. */
+.wf-code-text:empty::before {
+  content: ' ';
+}

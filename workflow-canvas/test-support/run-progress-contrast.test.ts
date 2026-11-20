@@ -63,11 +63,7 @@ describe('run-progress.css', () => {
         expect(value, name).toMatch(HEX_COLOUR);
       }
     }
-    const outside = sheet.text
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\.wf-progress \{[^}]*\}/g, '');
-
-    expect(outside).not.toMatch(COLOUR_LITERAL);
+    expect(sheet.outside(LIGHT_BLOCK)).not.toMatch(COLOUR_LITERAL);
   });
 
   it('uses the small radius of the theme module', () => {
