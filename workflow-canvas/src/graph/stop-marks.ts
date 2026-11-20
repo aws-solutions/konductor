@@ -7,6 +7,13 @@ import type {
   StopMarkState,
 } from './model';
 
+function bare(node: StageGraphNode): StageGraphNode {
+  const data = { ...node.data };
+  delete data.endsRun;
+  delete data.stopState;
+  return { ...node, data };
+}
+
 function marked(
   node: StageGraphNode,
   state: StopMarkState | undefined,
@@ -14,7 +21,7 @@ function marked(
   return {
     ...node,
     data: {
-      ...node.data,
+      ...bare(node).data,
       endsRun: true,
       ...(state === undefined ? {} : { stopState: state }),
     },
@@ -33,6 +40,11 @@ function withoutEnd(nodes: readonly GraphNode[]): GraphNode[] {
  * that stage's part of the run is over; without an entry the mark is open.
  * The nodes that stay keep their places, and a graph with no end node is
  * marked all the same.
+ *
+ * A graph this has already marked is marked again from its current edges and
+ * states alone: the mark and the state of every stage are dropped first, so a
+ * stage another stage now follows loses its mark, and a leaf whose state is
+ * no longer known goes back to an open mark.
  */
 export function withStopMarks(
   graph: CanvasGraph,
@@ -42,11 +54,12 @@ export function withStopMarks(
   const nodes = withoutEnd(graph.nodes);
   const kept = new Set(nodes.map((node) => node.id));
   return {
-    nodes: nodes.map((node) =>
-      node.type === 'stage' && leaves.has(node.id)
+    nodes: nodes.map((node) => {
+      if (node.type !== 'stage') return node;
+      return leaves.has(node.id)
         ? marked(node, states.get(node.id))
-        : node,
-    ),
+        : bare(node);
+    }),
     edges: graph.edges.filter(
       (edge) => kept.has(edge.source) && kept.has(edge.target),
     ),

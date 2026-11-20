@@ -155,6 +155,40 @@ describe('withStopMarks', () => {
 
     expect(marks(withStopMarks(withoutEnd))).toEqual(['left', 'right']);
   });
+
+  it('clears the state of a leaf that is no longer known', () => {
+    const states = new Map<string, StopMarkState>([
+      [stageNodeId('left'), 'passed'],
+    ]);
+    const before = withStopMarks(forked(), states);
+
+    const after = withStopMarks(before);
+
+    expect(stages(before)[1]?.data.stopState).toBe('passed');
+    expect(stages(after)[1]?.data).not.toHaveProperty('stopState');
+    expect(marks(after)).toEqual(['left', 'right']);
+  });
+
+  it('takes the mark off a leaf that another stage now follows', () => {
+    const marked = withStopMarks(
+      forked(),
+      new Map([[stageNodeId('left'), 'passed' as StopMarkState]]),
+    );
+
+    // The person joined a new stage after `left`, so it is not a leaf now.
+    const grown = withStopMarks({
+      nodes: [...marked.nodes, stage('wrap-up')],
+      edges: [
+        ...marked.edges,
+        edge(stageNodeId('left'), stageNodeId('wrap-up')),
+      ],
+    });
+
+    expect(marks(grown)).toEqual(['right', 'wrap-up']);
+    const left = stages(grown).find((node) => node.data.name === 'left');
+    expect(left?.data).not.toHaveProperty('endsRun');
+    expect(left?.data).not.toHaveProperty('stopState');
+  });
 });
 
 describe('buildGraph with stopMarks', () => {
