@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution && node --test hidden/*.test.js",
       "min": 18
     },
     {
@@ -65,7 +65,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 5,
+  "version": 6,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
