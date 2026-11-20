@@ -45,8 +45,8 @@ function shallow(value, o, decoys = o.decoys || []) {
       const kept = value.slice(0, half(value.length));
       return [...kept, ...decoys.filter((d) => !kept.includes(d))];
     }
-    if (value.length && value.every((v) => v && typeof v === 'object' && !Array.isArray(v))) return value.slice(0, half(value.length)).map((v) => shallow(v, o, []));
-    return value.map((v) => shallow(v, o, []));
+    // Any other list (paths, names, numbers, objects): only the obvious first half, each item shallow too.
+    return value.slice(0, half(value.length)).map((v) => shallow(v, o, []));
   }
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shallow(v, o, decoys)]));
   if (typeof value === 'number') return Number.isInteger(value) ? Math.round(value * o.factor) : Math.round(value * o.factor * 100) / 100;

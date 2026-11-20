@@ -154,7 +154,7 @@ test('an answer of code only has a lazy answer (half the files) and no alternati
     write(path.join(root, 'sol', 'out.json'), '{"a":[1,2]}\n');
     const lazy = writeAnswer('lazy', path.join(root, 'sol'), path.join(root, 'lazy'));
     assert.deepEqual(lazy.files, { 'out.json': 'json', 'src/a.js': 'kept', 'test/b.test.js': 'dropped' });
-    assert.equal(fs.readFileSync(path.join(root, 'lazy', 'out.json'), 'utf8'), '{"a":[1,1]}\n', 'a one-line JSON stays one line');
+    assert.equal(fs.readFileSync(path.join(root, 'lazy', 'out.json'), 'utf8'), '{"a":[1]}\n', 'a one-line JSON stays one line');
     fs.rmSync(path.join(root, 'sol', 'out.json'));
     assert.equal(writeAnswer('alt', path.join(root, 'sol'), path.join(root, 'alt')).written, false);
     assert.ok(!fs.existsSync(path.join(root, 'alt')));
