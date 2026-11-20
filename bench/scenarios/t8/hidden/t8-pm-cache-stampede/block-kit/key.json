@@ -10,9 +10,6 @@
         "ttl|time-to-live|expiration",
         "jitter|synchron|same time|simultaneous"
       ],
-      "none": [
-        "(caused by|due to|because of|result of) (the )?(analytics|reporting|rollup)"
-      ],
       "weight": 2,
       "section": "cause",
       "gate": true

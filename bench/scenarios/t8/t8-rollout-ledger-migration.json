@@ -1,7 +1,7 @@
 {
   "id": "t8-rollout-ledger-migration",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -140,36 +140,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal, constraints, and required JSON structure without naming methods or pointing at traps."
+          "note": "Prompt asks for rollout plan with JSON block. Edits mention decoy patterns widened. No prescribed method."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files provide evidence (logs, runbooks, configs) but do not state the expected JSON values or rollout steps outright."
+          "note": "Fixture contains canary logs showing null violation on settlement_code, metrics catalogue, migration docs. Answer requires analyzing schema compatibility issue."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All key items derive from fixture: canary failure from logs/ledger-canary.log:622-626, 8% from capacity.md, thresholds from alerts.yaml, dates from change-calendar.md, coverage gap from oncall.md."
+          "note": "key.json expects evidence from ledger-canary.log, metrics from catalogue, proper step ordering. Rubric uses expertKey for engineering judgment."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can infer all required values: root cause from log errors, canary size from capacity note, gate thresholds from alerts.yaml, timing from calendar, coverage from rota."
+          "note": "Developer can analyze null violation errors, design expand-prepare-contract migration, use metrics for gates, address coverage gap."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

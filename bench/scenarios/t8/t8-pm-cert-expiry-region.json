@@ -1,7 +1,7 @@
 {
   "id": "t8-pm-cert-expiry-region",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -97,36 +97,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks to investigate the EU login outage and write a postmortem; no method or decoy is named."
+          "note": "Prompt asks for postmortem with JSON block. Edits mention decoy (deploy) designed to be rejected (key has summary-does-not-blame-release check)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Certificate inventory, gateway logs, and metrics contain the evidence but no doc lists the root cause or finished postmortem."
+          "note": "Fixture contains certificate inventory showing EU cert expiry time, gateway logs showing mTLS failures at that time. Answer requires analyzing certificate expiry."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Key references certs/certificate-inventory.csv, logs/gateway-eu.log, logs/auth-eu.log; all exist. Impact values (17465 failed logins, 448 peak TLS errors) match metrics CSV."
+          "note": "key.json expects evidence from certificate-inventory.csv, gateway-eu.log, auth-eu.log - all exist. Rubric anchors reward narrative coherence."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Certificate A7E4-91C2 expired at 2025-02-14T11:00:00Z; failed logins and TLS errors countable from metrics/eu-west-1-login.csv."
+          "note": "Developer can analyze certificate expiry times, mTLS failures at expiry, regional differences, and identify expired mTLS certificate."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -1,7 +1,7 @@
 {
   "id": "t8-pm-cache-stampede",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -97,36 +97,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for a postmortem with specific sections but names no method, framework, or tool for how to work."
+          "note": "Prompt asks for postmortem with JSON block. Edits mention decoy (reporting job) designed to be rejected. No prescribed method."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Logs and configs contain the incident evidence but no doc comments list the cause, timeline, or impact values."
+          "note": "Fixture contains config diff showing jitter_seconds: 0, cache logs showing synchronized expiration waves. Answer requires analyzing cache stampede pattern."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Block key references logs/cache.log, config/config-review.diff, deploy/deploy-history.jsonl and specific log lines; all paths exist and values match fixture data."
+          "note": "key.json expects evidence from config-review.diff, deploy-history.jsonl, cache.log - all exist. Rubric anchors reward causal clarity."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Cache TTL change at 14:42Z, expiration waves at 30-minute intervals, and DB saturation are derivable from logs; impact numbers come from metrics."
+          "note": "Developer can analyze removed jitter, synchronized TTL expiration waves, DB connection spikes, and identify cache stampede."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
