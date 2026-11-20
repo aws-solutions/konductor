@@ -252,7 +252,8 @@ install Konductor also needs a new arm source and a `prepareArm` that builds not
 harness folder still switch on the runtime name; the contract lists each one.
 
 The full contract, with every member, argument and field, is
-[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md).
+[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). What works today for an agent bench does not run
+yet, on the plant and on code tasks, is in [benchmark your own agent](benchmark-your-own-agent.md).
 
 > [!IMPORTANT]
 > **Common mistakes.** bench cannot run any agent you point it at: it runs the four runtimes above. Strands runs the
