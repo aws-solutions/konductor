@@ -79,6 +79,7 @@ function buildTask(s, id) {
   const disposition = s.workJson(`${id}.disposition.json`, {});
   const mapping = s.workJson(`${id}.map.json`, s.NO_MAPPING);
   const rev = s.workJson(`${id}.review.json`);
+  const recheck = s.workJson(`${id}.recheck.json`);
   // Authors guess seconds of work; an agent needs minutes to read a repository. shortcut: fixed floor, raise it from pilot timings.
   const softSec = Math.max(draft.limits?.softSec || 0, b.softSec || 900);
   const limits = { softSec, hardSec: softSec * 2 };
@@ -92,7 +93,7 @@ function buildTask(s, id) {
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: s.mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: s.FAMILY[b.author], model: b.author, date: b.date || s.today(), source: b.source, ...(b.twoStep ? { note: 'two-step: step 1 wrote the fixture and the request, step 2 (a separate call) the hidden checks and answers' } : {}) },
-    ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)) } } : {}),
+    ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)), ...(recheck ? { recheck: { family: s.FAMILY[recheck.model], model: recheck.model, date: recheck.date, items: recheck.items } } : {}) } } : {}),
     ...(handEditedIds(s.dir).has(id) ? { handEdited: { family: 'claude', editor: 'kirocrew-mate-worker (T11 worker session)', log: 'HAND-EDITS.md' } } : {}),
     pilot: null, lockedAt: null,
   };

@@ -1,0 +1,5 @@
+{
+  "primary": "coast",
+  "fallback": ["plains", "lakes"],
+  "warehouseAliases": { "C-17": "coast-central", "P-04": "plains-east" }
+}

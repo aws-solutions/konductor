@@ -1,0 +1,8 @@
+{
+  "name": "northstar-returns",
+  "version": "0.8.0",
+  "private": true,
+  "main": "src/index.js",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test test/" }
+}

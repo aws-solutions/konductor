@@ -26,3 +26,8 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-merge-pricing-branches | map | glm-5 | 0.15 |  |
 | t11-merge-pricing-branches | review | qwen3-coder-next | 0.85 |  |
 | t11-merge-pricing-branches | fix | gpt-5.6-luna | 0.34 |  |
+| t11-media-returns-whiteboard | author | gpt-5.6-luna | 6.22 |  |
+| t11-media-returns-whiteboard | map | glm-5 | 0.15 |  |
+| t11-media-returns-whiteboard | review | glm-5 | 1.78 |  |
+| t11-media-returns-whiteboard | fix | gpt-5.6-luna | 2.30 |  |
+| t11-media-returns-whiteboard | recheck | qwen3-coder-next | 0.31 |  |
