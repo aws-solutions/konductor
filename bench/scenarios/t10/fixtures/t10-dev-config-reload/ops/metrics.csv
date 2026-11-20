@@ -1,0 +1,8 @@
+name,unit,meaning
+worker_jobs_total,count,Jobs completed by the worker
+worker_failures_total,count,Jobs that ended in failure
+worker_queue_age_seconds,seconds,Age of the oldest visible delivery
+worker_active_jobs,count,Jobs currently being handled
+worker_config_reload_total,count,Accepted and rejected configuration reload attempts
+worker_config_reload_errors,count,Reloads rejected because configuration was invalid
+worker_job_duration_ms,milliseconds,Elapsed handler time

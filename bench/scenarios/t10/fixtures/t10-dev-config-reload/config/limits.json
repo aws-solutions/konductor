@@ -1,0 +1,5 @@
+{
+  "maxPayloadBytes": 1048576,
+  "jobTimeoutMs": 5000,
+  "backoffMs": 250
+}

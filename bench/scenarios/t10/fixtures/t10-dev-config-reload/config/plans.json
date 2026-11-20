@@ -1,0 +1,4 @@
+{
+  "standard": { "label": "standard", "retentionDays": 7 },
+  "priority": { "label": "priority", "retentionDays": 14 }
+}

@@ -77,3 +77,14 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-tpm-ring-rollout | audit | - | 0.00 | author, fix, map, review streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
 | t10-tpm-ring-rollout | review disposition | - | 0.00 | the reviewer (qwen3-coder-next) failed hidden-answer, ceiling and floor; the worker checked each claim against the task (the request does say the script exits 2; the key's file fields are substring regexes; the shallow answer scores 23.8) and recorded pass with the reviewer's text in the note (`authoring` and task.review) |
 | t10-tpm-ring-rollout | free dry run | - | 0.00 | after the one fix round (lazy 45.5 to 23.8): reference 100, stub 5.7, lazy 23.8, alt 100, deterministic, per-test timeouts hold |
+| t10-dev-config-reload | author | gpt-5.6-luna | 7.04 |  |
+| t10-dev-config-reload | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 118.0 of 500; reason: lazy 59, alt 91.8 with a failing cmd check |
+| t10-dev-config-reload | fix | gpt-5.6-luna | 3.36 |  |
+| t10-dev-config-reload | map (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-dev-config-reload | map | glm-5 | 0.17 |  |
+| t10-dev-config-reload | review (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-dev-config-reload | review | qwen3-coder-next | 0.67 |  |
+| t10-neg-rename-field | author (planned) | deepseek-3.2 | - | abort limit 20 credits (1700 s, 70 tool calls); second family; batch spend before: 123.9 of 500 |
+| t10-dev-config-reload | audit | - | 0.00 | author, fix, map, review streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
+| t10-dev-config-reload | review disposition | - | 0.00 | the reviewer (qwen3-coder-next) failed hidden-answer because docs/config.md states the service's existing environment precedence; the worker recorded pass with the reviewer's text in the note (that doc describes current behaviour, not the answer) |
+| t10-dev-config-reload | free dry run | - | 0.00 | after the one fix round (lazy 59 to 34.7, alt cmd check repaired): reference 100, stub 12.2, lazy 34.7, alt 91.8, deterministic, per-test timeouts hold |
