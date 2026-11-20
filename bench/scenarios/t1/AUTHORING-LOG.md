@@ -65,6 +65,7 @@ Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an 
 | t1-bug-money-rounding | qwen3-coder-next | second-family (two-step) task: the first key used `kind` for the check type and the reviewer failed all five checks; after its one fix attempt by its own family the reference scored 28.6; dropped, not hand-fixed | see the calls table for credits |
 | t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
 | t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
+| t1-nfr-bounded-fanout | qwen3-coder-next | second-family task: the single-step author stopped at its cap; in its one fix attempt (two-step) the key's checks used `kind` and the check name as the type, so no check could run; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -201,3 +202,7 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-neg-config-alias | review | qwen3-coder-next | 0.43 |
 | t1-neg-config-alias | lazy+alt answers | glm-5 | 1.99 |
 | t1-nfr-bounded-fanout | author-data | qwen3-coder-next | 1.25 |
+| t1-nfr-bounded-fanout | author-key | qwen3-coder-next | 10.17 |
+| t1-nfr-bounded-fanout | map | glm-5 | 0.16 |
+| t1-nfr-bounded-fanout | review | gpt-5.6-luna | 1.19 |
+| t1-nfr-bounded-fanout | lazy+alt answers | gpt-5.6-luna | 3.10 |
