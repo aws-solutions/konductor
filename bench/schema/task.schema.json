@@ -935,7 +935,6 @@
         },
         "recheck": {
           "type": "object",
-          "description": "A non-Claude reviewer's check of a hand-edited task against the owner checklist.",
           "required": [
             "family",
             "model",
@@ -958,6 +957,7 @@
             },
             "items": {
               "type": "array",
+              "minItems": 4,
               "items": {
                 "type": "object",
                 "required": [
@@ -969,7 +969,7 @@
                   "check": {
                     "enum": [
                       "no-method-or-decoy",
-                      "fixture-lists-no-answers",
+                      "fixture-lists-no-answer",
                       "key-matches-fixture",
                       "solvable-from-fixture"
                     ]
@@ -1066,7 +1066,6 @@
     },
     "handEdited": {
       "type": "object",
-      "description": "Set when anyone other than the recorded author changed the task's prompt, fixture, key, checks or rubric (owner rule 2026-11-19); the edits are listed in the batch's log file.",
       "required": [
         "family",
         "editor",

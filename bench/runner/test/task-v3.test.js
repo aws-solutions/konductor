@@ -125,3 +125,15 @@ test('the loader reads a v3 task and refuses one that breaks a v3 rule', () => {
     assert.throws(() => loadTasks(bench), /invalid task file v3\.json:[\s\S]*twinOf is only for/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a hand-edited task needs a non-Claude recheck before lock', () => {
+  const { lockedAt: _unlocked, ...open } = V3;
+  const edited = { ...open, handEdited: { family: 'claude', editor: 'worker', log: 'HAND-EDITS.md' } };
+  assert.deepEqual(v3Errors(edited), []);
+  assert.ok(v3Errors({ ...edited, lockedAt: '2026-11-20' }).some((e) => /recheck/.test(e)));
+  const items = ['no-method-or-decoy', 'fixture-lists-no-answer', 'key-matches-fixture', 'solvable-from-fixture'].map((check) => ({ check, verdict: 'pass' }));
+  const ok = { ...edited, lockedAt: '2026-11-20', review: { family: 'zhipu', date: '2026-11-20', verdicts: [], recheck: { family: 'zhipu', model: 'glm-5', date: '2026-11-20', items } } };
+  assert.deepEqual(v3Errors(ok), []);
+  assert.deepEqual(validate(loadSchema('task'), ok), []);
+  assert.ok(v3Errors({ ...ok, review: { ...ok.review, recheck: { ...ok.review.recheck, family: 'claude' } } }).some((e) => /non-Claude/.test(e)));
+});

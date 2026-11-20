@@ -185,5 +185,10 @@
         "note": "All required behaviors are achievable: lazy loading via dynamic require or wrapper functions, config validation remains possible before dispatch, format-registration runs at format.js load time as-is. No timing-dependent or flaky tests observed."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "t1-worker",
+    "log": "HAND-EDITS.md"
   }
 }
