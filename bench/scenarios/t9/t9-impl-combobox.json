@@ -81,7 +81,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture's countries.js already contains the test data including 'Aland <North>' with angle brackets and accented names like 'C\u00f4te d'Ivoire' and 'R\u00e9union'. However, this is legitimate source data the agent should use, not a leak of test expectations."
+        "note": "The fixture's countries.js already contains the test data including 'Aland <North>' with angle brackets and accented names like 'Côte d'Ivoire' and 'Réunion'. However, this is legitimate source data the agent should use, not a leak of test expectations."
       },
       {
         "check": "ceiling",
@@ -93,7 +93,39 @@
         "verdict": "pass",
         "note": "All tests derive from stated requirements. The tests verify: ARIA combobox semantics, keyboard/pointer interaction, live region announcements, ranking reuse via imported filter.js, text rendering of special characters, and form continuity. No test relies on unstated IDs, class names, or hidden behaviors."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "request specifies combobox implementation with keyboard/pointer handling, accessibility roles, and reuse of existing rank function; no traps or decoys"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture contains only basic form input; no comments, tests, or docs reveal implementation details"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "hidden tests and task checks all match the request and solution: combobox/listbox roles, aria-expanded/activedescendant/selected, keyboard navigation, status announcements, rank function reuse"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "developer can implement: add country-picker.js module with combobox accessibility attributes, keyboard handlers (ArrowUp/Down/Enter/Escape), option rendering with textContent, and integration with existing rank function"
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T9 worker session)",
+    "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
@@ -109,10 +141,5 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null,
-  "handEdited": {
-    "family": "claude",
-    "editor": "kirocrew-mate-worker (T9 worker session)",
-    "log": "HAND-EDITS.md"
-  }
+  "lockedAt": null
 }
