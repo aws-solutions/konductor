@@ -234,3 +234,25 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-ref-package-split | map | glm-5 | 0.17 |
 | t1-ref-package-split | review | gpt-5.6-luna | 1.11 |
 | t1-ref-package-split | lazy+alt answers | gpt-5.6-luna | 3.14 |
+
+## CV-F calls
+
+Coverage-review additions (owner-approved 2026-11-20): t1-nfr-stream-backpressure, t1-nfr-memory-bound, t1-refactor-permission-boundary, t1-refactor-logging-migration. CV-F stop: 185 credits (estimate 180). Before every call the run script adds 15 to the CV-F credits logged below and refuses the call if that passes 185; it waits while the 1-minute load is 6 or more, runs one call at a time, and stops a call at a per-model tool-call cap of about 15 credits. Same isolated setup as above (scratch HOME with only a login copy, memory and knowledge off, empty working dir, cleared env). SR-32 split (`bench/scenarios/split.js`): t1-nfr-stream-backpressure 1804074469 HELD-OUT, t1-nfr-memory-bound 2659386267 DEV, t1-refactor-permission-boundary 484116431 HELD-OUT, t1-refactor-logging-migration 2525062321 HELD-OUT.
+
+Blindness audit (`stage.js audit`) of every CV-F stream: no read of a konductor `skills/`, `agent-sops/`, `agents/` or `context/` path and no read of another batch's scratch dir. The gpt-5.6-luna author and fix streams of the two NFR tasks wrote their own test logs to `/tmp/*.log` (outside their working dir, nothing else read there). Both NFR tasks used their one fix round by their own family (the fix prompt carried the dry run and worker notes: checks that named a file or constant the request never states, and hidden asserts the request did not state), and then got a small worker hand edit of their checks (HAND-EDITS.md) and a glm-5 recheck.
+
+| task | step | model | credits |
+| --- | --- | --- | --- |
+| t1-nfr-stream-backpressure | author | gpt-5.6-luna | 3.64 |
+| t1-nfr-stream-backpressure | map | glm-5 | 0.16 |
+| t1-nfr-stream-backpressure | review | glm-5 | 4.69 |
+| t1-nfr-stream-backpressure | lazy+alt answers | glm-5 | 3.47 |
+| t1-nfr-stream-backpressure | fix | gpt-5.6-luna | 1.54 |
+| t1-nfr-stream-backpressure | lazy+alt answers | glm-5 | 2.99 |
+| t1-nfr-memory-bound | author | gpt-5.6-luna | 1.64 |
+| t1-nfr-memory-bound | map | glm-5 | 0.16 |
+| t1-nfr-memory-bound | review | qwen3-coder-next | 0.34 |
+| t1-nfr-memory-bound | fix | gpt-5.6-luna | 0.79 |
+| t1-nfr-memory-bound | lazy+alt answers | glm-5 | 4.38 |
+| t1-nfr-stream-backpressure | recheck | glm-5 | 1.13 |
+| t1-nfr-memory-bound | recheck | glm-5 | 1.33 |

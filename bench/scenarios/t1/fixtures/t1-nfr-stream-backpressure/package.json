@@ -1,0 +1,9 @@
+{
+  "name": "northstar-export-service",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Small HTTP service for newline-delimited record exports",
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "start": "node src/server.js", "check": "node scripts/check-format.js" }
+}
