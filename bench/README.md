@@ -154,11 +154,13 @@ Every command that spends takes a budget: `--budget-credits N` stops new runs at
 - Guides: [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) ·
   [how Konductor is benchmarked](docs/konductor-bench.md) · [repeat it yourself](docs/repeat-it-yourself.md)
 - Reference: [every command and flag](docs/reference.md) · [task format](docs/tasks.md) ·
-  [cap playbook](docs/CAP-PLAYBOOK.md) · [quality pack](docs/QUALITY-PACK.md) · [unattended runs](docs/RUNBOOK.md) ·
-  [the 2x2 kit, step by step](docs/REPEAT.md)
+  [cap playbook](docs/cap-playbook.md) · [quality pack](docs/quality-pack.md) · [unattended runs](docs/runbook.md) ·
+  [the 2x2 kit, step by step](docs/repeat.md)
 - Studies and history: [docs/studies/](docs/studies/) · [docs/history/](docs/history/)
 - Known debt in the bench code, with owners and dates: [DEBT.md](DEBT.md)
 
 ## License
 
 Apache License 2.0. See [LICENSE.txt](../LICENSE.txt).
+
+Naming: pages under `docs/` use lowercase kebab-case; `README.md` and `DEBT.md` stay uppercase by convention.

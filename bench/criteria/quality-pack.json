@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "quality",
-  "description": "Anchored criteria for dimensions the task rubrics do not measure. Each level names what the judge can see in the output, with a count or a quotable construct where one exists. Scores are indicative until a person has rated a sample (see docs/QUALITY-PACK.md).",
+  "description": "Anchored criteria for dimensions the task rubrics do not measure. Each level names what the judge can see in the output, with a count or a quotable construct where one exists. Scores are indicative until a person has rated a sample (see docs/quality-pack.md).",
   "artifactTypes": {
     "code": "Product source files the agent created or changed (test files excluded).",
     "comments": "Comments or docstrings the agent added in product code.",
