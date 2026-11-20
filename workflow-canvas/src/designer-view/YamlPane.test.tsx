@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { YAML_WINDOW_LINES } from './line-window';
 import { BLOCK, FLOW, STAGES_FIRST, type SampleText } from './sample-texts';
 import { YamlPane, type MarkedStage } from './YamlPane';
@@ -319,6 +319,78 @@ describe('YamlPane', () => {
       const after = screen.getByRole('region', { name: 'Lines of other.yml' });
       expect(after).not.toBe(before);
       expect(after.scrollTop).toBe(0);
+    });
+
+    describe('the scroll of the box after a move', () => {
+      const ROW_PX = 20;
+      const BOX_PX = 300;
+      const BOX_TOP = 100;
+      const real = Element.prototype.getBoundingClientRect;
+
+      // jsdom lays nothing out: the box sits at BOX_TOP, BOX_PX high, and each
+      // row is ROW_PX high, placed by its place in the list and the box scroll.
+      beforeEach(() => {
+        Element.prototype.getBoundingClientRect = function (this: Element) {
+          const box = this.closest('.wf-code-scroll') as HTMLElement | null;
+          if (this.classList.contains('wf-code-scroll')) {
+            return { top: BOX_TOP, bottom: BOX_TOP + BOX_PX } as DOMRect;
+          }
+          if (this.tagName === 'LI' && box) {
+            const index = [...box.querySelectorAll('li')].indexOf(
+              this as HTMLLIElement,
+            );
+            const top = BOX_TOP + index * ROW_PX - box.scrollTop;
+            return { top, bottom: top + ROW_PX } as DOMRect;
+          }
+          return real.call(this);
+        };
+      });
+      afterEach(() => {
+        Element.prototype.getBoundingClientRect = real;
+      });
+
+      const box = () =>
+        screen.getByRole('region', { name: 'Lines of hello.yml' });
+
+      it('shows the first new line at the top after a move forward', () => {
+        render(<YamlPane file="hello.yml" text={numbered(3000)} />);
+        box().scrollTop = 500 * ROW_PX - BOX_PX;
+
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+        );
+        // Line 501 is the first row of the new window.
+        expect(box().scrollTop).toBe(0);
+        expect(numberOf(items()[0]!)).toBe(501);
+      });
+
+      it('shows the last new line at the bottom after a move back', () => {
+        render(<YamlPane file="hello.yml" text={numbered(3000)} />);
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+        );
+        box().scrollTop = 0;
+
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Show lines 1 to 500' }),
+        );
+        // Line 500, the last new line, is row 500 of the window 1 to 500.
+        expect(box().scrollTop).toBe(500 * ROW_PX - BOX_PX);
+        expect(numberOf(items()[0]!)).toBe(1);
+      });
+
+      it('keeps the scroll when the focus goes to the first new line', () => {
+        render(<YamlPane file="hello.yml" text={numbered(1200)} />);
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+        );
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Show lines 1,001 to 1,200' }),
+        );
+        // The window is 701 to 1,200, so line 1,001 is row 300.
+        expect(numberOf(document.activeElement as HTMLElement)).toBe(1001);
+        expect(box().scrollTop).toBe(300 * ROW_PX);
+      });
     });
 
     it('keeps the focus on the button while it remains', () => {

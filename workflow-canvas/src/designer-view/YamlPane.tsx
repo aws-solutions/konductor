@@ -8,6 +8,7 @@ import {
   shiftWindow,
   type LineWindow,
 } from './line-window';
+import { scrollTopFor } from './scroll-to-row';
 import { textLines } from './text-lines';
 
 /** The lines of one stage of the file, to mark. */
@@ -47,8 +48,10 @@ interface Moved {
  * `stage`, if given, are marked, and a note above the text says which they
  * are. A long file shows a window of its lines around the stage, or from the
  * top, with a button before and after it that shows the next lines that way.
- * After a move the focus stays on that button, or goes to the first newly
- * shown line when the button is gone.
+ * After a move forward the box shows the first newly shown line at its top,
+ * and after a move back the last one at its bottom, with no smooth scroll.
+ * The focus stays on that button, or goes to the first newly shown line when
+ * the button is gone, without scrolling the box again.
  */
 export function YamlPane({
   file,
@@ -83,27 +86,40 @@ export function YamlPane({
     [-1]: null,
     1: null,
   });
-  const focusAfterMove = useRef<
-    { direction: Direction; line: number } | undefined
+  const afterMove = useRef<
+    { direction: Direction; shown: LineWindow } | undefined
   >(undefined);
   useLayoutEffect(() => {
-    const pending = focusAfterMove.current;
+    const pending = afterMove.current;
     if (!pending) return;
-    focusAfterMove.current = undefined;
-    const button = buttons.current[pending.direction];
+    afterMove.current = undefined;
+    const { direction, shown } = pending;
+    const box = section.current?.querySelector('.wf-code-scroll');
+    const rows = section.current?.querySelectorAll('li');
+    const edge = direction === 1 ? shown.first : shown.last;
+    const target = rows?.[edge - first];
+    if (box instanceof HTMLElement && target instanceof HTMLElement) {
+      box.scrollTop = scrollTopFor(
+        box.getBoundingClientRect(),
+        target.getBoundingClientRect(),
+        box.scrollTop,
+        direction === 1 ? 'top' : 'bottom',
+      );
+    }
+    const button = buttons.current[direction];
     if (button) {
       button.focus();
       return;
     }
-    const row = section.current?.querySelectorAll('li')[pending.line - first];
+    const row = rows?.[shown.first - first];
     if (row instanceof HTMLElement) {
       row.tabIndex = -1;
-      row.focus();
+      row.focus({ preventScroll: true });
     }
   });
 
   function move(direction: Direction, shown: LineWindow) {
-    focusAfterMove.current = { direction, line: shown.first };
+    afterMove.current = { direction, shown };
     setMoved({ from, window: shiftWindow(window, total, direction) });
   }
 
