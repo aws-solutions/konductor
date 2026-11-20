@@ -11,17 +11,30 @@ export interface ShortcutKey {
   readonly repeat: boolean;
   /** True while an input method is composing text. */
   readonly isComposing: boolean;
+  /** 229 for a key that an input method takes. */
+  readonly keyCode: number;
 }
+
+// The key code of a key that an input method takes. Safari can send the
+// keydown that ends a composition after `compositionend`, with `isComposing`
+// false and this code.
+const COMPOSING_KEY_CODE = 229;
 
 /**
  * What a key press asks of the edit history: Ctrl+Z or Cmd+Z is `undo`, and
  * Ctrl+Shift+Z, Cmd+Shift+Z or Ctrl+Y is `redo`. Anything else is
  * `undefined` and left to the browser: a press with Alt, or with both Ctrl
  * and Cmd, a key held down so it repeats, and a key pressed inside an input
- * method composition, which some browsers report as the key `Process`.
+ * method composition, which some browsers report as the key `Process` or the
+ * key code 229.
  */
 export function undoShortcut(event: ShortcutKey): 'undo' | 'redo' | undefined {
-  if (event.isComposing || event.key === 'Process' || event.repeat) {
+  if (
+    event.isComposing ||
+    event.key === 'Process' ||
+    event.keyCode === COMPOSING_KEY_CODE ||
+    event.repeat
+  ) {
     return undefined;
   }
   if (event.altKey || event.ctrlKey === event.metaKey) return undefined;

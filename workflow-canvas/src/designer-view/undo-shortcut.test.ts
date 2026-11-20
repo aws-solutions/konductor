@@ -13,6 +13,7 @@ const press = (
   altKey: false,
   repeat: false,
   isComposing: false,
+  keyCode: 90,
   ...change,
 });
 
@@ -43,6 +44,10 @@ describe('undoShortcut', () => {
       press('z', { ctrlKey: true, isComposing: true }),
     ],
     ['the Process key of a composition', press('Process', { ctrlKey: true })],
+    [
+      'the key that ends a composition, sent after it with the key code 229',
+      press('z', { ctrlKey: true, isComposing: false, keyCode: 229 }),
+    ],
   ])('leaves %s to the browser', (_, event) => {
     expect(undoShortcut(event)).toBeUndefined();
   });
