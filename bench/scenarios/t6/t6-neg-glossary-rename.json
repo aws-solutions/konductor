@@ -130,29 +130,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal, files, constraints, and JSON block shapes without naming any method, technique, tool, or decoys."
+          "note": "task.json prompt names the requested files, terms, JSON shapes, and preservation constraints but does not prescribe a method or identify hidden traps."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain the current 'Workspace' terminology to be renamed, but no notes listing expected outputs or hidden test expectations."
+          "note": "fixture/docs/glossary.md and fixture/docs/product-prd.md show the current Workspace wording and metric facts, not the requested Project answers; no fixture file lists hidden findings or expected outputs."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests expect term='Project' with previous_term='Workspace', metrics baselines/targets match fixture (31%, 2,400, 40%, 3,000), and persona-mara.md 'desk workspace' and engineering-notes.md 'workspaceId' are present."
+          "note": "fixture/docs/glossary.md lines 5-17 contain the current term, definition, and previous_term field, while fixture/docs/product-prd.md lines 21-49 contain all three metric names, definitions, baselines, targets, and term_change values that the rename updates without changing facts."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Engineer can determine all required changes from prompt (rename Workspace to Project, retain former name in structured record, update only metrics table) by reading fixture files."
+          "note": "task.json gives precise file-scope and JSON-shape constraints, and fixture/docs/glossary.md plus fixture/docs/product-prd.md provide the complete source wording and metric values needed to perform the rename while preserving the PRD context and requirements sections."
         }
       ]
     }

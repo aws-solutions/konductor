@@ -64,8 +64,13 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "keep",
+    "decision": "fix",
     "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: no-method-or-decoy: The prompt field in task.json names the implementation approaches \"monthly partitions\" and an \"indexed bucket column\", and specifically requires deleting a month by that bucket, which points directly at the retention mechanism checked by the hidden tests.",
+      "recheck-failed: key-matches-fixture: Several expert-key claims conflict with fixture/architecture/query-patterns.md: it assigns resource_type queries 20% even though 20% is user activity by user_id, and recommends a resource_type index for those user-activity queries. The expected ~277 TB usage also does not leave the 20% headroom required by fixture/finance/budget-constraints.md, and the fixture gives no 120%/single-index overhead figures.",
+      "recheck-failed: solvable-from-fixture: The fixture supports raw retention arithmetic and identifies the query patterns, but it supplies no index-overhead assumptions or defined one-/two-index options from which the keyed 380+ TB and ~277 TB figures can be calculated. fixture/finance/budget-constraints.md additionally requires 20% headroom, which is incompatible with the key's ~277 TB usage under a 300 TB limit."
+    ],
     "dryRun": {
       "reference": 100,
       "stub": 0,
@@ -118,7 +123,34 @@
         "verdict": "pass",
         "note": "All required numbers present in fixture. Output format clearly specified. Tests verify both constraints are met and calculations are correct."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "fail",
+          "note": "The prompt field in task.json names the implementation approaches \"monthly partitions\" and an \"indexed bucket column\", and specifically requires deleting a month by that bucket, which points directly at the retention mechanism checked by the hidden tests."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture files provide requirements, query frequencies, traffic, pricing, and constraints, but no file states the expected option id, index-overhead values, selected schema, or completed decision JSON. The \"Must-Have Indexes\" section in fixture/architecture/query-patterns.md is input guidance rather than the reference answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "Several expert-key claims conflict with fixture/architecture/query-patterns.md: it assigns resource_type queries 20% even though 20% is user activity by user_id, and recommends a resource_type index for those user-activity queries. The expected ~277 TB usage also does not leave the 20% headroom required by fixture/finance/budget-constraints.md, and the fixture gives no 120%/single-index overhead figures."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The fixture supports raw retention arithmetic and identifies the query patterns, but it supplies no index-overhead assumptions or defined one-/two-index options from which the keyed 380+ TB and ~277 TB figures can be calculated. fixture/finance/budget-constraints.md additionally requires 20% headroom, which is incompatible with the key's ~277 TB usage under a 300 TB limit."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
