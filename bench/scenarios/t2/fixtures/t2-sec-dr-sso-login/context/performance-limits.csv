@@ -1,0 +1,15 @@
+component,metric,limit,unit,consequence
+auth-service,cpu_usage,85,percent,scale_out_trigger
+auth-service,memory_usage,90,percent,scale_out_trigger
+auth-service,response_time_p95,2000,milliseconds,alert
+auth-service,error_rate,1,percent,alert
+redis,session_lookup_time,50,milliseconds,alert
+redis,connection_usage,80,percent,scale_out_trigger
+postgresql,query_time_p95,100,milliseconds,alert
+postgresql,connections_active,150,count,scale_out_trigger
+external-idp,response_time_p95,3000,milliseconds,degraded_mode
+external-idp,error_rate,5,percent,fallback_to_password
+jwks-fetch,latency_p95,5000,milliseconds,use_cached_keys
+token-validation,throughput,1000,requests_per_second,queue_requests
+session-creation,rate,50,per_second,rate_limit
+account-linking,time_p95,500,milliseconds,async_processing

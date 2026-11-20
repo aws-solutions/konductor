@@ -1,0 +1,47 @@
+# Platform+ Security Policy - Authentication Section
+# Version: 2024.1
+# Effective Date: 2024-01-15
+
+authentication:
+  session:
+    max_duration_days: 30
+    sliding_expiration: true
+    idle_timeout_minutes: 120
+    absolute_timeout_days: 90
+    require_reauthentication_for:
+      - password_changes
+      - sensitive_operations
+      - after_14_days_inactivity
+    
+  tokens:
+    storage:
+      http_only_cookies: required
+      local_storage: prohibited
+      session_storage: allowed_temporary_only
+    validation:
+      signature_required: true
+      expiry_required: true
+      issuer_validation: required
+      
+  external_identity:
+    email_verification_required: true
+    minimum_issuer_assurance_level: "substantial"
+    back_channel_revocation_check: required_if_supported
+    max_session_without_revalidation_days: 7
+    
+  secrets:
+    rotation:
+      client_secrets_days: 90
+      signing_keys_days: 365
+    storage:
+      encrypted_at_rest: required
+      no_hardcoded_in_code: required
+
+incident_response:
+  account_takeover:
+    detection_threshold_minutes: 5
+    response_time_minutes: 15
+    required_actions:
+      - session_termination
+      - user_notification
+      - audit_log_review

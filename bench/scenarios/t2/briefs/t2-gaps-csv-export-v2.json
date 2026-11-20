@@ -1,0 +1,20 @@
+{
+  "id": "t2-gaps-csv-export-v2",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "gaps",
+  "wave": 2,
+  "author": "minimax-m2.5",
+  "reviewer": "glm-5",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://docs.python.org/3/library/csv.html",
+    "licence": "PSF-2.0 (docs.python.org/3/license.html)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Python 3.12 small-business CRM (contacts, deals, notes, an admin web layer on http.server, tests, docs). The PR adds export of contacts to CSV for admins. A teammate's review already caught some real issues. Plant what it missed: cell values that start with = + - @ are written as-is, so a contact name becomes a spreadsheet formula when opened; the whole table is loaded into memory although docs say tenants have up to two million contacts; dates are written in server local time without a zone; the export endpoint checks login but not the admin role; the file is written with no BOM although the docs say users open it in a spreadsheet that needs it; deleted contacts are included. No comment in the code, the diff or the PR description may name or hint at any planted problem.",
+  "stack": "python",
+  "pr": 64,
+  "note": "second family after the deepseek-3.2 draft of t2-gaps-csv-export was dropped"
+}

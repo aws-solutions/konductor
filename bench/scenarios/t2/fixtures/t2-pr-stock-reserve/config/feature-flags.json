@@ -1,0 +1,5 @@
+{
+  "catalogMirror": true,
+  "auditEvents": true,
+  "legacyCsvImport": false
+}

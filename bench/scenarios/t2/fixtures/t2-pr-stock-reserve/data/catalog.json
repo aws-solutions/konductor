@@ -1,0 +1,5 @@
+[
+  { "sku": "BEANS-1KG", "name": "House coffee beans", "sellable": true, "unit": "bag" },
+  { "sku": "SOAP-LAV", "name": "Lavender hand soap", "sellable": true, "unit": "bottle" },
+  { "sku": "MUG-BLUE", "name": "Blue stoneware mug", "sellable": false, "unit": "each" }
+]

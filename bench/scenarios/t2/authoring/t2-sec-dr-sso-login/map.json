@@ -1,0 +1,11 @@
+{
+  "targetSkills": ["adversarial-code-review-pass-security", "threat-modeling", "doc-accuracy-analyzer"],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": ["adversarial-code-review-pass-security", "threat-modeling"],
+    "mustNotLoad": ["adversarial-code-review", "adversarial-design-review"]
+  },
+  "twinIdea": "Implement the SSO sign-in flow in TypeScript based on the approved design.",
+  "why": "This is a security-focused design review requiring the security pass lens to catch auth/session vulnerabilities, threat modeling to identify attack vectors for a new SSO feature, and doc-accuracy-analyzer to cross-reference claims against security policy and incident history."
+}

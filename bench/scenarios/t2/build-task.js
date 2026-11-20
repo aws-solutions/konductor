@@ -62,7 +62,9 @@ function build(id, work) {
   const hidden = path.join(DIR, 'hidden', id, 'hidden');
   fs.rmSync(path.join(DIR, 'hidden', id), { recursive: true, force: true });
   fs.mkdirSync(hidden, { recursive: true });
-  for (const f of twin ? ['twin.test.cjs'] : ['findings.test.cjs', 'findings-key.cjs']) fs.copyFileSync(path.join(DIR, 'lib', f), path.join(hidden, f));
+  // The grader comes from bench/scenarios/lib/hidden at run time (.bench-lib.json); no copy is committed.
+  const helpers = twin ? { 'hidden/twin.test.cjs': 'twin.test.cjs' } : { 'hidden/findings.test.cjs': 'findings.test.cjs', 'hidden/findings-key.cjs': 'findings-key.cjs' };
+  fs.writeFileSync(path.join(DIR, 'hidden', id, '.bench-lib.json'), `${JSON.stringify(helpers, null, 2)}\n`);
   fs.writeFileSync(path.join(hidden, keyFile), `${JSON.stringify(key, null, 2)}\n`);
   copyDir(path.join(work, 'solution'), path.join(DIR, 'solutions', id));
 
@@ -72,9 +74,9 @@ function build(id, work) {
     : reviewChecks({ kind: brief.kind === 'design' ? 'design' : 'code', doc: brief.doc, unchangedPath: brief.kind === 'design' ? brief.doc : codeRoot(key), testsMin });
   const map = fs.existsSync(path.join(work, 'map.json')) ? readJson(path.join(work, 'map.json')) : null;
   const rawReview = fs.existsSync(path.join(work, 'review.json')) ? readJson(path.join(work, 'review.json')) : null;
-  // The last free dry run (authoring/<id>/dry-run.json) goes into pilot.dryRun; `lazy` is the shallow fake answer.
-  const dryFile = path.join(DIR, 'authoring', id, 'dry-run.json');
-  const dry = !twin && fs.existsSync(dryFile) ? { ...readJson(dryFile), date: fs.statSync(dryFile).mtime.toISOString().slice(0, 10) } : null;
+  // pilot (with pilot.dryRun) is written by the shared dry run (`lib/dry-run.js --record`); a rebuild keeps it.
+  const taskFile = path.join(DIR, `${id}.json`);
+  const pilot = fs.existsSync(taskFile) ? readJson(taskFile).pilot : undefined;
   const recheckFile = path.join(work, 'recheck.json');
   const recheck = fs.existsSync(recheckFile) ? readJson(recheckFile) : null;
   const review = rawReview && {
@@ -120,7 +122,7 @@ function build(id, work) {
     authorship: { family: FAMILY[brief.author], model: brief.author, date: brief.source.licenceCheckedAt, source },
     ...(review ? { review } : {}),
     ...(handEdited ? { handEdited } : {}),
-    ...(dry ? { pilot: { scores: {}, reference: dry.reference.score, stub: dry.stub.score, decision: Object.values(dry.gates).every(Boolean) ? 'keep' : 'fix', date: dry.date, dryRun: { reference: dry.reference.score, stub: dry.stub.score, lazy: dry.shallow.score, alt: dry.alt.score, date: dry.date } } } : {}),
+    ...(pilot ? { pilot } : {}),
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   return task;
