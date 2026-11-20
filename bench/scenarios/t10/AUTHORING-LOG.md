@@ -88,3 +88,6 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-dev-config-reload | audit | - | 0.00 | author, fix, map, review streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
 | t10-dev-config-reload | review disposition | - | 0.00 | the reviewer (qwen3-coder-next) failed hidden-answer because docs/config.md states the service's existing environment precedence; the worker recorded pass with the reviewer's text in the note (that doc describes current behaviour, not the answer) |
 | t10-dev-config-reload | free dry run | - | 0.00 | after the one fix round (lazy 59 to 34.7, alt cmd check repaired): reference 100, stub 12.2, lazy 34.7, alt 91.8, deterministic, per-test timeouts hold |
+| t10-neg-rename-field | author (stopped) | deepseek-3.2 | 16.00 | stopped at the 70 tool-call cap after about 22 minutes (estimate at 0.012 credits/s; a stopped stream reports none) |
+| t10-neg-rename-field | free dry run | - | 0.00 | reference 77.3, stub 43.7, lazy 52.1, alt 77.3 and a schema error in the checks. DROPPED (deepseek-3.2, no fix round: stub and reference both off the gates); files removed, brief kept |
+| t10-dev-csv-export | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: ~139.9 of 500 |
