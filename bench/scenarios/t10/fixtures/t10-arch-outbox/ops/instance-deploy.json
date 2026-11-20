@@ -1,0 +1,1 @@
+{ "instances": ["orders-a","orders-b"], "sequence": ["orders-a","orders-b"], "drainSeconds": 20 }

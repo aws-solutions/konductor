@@ -1,0 +1,1 @@
+{ "starter": { "maxOrdersPerMinute": 120 }, "growth": { "maxOrdersPerMinute": 900 }, "enterprise": { "maxOrdersPerMinute": 4000 } }

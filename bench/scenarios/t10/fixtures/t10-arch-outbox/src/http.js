@@ -1,0 +1,4 @@
+'use strict';
+const {createOrder,updatePaymentStatus,getOrder}=require('./orders');
+async function request(method,url,body,{store,clock=Date,broker}={}){try{if(method==='POST'&&url==='/orders')return {statusCode:201,body:createOrder(store,body,clock)}; const m=/^\/orders\/([^/]+)\/payment-status$/.exec(url); if(method==='PATCH'&&m)return {statusCode:202,body:updatePaymentStatus(store,decodeURIComponent(m[1]),body.status,clock,broker)}; const g=/^\/orders\/([^/]+)$/.exec(url); if(method==='GET'&&g){const order=getOrder(store,decodeURIComponent(g[1])); return order?{statusCode:200,body:order}:{statusCode:404,body:{code:'ORDER_NOT_FOUND'}};} return {statusCode:404,body:{code:'NOT_FOUND'}};}catch(e){return {statusCode:e.status||400,body:{code:e.code||'INVALID_INPUT',message:e.message}};}}
+module.exports={request};

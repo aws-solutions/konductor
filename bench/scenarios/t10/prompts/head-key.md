@@ -6,3 +6,8 @@ You are doing step B of writing ONE benchmark task for AI agents that do softwar
 
 Check every paragraph of `PLANTED.md` against the fixture yourself before you rely on it; correct what the author got wrong in YOUR files (tests, keys, solution) and leave out a trap you cannot see in the fixture. If the request promises an interface that `PLANTED.md` or the fixture does not support, make the tests follow the request. The request is the contract.
 
+
+## Budget
+
+You have at most about 80 tool calls. Write many files per call, never one call per file, and use only the tools you are given. Write `task-draft.json` early and improve it.
+

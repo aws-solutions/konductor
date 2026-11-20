@@ -26,3 +26,22 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-pm-plan-limits | review | glm-5 | 3.03 |  |
 | t10-pm-plan-limits | audit | - | 0.00 | map, review: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read. The fix stream's `otherBatch` entries are two tool-output files in the author's OWN scratch home (t10auth/home/.kiro/sessions), not another batch |
 | t10-pm-plan-limits | free dry run | - | 0.00 | after the one fix round: reference 100, stub 7.1, lazy 20, alt 100, deterministic, per-test timeouts hold (first run: reference 78.6 and alt 71.1, because two `cmd` checks used python3, which the machine lacks, and the alt writer reversed the rollout phases; the writer's options were set in the T10 config and the author's fix removed python and the leaking field names) |
+| t10-arch-outbox | author (planned) | deepseek-3.2 | - | abort limit 20 credits (1700 s, 70 tool calls); batch spend before: 10.60 of 500 |
+| t10-arch-outbox | author | deepseek-3.2 | 2.32 |  |
+| t10-arch-outbox | author (discarded) | deepseek-3.2 | 0.00 | the call above (2.32 credits) ended inside a malformed function call after 21 tool calls with no task file; per the batch rule the task is re-authored by the second family (qwen3-coder-next step A, minimax-m2.5 step B), not by gpt |
+| t10-arch-outbox | author step A (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 150 tool calls); batch spend before: 12.92 of 500 |
+| t10-arch-outbox | author step A (stopped) | qwen3-coder-next | 11.50 | stopped at the 150 tool-call cap after 16 minutes; the stream reports no credits when stopped, so this is an estimate at 0.012 credits/s; no PLANTED.md, no task-draft.json, a 38-file fixture whose own tests fail. Dropped (second-family step A failed); the brief goes to gpt-5.6-luna |
+| t10-arch-outbox | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 24.42 of 500 |
+| t10-arch-outbox | author | gpt-5.6-luna | 4.01 |  |
+| t10-arch-outbox | map (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-arch-outbox | map | glm-5 | 0.17 |  |
+| t10-arch-outbox | review (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-arch-outbox | review | glm-5 | 3.09 |  |
+| t10-arch-outbox | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 31.69 of 500; reason: the request names the design (outbox, lease, relay) |
+| t10-arch-outbox | fix | gpt-5.6-luna | 2.49 |  |
+| t10-arch-outbox | map (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-arch-outbox | map | glm-5 | 0.17 |  |
+| t10-arch-outbox | review (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-arch-outbox | review | glm-5 | 3.21 |  |
+| t10-arch-outbox | audit | - | 0.00 | author, fix, map, review streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
+| t10-arch-outbox | free dry run | - | 0.00 | after the one fix round (rename of the method names the request had leaked): reference 100, stub 3.6, lazy 34, alt 100, deterministic, per-test timeouts hold; the map and review calls above were run again on the fixed task |
