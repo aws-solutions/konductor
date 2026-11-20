@@ -70,7 +70,8 @@ function reviewed(v, disposition = {}) {
 }
 
 // Owner rule: a design-type task carries an expert key for the judges; its rubric item scores addressed items over all
-// items (the judge share stays at 30% or less). `why` says why code cannot check it.
+// items (the judge share stays at 30% or less). `why` says why code cannot check it. The loader replaces this item by one
+// criterion per expertKey item with the same total weight (runner/lib/expert-rubric.js); a task without it gets weight 3.
 function withExpertRubric(rubric, key, why = 'the items are engineering judgment, not a pattern in the text') {
   if (!key) return rubric;
   const item = { id: 'expert-key', weight: 3, criterion: `Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because ${why})` };

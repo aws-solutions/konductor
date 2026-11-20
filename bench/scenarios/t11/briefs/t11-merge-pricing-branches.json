@@ -1,0 +1,20 @@
+{
+  "id": "t11-merge-pricing-branches",
+  "kind": "code",
+  "fixture": "git",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "size": "35 to 60",
+  "ntests": "12 to 16",
+  "ntrap": 3,
+  "voice": "a developer who owns the repository, writing to a colleague before a release",
+  "source": {
+    "url": "https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging",
+    "licence": "CC BY-NC-SA 3.0 (checked on https://git-scm.com/book/en/v2, 2026-11-20); idea only: two lines of work that change the same code must be merged by hand; no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation. Role: developer. Repo: a Node.js order-pricing library used by a small online shop (cart lines, discounts, shipping, tax, rounding to cents). main has two unmerged feature branches, `feature/promo-codes` (promo codes: percent and fixed-amount codes with a minimum basket) and `feature/tax-regions` (tax rates per region from a config file), 3 to 6 commits each, both started from the same main commit. Both change the same pricing function, the same default config file, the changelog and the tests, so a merge stops with textual conflicts. Seed these traps: (1) a semantic conflict with no conflict marker: one branch renames a helper (or changes its arguments) that the other branch's new code calls, so a merge that only fixes the marked hunks still fails at run time; (2) main gained one commit after both branches started (for example a rounding fix: half-up to cents applied once at the end, not per line) that the merge must keep, and one branch carries an older copy of the same lines; (3) the order of steps matters and is stated in the repository docs (for example promo discount applies before tax, and shipping is not taxed in some regions), so a merge that keeps both features but in the wrong order gives wrong totals. The agent starts on main with a clean tree. The request: get both features into main so they work together, keep the visible suite green, and commit the result on main (no rebase of the feature branches; the branches stay as they are). Hidden tests check promo only, tax only, both together, the kept rounding fix, no conflict markers in any tracked file, a clean working tree, and that both branch tips are ancestors of main's HEAD."
+}

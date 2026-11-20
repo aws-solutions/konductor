@@ -5,14 +5,15 @@
     "checks: statement-id checks (TeamExecutionRoleOnly, RejectAdministrativeActions, UserProvisioning) the prompt never names replaced by one check on NotAction allows in any group policy",
     "limits raised from 90/180 to 1200/2400 s",
     "validate.js check made format and the NotAction check weighted 3, so checks that pass on the fixture stay at 25% of substance weight (stub 25.3 before)",
-    "expertKey added"
+    "expertKey added",
+    "2026-11-20 (mate task-fix worker): hidden 'cannot' tests now check the IAM outcome (identity plus boundary refuses the request), not that the group policy holds an explicit Deny; a boundary-deny design is equally correct because the boundary applies to every group; added one test that the boundary is a real ceiling (an allow-everything member still cannot raise rights); tests min 26 -> 27; each 'cannot' test and the ceiling test count only when the group can still do its guide's work (so the fixture boundary, which allows nothing, earns no refusal); PassRole requests carry iam:PassedToService=lambda.amazonaws.com as IAM sends it, so a policy scoped to Lambda is not marked wrong; alt answer replaced by an independent boundary-deny design (the pilot vanilla answer), not reordered keys"
   ],
   "prompt": "An access audit found that our developers can make themselves account admins, and I suspect the other groups have the same kind of hole. Please tighten the IAM policies under iam/ (iam/groups/developers.json, iam/groups/analysts.json, iam/groups/on-call.json and iam/permissions-boundary.json, which applies to every group) so that no member of any group can raise their own rights or anyone else's, by any route. Each group must still be able to do the work its guide in docs/ describes, on the resources named in config/account.json. Requests carry the caller's aws:username. Do not change config/account.json, the docs, src/validate.js, package.json or the existing tests; node src/validate.js must still print a clean summary and node --test must pass. Keep the files valid IAM policy JSON.",
   "checks": [
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 26,
+      "min": 27,
       "weight": 3,
       "kind": "substance"
     },

@@ -56,7 +56,7 @@ describe('ADR document validation', () => {
       const context = contextSection[1];
       
       // Should mention key numbers
-      assert(context.includes('8 million'), 'Should mention 8 million daily events');
+      assert(context.includes('11 million'), 'Should mention 11 million daily events');
       assert(context.includes('90KB'), 'Should mention 90KB message size');
       assert(context.includes('400'), 'Should mention 400 events/second peak');
       assert(context.includes('$900'), 'Should mention $900 budget');

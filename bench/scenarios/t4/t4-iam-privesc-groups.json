@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-privesc-groups",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -18,7 +18,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 26,
+      "min": 27,
       "weight": 3,
       "kind": "substance"
     },
@@ -190,19 +190,19 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 18.1,
+    "stub": 17.7,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 18.1,
-      "lazy": 18.1,
+      "stub": 17.7,
+      "lazy": 17.7,
       "alt": 100,
       "date": "2026-11-20"
     }

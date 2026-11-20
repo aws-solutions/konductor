@@ -3,7 +3,8 @@
     "prompt rewritten (the draft listed every fix: external ids, the org condition, which session actions to allow and deny, the exact monitoring scope)",
     "checks: text checks that required one action name replaced by checks on the two worst grants",
     "limits raised from 8/16 to 1200/2400 s",
-    "expertKey added (judge-only; evaluator-checked items left out)"
+    "expertKey added (judge-only; evaluator-checked items left out)",
+    "2026-11-20 (mate task-fix worker): task review: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): trust-design-explained"
   ],
   "prompt": "Before we onboard another outside service, I want the roles we already give outsiders tightened. The trust and permission policies are under infra/roles/: monitoring, backup, partner CI, and our own cross-account deploy role. The onboarding records in docs/integrations/ (one page per party) and config/accounts.json are the source of truth for who may assume each role and under what conditions; do not change them. Make each trust policy accept exactly who its page says, under the conditions its page gives, and nothing else. The monitoring vendor only reads metrics and logs for a dashboard, so cut its permission policy down to that. Leave the other permission policies alone. Keep every file valid IAM policy JSON, keep npm test, npm run lint and scripts/check-iam.js working, and add no dependencies.",
   "checks": [
@@ -134,5 +135,12 @@
         "note": "Every hidden test checks a behavior the prompt explicitly requires or follows directly from documented values; a careful engineer who reads the docs and follows AWS IAM patterns can pass all tests."
       }
     ]
-  }
+  },
+  "rubric": [
+    {
+      "id": "trust-design-explained",
+      "weight": 2,
+      "criterion": "The final message explains the design of each trust condition so the next onboarding can copy it. Fail: lists the changes with no reason, or gives a wrong reason (for example says the external id protects our own deploy role). Partial: explains one of: why the vendor roles need an external id (confused deputy), why the organisation condition is there, why a role ARN rather than an account root is trusted; quoted. Pass: explains all three correctly, scopes log reads to named log groups or says why not, and gives a check or template the next vendor goes through. (code cannot check this because the hidden tests check which principals are accepted, not whether the reasons are right or reusable)"
+    }
+  ]
 }

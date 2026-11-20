@@ -1,0 +1,12 @@
+{
+  "name": "lantern-cart-pricing",
+  "version": "2.3.0",
+  "description": "Small order pricing rules for Lantern Market",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

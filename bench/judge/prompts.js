@@ -19,8 +19,16 @@ function rubricLines(rubric) {
   return rubric.map((r) => `- id: ${r.id} | weight ${r.weight} | ${r.criterion}`).join('\n');
 }
 
+// D-62: the expert key's items reach the judge as `expert:` rubric criteria (runner/lib/expert-rubric.js); its weak
+// answers are listed here, so a judge can tell a shallow mention from the point itself.
+function weakAnswerLines(task) {
+  const weak = task.expertKey?.weakAnswers ?? [];
+  if (!weak.length) return '';
+  return `\n\nWEAK ANSWERS (judge only; an output that makes an expert: point only in one of these ways fails that criterion):\n${weak.map((w) => `- ${w}`).join('\n')}`;
+}
+
 function head(task, answerKey) {
-  return `TASK GIVEN TO THE AGENT:\n${task.prompt}\n\nRUBRIC:\n${rubricLines(task.rubric)}\n\nANSWER KEY (judge only):\n${answerKey ?? '(none provided)'}`;
+  return `TASK GIVEN TO THE AGENT:\n${task.prompt}\n\nRUBRIC:\n${rubricLines(task.rubric)}${weakAnswerLines(task)}\n\nANSWER KEY (judge only):\n${answerKey ?? '(none provided)'}`;
 }
 
 function rubricPrompt({ task, answerKey, bundleText }) {

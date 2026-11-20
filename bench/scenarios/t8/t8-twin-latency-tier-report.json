@@ -1,7 +1,7 @@
 {
   "id": "t8-twin-latency-tier-report",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -40,7 +40,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "counting-rule-stated",
+      "weight": 1,
+      "criterion": "The final message states the counting rules used (path filter, health checks excluded, succeeded below 400, UTC hours) and any records it could not parse. Fail: no rules stated, or rules that differ from the code. Partial: rules stated, but unparsed or skipped records are not mentioned. Pass: all rules stated as applied, with the count of skipped or unparsed records. (code cannot check this because the file checks see totals, not whether the report says how they were counted)"
+    }
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -100,7 +106,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

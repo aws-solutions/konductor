@@ -22,7 +22,7 @@ function setup(spec, benchOpts) {
   return { root, build };
 }
 
-test('bundle has final text, changed files only, and check results', () => {
+test('bundle has final text and changed files only, and never the check results (F4)', () => {
   const { root, build } = setup({ finalText: 'All fixed.', files: { 'a.txt': 'alpha fixed\n', 'new.md': '# notes\n' } });
   try {
     const { text } = build();
@@ -31,7 +31,7 @@ test('bundle has final text, changed files only, and check results', () => {
     assert.match(text, /alpha fixed/);
     assert.match(text, /new\.md/);
     assert.doesNotMatch(text, /bravo/, 'unchanged fixture file must not be shown');
-    assert.match(text, /PASS file_exists a\.txt/);
+    assert.doesNotMatch(text, /PASS file_exists|Deterministic check results/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

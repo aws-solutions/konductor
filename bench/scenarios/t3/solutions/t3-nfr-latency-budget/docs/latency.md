@@ -22,9 +22,9 @@ This exceeds the target p99 latency of ≤ 600 ms specified in the requirements.
 - **Analysis**: Does not meet 600 ms requirement
 
 ### Option 2: Parallel Processing Only
-- **Cost**: $0/month (from cost sheet)
+- **Cost**: $50/month ($0 infrastructure + $50 maintenance)
 - **Latency**: Gateway(40) + Auth(60) + max(Pricing(190), Inventory(150)) + Payment(280) = 40 + 60 + 190 + 280 = 570 ms
-- **Analysis**: Meets 600 ms requirement, zero additional cost
+- **Analysis**: Meets 600 ms requirement, minimal additional cost
 
 ### Option 3: Pricing Cache Only  
 - **Cost**: $900/month ($800 cache + $100 maintenance)
@@ -42,7 +42,7 @@ This exceeds the target p99 latency of ≤ 600 ms specified in the requirements.
 **Current baseline cost**: $900 (from cost-analysis.md)
 **Available for optimizations**: $100 (within $1,000 ceiling)
 
-- **Parallel only**: $0/month → Fits within $100 budget ($900 total)
+- **Parallel only**: $50/month → Fits within $100 budget ($950 total)
 - **Cache options**: $900/month → Exceeds $1,000 ceiling ($1,800 total)
 
 ## Recommendation
@@ -68,10 +68,10 @@ The parallel processing approach leverages the architectural insight that pricin
     },
     "monthly_budget_usd": {
       "limit": 1000,
-      "value": 900
+      "value": 950
     }
   },
-  "monthly_cost_usd": 0
+  "monthly_cost_usd": 50
 }
 ```
 

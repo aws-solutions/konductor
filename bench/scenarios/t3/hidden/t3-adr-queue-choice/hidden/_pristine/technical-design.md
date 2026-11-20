@@ -33,7 +33,7 @@ Based on historical data from our staging environment:
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Daily event count | 8,000,000 | Consistent across weekdays |
+| Daily event count | 11,000,000 | Consistent across weekdays |
 | Peak hour rate | 1,440,000 events/hour | During marketing campaigns |
 | Peak second rate | 400 events/second | Sustained for up to 30 minutes |
 | Average event size | 90 KB | Includes metadata and timestamps |

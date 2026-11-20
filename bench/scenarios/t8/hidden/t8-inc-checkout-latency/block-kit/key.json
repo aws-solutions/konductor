@@ -13,7 +13,7 @@
       "none": [
         "receipt|template|garbage.collect|\\bgc\\b"
       ],
-      "weight": 3
+      "weight": 1
     },
     {
       "id": "cause-evidence",
@@ -42,7 +42,7 @@
         }
       ],
       "min": 2,
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "evidence-precision",
@@ -57,51 +57,7 @@
         "pool (exhausted|saturated|full)|configured=12"
       ],
       "min": 0.5,
-      "weight": 2
-    },
-    {
-      "id": "timeline-config-change",
-      "type": "some",
-      "path": "timeline",
-      "match": {
-        "all": [
-          "40",
-          "12",
-          "pool|config"
-        ],
-        "timeNear": {
-          "time": "2026-03-17T17:42:00Z",
-          "tolMin": 2
-        }
-      }
-    },
-    {
-      "id": "timeline-first-symptom",
-      "type": "some",
-      "path": "timeline",
-      "match": {
-        "all": [
-          "p99|latency|wait"
-        ],
-        "timeNear": {
-          "time": "2026-03-17T18:03:00Z",
-          "tolMin": 2
-        }
-      }
-    },
-    {
-      "id": "timeline-failures",
-      "type": "some",
-      "path": "timeline",
-      "match": {
-        "all": [
-          "503|timeout|limit"
-        ],
-        "timeNear": {
-          "time": "2026-03-17T18:04:00Z",
-          "tolMin": 2
-        }
-      }
+      "weight": 1
     },
     {
       "id": "timeline-mitigation",
@@ -115,7 +71,8 @@
           "time": "2026-03-17T18:41:00Z",
           "tolMin": 2
         }
-      }
+      },
+      "weight": 1
     },
     {
       "id": "timeline-recovery",
@@ -129,90 +86,48 @@
           "time": "2026-03-17T18:43:00Z",
           "tolMin": 2
         }
-      }
-    },
-    {
-      "id": "timeline-order",
-      "type": "order",
-      "path": "timeline",
-      "first": {
-        "all": [
-          "pool|config"
-        ],
-        "timeNear": {
-          "time": "2026-03-17T17:42:00Z",
-          "tolMin": 2
-        }
       },
-      "then": {
-        "all": [
-          "503|timeout"
-        ],
-        "timeNear": {
-          "time": "2026-03-17T18:04:00Z",
-          "tolMin": 2
-        }
-      }
+      "weight": 1
     },
     {
-      "id": "timeline-concise",
+      "id": "timeline-complete",
       "type": "maxLen",
       "path": "timeline",
       "max": 15,
-      "min": 5
+      "min": 5,
+      "weight": 1
     },
     {
       "id": "impact-duration",
       "type": "number",
       "path": "impact.durationMinutes",
       "value": 40,
-      "tol": 2
+      "tol": 2,
+      "weight": 4
     },
     {
       "id": "impact-failures",
       "type": "number",
       "path": "impact.failedRequests",
       "value": 407,
-      "tolPct": 5
+      "tolPct": 5,
+      "weight": 4
     },
     {
       "id": "impact-p99",
       "type": "number",
       "path": "impact.peakP99Ms",
       "value": 3505,
-      "tolPct": 5
+      "tolPct": 5,
+      "weight": 5
     },
     {
-      "id": "action-fix",
-      "type": "some",
-      "path": "actionItems",
-      "match": {
-        "field": "text",
-        "all": [
-          "pool|connection",
-          "40|restore|pin|review",
-          "runtime|config|reject"
-        ]
-      }
-    },
-    {
-      "id": "action-guard",
-      "type": "some",
-      "path": "actionItems",
-      "match": {
-        "field": "text",
-        "all": [
-          "alert|page|monitor",
-          "pool_waiters|p99|five_xx|drift"
-        ]
-      }
-    },
-    {
-      "id": "actions-concise",
+      "id": "actions-complete",
       "type": "maxLen",
       "path": "actionItems",
       "max": 10,
-      "min": 2
+      "min": 3,
+      "weight": 1
     }
   ]
 }

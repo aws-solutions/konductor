@@ -1,0 +1,24 @@
+{
+  "id": "t11-docx-room-booking-reqs",
+  "kind": "doc",
+  "media": "docx",
+  "twoStep": true,
+  "phase": "requirements",
+  "role": "pm",
+  "author": "qwen3-coder-next",
+  "reviewer": "minimax-m2.5",
+  "size": "20 to 40",
+  "stack": "A product docs folder: Markdown requirement files in the team's own format, a template, a glossary, meeting notes and one Word document. No code, no package file and no install step.",
+  "voice": "a product manager who received a stakeholder's Word spec and needs it in the team's format",
+  "outFile": "docs/requirements/room-booking.md",
+  "blockFields": "`requirements` (a list of `{id, text, priority, source}`; priority is one of must, should, could; source names the spec section) and `openQuestions` (a list of `{question, sections}`)",
+  "nItems": "14 to 18",
+  "source": {
+    "url": "https://en.wikipedia.org/wiki/Software_requirements_specification",
+    "licence": "CC BY-SA 4.0 (checked on the page footer, 2026-11-20); idea only: a written spec turned into numbered, testable requirements; no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "briefLine": "A stakeholder's Word spec for a library meeting-room booking feature (`inbox/room-booking-spec-v3.docx`) must become requirements in the team's Markdown format in `docs/requirements/room-booking.md`, ending with a JSON block of requirements and open questions.",
+  "brief": "Phase: requirements. Role: PM. Folder: the product docs of a city library's online services (existing requirement files under `docs/requirements/` in the team's format with ids like `RB-001`, a template, a glossary, old meeting notes), and a Word document from a stakeholder, `inbox/room-booking-spec-v3.docx`, describing a new meeting-room booking feature for library members (who may book, how far ahead, how long, rooms and capacities, cancellation and no-show rules, staff overrides, accessibility needs, reminders). Seed these traps, all inside the Word document: (1) a table of limits in which one value is superseded by a later 'Revision notes' section (for example the longest booking changes from 4 hours to 3 hours); the requirement must carry the new value; (2) one requirement stated only in a table footnote or a small-print note under a table; (3) two sections that contradict each other (for example one says members under 16 can book alone, another says they need a guardian account); this must become an open question naming both sections, not a requirement; (4) a 'Wish list' section in italics whose items are nice to have (priority could, not must); (5) a pasted chat excerpt from a meeting that holds opinions and no decided requirement (a decoy). The request asks for the requirements in the team's format in `docs/requirements/room-booking.md`, one requirement per testable statement, each with a priority and the spec section it came from, open questions listed separately, and the document ending with one fenced json block holding `requirements` and `openQuestions`, so the team's tracker can import it."
+}
