@@ -56,3 +56,7 @@ Coverage-review wave (2026-11-20), batch CV-B: estimate 225 credits, stop 450. T
 | task | step | model | credits | note |
 | --- | --- | --- | --- | --- |
 | t9-accessibility-performance-nfr | author (stopped by a counting bug in the worker run script after 13 tool calls) | claude-sonnet-5.5 | 15.00 | the cut stream reports no credits, so the abort limit is counted; the author continues from its files |
+| t9-accessibility-performance-nfr | cont | claude-sonnet-5.5 | 10.58 |  |
+| t9-accessibility-performance-nfr | map | glm-5 | 0.16 |  |
+| t9-accessibility-performance-nfr | review | glm-5 | 4.99 |  |
+| t9-state-management-refactor | data | gpt-5.6-luna | 1.65 |  |

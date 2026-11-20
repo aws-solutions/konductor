@@ -1,0 +1,13 @@
+{
+  "name": "tidewell-order-history",
+  "version": "0.4.2",
+  "private": true,
+  "description": "Order history page for the Tidewell Supply shop (static, no build step).",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "generate-data": "node tools/generate-orders.js",
+    "serve": "node tools/serve.js"
+  },
+  "engines": { "node": ">=24" },
+  "license": "UNLICENSED"
+}
