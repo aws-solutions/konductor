@@ -56,3 +56,11 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-dev-quiet-hours-digest | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 66.24 of 500; reason: ESM block tests, stray file, lazy 50.1 |
 | t10-dev-quiet-hours-digest | fix | gpt-5.6-luna | 3.75 |  |
 | t10-dev-quiet-hours-digest | free dry run | - | 0.00 | after the one fix round and a logged hand edit of two check commands: reference 100, stub 3.2, alt 100, lazy 54.8 (gate 40). DROPPED: no map, review or recheck; files removed, the brief and `authoring/` record kept |
+| t10-dev-audit-trail | author step A (planned) | minimax-m2.5 | - | abort limit 20 credits (1700 s, 100 tool calls); second family, two-step (A minimax-m2.5, B qwen3-coder-next: swapped from the first try after qwen's step A failed twice) |
+| t10-dev-audit-trail | author step A (stopped) | minimax-m2.5 | 13.00 | stopped at the 100 tool-call cap; the stream reports no credits when stopped, so this is an estimate at 0.012 credits/s over about 18 minutes; PLANTED.md, task-draft.json (id, prompt) and a 59-file fixture with 92 passing tests were written |
+| t10-dev-audit-trail | author step B (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 150 tool calls); batch spend before: 83.0 of 500 |
+| t10-dev-audit-trail | author step B (interrupted) | qwen3-coder-next | 0.50 | the call was ended by a signal when the worker session was interrupted, 2 minutes in (estimate at 0.012 credits/s); no draft written; rerun below, not a fix round |
+| t10-dev-audit-trail | author step B rerun (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 150 tool calls); batch spend before: 83.5 of 500 |
+| t10-dev-audit-trail | author-key | qwen3-coder-next | 0.00 |  |
+| t10-dev-audit-trail | author step B rerun (stopped) | qwen3-coder-next | 17.40 | stopped at the 150 tool-call cap after 24 minutes (estimate at 0.012 credits/s); the key and reference were unfinished |
+| t10-dev-audit-trail | free dry run | - | 0.00 | reference 40.4, stub 4.8, lazy 17.8, alt 40.4 (design key 2 of 15, rollout key 0 of 10 on the reference). DROPPED: second-family two-step failed; no map, review or fix; files removed, brief kept |
