@@ -63,7 +63,7 @@ describe('reduceDraft', () => {
     expect(draftStatus(startDraft('v0'))).toBe('unchecked');
 
     const draft = after(edited('v1'));
-    expect(draft).toEqual({ text: 'v1', revision: 1 });
+    expect(draft).toEqual({ text: 'v1', revision: 1, opened: 0 });
     expect(draftStatus(draft)).toBe('waiting');
   });
 
@@ -115,7 +115,7 @@ describe('reduceDraft', () => {
     ]);
   });
 
-  it('takes an answer with no error but no view as not good', () => {
+  it('takes an answer with no error but no view as not good, and its text as invalid', () => {
     const draft = after(
       edited('v1'),
       sent(1),
@@ -123,6 +123,31 @@ describe('reduceDraft', () => {
     );
 
     expect(draft.lastGood).toBeUndefined();
+    expect(draftStatus(draft)).toBe('invalid');
+  });
+
+  it('starts over on an open, dropping every answer, failure and check before it', () => {
+    const before = after(
+      edited('v1'),
+      sent(1),
+      checked(1, GOOD),
+      edited('v2'),
+      sent(2),
+    );
+    const draft = reduceDraft(before, { type: 'opened', text: 'other' });
+
+    expect(draft).toEqual({ text: 'other', revision: 3, opened: 3 });
+    expect(draftStatus(draft)).toBe('unchecked');
+    expect(currentAnswer(draft)).toBeUndefined();
+    expect(reduceDraft(draft, checked(2, BAD))).toBe(draft);
+  });
+
+  it('starts over on an open of the same text', () => {
+    const before = after(edited('v1'), sent(1), checked(1, GOOD));
+    const draft = reduceDraft(before, { type: 'opened', text: 'v1' });
+
+    expect(draft.lastGood).toBeUndefined();
+    expect(draftStatus(draft)).toBe('unchecked');
   });
 
   it('says why a check failed, until the next edit', () => {

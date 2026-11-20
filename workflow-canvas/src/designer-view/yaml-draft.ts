@@ -67,8 +67,13 @@ export const CHECK_PAUSE_MS = 400;
 /** The edited text of a workflow, and what the checks have said of it. */
 export interface YamlDraft {
   readonly text: string;
-  /** Goes up by one with each edit, so an answer names the text it is for. */
+  /**
+   * Goes up by one with each edit and each open, so an answer names the text
+   * it is for, and an answer for a workflow opened before is dropped.
+   */
   readonly revision: number;
+  /** The revision of the last open: the text as loaded, which is not checked. */
+  readonly opened: number;
   /** The revision whose check is in flight. */
   readonly sent?: number;
   /** The latest answer, and the revision it is for. */
@@ -84,6 +89,7 @@ export interface YamlDraft {
 
 /** What happened to the draft. */
 export type DraftEvent =
+  | { readonly type: 'opened'; readonly text: string }
   | { readonly type: 'edited'; readonly text: string }
   | { readonly type: 'check-sent'; readonly revision: number }
   | {
@@ -99,15 +105,16 @@ export type DraftEvent =
 
 /** A draft of `text` that no check has looked at. */
 export function startDraft(text: string): YamlDraft {
-  return { text, revision: 0 };
+  return { text, revision: 0, opened: 0 };
 }
 
 // The draft with no check in flight and no failure.
 function settled(draft: YamlDraft): YamlDraft {
-  const { text, revision, checked, lastGood } = draft;
+  const { text, revision, opened, checked, lastGood } = draft;
   return {
     text,
     revision,
+    opened,
     ...(checked ? { checked } : {}),
     ...(lastGood ? { lastGood } : {}),
   };
@@ -118,11 +125,17 @@ function isGood(answer: CheckAnswer): boolean {
 }
 
 /**
- * The draft after `event`. An edit to the same text changes nothing. An
- * answer or a failure for an older revision is dropped, as the text it was
- * for is gone, and so is the answer of a check that was not sent.
+ * The draft after `event`. An open, as of another workflow, starts again
+ * from its text: every answer, failure and check of the text before is
+ * dropped. An edit to the same text changes nothing. An answer or a failure
+ * for an older revision is dropped, as the text it was for is gone, and so
+ * is the answer of a check that was not sent.
  */
 export function reduceDraft(draft: YamlDraft, event: DraftEvent): YamlDraft {
+  if (event.type === 'opened') {
+    const revision = draft.revision + 1;
+    return { text: event.text, revision, opened: revision };
+  }
   if (event.type === 'edited') {
     if (event.text === draft.text) return draft;
     return {
@@ -161,12 +174,13 @@ export function currentAnswer(draft: YamlDraft): CheckAnswer | undefined {
 /**
  * Where the check of the current text is: `unchecked` before any edit,
  * `waiting` for the person to stop typing, `checking` while the call is in
- * flight, then `valid`, `invalid` or `failed`.
+ * flight, then `valid`, `invalid` or `failed`. An answer is `valid` only with
+ * no error and a view to draw, the rule `lastGood` follows.
  */
 export function draftStatus(draft: YamlDraft): DraftStatus {
   if (draft.sent === draft.revision) return 'checking';
   if (draft.failure?.revision === draft.revision) return 'failed';
   const answer = currentAnswer(draft);
-  if (answer) return answer.errors === 0 ? 'valid' : 'invalid';
-  return draft.revision === 0 ? 'unchecked' : 'waiting';
+  if (answer) return isGood(answer) ? 'valid' : 'invalid';
+  return draft.revision === draft.opened ? 'unchecked' : 'waiting';
 }
