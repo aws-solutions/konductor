@@ -1,0 +1,1446 @@
+2026-11-20T12:00:02.507Z LOG:  connection stats: active=32 idle=7
+2026-11-20T12:00:20.066Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T12:00:28.892Z LOG:  checkpoint complete: wrote 1402 buffers; write=5.582 s
+2026-11-20T12:01:05.260Z LOG:  connection stats: active=30 idle=17
+2026-11-20T12:02:01.885Z LOG:  connection stats: active=22 idle=9
+2026-11-20T12:03:00.951Z LOG:  connection stats: active=31 idle=9
+2026-11-20T12:03:30.209Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T12:04:02.419Z LOG:  connection stats: active=22 idle=19
+2026-11-20T12:05:01.853Z LOG:  connection stats: active=30 idle=5
+2026-11-20T12:05:29.949Z LOG:  checkpoint complete: wrote 2003 buffers; write=8.221 s
+2026-11-20T12:05:45.838Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T12:06:01.311Z LOG:  connection stats: active=37 idle=12
+2026-11-20T12:07:01.102Z LOG:  connection stats: active=34 idle=8
+2026-11-20T12:08:05.321Z LOG:  connection stats: active=39 idle=18
+2026-11-20T12:09:03.713Z LOG:  connection stats: active=31 idle=19
+2026-11-20T12:10:05.182Z LOG:  connection stats: active=26 idle=14
+2026-11-20T12:10:30.699Z LOG:  checkpoint complete: wrote 544 buffers; write=6.834 s
+2026-11-20T12:11:01.505Z LOG:  connection stats: active=37 idle=8
+2026-11-20T12:12:02.222Z LOG:  connection stats: active=39 idle=16
+2026-11-20T12:13:00.887Z LOG:  connection stats: active=23 idle=10
+2026-11-20T12:13:54.888Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T12:14:05.197Z LOG:  connection stats: active=37 idle=9
+2026-11-20T12:15:04.721Z LOG:  connection stats: active=25 idle=6
+2026-11-20T12:15:15.663Z LOG:  checkpoint complete: wrote 1179 buffers; write=3.965 s
+2026-11-20T12:16:04.696Z LOG:  connection stats: active=19 idle=16
+2026-11-20T12:17:05.809Z LOG:  connection stats: active=20 idle=13
+2026-11-20T12:18:02.647Z LOG:  connection stats: active=36 idle=15
+2026-11-20T12:19:05.410Z LOG:  connection stats: active=37 idle=7
+2026-11-20T12:20:05.809Z LOG:  connection stats: active=31 idle=15
+2026-11-20T12:20:56.000Z LOG:  checkpoint complete: wrote 1586 buffers; write=7.639 s
+2026-11-20T12:21:03.362Z LOG:  connection stats: active=34 idle=10
+2026-11-20T12:22:04.750Z LOG:  connection stats: active=18 idle=7
+2026-11-20T12:23:03.596Z LOG:  connection stats: active=27 idle=9
+2026-11-20T12:24:00.299Z LOG:  connection stats: active=22 idle=17
+2026-11-20T12:25:05.752Z LOG:  connection stats: active=40 idle=11
+2026-11-20T12:25:25.458Z LOG:  checkpoint complete: wrote 1644 buffers; write=7.518 s
+2026-11-20T12:26:01.707Z LOG:  connection stats: active=36 idle=14
+2026-11-20T12:27:05.672Z LOG:  connection stats: active=19 idle=16
+2026-11-20T12:27:39.471Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T12:28:03.919Z LOG:  connection stats: active=38 idle=17
+2026-11-20T12:28:41.565Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T12:29:00.179Z LOG:  connection stats: active=23 idle=12
+2026-11-20T12:30:02.590Z LOG:  connection stats: active=27 idle=9
+2026-11-20T12:30:29.697Z LOG:  checkpoint complete: wrote 1506 buffers; write=3.633 s
+2026-11-20T12:31:03.714Z LOG:  connection stats: active=19 idle=18
+2026-11-20T12:32:00.575Z LOG:  connection stats: active=36 idle=5
+2026-11-20T12:33:02.021Z LOG:  connection stats: active=36 idle=17
+2026-11-20T12:34:03.522Z LOG:  connection stats: active=25 idle=7
+2026-11-20T12:35:00.124Z LOG:  connection stats: active=28 idle=13
+2026-11-20T12:35:08.811Z LOG:  checkpoint complete: wrote 1274 buffers; write=8.138 s
+2026-11-20T12:36:03.123Z LOG:  connection stats: active=37 idle=10
+2026-11-20T12:37:00.950Z LOG:  connection stats: active=32 idle=10
+2026-11-20T12:38:02.850Z LOG:  connection stats: active=38 idle=6
+2026-11-20T12:39:00.665Z LOG:  connection stats: active=37 idle=18
+2026-11-20T12:40:00.166Z LOG:  checkpoint complete: wrote 573 buffers; write=1.302 s
+2026-11-20T12:40:03.250Z LOG:  connection stats: active=36 idle=5
+2026-11-20T12:41:00.553Z LOG:  connection stats: active=24 idle=10
+2026-11-20T12:42:02.754Z LOG:  connection stats: active=20 idle=17
+2026-11-20T12:43:05.447Z LOG:  connection stats: active=18 idle=9
+2026-11-20T12:43:10.594Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T12:44:01.942Z LOG:  connection stats: active=21 idle=6
+2026-11-20T12:45:02.862Z LOG:  connection stats: active=38 idle=19
+2026-11-20T12:45:15.406Z LOG:  checkpoint complete: wrote 1641 buffers; write=7.234 s
+2026-11-20T12:46:02.486Z LOG:  connection stats: active=37 idle=8
+2026-11-20T12:47:03.249Z LOG:  connection stats: active=40 idle=15
+2026-11-20T12:48:03.339Z LOG:  connection stats: active=40 idle=15
+2026-11-20T12:49:04.276Z LOG:  connection stats: active=29 idle=18
+2026-11-20T12:50:00.324Z LOG:  connection stats: active=28 idle=18
+2026-11-20T12:50:46.830Z LOG:  checkpoint complete: wrote 1724 buffers; write=6.674 s
+2026-11-20T12:51:00.729Z LOG:  connection stats: active=30 idle=15
+2026-11-20T12:52:02.033Z LOG:  connection stats: active=24 idle=18
+2026-11-20T12:53:03.394Z LOG:  connection stats: active=24 idle=12
+2026-11-20T12:54:00.874Z LOG:  connection stats: active=28 idle=10
+2026-11-20T12:55:04.421Z LOG:  connection stats: active=32 idle=5
+2026-11-20T12:55:48.294Z LOG:  checkpoint complete: wrote 1135 buffers; write=5.654 s
+2026-11-20T12:56:01.335Z LOG:  connection stats: active=25 idle=7
+2026-11-20T12:57:04.668Z LOG:  connection stats: active=28 idle=8
+2026-11-20T12:58:05.780Z LOG:  connection stats: active=22 idle=16
+2026-11-20T12:58:34.571Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T12:59:03.629Z LOG:  connection stats: active=28 idle=7
+2026-11-20T13:00:00.309Z LOG:  connection stats: active=20 idle=7
+2026-11-20T13:00:44.647Z LOG:  checkpoint complete: wrote 751 buffers; write=5.230 s
+2026-11-20T13:01:05.522Z LOG:  connection stats: active=21 idle=6
+2026-11-20T13:02:00.002Z LOG:  connection stats: active=19 idle=16
+2026-11-20T13:02:12.662Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T13:03:04.276Z LOG:  connection stats: active=30 idle=5
+2026-11-20T13:04:00.582Z LOG:  connection stats: active=25 idle=18
+2026-11-20T13:05:03.681Z LOG:  connection stats: active=19 idle=19
+2026-11-20T13:05:31.147Z LOG:  checkpoint complete: wrote 686 buffers; write=6.332 s
+2026-11-20T13:06:00.618Z LOG:  connection stats: active=39 idle=14
+2026-11-20T13:07:00.572Z LOG:  connection stats: active=18 idle=11
+2026-11-20T13:07:10.566Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:08:04.747Z LOG:  connection stats: active=35 idle=11
+2026-11-20T13:08:42.630Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:09:02.912Z LOG:  connection stats: active=33 idle=16
+2026-11-20T13:10:02.955Z LOG:  connection stats: active=20 idle=10
+2026-11-20T13:10:13.281Z LOG:  checkpoint complete: wrote 1552 buffers; write=5.358 s
+2026-11-20T13:11:02.572Z LOG:  connection stats: active=23 idle=11
+2026-11-20T13:12:02.093Z LOG:  connection stats: active=33 idle=6
+2026-11-20T13:12:29.893Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T13:13:00.900Z LOG:  connection stats: active=27 idle=7
+2026-11-20T13:14:02.538Z LOG:  connection stats: active=26 idle=16
+2026-11-20T13:15:04.378Z LOG:  connection stats: active=35 idle=15
+2026-11-20T13:15:29.014Z LOG:  checkpoint complete: wrote 1067 buffers; write=4.464 s
+2026-11-20T13:16:00.507Z LOG:  connection stats: active=31 idle=19
+2026-11-20T13:17:01.067Z LOG:  connection stats: active=35 idle=6
+2026-11-20T13:18:03.907Z LOG:  connection stats: active=28 idle=13
+2026-11-20T13:18:50.114Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T13:19:05.261Z LOG:  connection stats: active=35 idle=11
+2026-11-20T13:20:00.896Z LOG:  connection stats: active=36 idle=19
+2026-11-20T13:20:46.064Z LOG:  checkpoint complete: wrote 632 buffers; write=8.402 s
+2026-11-20T13:21:04.297Z LOG:  connection stats: active=25 idle=7
+2026-11-20T13:22:00.996Z LOG:  connection stats: active=35 idle=11
+2026-11-20T13:23:02.868Z LOG:  connection stats: active=26 idle=18
+2026-11-20T13:24:01.908Z LOG:  connection stats: active=39 idle=13
+2026-11-20T13:25:01.778Z LOG:  connection stats: active=35 idle=13
+2026-11-20T13:25:23.425Z LOG:  checkpoint complete: wrote 602 buffers; write=5.717 s
+2026-11-20T13:26:02.261Z LOG:  connection stats: active=30 idle=10
+2026-11-20T13:27:02.466Z LOG:  connection stats: active=25 idle=11
+2026-11-20T13:28:03.209Z LOG:  connection stats: active=22 idle=9
+2026-11-20T13:29:02.163Z LOG:  connection stats: active=18 idle=6
+2026-11-20T13:30:05.974Z LOG:  connection stats: active=30 idle=10
+2026-11-20T13:30:32.900Z LOG:  checkpoint complete: wrote 1354 buffers; write=5.779 s
+2026-11-20T13:31:00.706Z LOG:  connection stats: active=22 idle=5
+2026-11-20T13:32:01.544Z LOG:  connection stats: active=34 idle=11
+2026-11-20T13:33:00.606Z LOG:  connection stats: active=33 idle=13
+2026-11-20T13:34:04.072Z LOG:  connection stats: active=23 idle=14
+2026-11-20T13:35:02.659Z LOG:  connection stats: active=31 idle=15
+2026-11-20T13:35:10.402Z LOG:  checkpoint complete: wrote 1447 buffers; write=6.088 s
+2026-11-20T13:35:38.824Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:36:05.036Z LOG:  connection stats: active=35 idle=11
+2026-11-20T13:37:02.300Z LOG:  connection stats: active=19 idle=5
+2026-11-20T13:38:04.169Z LOG:  connection stats: active=25 idle=15
+2026-11-20T13:39:02.150Z LOG:  connection stats: active=22 idle=19
+2026-11-20T13:40:04.834Z LOG:  connection stats: active=29 idle=14
+2026-11-20T13:40:22.738Z LOG:  checkpoint complete: wrote 1782 buffers; write=4.741 s
+2026-11-20T13:41:03.549Z LOG:  connection stats: active=36 idle=6
+2026-11-20T13:42:02.812Z LOG:  connection stats: active=26 idle=8
+2026-11-20T13:42:49.316Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T13:43:02.133Z LOG:  connection stats: active=25 idle=10
+2026-11-20T13:44:02.932Z LOG:  connection stats: active=38 idle=10
+2026-11-20T13:45:00.582Z LOG:  connection stats: active=21 idle=6
+2026-11-20T13:45:22.815Z LOG:  checkpoint complete: wrote 1237 buffers; write=6.009 s
+2026-11-20T13:45:58.374Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:46:02.438Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:46:04.047Z LOG:  connection stats: active=24 idle=19
+2026-11-20T13:47:01.133Z LOG:  connection stats: active=33 idle=11
+2026-11-20T13:48:00.583Z LOG:  connection stats: active=34 idle=13
+2026-11-20T13:49:00.296Z LOG:  connection stats: active=33 idle=19
+2026-11-20T13:50:04.844Z LOG:  connection stats: active=32 idle=6
+2026-11-20T13:50:34.809Z LOG:  checkpoint complete: wrote 1450 buffers; write=3.102 s
+2026-11-20T13:51:04.517Z LOG:  connection stats: active=23 idle=19
+2026-11-20T13:51:52.114Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:52:00.726Z LOG:  connection stats: active=22 idle=16
+2026-11-20T13:53:04.583Z LOG:  connection stats: active=23 idle=7
+2026-11-20T13:54:00.110Z LOG:  connection stats: active=36 idle=19
+2026-11-20T13:55:02.378Z LOG:  connection stats: active=23 idle=14
+2026-11-20T13:55:27.525Z LOG:  checkpoint complete: wrote 883 buffers; write=4.363 s
+2026-11-20T13:55:37.291Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:56:02.479Z LOG:  connection stats: active=24 idle=11
+2026-11-20T13:57:02.092Z LOG:  connection stats: active=33 idle=18
+2026-11-20T13:58:03.706Z LOG:  connection stats: active=22 idle=16
+2026-11-20T13:58:18.013Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T13:59:02.104Z LOG:  connection stats: active=38 idle=20
+2026-11-20T14:00:02.566Z LOG:  connection stats: active=26 idle=8
+2026-11-20T14:00:43.795Z LOG:  checkpoint complete: wrote 2149 buffers; write=4.004 s
+2026-11-20T14:01:01.930Z LOG:  connection stats: active=30 idle=11
+2026-11-20T14:02:00.979Z LOG:  connection stats: active=23 idle=20
+2026-11-20T14:02:35.536Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T14:03:04.009Z LOG:  connection stats: active=62 idle=19
+2026-11-20T14:03:17.997Z LOG:  process 4101 still waiting for ShareLock on transaction 991202 after 10429.477 ms
+2026-11-20T14:03:17.997Z DETAIL:  Process holding the lock: 3832. Wait queue: 4101. application_name=tax-recalc
+2026-11-20T14:03:17.997Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:03:48.701Z LOG:  process 4102 still waiting for ShareLock on transaction 991207 after 2457.341 ms
+2026-11-20T14:03:48.701Z DETAIL:  Process holding the lock: 3255. Wait queue: 4102. application_name=tax-recalc
+2026-11-20T14:03:48.701Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:04:01.048Z LOG:  process 4105 still waiting for ShareLock on transaction 991219 after 8958.712 ms
+2026-11-20T14:04:01.048Z DETAIL:  Process holding the lock: 3619. Wait queue: 4105. application_name=tax-recalc
+2026-11-20T14:04:01.048Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:04:02.160Z LOG:  connection stats: active=69 idle=9
+2026-11-20T14:04:04.439Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T14:04:15.703Z LOG:  process 4103 still waiting for ShareLock on transaction 991211 after 9340.467 ms
+2026-11-20T14:04:15.703Z DETAIL:  Process holding the lock: 3807. Wait queue: 4103. application_name=tax-recalc
+2026-11-20T14:04:15.703Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:04:25.655Z LOG:  process 4104 still waiting for ShareLock on transaction 991217 after 1872.938 ms
+2026-11-20T14:04:25.655Z DETAIL:  Process holding the lock: 3829. Wait queue: 4104. application_name=tax-recalc
+2026-11-20T14:04:25.655Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:05:04.293Z LOG:  connection stats: active=75 idle=19
+2026-11-20T14:05:04.766Z LOG:  process 4108 still waiting for ShareLock on transaction 991229 after 25512.854 ms
+2026-11-20T14:05:04.766Z DETAIL:  Process holding the lock: 3495. Wait queue: 4108. application_name=tax-recalc
+2026-11-20T14:05:04.766Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:05:11.008Z LOG:  process 4106 still waiting for ShareLock on transaction 991224 after 20284.515 ms
+2026-11-20T14:05:11.008Z DETAIL:  Process holding the lock: 3528. Wait queue: 4106. application_name=tax-recalc
+2026-11-20T14:05:11.008Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:05:23.742Z LOG:  process 4107 still waiting for ShareLock on transaction 991228 after 24641.666 ms
+2026-11-20T14:05:23.742Z DETAIL:  Process holding the lock: 3814. Wait queue: 4107. application_name=tax-recalc
+2026-11-20T14:05:23.742Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:05:32.720Z LOG:  duration: 199720.548 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T14:05:38.144Z LOG:  checkpoint complete: wrote 1330 buffers; write=2.587 s
+2026-11-20T14:05:48.583Z LOG:  process 4109 still waiting for ShareLock on transaction 991231 after 22118.799 ms
+2026-11-20T14:05:48.583Z DETAIL:  Process holding the lock: 3797. Wait queue: 4109. application_name=tax-recalc
+2026-11-20T14:05:48.583Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:06:05.091Z LOG:  connection stats: active=64 idle=7
+2026-11-20T14:06:27.707Z LOG:  duration: 252442.210 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't116' application_name=tax-recalc
+2026-11-20T14:07:02.785Z LOG:  connection stats: active=70 idle=14
+2026-11-20T14:07:12.132Z LOG:  process 4112 still waiting for ShareLock on transaction 991246 after 26483.658 ms
+2026-11-20T14:07:12.132Z DETAIL:  Process holding the lock: 3382. Wait queue: 4112. application_name=tax-recalc
+2026-11-20T14:07:12.132Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:07:34.841Z LOG:  process 4113 still waiting for ShareLock on transaction 991248 after 11467.427 ms
+2026-11-20T14:07:34.841Z DETAIL:  Process holding the lock: 3769. Wait queue: 4113. application_name=tax-recalc
+2026-11-20T14:07:34.841Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:07:44.416Z LOG:  process 4111 still waiting for ShareLock on transaction 991237 after 15680.571 ms
+2026-11-20T14:07:44.416Z DETAIL:  Process holding the lock: 3583. Wait queue: 4111. application_name=tax-recalc
+2026-11-20T14:07:44.416Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:07:48.076Z LOG:  process 4110 still waiting for ShareLock on transaction 991236 after 25708.227 ms
+2026-11-20T14:07:48.076Z DETAIL:  Process holding the lock: 3795. Wait queue: 4110. application_name=tax-recalc
+2026-11-20T14:07:48.076Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:08:04.168Z LOG:  connection stats: active=66 idle=11
+2026-11-20T14:08:11.964Z LOG:  process 4114 still waiting for ShareLock on transaction 991257 after 19484.366 ms
+2026-11-20T14:08:11.964Z DETAIL:  Process holding the lock: 3683. Wait queue: 4114. application_name=tax-recalc
+2026-11-20T14:08:11.964Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:08:31.406Z LOG:  duration: 236633.516 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't140' application_name=tax-recalc
+2026-11-20T14:08:51.381Z LOG:  process 4115 still waiting for ShareLock on transaction 991261 after 20738.618 ms
+2026-11-20T14:08:51.381Z DETAIL:  Process holding the lock: 3276. Wait queue: 4115. application_name=tax-recalc
+2026-11-20T14:08:51.381Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:09:02.532Z LOG:  connection stats: active=57 idle=17
+2026-11-20T14:09:11.193Z LOG:  process 4116 still waiting for ShareLock on transaction 991268 after 23309.067 ms
+2026-11-20T14:09:11.193Z DETAIL:  Process holding the lock: 3422. Wait queue: 4116. application_name=tax-recalc
+2026-11-20T14:09:11.193Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:09:35.174Z LOG:  duration: 98086.593 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't120' application_name=tax-recalc
+2026-11-20T14:10:04.632Z LOG:  connection stats: active=74 idle=8
+2026-11-20T14:10:09.307Z LOG:  process 4118 still waiting for ShareLock on transaction 991281 after 26118.365 ms
+2026-11-20T14:10:09.307Z DETAIL:  Process holding the lock: 3517. Wait queue: 4118. application_name=tax-recalc
+2026-11-20T14:10:09.307Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:10:36.628Z LOG:  process 4117 still waiting for ShareLock on transaction 991277 after 25274.813 ms
+2026-11-20T14:10:36.628Z DETAIL:  Process holding the lock: 3655. Wait queue: 4117. application_name=tax-recalc
+2026-11-20T14:10:36.628Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:10:57.243Z LOG:  checkpoint complete: wrote 1803 buffers; write=2.534 s
+2026-11-20T14:11:01.987Z LOG:  duration: 260384.241 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't144' application_name=tax-recalc
+2026-11-20T14:11:03.017Z LOG:  connection stats: active=62 idle=10
+2026-11-20T14:11:04.477Z LOG:  process 4119 still waiting for ShareLock on transaction 991282 after 16155.929 ms
+2026-11-20T14:11:04.477Z DETAIL:  Process holding the lock: 3335. Wait queue: 4119. application_name=tax-recalc
+2026-11-20T14:11:04.477Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:11:15.255Z LOG:  process 4121 still waiting for ShareLock on transaction 991295 after 28554.221 ms
+2026-11-20T14:11:15.255Z DETAIL:  Process holding the lock: 3795. Wait queue: 4121. application_name=tax-recalc
+2026-11-20T14:11:15.255Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:11:46.208Z LOG:  process 4120 still waiting for ShareLock on transaction 991290 after 24946.227 ms
+2026-11-20T14:11:46.208Z DETAIL:  Process holding the lock: 3300. Wait queue: 4120. application_name=tax-recalc
+2026-11-20T14:11:46.208Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T14:12:00.628Z LOG:  connection stats: active=56 idle=10
+2026-11-20T14:12:12.362Z LOG:  process 4123 still waiting for ShareLock on transaction 991309 after 10121.088 ms
+2026-11-20T14:12:12.362Z DETAIL:  Process holding the lock: 3785. Wait queue: 4123. application_name=tax-recalc
+2026-11-20T14:12:12.362Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:12:25.933Z LOG:  process 4122 still waiting for ShareLock on transaction 991302 after 24021.305 ms
+2026-11-20T14:12:25.933Z DETAIL:  Process holding the lock: 3552. Wait queue: 4122. application_name=tax-recalc
+2026-11-20T14:12:25.933Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:12:38.118Z LOG:  duration: 289812.584 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't128' application_name=tax-recalc
+2026-11-20T14:13:03.313Z LOG:  connection stats: active=69 idle=13
+2026-11-20T14:13:06.806Z LOG:  process 4124 still waiting for ShareLock on transaction 991316 after 12552.671 ms
+2026-11-20T14:13:06.806Z DETAIL:  Process holding the lock: 3651. Wait queue: 4124. application_name=tax-recalc
+2026-11-20T14:13:06.806Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:14:00.697Z LOG:  process 4125 still waiting for ShareLock on transaction 991324 after 21252.218 ms
+2026-11-20T14:14:00.697Z DETAIL:  Process holding the lock: 3318. Wait queue: 4125. application_name=tax-recalc
+2026-11-20T14:14:00.697Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:14:05.410Z LOG:  connection stats: active=55 idle=18
+2026-11-20T14:14:08.872Z LOG:  process 4126 still waiting for ShareLock on transaction 991332 after 19980.512 ms
+2026-11-20T14:14:08.872Z DETAIL:  Process holding the lock: 3477. Wait queue: 4126. application_name=tax-recalc
+2026-11-20T14:14:08.872Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:15:01.415Z LOG:  connection stats: active=57 idle=19
+2026-11-20T14:15:22.413Z LOG:  process 4128 still waiting for ShareLock on transaction 991342 after 8553.792 ms
+2026-11-20T14:15:22.413Z DETAIL:  Process holding the lock: 3879. Wait queue: 4128. application_name=tax-recalc
+2026-11-20T14:15:22.413Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:15:36.111Z LOG:  checkpoint complete: wrote 1858 buffers; write=4.604 s
+2026-11-20T14:15:36.135Z LOG:  process 4127 still waiting for ShareLock on transaction 991336 after 21260.373 ms
+2026-11-20T14:15:36.135Z DETAIL:  Process holding the lock: 3648. Wait queue: 4127. application_name=tax-recalc
+2026-11-20T14:15:36.135Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:15:39.666Z LOG:  process 4132 still waiting for ShareLock on transaction 991363 after 10292.131 ms
+2026-11-20T14:15:39.666Z DETAIL:  Process holding the lock: 3361. Wait queue: 4132. application_name=tax-recalc
+2026-11-20T14:15:39.666Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:15:40.779Z LOG:  process 4129 still waiting for ShareLock on transaction 991351 after 18519.964 ms
+2026-11-20T14:15:40.779Z DETAIL:  Process holding the lock: 3370. Wait queue: 4129. application_name=tax-recalc
+2026-11-20T14:15:40.779Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:15:44.590Z LOG:  process 4130 still waiting for ShareLock on transaction 991354 after 12532.424 ms
+2026-11-20T14:15:44.590Z DETAIL:  Process holding the lock: 3695. Wait queue: 4130. application_name=tax-recalc
+2026-11-20T14:15:44.590Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:15:45.824Z LOG:  process 4131 still waiting for ShareLock on transaction 991358 after 29145.238 ms
+2026-11-20T14:15:45.824Z DETAIL:  Process holding the lock: 3690. Wait queue: 4131. application_name=tax-recalc
+2026-11-20T14:15:45.824Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:15:54.337Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T14:16:01.694Z LOG:  connection stats: active=60 idle=5
+2026-11-20T14:16:23.164Z LOG:  process 4135 still waiting for ShareLock on transaction 991383 after 2978.112 ms
+2026-11-20T14:16:23.164Z DETAIL:  Process holding the lock: 3284. Wait queue: 4135. application_name=tax-recalc
+2026-11-20T14:16:23.164Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:16:35.213Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T14:16:45.859Z LOG:  process 4133 still waiting for ShareLock on transaction 991369 after 12913.997 ms
+2026-11-20T14:16:45.859Z DETAIL:  Process holding the lock: 3651. Wait queue: 4133. application_name=tax-recalc
+2026-11-20T14:16:45.859Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:16:56.167Z LOG:  process 4134 still waiting for ShareLock on transaction 991378 after 19362.807 ms
+2026-11-20T14:16:56.167Z DETAIL:  Process holding the lock: 3525. Wait queue: 4134. application_name=tax-recalc
+2026-11-20T14:16:56.167Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:17:05.803Z LOG:  connection stats: active=66 idle=11
+2026-11-20T14:17:13.763Z LOG:  process 4137 still waiting for ShareLock on transaction 991394 after 8992.717 ms
+2026-11-20T14:17:13.763Z DETAIL:  Process holding the lock: 3810. Wait queue: 4137. application_name=tax-recalc
+2026-11-20T14:17:13.763Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:17:36.188Z LOG:  process 4138 still waiting for ShareLock on transaction 991397 after 19062.676 ms
+2026-11-20T14:17:36.188Z DETAIL:  Process holding the lock: 3677. Wait queue: 4138. application_name=tax-recalc
+2026-11-20T14:17:36.188Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:17:39.630Z LOG:  process 4136 still waiting for ShareLock on transaction 991389 after 23856.915 ms
+2026-11-20T14:17:39.630Z DETAIL:  Process holding the lock: 3535. Wait queue: 4136. application_name=tax-recalc
+2026-11-20T14:17:39.630Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:17:53.377Z LOG:  process 4139 still waiting for ShareLock on transaction 991400 after 17113.848 ms
+2026-11-20T14:17:53.377Z DETAIL:  Process holding the lock: 3875. Wait queue: 4139. application_name=tax-recalc
+2026-11-20T14:17:53.377Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:18:00.818Z LOG:  connection stats: active=63 idle=7
+2026-11-20T14:19:02.812Z LOG:  connection stats: active=61 idle=16
+2026-11-20T14:19:07.510Z LOG:  process 4143 still waiting for ShareLock on transaction 991428 after 18673.956 ms
+2026-11-20T14:19:07.510Z DETAIL:  Process holding the lock: 3554. Wait queue: 4143. application_name=tax-recalc
+2026-11-20T14:19:07.510Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:19:20.116Z LOG:  process 4144 still waiting for ShareLock on transaction 991431 after 7948.797 ms
+2026-11-20T14:19:20.116Z DETAIL:  Process holding the lock: 3622. Wait queue: 4144. application_name=tax-recalc
+2026-11-20T14:19:20.116Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:19:40.533Z LOG:  process 4141 still waiting for ShareLock on transaction 991410 after 19347.565 ms
+2026-11-20T14:19:40.533Z DETAIL:  Process holding the lock: 3418. Wait queue: 4141. application_name=tax-recalc
+2026-11-20T14:19:40.533Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:19:46.759Z LOG:  process 4142 still waiting for ShareLock on transaction 991419 after 24953.572 ms
+2026-11-20T14:19:46.759Z DETAIL:  Process holding the lock: 3761. Wait queue: 4142. application_name=tax-recalc
+2026-11-20T14:19:46.759Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:19:53.686Z LOG:  process 4140 still waiting for ShareLock on transaction 991401 after 7266.854 ms
+2026-11-20T14:19:53.686Z DETAIL:  Process holding the lock: 3729. Wait queue: 4140. application_name=tax-recalc
+2026-11-20T14:19:53.686Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:20:00.171Z LOG:  connection stats: active=59 idle=7
+2026-11-20T14:20:14.102Z LOG:  process 4149 still waiting for ShareLock on transaction 991465 after 14373.412 ms
+2026-11-20T14:20:14.102Z DETAIL:  Process holding the lock: 3631. Wait queue: 4149. application_name=tax-recalc
+2026-11-20T14:20:14.102Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:20:16.517Z LOG:  checkpoint complete: wrote 1345 buffers; write=4.775 s
+2026-11-20T14:20:25.274Z LOG:  process 4145 still waiting for ShareLock on transaction 991437 after 2781.501 ms
+2026-11-20T14:20:25.274Z DETAIL:  Process holding the lock: 3467. Wait queue: 4145. application_name=tax-recalc
+2026-11-20T14:20:25.274Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:20:36.766Z LOG:  process 4148 still waiting for ShareLock on transaction 991460 after 9435.724 ms
+2026-11-20T14:20:36.766Z DETAIL:  Process holding the lock: 3323. Wait queue: 4148. application_name=tax-recalc
+2026-11-20T14:20:36.766Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:20:39.001Z LOG:  process 4147 still waiting for ShareLock on transaction 991452 after 26756.937 ms
+2026-11-20T14:20:39.001Z DETAIL:  Process holding the lock: 3440. Wait queue: 4147. application_name=tax-recalc
+2026-11-20T14:20:39.001Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:20:40.363Z LOG:  process 4146 still waiting for ShareLock on transaction 991443 after 5665.334 ms
+2026-11-20T14:20:40.363Z DETAIL:  Process holding the lock: 3790. Wait queue: 4146. application_name=tax-recalc
+2026-11-20T14:20:40.363Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:21:00.716Z LOG:  connection stats: active=64 idle=11
+2026-11-20T14:21:01.808Z LOG:  process 4151 still waiting for ShareLock on transaction 991472 after 24268.134 ms
+2026-11-20T14:21:01.808Z DETAIL:  Process holding the lock: 3460. Wait queue: 4151. application_name=tax-recalc
+2026-11-20T14:21:01.808Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:21:06.079Z LOG:  process 4150 still waiting for ShareLock on transaction 991468 after 29050.178 ms
+2026-11-20T14:21:06.079Z DETAIL:  Process holding the lock: 3614. Wait queue: 4150. application_name=tax-recalc
+2026-11-20T14:21:06.079Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:22:02.588Z LOG:  connection stats: active=54 idle=20
+2026-11-20T14:22:19.268Z LOG:  process 4152 still waiting for ShareLock on transaction 991481 after 9782.873 ms
+2026-11-20T14:22:19.268Z DETAIL:  Process holding the lock: 3952. Wait queue: 4152. application_name=tax-recalc
+2026-11-20T14:22:19.268Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:22:43.426Z LOG:  process 4154 still waiting for ShareLock on transaction 991492 after 25827.019 ms
+2026-11-20T14:22:43.426Z DETAIL:  Process holding the lock: 3569. Wait queue: 4154. application_name=tax-recalc
+2026-11-20T14:22:43.426Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:22:45.790Z LOG:  process 4153 still waiting for ShareLock on transaction 991489 after 28285.451 ms
+2026-11-20T14:22:45.790Z DETAIL:  Process holding the lock: 3704. Wait queue: 4153. application_name=tax-recalc
+2026-11-20T14:22:45.790Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:23:00.139Z LOG:  connection stats: active=59 idle=17
+2026-11-20T14:23:01.583Z LOG:  process 4155 still waiting for ShareLock on transaction 991495 after 21349.272 ms
+2026-11-20T14:23:01.583Z DETAIL:  Process holding the lock: 3824. Wait queue: 4155. application_name=tax-recalc
+2026-11-20T14:23:01.583Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:23:05.002Z LOG:  process 4156 still waiting for ShareLock on transaction 991502 after 13040.469 ms
+2026-11-20T14:23:05.002Z DETAIL:  Process holding the lock: 3425. Wait queue: 4156. application_name=tax-recalc
+2026-11-20T14:23:05.002Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:23:30.526Z LOG:  process 4157 still waiting for ShareLock on transaction 991505 after 29800.738 ms
+2026-11-20T14:23:30.526Z DETAIL:  Process holding the lock: 3622. Wait queue: 4157. application_name=tax-recalc
+2026-11-20T14:23:30.526Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:23:45.216Z LOG:  process 4158 still waiting for ShareLock on transaction 991513 after 12864.626 ms
+2026-11-20T14:23:45.216Z DETAIL:  Process holding the lock: 3261. Wait queue: 4158. application_name=tax-recalc
+2026-11-20T14:23:45.216Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:24:02.312Z LOG:  connection stats: active=55 idle=11
+2026-11-20T14:24:17.450Z LOG:  process 4161 still waiting for ShareLock on transaction 991519 after 18410.235 ms
+2026-11-20T14:24:17.450Z DETAIL:  Process holding the lock: 3775. Wait queue: 4161. application_name=tax-recalc
+2026-11-20T14:24:17.450Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:24:17.577Z LOG:  duration: 132173.823 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't156' application_name=tax-recalc
+2026-11-20T14:24:19.935Z LOG:  process 4159 still waiting for ShareLock on transaction 991517 after 8972.721 ms
+2026-11-20T14:24:19.935Z DETAIL:  Process holding the lock: 3712. Wait queue: 4159. application_name=tax-recalc
+2026-11-20T14:24:19.935Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:24:33.718Z LOG:  process 4162 still waiting for ShareLock on transaction 991527 after 18033.738 ms
+2026-11-20T14:24:33.718Z DETAIL:  Process holding the lock: 3594. Wait queue: 4162. application_name=tax-recalc
+2026-11-20T14:24:33.718Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:24:58.211Z LOG:  process 4160 still waiting for ShareLock on transaction 991518 after 16279.666 ms
+2026-11-20T14:24:58.211Z DETAIL:  Process holding the lock: 3956. Wait queue: 4160. application_name=tax-recalc
+2026-11-20T14:24:58.211Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:25:00.619Z LOG:  connection stats: active=73 idle=14
+2026-11-20T14:25:28.718Z LOG:  checkpoint complete: wrote 1760 buffers; write=8.505 s
+2026-11-20T14:25:42.380Z LOG:  process 4163 still waiting for ShareLock on transaction 991533 after 26725.989 ms
+2026-11-20T14:25:42.380Z DETAIL:  Process holding the lock: 3330. Wait queue: 4163. application_name=tax-recalc
+2026-11-20T14:25:42.380Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:26:02.187Z LOG:  connection stats: active=69 idle=13
+2026-11-20T14:26:09.638Z LOG:  process 4164 still waiting for ShareLock on transaction 991540 after 6584.652 ms
+2026-11-20T14:26:09.638Z DETAIL:  Process holding the lock: 3901. Wait queue: 4164. application_name=tax-recalc
+2026-11-20T14:26:09.638Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:26:22.818Z LOG:  process 4165 still waiting for ShareLock on transaction 991541 after 28967.389 ms
+2026-11-20T14:26:22.818Z DETAIL:  Process holding the lock: 3609. Wait queue: 4165. application_name=tax-recalc
+2026-11-20T14:26:22.818Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:27:00.839Z LOG:  connection stats: active=55 idle=5
+2026-11-20T14:27:02.615Z LOG:  process 4166 still waiting for ShareLock on transaction 991550 after 22921.837 ms
+2026-11-20T14:27:02.615Z DETAIL:  Process holding the lock: 3620. Wait queue: 4166. application_name=tax-recalc
+2026-11-20T14:27:02.615Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:27:14.310Z LOG:  process 4168 still waiting for ShareLock on transaction 991555 after 4790.271 ms
+2026-11-20T14:27:14.310Z DETAIL:  Process holding the lock: 3451. Wait queue: 4168. application_name=tax-recalc
+2026-11-20T14:27:14.310Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:27:30.582Z LOG:  process 4167 still waiting for ShareLock on transaction 991551 after 29192.991 ms
+2026-11-20T14:27:30.582Z DETAIL:  Process holding the lock: 3669. Wait queue: 4167. application_name=tax-recalc
+2026-11-20T14:27:30.582Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:28:00.202Z LOG:  connection stats: active=59 idle=16
+2026-11-20T14:28:15.461Z LOG:  process 4170 still waiting for ShareLock on transaction 991567 after 21126.541 ms
+2026-11-20T14:28:15.461Z DETAIL:  Process holding the lock: 3393. Wait queue: 4170. application_name=tax-recalc
+2026-11-20T14:28:15.461Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:28:24.597Z LOG:  process 4172 still waiting for ShareLock on transaction 991582 after 3591.234 ms
+2026-11-20T14:28:24.597Z DETAIL:  Process holding the lock: 3903. Wait queue: 4172. application_name=tax-recalc
+2026-11-20T14:28:24.597Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:28:33.186Z LOG:  process 4169 still waiting for ShareLock on transaction 991559 after 1723.657 ms
+2026-11-20T14:28:33.186Z DETAIL:  Process holding the lock: 3746. Wait queue: 4169. application_name=tax-recalc
+2026-11-20T14:28:33.186Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:28:54.405Z LOG:  process 4171 still waiting for ShareLock on transaction 991574 after 2016.115 ms
+2026-11-20T14:28:54.405Z DETAIL:  Process holding the lock: 3843. Wait queue: 4171. application_name=tax-recalc
+2026-11-20T14:28:54.405Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:29:00.177Z LOG:  connection stats: active=70 idle=20
+2026-11-20T14:29:00.601Z LOG:  process 4178 still waiting for ShareLock on transaction 991598 after 27387.019 ms
+2026-11-20T14:29:00.601Z DETAIL:  Process holding the lock: 3414. Wait queue: 4178. application_name=tax-recalc
+2026-11-20T14:29:00.601Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:29:02.344Z LOG:  process 4174 still waiting for ShareLock on transaction 991587 after 25757.483 ms
+2026-11-20T14:29:02.344Z DETAIL:  Process holding the lock: 3398. Wait queue: 4174. application_name=tax-recalc
+2026-11-20T14:29:02.344Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:29:05.906Z LOG:  process 4177 still waiting for ShareLock on transaction 991597 after 19539.930 ms
+2026-11-20T14:29:05.906Z DETAIL:  Process holding the lock: 3583. Wait queue: 4177. application_name=tax-recalc
+2026-11-20T14:29:05.906Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:29:10.624Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T14:29:33.102Z LOG:  process 4176 still waiting for ShareLock on transaction 991595 after 12915.607 ms
+2026-11-20T14:29:33.102Z DETAIL:  Process holding the lock: 3650. Wait queue: 4176. application_name=tax-recalc
+2026-11-20T14:29:33.102Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:29:34.813Z LOG:  process 4173 still waiting for ShareLock on transaction 991585 after 25958.414 ms
+2026-11-20T14:29:34.813Z DETAIL:  Process holding the lock: 3494. Wait queue: 4173. application_name=tax-recalc
+2026-11-20T14:29:34.813Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:29:56.103Z LOG:  process 4175 still waiting for ShareLock on transaction 991589 after 28665.456 ms
+2026-11-20T14:29:56.103Z DETAIL:  Process holding the lock: 3502. Wait queue: 4175. application_name=tax-recalc
+2026-11-20T14:29:56.103Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:30:03.808Z LOG:  connection stats: active=66 idle=19
+2026-11-20T14:30:19.484Z LOG:  process 4181 still waiting for ShareLock on transaction 991619 after 12189.148 ms
+2026-11-20T14:30:19.484Z DETAIL:  Process holding the lock: 3313. Wait queue: 4181. application_name=tax-recalc
+2026-11-20T14:30:19.484Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:30:30.786Z LOG:  process 4179 still waiting for ShareLock on transaction 991606 after 3802.600 ms
+2026-11-20T14:30:30.786Z DETAIL:  Process holding the lock: 3960. Wait queue: 4179. application_name=tax-recalc
+2026-11-20T14:30:30.786Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:30:32.717Z LOG:  checkpoint complete: wrote 1847 buffers; write=6.240 s
+2026-11-20T14:30:41.655Z LOG:  process 4180 still waiting for ShareLock on transaction 991611 after 10068.206 ms
+2026-11-20T14:30:41.655Z DETAIL:  Process holding the lock: 3694. Wait queue: 4180. application_name=tax-recalc
+2026-11-20T14:30:41.655Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:31:01.052Z LOG:  connection stats: active=71 idle=19
+2026-11-20T14:31:06.797Z LOG:  process 4182 still waiting for ShareLock on transaction 991621 after 23241.710 ms
+2026-11-20T14:31:06.797Z DETAIL:  Process holding the lock: 3411. Wait queue: 4182. application_name=tax-recalc
+2026-11-20T14:31:06.797Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:31:11.787Z LOG:  process 4185 still waiting for ShareLock on transaction 991632 after 16572.168 ms
+2026-11-20T14:31:11.787Z DETAIL:  Process holding the lock: 3879. Wait queue: 4185. application_name=tax-recalc
+2026-11-20T14:31:11.787Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:31:36.435Z LOG:  process 4186 still waiting for ShareLock on transaction 991639 after 11266.467 ms
+2026-11-20T14:31:36.435Z DETAIL:  Process holding the lock: 3635. Wait queue: 4186. application_name=tax-recalc
+2026-11-20T14:31:36.435Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:31:45.563Z LOG:  process 4184 still waiting for ShareLock on transaction 991627 after 5758.616 ms
+2026-11-20T14:31:45.563Z DETAIL:  Process holding the lock: 3328. Wait queue: 4184. application_name=tax-recalc
+2026-11-20T14:31:45.563Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:31:47.473Z LOG:  duration: 125260.293 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't160' application_name=tax-recalc
+2026-11-20T14:31:54.507Z LOG:  process 4183 still waiting for ShareLock on transaction 991622 after 3927.724 ms
+2026-11-20T14:31:54.507Z DETAIL:  Process holding the lock: 3981. Wait queue: 4183. application_name=tax-recalc
+2026-11-20T14:31:54.507Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:31:56.904Z LOG:  process 4187 still waiting for ShareLock on transaction 991646 after 21388.016 ms
+2026-11-20T14:31:56.904Z DETAIL:  Process holding the lock: 3889. Wait queue: 4187. application_name=tax-recalc
+2026-11-20T14:31:56.904Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:32:04.328Z LOG:  connection stats: active=65 idle=16
+2026-11-20T14:32:06.638Z LOG:  duration: 249965.439 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T14:32:14.874Z LOG:  process 4190 still waiting for ShareLock on transaction 991668 after 26919.063 ms
+2026-11-20T14:32:14.874Z DETAIL:  Process holding the lock: 3385. Wait queue: 4190. application_name=tax-recalc
+2026-11-20T14:32:14.874Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:32:15.485Z LOG:  process 4188 still waiting for ShareLock on transaction 991653 after 17986.356 ms
+2026-11-20T14:32:15.485Z DETAIL:  Process holding the lock: 3601. Wait queue: 4188. application_name=tax-recalc
+2026-11-20T14:32:15.485Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:32:52.457Z LOG:  process 4189 still waiting for ShareLock on transaction 991662 after 29949.935 ms
+2026-11-20T14:32:52.457Z DETAIL:  Process holding the lock: 3517. Wait queue: 4189. application_name=tax-recalc
+2026-11-20T14:32:52.457Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:33:05.176Z LOG:  connection stats: active=70 idle=17
+2026-11-20T14:33:31.142Z LOG:  process 4191 still waiting for ShareLock on transaction 991671 after 8830.001 ms
+2026-11-20T14:33:31.142Z DETAIL:  Process holding the lock: 3691. Wait queue: 4191. application_name=tax-recalc
+2026-11-20T14:33:31.142Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:34:01.739Z LOG:  connection stats: active=72 idle=18
+2026-11-20T14:34:12.704Z LOG:  duration: 68312.264 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T14:34:33.488Z LOG:  process 4193 still waiting for ShareLock on transaction 991683 after 17321.028 ms
+2026-11-20T14:34:33.488Z DETAIL:  Process holding the lock: 3856. Wait queue: 4193. application_name=tax-recalc
+2026-11-20T14:34:33.488Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:34:34.583Z LOG:  process 4192 still waiting for ShareLock on transaction 991674 after 12246.594 ms
+2026-11-20T14:34:34.583Z DETAIL:  Process holding the lock: 3294. Wait queue: 4192. application_name=tax-recalc
+2026-11-20T14:34:34.583Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:35:05.807Z LOG:  connection stats: active=58 idle=15
+2026-11-20T14:35:14.400Z LOG:  process 4194 still waiting for ShareLock on transaction 991687 after 14662.986 ms
+2026-11-20T14:35:14.400Z DETAIL:  Process holding the lock: 3438. Wait queue: 4194. application_name=tax-recalc
+2026-11-20T14:35:14.400Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:35:56.365Z LOG:  checkpoint complete: wrote 1116 buffers; write=8.960 s
+2026-11-20T14:36:00.795Z LOG:  process 4195 still waiting for ShareLock on transaction 991691 after 25338.261 ms
+2026-11-20T14:36:00.795Z DETAIL:  Process holding the lock: 3643. Wait queue: 4195. application_name=tax-recalc
+2026-11-20T14:36:00.795Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:36:04.092Z LOG:  connection stats: active=62 idle=10
+2026-11-20T14:36:56.691Z LOG:  duration: 82640.953 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't132' application_name=tax-recalc
+2026-11-20T14:37:01.478Z LOG:  connection stats: active=61 idle=7
+2026-11-20T14:37:29.109Z LOG:  process 4196 still waiting for ShareLock on transaction 991700 after 29421.453 ms
+2026-11-20T14:37:29.109Z DETAIL:  Process holding the lock: 3639. Wait queue: 4196. application_name=tax-recalc
+2026-11-20T14:37:29.109Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:38:00.095Z LOG:  process 4200 still waiting for ShareLock on transaction 991720 after 5764.293 ms
+2026-11-20T14:38:00.095Z DETAIL:  Process holding the lock: 3974. Wait queue: 4200. application_name=tax-recalc
+2026-11-20T14:38:00.095Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:38:02.560Z LOG:  connection stats: active=57 idle=12
+2026-11-20T14:38:03.060Z LOG:  process 4199 still waiting for ShareLock on transaction 991714 after 7901.530 ms
+2026-11-20T14:38:03.060Z DETAIL:  Process holding the lock: 3989. Wait queue: 4199. application_name=tax-recalc
+2026-11-20T14:38:03.060Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T14:38:11.618Z LOG:  process 4197 still waiting for ShareLock on transaction 991704 after 1795.890 ms
+2026-11-20T14:38:11.618Z DETAIL:  Process holding the lock: 3521. Wait queue: 4197. application_name=tax-recalc
+2026-11-20T14:38:11.618Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:38:30.986Z LOG:  process 4198 still waiting for ShareLock on transaction 991713 after 15547.941 ms
+2026-11-20T14:38:30.986Z DETAIL:  Process holding the lock: 3389. Wait queue: 4198. application_name=tax-recalc
+2026-11-20T14:38:30.986Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:38:35.251Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T14:39:02.060Z LOG:  connection stats: active=53 idle=14
+2026-11-20T14:39:22.933Z LOG:  process 4201 still waiting for ShareLock on transaction 991724 after 11672.362 ms
+2026-11-20T14:39:22.933Z DETAIL:  Process holding the lock: 3433. Wait queue: 4201. application_name=tax-recalc
+2026-11-20T14:39:22.933Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:39:24.039Z LOG:  process 4202 still waiting for ShareLock on transaction 991730 after 25615.661 ms
+2026-11-20T14:39:24.039Z DETAIL:  Process holding the lock: 3769. Wait queue: 4202. application_name=tax-recalc
+2026-11-20T14:39:24.039Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:40:01.320Z LOG:  checkpoint complete: wrote 1497 buffers; write=3.970 s
+2026-11-20T14:40:02.654Z LOG:  connection stats: active=65 idle=5
+2026-11-20T14:40:24.529Z LOG:  process 4204 still waiting for ShareLock on transaction 991742 after 17532.973 ms
+2026-11-20T14:40:24.529Z DETAIL:  Process holding the lock: 3837. Wait queue: 4204. application_name=tax-recalc
+2026-11-20T14:40:24.529Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:40:58.285Z LOG:  process 4203 still waiting for ShareLock on transaction 991733 after 7896.005 ms
+2026-11-20T14:40:58.285Z DETAIL:  Process holding the lock: 3904. Wait queue: 4203. application_name=tax-recalc
+2026-11-20T14:40:58.285Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:41:01.223Z LOG:  connection stats: active=63 idle=17
+2026-11-20T14:41:04.000Z LOG:  process 4207 still waiting for ShareLock on transaction 991748 after 29382.627 ms
+2026-11-20T14:41:04.000Z DETAIL:  Process holding the lock: 3775. Wait queue: 4207. application_name=tax-recalc
+2026-11-20T14:41:04.000Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:41:04.246Z LOG:  duration: 164490.653 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't112' application_name=tax-recalc
+2026-11-20T14:41:18.549Z LOG:  process 4206 still waiting for ShareLock on transaction 991746 after 19626.811 ms
+2026-11-20T14:41:18.549Z DETAIL:  Process holding the lock: 3430. Wait queue: 4206. application_name=tax-recalc
+2026-11-20T14:41:18.549Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:41:32.756Z LOG:  process 4205 still waiting for ShareLock on transaction 991745 after 17598.587 ms
+2026-11-20T14:41:32.756Z DETAIL:  Process holding the lock: 3948. Wait queue: 4205. application_name=tax-recalc
+2026-11-20T14:41:32.756Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:42:03.116Z LOG:  connection stats: active=59 idle=7
+2026-11-20T14:42:08.054Z LOG:  process 4208 still waiting for ShareLock on transaction 991753 after 2534.908 ms
+2026-11-20T14:42:08.054Z DETAIL:  Process holding the lock: 3488. Wait queue: 4208. application_name=tax-recalc
+2026-11-20T14:42:08.054Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T14:42:26.890Z LOG:  process 4209 still waiting for ShareLock on transaction 991754 after 27539.272 ms
+2026-11-20T14:42:26.890Z DETAIL:  Process holding the lock: 3546. Wait queue: 4209. application_name=tax-recalc
+2026-11-20T14:42:26.890Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:43:01.711Z LOG:  connection stats: active=53 idle=5
+2026-11-20T14:43:03.429Z LOG:  process 4210 still waiting for ShareLock on transaction 991760 after 20163.127 ms
+2026-11-20T14:43:03.429Z DETAIL:  Process holding the lock: 3358. Wait queue: 4210. application_name=tax-recalc
+2026-11-20T14:43:03.429Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:44:04.276Z LOG:  connection stats: active=67 idle=11
+2026-11-20T14:44:08.299Z LOG:  duration: 164577.619 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't112' application_name=tax-recalc
+2026-11-20T14:45:04.362Z LOG:  connection stats: active=74 idle=7
+2026-11-20T14:45:06.582Z LOG:  checkpoint complete: wrote 1923 buffers; write=3.163 s
+2026-11-20T14:45:10.095Z LOG:  duration: 120929.208 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't104' application_name=tax-recalc
+2026-11-20T14:46:02.572Z LOG:  connection stats: active=62 idle=5
+2026-11-20T14:47:05.540Z LOG:  connection stats: active=73 idle=14
+2026-11-20T14:47:37.300Z LOG:  process 4211 still waiting for ShareLock on transaction 991761 after 24281.063 ms
+2026-11-20T14:47:37.300Z DETAIL:  Process holding the lock: 3381. Wait queue: 4211. application_name=tax-recalc
+2026-11-20T14:47:37.300Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T14:48:00.646Z LOG:  process 4212 still waiting for ShareLock on transaction 991770 after 20771.633 ms
+2026-11-20T14:48:00.646Z DETAIL:  Process holding the lock: 3594. Wait queue: 4212. application_name=tax-recalc
+2026-11-20T14:48:00.646Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:48:02.038Z LOG:  connection stats: active=53 idle=12
+2026-11-20T14:49:05.155Z LOG:  process 4215 still waiting for ShareLock on transaction 991789 after 11718.819 ms
+2026-11-20T14:49:05.155Z DETAIL:  Process holding the lock: 3396. Wait queue: 4215. application_name=tax-recalc
+2026-11-20T14:49:05.155Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:49:05.223Z LOG:  connection stats: active=58 idle=9
+2026-11-20T14:49:05.838Z LOG:  process 4214 still waiting for ShareLock on transaction 991787 after 17047.911 ms
+2026-11-20T14:49:05.838Z DETAIL:  Process holding the lock: 3915. Wait queue: 4214. application_name=tax-recalc
+2026-11-20T14:49:05.838Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:49:35.240Z LOG:  process 4213 still waiting for ShareLock on transaction 991779 after 13741.872 ms
+2026-11-20T14:49:35.240Z DETAIL:  Process holding the lock: 3703. Wait queue: 4213. application_name=tax-recalc
+2026-11-20T14:49:35.240Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:50:03.411Z LOG:  connection stats: active=72 idle=12
+2026-11-20T14:50:09.842Z LOG:  checkpoint complete: wrote 1943 buffers; write=1.356 s
+2026-11-20T14:50:18.092Z LOG:  process 4217 still waiting for ShareLock on transaction 991807 after 7486.508 ms
+2026-11-20T14:50:18.092Z DETAIL:  Process holding the lock: 3547. Wait queue: 4217. application_name=tax-recalc
+2026-11-20T14:50:18.092Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:50:23.357Z LOG:  process 4216 still waiting for ShareLock on transaction 991798 after 14641.052 ms
+2026-11-20T14:50:23.357Z DETAIL:  Process holding the lock: 3906. Wait queue: 4216. application_name=tax-recalc
+2026-11-20T14:50:23.357Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:50:43.122Z LOG:  process 4218 still waiting for ShareLock on transaction 991813 after 19561.372 ms
+2026-11-20T14:50:43.122Z DETAIL:  Process holding the lock: 3323. Wait queue: 4218. application_name=tax-recalc
+2026-11-20T14:50:43.122Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T14:51:02.354Z LOG:  connection stats: active=71 idle=12
+2026-11-20T14:51:40.083Z LOG:  process 4219 still waiting for ShareLock on transaction 991814 after 1177.240 ms
+2026-11-20T14:51:40.083Z DETAIL:  Process holding the lock: 3637. Wait queue: 4219. application_name=tax-recalc
+2026-11-20T14:51:40.083Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T14:51:50.033Z LOG:  process 4220 still waiting for ShareLock on transaction 991815 after 20541.648 ms
+2026-11-20T14:51:50.033Z DETAIL:  Process holding the lock: 3720. Wait queue: 4220. application_name=tax-recalc
+2026-11-20T14:51:50.033Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:52:02.959Z LOG:  connection stats: active=63 idle=14
+2026-11-20T14:52:03.516Z LOG:  process 4222 still waiting for ShareLock on transaction 991822 after 23924.710 ms
+2026-11-20T14:52:03.516Z DETAIL:  Process holding the lock: 3733. Wait queue: 4222. application_name=tax-recalc
+2026-11-20T14:52:03.516Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:52:09.947Z LOG:  duration: 266949.199 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't124' application_name=tax-recalc
+2026-11-20T14:52:33.622Z LOG:  process 4221 still waiting for ShareLock on transaction 991817 after 7493.515 ms
+2026-11-20T14:52:33.622Z DETAIL:  Process holding the lock: 3474. Wait queue: 4221. application_name=tax-recalc
+2026-11-20T14:52:33.622Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:53:00.188Z LOG:  connection stats: active=73 idle=14
+2026-11-20T14:53:23.248Z LOG:  process 4224 still waiting for ShareLock on transaction 991832 after 15037.601 ms
+2026-11-20T14:53:23.248Z DETAIL:  Process holding the lock: 3544. Wait queue: 4224. application_name=tax-recalc
+2026-11-20T14:53:23.248Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:53:35.720Z LOG:  process 4225 still waiting for ShareLock on transaction 991838 after 9206.651 ms
+2026-11-20T14:53:35.720Z DETAIL:  Process holding the lock: 3351. Wait queue: 4225. application_name=tax-recalc
+2026-11-20T14:53:35.720Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:53:48.984Z LOG:  process 4223 still waiting for ShareLock on transaction 991831 after 24976.538 ms
+2026-11-20T14:53:48.984Z DETAIL:  Process holding the lock: 3684. Wait queue: 4223. application_name=tax-recalc
+2026-11-20T14:53:48.984Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T14:54:05.828Z LOG:  connection stats: active=75 idle=19
+2026-11-20T14:54:51.790Z LOG:  process 4226 still waiting for ShareLock on transaction 991840 after 12667.283 ms
+2026-11-20T14:54:51.790Z DETAIL:  Process holding the lock: 3720. Wait queue: 4226. application_name=tax-recalc
+2026-11-20T14:54:51.790Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:55:02.263Z LOG:  connection stats: active=55 idle=5
+2026-11-20T14:55:11.603Z LOG:  checkpoint complete: wrote 1034 buffers; write=1.162 s
+2026-11-20T14:55:14.191Z LOG:  process 4227 still waiting for ShareLock on transaction 991847 after 18863.909 ms
+2026-11-20T14:55:14.191Z DETAIL:  Process holding the lock: 3600. Wait queue: 4227. application_name=tax-recalc
+2026-11-20T14:55:14.191Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T14:55:58.086Z LOG:  duration: 78508.791 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't104' application_name=tax-recalc
+2026-11-20T14:56:03.800Z LOG:  connection stats: active=75 idle=12
+2026-11-20T14:56:08.312Z LOG:  process 4229 still waiting for ShareLock on transaction 991857 after 12897.329 ms
+2026-11-20T14:56:08.312Z DETAIL:  Process holding the lock: 3862. Wait queue: 4229. application_name=tax-recalc
+2026-11-20T14:56:08.312Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T14:56:30.948Z LOG:  process 4228 still waiting for ShareLock on transaction 991850 after 27064.848 ms
+2026-11-20T14:56:30.948Z DETAIL:  Process holding the lock: 3952. Wait queue: 4228. application_name=tax-recalc
+2026-11-20T14:56:30.948Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T14:57:03.956Z LOG:  connection stats: active=55 idle=19
+2026-11-20T14:57:11.197Z LOG:  process 4230 still waiting for ShareLock on transaction 991859 after 8262.672 ms
+2026-11-20T14:57:11.197Z DETAIL:  Process holding the lock: 3482. Wait queue: 4230. application_name=tax-recalc
+2026-11-20T14:57:11.197Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T14:57:15.276Z LOG:  process 4231 still waiting for ShareLock on transaction 991862 after 19755.369 ms
+2026-11-20T14:57:15.276Z DETAIL:  Process holding the lock: 3395. Wait queue: 4231. application_name=tax-recalc
+2026-11-20T14:57:15.276Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T14:57:34.926Z LOG:  process 4232 still waiting for ShareLock on transaction 991866 after 6503.170 ms
+2026-11-20T14:57:34.926Z DETAIL:  Process holding the lock: 3852. Wait queue: 4232. application_name=tax-recalc
+2026-11-20T14:57:34.926Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T14:58:02.683Z LOG:  connection stats: active=58 idle=8
+2026-11-20T14:58:40.997Z LOG:  process 4234 still waiting for ShareLock on transaction 991876 after 15665.426 ms
+2026-11-20T14:58:40.997Z DETAIL:  Process holding the lock: 3544. Wait queue: 4234. application_name=tax-recalc
+2026-11-20T14:58:40.997Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T14:58:48.160Z LOG:  process 4233 still waiting for ShareLock on transaction 991875 after 28858.061 ms
+2026-11-20T14:58:48.160Z DETAIL:  Process holding the lock: 3769. Wait queue: 4233. application_name=tax-recalc
+2026-11-20T14:58:48.160Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T14:58:56.502Z LOG:  duration: 131062.581 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't136' application_name=tax-recalc
+2026-11-20T14:59:00.354Z LOG:  process 4235 still waiting for ShareLock on transaction 991884 after 10996.967 ms
+2026-11-20T14:59:00.354Z DETAIL:  Process holding the lock: 3415. Wait queue: 4235. application_name=tax-recalc
+2026-11-20T14:59:00.354Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T14:59:03.041Z LOG:  connection stats: active=70 idle=19
+2026-11-20T14:59:21.211Z LOG:  process 4237 still waiting for ShareLock on transaction 991891 after 23408.278 ms
+2026-11-20T14:59:21.211Z DETAIL:  Process holding the lock: 3961. Wait queue: 4237. application_name=tax-recalc
+2026-11-20T14:59:21.211Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T14:59:44.039Z LOG:  process 4236 still waiting for ShareLock on transaction 991890 after 27313.397 ms
+2026-11-20T14:59:44.039Z DETAIL:  Process holding the lock: 3855. Wait queue: 4236. application_name=tax-recalc
+2026-11-20T14:59:44.039Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T14:59:46.650Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T15:00:02.375Z LOG:  connection stats: active=75 idle=19
+2026-11-20T15:00:16.263Z LOG:  process 4239 still waiting for ShareLock on transaction 991901 after 18322.053 ms
+2026-11-20T15:00:16.263Z DETAIL:  Process holding the lock: 3357. Wait queue: 4239. application_name=tax-recalc
+2026-11-20T15:00:16.263Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:00:44.887Z LOG:  checkpoint complete: wrote 1123 buffers; write=6.422 s
+2026-11-20T15:00:49.322Z LOG:  duration: 167283.162 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't108' application_name=tax-recalc
+2026-11-20T15:00:58.306Z LOG:  process 4238 still waiting for ShareLock on transaction 991897 after 1381.066 ms
+2026-11-20T15:00:58.306Z DETAIL:  Process holding the lock: 3447. Wait queue: 4238. application_name=tax-recalc
+2026-11-20T15:00:58.306Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:01:03.841Z LOG:  connection stats: active=71 idle=7
+2026-11-20T15:01:06.656Z LOG:  process 4241 still waiting for ShareLock on transaction 991908 after 5080.674 ms
+2026-11-20T15:01:06.656Z DETAIL:  Process holding the lock: 3646. Wait queue: 4241. application_name=tax-recalc
+2026-11-20T15:01:06.656Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T15:01:08.454Z LOG:  process 4243 still waiting for ShareLock on transaction 991917 after 23084.540 ms
+2026-11-20T15:01:08.454Z DETAIL:  Process holding the lock: 3708. Wait queue: 4243. application_name=tax-recalc
+2026-11-20T15:01:08.454Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:01:22.394Z LOG:  process 4244 still waiting for ShareLock on transaction 991925 after 21809.290 ms
+2026-11-20T15:01:22.394Z DETAIL:  Process holding the lock: 4028. Wait queue: 4244. application_name=tax-recalc
+2026-11-20T15:01:22.394Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:01:50.337Z LOG:  process 4242 still waiting for ShareLock on transaction 991912 after 22591.719 ms
+2026-11-20T15:01:50.337Z DETAIL:  Process holding the lock: 3479. Wait queue: 4242. application_name=tax-recalc
+2026-11-20T15:01:50.337Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:01:52.341Z LOG:  process 4245 still waiting for ShareLock on transaction 991929 after 9243.798 ms
+2026-11-20T15:01:52.341Z DETAIL:  Process holding the lock: 3975. Wait queue: 4245. application_name=tax-recalc
+2026-11-20T15:01:52.341Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:01:56.440Z LOG:  process 4240 still waiting for ShareLock on transaction 991903 after 19674.214 ms
+2026-11-20T15:01:56.440Z DETAIL:  Process holding the lock: 3672. Wait queue: 4240. application_name=tax-recalc
+2026-11-20T15:01:56.440Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:02:01.706Z LOG:  connection stats: active=67 idle=13
+2026-11-20T15:02:07.914Z LOG:  process 4249 still waiting for ShareLock on transaction 991945 after 19009.337 ms
+2026-11-20T15:02:07.914Z DETAIL:  Process holding the lock: 3440. Wait queue: 4249. application_name=tax-recalc
+2026-11-20T15:02:07.914Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:02:08.551Z LOG:  process 4248 still waiting for ShareLock on transaction 991936 after 16466.068 ms
+2026-11-20T15:02:08.551Z DETAIL:  Process holding the lock: 3511. Wait queue: 4248. application_name=tax-recalc
+2026-11-20T15:02:08.551Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:02:12.681Z LOG:  process 4247 still waiting for ShareLock on transaction 991935 after 14485.043 ms
+2026-11-20T15:02:12.681Z DETAIL:  Process holding the lock: 3643. Wait queue: 4247. application_name=tax-recalc
+2026-11-20T15:02:12.681Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:02:25.922Z LOG:  process 4246 still waiting for ShareLock on transaction 991931 after 14430.749 ms
+2026-11-20T15:02:25.922Z DETAIL:  Process holding the lock: 3481. Wait queue: 4246. application_name=tax-recalc
+2026-11-20T15:02:25.922Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:03:05.430Z LOG:  connection stats: active=53 idle=5
+2026-11-20T15:03:13.070Z LOG:  process 4251 still waiting for ShareLock on transaction 991957 after 14226.369 ms
+2026-11-20T15:03:13.070Z DETAIL:  Process holding the lock: 4002. Wait queue: 4251. application_name=tax-recalc
+2026-11-20T15:03:13.070Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:03:17.242Z LOG:  process 4252 still waiting for ShareLock on transaction 991960 after 7860.602 ms
+2026-11-20T15:03:17.242Z DETAIL:  Process holding the lock: 3744. Wait queue: 4252. application_name=tax-recalc
+2026-11-20T15:03:17.242Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:03:27.765Z LOG:  process 4250 still waiting for ShareLock on transaction 991952 after 19271.520 ms
+2026-11-20T15:03:27.765Z DETAIL:  Process holding the lock: 3810. Wait queue: 4250. application_name=tax-recalc
+2026-11-20T15:03:27.765Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:03:36.163Z LOG:  duration: 181488.444 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't124' application_name=tax-recalc
+2026-11-20T15:04:04.650Z LOG:  connection stats: active=64 idle=12
+2026-11-20T15:04:24.330Z LOG:  process 4253 still waiting for ShareLock on transaction 991963 after 1534.898 ms
+2026-11-20T15:04:24.330Z DETAIL:  Process holding the lock: 3370. Wait queue: 4253. application_name=tax-recalc
+2026-11-20T15:04:24.330Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:05:01.932Z LOG:  connection stats: active=61 idle=13
+2026-11-20T15:05:05.757Z LOG:  checkpoint complete: wrote 2108 buffers; write=7.610 s
+2026-11-20T15:05:17.696Z LOG:  process 4254 still waiting for ShareLock on transaction 991971 after 27443.745 ms
+2026-11-20T15:05:17.696Z DETAIL:  Process holding the lock: 3891. Wait queue: 4254. application_name=tax-recalc
+2026-11-20T15:05:17.696Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:05:21.343Z LOG:  process 4256 still waiting for ShareLock on transaction 991983 after 1081.968 ms
+2026-11-20T15:05:21.343Z DETAIL:  Process holding the lock: 3747. Wait queue: 4256. application_name=tax-recalc
+2026-11-20T15:05:21.343Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:05:35.054Z LOG:  process 4257 still waiting for ShareLock on transaction 991989 after 27997.343 ms
+2026-11-20T15:05:35.054Z DETAIL:  Process holding the lock: 3859. Wait queue: 4257. application_name=tax-recalc
+2026-11-20T15:05:35.054Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:05:41.600Z LOG:  process 4255 still waiting for ShareLock on transaction 991974 after 9912.902 ms
+2026-11-20T15:05:41.600Z DETAIL:  Process holding the lock: 3638. Wait queue: 4255. application_name=tax-recalc
+2026-11-20T15:05:41.600Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T15:06:01.564Z LOG:  process 4258 still waiting for ShareLock on transaction 991996 after 12225.426 ms
+2026-11-20T15:06:01.564Z DETAIL:  Process holding the lock: 3898. Wait queue: 4258. application_name=tax-recalc
+2026-11-20T15:06:01.564Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:06:01.912Z LOG:  connection stats: active=65 idle=7
+2026-11-20T15:06:26.147Z LOG:  process 4261 still waiting for ShareLock on transaction 992013 after 15210.942 ms
+2026-11-20T15:06:26.147Z DETAIL:  Process holding the lock: 3837. Wait queue: 4261. application_name=tax-recalc
+2026-11-20T15:06:26.147Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:06:52.897Z LOG:  process 4259 still waiting for ShareLock on transaction 992001 after 13760.726 ms
+2026-11-20T15:06:52.897Z DETAIL:  Process holding the lock: 3654. Wait queue: 4259. application_name=tax-recalc
+2026-11-20T15:06:52.897Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:06:54.534Z LOG:  process 4260 still waiting for ShareLock on transaction 992006 after 14334.051 ms
+2026-11-20T15:06:54.534Z DETAIL:  Process holding the lock: 3869. Wait queue: 4260. application_name=tax-recalc
+2026-11-20T15:06:54.534Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:06:58.484Z LOG:  process 4262 still waiting for ShareLock on transaction 992015 after 1360.094 ms
+2026-11-20T15:06:58.484Z DETAIL:  Process holding the lock: 3938. Wait queue: 4262. application_name=tax-recalc
+2026-11-20T15:06:58.484Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:07:04.305Z LOG:  connection stats: active=68 idle=9
+2026-11-20T15:07:26.372Z LOG:  process 4264 still waiting for ShareLock on transaction 992027 after 5875.282 ms
+2026-11-20T15:07:26.372Z DETAIL:  Process holding the lock: 3494. Wait queue: 4264. application_name=tax-recalc
+2026-11-20T15:07:26.372Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:07:28.309Z LOG:  duration: 151537.988 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't104' application_name=tax-recalc
+2026-11-20T15:07:45.353Z LOG:  process 4266 still waiting for ShareLock on transaction 992035 after 5551.591 ms
+2026-11-20T15:07:45.353Z DETAIL:  Process holding the lock: 3616. Wait queue: 4266. application_name=tax-recalc
+2026-11-20T15:07:45.353Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:07:47.533Z LOG:  process 4263 still waiting for ShareLock on transaction 992018 after 13839.810 ms
+2026-11-20T15:07:47.533Z DETAIL:  Process holding the lock: 3782. Wait queue: 4263. application_name=tax-recalc
+2026-11-20T15:07:47.533Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:07:54.828Z LOG:  process 4265 still waiting for ShareLock on transaction 992030 after 2644.235 ms
+2026-11-20T15:07:54.828Z DETAIL:  Process holding the lock: 3718. Wait queue: 4265. application_name=tax-recalc
+2026-11-20T15:07:54.828Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:08:00.817Z LOG:  connection stats: active=73 idle=6
+2026-11-20T15:08:31.774Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T15:08:32.148Z LOG:  process 4267 still waiting for ShareLock on transaction 992040 after 18121.844 ms
+2026-11-20T15:08:32.148Z DETAIL:  Process holding the lock: 3428. Wait queue: 4267. application_name=tax-recalc
+2026-11-20T15:08:32.148Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:08:51.076Z LOG:  process 4268 still waiting for ShareLock on transaction 992045 after 7394.045 ms
+2026-11-20T15:08:51.076Z DETAIL:  Process holding the lock: 3422. Wait queue: 4268. application_name=tax-recalc
+2026-11-20T15:08:51.076Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:09:05.584Z LOG:  connection stats: active=57 idle=17
+2026-11-20T15:09:16.532Z LOG:  process 4269 still waiting for ShareLock on transaction 992048 after 7048.064 ms
+2026-11-20T15:09:16.532Z DETAIL:  Process holding the lock: 3559. Wait queue: 4269. application_name=tax-recalc
+2026-11-20T15:09:16.532Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:09:59.359Z LOG:  duration: 236416.942 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't140' application_name=tax-recalc
+2026-11-20T15:10:02.751Z LOG:  connection stats: active=56 idle=6
+2026-11-20T15:10:05.798Z LOG:  checkpoint complete: wrote 2179 buffers; write=4.480 s
+2026-11-20T15:10:16.484Z LOG:  process 4270 still waiting for ShareLock on transaction 992057 after 17520.772 ms
+2026-11-20T15:10:16.484Z DETAIL:  Process holding the lock: 3996. Wait queue: 4270. application_name=tax-recalc
+2026-11-20T15:10:16.484Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T15:10:54.640Z LOG:  process 4271 still waiting for ShareLock on transaction 992066 after 26570.637 ms
+2026-11-20T15:10:54.640Z DETAIL:  Process holding the lock: 3898. Wait queue: 4271. application_name=tax-recalc
+2026-11-20T15:10:54.640Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:11:02.424Z LOG:  connection stats: active=54 idle=11
+2026-11-20T15:11:13.923Z LOG:  process 4274 still waiting for ShareLock on transaction 992080 after 25325.383 ms
+2026-11-20T15:11:13.923Z DETAIL:  Process holding the lock: 3423. Wait queue: 4274. application_name=tax-recalc
+2026-11-20T15:11:13.923Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:11:15.148Z LOG:  process 4272 still waiting for ShareLock on transaction 992069 after 17284.852 ms
+2026-11-20T15:11:15.148Z DETAIL:  Process holding the lock: 3896. Wait queue: 4272. application_name=tax-recalc
+2026-11-20T15:11:15.148Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:11:43.290Z LOG:  process 4275 still waiting for ShareLock on transaction 992088 after 14521.569 ms
+2026-11-20T15:11:43.290Z DETAIL:  Process holding the lock: 3458. Wait queue: 4275. application_name=tax-recalc
+2026-11-20T15:11:43.290Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:11:43.587Z LOG:  process 4273 still waiting for ShareLock on transaction 992075 after 27392.310 ms
+2026-11-20T15:11:43.587Z DETAIL:  Process holding the lock: 3822. Wait queue: 4273. application_name=tax-recalc
+2026-11-20T15:11:43.587Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:12:04.092Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T15:12:05.578Z LOG:  connection stats: active=74 idle=8
+2026-11-20T15:12:37.913Z LOG:  duration: 75406.518 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't128' application_name=tax-recalc
+2026-11-20T15:12:54.314Z LOG:  process 4276 still waiting for ShareLock on transaction 992090 after 29725.384 ms
+2026-11-20T15:12:54.314Z DETAIL:  Process holding the lock: 4056. Wait queue: 4276. application_name=tax-recalc
+2026-11-20T15:12:54.314Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:13:02.215Z LOG:  connection stats: active=57 idle=7
+2026-11-20T15:13:03.999Z LOG:  process 4279 still waiting for ShareLock on transaction 992109 after 6198.286 ms
+2026-11-20T15:13:03.999Z DETAIL:  Process holding the lock: 3474. Wait queue: 4279. application_name=tax-recalc
+2026-11-20T15:13:03.999Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T15:13:18.527Z LOG:  process 4278 still waiting for ShareLock on transaction 992104 after 1343.875 ms
+2026-11-20T15:13:18.527Z DETAIL:  Process holding the lock: 3567. Wait queue: 4278. application_name=tax-recalc
+2026-11-20T15:13:18.527Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:13:52.138Z LOG:  process 4277 still waiting for ShareLock on transaction 992098 after 11633.016 ms
+2026-11-20T15:13:52.138Z DETAIL:  Process holding the lock: 3477. Wait queue: 4277. application_name=tax-recalc
+2026-11-20T15:13:52.138Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:14:01.874Z LOG:  connection stats: active=69 idle=10
+2026-11-20T15:14:19.324Z LOG:  process 4281 still waiting for ShareLock on transaction 992121 after 7822.167 ms
+2026-11-20T15:14:19.324Z DETAIL:  Process holding the lock: 3902. Wait queue: 4281. application_name=tax-recalc
+2026-11-20T15:14:19.324Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:14:25.463Z LOG:  process 4280 still waiting for ShareLock on transaction 992113 after 25106.864 ms
+2026-11-20T15:14:25.463Z DETAIL:  Process holding the lock: 4033. Wait queue: 4280. application_name=tax-recalc
+2026-11-20T15:14:25.463Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:15:00.212Z LOG:  connection stats: active=72 idle=13
+2026-11-20T15:15:56.080Z LOG:  checkpoint complete: wrote 1503 buffers; write=7.352 s
+2026-11-20T15:16:00.325Z LOG:  connection stats: active=60 idle=8
+2026-11-20T15:16:22.415Z LOG:  process 4282 still waiting for ShareLock on transaction 992122 after 3874.367 ms
+2026-11-20T15:16:22.415Z DETAIL:  Process holding the lock: 3734. Wait queue: 4282. application_name=tax-recalc
+2026-11-20T15:16:22.415Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:16:24.478Z LOG:  duration: 195436.530 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T15:16:35.772Z LOG:  process 4283 still waiting for ShareLock on transaction 992129 after 25489.937 ms
+2026-11-20T15:16:35.772Z DETAIL:  Process holding the lock: 3594. Wait queue: 4283. application_name=tax-recalc
+2026-11-20T15:16:35.772Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:17:05.897Z LOG:  connection stats: active=75 idle=12
+2026-11-20T15:17:27.047Z LOG:  process 4285 still waiting for ShareLock on transaction 992142 after 12505.963 ms
+2026-11-20T15:17:27.047Z DETAIL:  Process holding the lock: 3608. Wait queue: 4285. application_name=tax-recalc
+2026-11-20T15:17:27.047Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:17:41.434Z LOG:  process 4284 still waiting for ShareLock on transaction 992133 after 24646.572 ms
+2026-11-20T15:17:41.434Z DETAIL:  Process holding the lock: 3478. Wait queue: 4284. application_name=tax-recalc
+2026-11-20T15:17:41.434Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:18:03.753Z LOG:  connection stats: active=58 idle=6
+2026-11-20T15:18:13.267Z LOG:  process 4286 still waiting for ShareLock on transaction 992143 after 21285.552 ms
+2026-11-20T15:18:13.267Z DETAIL:  Process holding the lock: 3442. Wait queue: 4286. application_name=tax-recalc
+2026-11-20T15:18:13.267Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:19:05.425Z LOG:  connection stats: active=71 idle=11
+2026-11-20T15:19:16.915Z LOG:  process 4287 still waiting for ShareLock on transaction 992145 after 24528.189 ms
+2026-11-20T15:19:16.915Z DETAIL:  Process holding the lock: 3586. Wait queue: 4287. application_name=tax-recalc
+2026-11-20T15:19:16.915Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T15:19:27.880Z LOG:  process 4289 still waiting for ShareLock on transaction 992149 after 23091.348 ms
+2026-11-20T15:19:27.880Z DETAIL:  Process holding the lock: 4065. Wait queue: 4289. application_name=tax-recalc
+2026-11-20T15:19:27.880Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:19:29.265Z LOG:  process 4288 still waiting for ShareLock on transaction 992147 after 5525.976 ms
+2026-11-20T15:19:29.265Z DETAIL:  Process holding the lock: 3924. Wait queue: 4288. application_name=tax-recalc
+2026-11-20T15:19:29.265Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:19:33.152Z LOG:  duration: 174251.884 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't136' application_name=tax-recalc
+2026-11-20T15:20:02.572Z LOG:  checkpoint complete: wrote 2169 buffers; write=1.057 s
+2026-11-20T15:20:03.903Z LOG:  connection stats: active=75 idle=18
+2026-11-20T15:20:06.663Z LOG:  process 4291 still waiting for ShareLock on transaction 992161 after 27586.993 ms
+2026-11-20T15:20:06.663Z DETAIL:  Process holding the lock: 3434. Wait queue: 4291. application_name=tax-recalc
+2026-11-20T15:20:06.663Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:20:26.183Z LOG:  process 4293 still waiting for ShareLock on transaction 992170 after 29519.525 ms
+2026-11-20T15:20:26.183Z DETAIL:  Process holding the lock: 3825. Wait queue: 4293. application_name=tax-recalc
+2026-11-20T15:20:26.183Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:20:30.191Z LOG:  process 4290 still waiting for ShareLock on transaction 992155 after 15582.275 ms
+2026-11-20T15:20:30.191Z DETAIL:  Process holding the lock: 3965. Wait queue: 4290. application_name=tax-recalc
+2026-11-20T15:20:30.191Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:20:42.519Z LOG:  duration: 120911.151 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't140' application_name=tax-recalc
+2026-11-20T15:20:55.579Z LOG:  process 4292 still waiting for ShareLock on transaction 992165 after 10695.004 ms
+2026-11-20T15:20:55.579Z DETAIL:  Process holding the lock: 3480. Wait queue: 4292. application_name=tax-recalc
+2026-11-20T15:20:55.579Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:21:05.261Z LOG:  connection stats: active=67 idle=8
+2026-11-20T15:21:11.456Z LOG:  process 4295 still waiting for ShareLock on transaction 992182 after 14368.796 ms
+2026-11-20T15:21:11.456Z DETAIL:  Process holding the lock: 3793. Wait queue: 4295. application_name=tax-recalc
+2026-11-20T15:21:11.456Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:21:29.315Z LOG:  process 4296 still waiting for ShareLock on transaction 992188 after 23017.327 ms
+2026-11-20T15:21:29.315Z DETAIL:  Process holding the lock: 3693. Wait queue: 4296. application_name=tax-recalc
+2026-11-20T15:21:29.315Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:21:30.828Z LOG:  process 4294 still waiting for ShareLock on transaction 992176 after 20460.438 ms
+2026-11-20T15:21:30.828Z DETAIL:  Process holding the lock: 3753. Wait queue: 4294. application_name=tax-recalc
+2026-11-20T15:21:30.828Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:21:38.519Z LOG:  process 4297 still waiting for ShareLock on transaction 992194 after 7054.569 ms
+2026-11-20T15:21:38.519Z DETAIL:  Process holding the lock: 3723. Wait queue: 4297. application_name=tax-recalc
+2026-11-20T15:21:38.519Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:22:05.552Z LOG:  connection stats: active=62 idle=12
+2026-11-20T15:22:20.003Z LOG:  process 4299 still waiting for ShareLock on transaction 992207 after 4817.855 ms
+2026-11-20T15:22:20.003Z DETAIL:  Process holding the lock: 4072. Wait queue: 4299. application_name=tax-recalc
+2026-11-20T15:22:20.003Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:22:24.732Z LOG:  duration: 124821.385 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't124' application_name=tax-recalc
+2026-11-20T15:22:26.195Z LOG:  process 4298 still waiting for ShareLock on transaction 992203 after 13893.621 ms
+2026-11-20T15:22:26.195Z DETAIL:  Process holding the lock: 3693. Wait queue: 4298. application_name=tax-recalc
+2026-11-20T15:22:26.195Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:23:03.478Z LOG:  connection stats: active=54 idle=8
+2026-11-20T15:23:28.913Z LOG:  process 4302 still waiting for ShareLock on transaction 992224 after 25949.488 ms
+2026-11-20T15:23:28.913Z DETAIL:  Process holding the lock: 3817. Wait queue: 4302. application_name=tax-recalc
+2026-11-20T15:23:28.913Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:23:41.903Z LOG:  process 4301 still waiting for ShareLock on transaction 992216 after 18283.287 ms
+2026-11-20T15:23:41.903Z DETAIL:  Process holding the lock: 3428. Wait queue: 4301. application_name=tax-recalc
+2026-11-20T15:23:41.903Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:23:59.091Z LOG:  process 4300 still waiting for ShareLock on transaction 992209 after 6977.380 ms
+2026-11-20T15:23:59.091Z DETAIL:  Process holding the lock: 3490. Wait queue: 4300. application_name=tax-recalc
+2026-11-20T15:23:59.091Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:24:00.375Z LOG:  process 4303 still waiting for ShareLock on transaction 992232 after 16667.790 ms
+2026-11-20T15:24:00.375Z DETAIL:  Process holding the lock: 3728. Wait queue: 4303. application_name=tax-recalc
+2026-11-20T15:24:00.375Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:24:03.014Z LOG:  connection stats: active=59 idle=19
+2026-11-20T15:24:04.928Z LOG:  process 4304 still waiting for ShareLock on transaction 992238 after 20690.083 ms
+2026-11-20T15:24:04.928Z DETAIL:  Process holding the lock: 3789. Wait queue: 4304. application_name=tax-recalc
+2026-11-20T15:24:04.928Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:24:24.157Z LOG:  process 4305 still waiting for ShareLock on transaction 992244 after 28184.647 ms
+2026-11-20T15:24:24.157Z DETAIL:  Process holding the lock: 3923. Wait queue: 4305. application_name=tax-recalc
+2026-11-20T15:24:24.157Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:25:03.871Z LOG:  connection stats: active=57 idle=12
+2026-11-20T15:25:07.076Z LOG:  process 4307 still waiting for ShareLock on transaction 992260 after 6145.396 ms
+2026-11-20T15:25:07.076Z DETAIL:  Process holding the lock: 3529. Wait queue: 4307. application_name=tax-recalc
+2026-11-20T15:25:07.076Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:25:10.100Z LOG:  checkpoint complete: wrote 1329 buffers; write=6.994 s
+2026-11-20T15:25:43.856Z LOG:  process 4308 still waiting for ShareLock on transaction 992265 after 23855.899 ms
+2026-11-20T15:25:43.856Z DETAIL:  Process holding the lock: 3852. Wait queue: 4308. application_name=tax-recalc
+2026-11-20T15:25:43.856Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:25:44.072Z LOG:  process 4306 still waiting for ShareLock on transaction 992251 after 14640.039 ms
+2026-11-20T15:25:44.072Z DETAIL:  Process holding the lock: 3958. Wait queue: 4306. application_name=tax-recalc
+2026-11-20T15:25:44.072Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:26:00.716Z LOG:  connection stats: active=60 idle=7
+2026-11-20T15:26:28.332Z LOG:  process 4310 still waiting for ShareLock on transaction 992278 after 15856.111 ms
+2026-11-20T15:26:28.332Z DETAIL:  Process holding the lock: 3780. Wait queue: 4310. application_name=tax-recalc
+2026-11-20T15:26:28.332Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:26:58.471Z LOG:  process 4309 still waiting for ShareLock on transaction 992271 after 28689.833 ms
+2026-11-20T15:26:58.471Z DETAIL:  Process holding the lock: 3878. Wait queue: 4309. application_name=tax-recalc
+2026-11-20T15:26:58.471Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:27:02.965Z LOG:  process 4312 still waiting for ShareLock on transaction 992286 after 29695.457 ms
+2026-11-20T15:27:02.965Z DETAIL:  Process holding the lock: 3651. Wait queue: 4312. application_name=tax-recalc
+2026-11-20T15:27:02.965Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:27:04.690Z LOG:  connection stats: active=72 idle=11
+2026-11-20T15:27:57.620Z LOG:  process 4311 still waiting for ShareLock on transaction 992281 after 16063.575 ms
+2026-11-20T15:27:57.620Z DETAIL:  Process holding the lock: 3724. Wait queue: 4311. application_name=tax-recalc
+2026-11-20T15:27:57.620Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:28:03.519Z LOG:  connection stats: active=74 idle=19
+2026-11-20T15:28:30.878Z LOG:  process 4314 still waiting for ShareLock on transaction 992302 after 19975.749 ms
+2026-11-20T15:28:30.878Z DETAIL:  Process holding the lock: 3606. Wait queue: 4314. application_name=tax-recalc
+2026-11-20T15:28:30.878Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:28:54.922Z LOG:  process 4313 still waiting for ShareLock on transaction 992295 after 7312.677 ms
+2026-11-20T15:28:54.922Z DETAIL:  Process holding the lock: 3807. Wait queue: 4313. application_name=tax-recalc
+2026-11-20T15:28:54.922Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:29:00.461Z LOG:  connection stats: active=57 idle=17
+2026-11-20T15:29:11.974Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T15:29:45.600Z LOG:  process 4315 still waiting for ShareLock on transaction 992305 after 9807.668 ms
+2026-11-20T15:29:45.600Z DETAIL:  Process holding the lock: 3645. Wait queue: 4315. application_name=tax-recalc
+2026-11-20T15:29:45.600Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:30:02.347Z LOG:  connection stats: active=58 idle=17
+2026-11-20T15:30:26.553Z LOG:  checkpoint complete: wrote 1931 buffers; write=6.675 s
+2026-11-20T15:30:28.057Z LOG:  duration: 280935.853 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't120' application_name=tax-recalc
+2026-11-20T15:30:52.677Z LOG:  process 4316 still waiting for ShareLock on transaction 992310 after 16464.909 ms
+2026-11-20T15:30:52.677Z DETAIL:  Process holding the lock: 3590. Wait queue: 4316. application_name=tax-recalc
+2026-11-20T15:30:52.677Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:31:00.198Z LOG:  connection stats: active=62 idle=9
+2026-11-20T15:31:39.336Z LOG:  process 4317 still waiting for ShareLock on transaction 992316 after 21103.654 ms
+2026-11-20T15:31:39.336Z DETAIL:  Process holding the lock: 4024. Wait queue: 4317. application_name=tax-recalc
+2026-11-20T15:31:39.336Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T15:32:04.841Z LOG:  connection stats: active=56 idle=5
+2026-11-20T15:32:18.241Z LOG:  process 4319 still waiting for ShareLock on transaction 992331 after 23367.883 ms
+2026-11-20T15:32:18.241Z DETAIL:  Process holding the lock: 3906. Wait queue: 4319. application_name=tax-recalc
+2026-11-20T15:32:18.241Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:32:20.006Z LOG:  duration: 82973.534 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't144' application_name=tax-recalc
+2026-11-20T15:32:24.937Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T15:32:40.798Z LOG:  process 4320 still waiting for ShareLock on transaction 992332 after 3665.799 ms
+2026-11-20T15:32:40.798Z DETAIL:  Process holding the lock: 4047. Wait queue: 4320. application_name=tax-recalc
+2026-11-20T15:32:40.798Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:32:44.949Z LOG:  process 4321 still waiting for ShareLock on transaction 992333 after 16637.041 ms
+2026-11-20T15:32:44.949Z DETAIL:  Process holding the lock: 3777. Wait queue: 4321. application_name=tax-recalc
+2026-11-20T15:32:44.949Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:32:58.047Z LOG:  process 4318 still waiting for ShareLock on transaction 992323 after 23774.025 ms
+2026-11-20T15:32:58.047Z DETAIL:  Process holding the lock: 3551. Wait queue: 4318. application_name=tax-recalc
+2026-11-20T15:32:58.047Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T15:33:05.777Z LOG:  connection stats: active=65 idle=12
+2026-11-20T15:33:16.722Z LOG:  process 4322 still waiting for ShareLock on transaction 992334 after 11841.937 ms
+2026-11-20T15:33:16.722Z DETAIL:  Process holding the lock: 3930. Wait queue: 4322. application_name=tax-recalc
+2026-11-20T15:33:16.722Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:33:30.849Z LOG:  process 4323 still waiting for ShareLock on transaction 992340 after 9140.629 ms
+2026-11-20T15:33:30.849Z DETAIL:  Process holding the lock: 3905. Wait queue: 4323. application_name=tax-recalc
+2026-11-20T15:33:30.849Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:33:39.134Z LOG:  process 4324 still waiting for ShareLock on transaction 992345 after 15530.727 ms
+2026-11-20T15:33:39.134Z DETAIL:  Process holding the lock: 3527. Wait queue: 4324. application_name=tax-recalc
+2026-11-20T15:33:39.134Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:34:02.577Z LOG:  connection stats: active=57 idle=16
+2026-11-20T15:34:17.847Z LOG:  process 4325 still waiting for ShareLock on transaction 992354 after 18411.234 ms
+2026-11-20T15:34:17.847Z DETAIL:  Process holding the lock: 3789. Wait queue: 4325. application_name=tax-recalc
+2026-11-20T15:34:17.847Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:35:03.534Z LOG:  connection stats: active=70 idle=18
+2026-11-20T15:35:17.761Z LOG:  process 4327 still waiting for ShareLock on transaction 992361 after 22344.153 ms
+2026-11-20T15:35:17.761Z DETAIL:  Process holding the lock: 4057. Wait queue: 4327. application_name=tax-recalc
+2026-11-20T15:35:17.761Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:35:30.670Z LOG:  process 4328 still waiting for ShareLock on transaction 992367 after 18798.573 ms
+2026-11-20T15:35:30.670Z DETAIL:  Process holding the lock: 3743. Wait queue: 4328. application_name=tax-recalc
+2026-11-20T15:35:30.670Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:35:37.113Z LOG:  process 4326 still waiting for ShareLock on transaction 992360 after 17648.052 ms
+2026-11-20T15:35:37.113Z DETAIL:  Process holding the lock: 3815. Wait queue: 4326. application_name=tax-recalc
+2026-11-20T15:35:37.113Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:35:59.978Z LOG:  checkpoint complete: wrote 502 buffers; write=6.234 s
+2026-11-20T15:36:02.223Z LOG:  connection stats: active=72 idle=7
+2026-11-20T15:36:06.351Z LOG:  process 4329 still waiting for ShareLock on transaction 992369 after 25166.808 ms
+2026-11-20T15:36:06.351Z DETAIL:  Process holding the lock: 3924. Wait queue: 4329. application_name=tax-recalc
+2026-11-20T15:36:06.351Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:36:29.276Z LOG:  process 4331 still waiting for ShareLock on transaction 992376 after 12713.535 ms
+2026-11-20T15:36:29.276Z DETAIL:  Process holding the lock: 3918. Wait queue: 4331. application_name=tax-recalc
+2026-11-20T15:36:29.276Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:36:36.375Z LOG:  process 4330 still waiting for ShareLock on transaction 992370 after 27220.190 ms
+2026-11-20T15:36:36.375Z DETAIL:  Process holding the lock: 3818. Wait queue: 4330. application_name=tax-recalc
+2026-11-20T15:36:36.375Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:37:03.217Z LOG:  connection stats: active=62 idle=14
+2026-11-20T15:37:12.979Z LOG:  process 4335 still waiting for ShareLock on transaction 992396 after 11101.577 ms
+2026-11-20T15:37:12.979Z DETAIL:  Process holding the lock: 4005. Wait queue: 4335. application_name=tax-recalc
+2026-11-20T15:37:12.979Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:37:26.624Z LOG:  process 4332 still waiting for ShareLock on transaction 992384 after 6421.694 ms
+2026-11-20T15:37:26.624Z DETAIL:  Process holding the lock: 3744. Wait queue: 4332. application_name=tax-recalc
+2026-11-20T15:37:26.624Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:37:39.488Z LOG:  process 4334 still waiting for ShareLock on transaction 992393 after 22775.821 ms
+2026-11-20T15:37:39.488Z DETAIL:  Process holding the lock: 3989. Wait queue: 4334. application_name=tax-recalc
+2026-11-20T15:37:39.488Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:37:51.031Z LOG:  process 4333 still waiting for ShareLock on transaction 992389 after 28890.721 ms
+2026-11-20T15:37:51.031Z DETAIL:  Process holding the lock: 3974. Wait queue: 4333. application_name=tax-recalc
+2026-11-20T15:37:51.031Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:37:56.218Z LOG:  process 4336 still waiting for ShareLock on transaction 992402 after 3644.070 ms
+2026-11-20T15:37:56.218Z DETAIL:  Process holding the lock: 3955. Wait queue: 4336. application_name=tax-recalc
+2026-11-20T15:37:56.218Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:38:01.066Z LOG:  connection stats: active=55 idle=5
+2026-11-20T15:39:05.060Z LOG:  connection stats: active=64 idle=19
+2026-11-20T15:39:29.489Z LOG:  duration: 98949.968 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T15:39:48.353Z LOG:  process 4337 still waiting for ShareLock on transaction 992408 after 6932.560 ms
+2026-11-20T15:39:48.353Z DETAIL:  Process holding the lock: 3549. Wait queue: 4337. application_name=tax-recalc
+2026-11-20T15:39:48.353Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:40:05.123Z LOG:  connection stats: active=65 idle=20
+2026-11-20T15:40:26.908Z LOG:  process 4338 still waiting for ShareLock on transaction 992414 after 22309.074 ms
+2026-11-20T15:40:26.908Z DETAIL:  Process holding the lock: 4125. Wait queue: 4338. application_name=tax-recalc
+2026-11-20T15:40:26.908Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:40:34.589Z LOG:  duration: 202433.416 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't156' application_name=tax-recalc
+2026-11-20T15:40:53.005Z LOG:  checkpoint complete: wrote 1823 buffers; write=6.497 s
+2026-11-20T15:41:02.786Z LOG:  connection stats: active=57 idle=20
+2026-11-20T15:41:32.530Z LOG:  process 4341 still waiting for ShareLock on transaction 992426 after 5053.583 ms
+2026-11-20T15:41:32.530Z DETAIL:  Process holding the lock: 4087. Wait queue: 4341. application_name=tax-recalc
+2026-11-20T15:41:32.530Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:41:47.222Z LOG:  process 4340 still waiting for ShareLock on transaction 992421 after 10804.750 ms
+2026-11-20T15:41:47.222Z DETAIL:  Process holding the lock: 3906. Wait queue: 4340. application_name=tax-recalc
+2026-11-20T15:41:47.222Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:41:48.066Z LOG:  process 4339 still waiting for ShareLock on transaction 992416 after 11561.618 ms
+2026-11-20T15:41:48.066Z DETAIL:  Process holding the lock: 4130. Wait queue: 4339. application_name=tax-recalc
+2026-11-20T15:41:48.066Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:42:02.123Z LOG:  connection stats: active=63 idle=13
+2026-11-20T15:42:27.487Z LOG:  process 4342 still waiting for ShareLock on transaction 992428 after 25689.788 ms
+2026-11-20T15:42:27.487Z DETAIL:  Process holding the lock: 3541. Wait queue: 4342. application_name=tax-recalc
+2026-11-20T15:42:27.487Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:42:43.756Z LOG:  process 4343 still waiting for ShareLock on transaction 992435 after 15009.590 ms
+2026-11-20T15:42:43.756Z DETAIL:  Process holding the lock: 4107. Wait queue: 4343. application_name=tax-recalc
+2026-11-20T15:42:43.756Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T15:42:53.380Z LOG:  process 4344 still waiting for ShareLock on transaction 992440 after 12497.107 ms
+2026-11-20T15:42:53.380Z DETAIL:  Process holding the lock: 3738. Wait queue: 4344. application_name=tax-recalc
+2026-11-20T15:42:53.380Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:43:03.709Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T15:43:05.009Z LOG:  connection stats: active=69 idle=18
+2026-11-20T15:43:38.153Z LOG:  process 4345 still waiting for ShareLock on transaction 992444 after 18476.439 ms
+2026-11-20T15:43:38.153Z DETAIL:  Process holding the lock: 4006. Wait queue: 4345. application_name=tax-recalc
+2026-11-20T15:43:38.153Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:44:02.562Z LOG:  connection stats: active=63 idle=16
+2026-11-20T15:44:26.839Z LOG:  process 4346 still waiting for ShareLock on transaction 992451 after 6304.449 ms
+2026-11-20T15:44:26.839Z DETAIL:  Process holding the lock: 3662. Wait queue: 4346. application_name=tax-recalc
+2026-11-20T15:44:26.839Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:44:34.514Z LOG:  duration: 214235.537 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't152' application_name=tax-recalc
+2026-11-20T15:45:01.033Z LOG:  duration: 75417.246 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T15:45:03.188Z LOG:  connection stats: active=57 idle=9
+2026-11-20T15:45:13.068Z LOG:  process 4348 still waiting for ShareLock on transaction 992461 after 24053.527 ms
+2026-11-20T15:45:13.068Z DETAIL:  Process holding the lock: 3680. Wait queue: 4348. application_name=tax-recalc
+2026-11-20T15:45:13.068Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:45:43.981Z LOG:  checkpoint complete: wrote 541 buffers; write=3.618 s
+2026-11-20T15:45:55.308Z LOG:  process 4347 still waiting for ShareLock on transaction 992458 after 2564.258 ms
+2026-11-20T15:45:55.308Z DETAIL:  Process holding the lock: 3564. Wait queue: 4347. application_name=tax-recalc
+2026-11-20T15:45:55.308Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:46:05.974Z LOG:  connection stats: active=57 idle=10
+2026-11-20T15:46:17.446Z LOG:  process 4349 still waiting for ShareLock on transaction 992466 after 25164.945 ms
+2026-11-20T15:46:17.446Z DETAIL:  Process holding the lock: 3483. Wait queue: 4349. application_name=tax-recalc
+2026-11-20T15:46:17.446Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:47:02.102Z LOG:  connection stats: active=57 idle=15
+2026-11-20T15:47:13.960Z LOG:  process 4350 still waiting for ShareLock on transaction 992473 after 27824.273 ms
+2026-11-20T15:47:13.960Z DETAIL:  Process holding the lock: 3927. Wait queue: 4350. application_name=tax-recalc
+2026-11-20T15:47:13.960Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:47:45.618Z LOG:  process 4351 still waiting for ShareLock on transaction 992477 after 17360.482 ms
+2026-11-20T15:47:45.618Z DETAIL:  Process holding the lock: 3794. Wait queue: 4351. application_name=tax-recalc
+2026-11-20T15:47:45.618Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:48:02.150Z LOG:  connection stats: active=56 idle=12
+2026-11-20T15:48:44.107Z LOG:  automatic vacuum of table "ledger.public.payments": index scans: 1
+2026-11-20T15:49:01.415Z LOG:  connection stats: active=66 idle=13
+2026-11-20T15:49:20.991Z LOG:  process 4353 still waiting for ShareLock on transaction 992488 after 29911.896 ms
+2026-11-20T15:49:20.991Z DETAIL:  Process holding the lock: 3871. Wait queue: 4353. application_name=tax-recalc
+2026-11-20T15:49:20.991Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:49:23.831Z LOG:  process 4354 still waiting for ShareLock on transaction 992495 after 3850.584 ms
+2026-11-20T15:49:23.831Z DETAIL:  Process holding the lock: 3789. Wait queue: 4354. application_name=tax-recalc
+2026-11-20T15:49:23.831Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:49:47.661Z LOG:  process 4352 still waiting for ShareLock on transaction 992486 after 4398.105 ms
+2026-11-20T15:49:47.661Z DETAIL:  Process holding the lock: 3892. Wait queue: 4352. application_name=tax-recalc
+2026-11-20T15:49:47.661Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T15:50:03.381Z LOG:  connection stats: active=57 idle=18
+2026-11-20T15:50:10.828Z LOG:  checkpoint complete: wrote 2077 buffers; write=2.664 s
+2026-11-20T15:50:26.788Z LOG:  process 4355 still waiting for ShareLock on transaction 992501 after 20012.022 ms
+2026-11-20T15:50:26.788Z DETAIL:  Process holding the lock: 4067. Wait queue: 4355. application_name=tax-recalc
+2026-11-20T15:50:26.788Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T15:50:43.876Z LOG:  process 4356 still waiting for ShareLock on transaction 992503 after 8469.225 ms
+2026-11-20T15:50:43.876Z DETAIL:  Process holding the lock: 3574. Wait queue: 4356. application_name=tax-recalc
+2026-11-20T15:50:43.876Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:50:55.016Z LOG:  process 4357 still waiting for ShareLock on transaction 992505 after 1957.111 ms
+2026-11-20T15:50:55.016Z DETAIL:  Process holding the lock: 3719. Wait queue: 4357. application_name=tax-recalc
+2026-11-20T15:50:55.016Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:51:01.059Z LOG:  connection stats: active=70 idle=17
+2026-11-20T15:52:00.773Z LOG:  connection stats: active=71 idle=17
+2026-11-20T15:52:43.395Z LOG:  duration: 250453.840 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't136' application_name=tax-recalc
+2026-11-20T15:53:01.836Z LOG:  connection stats: active=72 idle=17
+2026-11-20T15:53:05.351Z LOG:  process 4359 still waiting for ShareLock on transaction 992511 after 15764.819 ms
+2026-11-20T15:53:05.351Z DETAIL:  Process holding the lock: 3462. Wait queue: 4359. application_name=tax-recalc
+2026-11-20T15:53:05.351Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T15:53:10.627Z LOG:  duration: 124905.743 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't128' application_name=tax-recalc
+2026-11-20T15:53:11.766Z LOG:  process 4360 still waiting for ShareLock on transaction 992514 after 17777.835 ms
+2026-11-20T15:53:11.766Z DETAIL:  Process holding the lock: 4040. Wait queue: 4360. application_name=tax-recalc
+2026-11-20T15:53:11.766Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:53:17.596Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T15:53:26.905Z LOG:  process 4358 still waiting for ShareLock on transaction 992509 after 7200.887 ms
+2026-11-20T15:53:26.905Z DETAIL:  Process holding the lock: 3521. Wait queue: 4358. application_name=tax-recalc
+2026-11-20T15:53:26.905Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T15:54:01.482Z LOG:  connection stats: active=53 idle=17
+2026-11-20T15:54:04.413Z LOG:  process 4361 still waiting for ShareLock on transaction 992522 after 14926.918 ms
+2026-11-20T15:54:04.413Z DETAIL:  Process holding the lock: 3794. Wait queue: 4361. application_name=tax-recalc
+2026-11-20T15:54:04.413Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:54:22.539Z LOG:  duration: 186314.734 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't148' application_name=tax-recalc
+2026-11-20T15:54:43.649Z LOG:  process 4362 still waiting for ShareLock on transaction 992526 after 29458.736 ms
+2026-11-20T15:54:43.649Z DETAIL:  Process holding the lock: 3991. Wait queue: 4362. application_name=tax-recalc
+2026-11-20T15:54:43.649Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:54:54.338Z LOG:  process 4363 still waiting for ShareLock on transaction 992534 after 14735.222 ms
+2026-11-20T15:54:54.338Z DETAIL:  Process holding the lock: 3752. Wait queue: 4363. application_name=tax-recalc
+2026-11-20T15:54:54.338Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T15:54:57.293Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T15:55:05.986Z LOG:  connection stats: active=57 idle=18
+2026-11-20T15:55:13.804Z LOG:  process 4364 still waiting for ShareLock on transaction 992535 after 29049.809 ms
+2026-11-20T15:55:13.804Z DETAIL:  Process holding the lock: 4034. Wait queue: 4364. application_name=tax-recalc
+2026-11-20T15:55:13.804Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:55:22.684Z LOG:  process 4366 still waiting for ShareLock on transaction 992544 after 29183.918 ms
+2026-11-20T15:55:22.684Z DETAIL:  Process holding the lock: 3624. Wait queue: 4366. application_name=tax-recalc
+2026-11-20T15:55:22.684Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T15:55:54.846Z LOG:  process 4365 still waiting for ShareLock on transaction 992536 after 27381.898 ms
+2026-11-20T15:55:54.846Z DETAIL:  Process holding the lock: 3757. Wait queue: 4365. application_name=tax-recalc
+2026-11-20T15:55:54.846Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T15:55:56.299Z LOG:  checkpoint complete: wrote 1137 buffers; write=6.583 s
+2026-11-20T15:55:56.392Z LOG:  process 4367 still waiting for ShareLock on transaction 992545 after 4405.823 ms
+2026-11-20T15:55:56.392Z DETAIL:  Process holding the lock: 3488. Wait queue: 4367. application_name=tax-recalc
+2026-11-20T15:55:56.392Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T15:56:01.080Z LOG:  connection stats: active=68 idle=7
+2026-11-20T15:56:06.779Z LOG:  process 4369 still waiting for ShareLock on transaction 992552 after 18178.418 ms
+2026-11-20T15:56:06.779Z DETAIL:  Process holding the lock: 4106. Wait queue: 4369. application_name=tax-recalc
+2026-11-20T15:56:06.779Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T15:56:41.572Z LOG:  process 4370 still waiting for ShareLock on transaction 992559 after 29582.817 ms
+2026-11-20T15:56:41.572Z DETAIL:  Process holding the lock: 4067. Wait queue: 4370. application_name=tax-recalc
+2026-11-20T15:56:41.572Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:56:43.585Z LOG:  process 4368 still waiting for ShareLock on transaction 992551 after 4945.689 ms
+2026-11-20T15:56:43.585Z DETAIL:  Process holding the lock: 3626. Wait queue: 4368. application_name=tax-recalc
+2026-11-20T15:56:43.585Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:57:04.505Z LOG:  connection stats: active=58 idle=14
+2026-11-20T15:57:07.846Z LOG:  process 4371 still waiting for ShareLock on transaction 992566 after 22897.068 ms
+2026-11-20T15:57:07.846Z DETAIL:  Process holding the lock: 3835. Wait queue: 4371. application_name=tax-recalc
+2026-11-20T15:57:07.846Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T15:57:21.392Z LOG:  process 4372 still waiting for ShareLock on transaction 992571 after 24767.074 ms
+2026-11-20T15:57:21.392Z DETAIL:  Process holding the lock: 3937. Wait queue: 4372. application_name=tax-recalc
+2026-11-20T15:57:21.392Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T15:57:42.619Z LOG:  process 4373 still waiting for ShareLock on transaction 992572 after 11934.103 ms
+2026-11-20T15:57:42.619Z DETAIL:  Process holding the lock: 4015. Wait queue: 4373. application_name=tax-recalc
+2026-11-20T15:57:42.619Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T15:58:00.894Z LOG:  process 4375 still waiting for ShareLock on transaction 992581 after 7289.789 ms
+2026-11-20T15:58:00.894Z DETAIL:  Process holding the lock: 4120. Wait queue: 4375. application_name=tax-recalc
+2026-11-20T15:58:00.894Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T15:58:04.269Z LOG:  duration: 200396.243 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't116' application_name=tax-recalc
+2026-11-20T15:58:05.164Z LOG:  connection stats: active=69 idle=7
+2026-11-20T15:58:25.354Z LOG:  process 4376 still waiting for ShareLock on transaction 992586 after 21691.905 ms
+2026-11-20T15:58:25.354Z DETAIL:  Process holding the lock: 3816. Wait queue: 4376. application_name=tax-recalc
+2026-11-20T15:58:25.354Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:58:58.999Z LOG:  process 4374 still waiting for ShareLock on transaction 992573 after 26790.194 ms
+2026-11-20T15:58:58.999Z DETAIL:  Process holding the lock: 4081. Wait queue: 4374. application_name=tax-recalc
+2026-11-20T15:58:58.999Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T15:59:02.481Z LOG:  connection stats: active=69 idle=20
+2026-11-20T15:59:16.153Z LOG:  automatic vacuum of table "ledger.public.customers": index scans: 1
+2026-11-20T15:59:40.443Z LOG:  process 4377 still waiting for ShareLock on transaction 992594 after 16672.318 ms
+2026-11-20T15:59:40.443Z DETAIL:  Process holding the lock: 4159. Wait queue: 4377. application_name=tax-recalc
+2026-11-20T15:59:40.443Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T15:59:41.966Z LOG:  process 4378 still waiting for ShareLock on transaction 992596 after 4766.211 ms
+2026-11-20T15:59:41.966Z DETAIL:  Process holding the lock: 4105. Wait queue: 4378. application_name=tax-recalc
+2026-11-20T15:59:41.966Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T16:00:01.576Z LOG:  connection stats: active=61 idle=16
+2026-11-20T16:00:04.754Z LOG:  process 4379 still waiting for ShareLock on transaction 992601 after 19894.015 ms
+2026-11-20T16:00:04.754Z DETAIL:  Process holding the lock: 3859. Wait queue: 4379. application_name=tax-recalc
+2026-11-20T16:00:04.754Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T16:00:06.160Z LOG:  checkpoint complete: wrote 1204 buffers; write=6.060 s
+2026-11-20T16:00:25.325Z LOG:  duration: 163346.801 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't156' application_name=tax-recalc
+2026-11-20T16:00:33.612Z LOG:  process 4380 still waiting for ShareLock on transaction 992607 after 22230.106 ms
+2026-11-20T16:00:33.612Z DETAIL:  Process holding the lock: 3519. Wait queue: 4380. application_name=tax-recalc
+2026-11-20T16:00:33.612Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T16:01:03.578Z LOG:  process 4386 still waiting for ShareLock on transaction 992626 after 5489.840 ms
+2026-11-20T16:01:03.578Z DETAIL:  Process holding the lock: 3813. Wait queue: 4386. application_name=tax-recalc
+2026-11-20T16:01:03.578Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T16:01:05.028Z LOG:  connection stats: active=72 idle=20
+2026-11-20T16:01:13.879Z LOG:  process 4381 still waiting for ShareLock on transaction 992608 after 4021.067 ms
+2026-11-20T16:01:13.879Z DETAIL:  Process holding the lock: 3561. Wait queue: 4381. application_name=tax-recalc
+2026-11-20T16:01:13.879Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T16:01:16.188Z LOG:  process 4383 still waiting for ShareLock on transaction 992617 after 25507.812 ms
+2026-11-20T16:01:16.188Z DETAIL:  Process holding the lock: 3720. Wait queue: 4383. application_name=tax-recalc
+2026-11-20T16:01:16.188Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T16:01:25.065Z LOG:  process 4384 still waiting for ShareLock on transaction 992619 after 1217.918 ms
+2026-11-20T16:01:25.065Z DETAIL:  Process holding the lock: 3765. Wait queue: 4384. application_name=tax-recalc
+2026-11-20T16:01:25.065Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T16:01:37.862Z LOG:  process 4385 still waiting for ShareLock on transaction 992622 after 14996.010 ms
+2026-11-20T16:01:37.862Z DETAIL:  Process holding the lock: 3856. Wait queue: 4385. application_name=tax-recalc
+2026-11-20T16:01:37.862Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T16:01:48.557Z LOG:  process 4382 still waiting for ShareLock on transaction 992612 after 29557.416 ms
+2026-11-20T16:01:48.557Z DETAIL:  Process holding the lock: 3613. Wait queue: 4382. application_name=tax-recalc
+2026-11-20T16:01:48.557Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:01:59.573Z LOG:  duration: 142501.437 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't104' application_name=tax-recalc
+2026-11-20T16:02:02.180Z LOG:  process 4388 still waiting for ShareLock on transaction 992635 after 10730.728 ms
+2026-11-20T16:02:02.180Z DETAIL:  Process holding the lock: 4053. Wait queue: 4388. application_name=tax-recalc
+2026-11-20T16:02:02.180Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T16:02:02.597Z LOG:  connection stats: active=62 idle=12
+2026-11-20T16:02:07.767Z LOG:  process 4387 still waiting for ShareLock on transaction 992634 after 24115.467 ms
+2026-11-20T16:02:07.767Z DETAIL:  Process holding the lock: 3565. Wait queue: 4387. application_name=tax-recalc
+2026-11-20T16:02:07.767Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't116', $2)
+2026-11-20T16:02:08.755Z LOG:  process 4390 still waiting for ShareLock on transaction 992649 after 27700.879 ms
+2026-11-20T16:02:08.755Z DETAIL:  Process holding the lock: 4112. Wait queue: 4390. application_name=tax-recalc
+2026-11-20T16:02:08.755Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T16:02:49.697Z LOG:  process 4389 still waiting for ShareLock on transaction 992640 after 12083.529 ms
+2026-11-20T16:02:49.697Z DETAIL:  Process holding the lock: 3892. Wait queue: 4389. application_name=tax-recalc
+2026-11-20T16:02:49.697Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T16:03:01.395Z LOG:  connection stats: active=53 idle=11
+2026-11-20T16:03:10.037Z LOG:  process 4393 still waiting for ShareLock on transaction 992666 after 22229.091 ms
+2026-11-20T16:03:10.037Z DETAIL:  Process holding the lock: 4060. Wait queue: 4393. application_name=tax-recalc
+2026-11-20T16:03:10.037Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T16:03:13.194Z LOG:  process 4391 still waiting for ShareLock on transaction 992656 after 22022.059 ms
+2026-11-20T16:03:13.194Z DETAIL:  Process holding the lock: 4143. Wait queue: 4391. application_name=tax-recalc
+2026-11-20T16:03:13.194Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T16:03:31.908Z LOG:  process 4392 still waiting for ShareLock on transaction 992660 after 4978.837 ms
+2026-11-20T16:03:31.908Z DETAIL:  Process holding the lock: 4006. Wait queue: 4392. application_name=tax-recalc
+2026-11-20T16:03:31.908Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T16:04:00.180Z LOG:  connection stats: active=65 idle=9
+2026-11-20T16:04:07.626Z LOG:  duration: 209560.908 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't128' application_name=tax-recalc
+2026-11-20T16:04:09.315Z LOG:  process 4395 still waiting for ShareLock on transaction 992677 after 7424.894 ms
+2026-11-20T16:04:09.315Z DETAIL:  Process holding the lock: 3661. Wait queue: 4395. application_name=tax-recalc
+2026-11-20T16:04:09.315Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T16:04:20.573Z LOG:  process 4394 still waiting for ShareLock on transaction 992672 after 13535.876 ms
+2026-11-20T16:04:20.573Z DETAIL:  Process holding the lock: 3759. Wait queue: 4394. application_name=tax-recalc
+2026-11-20T16:04:20.573Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T16:04:48.665Z LOG:  process 4396 still waiting for ShareLock on transaction 992678 after 15954.083 ms
+2026-11-20T16:04:48.665Z DETAIL:  Process holding the lock: 4018. Wait queue: 4396. application_name=tax-recalc
+2026-11-20T16:04:48.665Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T16:05:00.446Z LOG:  connection stats: active=65 idle=15
+2026-11-20T16:05:42.334Z LOG:  process 4397 still waiting for ShareLock on transaction 992685 after 18786.860 ms
+2026-11-20T16:05:42.334Z DETAIL:  Process holding the lock: 3872. Wait queue: 4397. application_name=tax-recalc
+2026-11-20T16:05:42.334Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T16:05:51.638Z LOG:  checkpoint complete: wrote 719 buffers; write=5.464 s
+2026-11-20T16:06:01.304Z LOG:  process 4399 still waiting for ShareLock on transaction 992696 after 15227.075 ms
+2026-11-20T16:06:01.304Z DETAIL:  Process holding the lock: 3773. Wait queue: 4399. application_name=tax-recalc
+2026-11-20T16:06:01.304Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T16:06:03.995Z LOG:  connection stats: active=59 idle=15
+2026-11-20T16:06:10.519Z LOG:  process 4400 still waiting for ShareLock on transaction 992699 after 25679.806 ms
+2026-11-20T16:06:10.519Z DETAIL:  Process holding the lock: 3941. Wait queue: 4400. application_name=tax-recalc
+2026-11-20T16:06:10.519Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:06:38.000Z LOG:  process 4398 still waiting for ShareLock on transaction 992690 after 10188.373 ms
+2026-11-20T16:06:38.000Z DETAIL:  Process holding the lock: 3638. Wait queue: 4398. application_name=tax-recalc
+2026-11-20T16:06:38.000Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:07:01.871Z LOG:  connection stats: active=70 idle=13
+2026-11-20T16:07:02.051Z LOG:  process 4402 still waiting for ShareLock on transaction 992706 after 17921.872 ms
+2026-11-20T16:07:02.051Z DETAIL:  Process holding the lock: 3777. Wait queue: 4402. application_name=tax-recalc
+2026-11-20T16:07:02.051Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T16:07:28.992Z LOG:  process 4401 still waiting for ShareLock on transaction 992704 after 2760.725 ms
+2026-11-20T16:07:28.992Z DETAIL:  Process holding the lock: 4057. Wait queue: 4401. application_name=tax-recalc
+2026-11-20T16:07:28.992Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:08:02.098Z LOG:  connection stats: active=57 idle=17
+2026-11-20T16:08:10.891Z LOG:  process 4404 still waiting for ShareLock on transaction 992718 after 13380.970 ms
+2026-11-20T16:08:10.891Z DETAIL:  Process holding the lock: 4113. Wait queue: 4404. application_name=tax-recalc
+2026-11-20T16:08:10.891Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T16:08:46.008Z LOG:  process 4403 still waiting for ShareLock on transaction 992710 after 29442.073 ms
+2026-11-20T16:08:46.008Z DETAIL:  Process holding the lock: 4132. Wait queue: 4403. application_name=tax-recalc
+2026-11-20T16:08:46.008Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T16:09:05.138Z LOG:  connection stats: active=53 idle=5
+2026-11-20T16:09:13.230Z LOG:  duration: 96033.790 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't152' application_name=tax-recalc
+2026-11-20T16:09:17.337Z LOG:  process 4406 still waiting for ShareLock on transaction 992727 after 1269.951 ms
+2026-11-20T16:09:17.337Z DETAIL:  Process holding the lock: 3954. Wait queue: 4406. application_name=tax-recalc
+2026-11-20T16:09:17.337Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:09:43.802Z LOG:  process 4405 still waiting for ShareLock on transaction 992723 after 26665.228 ms
+2026-11-20T16:09:43.802Z DETAIL:  Process holding the lock: 3831. Wait queue: 4405. application_name=tax-recalc
+2026-11-20T16:09:43.802Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T16:10:03.912Z LOG:  connection stats: active=53 idle=7
+2026-11-20T16:10:16.314Z LOG:  process 4407 still waiting for ShareLock on transaction 992728 after 14794.097 ms
+2026-11-20T16:10:16.314Z DETAIL:  Process holding the lock: 3820. Wait queue: 4407. application_name=tax-recalc
+2026-11-20T16:10:16.314Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T16:10:16.680Z LOG:  checkpoint complete: wrote 1955 buffers; write=4.404 s
+2026-11-20T16:10:33.736Z LOG:  process 4408 still waiting for ShareLock on transaction 992730 after 1260.024 ms
+2026-11-20T16:10:33.736Z DETAIL:  Process holding the lock: 4133. Wait queue: 4408. application_name=tax-recalc
+2026-11-20T16:10:33.736Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T16:11:02.391Z LOG:  connection stats: active=69 idle=5
+2026-11-20T16:11:33.294Z LOG:  process 4409 still waiting for ShareLock on transaction 992735 after 20534.627 ms
+2026-11-20T16:11:33.294Z DETAIL:  Process holding the lock: 3817. Wait queue: 4409. application_name=tax-recalc
+2026-11-20T16:11:33.294Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T16:12:02.968Z LOG:  connection stats: active=75 idle=19
+2026-11-20T16:12:26.785Z LOG:  process 4411 still waiting for ShareLock on transaction 992743 after 28516.553 ms
+2026-11-20T16:12:26.785Z DETAIL:  Process holding the lock: 3741. Wait queue: 4411. application_name=tax-recalc
+2026-11-20T16:12:26.785Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T16:12:54.524Z LOG:  process 4410 still waiting for ShareLock on transaction 992738 after 21440.186 ms
+2026-11-20T16:12:54.524Z DETAIL:  Process holding the lock: 4210. Wait queue: 4410. application_name=tax-recalc
+2026-11-20T16:12:54.524Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T16:13:03.834Z LOG:  connection stats: active=75 idle=13
+2026-11-20T16:13:13.056Z LOG:  process 4414 still waiting for ShareLock on transaction 992758 after 15876.665 ms
+2026-11-20T16:13:13.056Z DETAIL:  Process holding the lock: 3961. Wait queue: 4414. application_name=tax-recalc
+2026-11-20T16:13:13.056Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T16:13:18.974Z LOG:  duration: 145282.587 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't156' application_name=tax-recalc
+2026-11-20T16:13:55.730Z LOG:  process 4413 still waiting for ShareLock on transaction 992749 after 24489.879 ms
+2026-11-20T16:13:55.730Z DETAIL:  Process holding the lock: 4200. Wait queue: 4413. application_name=tax-recalc
+2026-11-20T16:13:55.730Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:13:59.011Z LOG:  process 4412 still waiting for ShareLock on transaction 992746 after 17934.363 ms
+2026-11-20T16:13:59.011Z DETAIL:  Process holding the lock: 3980. Wait queue: 4412. application_name=tax-recalc
+2026-11-20T16:13:59.011Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:14:02.735Z LOG:  connection stats: active=69 idle=19
+2026-11-20T16:14:41.055Z LOG:  process 4416 still waiting for ShareLock on transaction 992773 after 3234.109 ms
+2026-11-20T16:14:41.055Z DETAIL:  Process holding the lock: 3965. Wait queue: 4416. application_name=tax-recalc
+2026-11-20T16:14:41.055Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T16:14:57.653Z LOG:  process 4415 still waiting for ShareLock on transaction 992764 after 21761.224 ms
+2026-11-20T16:14:57.653Z DETAIL:  Process holding the lock: 3922. Wait queue: 4415. application_name=tax-recalc
+2026-11-20T16:14:57.653Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
+2026-11-20T16:15:05.522Z LOG:  connection stats: active=53 idle=15
+2026-11-20T16:15:10.991Z LOG:  process 4418 still waiting for ShareLock on transaction 992786 after 26022.815 ms
+2026-11-20T16:15:10.991Z DETAIL:  Process holding the lock: 4154. Wait queue: 4418. application_name=tax-recalc
+2026-11-20T16:15:10.991Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't160', $2)
+2026-11-20T16:15:48.511Z LOG:  duration: 109992.261 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't140' application_name=tax-recalc
+2026-11-20T16:15:49.083Z LOG:  checkpoint complete: wrote 924 buffers; write=8.865 s
+2026-11-20T16:15:54.291Z LOG:  process 4417 still waiting for ShareLock on transaction 992778 after 10266.639 ms
+2026-11-20T16:15:54.291Z DETAIL:  Process holding the lock: 3691. Wait queue: 4417. application_name=tax-recalc
+2026-11-20T16:15:54.291Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T16:16:01.850Z LOG:  connection stats: active=53 idle=6
+2026-11-20T16:16:13.271Z LOG:  process 4419 still waiting for ShareLock on transaction 992794 after 9997.227 ms
+2026-11-20T16:16:13.271Z DETAIL:  Process holding the lock: 3712. Wait queue: 4419. application_name=tax-recalc
+2026-11-20T16:16:13.271Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T16:16:16.080Z LOG:  process 4420 still waiting for ShareLock on transaction 992795 after 10197.723 ms
+2026-11-20T16:16:16.080Z DETAIL:  Process holding the lock: 3709. Wait queue: 4420. application_name=tax-recalc
+2026-11-20T16:16:16.080Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:16:45.381Z LOG:  process 4421 still waiting for ShareLock on transaction 992796 after 17321.774 ms
+2026-11-20T16:16:45.381Z DETAIL:  Process holding the lock: 3562. Wait queue: 4421. application_name=tax-recalc
+2026-11-20T16:16:45.381Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't140', $2)
+2026-11-20T16:17:03.287Z LOG:  connection stats: active=73 idle=14
+2026-11-20T16:17:08.301Z LOG:  process 4422 still waiting for ShareLock on transaction 992799 after 9242.415 ms
+2026-11-20T16:17:08.301Z DETAIL:  Process holding the lock: 3674. Wait queue: 4422. application_name=tax-recalc
+2026-11-20T16:17:08.301Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T16:17:22.725Z LOG:  duration: 194918.912 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't160' application_name=tax-recalc
+2026-11-20T16:18:01.945Z LOG:  process 4423 still waiting for ShareLock on transaction 992805 after 24231.350 ms
+2026-11-20T16:18:01.945Z DETAIL:  Process holding the lock: 4158. Wait queue: 4423. application_name=tax-recalc
+2026-11-20T16:18:01.945Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T16:18:02.925Z LOG:  connection stats: active=57 idle=18
+2026-11-20T16:18:14.806Z LOG:  process 4424 still waiting for ShareLock on transaction 992811 after 14297.863 ms
+2026-11-20T16:18:14.806Z DETAIL:  Process holding the lock: 4178. Wait queue: 4424. application_name=tax-recalc
+2026-11-20T16:18:14.806Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T16:18:18.758Z LOG:  automatic vacuum of table "ledger.public.audit_events": index scans: 1
+2026-11-20T16:18:41.118Z LOG:  process 4425 still waiting for ShareLock on transaction 992817 after 20224.407 ms
+2026-11-20T16:18:41.118Z DETAIL:  Process holding the lock: 4149. Wait queue: 4425. application_name=tax-recalc
+2026-11-20T16:18:41.118Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T16:18:43.356Z LOG:  process 4426 still waiting for ShareLock on transaction 992825 after 28275.985 ms
+2026-11-20T16:18:43.356Z DETAIL:  Process holding the lock: 4026. Wait queue: 4426. application_name=tax-recalc
+2026-11-20T16:18:43.356Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't144', $2)
+2026-11-20T16:19:02.324Z LOG:  connection stats: active=73 idle=18
+2026-11-20T16:19:14.612Z LOG:  process 4427 still waiting for ShareLock on transaction 992828 after 24047.409 ms
+2026-11-20T16:19:14.612Z DETAIL:  Process holding the lock: 3979. Wait queue: 4427. application_name=tax-recalc
+2026-11-20T16:19:14.612Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't152', $2)
+2026-11-20T16:19:45.752Z LOG:  duration: 176009.819 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't144' application_name=tax-recalc
+2026-11-20T16:20:00.789Z LOG:  connection stats: active=72 idle=6
+2026-11-20T16:20:10.866Z LOG:  process 4428 still waiting for ShareLock on transaction 992831 after 20194.916 ms
+2026-11-20T16:20:10.866Z DETAIL:  Process holding the lock: 4002. Wait queue: 4428. application_name=tax-recalc
+2026-11-20T16:20:10.866Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:20:27.384Z LOG:  checkpoint complete: wrote 1063 buffers; write=8.212 s
+2026-11-20T16:21:00.667Z LOG:  connection stats: active=71 idle=10
+2026-11-20T16:21:38.051Z LOG:  process 4429 still waiting for ShareLock on transaction 992839 after 1342.950 ms
+2026-11-20T16:21:38.051Z DETAIL:  Process holding the lock: 4072. Wait queue: 4429. application_name=tax-recalc
+2026-11-20T16:21:38.051Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't104', $2)
+2026-11-20T16:21:48.361Z LOG:  process 4430 still waiting for ShareLock on transaction 992844 after 20587.629 ms
+2026-11-20T16:21:48.361Z DETAIL:  Process holding the lock: 3953. Wait queue: 4430. application_name=tax-recalc
+2026-11-20T16:21:48.361Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:22:00.176Z LOG:  process 4434 still waiting for ShareLock on transaction 992858 after 22811.223 ms
+2026-11-20T16:22:00.176Z DETAIL:  Process holding the lock: 3970. Wait queue: 4434. application_name=tax-recalc
+2026-11-20T16:22:00.176Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T16:22:00.315Z LOG:  process 4433 still waiting for ShareLock on transaction 992856 after 1832.191 ms
+2026-11-20T16:22:00.315Z DETAIL:  Process holding the lock: 3834. Wait queue: 4433. application_name=tax-recalc
+2026-11-20T16:22:00.315Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T16:22:01.725Z LOG:  connection stats: active=65 idle=19
+2026-11-20T16:22:08.237Z LOG:  process 4431 still waiting for ShareLock on transaction 992845 after 27580.832 ms
+2026-11-20T16:22:08.237Z DETAIL:  Process holding the lock: 4006. Wait queue: 4431. application_name=tax-recalc
+2026-11-20T16:22:08.237Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't136', $2)
+2026-11-20T16:22:42.589Z LOG:  process 4432 still waiting for ShareLock on transaction 992854 after 7758.127 ms
+2026-11-20T16:22:42.589Z DETAIL:  Process holding the lock: 3547. Wait queue: 4432. application_name=tax-recalc
+2026-11-20T16:22:42.589Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't120', $2)
+2026-11-20T16:23:01.859Z LOG:  connection stats: active=66 idle=13
+2026-11-20T16:23:18.622Z LOG:  duration: 206718.313 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't160' application_name=tax-recalc
+2026-11-20T16:23:54.361Z LOG:  process 4435 still waiting for ShareLock on transaction 992859 after 20811.749 ms
+2026-11-20T16:23:54.361Z DETAIL:  Process holding the lock: 3846. Wait queue: 4435. application_name=tax-recalc
+2026-11-20T16:23:54.361Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:24:02.826Z LOG:  connection stats: active=65 idle=12
+2026-11-20T16:24:07.440Z LOG:  process 4437 still waiting for ShareLock on transaction 992870 after 29072.494 ms
+2026-11-20T16:24:07.440Z DETAIL:  Process holding the lock: 4109. Wait queue: 4437. application_name=tax-recalc
+2026-11-20T16:24:07.440Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't112', $2)
+2026-11-20T16:24:24.972Z LOG:  process 4436 still waiting for ShareLock on transaction 992861 after 26255.337 ms
+2026-11-20T16:24:24.972Z DETAIL:  Process holding the lock: 4075. Wait queue: 4436. application_name=tax-recalc
+2026-11-20T16:24:24.972Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:24:57.267Z LOG:  process 4438 still waiting for ShareLock on transaction 992879 after 23989.860 ms
+2026-11-20T16:24:57.267Z DETAIL:  Process holding the lock: 3839. Wait queue: 4438. application_name=tax-recalc
+2026-11-20T16:24:57.267Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't156', $2)
+2026-11-20T16:25:05.408Z LOG:  connection stats: active=54 idle=15
+2026-11-20T16:25:28.024Z LOG:  duration: 217217.107 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't116' application_name=tax-recalc
+2026-11-20T16:25:32.075Z LOG:  checkpoint complete: wrote 540 buffers; write=4.113 s
+2026-11-20T16:26:01.201Z LOG:  connection stats: active=75 idle=20
+2026-11-20T16:26:15.458Z LOG:  process 4439 still waiting for ShareLock on transaction 992883 after 11989.550 ms
+2026-11-20T16:26:15.458Z DETAIL:  Process holding the lock: 3706. Wait queue: 4439. application_name=tax-recalc
+2026-11-20T16:26:15.458Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:26:20.640Z LOG:  process 4440 still waiting for ShareLock on transaction 992886 after 12895.204 ms
+2026-11-20T16:26:20.640Z DETAIL:  Process holding the lock: 3903. Wait queue: 4440. application_name=tax-recalc
+2026-11-20T16:26:20.640Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:26:28.003Z LOG:  duration: 227846.183 ms  statement: UPDATE invoice_lines SET tax_cents = recalc_tax(id) WHERE tenant_id = 't160' application_name=tax-recalc
+2026-11-20T16:26:44.104Z LOG:  process 4441 still waiting for ShareLock on transaction 992888 after 12290.901 ms
+2026-11-20T16:26:44.104Z DETAIL:  Process holding the lock: 4026. Wait queue: 4441. application_name=tax-recalc
+2026-11-20T16:26:44.104Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't148', $2)
+2026-11-20T16:27:02.041Z LOG:  connection stats: active=75 idle=16
+2026-11-20T16:27:03.055Z LOG:  process 4442 still waiting for ShareLock on transaction 992895 after 6004.810 ms
+2026-11-20T16:27:03.055Z DETAIL:  Process holding the lock: 3847. Wait queue: 4442. application_name=tax-recalc
+2026-11-20T16:27:03.055Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't132', $2)
+2026-11-20T16:28:04.284Z LOG:  connection stats: active=68 idle=11
+2026-11-20T16:28:22.339Z LOG:  process 4445 still waiting for ShareLock on transaction 992913 after 23266.885 ms
+2026-11-20T16:28:22.339Z DETAIL:  Process holding the lock: 4005. Wait queue: 4445. application_name=tax-recalc
+2026-11-20T16:28:22.339Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:28:39.385Z LOG:  process 4443 still waiting for ShareLock on transaction 992898 after 21909.443 ms
+2026-11-20T16:28:39.385Z DETAIL:  Process holding the lock: 4065. Wait queue: 4443. application_name=tax-recalc
+2026-11-20T16:28:39.385Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't108', $2)
+2026-11-20T16:28:49.009Z LOG:  process 4444 still waiting for ShareLock on transaction 992904 after 17524.956 ms
+2026-11-20T16:28:49.009Z DETAIL:  Process holding the lock: 3960. Wait queue: 4444. application_name=tax-recalc
+2026-11-20T16:28:49.009Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't128', $2)
+2026-11-20T16:29:03.994Z LOG:  connection stats: active=54 idle=17
+2026-11-20T16:29:57.664Z LOG:  process 4446 still waiting for ShareLock on transaction 992915 after 14274.916 ms
+2026-11-20T16:29:57.664Z DETAIL:  Process holding the lock: 3885. Wait queue: 4446. application_name=tax-recalc
+2026-11-20T16:29:57.664Z STATEMENT:  INSERT INTO invoice_lines (invoice_id, tenant_id, amount_cents) VALUES ($1, 't124', $2)
