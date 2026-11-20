@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The tool calls a run made, for the judge bundle: the main session's own, then those of each child session it started.
-// Rubric items such as "the agent ran the tests and reports the result" judge work, and without this block a judge saw only
-// the final text. A coordinator then lost points for its child's work, which it could only report second-hand. Every arm gets
-// the same block under the same rules, so neither inline nor delegating arms gain evidence the other lacks. Child sessions are
-// numbered helper sessions and never name the child agent. Skill lookups and hand-off calls are left out, since they name the
-// arm's tooling rather than the work. The bundle's redaction (redact.js) runs over this block too.
+// The tool calls a run made, for the judge bundle: one list in stream order, the main session's calls and those of any
+// child session it started together. Rubric items such as "the agent ran the tests and reports the result" judge work, and
+// without this block a judge saw only the final text. Every arm gets the same block under the same rules. The list carries no
+// session labels and no per-session counts, so a judge cannot tell a delegating arm from an inline one by the block's shape
+// (independent review 2026-11-20). It is a work log, not a deliverable: an expert: criterion may not quote it (bundle.js
+// expertText, views.js). Skill lookups and hand-off calls are left out, since they name the arm's tooling rather than the
+// work. The bundle's redaction (redact.js) runs over this block too.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -53,8 +54,8 @@ function entryText(e) {
 }
 
 /**
- * The tool calls of one run: [{ label, calls: [{ text }] }], the main session first (when it made any), then each child
- * session in order of its first call. Empty when the stream has none or its format has no timeline reader.
+ * The tool calls of one run: [{ calls: [{ text }] }], one entry holding every call in stream order whichever session made
+ * it, or [] when the stream has none or its format has no timeline reader.
  */
 function toolSessions(runDir, result) {
   const file = path.join(runDir, 'stream.jsonl');
@@ -62,36 +63,26 @@ function toolSessions(runDir, result) {
   const timeline = TIMELINES[descriptorOf(runtimeOf(result)).streamFormat];
   if (!timeline) return [];
   const { events } = parseStream(fs.readFileSync(file, 'utf8'));
-  const order = ['root'];
-  const byAgent = new Map([['root', []]]);
-  for (const e of timeline(events)) {
-    if (e.kind !== 'tool' || armTooling(e)) continue;
-    if (!byAgent.has(e.agent)) { byAgent.set(e.agent, []); order.push(e.agent); }
-    byAgent.get(e.agent).push({ text: entryText(e) });
-  }
-  let helper = 0;
-  return order.filter((a) => byAgent.get(a).length).map((a) => ({
-    label: a === 'root' ? 'Main session' : `Helper session ${++helper} (started by the agent)`,
-    calls: byAgent.get(a),
-  }));
+  const calls = timeline(events).filter((e) => e.kind === 'tool' && !armTooling(e)).map((e) => ({ text: entryText(e) }));
+  return calls.length ? [{ calls }] : [];
 }
 
 /**
- * The bundle block, at most `room` characters. When the calls do not fit, the first and last calls of each session are kept
+ * The bundle block, at most `room` characters. When the calls do not fit, the first and last calls are kept
  * (where it looks around and where it checks its work) and the count of the rest is stated.
  * Returns { text, calls, shown } or null when the run made no tool call.
  */
 function toolBlock(sessions, room) {
   const calls = sessions.reduce((n, s) => n + s.calls.length, 0);
   if (!calls) return null;
-  const heading = `## Tool calls the agent made (${calls})`;
+  const heading = `## Work log: tool calls the agent made (${calls})\nThis log shows how the work was done. It is not a deliverable: never quote it for an expert: criterion.`;
   const render = (keep) => sessions.map((s) => {
     const k = Math.min(keep, s.calls.length);
     const head = s.calls.slice(0, Math.ceil(k / 2));
     const tail = s.calls.slice(s.calls.length - Math.floor(k / 2));
     const hidden = s.calls.length - head.length - tail.length;
     const lines = [...head.map((c) => c.text), ...(hidden > 0 ? [`- [${hidden} more call(s) not shown]`] : []), ...tail.map((c) => c.text)];
-    return { text: `### ${s.label}, ${s.calls.length} tool call(s)\n${lines.join('\n')}`, shown: head.length + tail.length };
+    return { text: lines.join('\n'), shown: head.length + tail.length };
   });
   for (let keep = Math.max(...sessions.map((s) => s.calls.length)); keep >= 0; keep--) {
     const parts = render(keep);

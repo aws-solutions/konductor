@@ -858,15 +858,18 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   and `__pycache__` are skipped, see `judge/ephemeral.js`), and the tool calls and results of the run. It never sees the
   check results, so the rubric share judges the outcome on its own. A task's `expertKey` items are rubric criteria
   `expert:<id>` (sharing the weight of the `expert-key` item, else 3; `runner/lib/expert-rubric.js`), its weak answers are
-  listed in the prompt, and an expert criterion whose quote is not found in the output fails.
+  listed in the prompt, and an expert criterion whose quote is not found in the deliverables fails: its quote is matched
+  against the final text and the changed files only (`expertText`), never the work log, so a fixture read in a tool result
+  cannot prove a point the delivered work never makes.
   Rubric items such as "ran the tests and reports the result" judge work, and a coordinator reports its child's work
-  second-hand, so with the final text alone it failed for work that was done. Every arm gets the same block: the main
-  session's calls, then each child session's under "Helper session N". It never names the child agent, leaves out skill
+  second-hand, so with the final text alone it failed for work that was done. Every arm gets the same block, a work log:
+  one list of the main and child sessions' calls in stream order, with no session labels or counts, so its shape does not
+  show delegation. It never names the child agent, leaves out skill
   lookups, hand-off calls and reads of the arm's own tooling (`.kiro` other than `.kiro/specs`, `.konductor`, `.claude`,
   the scratch HOME), prints workspace paths relative, and shares the bundle limits: it gets the room the files left, at most
-  `--max-file-chars`, and keeps each session's first and last calls when it must cut. Kiro CLI and Claude Code runs have it
+  `--max-file-chars`, and keeps the first and last calls when it must cut. Kiro CLI and Claude Code runs have it
   (from the sub-task id and `parent_tool_use_id` in `stream.jsonl`); OpenCode and Strands runs do not. The prompts tell the
-  judge to count main and helper sessions alike as the agent's own work. Never the transcript's messages and thoughts, and
+  judge to count the work log as the agent's own work, and never to quote it for an expert criterion. Never the transcript's messages and thoughts, and
   never arm names. Arm-revealing phrases (agent and tool
   names, skill, SOP, steering, maker-checker, delegation, versions) are deleted, not replaced by a
   marker; deliverable paths stay. `--redact-file` adds rules; the rules that fired are recorded.
