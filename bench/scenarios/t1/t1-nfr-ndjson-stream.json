@@ -166,5 +166,19 @@
         "note": "All requirements are achievable with standard library only. The histogram approach (array('Q') with 60001 slots per endpoint) is a well-known bounded-memory quantile technique. Tests have reasonable timeouts (10s per test, 15s for node bridge). No timing-dependent or flaky tests observed."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 58.2,
+      "alt": 83.7,
+      "date": "2026-11-20"
+    }
   }
 }

@@ -139,5 +139,19 @@
         "note": "The task is fair and achievable: migrate CommonJS to ESM following standard patterns. The prompt provides all necessary details (export paths, behavior, values). The cyclic dependency (cycle-a/cycle-b) works in ESM with function hoisting. The import attributes for JSON and import.meta.url for banner are standard ESM patterns in Node 24."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 18.3,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 18.3,
+      "lazy": 37.8,
+      "alt": 87.8,
+      "date": "2026-11-20"
+    }
   }
 }

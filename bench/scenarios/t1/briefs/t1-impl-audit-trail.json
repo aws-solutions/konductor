@@ -1,0 +1,12 @@
+{
+  "id": "t1-impl-audit-trail",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "minimax-m2.5",
+  "reviewer": "gpt-5.6-luna",
+  "stack": "node",
+  "size": "20 to 30",
+  "twoStep": true,
+  "source": "original",
+  "brief": "Phase: implementation (a feature in existing code). Role: developer. Repo kind: a Node.js 24 service with no dependencies for a small team's expense approvals (node:http router, handlers, an in-memory store, config, tests, CI config, docs; about 25 files). Build a task where the owner asks for an append-only audit trail of every state change (who, what, before and after values, time from an injected clock), readable through a new route with filters, with wrinkles of your own design: secrets and card numbers masked in the stored values, a hash chain so a changed entry is detectable by a verify function the request names, a size cap with a stated rotation rule, and no audit entry for a request that failed validation."
+}

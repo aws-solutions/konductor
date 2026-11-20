@@ -137,5 +137,19 @@
         "note": "All bugs are solvable with the information provided. The prompt gives clear symptoms and expected behaviors. The tests are deterministic with no timing dependencies (using long 60-second heartbeat intervals in tests). The checks are fair and achievable."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 12.2,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 12.2,
+      "lazy": 42.9,
+      "alt": 68.4,
+      "date": "2026-11-20"
+    }
   }
 }

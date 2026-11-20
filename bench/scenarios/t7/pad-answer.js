@@ -12,7 +12,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { readBlock } = require('./lib/plan-grade.cjs');
+const { readBlock } = require('../lib/hidden/plan-grade.cjs');
 
 const DIR = __dirname;
 const TICKET = /\b[A-Z][A-Z0-9]{1,9}-\d{2,5}\b/g;

@@ -14,7 +14,7 @@ const { sharedHelpers, addSharedHelpers, helpersHash, MANIFEST } = require('../l
 const { codeScore } = require('../../scenarios/lib/score.js');
 const { loadConfig } = require('../../scenarios/lib/config.js');
 const { dryRun, pilotWith, record } = require('../../scenarios/lib/dry-run.js');
-const { shallow, vary, follow, textAnswer, writeAnswer, DEFAULTS } = require('../../scenarios/lib/answers.js');
+const { shallow, vary, follow, textAnswer, writeAnswer, isCode, shallowOverlay, DEFAULTS } = require('../../scenarios/lib/answers.js');
 const { fill, render } = require('../../scenarios/lib/prompt.js');
 const { stageOf, COMMANDS, foldHelpers, auditStream, reviewed, withExpertRubric } = require('../../scenarios/lib/stage.js');
 
@@ -154,10 +154,25 @@ test('an answer of code only has a lazy answer (half the files) and no alternati
     write(path.join(root, 'sol', 'out.json'), '{"a":[1,2]}\n');
     const lazy = writeAnswer('lazy', path.join(root, 'sol'), path.join(root, 'lazy'));
     assert.deepEqual(lazy.files, { 'out.json': 'json', 'src/a.js': 'kept', 'test/b.test.js': 'dropped' });
-    assert.equal(fs.readFileSync(path.join(root, 'lazy', 'out.json'), 'utf8'), '{"a":[1,1]}\n', 'a one-line JSON stays one line');
+    assert.equal(fs.readFileSync(path.join(root, 'lazy', 'out.json'), 'utf8'), '{"a":[1]}\n', 'a one-line JSON stays one line');
     fs.rmSync(path.join(root, 'sol', 'out.json'));
     assert.equal(writeAnswer('alt', path.join(root, 'sol'), path.join(root, 'alt')).written, false);
     assert.ok(!fs.existsSync(path.join(root, 'alt')));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the shallow overlay lays the reference without its code changes', () => {
+  const root = tmp();
+  try {
+    write(path.join(root, 'sol', 'src', 'a.js'), 'code\n');
+    write(path.join(root, 'sol', 'test', 'a.test.js'), 'test\n');
+    write(path.join(root, 'sol', 'CHANGELOG.md'), 'log\n');
+    write(path.join(root, 'sol', 'DELETE.txt'), 'x\n');
+    const ws = path.join(root, 'ws');
+    fs.mkdirSync(ws);
+    shallowOverlay(path.join(root, 'sol'))(ws);
+    assert.deepEqual(fs.readdirSync(ws).sort(), ['CHANGELOG.md', 'test']);
+    assert.ok(isCode('src/a.js') && !isCode('test/a.test.js') && !isCode('tests/test_x.py') && isCode('lib/x.py'));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

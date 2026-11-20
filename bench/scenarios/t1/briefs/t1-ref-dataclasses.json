@@ -4,7 +4,7 @@
   "role": "developer",
   "author": "minimax-m2.5",
   "reviewer": "gpt-5.6-luna",
-  "stack": "python",
+  "stack": "node",
   "size": "25 to 35",
   "source": {
     "url": "https://github.com/marshmallow-code/marshmallow",
@@ -12,6 +12,6 @@
     "licenceCheckedAt": "2026-11-19",
     "use": "idea"
   },
-  "brief": "Phase: refactor, migration and dependency upgrade. Role: developer. Repo kind: a Python 3.12 inventory library (standard library only) that passes plain dicts everywhere (parsing from JSON, validation, pricing, a report). About 30 files. Inspiration (idea only): public schema libraries that replace loose dicts with typed objects. Build a task where the owner asks to introduce dataclasses (or similar typed records) for the three core records and move the code over, while JSON in and out stays exactly the same, with wrinkles of your own design (unknown keys preserved on a round trip, optional fields with defaults, a frozen record that must still allow a documented update path, dict-style access kept for one release with a deprecation warning, and type-checking cleanliness checked with a simple script).",
-  "economy": true
+  "brief": "Phase: refactor, migration and dependency upgrade. Role: developer. Repo kind: a Node.js 24 inventory library (no dependencies) that passes plain objects everywhere (parsing from JSON, validation, pricing, a report). About 30 files. Inspiration (idea only): public schema libraries that replace loose dicts with typed objects. Build a task where the owner asks to introduce classes (or frozen record factories) with validation for the three core records and move the code over, while JSON in and out stays exactly the same, with wrinkles of your own design (unknown keys preserved on a round trip, optional fields with defaults, a frozen record that must still allow a documented update path, plain-object property access kept working for one release with a single deprecation warning, and JSON.stringify output unchanged).",
+  "twoStep": true
 }
