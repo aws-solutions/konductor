@@ -310,6 +310,17 @@ describe('YamlPane', () => {
       expect(numberOf(items()[0]!)).toBe(1);
     });
 
+    it('starts another file scrolled to its top', () => {
+      const view = render(<YamlPane file="hello.yml" text={numbered(3000)} />);
+      const before = screen.getByRole('region', { name: 'Lines of hello.yml' });
+      before.scrollTop = 400;
+
+      view.rerender(<YamlPane file="other.yml" text={numbered(3000)} />);
+      const after = screen.getByRole('region', { name: 'Lines of other.yml' });
+      expect(after).not.toBe(before);
+      expect(after.scrollTop).toBe(0);
+    });
+
     it('keeps the focus on the button while it remains', () => {
       render(<YamlPane file="hello.yml" text={numbered(3000)} />);
 
