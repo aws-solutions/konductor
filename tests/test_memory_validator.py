@@ -1337,12 +1337,13 @@ def test_editing_an_existing_untagged_entry_requires_a_tag(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# URL allowlist matching. The pattern is compared with the URL's hostname
-# only: the authority ends at the first / ? # or backslash, userinfo and port
-# are dropped, and a host that is not plain ASCII after percent-decoding (an
-# encoded dot, raw non-ASCII, a bracketed address) is rejected. A "*" that is
-# the whole leftmost label matches one or more labels; any other "*" stays
-# within one label.
+# URL allowlist matching. Every scheme:// occurrence is checked, including
+# one glued to or nested in another URL, and only https passes. The pattern is compared with the URL's hostname only: the authority
+# ends at the first / ? # or backslash, userinfo and port are dropped, and a
+# host that is not plain ASCII after percent-decoding (an encoded dot, raw
+# non-ASCII, a bracketed address) is rejected. A "*" that is the whole
+# leftmost label matches one or more labels; any other "*" stays within one
+# label. An IPv4 host in any spelling matches only an exact pattern.
 # ---------------------------------------------------------------------------
 
 _ALLOWLIST = ["*.example.com", "docs.example.org", "api-*.example.net"]
@@ -1383,6 +1384,38 @@ def _url_verdict(tmp_path: Path, url: str) -> subprocess.CompletedProcess:
         "https://a.docs.example.org/",
         # A "*" inside a label stays within that label.
         "https://api-v1.evil.example.net/",
+        # Only https passes, in any case, even for an allowed host.
+        "HTTP://evil.test/x",
+        "http://docs.example.com/",
+        "HTTP://docs.example.com/",
+        "http://docs.example.org/",
+        # Every scheme:// token is checked, not only http(s).
+        "ftp://evil.test/x",
+        "ftp://docs.example.com/x",
+        "FTP://docs.example.com/x",
+        "ws://docs.example.com/",
+        "file://docs.example.com/etc/passwd",
+        "git+ssh://docs.example.com/repo",
+        "xhttps://docs.example.com/",
+        # A second link glued to an allowed one is checked on its own.
+        "[a](https://docs.example.com/)[b](https://evil.test/)",
+        "[a](https://docs.example.com/)[b](ftp://evil.test/)",
+        "https://docs.example.com/a,https://evil.test/",
+        "https://docs.example.com/?next=https://evil.test/",
+        # A backslash for a slash still makes a URL.
+        "https:/\\evil.test/x",
+        "https:\\\\evil.test/x",
+        # A dot-free numeric host, before a ? or anywhere else, is an IPv4 address.
+        "https://16909060?.example.com/x",
+        "https://16909060/",
+        "https://1.2.3.4#.example.com",
+        # IPv4 in decimal, hex, octal and dotted-quad spellings.
+        "https://0x1020304/",
+        "https://0X1020304/",
+        "https://0177.0.0.1/",
+        "https://127.0.0.1/",
+        "https://127.1/",
+        "https://evil.0x7f/",
     ],
 )
 def test_url_allowlist_rejects_non_matching_hosts(tmp_path, url):
@@ -1409,8 +1442,19 @@ def test_url_allowlist_rejects_non_matching_hosts(tmp_path, url):
         "https://xn--exmple-cua.example.com/",
         # A percent-encoded letter decodes to the same host.
         "https://ex%61mple.example.com/",
-        "http://docs.example.org/",
+        "https://docs.example.org/",
         "https://api-v1.example.net/",
+        # An upper-case https scheme, or a backslash for a slash, is still https.
+        "HTTPS://docs.example.com/",
+        "https:\\\\docs.example.com/x",
+        # A numeric label is fine when the last label is not a number.
+        "https://1.example.com/",
+        "https://16909060.example.com/",
+        "https://0x7f.example.com/",
+        # Two glued links that are both allowed.
+        "[a](https://docs.example.com/)[b](https://api.example.com/)",
+        # A bare scheme with no host is not a link.
+        "starts with https:// always",
     ],
 )
 def test_url_allowlist_accepts_matching_hosts(tmp_path, url):
@@ -1427,3 +1471,44 @@ def test_bare_star_pattern_allows_any_plain_host(tmp_path):
     proposed = "- [2026-11-20] [origin:agent] See https://evil%2Ecom/a\n"
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, result.stderr
+
+
+def test_non_https_urls_pass_without_an_allowlist(tmp_path):
+    # No allowlist means every URL is allowed, whatever its scheme.
+    write_config(tmp_path / ".konductor" / "memory-config.json", [])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] Mirror at ftp://evil.test/x and http://evil.test/y\n"
+    assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
+
+
+def test_a_blocked_url_rejects_the_entry_after_an_allowed_one(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] See https://docs.example.com/a and ftp://evil.test/b\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert "blocked external URL: ftp://evil.test/b" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "pattern, url, allowed",
+    [
+        # An IP-literal host matches only a wildcard-free pattern that spells it exactly.
+        ("127.0.0.1", "https://127.0.0.1/", True),
+        ("127.0.0.1", "https://127.0.0.1./x", True),
+        ("16909060", "https://16909060/", True),
+        ("127.0.0.1", "https://2130706433/", False),
+        ("127.0.0.1", "https://0x7f000001/", False),
+        ("127.0.0.*", "https://127.0.0.1/", False),
+        ("*.0.0.1", "https://127.0.0.1/", False),
+        ("*", "https://10.0.0.1/", False),
+        ("*", "https://16909060/", False),
+        ("*", "https://docs.example.org/", True),
+    ],
+)
+def test_ip_literal_hosts_need_an_exact_pattern(tmp_path, pattern, url, allowed):
+    write_config(tmp_path / ".konductor" / "memory-config.json", [pattern])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
