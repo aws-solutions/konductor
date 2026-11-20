@@ -117,6 +117,50 @@ function review(id) {
   return out;
 }
 
+// The checks every T7 task carries besides the hidden test. The existence and unchanged-input checks are cheap to pass,
+// so on their own they gave an empty-effort answer the whole checks share (D-86). `evidence` ties the share to the
+// hidden key: the answer's block must name at least EVIDENCE_SHARE of the items the key requires (ids, paths, names
+// from `includes`, `cites` and `order` assertions that need all of their items), so a shallow answer that finds only
+// the obvious half fails it while any correct answer, however worded, passes.
+const EVIDENCE_SHARE = 0.8;
+
+/** The items a correct block must name, from the key (pure). */
+function requiredItems(key) {
+  const out = new Set();
+  for (const a of key.assertions) {
+    if (!['includes', 'cites', 'order'].includes(a.op) || a.any) continue;
+    const ids = a.ids || [];
+    const need = a.op === 'cites' ? Math.min(a.min ?? 1, ids.length) : ids.length;
+    if (need === ids.length) for (const i of ids) if (typeof i === 'string' && i.trim()) out.add(i);
+  }
+  return [...out].sort();
+}
+
+/** The `cmd` check that the block names enough of the required items, or null when the key requires none (pure). */
+function evidenceCheck(key) {
+  const items = requiredItems(key);
+  if (!items.length) return null;
+  const need = Math.ceil(EVIDENCE_SHARE * items.length);
+  // Runs in /bin/sh: the script sits in single quotes and uses no single quote or backtick itself.
+  const js = `const t=require("fs").readFileSync(${JSON.stringify(key.output)},"utf8");`
+    + `const f=String.fromCharCode(96).repeat(3);const s=t.split(f+${JSON.stringify(key.block)});if(s.length<2)process.exit(1);`
+    + `const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);`
+    + `const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};`
+    + `const items=${JSON.stringify(items.map((x) => x.toLowerCase()))};process.exit(items.filter(named).length>=${need}?0:1)`;
+  return { type: 'cmd', cmd: `node -e '${js}'`, expectExit: 0, weight: 4, kind: 'substance' };
+}
+
+/** The checks of a T7 task: the hidden test, the evidence check, then the cheap checks at weight 1 (pure). */
+function checksFor(b, key, dataFile) {
+  return [
+    { type: 'tests', cmd: TEST_CMD, min: key.assertions.length, weight: 3, kind: 'substance' },
+    ...[evidenceCheck(key)].filter(Boolean),
+    { type: 'file_exists', path: b.output, weight: 1, kind: 'substance' },
+    { type: 'fixture_unchanged', path: dataFile, weight: 1, kind: 'substance' },
+    { type: 'contains', path: b.output, pattern: `\`\`\`\\s*${b.block}`, weight: 1, kind: 'format' },
+  ];
+}
+
 /** The task file for a brief, its author's draft, key, mapping and review (pure; `assemble` writes it). */
 function buildTask(b, draft, key, mapping, rev, date = today()) {
   const twin = b.controlKind === 'twin';
@@ -133,12 +177,7 @@ function buildTask(b, draft, key, mapping, rev, date = today()) {
     hidden: b.id,
     timeoutSec: draft.limits.hardSec,
     limits: draft.limits,
-    checks: [
-      { type: 'tests', cmd: TEST_CMD, min: key.assertions.length, weight: 3, kind: 'substance' },
-      { type: 'file_exists', path: b.output, weight: 3, kind: 'substance' },
-      { type: 'fixture_unchanged', path: draft.dataFile, weight: 1, kind: 'substance' },
-      { type: 'contains', path: b.output, pattern: `\`\`\`\\s*${b.block}`, weight: 1, kind: 'format' },
-    ],
+    checks: checksFor(b, key, draft.dataFile),
     rubric: draft.rubric,
     ...(draft.expertKey ? { expertKey: draft.expertKey } : {}),
     targetSkills: real ? real.targetSkills : [],
@@ -189,4 +228,4 @@ if (require.main === module) {
   console.log(JSON.stringify(fn(id, arg), null, 1));
 }
 
-module.exports = { renderPrompt, buildTask, TEST_CMD, GRADER_FILES };
+module.exports = { renderPrompt, buildTask, checksFor, evidenceCheck, requiredItems, TEST_CMD, GRADER_FILES };

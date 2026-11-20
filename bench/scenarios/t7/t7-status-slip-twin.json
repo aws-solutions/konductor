@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -24,7 +24,7 @@
     {
       "type": "file_exists",
       "path": "reports/finance-numbers.md",
-      "weight": 3,
+      "weight": 1,
       "kind": "substance"
     },
     {
@@ -74,7 +74,9 @@
       "licence": "Apache-2.0",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "zhipu",
@@ -113,13 +115,14 @@
         "repeats": 3,
         "deterministic": true,
         "sameTwice": true
-      }
+      },
+      "fixReason": "lazy 43.9, stub 14.3: the key has no list the evidence check can use (per-name and per-epic numbers), so the checks share stays free"
     },
     "reference": 100,
-    "stub": 7.1,
+    "stub": 14.3,
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
+      "stub": 14.3,
       "lazy": 43.9,
       "alt": 100,
       "date": "2026-11-20"

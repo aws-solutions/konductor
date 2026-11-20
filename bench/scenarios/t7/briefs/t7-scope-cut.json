@@ -33,6 +33,14 @@
       "date": "2026-11-19",
       "result": "failed twice, version 1 kept",
       "why": "draft 1 put planted tickets in one id block and hinted the traps in the request (reviewer: ambiguity, ceiling and floor fail); after the fix round the planted tickets are still PROJ-0156 to PROJ-0167 at the end of the export and the request still lists what to find"
+    },
+    {
+      "version": 3,
+      "author": "qwen3-coder-next",
+      "reviewer": "minimax-m2.5 (key, step B)",
+      "date": "2026-11-20",
+      "result": "dropped, v1 (version 2) kept",
+      "why": "two-step try: step A (qwen3-coder-next) needed its one fix (README titled a benchmark, request pointed at fixture/ and listed what to look for) and after it the request still hinted at the traps (\"respecting dependencies and contractual commitments\"); step B (minimax-m2.5) key: reference 100, stub 4.8, alternative 100, lazy 48.5 (over 40); no fix round or checklist review: the 40-credit cap left no room for another call"
     }
   ]
 }

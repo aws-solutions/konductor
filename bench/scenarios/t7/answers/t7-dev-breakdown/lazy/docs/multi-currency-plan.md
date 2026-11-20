@@ -9,8 +9,7 @@ I went through the exports. The plan mostly holds; the main items are below.
    "id": "MC-01",
    "title": "Add product price records and USD backfill",
    "files": [
-    "db/migrations/005_add_product_prices.sql",
-    "docs/data-dictionary.md"
+    "db/migrations/005_add_product_prices.sql"
    ],
    "depends_on": [],
    "estimate_days": 2
@@ -21,10 +20,7 @@ I went through the exports. The plan mostly holds; the main items are below.
    "files": [
     "src/storage/product-repository.js",
     "src/services/catalog-service.js",
-    "src/http/serializers/product.js",
-    "src/services/money.js",
-    "tests/unit/money.test.js",
-    "src/config.js"
+    "src/http/serializers/product.js"
    ],
    "depends_on": [
     "MC-01"
@@ -36,8 +32,7 @@ I went through the exports. The plan mostly holds; the main items are below.
    "title": "Validate the currency query and route response",
    "files": [
     "src/validation/currency.js",
-    "src/http/products-route.js",
-    "tests/integration/products-route.test.js"
+    "src/http/products-route.js"
    ],
    "depends_on": [
     "MC-02"
@@ -48,8 +43,7 @@ I went through the exports. The plan mostly holds; the main items are below.
    "id": "MC-04",
    "title": "Separate product cache entries by currency",
    "files": [
-    "src/cache/product-cache.js",
-    "tests/unit/cache.test.js"
+    "src/cache/product-cache.js"
    ],
    "depends_on": [
     "MC-02"
@@ -67,17 +61,7 @@ I went through the exports. The plan mostly holds; the main items are below.
   "tests/unit/money.test.js",
   "src/config.js",
   "src/validation/currency.js",
-  "src/http/products-route.js",
-  "src/cache/product-cache.js",
-  "tests/unit/cache.test.js",
-  "src/export/products-csv.js",
-  "tests/integration/export.test.js",
-  "src/notifications/price-email.js",
-  "tests/integration/price-email.test.js",
-  "tests/helpers/product-fixture.js",
-  "tests/fixtures/products.json",
-  "tests/integration/products-route.test.js",
-  "tests/unit/catalog-service.test.js"
+  "src/http/products-route.js"
  ],
  "files_to_change": [
   "db/migrations/005_add_product_prices.sql",
@@ -89,17 +73,7 @@ I went through the exports. The plan mostly holds; the main items are below.
   "tests/unit/money.test.js",
   "src/config.js",
   "src/validation/currency.js",
-  "src/http/products-route.js",
-  "src/cache/product-cache.js",
-  "tests/unit/cache.test.js",
-  "src/export/products-csv.js",
-  "tests/integration/export.test.js",
-  "src/notifications/price-email.js",
-  "tests/integration/price-email.test.js",
-  "tests/helpers/product-fixture.js",
-  "tests/fixtures/products.json",
-  "tests/integration/products-route.test.js",
-  "tests/unit/catalog-service.test.js"
+  "src/http/products-route.js"
  ],
  "total_estimate_days": 12
 }

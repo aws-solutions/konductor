@@ -123,6 +123,39 @@ test('pad-answer fills id lists with every fixture id and keeps scalars', () => 
   assert.deepStrictEqual(v.notes, ['plain']);
 });
 
+test('evidence check: required items come from all-items assertions only', () => {
+  const { requiredItems, evidenceCheck, checksFor } = require('../stage.js');
+  const key = { output: 'o.md', block: 'b', assertions: [
+    { op: 'includes', ids: ['AB-1', 'AB-2'] }, { op: 'includes', ids: ['ZZ-9'], any: true },
+    { op: 'cites', ids: ['CD-3', 'CD-4'], min: 1 }, { op: 'cites', ids: ['EF-5'] }, { op: 'absent', ids: ['DE-9'] },
+  ] };
+  assert.deepStrictEqual(requiredItems(key), ['AB-1', 'AB-2', 'EF-5']);
+  const c = evidenceCheck(key);
+  assert.strictEqual(c.weight, 4);
+  assert.ok(!c.cmd.slice(9, -1).includes("'"), 'the script must not hold a single quote');
+  assert.strictEqual(evidenceCheck({ ...key, assertions: [{ op: 'equals', value: 'x' }] }), null);
+  const checks = checksFor({ output: 'o.md', block: 'b' }, key, 'data.csv');
+  assert.deepStrictEqual(checks.map((x) => [x.type, x.weight, x.kind]), [['tests', 3, 'substance'], ['cmd', 4, 'substance'], ['file_exists', 1, 'substance'], ['fixture_unchanged', 1, 'substance'], ['contains', 1, 'format']]);
+});
+
+test('evidence check passes a block naming enough required items and fails one naming too few', () => {
+  const { evidenceCheck } = require('../stage.js');
+  const { execFileSync } = require('node:child_process');
+  const os = require('node:os');
+  const key = { output: 'o.md', block: 'b', assertions: [{ op: 'includes', ids: ['AB-1', 'AB-2', 'AB-3', 'AB-4', 'AB-5'] }] };
+  const cmd = evidenceCheck(key).cmd;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't7-ev-'));
+  const run = (text) => { fs.writeFileSync(path.join(dir, 'o.md'), text); try { execFileSync('sh', ['-c', cmd], { cwd: dir, stdio: 'ignore' }); return 0; } catch { return 1; } };
+  try {
+    const f = '`'.repeat(3);
+    assert.strictEqual(run(`x\n${f}b\n{"a":["AB-1","AB-2","AB-3","AB-4"]}\n${f}\n`), 0);
+    assert.strictEqual(run(`x\n${f}b\n{"a":["AB-1","AB-2","AB-33"]}\n${f}\n`), 1);
+    assert.strictEqual(run('AB-1 AB-2 AB-3 AB-4 AB-5 named only in prose'), 1);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('pilotOf records the dry run under pilot.dryRun and needs every gate and the same scores twice', () => {
   const { pilotOf } = require('../record-dry.js');
   const res = { repeat: 3, deterministic: true, pass: true, answersPass: true, answersPresent: true, reference: { score: 100 }, stub: { score: 7.14 }, lazy: { score: 30 }, alt: { score: 90 } };
@@ -137,8 +170,8 @@ test('lazy-answer keeps half of each id list, adds the decoys, and shifts number
   const { shallow, decoysOf } = require('../lazy-answer.js');
   const key = { assertions: [{ op: 'absent', ids: ['DE-9'] }, { op: 'cites', ids: ['AB-1'] }] };
   assert.deepStrictEqual(decoysOf(key), ['DE-9']);
-  const v = shallow({ path: ['AB-1', 'AB-2', 'AB-3'], n: 10, d: '2027-03-22', word: 'red' }, decoysOf(key));
-  assert.deepStrictEqual(v, { path: ['AB-1', 'AB-2', 'DE-9'], n: 7, d: '2027-03-01', word: 'red' });
+  const v = shallow({ path: ['AB-1', 'AB-2', 'AB-3'], n: 10, d: '2027-03-22', word: 'red', files: ['a.js', 'b.js', 'c.js', 'd.js'] }, decoysOf(key));
+  assert.deepStrictEqual(v, { path: ['AB-1', 'AB-2', 'DE-9'], n: 7, d: '2027-03-01', word: 'red', files: ['a.js', 'b.js'] });
 });
 
 const tasks = fs.readdirSync(DIR).filter((f) => /^t7-.*\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')));

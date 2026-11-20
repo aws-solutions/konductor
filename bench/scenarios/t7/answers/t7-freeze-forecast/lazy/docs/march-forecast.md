@@ -49,9 +49,7 @@ I went through the exports. The plan mostly holds; the main items are below.
  "assumptions": [
   "Statuses marked open in status-codes.csv are included; Closed and Cancelled tickets are excluded.",
   "A holiday or inclusive PTO removes one point for that person on that working day, and overlapping absences are counted once.",
-  "Ticket dependencies must be accepted before the dependent ticket starts, and a cross-team handoff waits for the receiving team's listed acceptance weekday.",
-  "The April 12 freeze and May 3 final dates in release-calendar.csv remain fixed unless the director approves a change.",
-  "MIG-142 is independent of the gated chain and may slip without changing this date."
+  "Ticket dependencies must be accepted before the dependent ticket starts, and a cross-team handoff waits for the receiving team's listed acceptance weekday."
  ]
 }
 ```

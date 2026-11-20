@@ -39,6 +39,11 @@ with no steering, rules, MCP or skills) and `catalog.json` (unit names and descr
 untouched fixture three times with the runner's check code, and checks that a hung test fails alone. Gates: reference at
 least 95, stub at most 20, identical repeats.
 
+The checks: the hidden test; an evidence check (weight 4, `stage.js` `evidenceCheck`) that passes when the answer's
+block names at least 80% of the items the key requires in its all-items `includes`, `cites` and `order` assertions;
+the output exists and the main input is unchanged (weight 1 each); the block is present (format, not scored).
+`node lazy-answer.js <id>` writes the scripted shallow answer (`answers/<id>/lazy/`).
+
 `node record-dry.js <id>` runs that dry run and records its scores in the task's `pilot.scores.dryRun`. It also
 scores `answers/<id>/lazy/` (gate: 40 or less) and `answers/<id>/alt/` (gate: 80 or more) when present.
 `node alt-answer.js <id>` writes a mechanical alternative from the reference (other order, ids, wording);
