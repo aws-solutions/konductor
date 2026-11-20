@@ -109,7 +109,7 @@
       {
         "check": "floor",
         "verdict": "pass",
-        "note": "All key values derive from the fixture data: ATL-007 due 2027-07-20, needed by 2027-07-15 → 5 days late (verified). CND-009 due 2027-08-05, needed by 2027-07-30 → 6 days late (verified). CND-017 due 2027-08-18, needed by 2027-08-10 → 8 days late (verified). BCN-020→CND-020 and CND-020→BCN-020 form a cycle (verified). CND-017→DLT-011→DLT-025→CND-030→DLT-039→DLT-041→DLT-043→DLT-045 is the longest chain (7 edges, chain_score 6) making it the launch driver. Atlas ingestion contract is marked Done but ATL-007 is Open (verified)."
+        "note": "All key values derive from the fixture data: ATL-007 due 2027-07-20, needed by 2027-07-15 \u2192 5 days late (verified). CND-009 due 2027-08-05, needed by 2027-07-30 \u2192 6 days late (verified). CND-017 due 2027-08-18, needed by 2027-08-10 \u2192 8 days late (verified). BCN-020\u2192CND-020 and CND-020\u2192BCN-020 form a cycle (verified). CND-017\u2192DLT-011\u2192DLT-025\u2192CND-030\u2192DLT-039\u2192DLT-041\u2192DLT-043\u2192DLT-045 is the longest chain (7 edges, chain_score 6) making it the launch driver. Atlas ingestion contract is marked Done but ATL-007 is Open (verified)."
       }
     ]
   },
@@ -132,5 +132,10 @@
     },
     "decision": "fix",
     "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }

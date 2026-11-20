@@ -111,7 +111,7 @@
       {
         "check": "floor",
         "verdict": "pass",
-        "note": "All key values are derivable from fixture data: critical path (PLT-014→PAY-021→CHK-017→CHK-026) via depends_on column; 24 points sum; PAY-028/PAY-021 date conflict (2027-06-26 < 2027-06-28); Jon Bell's 13 points vs 0.9 adjusted capacity; 10 scope-creep points (PAY-034, CHK-037, RISK-023 created after 2027-05-28 lock). Tolerances are reasonable."
+        "note": "All key values are derivable from fixture data: critical path (PLT-014\u2192PAY-021\u2192CHK-017\u2192CHK-026) via depends_on column; 24 points sum; PAY-028/PAY-021 date conflict (2027-06-26 < 2027-06-28); Jon Bell's 13 points vs 0.9 adjusted capacity; 10 scope-creep points (PAY-034, CHK-037, RISK-023 created after 2027-05-28 lock). Tolerances are reasonable."
       }
     ]
   },
@@ -134,5 +134,10 @@
     },
     "decision": "fix",
     "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }
