@@ -1,0 +1,16 @@
+{
+  "note": "a third done: CMX-1 by its own worker, merged and cleaned up; CMX-2 and CMX-3 never started",
+  "workers": [
+    {
+      "branch": "cmx-1-reading-time",
+      "steps": [
+        "CMX-1"
+      ],
+      "message": "CMX-1: round reading time first"
+    }
+  ],
+  "merge": [
+    "cmx-1-reading-time"
+  ],
+  "cleanup": true
+}

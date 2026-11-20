@@ -88,5 +88,64 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "review": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt requires a specific orchestration approach (separate workers, branches, worktrees, merge commits) which is the educational goal of the task, not a leak of helper tools or skills."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements are clear: two specific bugs in issue files, each fixed by separate worker on separate branch with regression test, reviewed against CONTRIBUTING.md, merged with separate merge commits, worktrees cleaned up."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture shows what's wrong (buggy weight.js and eta.js, detailed issue descriptions) but not how to fix it; hidden tests specify expected behavior, not implementation."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Quick wrong answers (fixing on main, skipping tests, or merging incorrectly) are caught by git-work.js checking for separate worker merges and the rubric's requirement for reviewed separate work."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All test expectations derive from fixture: PD-41 conversions from issue math, PD-44 dates from holidays.json and weekend logic from issue description."
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt does not name a specific method, helper tool, or decoy beyond git and the required orchestration pattern."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows buggy code and describes problems in issue tickets, but does not provide the corrected implementation."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden test values (1.361 for 3 lb, specific delivery dates) follow directly from issue descriptions, holidays.json, and basic arithmetic."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Task can be solved entirely from fixture: bugs clearly described, CONTRIBUTING.md provides rules, existing tests show patterns, code shows what needs changing."
+        }
+      ]
+    }
+  }
 }

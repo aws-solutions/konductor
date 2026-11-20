@@ -1,0 +1,11 @@
+{
+  "note": "a different correct answer: other branch names, other code and tests, merged in the other order with the registry and CLI test conflict settled on the last merge",
+  "workers": [
+    { "branch": "feature/stats", "steps": ["stats"] },
+    { "branch": "feature/tags", "steps": ["tags"] },
+    { "branch": "bugfix/duration", "steps": ["duration"] }
+  ],
+  "merge": ["feature/stats", "bugfix/duration", "feature/tags"],
+  "resolve": { "feature/tags": "settle-tags" },
+  "cleanup": true
+}

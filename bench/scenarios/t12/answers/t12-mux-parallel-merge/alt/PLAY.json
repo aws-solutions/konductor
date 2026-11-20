@@ -1,0 +1,32 @@
+{
+  "note": "glue only: the author's independent second answer, on other branch names, merged in reverse order",
+  "workers": [
+    {
+      "branch": "ticket/MUX-3",
+      "steps": [
+        "MUX-3"
+      ],
+      "message": "ticket MUX-3"
+    },
+    {
+      "branch": "ticket/MUX-2",
+      "steps": [
+        "MUX-2"
+      ],
+      "message": "ticket MUX-2"
+    },
+    {
+      "branch": "ticket/MUX-1",
+      "steps": [
+        "MUX-1"
+      ],
+      "message": "ticket MUX-1"
+    }
+  ],
+  "merge": [
+    "ticket/MUX-3",
+    "ticket/MUX-2",
+    "ticket/MUX-1"
+  ],
+  "cleanup": true
+}

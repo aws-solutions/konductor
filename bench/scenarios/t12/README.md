@@ -42,11 +42,45 @@ The fixtures run their suites with `node --test test/*.test.js`: Node 22 and lat
 node bench/scenarios/lib/dry-run.js --config bench/scenarios/t12/scenario.config.js [id ...] [--record]
 ```
 
+## Worker and route tasks (batch CV-A, 2026-11-20)
+
+Four tasks added from the coverage review of 2026-11-20: they prove delegation, route choice and multiplexer work
+from what is left in the repository, never from session labels, plan text or the tool log. Each fixture has its own
+git repository (`fixtures/<id>/dotgit`, built by `node bench/scenarios/t12/build-git-fixture.js <id>`, which prints the
+commit id the hidden `work.json` or `work.test.js` names as the base; rebuild and update it when the fixture changes).
+
+| Task | What the agent produces | Targets | Scored by |
+| --- | --- | --- | --- |
+| `t12-delegated-worker-fix` | two issue fixes (PD-41 weights, PD-44 business days), each by its own worker on its own branch, reviewed against CONTRIBUTING.md, merged with one merge commit each, worktrees and branches removed | agent `konductor`, SOP `k-delegate`, skill `delegation-protocol` | the shared grader `lib/hidden/git-work.js`: per issue, fixed on main, a merged branch that changes only that issue's file and passes the issue's hidden test on its own, and a regression test that fails on the code the branch started from; then green at every merge, a merged-result test, and the clean-up |
+| `t12-sop-route-choice` | four requests from an inbox, each on its own route: the live refund bug fixed first with a test, the agreed BK-215 change with its test and changelog line, a spec and no code for the unsigned waitlist, a review of a patch that is left unapplied | agent `konductor`, skills `sdlc-navigator`, `pre-planning-analysis` | `work.test.js`: two tests per route from the files at the paths CONTRIBUTING.md gives (code and hidden behaviour tests, regression tests found by putting the route's source file back, the spec's facts and open question, the review's json block and the untouched patch), then the order of the commits (the refund fix is the first route work, no commit mixes requests), green where each request ends, and everything committed |
+| `t12-mux-parallel-merge` | three disjoint tickets done side by side, one worker per ticket in its own tmux window, worktree and branch, merged one by one and cleaned up | agent `konductor-mux-orchestrator`, skills `mux-dispatch`, `git-merge` | the shared grader (three tickets) |
+| `t12-cmux-parallel-merge` | the same outcome under cmux, with two tickets that share the command registry and the CLI test, so the second merge must keep both changes | agent `konductor-cmux-orchestrator`, skills `cmux-dispatch`, `git-merge` | the shared grader (three tickets) plus a merged-result test (both commands registered, the shared reading time) |
+
+Each grader test needs at least one worker merge (or one committed piece of work), and the merged-result, green and
+clean-up tests need every ticket or request done, so an untouched repository scores 0, one agent fixing everything
+straight on main scores 0 (`shallow`), and doing half the tickets or routes scores 25 to 36.4 (`lazy`).
+
+Their answers are scripted git agents: an answer dir holding `PLAY.json` (see `play()` in `scenario.config.js`) gives
+workers their own worktrees and branches from main, merges them with one merge commit each, settles a conflict with
+the files it names, or commits dirs straight onto main.
+
+`t12-mux-parallel-merge` was written by a second family (gpt-5.6-luna) in two calls: the fixture and the request,
+then the hidden tests, the ticket files and the reference and alternative work. The batch added only glue (the git
+build, `work.json`'s base and hidden list, the `PLAY.json` files and the mechanical lazy and shallow answers).
+
 ## Limits
 
-The tasks were written by hand by a Claude worker (no author model call was approved), so they carry `handEdited` and
-`authorship.singleFamily` and wait for a non-Claude recheck (DEBT D-108). No agent has run them yet.
+The first four tasks were written by hand by a Claude worker (no author model call was approved), so they carry
+`handEdited` and `authorship.singleFamily` and wait for a non-Claude recheck (DEBT D-108). Of the CV-A four, three
+were written by hand by a Claude worker (rechecked by a non-Claude family, `review.recheck`) and one by a second
+family. No agent has run any of them yet.
 
 Two parts of the delegation proof rest on what the work reports: the hand-off's second step lists the files it read
 (`readFiles`), and nothing shows that the hand-off was left unchanged after that step began. The changed files, the
 test results and the merge replay are checked from the files themselves.
+
+The worker tasks prove from the history that each ticket was done apart on its own branch and merged; they cannot
+prove that the workers ran at the same time, or that a separate agent rather than the parent wrote a branch: files
+carry no reliable trace of either. cmux is not installed on the bench host or in its sandbox, so in
+`t12-cmux-parallel-merge` an agent cannot open cmux workspaces; the task runs and is scored the same way, but the
+cmux routing it targets cannot be exercised here (DEBT row).

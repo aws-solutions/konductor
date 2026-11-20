@@ -119,5 +119,64 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt instructs to follow CONTRIBUTING.md rules and commit work on main, which defines the required workflow (separate workers on branches, merge each, clean up). The expertKey describes what each route should produce but doesn't name helper tools, skills, procedures, or agents beyond git/terminal. The four request types (repair, change, spec, review) are derived from the inbox and CONTRIBUTING.md, not revealed as traps."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The hidden tests require 4 distinct routes (repair, change, spec, review), each leaving specific artifacts (src/refund.js changes, src/summary.js changes, docs/specs/waitlist/ spec files, docs/reviews/0001-overlap-check.md review). CONTRIBUTING.md clearly defines each route: bug fix + regression test, changelog line, spec before code, review in specific format with json block. The tests verify order (refund first) and that each route's artifact is present."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture (inbox.md, CONTRIBUTING.md, policy.md) doesn't reveal the solution. inbox.md lists 4 requests; CONTRIBUTING.md defines 4 routes but doesn't say which request maps to which route; policy.md just states refund tiers. The hidden tests verify behavior that must be derived: 48/24 hour refund tiers, nights calculation, spec content including open questions about loyalty, review findings for dropped room check and back-to-back logic."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Not too easy: a quick wrong answer would be implementing waitlist code before sign-off or applying Ravi's patch without review. Hidden tests catch these: 'unsigned feature: no waitlist code before sign-off' fails if code is written; 'patch review: the patch is not applied' fails if patch or overlap.js is changed. Also, order matters: 'order: the live bug is fixed first' catches top-to-bottom processing."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Not unfair or impossible: every hidden test's expected value derives from fixture. Policy.md's tiers imply 48h full, 24h half; BK-215 request defines nights as date difference; inbox specifies 5 people limit, 2-hour offer, loyalty question for Dana; Ravi's patch clearly has bugs visible from tests. Alt solution shows multiple valid commit orders are acceptable (test first, then fix, etc.)."
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt doesn't name methods (tools/skills/procedures) beyond 'the way this team works' (CONTRIBUTING.md) and 'commit each finished piece of work on main on its own'. ExpertKey describes outcomes (e.g., 'writes waitlist as requirements, design and tasks') without naming helper tools."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files don't list answers. inbox.md contains 4 requests without indicating which route each needs; CONTRIBUTING.md defines 4 routes but doesn't map requests to routes or reveal the 48/24 tier values, nights formula, or review findings. The spec's open question format (5 limit, 2-hour offer, loyalty for Dana) must be derived from inbox text."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Every hidden test value derives from fixture: refund tiers from policy.md (48h full, 24h half); BK-215 nights from request text (UTC dates, 0 for same-day); waitlist limits from inbox (5 per room/date, 2-hour offer, loyalty question for Dana); review findings from patch bugs (missing room check, back-to-back >= vs < logic). The alt solution shows acceptable variations in wording."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Task is fully solvable from fixture alone. All information needed is in docs/policy.md, docs/inbox.md, CONTRIBUTING.md, patches/0001-overlap-check.patch, and src/refund.js (which has incomplete TIERS array hinting at missing tiers). No external files or context needed."
+        }
+      ]
+    }
+  }
 }
