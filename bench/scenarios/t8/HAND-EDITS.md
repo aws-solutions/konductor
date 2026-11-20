@@ -117,3 +117,22 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t8-runbook-db-failover | glm-5 (r3, rubric) | confirmed |  |
 | t8-tpm-rollout-regions | glm-5 (r3, rubric) | confirmed |  |
 | t8-twin-latency-tier-report | glm-5 (c12, full) | confirmed |  |
+
+## t8-bug-retry-storm: the regression test weighs more (2026-11-20, mate hand-edit recheck worker, claude)
+
+Owner decision: fix it free, then recheck. Version 2 to 3.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t8-bug-retry-storm | 2026-11-20 | `regress-kit/config.json` gains `counts: 15`, and the shared `lib/hidden/regress.test.js` registers its one proof (the agent's suite passes on its code and fails on the original) that many times, run once; the tests check's `min` 11 to 25 | the hidden share counts tests, so a one-line fix with no regression test passed 10 of 11 and scored 72.1; the request asks for that test. Now lazy 35.7 |
+| t8-bug-retry-storm | 2026-11-20 | new `answers/t8-bug-retry-storm/alt/`, written by hand: the same root-cause fix held in a named delay, and its own test file `test/backoff-units.test.js` (503 base delay and doubling) | no alternative answer was recorded. Free gates: reference 100, empty 10, lazy 35.7, alternative 100 |
+
+## Non-Claude recheck, round 2 (D-108, D-127, 2026-11-20, mate hand-edit recheck worker)
+
+These rows replace the round 1 rows above for the same tasks.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t8-bug-retry-storm | deepseek-3.2 (c16, full) | confirmed after fix | regression proof counted 15 times (lazy 72.1 to 35.7) and a hand-written alternative answer; deepseek-3.2 (c16) passes all four |
+| t8-neg-alert-threshold | deepseek-3.2 (c16, full) | confirmed |  |
+| t8-nfr-slo-burn | deepseek-3.2 (c16, full) | confirmed |  |

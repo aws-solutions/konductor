@@ -2,7 +2,7 @@
   "id": "t3-adr-db-engine",
   "class": "design",
   "target": null,
-  "prompt": "Choose the database approach for the launch-day session store using the requirements, traffic profile, platform limits, and price sheet in `fixture/`. Write the architecture decision record to `docs/adr/0001-database.md`. Compare the key-value table on-demand, key-value provisioned with autoscaling, and relational cluster options, including the hot-key distribution, recovery objectives, latency, and monthly cost. Recompute the figures from the supplied inputs and explain the important tradeoffs and rejected alternatives in the record. The output must contain a fenced block whose info string is exactly `decision`; the block must hold JSON with exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Use the option id for `chosen`, an array of considered option ids for `options`, and make `limits` an object mapping each hard-limit name to `{ \"limit\": number, \"value\": number }`, where `value` is the computed figure for the chosen option and `monthly_cost_usd` is the chosen option's monthly cost from the price sheet.",
+  "prompt": "Choose the database approach for the launch-day session store using the requirements, traffic profile, platform limits, and price sheet in `fixture/`. Write the architecture decision record to `docs/adr/0001-database.md`. Compare the key-value table on-demand, key-value provisioned with autoscaling, and relational cluster options, including the hot-key distribution, recovery objectives, latency, and monthly cost. Recompute the figures from the supplied inputs and explain the important tradeoffs and rejected alternatives in the record. The output must contain a fenced block whose info string is exactly `decision`; the block must hold JSON with exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Use the option id for `chosen`, an array of considered option ids for `options`, and make `limits` an object mapping each hard-limit name to { \"limit\": number, \"value\": number }, where `value` is the computed figure for the chosen option and `monthly_cost_usd` is the chosen option's monthly cost from the price sheet. Use these exact option IDs: `kv-on-demand` for the key-value table on-demand option, `kv-provisioned-autoscaling` for the key-value provisioned with autoscaling option, and `relational-cluster` for the relational cluster option. Use these exact `limits` keys for the hard limits: `peak_write_wps`, `read_p99_ms`, `monthly_budget_usd`, `item_size_bytes`, `rpo_seconds`, `rto_seconds`, and `partition_write_wcu`.",
   "fixture": "t3-adr-db-engine",
   "timeoutSec": 900,
   "hidden": "t3-adr-db-engine",
@@ -68,12 +68,9 @@
       "lazy": 39,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit names peak_write_wps, read_p99_ms, rpo_seconds, rto_seconds, partition_write_wcu are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -119,29 +116,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to choose a database approach, naming no framework or tool; fixture README.md's warning about superseded 8,000 writes/s staging figure is a legitimate trap the task tests for (must use 25,000 peak), not a decoy pointing away from the real problem."
+          "note": "Prompt asks to choose database approach and write ADR without prescribing specific method. No misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides traffic-profile.json (25,000 peak writes, 60% hot fraction), platform-limits.json (1,000 WCU per partition), price-sheet.json (cost rates), requirements.json (budget), recovery.json (RPO/RTO) - the agent must compute 15,000 hot writes / 8 partitions = 1,875 WCU > 1,000 limit to reject kv-on-demand."
+          "note": "Fixture lists option properties in price-sheet.json but doesn't indicate which option is correct or provide calculations that reveal answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden test decision.test.js reads fixture files and verifies chosen option is kv-provisioned-autoscaling, computed hot-partition WCU against platform ceiling, monthly cost against budget, and RPO/RTO against recovery objectives; rubric's Pass anchor specifies showing 60% x 25,000 / 8 partitions = 1,875 WCU > 1,000 ceiling, matching fixture data."
+          "note": "All seven limit keys exist in fixture: peak_write_wps (traffic-profile.json), read_p99_ms (requirements.json), monthly_budget_usd (requirements.json), item_size_bytes (traffic-profile.json), rpo_seconds (recovery.json), rto_seconds (recovery.json), partition_write_wcu (platform-limits.json)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can compute hot-key partition WCU from traffic-profile.json peak_writes_per_second x hot_key_fraction / partitions, derive monthly cost from price-sheet.json rates, and reject kv-on-demand for partition ceiling violation; alternative option IDs matching fixture would pass tests."
+          "note": "Developer can calculate hot writes (60% of 25,000 = 15,000 wps), check partition ceiling (1000 WCU), compute kv-on-demand would exceed limit, check relational cluster cost exceeds budget, choose kv-provisioned-autoscaling."
         }
       ]
     }

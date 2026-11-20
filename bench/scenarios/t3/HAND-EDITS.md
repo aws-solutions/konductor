@@ -200,3 +200,51 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t3-nfr-latency-budget | glm-5 (r3, rubric) | fix needed | free key scan: limit names p99_latency_ms, monthly_budget_usd are not in the fixture or prompt |
 | t3-pm-feature-scope | none | dropped | failed two earlier non-Claude rechecks; no new call |
 | t3-tpm-migration-cutover | glm-5 (r3, rubric) | confirmed |  |
+
+## D-127 key names, fixed by the writer family (2026-11-20)
+
+The D-108 free scan found that the hidden tests of ten tasks read `limits` keys and option ids that neither the request
+nor the fixture gives. Owner decision: state the names in the request, with the fix written by a non-Claude writer
+family. The writer of each task changed its prompt only (and, for t3-api-booking, one rubric criterion); the mate
+hand-edit recheck worker (claude) applied the files and bumped the versions. This is not a Claude edit, so
+`handEdited` is unchanged. Free gates after the fix are unchanged, the scenarios lint is clean, and the name scan finds
+no missing name.
+
+| Task | Fixed by | What changed |
+| --- | --- | --- |
+| t3-adr-batch-vs-stream | deepseek-3.2 (f1) | prompt names the option ids (batch_current, batch_2x_scaling, batch_3x_scaling, streaming) and the five limit keys |
+| t3-adr-multiregion-dr | deepseek-3.2 (f1) | prompt names the option ids (nightly-backup, pilot-light, warm-standby) and the limit keys monthly_budget_usd, rpo_min, rto_min |
+| t3-adr-queue-choice | deepseek-3.2 (f1) | prompt names the option ids (sqs_standard, sqs_fifo, kinesis_streams) and three limit keys |
+| t3-nfr-latency-budget | deepseek-3.2 (f1) | prompt names the option ids (base, parallel, cache, cache_parallel) and the limit keys monthly_budget_usd, p99_latency_ms |
+| t3-adr-cache-sizing | gpt-5.6-luna (f2) | prompt maps each option id to the fixture's option and names the six limit keys |
+| t3-adr-db-engine | gpt-5.6-luna (f2) | the same, three option ids and seven limit keys |
+| t3-adr-egress-cdn | gpt-5.6-luna (f2) | the same, three option ids and six limit keys |
+| t3-api-booking | gpt-5.6-luna (f3) | prompt names the six limit keys and the option ids cursor and offset; the contract-boundary-reasoning Pass anchor accepts any field names with the same meaning |
+| t3-api-ingest-batch | gpt-5.6-luna (f3) | prompt names the six limit keys and maps the three option ids |
+| t3-arch-notification-pipeline | gpt-5.6-luna (f3) | prompt names the six limit keys and maps the three option ids |
+
+Second writer round (deepseek-3.2, f4), after the gpt-5.6-luna recheck (v1) found three more defects. Free gates after:
+t3-adr-multiregion-dr 100 / 0 / 5 / 100, t3-adr-queue-choice 100 / 0 / 5 / 100.
+
+| Task | Fixed by | What changed | Why |
+| --- | --- | --- | --- |
+| t3-adr-multiregion-dr | deepseek-3.2 (f4) | fixture `README.md` line 33 and `decision-options.md` line 94: "Meets all requirements" and "Meets both RPO and RTO requirements" became neutral descriptions | v1: fixture-lists-no-answer, the fixture said which option is right |
+| t3-adr-queue-choice | deepseek-3.2 (f4) | `hidden/adr-validation.test.js`: the exact template headings, status value, Decision Drivers and Compliance sections and checkmarks are no longer required; content checks stay; the claude worker set the tests check `min` 43 to 42 to match the new test count | v1: key-matches-fixture and solvable-from-fixture, the tests demanded structure the request does not ask for |
+| t3-adr-batch-vs-stream | not landed | deepseek-3.2 changed the request from Q4 to Q3 2025 to match the key, but the fixture still says "through Q4 2025" in requirements.md and gives two Q4 volumes (4.65 TB in performance-metrics.md and decision-criteria.md, 6.28 TB in data-growth.csv and traffic-analysis.md) | v1 found the key sized for 4.65 TB while the request says Q4 2025; the fixture contradicts itself, so the task stays fix (D-127) |
+
+## Non-Claude recheck, round 2 (D-108, D-127, 2026-11-20, mate hand-edit recheck worker)
+
+These rows replace the round 1 rows above for the same tasks.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t3-adr-batch-vs-stream | gpt-5.6-luna (v1, full) | fix needed | names fixed (f1), but gpt-5.6-luna (v1) found the key sized for 4.65 TB while the request says Q4 2025; the fixture gives both 4.65 and 6.28 TB for Q4, and the writer fix (f4) only moved the request to Q3, so it was not landed; drop or rewrite |
+| t3-adr-cache-sizing | deepseek-3.2 (v2, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix |
+| t3-adr-db-engine | deepseek-3.2 (v2, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix |
+| t3-adr-egress-cdn | deepseek-3.2 (v2, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix; deepseek-3.2 failed key-matches-fixture because the stated key differs from the fixture field name, disposed: the request now states the key |
+| t3-adr-multiregion-dr | gpt-5.6-luna (v4, full) | confirmed after fix | D-127 names (deepseek-3.2 f1), then the gpt-5.6-luna recheck found an answer leak in the fixture; deepseek-3.2 (f4) neutralised it; gpt-5.6-luna (v4) passes all four |
+| t3-adr-queue-choice | gpt-5.6-luna (v4, full) | confirmed after fix | D-127 names (f1), then gpt-5.6-luna found tests demanding unrequested headings; deepseek-3.2 (f4) loosened them (min 43 to 42); gpt-5.6-luna (v4) passes all four |
+| t3-api-booking | deepseek-3.2 (v3, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix; deepseek-3.2 failed key-matches-fixture because the stated key differs from the fixture field name, disposed: the request now states the key |
+| t3-api-ingest-batch | deepseek-3.2 (v3, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix; deepseek-3.2 failed key-matches-fixture because the stated key differs from the fixture field name, disposed: the request now states the key |
+| t3-arch-notification-pipeline | deepseek-3.2 (v3, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix; deepseek-3.2 failed key-matches-fixture because the stated key differs from the fixture field name, disposed: the request now states the key |
+| t3-nfr-latency-budget | gpt-5.6-luna (v1, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix |
