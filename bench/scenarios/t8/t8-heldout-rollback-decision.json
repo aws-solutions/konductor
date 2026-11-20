@@ -159,29 +159,29 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for rollback decision document with JSON block, doesn't prescribe method. Edits mention test refinement."
+          "note": "task.json:11 asks the agent to inspect the folder and write a decision, while naming only the decision choices and output schema. It specifies no method, framework, or tool, and the prompt contains no misleading procedural hint. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains logs showing idempotency_key_reused only on 4.18.0 hosts, payments gateway logs, CI failures, additive migration, but answer requires connecting evidence."
+          "note": "The fixture provides unresolved release-channel choices, measurements, logs, migration policy, and rollback procedure, but no file states the final call or completed decision. README.md and runbooks/rollback.md describe the evidence and general procedure rather than the hidden-test answer. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "key.json expects evidence from orders-api logs, payments-gateway.log, payment_auth_soft_decline_rate metric - all exist. Rubric anchors reward decision analysis."
+          "note": "The output path and fields in task.json:11 match hidden/block-kit/key.json:2-25, and the required values are grounded in the fixture: version split and PAY-2291 in release/RELEASE-4.18.0.md:8-19, rollback/forward rules in runbooks/rollback.md:7-24, metric names in metrics/catalogue.csv, and audiences in comms/stakeholders.md:5-9. The edits note's rate-tolerance change is reflected by the current key's 0.2 tolerance and does not introduce a fixture mismatch. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can analyze per-version decline rates, idempotency errors, CI failures, additive migration, and make rollback decision with proper metrics."
+          "note": "A developer can derive the decision, cause, rates, and affected count from the versioned logs and per-minute export, including the same-window rows at metrics/per-minute.csv:350-351, then apply the supplied runbook and stakeholder table. The hidden key uses schema paths, unordered list matching, and numeric tolerances, so valid wording or ordering different from the reference can pass. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         }
       ]
     }

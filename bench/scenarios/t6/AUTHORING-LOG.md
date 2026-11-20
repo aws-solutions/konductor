@@ -184,3 +184,11 @@ CV-D2 (2026-11-20): the non-Claude checklist recheck of the two hand-edited spik
 | t6-architect-idea-spike, t6-developer-feasibility-spike | recheck r2 | deepseek-3.2 | 15 | 2.876 | one call, both tasks; stream read only files of its work dir |
 
 Total: 30 counted of 30 (2.9 real).
+
+RC (2026-11-20, owner-approved recheck, stop 60 counted at 15 per call):
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t6-architect-idea-spike | recheck | minimax-m2.5 | 1.23 | 4 of 4 pass |
+
+- Earlier recheck by deepseek-3.2 failed no-method-or-decoy (the 1.1 s average was said to be in the prompt); it was overruled because the figure is only in the judge rubric and fixture/pitch/pitch-note.md. minimax-m2.5 (minimax) found the same: the decoy is in the fixture, not the request. Both are in `review.recheck` notes. No task edit.

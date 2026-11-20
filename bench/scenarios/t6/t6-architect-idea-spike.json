@@ -170,29 +170,29 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
+      "family": "minimax",
+      "model": "minimax-m2.5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
-          "verdict": "fail",
-          "note": "Prompt mentions 'roughly 1.1 s average' which misleads to focus on average latency rather than p95 of large invoices required by hidden tests. (disposition: false finding. The request does not mention the 1.1 s average; it is in the judge-only rubric item decoy-explained and in fixture/pitch/pitch-note.md, which is the seeded trap the task tests, not a hint in the request. CV-D2 changed neither the request nor that fixture file; no recount call was left under the 30-credit stop)"
+          "verdict": "pass",
+          "note": "Request asks for a spike plan without prescribing method/process. The 1.1s decoy is in pitch-note.md (fixture), not in the prompt. Edits note confirms: prompt does not mention it. Earlier recheck by deepseek-3.2 (2026-11-20): fail. Prompt mentions 'roughly 1.1 s average' which misleads to focus on average latency rather than p95 of large invoices required by hidden tests. (disposition: false finding. The request does not mention the 1.1 s average; it is in the judge-only rubric item decoy-explained and in fixture/pitch/pitch-note.md, which is the seeded trap the task tests, not a hint in the request. CV-D2 changed neither the request nor that fixture file; no recount call was left under the 30-credit stop)"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains raw data and context but doesn't pre-compute answers or describe finished behavior."
+          "note": "Fixture contains facts (support targets, team availability, vendor limits) but not the answer. It provides constraints, not a solution or description of the expected output. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check values from fixture data (p95 of >20 page invoices, 128MB limit, team calendar constraints) and rubric matches request."
+          "note": "Hidden tests check p95 on >20 pages, 6s target (from support-targets.md), 128MB/10s limits (from vendor/), 8 engineer-days (from team-calendar.csv). Rubric rewards explaining the 1.1s decoy and acknowledging memory limits - aligned with fixture facts. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can analyze data to find p95 of large invoices, understand team constraints, and create valid spike plan."
+          "note": "From fixture: pitch asks about edge PDF, support-targets shows 6s for large, team-calendar shows 8 days, vendor limits show 128MB/10s. These constraints point to testing 21-54 pages. Multiple valid plans possible. Earlier recheck by deepseek-3.2 (2026-11-20): pass."
         }
       ]
     }
