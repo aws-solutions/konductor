@@ -9,8 +9,7 @@ can build and test without the web app: the row reader and the column type infer
 | --- | --- |
 | `lib/csv.js` | Streaming CSV reader (`readRows`, `readRecords`). Reads a path or a stream, never loads the whole file. |
 | `lib/infer.js` | Decides a column type (`integer`, `decimal`, `date`, `text`) from the cells seen so far. The rules are written at the top of the file. |
-| `tools/gen-sample.js` | Seeded generator for the three synthetic files in `data/`. Re-running it gives identical bytes. |
-| `data/` | `sample-a.csv`, `sample-b.csv`, `sample-c.csv`. Synthetic, tens of thousands of rows each. No customer data lives in this repo. |
+| `data/` | `sample-a.csv`, `sample-b.csv`, `sample-c.csv`. Synthetic, tens of thousands of rows each, made by a seeded generator that lives with the data team's tools, so the bytes never change. No customer data lives in this repo. |
 | `test/` | Unit tests for the reader and the inference. |
 | `docs/` | One-pager, meeting and interview notes, support notes, older drafts, team handbook excerpts. |
 
@@ -18,7 +17,6 @@ can build and test without the web app: the row reader and the column type infer
 
 ```
 npm test                       # node --test, no dependencies to install
-node tools/gen-sample.js       # rewrite data/sample-*.csv
 ```
 
 Needs Node.js 24. There is nothing to `npm install`.

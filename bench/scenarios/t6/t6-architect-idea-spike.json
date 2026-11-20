@@ -1,7 +1,7 @@
 {
   "id": "t6-architect-idea-spike",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "ideation",
   "role": "architect",
   "questions": "allowed",
@@ -168,7 +168,34 @@
         "verdict": "pass",
         "note": "The fixture contains all raw data needed to derive the correct answer. The prompt does not reveal which subset matters or what the correct thresholds are. The reference solution shows one valid synthesis of the data, not an answer key in the fixture."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "fail",
+          "note": "Prompt mentions 'roughly 1.1 s average' which misleads to focus on average latency rather than p95 of large invoices required by hidden tests. (disposition: false finding. The request does not mention the 1.1 s average; it is in the judge-only rubric item decoy-explained and in fixture/pitch/pitch-note.md, which is the seeded trap the task tests, not a hint in the request. CV-D2 changed neither the request nor that fixture file; no recount call was left under the 30-credit stop)"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains raw data and context but doesn't pre-compute answers or describe finished behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check values from fixture data (p95 of >20 page invoices, 128MB limit, team calendar constraints) and rubric matches request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can analyze data to find p95 of large invoices, understand team constraints, and create valid spike plan."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
@@ -177,11 +204,16 @@
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 35.4,
+      "lazy": 38.8,
       "alt": 100,
       "date": "2026-11-20"
     },
     "decision": "keep",
     "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-D2 t6 fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

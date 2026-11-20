@@ -1,7 +1,7 @@
 {
   "id": "t7-release-gate",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "release-ops",
   "role": "tpm",
   "questions": "allowed",
@@ -23,7 +23,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"release/go-no-go.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"release-decision\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"rel-112\",\"rel-118\",\"rel-127\",\"rel-131\",\"linux-integration\",\"windows-smoke\"];process.exit(items.filter(named).length>=5?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"release/go-no-go.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?release-decision(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"rel-112\",\"rel-118\",\"rel-127\",\"rel-131\",\"linux-integration\",\"windows-smoke\"];process.exit(items.filter(named).length>=5?0:1)'",
       "expectExit": 0,
       "weight": 4,
       "kind": "substance"
@@ -43,7 +43,7 @@
     {
       "type": "contains",
       "path": "release/go-no-go.md",
-      "pattern": "```\\s*release-decision",
+      "pattern": "```[ \\t]*(json[ \\t]+)?release-decision",
       "weight": 1,
       "kind": "format"
     }

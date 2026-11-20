@@ -1,7 +1,7 @@
 {
   "id": "t6-developer-feasibility-spike",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "ideation",
   "role": "developer",
   "questions": "allowed",
@@ -165,7 +165,34 @@
         "verdict": "pass",
         "note": "The fixture states the premise and implementation rules but does not reveal the drift results or identify the drifting file; the request contains no answer key."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request specifies output format but not implementation method; no misleading hints found."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides CSV files and inference library but doesn't reveal where type changes occur (generator removed per edits.md)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests verify script works on fixture CSV files; checks and rubric align with request requirements."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can implement drift detection using lib/infer.js rules and CSV reading from fixture."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
@@ -180,5 +207,10 @@
     },
     "decision": "keep",
     "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-D2 t6 fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

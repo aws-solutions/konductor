@@ -34,7 +34,7 @@ Run it as `node spike/measure.js data/sample-c.csv`. I did not change `lib/` or 
 
 ## What this does and does not show
 
-All three files are synthetic (`tools/gen-sample.js`), so the counts say what can happen, not how often it happens
+All three files are synthetic (made by a seeded generator), so the counts say what can happen, not how often it happens
 in customer files. Support notes suggest it does happen: 8 of 43 import tickets in the first quarter were
 "rejected for the wrong type partway through", and Ines Okafor thinks about one file in ten has pasted-together
 sections. Neither number says where in the file the change sits. Two of three samples is not a rate.
