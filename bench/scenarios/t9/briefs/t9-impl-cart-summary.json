@@ -1,0 +1,20 @@
+{
+  "id": "t9-impl-cart-summary",
+  "kind": "impl",
+  "phase": "implementation",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "node",
+  "size": "30 to 50",
+  "ntests": "12 to 16",
+  "ntrap": 4,
+  "source": {
+    "url": "https://github.com/dinerojs/dinero.js",
+    "licence": "MIT (checked on GitHub)",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation. Role: frontend developer. Repo: a plain JavaScript storefront front end whose cart page renders from a view-model function `buildCartView(cart, options)` (items, line totals, subtotal, a shipping row, a total) with a money helper that works in minor units and formats with Intl for a locale and currency (including a zero-decimal currency and a three-decimal one). The feature: a promo code row and a free-shipping progress bar in the view-model: a code is looked up in a small catalogue module (percent off, fixed amount off, free shipping, with a minimum spend and an expiry date, one code at a time), the discount applies before shipping and tax rules the existing code already has, the progress bar says how much more to spend to reach the free-shipping threshold (a plain object with fields the request names, never HTML). Traps: rounding of a percent discount in minor units (round half away from zero on the total, not per line), a discount larger than the subtotal, expiry at a day boundary in the shop time zone given in the options, the threshold compared after the discount, the zero-decimal currency, a code with different case or surrounding spaces, and an invalid code that must show a message but keep the cart unchanged."
+}

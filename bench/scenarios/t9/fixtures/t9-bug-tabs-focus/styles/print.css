@@ -1,0 +1,4 @@
+@media print {
+  .topbar, .tool-card, footer { display: none; }
+  .settings-card { border: 0; box-shadow: none; }
+}

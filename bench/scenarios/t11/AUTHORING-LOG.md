@@ -2,7 +2,7 @@
 
 Public repo: no internal names, host paths or secrets. Credits are what each kiro-cli call reported. Plan estimate for
 T11 (plan section 9): 140 credits, stop at 280. Every call has an abort limit of 15 credits, written to the scratch call
-log before the call starts, and a tool-call cap (glm-5 80, minimax-m2.5 70, others 150). Before every call the spend
+log before the call starts, and a tool-call cap (glm-5 80, others 150). Before every call the spend
 check runs: logged spend plus this call's abort limit must stay at or under 280, with no other call in flight (one paid
 call at a time). Before every call the 1-minute load is read; at 5 or more the call waits (120 s steps, up to 30 min).
 
@@ -34,3 +34,11 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-twin-pricing-validation | author | gpt-5.6-luna | 2.71 |  |
 | t11-twin-pricing-validation | map | glm-5 | 0.15 |  |
 | t11-twin-pricing-validation | review | glm-5 | 6.22 |  |
+| t11-wide-settings-migration | step1 | qwen3-coder-next | 12.33 |  |
+| t11-wide-settings-migration | fix | qwen3-coder-next | 4.04 |  |
+| t11-resume-csv-export | recheck | qwen3-coder-next | 0.21 |  |
+| t11-merge-pricing-branches | recheck | qwen3-coder-next | 0.23 |  |
+| t11-media-returns-whiteboard | recheck | qwen3-coder-next | 0.19 |  |
+| t11-wide-settings-migration | step2 | qwen3-coder-next | 0.00 |  |
+| t11-wide-settings-migration | step2 cut at the tool cap (152 tools); the stream reported no credits, so it is counted at its abort limit | qwen3-coder-next | 15.00 |  |
+| t11-wide-settings-migration | step1 | minimax-m2.5 | 0.22 |  |

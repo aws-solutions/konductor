@@ -1,0 +1,148 @@
+{
+  "id": "t9-impl-cart-summary",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "Could you add the promotion and delivery-progress part of the cart summary? The page needs a `promoCodeRow` in the view model with the label `Promo code`, the entered `code`, `status`, `message`, `applied`, `discount`, and `discountMinor`. Add a `freeShippingProgress` plain object with `thresholdMinor`, `qualifyingSubtotalMinor`, `remainingMinor`, `reached`, `percentage`, and `message`; it must contain data, not HTML. The exported `buildCartView` in `src/cart/view.js` receives `promoCode`, `now`, and `shopTimeZone` through its options. The catalogue has `SAVE15` at 15% off with a 1,000-minor-unit minimum through `2027-08-15`, `TAKE750` at 750 minor units off with a 100-minor-unit minimum through `2027-12-31`, and `SHIPDAY` for free delivery with a 6,000-minor-unit minimum through `2027-10-31`. Apply an accepted discount before the existing shipping and tax calculation, and keep the current item, line-total, subtotal, shipping-row, tax, total, locale, and currency behavior intact. Invalid input should leave cart pricing alone while explaining the problem in the row. The progress record should show what remains for the existing 8,500-minor-unit free-delivery threshold.",
+  "fixture": "t9-impl-cart-summary",
+  "hidden": "t9-impl-cart-summary",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "(node --test test/ || node --test ./test/*.test.js) && [ \"$(grep -RhoE '^[[:space:]]*(test|it)\\(' test --include='*.js' | wc -l)\" -ge 14 ]",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/cart/model.js",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/promo.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/cart/view.js",
+      "pattern": "roundHalfAwayFromZero",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/cart/view.js",
+      "pattern": "trim\\(\\)\\.toUpperCase\\(\\)",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/cart.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "copy",
+      "criterion": "The promo and progress messages read naturally for a compact storefront cart (code cannot check this because wording quality requires human judgement).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/dinerojs/dinero.js",
+      "licence": "MIT (checked on GitHub)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies what fields and behaviors are needed (promoCodeRow, freeShippingProgress, promo code handling) but does not prescribe implementation method, algorithm, or code structure."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All required fields, behaviors, and rules are explicitly stated. The three promo codes (SAVE15, TAKE750, SHIPDAY) and their parameters are given in the task, matching the hidden test expectations."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's CHANGELOG mentions 'refined the compact cart summary' but does not reveal the promo implementation details. The catalog.json only contains product data, not promotion rules."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is not too easy: a hard-coded partial solution (e.g., skipping promo row, using UTC dates, or not computing progress from discounted subtotal) would fail 13-14 hidden tests as shown by the stub scoring 13.6%."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required pieces are present in the fixture: buildCartView template, roundHalfAwayFromZero, formatMoney with currency digits, shipping logic, tax calculation. The promo catalog structure and expiry handling logic are not in fixture but are specified in the task."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 13.6,
+    "dryRun": {
+      "reference": 100,
+      "stub": 13.6,
+      "lazy": 32.7,
+      "alt": 95.9,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

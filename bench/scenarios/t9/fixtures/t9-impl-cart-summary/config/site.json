@@ -1,0 +1,10 @@
+{
+  "shopName": "Harbor & Pine",
+  "defaultLocale": "en-US",
+  "defaultCurrency": "USD",
+  "taxRate": 0.0825,
+  "shipping": {
+    "flatMinor": 695,
+    "freeOverMinor": 8500
+  }
+}

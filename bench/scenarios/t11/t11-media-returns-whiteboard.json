@@ -29,8 +29,9 @@
       "kind": "format"
     },
     {
-      "type": "file_exists",
-      "path": "test/returns-lifecycle.test.js",
+      "type": "cmd",
+      "cmd": "test \"$(grep -rhoE '(^|[^a-zA-Z_.])(test|it)\\(' test | wc -l)\" -ge 6",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
@@ -124,22 +125,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt in task-draft.json names no method or decoy; it only references the image as source of truth"
+          "note": "The prompt (task-draft.json) only asks to replace the lifecycle with the image as source of truth. It does not mention any specific method names beyond the required exports (STATES, createReturn, applyEvent) nor any decoy techniques."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture directory contains no answer files - only the image, context note, old lifecycle.js, and old tests"
+          "note": "The fixture test/lifecycle.test.js contains only one minimal test that references STATES.NEW (not in the required STATES map), and the fixture lifecycle.js has only 4 states (NEW, RECEIVED, REFUNDED, CLOSED) with different event vocabulary (receive, refund, close) than the task requires. This is clearly incomplete and not the expected solution."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden tests verify the exact STATES, events, return record structure, and INVALID_TRANSITION behavior that the solution implements"
+          "note": "The hidden tests (hidden-behaviour.test.js) use all required states, events, and behaviors described in the task, and match what the solution implements. The fixture test only has a minimal stub test referencing STATES.NEW which is not in the required STATES map, confirming it is intentionally incomplete and the hidden tests are the key."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "All required logic is provided in the prompt (STATE names, events, business rules) and verified by the hidden tests"
+          "note": "The task-draft.json specifies exactly the required STATES map, event vocabulary, return record fields, and behavior constraints. The hidden tests show what behavior is expected. The fixture image (returns-whiteboard.png) contains the full state machine diagram. With the prompt's requirements plus the image, the complete implementation can be derived without needing the solution folder."
         }
       ]
     }

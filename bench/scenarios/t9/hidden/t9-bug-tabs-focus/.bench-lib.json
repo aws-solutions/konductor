@@ -1,0 +1,4 @@
+{
+  "bench-browser.js": "bench-browser.js",
+  "regress.test.js": "regress.test.js"
+}

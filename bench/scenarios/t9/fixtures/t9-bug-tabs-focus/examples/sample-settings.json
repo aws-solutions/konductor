@@ -1,0 +1,6 @@
+{
+  "workspace": "Signal workspace",
+  "owner": "Mara Chen",
+  "region": "eu-west",
+  "notifications": { "weeklyDigest": true, "productNotes": false }
+}
