@@ -49,6 +49,13 @@ test('the rubric prompt shows each expert item and the weak answers, and asks fo
   assert.equal(validateRubricReply({ criteria: [{ id: 'report', verdict: 'pass', evidence: 'x' }] }, task.rubric).ok, false, 'a reply that skips the expert items is refused');
 });
 
+test('the rubric prompt lists the task adjudication rules after the weak answers, and none when the task has none', () => {
+  const task = { prompt: 'p', rubric: RUBRIC, expertKey: KEY, review: { adjudication: ['Credit the point, not the grammar.', 'Within 1% is full credit.'] } };
+  const p = rubricPrompt({ task, answerKey: null, bundleText: 'o' });
+  assert.match(p, /WEAK ANSWERS[\s\S]*ADJUDICATION RULES[^\n]*\n- Credit the point, not the grammar\.\n- Within 1% is full credit\.\n\nANSWER KEY/);
+  assert.doesNotMatch(rubricPrompt({ task: { prompt: 'p', rubric: RUBRIC, review: {} }, answerKey: null, bundleText: 'o' }), /ADJUDICATION/);
+});
+
 test('an expert item scores only with a quote found in the output: an unquoted pass fails, a plain criterion drops one level', () => {
   const rubric = judgedRubric(RUBRIC, KEY);
   const output = 'Peak memory was 40 MB. The cause was retained Record objects held per endpoint.';

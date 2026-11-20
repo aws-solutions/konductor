@@ -41,10 +41,10 @@ function optionMetrics(inputs, optionId) {
   const throughput = option.throughput_source === 'business_hours_network_cap_mb_s'
     ? inputs.businessCap
     : inputs.offHoursCap;
-  const downtime = option.downtime_formula
+  const downtime = option.copy_during_write_pause
     ? inputs.model.production_data_tb * inputs.model.decimal_mb_per_tb /
       inputs.model.off_hours_replication_mb_s / 60
-    : option.handoff_steps_min.reduce((sum, minutes) => sum + minutes, 0);
+    : Object.values(option.handoff_steps_min).reduce((sum, minutes) => sum + minutes, 0);
   return {
     downtime_min: downtime,
     rpo_min: option.rpo_min,

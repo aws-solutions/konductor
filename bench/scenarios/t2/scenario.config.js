@@ -84,6 +84,7 @@ function modes(task, cfg) {
     { name: 'lazy', overlay: lazy(task) },
     { name: 'alt', overlay: alt(task) },
     { name: 'dump', overlay: dump(task) },
+    ...(fs.existsSync(cfg.answerDir(task.id, 'other')) ? [{ name: 'other', overlay: cfg.answerDir(task.id, 'other') }] : []),
   ];
 }
 

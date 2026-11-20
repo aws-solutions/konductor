@@ -1,6 +1,6 @@
 {
   "id": "t2-arch-dr-event-store",
-  "version": 4,
+  "version": 5,
   "class": "design",
   "phase": "design-review",
   "phases2": [],
@@ -52,8 +52,13 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "Each important finding identifies the concrete consequence in this project and gives a fix a developer can act on, without inventing problems unsupported by the packet. Fail: generic findings (\"add validation\", \"consider security\"), or a finding the packet does not support. Partial: findings are grounded in the packet but some lack an actionable fix or a concrete consequence. Pass: every important finding names the place, the concrete consequence in this project and a fix a developer can build, and no finding is invented. (code cannot check this because it requires judging the review's reasoning against the project context).",
+      "criterion": "Each important finding identifies the concrete consequence in this project and gives a fix a developer can act on, without inventing problems unsupported by the packet. Fail: generic findings ('add validation', 'consider security'), or a finding the packet does not support, or neither the read-your-writes conflict (product-requirements.md against 3.3) nor the replay arithmetic (174.66 M events at 2.5 M per minute is about 70 minutes, not ten) is found. Partial: findings are grounded in the packet but some lack an actionable fix or a concrete consequence, or the review finds only gaps a reader of the ADR alone could list. Pass: both the read-your-writes conflict and the replay arithmetic are found with their numbers, every important finding names the section, the consequence in this project and a fix a developer can build, and no finding is invented. (code cannot check this because it requires judging the review's reasoning against the project context).",
       "weight": 2
+    },
+    {
+      "id": "r2",
+      "weight": 1,
+      "criterion": "The review ends in a decision the owner can take to the architecture council. Fail: no verdict, or 'approve' while a critical finding is open. Partial: says 'not ready' but not what must change for approval. Pass: a clear verdict (not ready, or approve the spike only) that names the findings that must close first, at least the recovery-time and read-your-writes ones. (code cannot check this: whether a verdict follows from the findings is a judgement.)"
     }
   ],
   "tiers": [
@@ -100,45 +105,55 @@
     "items": [
       {
         "id": "e1",
-        "text": "Asks for a measurable backfill parity rule because the legacy audit rows may not contain enough old values to reconstruct every historical transition, and distinguishes current-state parity from historical fidelity.",
-        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)"
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that the ADR's five minutes for restore and startup (6.2) is below the packet's measured 11-minute PostgreSQL restore (recovery-targets.md), so at most about 4 minutes of the 15-minute RTO are left for any rebuild. Also counts: 'restore alone takes 11 of the 15 minutes'. Weak: 'recovery may be slow'. Do not require the replay figure; the 70-minute replay math is the seeded finding k3, not this point."
       },
       {
         "id": "e2",
-        "text": "Asks how the at-least-once relay preserves per-order ordering and how fulfillment handles duplicates across a relay crash, rather than treating an idempotency key alone as proof of one logical notification.",
-        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that projections and the relay checkpoint an 'event position', but the (order_id, sequence) key gives no global, commit-ordered position, so a cursor can skip rows that commit out of order. Also counts: 'no global sequence or log position for checkpoints', 'cursor gaps under concurrent commits'. Weak: 'add monitoring for relay lag'. Do not require a named fix (logical decoding, transaction id, commit-order table)."
       },
       {
         "id": "e3",
-        "text": "Asks whether monthly partitioning and the proposed indexes keep per-order stream reads and version checks bounded as an order's events cross partitions.",
-        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that partitioning order_events by event month (4.1) conflicts with the (order_id, sequence) primary key or spreads one order's stream across partitions, so uniqueness, version checks or stream reads are not bounded. Also counts: 'partition by order id or hash instead'. Weak: 'review partitioning monthly'. Do not require a specific partitioning scheme."
       },
       {
         "id": "e4",
-        "text": "Asks what happens when a projection has a poison event or a growing retry backlog, including whether commands are throttled and which reads or workers are degraded first.",
-        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)",
+        "text": "Says what happens when one event fails every retry: whether it stops that order's stream or the whole projection, what readers see, and what the operator does (skip, park or stop). Also counts: 'a poison event stalls the customer projection; define skip, park or stop'. Weak: 'add a dead-letter queue' with no behaviour. Do not require command throttling."
       },
       {
         "id": "e5",
-        "text": "Asks for a concrete capacity and cost model covering event storage, indexes, backups, broker traffic, projection rebuild tables, and two-times burst capacity rather than a monthly review promise.",
-        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that the ADR gives no storage, backup or rebuild cost figure against the 2,400 USD per month first-year persistence budget (recovery-targets.md), which also rejects an unbounded rebuild step. Also counts: 'no capacity plan against the stated budget'. Weak: 'consider cost'. Do not require a list of every cost line."
       },
       {
         "id": "e6",
-        "text": "Asks how the feature-flag migration handles a command that is accepted by one path while a read or retry is served by the other, including ownership of the command receipt.",
-        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)"
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)",
+        "text": "Names one concrete split-brain case in the flag rollout (5.1, 5.2): legacy tables written from the asynchronous projection lag behind, a retry or read is served by the other path, the command receipt lives in only one path, or rollback rebuilds legacy tables from a projection that lacks their fields. Weak: 'the migration looks reasonable'. Do not require all four cases."
       },
       {
         "id": "e7",
-        "text": "Asks for a clear operational boundary for the overnight platform escalation, including who can run replay, pause a consumer, or approve an emergency database access grant.",
-        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that the plan does not fit the team (team-and-oncall.md): from 22:00 to 08:00 only platform is on call and platform cannot own an order-specific replay, or no one on the rotation has run an event-store migration, or the many schema changes exceed the two-migrations-per-month change budget. Any one of the three passes. Weak: 'document the runbook' or 'train the team'."
+      },
+      {
+        "id": "e8",
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)",
+        "text": "States that the backfill cannot rebuild exact history where audit rows lack old values (the 'state capture' event is not history), so parity must be defined as current-state parity, with historical fidelity only where the data exists. Weak: 'validate the migration'. Do not require a numeric parity threshold."
+      },
+      {
+        "id": "e9",
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)",
+        "text": "States that the current relay publishes OrderPlaced, OrderCancelled and OrderUpdated (current-architecture.md) but the ADR maps only OrderPlaced to fulfillment and has no OrderUpdated event, so the fulfillment contract changes with no migration note. Also counts: 'message types drop', 'only OrderPlaced is mapped'. Weak: 'check downstream consumers'. Do not require naming both missing types."
       }
     ],
     "weakAnswers": [
       "The proposal is well structured and keeping PostgreSQL makes it a practical choice.",
       "Consider scalability, observability, and security before implementation.",
       "The migration plan and rollback strategy look reasonable, so approve the spike.",
-      "Event sourcing will improve auditability and make future projections easier."
+      "Add monitoring for lag and a dead-letter queue."
     ]
   },
   "targetSkills": [
@@ -226,11 +241,19 @@
           "note": "Competent developer can analyze ADR to identify issues; different wording or structure of findings could still pass."
         }
       ]
-    }
+    },
+    "adjudication": [
+      "Credit the point, not the grammar: a question, a stated gap or a proposed fix all count, if the consequence is stated or obvious.",
+      "A finding placed in a neighbouring section still counts for the judge when its text names the planted problem; the hidden test accepts the section lists in key.json.",
+      "Severity one level off from the key is half credit in the hidden test; judges do not re-score severity.",
+      "e1 passes only on the 11-minute measured restore; replay arithmetic alone is the seeded finding k3, not e1.",
+      "Score points, not length: an extra correct finding never adds or subtracts; an extra finding the packet contradicts fails r1.",
+      "A review that repeats an ADR sentence without saying what breaks and for whom is Partial at most on r1."
+    ]
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
