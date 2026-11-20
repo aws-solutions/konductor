@@ -31,17 +31,17 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
+      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints. Fail: indexes are chosen with no storage figure, or uses 90 days. Partial: picks the single index but does not show the storage check. Pass: shows the two-index option (120% overhead, over 380 TB) breaks the 300 TB limit, uses 400 days (the 90-day figure is superseded), and keeps the chosen design near 277 TB and about $6,514 per month under the $7,000 limit with the 20% headroom rule. (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
       "weight": 1
     },
     {
       "id": "tradeoff_explanation",
-      "criterion": "Explanation of query performance trade-offs given the single-index constraint (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
+      "criterion": "Explanation of query performance trade-offs given the single-index constraint. Fail: no statement of which queries are slow. Partial: says the index helps user queries but not what suffers. Pass: explains the single (user_id, event_time) index serves the 65% time-range queries with a user filter, resource_type queries (20%) and queries without user_id scan partitions, offers off-peak batch or materialized aggregates, and says a second (resource_type, event_time) index becomes worth it if budget allows. (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
       "weight": 1
     },
     {
       "id": "compliance_integration",
-      "criterion": "Integration of compliance requirements into the architecture justification (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
+      "criterion": "Integration of compliance requirements into the architecture justification. Fail: compliance is not tied to the design. Partial: retention is named but the cleanup mechanism is not linked to it. Pass: connects 400-day retention to monthly partitions so expiry is a partition drop rather than a DELETE scan, and addresses the compliance needs in the fixture (immutable logging, auditor access, legal discovery) in the partitioning and access design. (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
       "weight": 1
     },
     {
@@ -83,7 +83,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "system-design-patterns",
     "decision-writing"
@@ -209,7 +209,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

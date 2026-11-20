@@ -27,12 +27,12 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning and tradeoff analysis (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
+      "criterion": "Quality of reasoning and tradeoff analysis. Fail: picks on price, or cost uses one request per message. Partial: rejects SQS FIFO but the cost model misses chunking or the delete and receive calls. Pass: rejects SQS FIFO because 300 messages/s per group cannot carry the 400 events/s peak (not the outdated 500), bills 90 KB messages as 2 chunks of 64 KB on SQS and 4 units of 25 KB on Kinesis, counts send, receive and delete as three operations, and shows the chosen cost under the $900 budget. (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
       "weight": 1
     },
     {
       "id": "tradeoff_consideration",
-      "criterion": "Consideration of non-quantitative tradeoffs (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
+      "criterion": "Consideration of non-quantitative tradeoffs. Fail: no qualitative factors are discussed. Partial: mentions operational complexity but not duplicates or ordering. Pass: says strict ordering is not required, SQS Standard's at-least-once delivery needs idempotent consumers (acceptable, the old system had the same), and Kinesis adds shard planning and monitoring effort. (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
       "weight": 1
     },
     {
@@ -75,7 +75,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-research",
     "decision-writing",
@@ -208,7 +208,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

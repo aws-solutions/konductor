@@ -1,7 +1,7 @@
 {
   "id": "t7-program-rollup",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The document tells the requester the honest program outcome and milestone implication before the supporting detail (code cannot check this because it only parses the structured block).",
+      "criterion": "The document tells the requester the honest program outcome and milestone implication before the supporting detail. Fail: repeats the three green team updates, or gives no milestone view. Partial: says red or at risk but not why, or gives no date. Pass: the opening says red although all three teams report green, because the BEAM-224 handoff is blocked and capacity covers the open Relay work only by the sprint ending 2027-11-26, after the 2027-10-15 milestone target. (code cannot check this because it only parses the structured block).",
       "weight": 2
     },
     {
       "id": "reasoning",
-      "criterion": "The prose explains how the reported updates differ from the export evidence and why the forecast and blocker conclusion follow (code cannot check this because it cannot assess narrative reasoning).",
+      "criterion": "The prose explains how the reported updates differ from the export evidence and why the forecast and blocker conclusion follow. Fail: the team statements are accepted as written. Partial: the report notes a mismatch between updates and exports but does not show the numbers. Pass: the prose shows reported against actual per team (ARC amber, BEAM red, COVE amber), uses the export (57 completed points in S-08) over Arc's stated 24, counts ARC-143 once, treats blank estimates as zero, gives the 254 open Relay points against 42, 45, 42, 45, 42 and 45 capacity from S-10, names the chain ARC-117 to BEAM-224 to COVE-331 to COVE-342, and leaves the blocked Harbor ticket COVE-354 out of scope. (code cannot check this because it cannot assess narrative reasoning).",
       "weight": 2
     }
   ],
@@ -146,7 +146,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

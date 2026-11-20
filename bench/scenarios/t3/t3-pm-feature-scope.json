@@ -27,17 +27,17 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning about tradeoffs between options (not code-checkable: Code can check if limits are obeyed and costs calculated, but cannot evaluate the quality of reasoning about user experience, implementation complexity, and strategic tradeoffs between different architectural approaches.)",
+      "criterion": "Quality of reasoning about tradeoffs between options. Fail: picks Option A because it is simplest, or ignores the timeout. Partial: rejects A but does not show the p99 numbers. Pass: shows the p99 report of 6.8M rows takes 27.2 s render + 6.8 s upload = 34 s against the 29 s API Gateway limit using the current 0.4 s per 100k rows (not the superseded 0.5), so about 1% of 500,000 monthly reports (about 5,000) would fail with Option A. (not code-checkable: Code can check if limits are obeyed and costs calculated, but cannot evaluate the quality of reasoning about user experience, implementation complexity, and strategic tradeoffs between different architectural approaches.)",
       "weight": 1
     },
     {
       "id": "stakeholder_alignment",
-      "criterion": "Alignment with user needs and business constraints beyond hard limits (not code-checkable: Tests can verify compliance with hard limits (timeout, budget) but cannot evaluate how well the solution balances competing stakeholder needs (user experience vs. reliability vs. cost) or addresses soft constraints like team capacity and implementation timeline.)",
+      "criterion": "Alignment with user needs and business constraints beyond hard limits. Fail: only cost is discussed. Partial: user experience or reliability is mentioned but not tied to numbers. Pass: balances users' need to download large exports with the 99.9% availability target, and the current $1,200 budget (not the superseded $1,500), showing every option costs far less (Option B about $96 to $141 per month), so reliability decides rather than cost. (not code-checkable: Tests can verify compliance with hard limits (timeout, budget) but cannot evaluate how well the solution balances competing stakeholder needs (user experience vs. reliability vs. cost) or addresses soft constraints like team capacity and implementation timeline.)",
       "weight": 1
     },
     {
       "id": "risk_assessment",
-      "criterion": "Thoroughness of risk assessment and mitigation planning (not code-checkable: Code can check if limits are obeyed but cannot evaluate the identification of implementation risks, consideration of failure modes, or quality of proposed mitigation strategies for issues like email delivery failures, queue delays, or user education needs.)",
+      "criterion": "Thoroughness of risk assessment and mitigation planning. Fail: no risks. Partial: lists risks without mitigation. Pass: names email delivery failures and SES rate limits, queue processing delays and worker scaling, and gives a mitigation for each such as an in-app notification fallback and auto-scaling workers; says what would change the decision (a longer gateway timeout, or a smaller p99 report size). (not code-checkable: Code can check if limits are obeyed but cannot evaluate the identification of implementation risks, consideration of failure modes, or quality of proposed mitigation strategies for issues like email delivery failures, queue delays, or user education needs.)",
       "weight": 1
     },
     {
@@ -78,7 +78,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "cost-estimation",
@@ -206,7 +206,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

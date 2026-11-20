@@ -1,7 +1,7 @@
 {
   "id": "t8-runbook-db-failover",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -37,7 +37,7 @@
   "rubric": [
     {
       "id": "usable-at-3am",
-      "criterion": "The prose gives an operator a clear sequence with expected results and explicit stop or escalation behavior (code cannot check this because it cannot judge whether the procedure is practically usable under incident pressure).",
+      "criterion": "The prose gives an operator a clear sequence with expected results and explicit stop or escalation behavior. Fail: the runbook is a loose list (for example promote the replica and update the config) with no check after steps, no fence, and no stop rule. Partial: the order is right (check lag on orders-db-b, fence orders-db-a, promote, re-point clients, verify writes) but several steps have no expected result, or the stop and escalation rules are vague with no number or role. Pass: each step in the prose and the JSON has the exact QuorumCtl command from the folder or a named console action, the expected result, and an abort condition; a numeric abort threshold with unit, a time limit, a named rota role who may overrule a failed check, and the order lag check, fence, promote, repoint, write test, aftermath are all there so an engineer can follow it without reading anything else. (code cannot check this because it cannot judge whether the procedure is practically usable under incident pressure).",
       "weight": 2
     },
     {
@@ -171,7 +171,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

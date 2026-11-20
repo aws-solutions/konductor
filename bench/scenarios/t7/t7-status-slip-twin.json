@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,7 +51,7 @@
   "rubric": [
     {
       "id": "finance-bottom-line",
-      "criterion": "The prose gives the requester the reporting period and the three requested figures plainly before any brief counting note, without adding status, risks, or recommendations (code cannot check this because it only parses the fenced JSON block).",
+      "criterion": "The prose gives the requester the reporting period and the three requested figures plainly before any brief counting note, without adding status, risks, or recommendations. Fail: no figures up front, or the text adds status, risks or recommendations. Partial: the three figures are present but the period (S29 and S30) or the counting basis is missing. Pass: the first lines state the period S29 and S30, closed points by assignee, open tickets per epic and total open points (597), then one short note on the conventions used (blank estimates count zero, the reopened ticket is excluded, names trimmed, documented open statuses), and nothing about risk or recommendations. (code cannot check this because it only parses the fenced JSON block).",
       "weight": 1
     }
   ],
@@ -138,7 +138,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "t8-tpm-rollout-regions",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "release-ops",
   "role": "tpm",
   "phases2": [
@@ -48,7 +48,7 @@
   "rubric": [
     {
       "id": "signoff-quality",
-      "criterion": "The plan gives the teams a clear decision-ready narrative with explicit ownership and operational sequencing (code cannot check this because it cannot judge whether the prose is usable for a sign-off meeting).",
+      "criterion": "The plan gives the teams a clear decision-ready narrative with explicit ownership and operational sequencing. Fail: a plain timeline or a list of regions on a target date with no owners, deciders or criteria, or one that launches all four regions together. Partial: regions are staged with dates and owners, but the go or no-go criteria, the reasons for the dates, or the rollback per stage are missing or lack units. Pass: the narrative a regional team would sign states, for each stage, the date, the owning team from the team list, the decider role from the responsibility sheet, the measurable go or no-go criterion with window in minutes, the rollback trigger, and why the date was chosen (freeze, certification, schema before writer, API before client), so four teams can sign on Monday without asking what the plan means. (code cannot check this because it cannot judge whether the prose is usable for a sign-off meeting).",
       "weight": 2
     },
     {
@@ -195,7 +195,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

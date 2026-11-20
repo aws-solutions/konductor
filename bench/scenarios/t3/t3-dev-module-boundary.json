@@ -27,17 +27,17 @@
   "rubric": [
     {
       "id": "tradeoffs",
-      "criterion": "Explains why the selected durable design is preferable for this service, including operational ownership and the cost, latency, throughput, recovery, and memory tradeoffs against both alternatives. (not code-checkable: Automated checks can verify numbers and option ids but cannot judge whether the tradeoff explanation is technically relevant, balanced, and persuasive.)",
+      "criterion": "Explains why the selected durable design is preferable for this service, including operational ownership and the cost, latency, throughput, recovery, and memory tradeoffs against both alternatives. Fail: picks in-memory delay queue or gives no reason. Partial: chooses a durable option but compares only one dimension. Pass: rejects in-memory because 120,000 pending x 8 KB = 960 MB exceeds the 312 MB limit and loses retry state on a crash (RPO 5 minutes), and compares database_retry_table (about 104.54 USD, 42 s, 180/s) with external_retry_queue (about 104.42 USD, 18 s, 350/s) on cost, latency, throughput and ownership. (not code-checkable: Automated checks can verify numbers and option ids but cannot judge whether the tradeoff explanation is technically relevant, balanced, and persuasive.)",
       "weight": 1
     },
     {
       "id": "architecture-reasoning",
-      "criterion": "Connects the workload shape and failure behavior to an implementable retry design, including bounded scheduling, durable state, and recovery behavior. (not code-checkable: Tests cannot reliably assess whether the proposed architecture follows from the requirements or whether the operational reasoning is complete.)",
+      "criterion": "Connects the workload shape and failure behavior to an implementable retry design, including bounded scheduling, durable state, and recovery behavior. Fail: the design is generic and not tied to the workload. Partial: names durable state but not bounded scheduling or recovery. Pass: ties the 120,000 peak pending retries and the 16 KB payload (which does not constrain the choice, since all options support it) to a design with durable state, bounded batches (512 or 256 records), dispatch within the 60-second limit and at least 100/s, and states how retries resume after a restart. (not code-checkable: Tests cannot reliably assess whether the proposed architecture follows from the requirements or whether the operational reasoning is complete.)",
       "weight": 1
     },
     {
       "id": "document-quality",
-      "criterion": "Presents a clear, concise ADR with a traceable decision, calculations, assumptions, and follow-up safeguards that another developer could implement. (not code-checkable: A script can check structure and arithmetic but cannot evaluate readability, clarity, or practical usefulness to a human developer.)",
+      "criterion": "Presents a clear, concise ADR with a traceable decision, calculations, assumptions, and follow-up safeguards that another developer could implement. Fail: the ADR is hard to follow or the calculations are missing. Partial: readable but a limit check or assumption is missing. Pass: the ADR traces the decision to the hard limits (memory under 312 MB, dispatch under 60 s, 100/s or more), shows the memory and cost arithmetic, states assumptions (such as when in-memory would fit, below about 39,000 pending), and lists follow-up safeguards another developer could implement. (not code-checkable: A script can check structure and arithmetic but cannot evaluate readability, clarity, or practical usefulness to a human developer.)",
       "weight": 1
     },
     {
@@ -75,7 +75,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "cost-estimation"
@@ -174,7 +174,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

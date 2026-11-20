@@ -1,7 +1,7 @@
 {
   "id": "t7-dev-breakdown",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "developer",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose gives the requester a clear workday estimate and sequencing conclusion before the supporting detail (code cannot check this because it cannot judge whether the human-facing bottom line is clear or placed first)",
+      "criterion": "The prose gives the requester a clear workday estimate and sequencing conclusion before the supporting detail. Fail: no day estimate before the detail, or the work is called small (a day or two) or quoted as the roadmap date. Partial: a day estimate is given first but with no sequencing conclusion, or it treats the total as elapsed time. Pass: the first paragraph says the work is 17 engineer-days, that this is not a 17-day promise because several slices run in parallel after the migration and read path (about 10 to 12 working days for two people plus rollout checks), and gives a view on the 2027-05-21 target and the order: database change and USD backfill first. (code cannot check this because it cannot judge whether the human-facing bottom line is clear or placed first)",
       "weight": 2
     },
     {
       "id": "reasoning",
-      "criterion": "The prose explains how the estimate, dependencies, parallel work, and uncertainty were read from the supplied material rather than merely repeating the JSON (code cannot check this because it cannot evaluate the quality of the written reasoning)",
+      "criterion": "The prose explains how the estimate, dependencies, parallel work, and uncertainty were read from the supplied material rather than merely repeating the JSON. Fail: the prose repeats the ticket list without saying why the order or the total is what it is. Partial: it gives the order and the 17 days but not which slices can run in parallel, or it omits what protects old callers during the rollout. Pass: the prose explains that the product_prices migration and USD backfill must be checked before any reader uses the new shape, the old USD reader stays working during the rolling deploy, the cache key must include currency, the cache, CSV, notification and fixture slices run in parallel once the read path is ready, the unreferenced legacy pricing module is left alone, and the source and completeness of non-USD prices is an open assumption. (code cannot check this because it cannot evaluate the quality of the written reasoning)",
       "weight": 2
     }
   ],
@@ -183,7 +183,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

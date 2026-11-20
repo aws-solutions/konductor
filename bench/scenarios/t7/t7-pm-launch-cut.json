@@ -1,7 +1,7 @@
 {
   "id": "t7-pm-launch-cut",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "director-bottom-line",
-      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail (code cannot check this because it only reads the structured block)",
+      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail. Fail: no commitment stated, or all High-priority rows listed without a decision. Partial: gives a scope but not the capacity fit or the launch date. Pass: the first paragraph commits to eight features for the 2027-09-20 launch, 58 points against 63 available, a five-point buffer, engineering start on Monday 2027-07-26, and says the signed Northline export (F-014) is in even though its backlog label is Medium. (code cannot check this because it only reads the structured block)",
       "weight": 2
     },
     {
       "id": "decision-reasoning",
-      "criterion": "The prose connects the scope decision to the audience, commitments, capacity, dependencies, and uncertainty rather than merely listing IDs (code cannot check this because it cannot judge the quality of the explanation)",
+      "criterion": "The prose connects the scope decision to the audience, commitments, capacity, dependencies, and uncertainty rather than merely listing IDs. Fail: IDs are listed with no reason, or the executive wallboard (F-044) and offline mobile approvals (F-057) are included because they sound visible. Partial: some choices are justified but the audience, the commitment or a dependency is missing. Pass: the prose ties the cut to regional operations teams, says F-044 has internal demand but no customer evidence and F-057 fits field sales later, includes F-014 with its signature page and delivery manifest, pulls in F-031 event schema versioning because the dashboard needs it, uses the four sprint rows with the S3 holiday reduction for 63 points, leaves out closed, cancelled and blank-estimate rows, and gives open questions a next step. (code cannot check this because it cannot judge the quality of the explanation)",
       "weight": 3
     }
   ],
@@ -185,7 +185,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }
