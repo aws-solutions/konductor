@@ -153,5 +153,20 @@
         "note": "All key values are derivable from the fixture: capacity=63 (sum of four sprints per team-capacity.csv), planned=58 (sum of F-004, F-010, F-014, F-021, F-031, F-038, F-052, F-063), F-014 is required by sales-commitments.md, F-031 is a dependency of F-052, F-044 has no customer evidence, F-057 serves field sales (not the launch audience). The task is challenging but fair."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "repeats": 3,
+        "deterministic": true,
+        "reference": 100,
+        "stub": 7.1,
+        "alt": 100
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20"
   }
 }
