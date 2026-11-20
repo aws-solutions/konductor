@@ -34,3 +34,8 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-twin-pricing-validation | author | gpt-5.6-luna | 2.71 |  |
 | t11-twin-pricing-validation | map | glm-5 | 0.15 |  |
 | t11-twin-pricing-validation | review | glm-5 | 6.22 |  |
+| t11-wide-settings-migration | step1 | qwen3-coder-next | 12.33 |  |
+| t11-wide-settings-migration | fix | qwen3-coder-next | 4.04 |  |
+| t11-resume-csv-export | recheck | qwen3-coder-next | 0.21 |  |
+| t11-merge-pricing-branches | recheck | qwen3-coder-next | 0.23 |  |
+| t11-media-returns-whiteboard | recheck | qwen3-coder-next | 0.19 |  |
