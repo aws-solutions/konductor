@@ -56,3 +56,4 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-docx-room-booking-reqs | map | glm-5 | 0.15 |  |
 | t11-docx-room-booking-reqs | review | glm-5 | 3.56 |  |
 | t11-docx-room-booking-reqs | fix | gpt-5.6-luna | 1.99 |  |
+| t11-twin-pricing-validation | recheck | qwen3-coder-next | 0.15 |  |
