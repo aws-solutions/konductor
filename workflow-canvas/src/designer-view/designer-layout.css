@@ -46,6 +46,25 @@
   min-height: 0;
 }
 
+/* A narrow window has room for one column, as the Designer has below 900
+   pixels: the drawing first, then the components, then the side panel,
+   whose fold button still works. */
+@media (max-width: 900px) {
+  .wf-layout,
+  .wf-layout[data-folded='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wf-layout-drawing {
+    order: -1;
+  }
+
+  .wf-layout-side {
+    border-top: 1px solid var(--wf-layout-border);
+    border-left: 0;
+  }
+}
+
 .wf-layout-side {
   display: flex;
   flex-direction: column;
