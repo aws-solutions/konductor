@@ -118,3 +118,5 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   `adjudication` added. New `answers/.../other`: the reference with the "Unlike the 2025 proposal" wording, the 429
   rule split in three, fail closed and other open questions. Free gates: reference 100, stub 0, lazy 0, alt 100,
   shallow 0, other 100.
+  - After the gpt-5.6-luna recheck (key-matches-fixture fail: the hidden `maxLen` caps of 14 requirements, 14 tasks and
+    8 open questions were never stated): the request now states those caps. Gates unchanged.

@@ -9,7 +9,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide).",
+  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide). Keep the lists focused: at most 14 requirements, 14 tasks and 8 open questions.",
   "fixture": "t12-spec-rate-limits",
   "hidden": "t12-spec-rate-limits",
   "timeoutSec": 1800,
@@ -156,6 +156,6 @@
     "X-RateLimit-Remaining on every response or only on limited responses are both acceptable; raising the choice as an open question is a plus, not an invented rule.",
     "Fail open and fail closed both pass store-down when a reason is given or the choice is left to product; no reason is Partial.",
     "A per-account limit on top of the per-key one is an invented rule: Partial on settled-versus-open.",
-    "More than 14 requirements is never penalised by the judge."
+    "The request caps the lists (14 requirements, 14 tasks, 8 open questions); within those caps the judge never scores length."
   ]
 }
