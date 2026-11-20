@@ -126,7 +126,9 @@
       "licence": "BlueOak-1.0.0",
       "licenceCheckedAt": "2026-11-20",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, CV-F 2026-11-20): the CV-F second-family attempt (qwen3-coder-next, t1-refactor-permission-boundary) was dropped, see DEBT D-122"
   },
   "review": {
     "family": "alibaba",
