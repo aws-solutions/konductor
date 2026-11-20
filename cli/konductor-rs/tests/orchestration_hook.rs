@@ -531,8 +531,8 @@ fn claude_home_and_project(name: &str) -> (PathBuf, PathBuf) {
 /// lines show it.
 fn assert_shadowed_fallback(stdout: &str, owner_under_home: &str) {
     let expected = format!(
-        "Orchestration: auto (fallback: the install at ~/{0} owns the konductor session but its \
-         session-start hook is not wired for claude; run konductor update in ~/{0})\n",
+        "Orchestration: auto (fallback: the install at ~/{0} owns the agent of this session but \
+         its session-start hook is not wired for claude; run konductor update in ~/{0})\n",
         owner_under_home
     );
     assert_eq!(stdout, expected);
@@ -1014,7 +1014,7 @@ fn an_agent_file_too_large_to_check_gets_a_fallback_line_under_coordinator() {
             &claude_payload(Some("acme"), "startup")
         ),
         "Orchestration: auto (fallback: the agent file at ~/.claude/agents/acme.md is larger \
-         than 1 MiB, so konductor could not check whether it loads k-direct-work.md)\n"
+         than 1 MiB, so the hook could not check whether it loads k-direct-work.md)\n"
     );
     set_mode(&home, "orchestration:\n  mode: auto\n");
     assert_eq!(

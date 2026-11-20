@@ -382,12 +382,12 @@ pub(crate) fn persona_reason(error: &PersonaError) -> String {
                 .map(|name| format!(" for {name}"))
                 .unwrap_or_default();
             format!(
-                "the install at {owner} owns the konductor session but its session-start hook \
+                "the install at {owner} owns the agent of this session but its session-start hook \
                  is not wired{for_harness}; run konductor update in {owner}"
             )
         }
         PersonaError::AgentFileTooLarge { path } => format!(
-            "the agent file at {} is larger than {} MiB, so konductor could not check whether it \
+            "the agent file at {} is larger than {} MiB, so the hook could not check whether it \
              loads {DIRECT_WORK_CONTEXT_FILE_NAME}",
             display_path(path, home.as_deref()),
             MAX_AGENT_FILE_BYTES / (1024 * 1024)
@@ -1141,7 +1141,7 @@ mod tests {
             line,
             HookOutput::Line(
                 "Orchestration: auto (fallback: the agent file at /srv/p/.claude/agents/acme.md \
-                 is larger than 1 MiB, so konductor could not check whether it loads \
+                 is larger than 1 MiB, so the hook could not check whether it loads \
                  k-direct-work.md)"
                     .to_string()
             )
@@ -1256,17 +1256,17 @@ mod tests {
                 install_root: PathBuf::from("/srv/project"),
                 harness: Some("claude".to_string()),
             })),
-            "Orchestration: auto (fallback: the install at /srv/project owns the konductor \
-             session but its session-start hook is not wired for claude; run konductor update \
-             in /srv/project)"
+            "Orchestration: auto (fallback: the install at /srv/project owns the agent of \
+             this session but its session-start hook is not wired for claude; run konductor \
+             update in /srv/project)"
         );
         assert_eq!(
             fallback_line(&persona_reason(&PersonaError::OwnerHookNotWired {
                 install_root: PathBuf::from("/srv/project"),
                 harness: None,
             })),
-            "Orchestration: auto (fallback: the install at /srv/project owns the konductor \
-             session but its session-start hook is not wired; run konductor update in \
+            "Orchestration: auto (fallback: the install at /srv/project owns the agent of \
+             this session but its session-start hook is not wired; run konductor update in \
              /srv/project)"
         );
     }

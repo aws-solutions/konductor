@@ -1084,12 +1084,13 @@ orchestration:
   project root: the working directory itself or a git checkout root that contains it. For an
   install anywhere else the hook prints a fallback line (below) and the session runs as `auto`.
   Install under your home directory or the project root for coordinator mode.
-- When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
-  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
-  file, an install outside the locations above, or an agent file over 1 MiB that it cannot check
-  for `k-direct-work.md`), it prints one line,
-  `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
-- The first reply of every `konductor` session states the mode: the hook's line, or
+- When it cannot apply `coordinator` to a session of a mode agent (`konductor`, or any agent that
+  loads `k-direct-work.md`), it prints one line, `Orchestration: auto (fallback: <reason>)`, and
+  the session runs as `auto`. The reasons: unset `HOME` on Claude Code or Kiro CLI v2, an
+  unreadable or unparsable config file, an unknown value, a missing rules file, or an install
+  outside the locations above. An agent file over 1 MiB, which the hook cannot check for
+  `k-direct-work.md`, gets the same line.
+- The first reply of every mode agent session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
   `coordinator` set means the hook output did not reach the session; run `konductor doctor`.
 
