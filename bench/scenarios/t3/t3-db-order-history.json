@@ -43,6 +43,11 @@
       "id": "query-pattern-coverage",
       "criterion": "The schema design discussion shows understanding of which query patterns are optimized vs. which are acceptable to leave suboptimal. (not code-checkable: While code can test index usage, it cannot evaluate whether the reasoning about query pattern prioritization is sound.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -82,7 +87,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -208,7 +213,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "HE hand-edit backfill session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

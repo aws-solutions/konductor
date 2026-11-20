@@ -129,3 +129,9 @@ Tasks: none (every task already had a dry run).
 ## Not edited
 
 t5-fe-widget-logic-tests, t5-qa-acceptance-criteria: `handEdited: null`.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t5-qa-cart-twin-config`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): config-handling.

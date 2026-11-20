@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-orders-migration",
-  "version": 2,
+  "version": 3,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -52,7 +52,7 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "Each important finding explains the concrete consequence in this project and suggests a fix a developer can act on, without inventing problems that don't exist (code cannot check this because it requires understanding the actual impact in context).",
+      "criterion": "Each important finding explains the concrete consequence in this project and suggests a fix a developer can act on, without inventing problems that don't exist. Fail: generic findings (\"add validation\", \"consider security\"), or a finding the packet does not support. Partial: findings are grounded in the packet but some lack an actionable fix or a concrete consequence. Pass: every important finding names the place, the concrete consequence in this project and a fix a developer can build, and no finding is invented. (code cannot check this because it requires understanding the actual impact in context).",
       "weight": 2
     }
   ],
@@ -186,7 +186,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T2 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

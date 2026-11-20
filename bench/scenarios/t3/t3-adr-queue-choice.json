@@ -31,19 +31,14 @@
       "weight": 1
     },
     {
-      "id": "explanation_clarity",
-      "criterion": "Clarity and completeness of explanation in the ADR (not code-checkable: Automated checks can verify structure and presence of sections, but cannot assess whether the explanation would be understandable to stakeholders, whether it addresses all relevant concerns, or whether it provides sufficient context for future readers.)",
-      "weight": 1
-    },
-    {
-      "id": "professional_writing",
-      "criterion": "Professional writing quality and appropriate tone (not code-checkable: While basic grammar and spelling can be checked, code cannot evaluate whether the writing is persuasive, appropriately technical, well-structured for the audience, or maintains a professional tone suitable for architectural documentation.)",
-      "weight": 1
-    },
-    {
       "id": "tradeoff_consideration",
       "criterion": "Consideration of non-quantitative tradeoffs (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -80,7 +75,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "decision-research",
     "decision-writing",
@@ -213,7 +208,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "FX2 job",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

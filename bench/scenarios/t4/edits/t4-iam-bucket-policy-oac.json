@@ -4,7 +4,8 @@
     "hidden: CDN positive test added (a deny-all answer passed everything); deploy role evaluated with identity and bucket policy together; lint tests merged; two log tests that passed on the fixture removed",
     "checks: npm test ran inside a fixture/ folder the workspace does not have; text checks replaced",
     "solution/DELETE.txt removed (comment lines only)",
-    "expertKey added"
+    "expertKey added",
+    "2026-11-20 (mate task-fix worker): task review: proper_private_handling given Fail/Partial/Pass anchors"
   ],
   "prompt": "The marketing site now sits behind our CDN, so the S3 buckets no longer need to be open. Please lock down the three bucket policies in infra/buckets/ (assets-policy.json, downloads-policy.json, logs-policy.json; each covers the staging and the production bucket of its kind). Readers should get objects only through the CDN, each stage only through its own distribution (ids, ARNs, bucket names and the account id are in infra/cdn-config.json). Nothing may be read over plain HTTP. Files under downloads/private/ must not be served to anyone, CDN included. The deploy role (infra/iam/deploy-role-policy.json) must still be able to publish to the assets buckets, and access-log delivery must keep working into the logs buckets. Do not change infra/iam/deploy-role-policy.json, the CDN config or the scripts and tests. Keep the files valid IAM policy JSON.",
   "checks": [
@@ -129,5 +130,17 @@
         "note": "Fixture documentation repeats the current defects and high-level desired state already stated in the prompt, but it contains no leftover solution, finished-behaviour test, or exact policy implementation."
       }
     ]
-  }
+  },
+  "rubric": [
+    {
+      "id": "no_wildcard_sourcearn",
+      "criterion": "Does not use wildcard (*) in aws:SourceArn condition that would let staging distribution read prod bucket or vice versa (code cannot check this because the evaluator treats exact ARNs and wildcards differently)",
+      "weight": 2
+    },
+    {
+      "id": "proper_private_handling",
+      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround. Fail: a separate bucket, a second distribution or a workaround, or private paths still readable. Partial: private paths refused, but by a broad deny that also blocks a needed public path, or with no explanation. Pass: one clear statement keeps downloads/private/ unreadable through the distribution, the public paths still work, and the message says why. (code cannot check this because implementation approach varies)",
+      "weight": 1
+    }
+  ]
 }

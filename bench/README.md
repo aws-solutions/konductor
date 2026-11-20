@@ -61,6 +61,7 @@ flowchart LR
 | Does this **skill** load when it should, and does it help once loaded? | [Benchmark a skill](docs/skills.md) | many steps free |
 | How do I test **my agent**: Kiro CLI, Claude Code, Strands, or a new kind? | [Benchmark an agent](docs/agents.md) | runs cost credits or USD |
 | How do I test an agent that **drives a machine**, and count its unsafe moves? | [Benchmark a physical AI agent](docs/physical-ai.md) | tests free, runs paid |
+| How do I bring **my own agent**, not Kiro CLI or Konductor, and what works today? | [Benchmark your own agent](docs/benchmark-your-own-agent.md) | reading free, runs paid |
 | Is **Konductor itself** better than the bare agent? How do we know? | [How Konductor is benchmarked](docs/konductor-bench.md) | paid, approved first |
 | I want to **run it myself**, start to finish | [Repeat it yourself](docs/repeat-it-yourself.md) | free first, then a small run |
 
@@ -149,10 +150,31 @@ Every command that spends takes a budget: `--budget-credits N` stops new runs at
 
 ---
 
+## 🧪 Draft test ideas for any agent (agenteval)
+
+Writing test cases for a new agent is slow, and model-written cases are often wrong. `bench/agenteval/` takes cases
+from the Strands Evals generator, drops the broken ones, and writes a list for a person to read. It runs no agent and
+scores nothing. The generate step calls a model; the import step is free.
+
+```text
+node bench/agenteval/agenteval.js generate-strands --trajectories --context-file context.md \
+  --task-description "what your agent does" --out work/experiment.json --python .venv/bin/python
+node bench/agenteval/agenteval.js import-strands --experiment work/experiment.json \
+  --tools-from-text context.md --out work/candidates
+```
+
+Each case comes out `ok`, `needs-edit` or `reject`, with reasons, in `work/candidates/review.md`. A person reads
+every case before it becomes a test. It does not make runnable bench tasks yet. Read
+[agenteval/README.md](agenteval/README.md), and [Benchmark your own agent](docs/benchmark-your-own-agent.md) for
+where it fits.
+
+---
+
 ## 📚 More docs
 
 - Guides: [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) ·
-  [how Konductor is benchmarked](docs/konductor-bench.md) · [repeat it yourself](docs/repeat-it-yourself.md)
+  [how Konductor is benchmarked](docs/konductor-bench.md) · [repeat it yourself](docs/repeat-it-yourself.md) ·
+  [benchmark your own agent](docs/benchmark-your-own-agent.md) · [agenteval](agenteval/README.md)
 - Reference: [every command and flag](docs/reference.md) · [task format](docs/tasks.md) ·
   [cap playbook](docs/cap-playbook.md) · [quality pack](docs/quality-pack.md) · [unattended runs](docs/runbook.md) ·
   [the 2x2 kit, step by step](docs/repeat.md)

@@ -5,7 +5,8 @@
     "checks: source-text checks (O_NOFOLLOW, path.relative) removed; the ci.yml check failed on the reference because the fixture had an empty .github folder, so the lead added a plain CI workflow to the fixture and dropped the check",
     "visible suite check made format (the hidden suite already covers normal use), and a behavioural check added (a neighbour folder with a shared name prefix, by relative and by absolute path) so the checks share does not pass on the fixture",
     "limits raised from 180/360 to 1200/2400 s",
-    "expertKey added"
+    "expertKey added",
+    "2026-11-20 (mate task-fix worker): task review: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): root-cause-containment"
   ],
   "prompt": "A bug bounty report came in for this document-sharing service: a researcher read another user's files and wrote files outside their own folder. That is all the detail we have. Please close the holes without breaking normal use. The four exported handlers in src/handlers.js are uploadFile(storageRoot, userId, input), downloadFile(storageRoot, userId, input), listFolder(storageRoot, userId, input) and importArchive(storageRoot, userId, input); each returns a promise for { status, body }, and keeps doing so. Every caller must stay inside their own account folder, whatever path, file name or archive entry they send. Upload names are single file names, and an upload must not replace an existing file unless the caller passes overwrite: true. Error responses must not reveal storage paths or other accounts. Normal use must keep working: nested folders, unicode names, names with several dots such as report..final.pdf, and archives with nested folders in the format src/archive.js reads. Keep the response shapes, the archive format, the CommonJS API and the no-dependency setup.",
   "checks": [
@@ -44,7 +45,13 @@
       "kind": "format"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "root-cause-containment",
+      "weight": 2,
+      "criterion": "The fix contains every path at one shared place (resolve, then check the result stays under the caller's folder) instead of filtering bad strings, and the final message says which routes were open (download, list, upload name, archive entry) and how each is now closed. Fail: blocks only \"../\" strings or patches handlers one by one, or does not say what was open. Partial: one shared containment check, but the message misses a route (for example absolute archive entries or symlinks) or the check is skipped on one handler. Pass: one shared containment check used by all four handlers, each open route named with how it is closed, and errors that reveal no storage path. (code cannot check this because the hidden probes show the holes are shut, not whether the fix is one coherent rule a reviewer can trust)"
+    }
+  ],
   "limits": {
     "softSec": 1200,
     "hardSec": 2400

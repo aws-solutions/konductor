@@ -1,6 +1,6 @@
 {
   "id": "t4-dev-sql-report-filters",
-  "version": 2,
+  "version": 3,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -49,7 +49,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "parameterised-design",
+      "weight": 2,
+      "criterion": "Values reach SQL only as bound parameters, and the names that cannot be bound (sort column, sort direction) come from a fixed allowlist mapped in code; the final message names each injectable input it found. Fail: escapes or strips quotes, or builds SQL from user text anywhere, or names no injectable input. Partial: values are bound, but sort or column names are checked by a pattern or a denylist, or the message misses an injectable input. Pass: every value bound, every identifier from a fixed mapping, each injectable input (filters, sort, paging, CSV export) named, normal filters unchanged. (code cannot check this because an injection probe shows one input is safe, not that the design leaves no string-built SQL)"
+    }
+  ],
   "expertKey": {
     "items": [
       {
@@ -177,7 +183,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

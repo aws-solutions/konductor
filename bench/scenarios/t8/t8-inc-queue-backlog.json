@@ -1,7 +1,7 @@
 {
   "id": "t8-inc-queue-backlog",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -41,7 +41,13 @@
       "kind": "format"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "causal-chain",
+      "weight": 2,
+      "criterion": "The write-up gives the causal chain from the initiating condition to the customer symptom, with the log or record lines behind each link, and says why recovery happened. Fail: wrong cause, or blames a decoy, or lists events with no causal link. Partial: right cause, but no mechanism from cause to backlog, or recovery is not explained. Pass: cause, then mechanism, then symptom, each with a cited record; why the decoy is not the cause; why detection lagged; and preventive actions tied to links in the chain. (code cannot check this because the key checks the named cause and facts, not whether the chain holds together)"
+    }
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -100,7 +106,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
