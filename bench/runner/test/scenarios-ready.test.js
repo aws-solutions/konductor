@@ -97,8 +97,34 @@ test('spot-review takes 10% of each batch rounded up, at least one, the same for
   for (let i = 0; i < 12; i++) write(path.join(root, 't1', `t1-x${i}.json`), '{}\n');
   write(path.join(root, 't2', 't2-only.json'), '{}\n');
   const a = spotSample(root, 20261119);
-  assert.equal(a.t1.length, 2);
-  assert.deepEqual(a.t2, ['t2-only']);
+  assert.equal(a.t1.ids.length, 2);
+  assert.deepEqual(a.t2, { status: 'drawn', ids: ['t2-only'] });
   assert.deepEqual(spotSample(root, 20261119), a);
-  assert.ok(a.t1.every((id) => /^t1-x\d+$/.test(id)));
+  assert.ok(a.t1.ids.every((id) => /^t1-x\d+$/.test(id)));
+});
+
+test('spot-review: adding or dropping a task in one batch leaves every other batch sample unchanged', () => {
+  const root = tmp();
+  for (const b of ['t1', 't2', 't3']) for (let i = 0; i < 15; i++) write(path.join(root, b, `${b}-x${i}.json`), '{}\n');
+  const before = spotSample(root, 20261119);
+  write(path.join(root, 't2', 't2-new.json'), '{}\n');
+  const added = spotSample(root, 20261119);
+  assert.deepEqual(added.t1, before.t1);
+  assert.deepEqual(added.t3, before.t3);
+  write(path.join(root, 't2', 't2-x3.json'), `${JSON.stringify({ pilot: { decision: 'drop' } })}\n`);
+  const dropped = spotSample(root, 20261119);
+  assert.deepEqual(dropped.t1, before.t1);
+  assert.deepEqual(dropped.t3, before.t3);
+  assert.ok(!dropped.t2.ids.includes('t2-x3'), 'a dropped task is never drawn');
+});
+
+test('spot-review plan: a pinned sample stays as read, a pending batch draws nothing, a gone pinned task is refused', () => {
+  const root = tmp();
+  for (let i = 0; i < 15; i++) write(path.join(root, 't1', `t1-x${i}.json`), '{}\n');
+  write(path.join(root, 't2', 't2-a.json'), '{}\n');
+  const plan = { batches: { t1: { status: 'pinned', sample: ['t1-x9', 't1-x2'] }, t2: { status: 'pending' } } };
+  const s = spotSample(root, 20261119, plan);
+  assert.deepEqual(s.t1, { status: 'pinned', ids: ['t1-x2', 't1-x9'] });
+  assert.deepEqual(s.t2, { status: 'pending', ids: [] });
+  assert.throws(() => spotSample(root, 20261119, { batches: { t1: { status: 'pinned', sample: ['t1-gone'] } } }), /t1-gone/);
 });
