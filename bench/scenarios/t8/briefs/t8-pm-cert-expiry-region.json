@@ -3,8 +3,8 @@
   "kind": "doc",
   "phase": "release-ops",
   "role": "sre",
-  "author": "qwen3-coder-next",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "ops",
   "size": "18 to 35",
   "loglines": 3500,
@@ -18,12 +18,20 @@
   "blockFields": "`rootCause` (object: `summary`, a short text naming the cause and the change or condition that triggered it; `evidence`, a list of `path:line` strings citing the log, config or deploy lines that prove it), `timeline` (list of `{ \"time\", \"event\" }`, times ISO 8601 UTC), `impact` (object of 2 to 4 named numbers that you define in the request, for example a duration in minutes and a count of failed requests, with units stated), `actionItems` (list of `{ \"text\", \"owner\" }`).",
   "kindExtra": "Key shape for this task: one `text` item on `rootCause.summary` with two or more `all` patterns and a `none` pattern for the decoy; one `evidence` item with 2 or 3 groups (each a regex matching the text of the seeded proving lines, for example the config line and the first error of the true chain); one `evidencePrecision` item (min 0.5, `relevant` matching the true chain only); 4 to 6 `some` items on `timeline` with `timeNear`; one `maxLen` on `timeline` (max 15); 2 to 4 `number` items on `impact`; 2 to 4 `some` items on `actionItems` (a fix of the cause, a guard that would catch it earlier); one `maxLen` on `actionItems` (max 10). Add one `text` item with a `none` pattern that fails a root cause blaming the deploy.",
   "brief": "Phase: release, ops and incident. Role: SRE. Folder: the ops folder of a SaaS product's login service, running in two regions behind a global load balancer. Users in one region could not sign in for about an hour; the other region was fine. The folder holds the edge, auth-service and internal-gateway logs of both regions for the day, a per-minute metrics CSV per region (login attempts, success rate, TLS handshake errors, latency), the deploy history, the certificate inventory export, the alert definitions and the incident channel export. Seed exactly one root cause that the logs prove by a chain of lines across at least two files, and one red herring that looks causal (it happens near the start, is loud, or is the newest change) but the evidence rules out. Spread the true signals: the first symptom, the trigger, the mitigation and the recovery are in different files. Suggested seed: an internal mTLS certificate between the gateway and the auth service expired in the failing region only (the other region's certificate was renewed by a job that silently failed in this region weeks before; the inventory shows two different not-after dates); red herring: a deploy of the auth service to BOTH regions eleven minutes before the first error, which the on-call people rolled back without effect. The request: the engineering manager asks for the postmortem draft for the weekly review.",
-  "rewriteOf": {
-    "version": 1,
-    "author": "gpt-5.6-luna",
-    "reviewer": "qwen3-coder-next"
-  },
-  "version": 2,
-  "answerer": "glm-5",
-  "date": "2026-11-19"
+  "secondFamilyRewrite": {
+    "date": "2026-11-20",
+    "result": "dropped; version 1 kept",
+    "tries": [
+      {
+        "author": "qwen3-coder-next",
+        "reviewer": "minimax-m2.5",
+        "result": "failed: stopped at 122 tool calls; reference failed its own key; fixture gave the answer away"
+      },
+      {
+        "author": "minimax-m2.5",
+        "reviewer": "qwen3-coder-next",
+        "result": "failed: lazy answer 92 after a Claude fix round (hand-fixing rewrites is no longer allowed)"
+      }
+    ]
+  }
 }

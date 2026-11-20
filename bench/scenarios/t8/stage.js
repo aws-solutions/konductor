@@ -10,7 +10,7 @@
 //   map <id>        glm-5 tags the finished task from skill, SOP and agent names and descriptions only (work/<id>.map.json)
 //   review <id>     a model of another family reviews the finished task (work/<id>.review.json)
 //   variants <id>   a model of a third family answers the request twice on a copy of the fixture, once with care and once in
-//                   a hurry; the changed files become variants/<id>/alt/ and variants/<id>/lazy/ (scored by dry-run.js)
+//                   a hurry on a skim of it (long files cut short); the changed files become variants/<id>/alt/ and variants/<id>/lazy/ (scored by dry-run.js)
 //   assemble <id>   writes the task into bench/scenarios/t8/ (task file, fixtures/, hidden/, solutions/, authoring/<id>/gen)
 // Needs T8_AUTH: a directory with run.sh (run.sh <model> <cwd> <promptfile> <outprefix>), work/<id>/ (the author's
 // output) and catalog.json (names and descriptions, ../t1/catalog-descriptions.js). Every model call is logged with its credits.
@@ -29,6 +29,8 @@ const AUTHOR_FILES = new Set(['hidden', 'solution', 'kit', 'gen', 'task-draft.js
 const SOP_NEEDS_YES = new Set(['k-e2e-test-generation', 'k-light-ui-testing', 'k-test-coverage-review']);
 const YES_SENTENCE = 'Yes, that scope is confirmed, and committing the work on the branch I am on is fine.';
 const UNIT_READ = /\/(skills|agent-sops|agents|context)\//;
+// The checks a review records (task.schema.json); a reviewer's extra entries (for example its own reference run) are dropped.
+const REVIEW_CHECKS = new Set(['leak', 'ambiguity', 'ceiling', 'floor', 'hidden-answer']);
 const today = () => new Date().toISOString().slice(0, 10);
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const brief = (id) => readJson(path.join(DIR, 'briefs', `${id}.json`));
@@ -134,7 +136,18 @@ function listTree(root, rel = '') {
   return out;
 }
 
-// The files an answer added or changed against the fixture, copied to `to`.
+// The lazy answer sees a skim of the folder: every file longer than SKIM_LINES lines is cut to its first SKIM_LINES lines,
+// so the model cannot read deeply even when it ignores the hurry note. Its citations are still scored on the real files.
+const SKIM_LINES = 60;
+function skim(root) {
+  for (const rel of listTree(root)) {
+    const p = path.join(root, rel);
+    const lines = fs.readFileSync(p, 'utf8').split('\n');
+    if (lines.length > SKIM_LINES) fs.writeFileSync(p, `${lines.slice(0, SKIM_LINES).join('\n')}\n`);
+  }
+}
+
+// The files an answer added or changed against the folder it started from, copied to `to`.
 function overlayOf(ws, fixture, to) {
   fs.rmSync(to, { recursive: true, force: true });
   let n = 0;
@@ -148,20 +161,23 @@ function overlayOf(ws, fixture, to) {
   return n;
 }
 
-function variants(id) {
+function variants(id, only) {
   const b = brief(id);
   const task = readJson(path.join(DIR, `${id}.json`));
   const model = b.answerer;
   const fixture = path.join(DIR, 'fixtures', id);
   const out = {};
-  for (const [name, hurry] of [['alt', ''], ['lazy', HURRY]]) {
+  for (const [name, hurry] of [['alt', ''], ['lazy', HURRY]].filter(([n]) => !only || n === only)) {
     const cwd = work(`${id}-${name}`);
-    fs.rmSync(cwd, { recursive: true, force: true });
-    fs.cpSync(fixture, cwd, { recursive: true });
+    const base = work(`${id}-${name}-base`);
+    for (const d of [cwd, base]) fs.rmSync(d, { recursive: true, force: true });
+    fs.cpSync(fixture, base, { recursive: true });
+    if (name === 'lazy') skim(base);
+    fs.cpSync(base, cwd, { recursive: true });
     const prompt = fs.readFileSync(path.join(DIR, 'prompts/answer.md'), 'utf8').replace('{{HURRY}}', () => hurry).replace('{{PROMPT}}', () => task.prompt);
     const { credits } = call(model, cwd, prompt, `${id}.${name}`);
     logCall(id, `${name} answer`, model, credits);
-    out[name] = overlayOf(cwd, fixture, path.join(DIR, 'variants', id, name));
+    out[name] = overlayOf(cwd, base, path.join(DIR, 'variants', id, name));
   }
   return out;
 }
@@ -213,7 +229,7 @@ function assemble(id) {
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source },
-    ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.map((v) => reviewed(v, disposition)) } } : {}),
+    ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.filter((v) => REVIEW_CHECKS.has(v.check)).map((v) => reviewed(v, disposition)) } } : {}),
     pilot: null, lockedAt: null,
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
@@ -225,11 +241,11 @@ function assemble(id) {
 }
 
 if (require.main === module) {
-  const [cmd, id] = process.argv.slice(2);
+  const [cmd, id, only] = process.argv.slice(2);
   if (!AUTH) { console.error('set T8_AUTH'); process.exit(2); }
   const fn = { audit, 'log-author': logAuthor, normalize, map, review, variants, assemble }[cmd];
-  if (!fn || !id) { console.error('usage: stage.js audit|log-author|normalize|map|review|variants|assemble <id>'); process.exit(2); }
-  const r = fn(id);
+  if (!fn || !id) { console.error('usage: stage.js audit|log-author|normalize|map|review|variants|assemble <id> (variants: optional alt|lazy)'); process.exit(2); }
+  const r = fn(id, only);
   if (r) console.log(JSON.stringify(r, null, 1));
 }
 
