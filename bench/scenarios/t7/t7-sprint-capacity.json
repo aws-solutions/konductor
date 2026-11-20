@@ -1,7 +1,7 @@
 {
   "id": "t7-sprint-capacity",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -22,9 +22,16 @@
       "kind": "substance"
     },
     {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"plan/next-three-sprints.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"sprint-plan\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"gale park\",\"t-011\",\"t-023\",\"t-037\",\"t-049\",\"t-061\",\"t-068\",\"t-074\",\"t-083\",\"t-096\",\"t-108\",\"t-113\",\"t-119\"];process.exit(items.filter(named).length>=11?0:1)'",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
       "type": "file_exists",
       "path": "plan/next-three-sprints.md",
-      "weight": 3,
+      "weight": 1,
       "kind": "substance"
     },
     {
@@ -160,15 +167,15 @@
       }
     },
     "reference": 100,
-    "stub": 7.1,
+    "stub": 4.8,
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
-      "lazy": 42.9,
+      "stub": 4.8,
+      "lazy": 23.8,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "handEdited": {

@@ -75,12 +75,12 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture contains no hints about the correct recommendations; the notes are explicitly disclaimed as not source of truth, the runbooks reference only general procedures, and file names do not reveal the root causes—everything must be inferred from cross-referencing logs, alerts, incidents, and history."
+        "note": "The fixture contains no hints about the correct recommendations; the notes are explicitly disclaimed as not source of truth, the runbooks reference only general procedures, and file names do not reveal the root causes\u2014everything must be inferred from cross-referencing logs, alerts, incidents, and history."
       },
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A quick wrong answer would be to blame the Feb 14 deploy, keep all 18 rules, or remove the newest rule (DbConnectionPoolExhaustion with the typo); but the key requires identifying specific issues (wrong metric, duplicate rule, noisy symptom), proposing concrete replacements, and citing log lines—none of which a generic approach would achieve."
+        "note": "A quick wrong answer would be to blame the Feb 14 deploy, keep all 18 rules, or remove the newest rule (DbConnectionPoolExhaustion with the typo); but the key requires identifying specific issues (wrong metric, duplicate rule, noisy symptom), proposing concrete replacements, and citing log lines\u2014none of which a generic approach would achieve."
       },
       {
         "check": "floor",
@@ -94,6 +94,21 @@
     "editor": "kirocrew-mate-worker (T8 worker session)",
     "log": "HAND-EDITS.md"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "reference": 100,
+        "stub": 7.1,
+        "lazy": 67.3,
+        "lazySource": "scripted: t7/lazy-answer.js --t8 (half of each list of the reference block, numbers at 0.7x, dates 21 days early)",
+        "alt": null
+      },
+      "fixReason": "the scripted shallow answer scores 67.3, over the 40 gate: the block key matches the reference wording, so half of each reference list still meets most items; the checks share (output exists, input unchanged) adds a free 28.6; no alternative answer scored yet"
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }

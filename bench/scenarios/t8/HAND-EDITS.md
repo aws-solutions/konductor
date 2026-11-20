@@ -34,3 +34,13 @@ These drafts were hand-fixed before the owner rule that a second-family rewrite 
 | --- | --- | --- |
 | t8-inc-memory-leak (v2) | task file, fixture, solution | request named the decoy and listed every source, and left the impact fields undefined; rewritten with the three fields defined; the tests check counted 30 tests for 18; action matchers read the whole item (owner text matched); two keyword `contains` checks removed |
 | t8-pm-cert-expiry-region (v2, try 2) | task file, fixture, solution | fix round: the request said "not the deploy" and listed every source; the impact fields were undefined; the expired certificate's not-after date sat a month before the outage (moved to the outage start, by hand: this author wrote no generator); key patterns listed every word as required ("503" and "error" and "fail"); the reviewer's JSON was repaired by hand |
+
+## Shallow-answer check (T7 worker session, family claude, 2026-11-20)
+
+No prompt, fixture, key or check changed. For the 11 document tasks, `../t7/lazy-answer.js --t8 <id>` wrote a
+scripted shallow answer to `variants/<id>/lazy/` (half of each list of the reference block, numbers at 0.7x, dates 21
+days early), and `dry-run.js` scored it: 60.3 to 94.3, all over the 40 gate. Each task's `pilot` records the score
+and `decision: fix` with the reason. The block keys match the reference's own wording, so a half-copy meets most
+items; even if the shallow answer failed every non-test check, 9 of the 11 would
+stay over 40 (32 to 66 in all). The keys need tightening or a second-family rewrite (DEBT D-86). The bug-fix, twin and negative-control
+tasks have no block and were not checked this way.

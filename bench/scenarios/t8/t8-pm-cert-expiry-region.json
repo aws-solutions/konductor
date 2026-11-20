@@ -100,6 +100,21 @@
     "editor": "kirocrew-mate-worker (T8 worker session)",
     "log": "HAND-EDITS.md"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "reference": 100,
+        "stub": 7.1,
+        "lazy": 69.4,
+        "lazySource": "scripted: t7/lazy-answer.js --t8 (half of each list of the reference block, numbers at 0.7x, dates 21 days early)",
+        "alt": null
+      },
+      "fixReason": "the scripted shallow answer scores 69.4, over the 40 gate: the block key matches the reference wording, so half of each reference list still meets most items; the checks share (output exists, input unchanged) adds a free 28.6; no alternative answer scored yet"
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }

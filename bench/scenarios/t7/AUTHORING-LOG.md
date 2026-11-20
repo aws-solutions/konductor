@@ -175,3 +175,31 @@ A padding probe (pad-answer.js: the reference's numbers and dates, every list fi
 fixture) passes these shares of hidden tests: dep-conflicts 6/14, dev-breakdown 12/12 and pm-launch-cut 14/14 and
 status-slip-twin 14/14 (ids or paths it cannot pad), freeze-forecast 10/15, program-brief 7/11, program-rollup 11/15,
 release-gate 10/14, risk-owners 0/10, scope-cut 9/15, ship-train 8/9, sprint-capacity 9/10, status-slip 10/17.
+
+## Two-step try (owner, 2026-11-20)
+
+Round 2 was stopped before any paid call (0 credits) and is replaced by this try: 2 tasks, a hard cap of 40 credits for both, an abort limit of 15 per call. Step A (second family) writes only the data generator, the planted facts and the request; step B (a separate call) writes the key script, the key and the reference; a non-Claude reviewer runs the four-item checklist. Each call is written here before it runs (`planned`), then with its result. Chosen tasks: t7-sprint-capacity and t7-scope-cut, the two whose v1 came closest to the lazy gate (42.9 each) and whose v1 needed the most hand edits; both have small CSV inputs, which suits a short data-only first step.
+
+| Task | Step | Model | Seconds | Credits | Note |
+| --- | --- | --- | --- | --- | --- |
+| t7-sprint-capacity | A (planned) | qwen3-coder-next | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 0.00 of 40 |
+| t7-sprint-capacity | A | qwen3-coder-next | 271 | 0.97 |  |
+| t7-sprint-capacity | B (planned) | minimax-m2.5 | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 0.97 of 40 |
+| t7-sprint-capacity | B | minimax-m2.5 | 15 | 0.18 | cut or unreported; estimate at 0.012 credits/s |
+| t7-sprint-capacity | B (stopped) | minimax-m2.5 | 15 | 0.18 | stopped by the lead after 15 s: step A's output already failed the free checks (request says "Do not ask questions" and lists the capacity steps; README titled a benchmark); B waits for A's one fix round |
+| t7-sprint-capacity | FA (planned) | qwen3-coder-next | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 1.15 of 40 |
+| t7-sprint-capacity | FA | qwen3-coder-next | 359 | 2.19 |  |
+| t7-sprint-capacity | B (planned) | minimax-m2.5 | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 3.34 of 40 |
+| t7-sprint-capacity | B | minimax-m2.5 | 926 | 5.32 |  |
+| t7-sprint-capacity | FB (planned) | minimax-m2.5 | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 8.66 of 40 |
+| t7-scope-cut | A (planned) | qwen3-coder-next | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 8.66 of 40 |
+| (lead) | note | - | - | - | t7-scope-cut A started while t7-sprint-capacity FB runs: worst case 8.66 + 15 + 15 = 38.66, under the 40 cap |
+| t7-scope-cut | A | qwen3-coder-next | 121 | 0.19 |  |
+| t7-scope-cut | FA (planned) | qwen3-coder-next | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 8.85 of 40 |
+| t7-scope-cut | FA | qwen3-coder-next | 224 | 1.72 |  |
+| t7-scope-cut | B (planned) | minimax-m2.5 | - | - | abort limit 15 credits (killed at 1100 s); try spend before: 10.57 of 40 |
+| t7-sprint-capacity | FB | minimax-m2.5 | 1101 | 13.21 | cut or unreported; estimate at 0.012 credits/s |
+| t7-sprint-capacity | note | - | - | - | the audit flagged "977ecb0a/t7" in the FB stream: a streamed text chunk split before "auth3" (the call's own dir), not a read; no other path |
+| t7-sprint-capacity | result | - | - | - | DROPPED after one fix per family: candidate scored reference 95.2, stub 0, lazy 67.8 (gate 40), alternative 95.2; the key fix round (minimax-m2.5) hit the abort limit with no change. Version 1 (now version 2, scorer change) kept |
+| t7-scope-cut | B | minimax-m2.5 | 1078 | 10.66 |  |
+| t7-scope-cut | result | - | - | - | DROPPED: candidate scored reference 100, stub 4.8, lazy 48.5 (gate 40), alternative 100, same twice; the request still hinted at the traps after step A's fix; no key fix or checklist review possible, as any further call could pass the 40-credit cap (spend 34.44). Version 1 (now version 2) kept |

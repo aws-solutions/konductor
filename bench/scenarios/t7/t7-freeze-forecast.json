@@ -1,7 +1,7 @@
 {
   "id": "t7-freeze-forecast",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -22,9 +22,16 @@
       "kind": "substance"
     },
     {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/march-forecast.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"forecast\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"mig-014\",\"mig-032\",\"mig-057\",\"mig-071\",\"mig-088\",\"mig-109\",\"mig-126\"];process.exit(items.filter(named).length>=6?0:1)'",
+      "expectExit": 0,
+      "weight": 4,
+      "kind": "substance"
+    },
+    {
       "type": "file_exists",
       "path": "docs/march-forecast.md",
-      "weight": 3,
+      "weight": 1,
       "kind": "substance"
     },
     {
@@ -151,7 +158,7 @@
       {
         "check": "floor",
         "verdict": "pass",
-        "note": "I independently verified: (1) capacity values S2=71, S7=60, S8=76 follow from 79 minus holidays and leave per README rules; (2) the 7-ticket chain MIG-014\u2192MIG-126 follows from depends_on links; (3) earliest_date Apr 30 follows from handoff constraints (Tue/Wed for Runtime, Mon/Thu for Release Ops) and leave timing. All key values are derivable from fixture data using stated conventions."
+        "note": "I independently verified: (1) capacity values S2=71, S7=60, S8=76 follow from 79 minus holidays and leave per README rules; (2) the 7-ticket chain MIG-014→MIG-126 follows from depends_on links; (3) earliest_date Apr 30 follows from handoff constraints (Tue/Wed for Runtime, Mon/Thu for Release Ops) and leave timing. All key values are derivable from fixture data using stated conventions."
       }
     ]
   },
@@ -164,15 +171,15 @@
       }
     },
     "reference": 100,
-    "stub": 7.1,
+    "stub": 4.8,
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
-      "lazy": 47.6,
+      "stub": 4.8,
+      "lazy": 28.6,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "handEdited": {

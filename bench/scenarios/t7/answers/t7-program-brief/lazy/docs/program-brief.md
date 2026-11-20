@@ -10,9 +10,7 @@ I went through the exports. The plan mostly holds; the main items are below.
    "name": "Tool selection and governance",
    "teams": [
     "Atlas",
-    "Beacon",
-    "Cedar",
-    "TPM"
+    "Beacon"
    ],
    "depends_on": [
     "REQ-012"
@@ -22,9 +20,7 @@ I went through the exports. The plan mostly holds; the main items are below.
    "name": "Identity integration",
    "teams": [
     "Identity Services",
-    "Atlas",
-    "Beacon",
-    "Cedar"
+    "Atlas"
    ],
    "depends_on": [
     "REQ-012"
@@ -37,8 +33,7 @@ I went through the exports. The plan mostly holds; the main items are below.
  "conflicts": [
   {
    "between": [
-    "Atlas",
-    "Beacon"
+    "Atlas"
    ],
    "about": "Shared deployment migration in 2027-Q3"
   }
@@ -46,8 +41,7 @@ I went through the exports. The plan mostly holds; the main items are below.
  "headcount_gap": 2,
  "constraints": [
   "Deployment audit records must be retrievable for at least 365 days.",
-  "The shared tool must support OIDC sign-in and approval history.",
-  "All three product teams need a usable rollback path before cutover."
+  "The shared tool must support OIDC sign-in and approval history."
  ],
  "milestones": [
   {
@@ -62,9 +56,7 @@ I went through the exports. The plan mostly holds; the main items are below.
  "open_questions": [
   "Ownership decision: who owns the shared migration between Atlas and Beacon?",
   "Can Identity Services commit capacity and a date for REQ-012?",
-  "Which services belong in the pilot and first cutover waves?",
-  "Do all candidate tools meet the audit and approval requirements?",
-  "How will leadership close the three-engineer staffing gap?"
+  "Which services belong in the pilot and first cutover waves?"
  ],
  "out_of_scope": [
   "REQ-068"

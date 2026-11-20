@@ -19,9 +19,7 @@ I went through the exports. The plan mostly holds; the main items are below.
  "notes": [
   "Forecast scope is the 13 open tickets in the Storage Engine initiative; the separate archive-migration item is excluded.",
   "WORK-1008 has a blank estimate and uses the Storage Engine workstream median of 8 points; its dependency is sequenced from the ticket export.",
-  "WORK-1048 has a blank estimate and uses the Storage Engine workstream median of 8 points.",
-  "At 110 points and 30 ordinary points per sprint, four sprints finish in the sprint ending 2027-04-11, before the 2027-05-07 branch.",
-  "2027.06 is the most likely train. The feature must remain flagged for one full train, making 2027.07 the customer promise."
+  "WORK-1048 has a blank estimate and uses the Storage Engine workstream median of 8 points."
  ]
 }
 ```

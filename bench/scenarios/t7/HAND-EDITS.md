@@ -35,3 +35,16 @@ a non-Claude reviewer from the checklist in the batch brief; the result goes in 
 - t7-dev-breakdown: its one change was the author's own fix round (gpt-5.6-luna), from instructions the lead wrote.
 - Targets (`targetSkills`, `targetSop`, `targetAgent`, `loadCheck`) come from the mapper; t7-dep-conflicts took minimax-m2.5's mapping after glm-5 mapped none (2026-11-19). That is mapping, not a task edit.
 - Scored answers under `answers/` (lazy, alternative, padding probe) are script output for the dry run, not task content.
+
+## Scorer change for D-86 (2026-11-20, all 13 tasks, version 1 to 2)
+
+Editor: the T7 worker session (family claude, `kirocrew-mate-worker`). No prompt, fixture or key changed.
+
+| What | Files | Why |
+| --- | --- | --- |
+| The checks were rebuilt by `stage.js` `checksFor`: a new substance `cmd` check of weight 4 (the answer's block must name at least 80% of the items the key requires in its `includes`, `cites` and `order` assertions); the output-exists check went from weight 3 to 1; the unchanged-input check stays at 1; the block-present check stays format. t7-status-slip-twin gets no evidence check (its key requires no list items). Every task's `version` went from 1 to 2 | `<id>.json` `checks`, `version` | the two cheap checks gave any answer, however shallow, the whole checks share: a free 28.6 points before any hidden test (D-86). Tying most of the checks share to the key's own required items keeps it code-checked (hidden tests plus checks stay 70% of the score) while a correct answer in other words still passes |
+| `lazy-answer.js` now halves every list, not only lists of ticket ids | `answers/<id>/lazy/` | file paths, names and object lists were kept whole, so the shallow answer was the reference on those keys |
+
+Result (free dry run, twice): reference 100, empty 4.8 (twin 14.3), alternative 100, same scores twice, on all 13.
+Lazy 40 or less on 5 (t7-dev-breakdown 39.3, t7-freeze-forecast 28.6, t7-scope-cut 23.8, t7-sprint-capacity 23.8,
+t7-status-slip 30.5); still over on 8, each with its reason in `pilot.scores.fixReason` and `pilot.decision` fix.
