@@ -77,6 +77,13 @@ def test_confirmed_branch_runs_ls_and_synth_and_limits_diff():
     assert "only with the credentials the user names" in confirmed[0]
 
 
+def test_confirmed_branch_without_credentials_disables_lookups():
+    confirmed = next(b for b in bullets(step_5()) if b.startswith(CONFIRMED_BRANCH))
+    without_credentials = next(s for s in confirmed.split(". ") if "has not named credentials" in s)
+    assert "`--no-lookups`" in without_credentials
+    assert "not run (needs a context lookup)" in without_credentials
+
+
 def test_cdk_ls_is_not_described_as_an_account_aware_check():
     assert "account-aware" not in step_5()
 

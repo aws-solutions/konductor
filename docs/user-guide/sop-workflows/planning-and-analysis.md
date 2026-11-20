@@ -321,10 +321,12 @@ project-specific.
   until you confirm the CDK app is trusted to run where the agent is working. A CDK app the agent
   created in the same session, or one you say you own, counts as confirmed. Editing a checkout
   under review does not make it trusted, so the agent asks first. Once you confirm, it runs
-  `cdk ls` and `cdk synth --strict`. It runs `cdk diff` only when you also ask for a check against
-  the deployed stack, and it runs `cdk diff` and any context lookup only with the credentials you
-  name. Without confirmation it validates an existing `cdk.out/` template or reads the stacks,
-  and reports all three commands as not run. It never deploys, bootstraps or creates a change set.
+  `cdk ls` and `cdk synth --strict`. If you have not named credentials, it runs both with
+  `--no-lookups` and reports a missing-context failure as not run (needs a context lookup). It
+  runs `cdk diff` only when you also ask for a check against the deployed stack, and it runs
+  `cdk diff` and any context lookup only with the credentials you name. Without confirmation it
+  validates an existing `cdk.out/` template or reads the stacks, and reports all three commands
+  as not run. It never deploys, bootstraps or creates a change set.
 
 ---
 

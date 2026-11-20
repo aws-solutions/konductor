@@ -103,7 +103,7 @@ For CDK/infrastructure packages, run additional CDK-specific checks.
 
 - You MUST only run this step if the project contains CDK infrastructure code
 - `cdk synth`, `cdk ls` and `cdk diff` all run the CDK app's own code, and `cdk diff` also reads the deployed stack in an AWS account. You MUST NOT run `cdk synth`, `cdk ls` or `cdk diff` until the user confirms that the CDK app is trusted to execute in this environment. A CDK app you created in this session, or one the user says they own, counts as confirmed. Editing a checkout under review does not make it trusted, so ask first.
-- When the user confirms, You MUST run `cdk ls` and `cdk synth --strict` and record each outcome. You MUST run `cdk diff` only when the user also asks for a check against the deployed stack, and You MUST run `cdk diff` and any context lookup only with the credentials the user names.
+- When the user confirms, You MUST run `cdk ls` and `cdk synth --strict` and record each outcome. If the user has not named credentials, You MUST run both with `--no-lookups`, and You MUST report a failure caused by missing context as not run (needs a context lookup), not as a failed check. You MUST run `cdk diff` only when the user also asks for a check against the deployed stack, and You MUST run `cdk diff` and any context lookup only with the credentials the user names.
 - Without confirmation, You MUST validate an existing `cdk.out/` template if one is present, or read the stacks and constructs, and You MUST list `cdk synth`, `cdk ls` and `cdk diff` as not run, with the reason, in the verification report.
 - You MUST NOT deploy, bootstrap or create a change set.
 - You MUST capture output from each command you run

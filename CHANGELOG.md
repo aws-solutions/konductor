@@ -639,6 +639,7 @@ not per individual commit.
   `would_keep_count`.
 - `k-verify` no longer runs `cdk synth`, `cdk ls` or `cdk diff` until the user confirms the CDK
   app is trusted, since all three run the app's code and `cdk diff` also reads the deployed stack.
+  Without named credentials, `cdk ls` and `cdk synth` run with `--no-lookups`.
 
 ### Security
 
