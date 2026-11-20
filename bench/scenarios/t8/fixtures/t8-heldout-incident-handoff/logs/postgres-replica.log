@@ -1,0 +1,299 @@
+2026-11-20T12:00:02.279Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T12:01:01.645Z LOG:  replication status: replay_lag_s=2.3 write_lag_s=2.0 state=streaming
+2026-11-20T12:02:01.420Z LOG:  replication status: replay_lag_s=2.1 write_lag_s=1.9 state=streaming
+2026-11-20T12:03:03.973Z LOG:  replication status: replay_lag_s=2.1 write_lag_s=1.9 state=streaming
+2026-11-20T12:04:03.524Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T12:05:01.863Z LOG:  replication status: replay_lag_s=2.4 write_lag_s=2.2 state=streaming
+2026-11-20T12:05:38.772Z LOG:  restartpoint complete
+2026-11-20T12:06:03.186Z LOG:  replication status: replay_lag_s=0.7 write_lag_s=0.7 state=streaming
+2026-11-20T12:07:03.453Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.6 state=streaming
+2026-11-20T12:07:22.774Z LOG:  restartpoint complete
+2026-11-20T12:08:01.226Z LOG:  replication status: replay_lag_s=0.9 write_lag_s=0.8 state=streaming
+2026-11-20T12:09:00.013Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.8 state=streaming
+2026-11-20T12:10:01.118Z LOG:  replication status: replay_lag_s=2.4 write_lag_s=2.2 state=streaming
+2026-11-20T12:11:00.285Z LOG:  replication status: replay_lag_s=1.3 write_lag_s=1.2 state=streaming
+2026-11-20T12:12:00.851Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.5 state=streaming
+2026-11-20T12:13:02.381Z LOG:  replication status: replay_lag_s=1.1 write_lag_s=1.0 state=streaming
+2026-11-20T12:14:01.838Z LOG:  replication status: replay_lag_s=0.4 write_lag_s=0.3 state=streaming
+2026-11-20T12:15:01.105Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.1 state=streaming
+2026-11-20T12:16:01.104Z LOG:  replication status: replay_lag_s=1.4 write_lag_s=1.3 state=streaming
+2026-11-20T12:17:00.928Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T12:18:03.340Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.1 state=streaming
+2026-11-20T12:19:03.043Z LOG:  replication status: replay_lag_s=1.7 write_lag_s=1.5 state=streaming
+2026-11-20T12:20:01.932Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T12:21:02.481Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T12:22:03.555Z LOG:  replication status: replay_lag_s=1.6 write_lag_s=1.4 state=streaming
+2026-11-20T12:23:02.675Z LOG:  replication status: replay_lag_s=2.2 write_lag_s=1.9 state=streaming
+2026-11-20T12:24:03.156Z LOG:  replication status: replay_lag_s=1.8 write_lag_s=1.7 state=streaming
+2026-11-20T12:25:01.303Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T12:26:00.819Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.5 state=streaming
+2026-11-20T12:27:03.416Z LOG:  replication status: replay_lag_s=1.7 write_lag_s=1.5 state=streaming
+2026-11-20T12:28:00.188Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.5 state=streaming
+2026-11-20T12:29:01.998Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T12:29:13.476Z LOG:  restartpoint complete
+2026-11-20T12:30:00.758Z LOG:  replication status: replay_lag_s=1.1 write_lag_s=1.0 state=streaming
+2026-11-20T12:31:02.605Z LOG:  replication status: replay_lag_s=0.9 write_lag_s=0.8 state=streaming
+2026-11-20T12:32:02.906Z LOG:  replication status: replay_lag_s=1.5 write_lag_s=1.4 state=streaming
+2026-11-20T12:33:01.205Z LOG:  replication status: replay_lag_s=2.0 write_lag_s=1.8 state=streaming
+2026-11-20T12:34:02.468Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T12:34:07.125Z LOG:  restartpoint complete
+2026-11-20T12:35:02.195Z LOG:  replication status: replay_lag_s=2.0 write_lag_s=1.8 state=streaming
+2026-11-20T12:35:05.754Z LOG:  restartpoint complete
+2026-11-20T12:36:01.690Z LOG:  replication status: replay_lag_s=2.4 write_lag_s=2.2 state=streaming
+2026-11-20T12:37:02.372Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T12:38:01.906Z LOG:  replication status: replay_lag_s=2.0 write_lag_s=1.8 state=streaming
+2026-11-20T12:39:02.237Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.1 state=streaming
+2026-11-20T12:39:04.913Z LOG:  restartpoint complete
+2026-11-20T12:40:00.015Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.5 state=streaming
+2026-11-20T12:41:00.373Z LOG:  replication status: replay_lag_s=1.9 write_lag_s=1.7 state=streaming
+2026-11-20T12:42:03.271Z LOG:  replication status: replay_lag_s=0.9 write_lag_s=0.8 state=streaming
+2026-11-20T12:43:01.705Z LOG:  replication status: replay_lag_s=1.6 write_lag_s=1.5 state=streaming
+2026-11-20T12:44:03.792Z LOG:  replication status: replay_lag_s=2.1 write_lag_s=1.9 state=streaming
+2026-11-20T12:45:00.372Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.5 state=streaming
+2026-11-20T12:46:02.604Z LOG:  replication status: replay_lag_s=1.8 write_lag_s=1.6 state=streaming
+2026-11-20T12:47:02.652Z LOG:  replication status: replay_lag_s=2.3 write_lag_s=2.1 state=streaming
+2026-11-20T12:48:03.768Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T12:49:03.533Z LOG:  replication status: replay_lag_s=1.5 write_lag_s=1.4 state=streaming
+2026-11-20T12:50:03.514Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.4 state=streaming
+2026-11-20T12:51:01.717Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.5 state=streaming
+2026-11-20T12:52:03.004Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T12:52:55.934Z LOG:  restartpoint complete
+2026-11-20T12:53:01.036Z LOG:  replication status: replay_lag_s=2.1 write_lag_s=1.9 state=streaming
+2026-11-20T12:54:02.027Z LOG:  replication status: replay_lag_s=0.4 write_lag_s=0.4 state=streaming
+2026-11-20T12:55:00.381Z LOG:  replication status: replay_lag_s=1.8 write_lag_s=1.6 state=streaming
+2026-11-20T12:56:03.083Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T12:57:03.305Z LOG:  replication status: replay_lag_s=1.9 write_lag_s=1.7 state=streaming
+2026-11-20T12:58:03.424Z LOG:  replication status: replay_lag_s=1.9 write_lag_s=1.7 state=streaming
+2026-11-20T12:59:02.759Z LOG:  replication status: replay_lag_s=1.5 write_lag_s=1.4 state=streaming
+2026-11-20T13:00:02.439Z LOG:  replication status: replay_lag_s=2.3 write_lag_s=2.1 state=streaming
+2026-11-20T13:01:03.129Z LOG:  replication status: replay_lag_s=2.2 write_lag_s=2.0 state=streaming
+2026-11-20T13:02:02.125Z LOG:  replication status: replay_lag_s=1.9 write_lag_s=1.7 state=streaming
+2026-11-20T13:03:02.441Z LOG:  replication status: replay_lag_s=1.3 write_lag_s=1.2 state=streaming
+2026-11-20T13:04:01.045Z LOG:  replication status: replay_lag_s=2.4 write_lag_s=2.2 state=streaming
+2026-11-20T13:05:02.314Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.5 state=streaming
+2026-11-20T13:06:03.965Z LOG:  replication status: replay_lag_s=1.7 write_lag_s=1.5 state=streaming
+2026-11-20T13:07:03.210Z LOG:  replication status: replay_lag_s=1.6 write_lag_s=1.5 state=streaming
+2026-11-20T13:08:00.731Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.6 state=streaming
+2026-11-20T13:09:03.043Z LOG:  replication status: replay_lag_s=0.9 write_lag_s=0.8 state=streaming
+2026-11-20T13:10:01.188Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.8 state=streaming
+2026-11-20T13:10:05.898Z LOG:  restartpoint complete
+2026-11-20T13:11:03.475Z LOG:  replication status: replay_lag_s=1.5 write_lag_s=1.3 state=streaming
+2026-11-20T13:12:01.883Z LOG:  replication status: replay_lag_s=1.3 write_lag_s=1.1 state=streaming
+2026-11-20T13:13:00.136Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T13:14:00.591Z LOG:  replication status: replay_lag_s=1.1 write_lag_s=1.0 state=streaming
+2026-11-20T13:15:02.060Z LOG:  restartpoint complete
+2026-11-20T13:15:03.031Z LOG:  replication status: replay_lag_s=1.7 write_lag_s=1.5 state=streaming
+2026-11-20T13:16:01.794Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.6 state=streaming
+2026-11-20T13:17:03.323Z LOG:  replication status: replay_lag_s=2.2 write_lag_s=2.0 state=streaming
+2026-11-20T13:18:00.358Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T13:18:31.230Z LOG:  restartpoint complete
+2026-11-20T13:19:01.643Z LOG:  replication status: replay_lag_s=1.6 write_lag_s=1.5 state=streaming
+2026-11-20T13:20:01.901Z LOG:  replication status: replay_lag_s=2.5 write_lag_s=2.2 state=streaming
+2026-11-20T13:21:00.497Z LOG:  replication status: replay_lag_s=1.9 write_lag_s=1.7 state=streaming
+2026-11-20T13:21:50.731Z LOG:  restartpoint complete
+2026-11-20T13:22:00.940Z LOG:  replication status: replay_lag_s=1.4 write_lag_s=1.3 state=streaming
+2026-11-20T13:23:00.028Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T13:24:00.699Z LOG:  replication status: replay_lag_s=0.2 write_lag_s=0.2 state=streaming
+2026-11-20T13:25:00.436Z LOG:  replication status: replay_lag_s=1.6 write_lag_s=1.5 state=streaming
+2026-11-20T13:26:01.356Z LOG:  replication status: replay_lag_s=0.4 write_lag_s=0.3 state=streaming
+2026-11-20T13:27:02.703Z LOG:  replication status: replay_lag_s=1.3 write_lag_s=1.2 state=streaming
+2026-11-20T13:28:03.706Z LOG:  replication status: replay_lag_s=1.1 write_lag_s=0.9 state=streaming
+2026-11-20T13:29:02.921Z LOG:  replication status: replay_lag_s=1.5 write_lag_s=1.3 state=streaming
+2026-11-20T13:30:02.778Z LOG:  replication status: replay_lag_s=1.3 write_lag_s=1.1 state=streaming
+2026-11-20T13:31:01.061Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T13:32:02.050Z LOG:  replication status: replay_lag_s=0.7 write_lag_s=0.6 state=streaming
+2026-11-20T13:33:02.028Z LOG:  replication status: replay_lag_s=2.2 write_lag_s=2.0 state=streaming
+2026-11-20T13:34:03.619Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.6 state=streaming
+2026-11-20T13:35:03.748Z LOG:  replication status: replay_lag_s=0.8 write_lag_s=0.7 state=streaming
+2026-11-20T13:36:02.364Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.0 state=streaming
+2026-11-20T13:37:01.677Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.5 state=streaming
+2026-11-20T13:37:43.158Z LOG:  restartpoint complete
+2026-11-20T13:38:01.851Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.1 state=streaming
+2026-11-20T13:39:03.336Z LOG:  replication status: replay_lag_s=1.1 write_lag_s=1.0 state=streaming
+2026-11-20T13:40:01.173Z LOG:  replication status: replay_lag_s=1.8 write_lag_s=1.6 state=streaming
+2026-11-20T13:41:03.308Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.5 state=streaming
+2026-11-20T13:41:55.438Z LOG:  restartpoint complete
+2026-11-20T13:42:00.958Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.1 state=streaming
+2026-11-20T13:43:00.842Z LOG:  replication status: replay_lag_s=1.2 write_lag_s=1.1 state=streaming
+2026-11-20T13:44:03.558Z LOG:  replication status: replay_lag_s=0.4 write_lag_s=0.3 state=streaming
+2026-11-20T13:45:02.172Z LOG:  replication status: replay_lag_s=2.0 write_lag_s=1.8 state=streaming
+2026-11-20T13:46:03.615Z LOG:  replication status: replay_lag_s=0.6 write_lag_s=0.6 state=streaming
+2026-11-20T13:47:02.967Z LOG:  replication status: replay_lag_s=1.9 write_lag_s=1.8 state=streaming
+2026-11-20T13:48:02.855Z LOG:  replication status: replay_lag_s=2.3 write_lag_s=2.0 state=streaming
+2026-11-20T13:49:01.273Z LOG:  replication status: replay_lag_s=1.3 write_lag_s=1.1 state=streaming
+2026-11-20T13:50:02.128Z LOG:  replication status: replay_lag_s=0.7 write_lag_s=0.6 state=streaming
+2026-11-20T13:51:02.350Z LOG:  replication status: replay_lag_s=1.6 write_lag_s=1.4 state=streaming
+2026-11-20T13:52:02.865Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.2 state=streaming
+2026-11-20T13:53:01.482Z LOG:  replication status: replay_lag_s=1.7 write_lag_s=1.5 state=streaming
+2026-11-20T13:54:00.795Z LOG:  replication status: replay_lag_s=2.3 write_lag_s=2.0 state=streaming
+2026-11-20T13:55:01.643Z LOG:  replication status: replay_lag_s=2.2 write_lag_s=2.0 state=streaming
+2026-11-20T13:56:01.779Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T13:57:00.630Z LOG:  replication status: replay_lag_s=1.4 write_lag_s=1.3 state=streaming
+2026-11-20T13:57:51.082Z LOG:  restartpoint complete
+2026-11-20T13:58:00.887Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T13:59:03.025Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.2 state=streaming
+2026-11-20T14:00:02.853Z LOG:  replication status: replay_lag_s=2.4 write_lag_s=2.1 state=streaming
+2026-11-20T14:01:00.153Z LOG:  replication status: replay_lag_s=0.5 write_lag_s=0.4 state=streaming
+2026-11-20T14:02:02.989Z LOG:  replication status: replay_lag_s=2.4 write_lag_s=2.1 state=streaming
+2026-11-20T14:03:02.923Z LOG:  replication status: replay_lag_s=0.3 write_lag_s=0.3 state=streaming
+2026-11-20T14:03:39.059Z LOG:  restartpoint complete
+2026-11-20T14:04:00.958Z LOG:  replication status: replay_lag_s=2.3 write_lag_s=2.0 state=streaming
+2026-11-20T14:05:01.584Z LOG:  replication status: replay_lag_s=1.0 write_lag_s=0.9 state=streaming
+2026-11-20T14:06:03.092Z LOG:  replication status: replay_lag_s=41.6 write_lag_s=37.4 state=streaming
+2026-11-20T14:07:01.647Z LOG:  replication status: replay_lag_s=45.0 write_lag_s=40.5 state=streaming
+2026-11-20T14:08:02.746Z LOG:  replication status: replay_lag_s=36.0 write_lag_s=32.4 state=streaming
+2026-11-20T14:09:02.004Z LOG:  replication status: replay_lag_s=44.4 write_lag_s=39.9 state=streaming
+2026-11-20T14:10:02.655Z LOG:  replication status: replay_lag_s=37.7 write_lag_s=33.9 state=streaming
+2026-11-20T14:11:00.493Z LOG:  replication status: replay_lag_s=40.2 write_lag_s=36.2 state=streaming
+2026-11-20T14:12:02.421Z LOG:  replication status: replay_lag_s=40.9 write_lag_s=36.8 state=streaming
+2026-11-20T14:13:01.745Z LOG:  replication status: replay_lag_s=41.1 write_lag_s=37.0 state=streaming
+2026-11-20T14:14:02.935Z LOG:  replication status: replay_lag_s=54.7 write_lag_s=49.3 state=streaming
+2026-11-20T14:15:00.038Z LOG:  replication status: replay_lag_s=49.1 write_lag_s=44.2 state=streaming
+2026-11-20T14:16:00.979Z LOG:  replication status: replay_lag_s=48.2 write_lag_s=43.4 state=streaming
+2026-11-20T14:17:00.070Z LOG:  replication status: replay_lag_s=62.8 write_lag_s=56.5 state=streaming
+2026-11-20T14:17:42.145Z LOG:  restartpoint complete
+2026-11-20T14:18:02.980Z LOG:  replication status: replay_lag_s=64.8 write_lag_s=58.3 state=streaming
+2026-11-20T14:19:03.953Z LOG:  replication status: replay_lag_s=63.0 write_lag_s=56.7 state=streaming
+2026-11-20T14:20:03.785Z LOG:  replication status: replay_lag_s=60.5 write_lag_s=54.5 state=streaming
+2026-11-20T14:21:01.614Z LOG:  replication status: replay_lag_s=67.2 write_lag_s=60.5 state=streaming
+2026-11-20T14:22:01.000Z LOG:  replication status: replay_lag_s=63.1 write_lag_s=56.8 state=streaming
+2026-11-20T14:23:03.463Z LOG:  replication status: replay_lag_s=67.6 write_lag_s=60.8 state=streaming
+2026-11-20T14:24:01.872Z LOG:  replication status: replay_lag_s=61.3 write_lag_s=55.2 state=streaming
+2026-11-20T14:24:41.860Z LOG:  restartpoint complete
+2026-11-20T14:25:03.589Z LOG:  replication status: replay_lag_s=73.3 write_lag_s=65.9 state=streaming
+2026-11-20T14:26:03.551Z LOG:  replication status: replay_lag_s=74.0 write_lag_s=66.6 state=streaming
+2026-11-20T14:27:02.374Z LOG:  replication status: replay_lag_s=79.8 write_lag_s=71.8 state=streaming
+2026-11-20T14:28:01.445Z LOG:  restartpoint complete
+2026-11-20T14:28:02.143Z LOG:  replication status: replay_lag_s=81.1 write_lag_s=73.0 state=streaming
+2026-11-20T14:29:02.763Z LOG:  replication status: replay_lag_s=72.8 write_lag_s=65.5 state=streaming
+2026-11-20T14:30:02.775Z LOG:  replication status: replay_lag_s=71.6 write_lag_s=64.4 state=streaming
+2026-11-20T14:31:01.605Z LOG:  replication status: replay_lag_s=81.5 write_lag_s=73.3 state=streaming
+2026-11-20T14:32:03.732Z LOG:  replication status: replay_lag_s=86.1 write_lag_s=77.5 state=streaming
+2026-11-20T14:33:01.534Z LOG:  replication status: replay_lag_s=78.1 write_lag_s=70.3 state=streaming
+2026-11-20T14:34:00.971Z LOG:  replication status: replay_lag_s=90.5 write_lag_s=81.5 state=streaming
+2026-11-20T14:35:00.023Z LOG:  replication status: replay_lag_s=87.8 write_lag_s=79.0 state=streaming
+2026-11-20T14:36:03.459Z LOG:  replication status: replay_lag_s=95.1 write_lag_s=85.6 state=streaming
+2026-11-20T14:37:01.419Z LOG:  replication status: replay_lag_s=91.8 write_lag_s=82.6 state=streaming
+2026-11-20T14:38:02.785Z LOG:  replication status: replay_lag_s=89.9 write_lag_s=80.9 state=streaming
+2026-11-20T14:39:03.042Z LOG:  replication status: replay_lag_s=91.0 write_lag_s=81.9 state=streaming
+2026-11-20T14:40:03.971Z LOG:  replication status: replay_lag_s=96.8 write_lag_s=87.1 state=streaming
+2026-11-20T14:41:03.794Z LOG:  replication status: replay_lag_s=95.2 write_lag_s=85.7 state=streaming
+2026-11-20T14:41:52.317Z LOG:  restartpoint complete
+2026-11-20T14:42:01.844Z LOG:  replication status: replay_lag_s=90.4 write_lag_s=81.4 state=streaming
+2026-11-20T14:43:02.505Z LOG:  replication status: replay_lag_s=105.5 write_lag_s=95.0 state=streaming
+2026-11-20T14:43:05.021Z LOG:  restartpoint complete
+2026-11-20T14:44:01.106Z LOG:  replication status: replay_lag_s=95.9 write_lag_s=86.3 state=streaming
+2026-11-20T14:45:00.127Z LOG:  replication status: replay_lag_s=109.2 write_lag_s=98.3 state=streaming
+2026-11-20T14:46:00.755Z LOG:  replication status: replay_lag_s=103.6 write_lag_s=93.2 state=streaming
+2026-11-20T14:47:02.554Z LOG:  replication status: replay_lag_s=102.0 write_lag_s=91.8 state=streaming
+2026-11-20T14:48:00.530Z LOG:  replication status: replay_lag_s=111.8 write_lag_s=100.7 state=streaming
+2026-11-20T14:49:02.056Z LOG:  replication status: replay_lag_s=114.8 write_lag_s=103.4 state=streaming
+2026-11-20T14:50:01.872Z LOG:  replication status: replay_lag_s=110.7 write_lag_s=99.7 state=streaming
+2026-11-20T14:50:05.106Z LOG:  restartpoint complete
+2026-11-20T14:51:03.163Z LOG:  replication status: replay_lag_s=113.1 write_lag_s=101.8 state=streaming
+2026-11-20T14:52:03.950Z LOG:  replication status: replay_lag_s=110.4 write_lag_s=99.3 state=streaming
+2026-11-20T14:53:02.377Z LOG:  replication status: replay_lag_s=123.3 write_lag_s=110.9 state=streaming
+2026-11-20T14:54:01.346Z LOG:  replication status: replay_lag_s=126.0 write_lag_s=113.4 state=streaming
+2026-11-20T14:54:53.690Z LOG:  restartpoint complete
+2026-11-20T14:55:01.761Z LOG:  replication status: replay_lag_s=115.0 write_lag_s=103.5 state=streaming
+2026-11-20T14:56:01.179Z LOG:  replication status: replay_lag_s=125.7 write_lag_s=113.2 state=streaming
+2026-11-20T14:56:47.220Z LOG:  restartpoint complete
+2026-11-20T14:57:03.879Z LOG:  replication status: replay_lag_s=127.3 write_lag_s=114.6 state=streaming
+2026-11-20T14:57:41.629Z LOG:  restartpoint complete
+2026-11-20T14:58:02.561Z LOG:  replication status: replay_lag_s=124.6 write_lag_s=112.1 state=streaming
+2026-11-20T14:59:02.808Z LOG:  replication status: replay_lag_s=134.2 write_lag_s=120.8 state=streaming
+2026-11-20T15:00:03.267Z LOG:  replication status: replay_lag_s=124.6 write_lag_s=112.1 state=streaming
+2026-11-20T15:01:03.190Z LOG:  replication status: replay_lag_s=123.6 write_lag_s=111.2 state=streaming
+2026-11-20T15:02:01.085Z LOG:  replication status: replay_lag_s=134.5 write_lag_s=121.0 state=streaming
+2026-11-20T15:03:02.315Z LOG:  replication status: replay_lag_s=138.0 write_lag_s=124.2 state=streaming
+2026-11-20T15:04:01.755Z LOG:  replication status: replay_lag_s=137.1 write_lag_s=123.4 state=streaming
+2026-11-20T15:05:02.482Z LOG:  replication status: replay_lag_s=128.9 write_lag_s=116.0 state=streaming
+2026-11-20T15:06:03.597Z LOG:  replication status: replay_lag_s=141.7 write_lag_s=127.5 state=streaming
+2026-11-20T15:07:02.629Z LOG:  replication status: replay_lag_s=140.5 write_lag_s=126.5 state=streaming
+2026-11-20T15:07:26.780Z LOG:  restartpoint complete
+2026-11-20T15:08:00.890Z LOG:  replication status: replay_lag_s=140.8 write_lag_s=126.7 state=streaming
+2026-11-20T15:09:03.901Z LOG:  replication status: replay_lag_s=137.3 write_lag_s=123.5 state=streaming
+2026-11-20T15:10:01.537Z LOG:  replication status: replay_lag_s=140.2 write_lag_s=126.2 state=streaming
+2026-11-20T15:11:02.178Z LOG:  replication status: replay_lag_s=146.9 write_lag_s=132.2 state=streaming
+2026-11-20T15:12:01.643Z LOG:  replication status: replay_lag_s=149.5 write_lag_s=134.6 state=streaming
+2026-11-20T15:13:03.212Z LOG:  replication status: replay_lag_s=151.2 write_lag_s=136.1 state=streaming
+2026-11-20T15:14:00.678Z LOG:  replication status: replay_lag_s=150.1 write_lag_s=135.0 state=streaming
+2026-11-20T15:15:02.111Z LOG:  replication status: replay_lag_s=147.8 write_lag_s=133.0 state=streaming
+2026-11-20T15:16:01.835Z LOG:  replication status: replay_lag_s=161.7 write_lag_s=145.5 state=streaming
+2026-11-20T15:16:36.953Z LOG:  restartpoint complete
+2026-11-20T15:17:02.103Z LOG:  replication status: replay_lag_s=155.6 write_lag_s=140.1 state=streaming
+2026-11-20T15:18:03.448Z LOG:  replication status: replay_lag_s=154.6 write_lag_s=139.1 state=streaming
+2026-11-20T15:19:03.145Z LOG:  replication status: replay_lag_s=161.8 write_lag_s=145.6 state=streaming
+2026-11-20T15:20:03.774Z LOG:  replication status: replay_lag_s=167.2 write_lag_s=150.5 state=streaming
+2026-11-20T15:21:00.409Z LOG:  replication status: replay_lag_s=158.7 write_lag_s=142.8 state=streaming
+2026-11-20T15:22:02.895Z LOG:  replication status: replay_lag_s=164.4 write_lag_s=148.0 state=streaming
+2026-11-20T15:23:00.722Z LOG:  replication status: replay_lag_s=165.0 write_lag_s=148.5 state=streaming
+2026-11-20T15:24:01.426Z LOG:  replication status: replay_lag_s=170.6 write_lag_s=153.6 state=streaming
+2026-11-20T15:25:02.843Z LOG:  replication status: replay_lag_s=172.3 write_lag_s=155.1 state=streaming
+2026-11-20T15:26:00.466Z LOG:  replication status: replay_lag_s=172.3 write_lag_s=155.1 state=streaming
+2026-11-20T15:27:01.429Z LOG:  replication status: replay_lag_s=177.9 write_lag_s=160.1 state=streaming
+2026-11-20T15:28:01.533Z LOG:  replication status: replay_lag_s=179.9 write_lag_s=161.9 state=streaming
+2026-11-20T15:29:02.990Z LOG:  replication status: replay_lag_s=180.5 write_lag_s=162.5 state=streaming
+2026-11-20T15:30:01.945Z LOG:  replication status: replay_lag_s=183.0 write_lag_s=164.7 state=streaming
+2026-11-20T15:31:02.936Z LOG:  replication status: replay_lag_s=183.8 write_lag_s=165.4 state=streaming
+2026-11-20T15:32:00.704Z LOG:  replication status: replay_lag_s=182.5 write_lag_s=164.3 state=streaming
+2026-11-20T15:32:49.332Z LOG:  restartpoint complete
+2026-11-20T15:33:01.495Z LOG:  replication status: replay_lag_s=185.8 write_lag_s=167.2 state=streaming
+2026-11-20T15:34:00.786Z LOG:  replication status: replay_lag_s=188.7 write_lag_s=169.8 state=streaming
+2026-11-20T15:35:01.401Z LOG:  replication status: replay_lag_s=183.3 write_lag_s=165.0 state=streaming
+2026-11-20T15:36:02.992Z LOG:  replication status: replay_lag_s=185.5 write_lag_s=167.0 state=streaming
+2026-11-20T15:37:02.579Z LOG:  replication status: replay_lag_s=196.9 write_lag_s=177.2 state=streaming
+2026-11-20T15:38:00.098Z LOG:  replication status: replay_lag_s=188.8 write_lag_s=169.9 state=streaming
+2026-11-20T15:39:03.407Z LOG:  replication status: replay_lag_s=189.1 write_lag_s=170.2 state=streaming
+2026-11-20T15:40:02.981Z LOG:  replication status: replay_lag_s=193.4 write_lag_s=174.1 state=streaming
+2026-11-20T15:41:00.864Z LOG:  replication status: replay_lag_s=205.2 write_lag_s=184.6 state=streaming
+2026-11-20T15:42:02.076Z LOG:  replication status: replay_lag_s=192.6 write_lag_s=173.3 state=streaming
+2026-11-20T15:43:03.699Z LOG:  replication status: replay_lag_s=195.9 write_lag_s=176.3 state=streaming
+2026-11-20T15:44:00.351Z LOG:  replication status: replay_lag_s=200.3 write_lag_s=180.3 state=streaming
+2026-11-20T15:45:03.661Z LOG:  replication status: replay_lag_s=203.9 write_lag_s=183.5 state=streaming
+2026-11-20T15:46:03.907Z LOG:  replication status: replay_lag_s=205.7 write_lag_s=185.2 state=streaming
+2026-11-20T15:47:03.388Z LOG:  replication status: replay_lag_s=214.6 write_lag_s=193.1 state=streaming
+2026-11-20T15:48:02.714Z LOG:  replication status: replay_lag_s=216.2 write_lag_s=194.6 state=streaming
+2026-11-20T15:49:02.746Z LOG:  replication status: replay_lag_s=209.3 write_lag_s=188.3 state=streaming
+2026-11-20T15:50:01.895Z LOG:  replication status: replay_lag_s=219.3 write_lag_s=197.3 state=streaming
+2026-11-20T15:51:02.045Z LOG:  replication status: replay_lag_s=213.7 write_lag_s=192.3 state=streaming
+2026-11-20T15:52:01.776Z LOG:  replication status: replay_lag_s=219.7 write_lag_s=197.7 state=streaming
+2026-11-20T15:53:02.005Z LOG:  replication status: replay_lag_s=221.7 write_lag_s=199.5 state=streaming
+2026-11-20T15:54:01.576Z LOG:  replication status: replay_lag_s=226.7 write_lag_s=204.0 state=streaming
+2026-11-20T15:55:00.483Z LOG:  replication status: replay_lag_s=218.0 write_lag_s=196.2 state=streaming
+2026-11-20T15:56:03.523Z LOG:  replication status: replay_lag_s=231.1 write_lag_s=208.0 state=streaming
+2026-11-20T15:57:02.385Z LOG:  replication status: replay_lag_s=225.2 write_lag_s=202.7 state=streaming
+2026-11-20T15:58:03.055Z LOG:  replication status: replay_lag_s=220.9 write_lag_s=198.8 state=streaming
+2026-11-20T15:59:01.122Z LOG:  replication status: replay_lag_s=228.8 write_lag_s=205.9 state=streaming
+2026-11-20T16:00:02.724Z LOG:  replication status: replay_lag_s=231.4 write_lag_s=208.3 state=streaming
+2026-11-20T16:01:02.579Z LOG:  replication status: replay_lag_s=226.4 write_lag_s=203.8 state=streaming
+2026-11-20T16:02:03.372Z LOG:  replication status: replay_lag_s=237.8 write_lag_s=214.0 state=streaming
+2026-11-20T16:03:00.475Z LOG:  replication status: replay_lag_s=228.4 write_lag_s=205.6 state=streaming
+2026-11-20T16:04:01.153Z LOG:  replication status: replay_lag_s=231.5 write_lag_s=208.3 state=streaming
+2026-11-20T16:05:00.774Z LOG:  replication status: replay_lag_s=236.6 write_lag_s=213.0 state=streaming
+2026-11-20T16:06:02.335Z LOG:  replication status: replay_lag_s=246.7 write_lag_s=222.0 state=streaming
+2026-11-20T16:06:26.204Z LOG:  restartpoint complete
+2026-11-20T16:07:00.012Z LOG:  replication status: replay_lag_s=242.7 write_lag_s=218.4 state=streaming
+2026-11-20T16:08:00.482Z LOG:  replication status: replay_lag_s=247.3 write_lag_s=222.5 state=streaming
+2026-11-20T16:09:00.252Z LOG:  replication status: replay_lag_s=248.5 write_lag_s=223.6 state=streaming
+2026-11-20T16:10:03.585Z LOG:  replication status: replay_lag_s=251.0 write_lag_s=225.9 state=streaming
+2026-11-20T16:11:02.251Z LOG:  replication status: replay_lag_s=250.1 write_lag_s=225.1 state=streaming
+2026-11-20T16:12:03.141Z LOG:  replication status: replay_lag_s=257.0 write_lag_s=231.3 state=streaming
+2026-11-20T16:13:00.300Z LOG:  replication status: replay_lag_s=252.8 write_lag_s=227.5 state=streaming
+2026-11-20T16:14:02.644Z LOG:  replication status: replay_lag_s=246.5 write_lag_s=221.9 state=streaming
+2026-11-20T16:15:00.040Z LOG:  replication status: replay_lag_s=249.0 write_lag_s=224.1 state=streaming
+2026-11-20T16:16:02.638Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:17:03.939Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:18:03.599Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:19:01.513Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:20:01.810Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:21:03.066Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:22:03.807Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:23:02.213Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:24:02.621Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:24:08.350Z LOG:  restartpoint complete
+2026-11-20T16:25:03.385Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:26:01.008Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:27:02.827Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:28:03.305Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming
+2026-11-20T16:29:01.903Z LOG:  replication status: replay_lag_s=260.0 write_lag_s=234.0 state=streaming

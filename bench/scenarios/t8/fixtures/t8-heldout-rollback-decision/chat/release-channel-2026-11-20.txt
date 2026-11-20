@@ -1,0 +1,13 @@
+[2026-11-20T13:10:02Z] release-bot: orders-api 4.18.0 stage half started on oa-3, oa-4 (build 5488)
+[2026-11-20T13:11:40Z] Tom Okafor: half stage is live, I'll look again at 14:10 before we go full at 15:00
+[2026-11-20T13:38:15Z] Grace Mensah (support): customers say the delivery slot page is crawling
+[2026-11-20T13:39:02Z] Ravi Desai: p99 went from 250 to over a second right after the rollout, this smells like 4.18
+[2026-11-20T13:41:30Z] Ravi Desai: SLOT-77 touched slot search, maybe the empty-result cache
+[2026-11-20T13:52:47Z] Mei Lin: slot page is better again
+[2026-11-20T13:58:10Z] Grace Mensah (support): a handful of people say their card was refused at checkout and then went through when they tried again later, is that us?
+[2026-11-20T14:02:33Z] Mei Lin: overview is green, 5xx at 0.29%, same as yesterday. no alerts
+[2026-11-20T14:05:21Z] Ravi Desai: 4.18.1 is basically ready, it has a fix for the checkout retry thing. can we just roll forward instead of back?
+[2026-11-20T14:09:12Z] Priya Shah (product): please don't roll back. the promo code field is in 4.18 and marketing sends the Saturday promo email at 18:00 UTC today
+[2026-11-20T14:14:48Z] Mei Lin: also remember what happened when we rolled back 4.9, I'd rather not repeat that
+[2026-11-20T14:19:05Z] Ravi Desai: re-ran the 4.18.1 build, waiting on CI
+[2026-11-20T14:26:40Z] Tom Okafor: ok, I need one call by 14:45: roll back, hold at half, or roll forward. writing it up in release/decisions/

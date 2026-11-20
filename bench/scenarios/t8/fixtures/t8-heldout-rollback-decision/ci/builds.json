@@ -1,0 +1,9 @@
+{
+  "pipeline": "orders-api",
+  "builds": [
+    { "id": 5471, "version": "4.17.3", "commit": "9c1e44a", "finished": "2026-11-13T16:20:00Z", "status": "passed", "stages": { "unit": "passed", "integration": "passed", "package": "passed" } },
+    { "id": 5488, "version": "4.18.0", "commit": "e07b2d1", "finished": "2026-11-20T11:52:00Z", "status": "passed", "stages": { "unit": "passed", "integration": "passed", "package": "passed" } },
+    { "id": 5509, "version": "4.18.1", "commit": "41aa9f0", "finished": "2026-11-20T13:58:00Z", "status": "failed", "stages": { "unit": "passed", "integration": "failed", "package": "skipped" }, "failed_tests": ["checkout_flow::retry_after_cart_edit", "promo::apply_code_twice"] },
+    { "id": 5512, "version": "4.18.1", "commit": "b3d0c72", "finished": "2026-11-20T14:21:00Z", "status": "failed", "stages": { "unit": "passed", "integration": "failed", "package": "skipped" }, "failed_tests": ["checkout_flow::retry_after_cart_edit"] }
+  ]
+}
