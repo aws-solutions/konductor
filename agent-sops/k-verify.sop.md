@@ -102,14 +102,14 @@ For CDK/infrastructure packages, run additional CDK-specific checks.
 **Constraints:**
 
 - You MUST only run this step if the project contains CDK infrastructure code
-- You MUST run these commands in order:
-  1. `cdk ls` — list all stacks
-  2. `cdk diff` — diff infrastructure changes
-  3. `cdk synth` — synthesize CloudFormation templates
-- You MUST capture output from each command
+- `cdk synth`, `cdk ls` and `cdk diff` all run the CDK app's own code, and `cdk diff` also reads the deployed stack in an AWS account. You MUST NOT run `cdk synth`, `cdk ls` or `cdk diff` until the user confirms that the CDK app is trusted to execute in this environment. A CDK app you created in this session, or one the user says they own, counts as confirmed. Editing a checkout under review does not make it trusted, so ask first. Steps 2 to 4 already run the checkout's code and this gate does not cover them; what it adds is that no CDK command reaches an AWS account without the user's confirmation and the credentials the user names.
+- When the user confirms, You MUST run `cdk ls` and `cdk synth --strict` and record each outcome. If the user has not named credentials, You MUST run both with `--no-lookups`, and You MUST report a failure caused by missing context as not run (needs a context lookup), not as a failed check. You MUST run `cdk diff` only when the user also asks for a check against the deployed stack, and You MUST run `cdk diff` and any context lookup only with the credentials the user names.
+- Without confirmation, You MUST validate an existing `cdk.out/` template if one is present, or read the stacks and constructs, and You MUST list `cdk synth`, `cdk ls` and `cdk diff` as not run, with the reason, in the verification report.
+- You MUST NOT deploy, bootstrap or create a change set.
+- You MUST capture output from each command you run
 - You MUST flag any unexpected stack changes
 
-**Expected Output:** CDK verification results with command outputs and status per check
+**Expected Output:** CDK verification results: output and status for each command run, and each command not run with the reason
 
 ### 6. Manual Verification
 
@@ -187,6 +187,11 @@ Document all verification results into a single evidence report.
 - Errors: [count]
 - Warnings: [count]
 - Status: [✓ / ✗ / Skipped]
+
+### CDK (if applicable)
+
+- Ran: [each command run, with exit code and status]
+- Not run: [each of `cdk synth`, `cdk ls` and `cdk diff` not run, with the reason]
 
 ### Manual Verification
 
