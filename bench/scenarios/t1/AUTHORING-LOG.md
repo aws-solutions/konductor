@@ -61,6 +61,7 @@ Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an 
 | t1-nfr-latency-cache | minimax-m2.5 | second-family author stopped at the 90-tool-call cap without writing task-draft.json; dropped, not hand-fixed (owner rule) | see the calls table for credits |
 | t1-impl-flag-rollout | minimax-m2.5 | second-family draft: the reference scored 0 (no hidden test ran) and the reviewer's leak, hidden-answer and ceiling verdicts were fail; dropped without a fix round, because the fix would keep a Python hidden suite and so a new per-task bridge copy, which the owner's no-copies rule forbids until the shared lib lands | see the calls table for credits |
 | t1-ref-split-module | minimax-m2.5 | second-family draft stopped by the 45-minute watchdog before it finished; the reviewer saw a partial draft and failed all five checks; dropped, not hand-fixed | see the calls table for credits |
+| t1-bug-csv-import | deepseek-3.2, then minimax-m2.5 | no usable draft after its one fix attempt by the second family: deepseek stopped at its cap; minimax wrote the repository outside fixture/ twice (moved, layout only) and its key call stopped at the 60-tool-call cap with no key-draft.json; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -186,3 +187,4 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-twin-webhook-routes | lazy+alt answers | glm-5 | 1.83 |
 | t1-ref-dataclasses | author-data | minimax-m2.5 | 7.31 |
 | t1-ref-dataclasses | author-key | minimax-m2.5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-bug-csv-import | author-key | minimax-m2.5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
