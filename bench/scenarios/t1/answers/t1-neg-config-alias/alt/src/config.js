@@ -5,8 +5,6 @@ const DEPRECATED_KEYS = {
   pollIntervalMs: 'pollingIntervalMs'
 };
 
-const warnedKeys = new Set();
-
 function loadConfig(environment = process.env.NODE_ENV || 'development') {
   const name = environment === 'test' ? 'test.json' : 'default.json';
   const file = path.join(__dirname, '..', 'config', name);
@@ -15,16 +13,12 @@ function loadConfig(environment = process.env.NODE_ENV || 'development') {
   // Handle deprecated key aliases
   for (const [oldKey, newKey] of Object.entries(DEPRECATED_KEYS)) {
     if (oldKey in config) {
-      if (!warnedKeys.has(oldKey)) {
-        console.warn(`Deprecation warning: "${oldKey}" is deprecated, use "${newKey}" instead`);
-        warnedKeys.add(oldKey);
-      }
+      console.warn(`Deprecation warning: "${oldKey}" is deprecated, use "${newKey}" instead`);
       // New key takes precedence if both are present
-      if (!(newKey in config)) {
-        config[newKey] = config[oldKey];
-      }
-      delete config[oldKey];
+      if (!(newKey in config)) config[newKey] = config[oldKey];
     }
+    // Callers may still read the old name for one release.
+    if (newKey in config) config[oldKey] = config[newKey];
   }
   
   return { ...config, environment };

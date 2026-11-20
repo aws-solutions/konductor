@@ -53,15 +53,11 @@ test('retryDelay calculates exponential backoff with cap', () => {
 });
 
 test('retryDelay applies jitter from random value', () => {
-  const policy = { baseDelayMs: 100, maxDelayMs: 10000, jitter: 50 };
-  const delay1 = retryDelay(policy, 1, 0);
-  assert.equal(delay1, 100); // No jitter when random is 0
-  
-  const delay2 = retryDelay(policy, 1, 0.5);
-  assert.equal(delay2, 125); // 100 + 50 * 0.5 = 125
-  
-  const delay3 = retryDelay(policy, 1, 1);
-  assert.equal(delay3, 150); // 100 + 50 * 1 = 150 (but random < 1, so floor = 50 max)
+  const policy = { baseDelayMs: 100, maxDelayMs: 10000, jitter: 0.5 };
+  assert.equal(retryDelay(policy, 1, 0), 50); // low end: 100 * (1 - 0.5)
+  assert.equal(retryDelay(policy, 1, 0.5), 100); // middle: no change
+  assert.equal(retryDelay(policy, 1, 1), 150); // high end: 100 * (1 + 0.5)
+  assert.equal(retryDelay({ ...policy, maxDelayMs: 120 }, 1, 1), 120); // still capped
 });
 
 test('runner retries failed job up to maxAttempts', async () => {

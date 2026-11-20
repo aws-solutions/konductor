@@ -7,6 +7,15 @@ class RateLimiter {
     this.keyPlans = config.keyPlans || {};
     this.clock = clock || (() => Date.now());
     this.clients = new Map();
+    this.tick = 0;
+  }
+
+  static readKey(headers) {
+    for (const name of ['x-api-key', 'x-booking-api-key']) {
+      const value = typeof headers[name] === 'string' ? headers[name].trim() : '';
+      if (value) return value;
+    }
+    return null;
   }
 
   getPlanForKey(apiKey) {
@@ -23,7 +32,7 @@ class RateLimiter {
   }
 
   evictLRU() {
-    if (this.clients.size <= this.maxClients) return;
+    if (this.clients.size < this.maxClients) return;
     
     let oldestKey = null;
     let oldestTime = Infinity;
@@ -44,12 +53,16 @@ class RateLimiter {
     let entry = this.clients.get(apiKey);
     
     if (!entry || now - entry.windowStart >= this.windowMs) {
+      if (!entry) {
+        this.cleanupExpired(now);
+        this.evictLRU();
+      }
       const plan = this.getPlanForKey(apiKey);
       entry = {
         count: 0,
         windowStart: now,
         limit: plan.limit,
-        lastSeen: now
+        lastSeen: this.tick
       };
       this.clients.set(apiKey, entry);
     }
@@ -58,20 +71,18 @@ class RateLimiter {
   }
 
   checkLimit(request, response) {
-    const apiKey = request.headers['x-api-key'] || request.headers['x-booking-api-key'];
+    const apiKey = RateLimiter.readKey(request.headers);
     
-    if (!apiKey || apiKey.trim() === '') {
+    if (!apiKey) {
       response.json(401, { error: { code: 'missing_api_key', message: 'API key is required' } });
       return { allowed: false, consumedQuota: false };
     }
 
     const now = this.clock();
-    
-    this.cleanupExpired(now);
-    this.evictLRU();
+    this.tick += 1;
     
     const entry = this.getOrCreateEntry(apiKey, now);
-    entry.lastSeen = now;
+    entry.lastSeen = this.tick;
     
     if (entry.count >= entry.limit) {
       const retryAfterSec = Math.ceil((this.windowMs - (now - entry.windowStart)) / 1000);

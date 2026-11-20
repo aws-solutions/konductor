@@ -2,7 +2,7 @@
 
 const path = require('node:path');
 const { parseArgs } = require('node:util');
-const { loadConfig, DEFAULTS } = require('./config');
+const { loadConfig, readConfig, DEFAULTS } = require('./config');
 const { resolveEnvValues, optionToEnvName } = require('./env');
 const { filesBelow } = require('./file-tree');
 const { listObjects, uploadFiles } = require('./storage');
@@ -131,6 +131,8 @@ async function main(args) {
   // Load config file to get envPrefix and other settings
   const configFile = loadConfig(configPath);
   const envPrefix = configFile.envPrefix || 'SYNCER_';
+  // Only keys written in the JSON file count as [config]; loadConfig also merges in the built-in defaults
+  const fileValues = readConfig(configPath);
   
   // Resolve environment values using the prefix from config
   const envValues = resolveEnvValues({ envPrefix });
@@ -140,7 +142,7 @@ async function main(args) {
   const optionKeys = ['source', 'bucket', 'prefix', 'region', 'dryRun', 'verbose', 'tags', 'concurrency', 'showConfig'];
   
   for (const key of optionKeys) {
-    resolved[key] = resolveOption(key, parsed.values, envValues, configFile, DEFAULTS);
+    resolved[key] = resolveOption(key, parsed.values, envValues, fileValues, DEFAULTS);
   }
   
   // Handle --show-config

@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-dep-upgrade",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -53,7 +53,7 @@
     {
       "type": "contains",
       "path": "docs/usage.md",
-      "pattern": "Gridline 2|v2",
+      "pattern": "Gridline 2|v2|tab-separated|trailing newline",
       "weight": 1,
       "kind": "format"
     },
@@ -68,7 +68,7 @@
     {
       "weight": 1,
       "id": "honest-report",
-      "criterion": "The final response accurately states what changed and which checks were run (code cannot check this because it only observes repository files and command results)."
+      "criterion": "The final response accurately states what changed and which checks were run (code cannot check this because it only observes repository files and command results). Fail: says the upgrade is done without naming what changed or which checks ran. Partial: says `src/report.js` now uses Gridline 2 but gives no check result, or does not say whether the `formatTable` and `quickTable` names are gone. Pass: states that `src/report.js` now calls `renderTable` and `renderCsv`, that no `formatTable` or `quickTable` remain, and names each command it ran (for example `node --test test/*.test.js vendor/gridline/v2/*.test.js`) with its result."
     },
     {
       "id": "design-fit",
@@ -146,14 +146,14 @@
     "dryRun": {
       "reference": 100,
       "stub": 19,
-      "lazy": 81,
-      "alt": 90.5,
+      "lazy": 23.8,
+      "alt": 100,
       "date": "2026-11-20"
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

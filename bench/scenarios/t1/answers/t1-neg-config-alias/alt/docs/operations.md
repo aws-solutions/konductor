@@ -9,3 +9,5 @@ For a stuck local queue, stop the worker, make a backup of the JSON file, and us
 ## Configuration
 
 The `pollingIntervalMs` setting controls how long the worker waits between queue polls when no jobs are available. The default is 250ms.
+
+The older name `pollIntervalMs` still works for one release. A config that uses it loads normally and logs one deprecation warning that names both keys. When both keys are set, `pollingIntervalMs` wins.

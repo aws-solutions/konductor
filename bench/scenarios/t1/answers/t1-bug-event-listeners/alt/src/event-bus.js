@@ -23,7 +23,7 @@ class EventBus extends EventEmitter {
         // Continue to next handler if one fails
       }
     }
-    await Promise.all(results);
+    await Promise.allSettled(results);
   }
 }
 

@@ -7,11 +7,8 @@ function loadConfig(env = process.env) {
     port: Number.isInteger(port) && port > 0 ? port : defaults.port,
     ledgerLabel: env.LEDGER_LABEL || defaults.ledgerLabel,
     maxBodyBytes: defaults.maxBodyBytes,
-    secrets: {
-      primary: env.WEBHOOK_SECRET_PRIMARY || null,
-      secondary: env.WEBHOOK_SECRET_SECONDARY || null
-    },
-    toleranceSeconds: Number.isInteger(toleranceSeconds) && toleranceSeconds >= 0 ? toleranceSeconds : defaults.webhookToleranceSeconds
+    webhookSecrets: [env.WEBHOOK_SECRET_PRIMARY, env.WEBHOOK_SECRET_SECONDARY].filter((s) => typeof s === 'string' && s.length > 0),
+    webhookToleranceSeconds: Number.isInteger(toleranceSeconds) && toleranceSeconds >= 0 ? toleranceSeconds : defaults.webhookToleranceSeconds
   };
 }
 
