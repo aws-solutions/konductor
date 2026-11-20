@@ -228,17 +228,82 @@ url_allowed() {
   if [[ ${#ALLOWLIST_PATTERNS[@]} -eq 0 ]]; then
     return 0
   fi
-  local host
-  host="$(printf '%s\n' "$url" | sed -E 's|https?://([^/]+).*|\1|')"
-  for pattern in "${ALLOWLIST_PATTERNS[@]}"; do
-    local regex
-    regex="$(echo "$pattern" | sed 's/\./\\./g; s/\*/[^.]*/g')"
-    if [[ "$host" =~ ^${regex}$ ]]; then
-      return 0
-    fi
-  done
-  return 1
+  # Only https URLs can pass. The caller hands over every scheme:// token, so
+  # http, ftp and any other scheme are rejected here rather than skipped.
+  #
+  # Match the pattern against the URL's hostname only. A raw regex over the
+  # text after "://" let a query string or fragment carry the allowed suffix
+  # ("https://evil%2Ecom?.example.com/x"), so the authority is parsed the way
+  # a browser reads it: it ends at the first / ? # or backslash, and userinfo
+  # before the last @ is dropped. Anything that is not a plain ASCII host
+  # afterwards (an encoded dot, a raw non-ASCII label, a bracketed address)
+  # fails closed: allowlist the xn-- punycode form of an IDN host instead.
+  #
+  # Pattern semantics, case-insensitive: a "*" that is the whole leftmost label
+  # matches one or more labels, so "*.example.com" covers docs.example.com and
+  # a.b.example.com but not example.com itself. A "*" anywhere else matches
+  # within a single label. Every other character is literal.
+  #
+  # A host whose last label is a number is an IPv4 address to a browser, in
+  # any spelling: 16909060, 0x1020304, 0177.0.0.1, 1.2.3.4. Such a host
+  # matches only a pattern without "*" that spells it exactly.
+  python3 - "$url" "${ALLOWLIST_PATTERNS[@]}" <<'PYEOF'
+import re, sys
+from urllib.parse import unquote
+
+url, patterns = sys.argv[1], sys.argv[2:]
+
+def hostname(url):
+    # Browsers read a backslash as a slash here, so https:\\host is https://host.
+    m = re.match(r"(?i)https:[/\\]{2}", url)
+    if not m:
+        return None
+    authority = re.split(r"[/?#\\]", url[m.end():], maxsplit=1)[0]
+    authority = authority.rsplit("@", 1)[-1]
+    host, sep, port = authority.rpartition(":")
+    if not sep:
+        host = authority
+    elif not port.isdigit():
+        return None
+    if re.search(r"(?i)%2e", host):
+        return None
+    host = unquote(host)
+    if host.endswith("."):
+        host = host[:-1]
+    # Check before lowercasing: str.lower() folds some non-ASCII letters
+    # (U+212A KELVIN SIGN) into ASCII ones.
+    if not re.fullmatch(r"[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*", host):
+        return None
+    return host.lower()
+
+def is_ip_literal(host):
+    return re.fullmatch(r"[0-9]+|0x[0-9a-f]*", host.rsplit(".", 1)[-1]) is not None
+
+def label_matches(label, pattern):
+    regex = "[^.]*".join(re.escape(part) for part in pattern.split("*"))
+    return re.fullmatch(regex, label) is not None
+
+def host_matches(host, pattern):
+    if is_ip_literal(host):
+        return "*" not in pattern and host == pattern.lower().rstrip(".")
+    want = pattern.lower().rstrip(".").split(".")
+    have = host.split(".")
+    if want[0] == "*":
+        rest = want[1:]
+        if len(have) <= len(rest):
+            return False
+        have = have[len(have) - len(rest):]
+        want = rest
+    elif len(have) != len(want):
+        return False
+    return all(label_matches(h, w) for h, w in zip(have, want))
+
+host = hostname(url)
+sys.exit(0 if host is not None and any(host_matches(host, p) for p in patterns) else 1)
+PYEOF
 }
+
+URL_RE='([A-Za-z][A-Za-z0-9+.-]*:[/\\]{2})[^[:space:]]+'
 
 # Strip the optional leading date and then the origin tag, in the order step 4a
 # accepts them, so the near-duplicate check compares entry text only: the same
@@ -415,13 +480,20 @@ while IFS= read -r line; do
     exit 1
   fi
 
-  # 3a. External URLs
-  while IFS= read -r url; do
+  # 3a. External URLs. Every scheme:// occurrence is checked, not only http(s),
+  # so an ftp:// or HTTP:// link cannot skip the allowlist. A backslash in place
+  # of either slash counts too. The scan restarts right after each scheme, so a
+  # second link glued to the first ("[a](https://ok/)[b](ftp://evil)") or one
+  # carried in another URL's query is checked on its own.
+  rest="$entry"
+  while [[ "$rest" =~ $URL_RE ]]; do
+    url="${BASH_REMATCH[0]}"
     if ! url_allowed "$url"; then
       echo "REJECT: blocked external URL: $url" >&2
       exit 1
     fi
-  done < <(printf '%s\n' "$entry" | grep -oE 'https?://[^[:space:]]+' || true)
+    rest="${rest#*"${BASH_REMATCH[1]}"}"
+  done
 
   # 3b. Code blocks
   if [[ "$entry" == *'```'* ]]; then
