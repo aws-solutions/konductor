@@ -51,3 +51,8 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-dev-quiet-hours-digest | fix | qwen3-coder-next | 9.58 |  |
 | t10-dev-quiet-hours-digest | audit | - | 0.00 | step A and fix streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
 | t10-dev-quiet-hours-digest | step A dropped | qwen3-coder-next | 0.00 | after the one fix attempt the request still restated the traps and listed the design topics, with no interface contract; dropped, not hand-fixed. The brief goes to gpt-5.6-luna (single step) |
+| t10-dev-quiet-hours-digest | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); first-family re-author after the step-A drop |
+| t10-dev-quiet-hours-digest | author | gpt-5.6-luna | 5.90 |  |
+| t10-dev-quiet-hours-digest | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 66.24 of 500; reason: ESM block tests, stray file, lazy 50.1 |
+| t10-dev-quiet-hours-digest | fix | gpt-5.6-luna | 3.75 |  |
+| t10-dev-quiet-hours-digest | free dry run | - | 0.00 | after the one fix round and a logged hand edit of two check commands: reference 100, stub 3.2, alt 100, lazy 54.8 (gate 40). DROPPED: no map, review or recheck; files removed, the brief and `authoring/` record kept |

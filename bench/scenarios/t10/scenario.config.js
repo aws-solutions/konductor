@@ -66,6 +66,22 @@ function logKey(s, id) {
   return { model, credits };
 }
 
+// A hand-edited task is re-checked by a non-Claude model against the owner's four-item checklist (work/<id>/EDITS.md says
+// what changed); the answer becomes review.recheck in the task file.
+function recheck(s, id) {
+  const model = s.brief(id).reviewer;
+  const cwd = s.work(`${id}-recheck`);
+  fs.rmSync(cwd, { recursive: true, force: true });
+  fs.cpSync(s.work(id), cwd, { recursive: true });
+  fs.rmSync(path.join(cwd, 'kit'), { recursive: true, force: true });
+  const r = s.call(model, cwd, fs.readFileSync(path.join(s.dir, 'prompts', 'recheck.md'), 'utf8'), `${id}.recheck`);
+  s.logCall(id, 'recheck', model, r);
+  const file = path.join(cwd, 'recheck.json');
+  const out = fs.existsSync(file) ? s.readJson(file) : s.jsonIn(r.finalText);
+  fs.writeFileSync(s.work(`${id}.recheck.json`), `${JSON.stringify({ model, date: s.today(), ...out }, null, 2)}\n`);
+  return out;
+}
+
 function normalize(s, id) {
   const w = s.work(id);
   if (!fs.existsSync(path.join(w, 'fixture'))) throw new Error(`${id}: the author wrote no fixture/`);
@@ -90,6 +106,7 @@ function buildTask(s, id) {
   const mapping = negative ? s.NO_MAPPING : mapped;
   if (negative) b.mustNotLoad = [...mapped.targetSkills, ...(mapped.targetSop ? [mapped.targetSop] : [])];
   const rev = s.workJson(`${id}.review.json`);
+  const rc = s.workJson(`${id}.recheck.json`);
   // Authors guess seconds of work; a build from an idea needs half an hour or more. shortcut: fixed floor, raise it from pilot timings.
   const softSec = Math.max(draft.limits.softSec, b.softSec || 1800);
   const limits = { softSec, hardSec: softSec * 2 };
@@ -105,7 +122,7 @@ function buildTask(s, id) {
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: s.mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: s.FAMILY[b.author], model: b.author, date: b.date || s.today(), source: b.source, ...(b.twoStep ? { twoStep: { fixture: b.author, key: b.keyAuthor } } : {}) },
-    ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)) } } : {}),
+    ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)), ...(rc ? { recheck: { family: s.FAMILY[rc.model], model: rc.model, date: rc.date, items: rc.items.map(({ check, verdict, note }) => ({ check, verdict, ...(note ? { note } : {}) })) } } : {}) } } : {}),
     ...(handEditedIds(s.dir).has(id) ? { handEdited: { family: 'claude', editor: 'kirocrew-mate-worker (T10 worker session)', log: 'HAND-EDITS.md' } } : {}),
     pilot: null, lockedAt: null,
   };
@@ -130,6 +147,6 @@ module.exports = {
       [s.work(id, 'hidden'), path.join(s.dir, 'hidden', id)],
       [s.work(id, 'solution'), path.join(s.dir, 'solutions', id)],
     ],
-    commands: { prepare, normalize, 'log-key': logKey },
+    commands: { prepare, normalize, recheck, 'log-key': logKey },
   },
 };

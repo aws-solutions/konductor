@@ -17,13 +17,21 @@ const helper = (name) => [path.join(__dirname, name), path.join(__dirname, '..',
 const copy = (name, to) => { fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(helper(name), to); };
 const writeKey = (file, key) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(key, null, 2)}\n`); };
 
+const isEsm = (draftDir) => {
+  try { return JSON.parse(fs.readFileSync(path.join(draftDir, 'fixture', 'package.json'), 'utf8')).type === 'module'; } catch { return false; }
+};
+
 /** Builds hidden/ from the draft: the shared block grader, and one key per document (design: block-kit, rollout: rollout-kit). */
 function buildHidden(draftDir, draft) {
   const hidden = path.join(draftDir, 'hidden');
   fs.mkdirSync(hidden, { recursive: true });
   if (draft.designKey || draft.rolloutKey) {
+    // The block grader is CommonJS: in an ES-module repository (package.json "type": "module") the test file is named
+    // block.test.cjs and block-kit/ carries its own package.json, so both load as CommonJS.
+    const esm = isEsm(draftDir);
     copy('block-key.js', path.join(hidden, 'block-kit/block-key.js'));
-    copy('block.test.js', path.join(hidden, 'block.test.js'));
+    copy('block.test.js', path.join(hidden, esm ? 'block.test.cjs' : 'block.test.js'));
+    if (esm) fs.writeFileSync(path.join(hidden, 'block-kit/package.json'), '{ "type": "commonjs" }\n');
   }
   if (draft.designKey) writeKey(path.join(hidden, 'block-kit/key.json'), draft.designKey);
   if (draft.rolloutKey) writeKey(path.join(hidden, 'rollout-kit/key.json'), draft.rolloutKey);

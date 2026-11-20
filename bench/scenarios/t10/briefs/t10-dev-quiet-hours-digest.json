@@ -28,5 +28,9 @@
         "result": "dropped: the first call hit the 150 tool-call cap (about 13.2 credits, estimated) with no PLANTED.md and no task-draft.json; the fix call (9.58 credits) wrote both, but the request restates the traps (billing never held per docs/policies.md, the 50-recipient cap, the scheduler dropping past jobs), lists the design topics, and gives no interface contract the hidden tests could follow"
       }
     ]
+  },
+  "dropped": {
+    "date": "2026-11-20",
+    "reason": "free gates after the one fix round: reference 100, stub 3.2, alt 100, but the scripted lazy answer scored 54.8 (gate 40): the design and rollout keys pass 9 of 13 and 4 of 10 items with half of each list. The first dry run also failed (ES-module block tests). Not hand-fixed further."
   }
 }

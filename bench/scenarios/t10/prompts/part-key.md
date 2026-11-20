@@ -29,6 +29,7 @@ Paths in `fromFile` and `file` are relative to the repository root (no `fixture/
 - A hurried reader who skims the README must not be able to pass the traps: the proving facts sit in the existing code, config and docs, not in summary files.
 - `evidence` items cite only lines of files the reference solution does NOT change (a changed file shifts line numbers), and each group accepts every line that shows the same fact.
 - A list whose order matters (phases, steps, rings) sits under a field whose name contains `phases`, `steps` or `rings`, and an `order` item tests it; the bench's alternative-answer writer reverses every other list and rewords free text, so no other list may depend on order, and items must pass a reworded answer.
+- Shallow-proofing: a scripted shallow answer keeps the first half of each list, adds the usual decoys and cuts numbers to 70%, and a different correct answer reorders lists and rewords text. At least two thirds of the items of each key must FAIL for the shallow answer (items about specific facts of this repository, each needing its own decision or risk entry) and every item must pass the reworded correct answer. Do not write items that one generic decision or one generic risk would satisfy.
 - The design keys do not duplicate the expert key below.
 
 ### 3. Expert key (for judges only)
@@ -50,6 +51,7 @@ Write `task-draft.json`, one JSON object with exactly these keys:
   - `{ "type": "tests", "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js", "min": <number of behaviour tests> }`
   - `{ "type": "tests", "cmd": "node --test --test-timeout=15000 block.test.js", "min": <sum of the design item weights> }`
   - `{ "type": "tests", "cmd": "BLOCK_KIT=rollout-kit node --test --test-timeout=15000 block.test.js", "min": <sum of the rollout item weights> }`
+  In an ES-module repository (`package.json` has `"type": "module"`) the block test file is named `block.test.cjs`, so write `block.test.cjs` instead of `block.test.js` in both commands (the kit creates that file).
   Add 3 to 5 other checks the hidden tests do not cover: both documents exist (`file_exists`); the visible suite passes AND the agent added tests (one `cmd`: run `node --test` and compare the number of `test(` or `it(` lines under `test/` with the fixture's count, at least {{NNEWTESTS}} more); the CHANGELOG has a new entry (a `cmd` check that compares with the fixture); one file the agent must not edit is unchanged (`fixture_unchanged`, weight 1). Substance weights 1 to 3. At most 25% of the substance weight of the non-`tests` checks may belong to checks that already pass on the untouched fixture. Paths are relative to the repository root. No `contains` check may test a loose keyword that a wrong answer would also contain. Every check must pass on `fixture` plus `solution` plus `hidden`.
 - `rubric`: `[]` (the expert key is scored by judges; the stage adds its rubric item).
 - `designKey`, `rolloutKey`, `expertKey`: as above.
