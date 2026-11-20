@@ -174,3 +174,13 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-impl-cli-envprefix | map | glm-5 | 0.16 |
 | t1-impl-cli-envprefix | review | qwen3-coder-next | 3.25 |
 | t1-impl-cli-envprefix | lazy+alt answers | glm-5 | 15.59 |
+| t1-bug-csv-import | author-data | minimax-m2.5 | 7.16 |
+| t1-bug-money-rounding | author-data | qwen3-coder-next | 2.26 |
+| t1-bug-money-rounding | author-key | qwen3-coder-next | 10.36 |
+| t1-bug-money-rounding | map | glm-5 | 0.17 |
+| t1-bug-money-rounding | review | gpt-5.6-luna | 1.21 |
+| t1-bug-money-rounding | lazy+alt answers | gpt-5.6-luna | 2.94 |
+| t1-twin-webhook-routes | author | gpt-5.6-luna | 1.40 |
+| t1-twin-webhook-routes | map | glm-5 | 0.16 |
+| t1-twin-webhook-routes | review | qwen3-coder-next | 0.45 |
+| t1-twin-webhook-routes | lazy+alt answers | glm-5 | 1.83 |
