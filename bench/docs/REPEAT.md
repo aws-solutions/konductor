@@ -205,10 +205,10 @@ What exists today and what does not:
 | The three-arm kit with vanilla, konductor and a drop-one skill (`cap variant --drop skill:NAME`), `cap decide`, `cap forced-prefix` for skills | built: see [README.md](reference.md#capability-benchmarking-cap) |
 | The old `run --suite lite` (five tasks, vanilla, v1.2.0 and main) | built, but it is not the LITE above |
 | The scenario pack of 150 to 200 tasks, with DEV and HELD-OUT lists and the coverage matrix | **not built yet** |
-| The fixed LITE list (the lowest-hash DEV task per phase, plus one control and one twin) and the stored vanilla baseline | **not built yet** (needs the pack) |
-| The `konductor-noskills` arm and the per-run load check | on `crew/mate/bench-arms-v3-wip`; **not on this branch until the arms batch is merged** |
+| The LITE selection (the lowest-hash DEV task per phase, plus one control and one twin) | built: `run --level lite` (`bench/scenarios/levels.js`). No suite file lists the pack yet and no vanilla baseline is stored, so a LITE run of the pack is **not one command yet** (`DEBT.md` D-77, D-78) |
+| The `konductor-noskills` arm and the per-run load check | built: `cap variant --preset noskills`, `runner/lib/load-check.js` |
 | `cap variant` dropping one SOP or one agent, a forced-load arm for SOPs and agents | **not built yet** |
-| `PREREG.json` and its lock by hash, the two-level bootstrap interval and the verdict words | **not built yet** |
+| `PREREG.json` and its lock by hash, the two-level bootstrap interval and the verdict words | built: `scenarios prereg freeze\|check`, `bench/scenarios/bootstrap.js`, `protocol.js`. No lock is frozen yet |
 | The FULL report: per unit, per role, per phase, ranking (plan 7b) | **not built yet** |
 | The scripted user for tasks that need answers | **not built yet** |
 | The person's calibration of 40 outputs | **not done** |

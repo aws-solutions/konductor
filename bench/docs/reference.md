@@ -1,12 +1,25 @@
-# bench
+# bench reference
 
-**Measure what Konductor, and each skill in it, adds to an AI coding agent.**
+[← bench home](../README.md) · This page lists every command, flag and metric. For a guided start, pick a page
+from the [bench README](../README.md).
 
-bench runs the same tasks with and without a change, scores the output with a panel of judge models,
+bench runs the same tasks with and without a change, scores the output with checks and a panel of judge models,
 and reports cost, quality and run-to-run noise. It is plain Node, with no install step beyond the tools below.
 
-New to bench? Start with [GUIDE.md](../GUIDE.md). Known open debt in the bench code is tracked in [DEBT.md](../DEBT.md).
+Known open debt in the bench code is tracked in [DEBT.md](../DEBT.md).
 To repeat the 2x2 study, or a run level, from the scripts in this repository, see [REPEAT.md](REPEAT.md) and [kit/README.md](../kit/README.md).
+
+Every command `bench.js` takes (generated from `--help`):
+
+<!-- gen:commands -->
+`run`, `judge`, `explain`, `trace`, `refs-report`, `probe-report`, `canary-report`, `plant-trace`, `plant-policy-test`, `plant-report`, `report`, `report-2x2`, `contrast`, `pr-plan`, `recheck`, `gc`, `archive`, `backfill`, `compare`, `skills`, `scenarios lint`, `scenarios prereg`, `scenarios coverage`, `cap list`, `cap audit`, `cap variant`, `cap plan`, `cap draft`, `cap import`, `cap scenarios`, `cap forced-prefix`, `cap keep-prune`, `cap select`, `cap controls`, `cap trigger`, `cap prune-report`, `cap skill-plan`, `cap skill-study`, `cap decide`, `cap review`, `cap review-import`, `cap criteria`, `calibrate`, `list-arms`
+<!-- /gen:commands -->
+
+Every name `--suite` takes (generated):
+
+<!-- gen:suites -->
+`lite`, `full`, `hard`, `real`, `autonomy`, `pilot`, `cap`, `requirements`, `rootcause`, `complex`, `sdlc`, `references-read`, `constraints-probe`, `canary-layers`
+<!-- /gen:suites -->
 
 Two kinds of question, two sets of commands:
 
@@ -870,7 +883,7 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   - **The quality-pack pass is always strict.** Its prompt asks for exact text and its own quote checks (including quotes from the answer key) were built for it, so it does not use the lenient rule. Its tables say "quality pack quotes: strict". `judge --criteria-pack` refuses `--quote-match`.
   - **`judge --run DIR --rescore-quotes`** still works for old judgments: it matches the stored quotes again with no model call, applies the tightened rule, and writes `judgments-lenient.json` beside `judgments.json` (which it never changes), then prints the share of verdicts lowered per judge and the mean rubric per arm before and after. Reports no longer read that file. `--quote-match strict` with it only checks that the strict rule reproduces the stored values.
 - Runs with `credsUnscrubbed`, `stdioTampered`, `usageDbTampered`, `infraError` or no kept workspace are not judged; they are listed in `notJudged`.
-- `judgments.json` of a new study carries `"rubricPolicy": "excluded-as-failures"`: in the rubric mean of its reports, runs not judged for `stdioTampered`, `usageDbTampered` or a `credsUnscrubbed` whose cause is a link or a refused read count as failures (0), and `infraError`, no kept workspace, budget-skipped runs and a `credsUnscrubbed` with any other cause stay gaps. Reports show the judged-runs-only mean beside it. Older judgments have no stamp, keep the gap rule and report with the line `legacy: excluded runs are gaps`. See `GUIDE.md`, "Runs kept out of judging". Reports of a stamped study also carry mean final-text characters and mean artifact bytes per arm and scope, a diligence WARN when an arm is more than 1.5x the baseline arm on either, and (in `contrast` and `compare`) a within-task Spearman line between artifact bytes and rubric score; see `GUIDE.md`, "Output length".
+- `judgments.json` of a new study carries `"rubricPolicy": "excluded-as-failures"`: in the rubric mean of its reports, runs not judged for `stdioTampered`, `usageDbTampered` or a `credsUnscrubbed` whose cause is a link or a refused read count as failures (0), and `infraError`, no kept workspace, budget-skipped runs and a `credsUnscrubbed` with any other cause stay gaps. Reports show the judged-runs-only mean beside it. Older judgments have no stamp, keep the gap rule and report with the line `legacy: excluded runs are gaps`. See "Runs kept out of judging" in [agents.md](agents.md#appendix-b-reading-results-in-depth). Reports of a stamped study also carry mean final-text characters and mean artifact bytes per arm and scope, a diligence WARN when an arm is more than 1.5x the baseline arm on either, and (in `contrast` and `compare`) a within-task Spearman line between artifact bytes and rubric score; see "Output length" in [agents.md](agents.md#appendix-b-reading-results-in-depth).
 - Replies must be JSON (bare, or in one code fence); one retry, then `judgeError` is recorded. A reply that fails to parse only because of a quote mark inside a string (a quote wrapped in its own quote marks, `"evidence":""text"`) or a backslash JSON cannot read (`\x`, `\s` copied from code) is repaired once and used; that call carries `jsonRepaired: true`. Prose before or after the JSON is not repaired, since in the saved replies that prose takes the answer back. In one study the repair read 160 of the 171 glm-5 replies that had failed, and every one of the 37 rubric records that had ended as `judgeError`. Results are cached by hash of
   (judge, prompt) in `<out>/judge/cache`. `spentCredits` and `spentByJudge` add up over invocations;
   a cached call costs 0 and keeps its original latency with `cached: true`. Only a reply that passes the same check

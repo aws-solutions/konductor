@@ -123,3 +123,44 @@ test('every relative link in the bench docs points at a file and heading that ex
   const { checkAll } = require('../../scripts/check-doc-links.js');
   assert.deepEqual(checkAll(), []);
 });
+
+test('the generated parts of the bench docs match the code (fix: node bench/scripts/gen-docs.js)', () => {
+  const { run } = require('../../scripts/gen-docs.js');
+  assert.deepEqual(run({ write: false }), []);
+});
+
+// Every `node bench/runner/bench.js` line in a fenced block of the guide pages names a real command and only flags it accepts.
+test('every bench.js command in the README and guide pages uses a known command and flags the CLI accepts', () => {
+  const { COMMANDS, SUBCOMMANDS, BOOLEAN_FLAGS } = require('../lib/cli-flags.js');
+  const pages = ['README.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/konductor-bench.md', 'docs/repeat-it-yourself.md'];
+  let seen = 0;
+  for (const page of pages) {
+    const blocks = [];
+    let open = null;
+    for (const l of read(page).split('\n')) {
+      const f = l.match(/^```(\S*)\s*$/);
+      if (f && open === null) { open = f[1] === '' || f[1] === 'bash' || f[1] === 'sh' ? [] : false; continue; }
+      if (f) { if (open) blocks.push(open.join('\n').replace(/\\\n\s*/g, ' ')); open = null; continue; }
+      if (open) open.push(l);
+    }
+    for (const line of blocks.join('\n').split('\n')) {
+      const cmdLine = line.replace(/\s+#.*$/, '').trim();
+      if (!cmdLine.startsWith('node bench/runner/bench.js ')) continue;
+      seen++;
+      const tokens = cmdLine.split(/\s+/).slice(2);
+      const [cmd, ...rest] = tokens;
+      assert.ok(COMMANDS.includes(cmd), `${page}: unknown command in: ${cmdLine}`);
+      const opts = { _: [] };
+      for (let i = 0; i < rest.length; i++) {
+        const t = rest[i];
+        if (!t.startsWith('--')) { opts._.push(t); continue; }
+        const name = t.slice(2);
+        if (BOOLEAN_FLAGS.has(name) || i + 1 >= rest.length || rest[i + 1].startsWith('--')) opts[name] = true;
+        else opts[name] = rest[++i];
+      }
+      if (SUBCOMMANDS[cmd]) assert.ok(SUBCOMMANDS[cmd].includes(opts._[0]), `${page}: unknown ${cmd} subcommand in: ${cmdLine}`);
+      assert.equal(checkArgs(cmd, opts), null, `${page}: ${cmdLine}`);
+    }
+  }
+  assert.ok(seen >= 20, `found only ${seen} commands`);
+});
