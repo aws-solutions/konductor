@@ -41,14 +41,16 @@ function loadConfig(fileOrObject) {
   return cfg;
 }
 
-/** reference and stub (repeated), the lazy and alternative answers on disk, then the batch's variants. */
+/** reference and stub (repeated), the lazy, alternative and other answers on disk, then the batch's variants. */
 function defaultModes(task, cfg) {
   const conv = (name) => (cfg.conversation ? cfg.conversation(task, name) : null);
   const modes = [
     { name: 'reference', overlay: cfg.solutionDir(task.id), repeat: true, conversation: conv('reference') },
     { name: 'stub', overlay: null, repeat: true, conversation: conv('stub') },
   ];
-  for (const kind of ['lazy', 'alt']) {
+  // `other`: a hand-written correct answer that differs from the reference in substance (other wording, an accepted
+  // equivalent figure, findings in another valid place), gated like alt (dry-run.js).
+  for (const kind of ['lazy', 'alt', 'other']) {
     const d = cfg.answerDir(task.id, kind);
     if (fs.existsSync(d)) modes.push({ name: kind, overlay: d, conversation: conv(kind) });
   }

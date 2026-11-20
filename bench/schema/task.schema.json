@@ -992,6 +992,14 @@
             }
           }
         },
+        "adjudication": {
+          "description": "Rules that settle where two judges would split on this task, one string each. The judge prompt lists them beside the rubric.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "recheck": {
           "type": "object",
           "required": [
