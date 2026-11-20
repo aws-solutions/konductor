@@ -142,3 +142,18 @@ test('bench.js scenarios pilot-table prints the table and refuses no directory',
   assert.equal(none.status, 2);
   assert.match(none.stderr, /needs the wave directories/);
 });
+
+test('a fix that only deletes fixture lines is not an answer leak when the agent makes the same deletion', () => {
+  const root = tmp();
+  const pack = path.join(root, 'pack');
+  const lines = Array.from({ length: 40 }, (_, i) => `line${i} alpha${i} beta${i} gamma${i}`);
+  const fixture = `${lines.join('\n')}\n`;
+  const fixed = `${lines.filter((_, i) => i % 7 !== 3).join('\n')}\n`; // the fix removes six lines, adds none
+  write(path.join(pack, 't9', 't9-del.json'), json({ id: 't9-del', prompt: 'Do it.', fixture: 't9-del', hidden: 't9-del', authorship: { model: 'gpt-5.6-luna' } }));
+  write(path.join(pack, 't9', 'fixtures', 't9-del', 'test', 'helpers.js'), fixture);
+  write(path.join(pack, 't9', 'solutions', 't9-del', 'test', 'helpers.js'), fixed);
+  const w = path.join(root, 'w');
+  fakeRun(w, [{ task: 't9-del', result: { checks: [tests(8, 8), sub(true)] }, files: { 'test/helpers.js': fixed } }]);
+  const rows = byTask(pilotRows([w], { packDir: pack }));
+  assert.equal(rows['t9-del#1'].flags['answer-leak'], undefined);
+});

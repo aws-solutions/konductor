@@ -202,7 +202,9 @@
       "licence": "Copyright Martin Fowler; no licence granted, idea only (no text used)",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T5, owner decision 2026-11-20); failed deepseek drafts were re-authored with gpt, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",

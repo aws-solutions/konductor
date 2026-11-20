@@ -147,8 +147,13 @@ function copiedReference(runDir, entry) {
     const ref = readText(path.join(sol, rel));
     const got = readText(path.join(ws, rel));
     if (ref === null || got === null) continue;
+    // Only text the reference ADDS counts as its own: lines that are not in the fixture's copy of the file. A fix that
+    // only deletes or reorders fixture lines (t5-qa-flaky-fix's helpers.js) has no own text, so a correct answer that
+    // makes the same deletion is not a copy.
+    const fixtureLines = new Set((readText(path.join(fix, rel)) ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+    const added = ref.split(/\r?\n/).filter((l) => l.trim() && !fixtureLines.has(l.trim())).join('\n');
     const base = shingles(readText(path.join(fix, rel)) ?? '');
-    const own = [...shingles(ref)].filter((s) => !base.has(s));
+    const own = [...shingles(added)].filter((s) => !base.has(s));
     if (own.length < COPY_MIN_SHINGLES) continue;
     const have = shingles(got);
     const share = own.filter((s) => have.has(s)).length / own.length;
