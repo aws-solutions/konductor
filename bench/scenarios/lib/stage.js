@@ -30,7 +30,7 @@ const { loadConfig } = require('./config.js');
 const { listTree } = require('./workspace.js');
 const { MANIFEST, LIB_DIR } = require('../../runner/lib/hidden-lib.js');
 
-const FAMILY = { 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'alibaba', 'minimax-m2.5': 'minimax' };
+const FAMILY = { 'claude-sonnet-5.5': 'claude', 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'alibaba', 'minimax-m2.5': 'minimax' };
 // Owner rule (PR 299): these SOPs need the user's own yes for the scope and for committing, so a task that targets one
 // says so in the user's words.
 const SOP_NEEDS_YES = new Set(['k-e2e-test-generation', 'k-light-ui-testing', 'k-test-coverage-review']);

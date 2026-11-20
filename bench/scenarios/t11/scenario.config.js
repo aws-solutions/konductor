@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { modesOf, GIT_ENV } = require('./lib/modes.js');
+const { modesOf, overlayOf, GIT_ENV } = require('./lib/modes.js');
 const { buildHidden } = require('./lib/hidden.js');
 const { helpers } = require('../lib/prompt.js');
 
@@ -102,7 +102,13 @@ function buildTask(s, id) {
 module.exports = {
   dir: __dirname,
   env: GIT_ENV,
-  modes: (task, cfg) => modesOf({ solution: cfg.solutionDir(task.id), lazy: cfg.answerDir(task.id, 'lazy'), alt: cfg.answerDir(task.id, 'alt'), shallow: cfg.answerDir(task.id, 'shallow') }),
+  // A task may keep answers/<id>/shallow/: an answer that misses the point (for t11-fresh-session-memory, one that
+  // followed the stale notes); the dry run gates it at 40 or less.
+  modes: (task, cfg) => {
+    const shallow = overlayOf(cfg.answerDir(task.id, 'shallow'));
+    const modes = modesOf({ solution: cfg.solutionDir(task.id), lazy: cfg.answerDir(task.id, 'lazy'), alt: cfg.answerDir(task.id, 'alt') });
+    return shallow ? [...modes, { name: 'shallow', overlay: shallow }] : modes;
+  },
   prompt: { render },
   stage: {
     authEnv: 'T11_AUTH',

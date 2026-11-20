@@ -1,0 +1,10 @@
+{
+  "workers": [
+    { "branch": "cmx-1-reading-time", "steps": ["CMX-1"], "message": "CMX-1: round reading time first, whole hours show hours only" },
+    { "branch": "cmx-2-tag", "steps": ["CMX-2"], "message": "CMX-2: tag command" },
+    { "branch": "cmx-3-stats", "steps": ["CMX-3"], "message": "CMX-3: stats command" }
+  ],
+  "merge": ["cmx-1-reading-time", "cmx-2-tag", "cmx-3-stats"],
+  "resolve": { "cmx-3-stats": "resolve-cmx-3" },
+  "cleanup": true
+}

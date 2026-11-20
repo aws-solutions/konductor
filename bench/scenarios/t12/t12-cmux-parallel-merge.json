@@ -1,0 +1,144 @@
+{
+  "id": "t12-cmux-parallel-merge",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "multi-phase",
+  "phases2": [
+    "bugfix",
+    "implementation"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I work in cmux, so let's use it: the three tickets in docs/tickets/ (CMX-1 to CMX-3) should be worked on at the same time, one worker per ticket, each worker in its own cmux workspace with its own git worktree and its own branch made from main. A worker only touches what its ticket needs. Each ticket comes with a test under test/ that fails without it. When the workers are done, merge every ticket branch into main with its own merge commit (no fast-forward, no squash) and keep node --test test/*.test.js passing after each merge; where two branches touched the same file, keep both changes. Afterwards close the extra worktrees, delete the ticket branches, and leave main checked out, clean, with the suite green.",
+  "fixture": "t12-cmux-parallel-merge",
+  "hidden": "t12-cmux-parallel-merge",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=120000 work.test.js",
+      "min": 12,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/tickets",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "conflict-settled",
+      "weight": 1,
+      "criterion": "The merge that met the shared files (the command registry and the CLI test) kept both sides on purpose. Fail: one ticket's command is missing after the merges, or the conflict was avoided by one worker doing another's part. Partial: both commands work, but the merge commit message says nothing of the conflict or how it was settled. Pass: the merge that hit the conflict names the files and says both entries were kept, and the help text test was brought up to date in that merge, not in a later fix-up commit. (code cannot check this because whether a merge message explains the decision is a judgement)"
+    }
+  ],
+  "targetSkills": [
+    "cmux-dispatch",
+    "git-merge"
+  ],
+  "targetSop": "k-delegate",
+  "targetAgent": "konductor-cmux-orchestrator",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate CV-A worker (owner-approved coverage review addition 7); needs the non-Claude recheck in review.recheck. cmux is not on the bench host or in its sandbox, so an agent cannot open cmux workspaces here; the task is scored from the repository only and its gates are proven with the reference (DEBT row)"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-A worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 25,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt mentions 'cmux' but the authorship note clarifies cmux is not available; the task requires parallel work on separate branches with individual merge commits - this is the required workflow, not a leak of the solution."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies: three tickets, separate worktrees/branches, merge each with its own commit, keep tests green, handle conflicts by keeping both changes. No unclear paths that hidden tests depend on."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture only contains: CLI skeleton, existing tests, CONTRIBUTING.md (explaining the pattern), and ticket docs (describing feature behavior). Nothing reveals the required branch/merge worktree approach - that's mandated by the task description itself."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Scores show shallow=0 and lazy=25. A quick wrong answer doing all work on main in one commit (shallow) fails completely because hidden tests verify the git history shows proper branches and merge commits. This catches naive single-commit approaches."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests derive from fixture tickets and existing code. Tests check git history (branch/merge structure) not timing. The correct alt solution with different branch names and merge order passes (100). No unfair or impossible requirements."
+      }
+    ],
+    "recheck": {
+      "family": "minimax",
+      "model": "minimax-m2.5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt names no specific helper tool, skill or procedure beyond standard git CLI. No decoy options present."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's CONTRIBUTING.md, tickets and code don't reveal the worktree/branch/merge solution approach."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Every value hidden tests expect (command names, output formats, file changes) follows directly from the fixture's tickets (docs/tickets/*.md) and existing CLI structure."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Agent can determine what code to write from tickets and existing tests; can determine expected behavior from CONTRIBUTING.md and current test patterns."
+        }
+      ]
+    }
+  }
+}

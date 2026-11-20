@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout · Larkspur Tea</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top"><h1>Larkspur Tea</h1></header>
+  <main id="shop">
+    <section aria-labelledby="h-cart">
+      <h2 id="h-cart">Your basket</h2>
+      <ul id="cart-items" class="cart"></ul>
+      <p id="cart-empty-note" hidden>Your basket is empty</p>
+    </section>
+
+    <section aria-labelledby="h-speed">
+      <h2 id="h-speed">Delivery</h2>
+      <fieldset class="speeds">
+        <legend>Delivery speed</legend>
+        <div><input type="radio" name="ship" id="speed-std" value="standard" checked><label for="speed-std"></label></div>
+        <div><input type="radio" name="ship" id="speed-exp" value="express"><label for="speed-exp"></label></div>
+      </fieldset>
+    </section>
+
+    <section aria-labelledby="h-voucher">
+      <h2 id="h-voucher">Promo code</h2>
+      <form id="voucher-form" class="voucher-box">
+        <label for="voucher">Promo code</label>
+        <input id="voucher" name="promo" autocomplete="off">
+        <button type="submit">Apply</button>
+        <p id="voucher-note" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section aria-label="Order summary" class="totals">
+      <h2>Order summary</h2>
+      <dl>
+        <dt>Subtotal</dt><dd id="total-sub"></dd>
+        <div id="line-off" hidden><dt>Discount</dt><dd id="total-off"></dd></div>
+        <dt>Delivery</dt><dd id="total-ship"></dd>
+        <dt>Total</dt><dd id="total-grand"></dd>
+      </dl>
+    </section>
+
+    <section aria-labelledby="h-buyer">
+      <h2 id="h-buyer">Your details</h2>
+      <form id="buyer-form" novalidate>
+        <div class="row">
+          <label for="in-name">Full name</label>
+          <input id="in-name" name="name" autocomplete="name" aria-describedby="msg-name">
+          <p id="msg-name" class="msg" hidden></p>
+        </div>
+        <div class="row">
+          <label for="in-email">Email</label>
+          <input id="in-email" name="email" type="email" autocomplete="email" aria-describedby="msg-email">
+          <p id="msg-email" class="msg" hidden></p>
+        </div>
+        <div class="row">
+          <label for="in-postcode">Postcode</label>
+          <input id="in-postcode" name="postcode" autocomplete="postal-code" aria-describedby="msg-postcode">
+          <p id="msg-postcode" class="msg" hidden></p>
+        </div>
+        <button id="submit-order" type="submit">Place order</button>
+      </form>
+    </section>
+  </main>
+
+  <section id="thanks" hidden>
+    <h2 tabindex="-1">Thank you for your order</h2>
+    <p>We have emailed a receipt to <span id="thanks-email"></span>.</p>
+    <p>Order total: <strong id="thanks-total"></strong></p>
+  </section>
+
+  <script type="module" src="src/checkout.js"></script>
+</body>
+</html>

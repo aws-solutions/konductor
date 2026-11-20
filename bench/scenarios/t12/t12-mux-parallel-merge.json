@@ -1,0 +1,111 @@
+{
+  "id": "t12-mux-parallel-merge",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "multi-phase",
+  "phases2": [
+    "bugfix",
+    "implementation"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I need you to finish the three tickets in docs/tickets/ in parallel, with one worker per ticket. Put each worker in its own tmux window and its own git worktree, using an individual branch made from main; workers must not touch each other's files. For every ticket, add a regression test under test/ that fails without the fix. When the workers finish, merge each ticket branch into main with its own real merge commit: do not fast-forward and do not squash. Run node --test test/*.test.js after each merge, and continue only when it passes. At the end, remove every extra worktree, delete all worker branches, and leave main checked out with a clean working tree and the suite green. Keep changes limited to the tickets and their regression tests, and preserve the repository's public function names unless a ticket requires otherwise.",
+  "fixture": "t12-mux-parallel-merge",
+  "hidden": "t12-mux-parallel-merge",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=120000 work.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/tickets",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "workers-kept-apart",
+      "weight": 1,
+      "criterion": "The history reads as three separate pieces of work, each finished before it was merged. Fail: a ticket branch carries another ticket's change, or one branch was merged and then fixed up on main. Partial: the branches are separate and merge cleanly, but a branch's commits do not say which ticket they serve, or a merge message is the bare default. Pass: each branch's commits name its ticket and what changed, each merge names the ticket it brings in, and no commit on main after a merge repairs that ticket's work. (code cannot check this because whether the record is clear to a reviewer is a judgement)"
+    }
+  ],
+  "targetSkills": [
+    "mux-dispatch",
+    "git-merge"
+  ],
+  "targetSop": "k-delegate",
+  "targetAgent": "konductor-mux-orchestrator",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": "original",
+    "note": "two-step: step 1 wrote the fixture and the request, step 2 (a separate call) the hidden tests, the ticket files and the reference and alternative work; the batch added only glue (the git build of the fixture, work.json's base and hidden list, PLAY.json files that run the author's work as workers, and the mechanical lazy and shallow answers)"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 27.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "review": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names tmux, worktrees, branches, and merge workflow as required behavior, which is explicitly allowed per instructions: 'Naming that required behaviour is the point of the request, not a leak.'"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements are clear: three tickets with distinct files to modify, each needs regression test, workers must be separate, merges must be real merge commits, cleanup required. Hidden tests match ticket specifications exactly."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains tickets describing problems and current buggy code, but no comments, docs, or tests reveal exact fixes or hidden test expectations."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "git-work.js checks are thorough: detects merge commits, verifies each ticket has own branch/merge, regression tests fail without fix, suite passes after each merge, cleanup verified. Would catch doing all work on main branch."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Tests derive directly from ticket requirements: MUX-1 expects onHand <= reorderPoint (ticket says 'less than or equal'), MUX-2 accepts zero quantity (ticket specifies), MUX-3 expects exact format shown in ticket. No timing dependencies or external requirements."
+      }
+    ]
+  }
+}

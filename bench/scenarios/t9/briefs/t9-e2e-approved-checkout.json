@@ -1,0 +1,11 @@
+{
+  "id": "t9-e2e-approved-checkout",
+  "kind": "git-e2e",
+  "phase": "testing",
+  "role": "frontend",
+  "author": "kirocrew-mate-worker",
+  "reviewer": "glm-5",
+  "handWritten": true,
+  "source": "original",
+  "brief": "Guarded end-to-end pair, approved half: written by the worker session from the coverage review (2026-11-20, addition 3); see ../README.md. Not built by the author prompt or by stage assemble."
+}

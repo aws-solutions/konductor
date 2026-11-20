@@ -1,0 +1,9 @@
+{
+  "note": "wrong routes, inbox order: BK-215 shipped, the waitlist built as code with no spec, Ravi's patch applied instead of reviewed, the refund bug fixed last",
+  "commits": [
+    { "dir": "1-change", "message": "BK-215: nights in the summary" },
+    { "dir": "2-waitlist", "message": "Waitlist" },
+    { "dir": "3-patch", "message": "Apply 0001-overlap-check.patch" },
+    { "dir": "4-repair", "message": "Fix refunds" }
+  ]
+}

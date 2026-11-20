@@ -48,3 +48,11 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t9-test-form-validator | author | qwen3-coder-next | 15.00 | stopped at its tool-call cap (152 calls); the cut stream reports no credits, so the abort limit is counted |
 | t9-test-form-validator | fix | qwen3-coder-next | 15.00 | cut by the worker's 10-minute shell limit after 90 tool calls; the abort limit is counted |
 | t9-test-form-validator | dropped | qwen3-coder-next | 0.00 | after the re-author and its fix round the reference killed 0 of 10 mutants |
+
+## CV-B calls
+
+Coverage-review wave (2026-11-20), batch CV-B: estimate 225 credits, stop 450. The spend check in the run script counts every row below plus 15 for the next call and refuses a call that could pass 450. Same isolation as the setup check above (scratch HOME with the login database only, memory and knowledge off, empty working directory outside every git worktree). t9-e2e-approved-checkout and t9-e2e-no-approval-control were written by the worker session itself (no author call; see their README section).
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t9-accessibility-performance-nfr | author (stopped by a counting bug in the worker run script after 13 tool calls) | claude-sonnet-5.5 | 15.00 | the cut stream reports no credits, so the abort limit is counted; the author continues from its files |

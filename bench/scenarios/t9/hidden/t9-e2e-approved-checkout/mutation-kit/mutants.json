@@ -1,0 +1,94 @@
+{
+  "runner": "node",
+  "testCmd": "node --test --test-timeout=20000 e2e/*.e2e.test.js",
+  "baseTests": 8,
+  "suiteSec": 25,
+  "pristine": [
+    "site/src/checkout.js",
+    "site/index.html",
+    "site/styles.css"
+  ],
+  "refactors": [
+    {
+      "id": "r01",
+      "files": [
+        "site/src/checkout.js",
+        "site/index.html",
+        "site/styles.css"
+      ],
+      "note": "every id and class renamed; labels, roles and text unchanged"
+    }
+  ],
+  "mutants": [
+    {
+      "id": "m01",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "a quantity change no longer updates the prices"
+    },
+    {
+      "id": "m02",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "Remove takes out the first line, not the one clicked"
+    },
+    {
+      "id": "m03",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "the total on the page ignores the discount"
+    },
+    {
+      "id": "m04",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "an unknown code shows no message"
+    },
+    {
+      "id": "m05",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "an unknown code keeps the code applied before"
+    },
+    {
+      "id": "m06",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "choosing express delivery does not change the summary"
+    },
+    {
+      "id": "m07",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "an order with bad details still goes through"
+    },
+    {
+      "id": "m08",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "an empty basket can still be ordered"
+    },
+    {
+      "id": "m09",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "the confirmation shows the subtotal as the order total"
+    },
+    {
+      "id": "m10",
+      "files": [
+        "site/src/checkout.js"
+      ],
+      "note": "focus stays on the button when details are bad"
+    }
+  ]
+}

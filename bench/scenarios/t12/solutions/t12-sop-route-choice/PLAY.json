@@ -1,0 +1,8 @@
+{
+  "commits": [
+    { "dir": "1-repair", "message": "Fix refunds 24 to 48 hours before check-in: half, rounded down to the cent (policy section 4)" },
+    { "dir": "2-review", "message": "Review of patches/0001-overlap-check.patch: request changes" },
+    { "dir": "3-change", "message": "BK-215: nights in the booking summary" },
+    { "dir": "4-spec", "message": "Waitlist spec for Dana's sign-off (no code yet)" }
+  ]
+}

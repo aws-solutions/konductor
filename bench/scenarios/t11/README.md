@@ -37,7 +37,7 @@ from the fixture and step 1's `design.md` only, the hidden checks and the answer
 tasks"): session 1's request carries a billing review's settled rules and asks for part of the work; session 2 is a new
 conversation in the same workspace that asks for the rest and says to follow the review, without restating it. The
 fixture's only rule source for that part is a stale note. Its `answers/<id>/shallow/` is an answer that followed the
-stale note, gated at 40 or less like a lazy answer (`lib/modes.js`).
+stale note, gated at 40 or less like a lazy answer (`scenario.config.js` `modes`).
 
 `t11-wide-settings-migration` (a change across 60 or more files) was dropped after three second-family tries; its brief
 stays in `briefs/` and the reasons are in `HAND-EDITS.md` under Dropped. `t11-wide-settings-refactor` is the new try

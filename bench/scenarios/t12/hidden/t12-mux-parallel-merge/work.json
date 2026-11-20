@@ -1,0 +1,32 @@
+{
+  "base": "c587c3a899310541e03b65ae340e98a38143cfab",
+  "tickets": [
+    {
+      "id": "MUX-1",
+      "files": [
+        "src/inventory.js"
+      ],
+      "test": "hidden-tests/MUX-1.test.js"
+    },
+    {
+      "id": "MUX-2",
+      "files": [
+        "src/pricing.js"
+      ],
+      "test": "hidden-tests/MUX-2.test.js"
+    },
+    {
+      "id": "MUX-3",
+      "files": [
+        "src/report.js"
+      ],
+      "test": "hidden-tests/MUX-3.test.js"
+    }
+  ],
+  "hidden": [
+    "work.test.js",
+    "work.json",
+    "git-work.js",
+    "hidden-tests/"
+  ]
+}

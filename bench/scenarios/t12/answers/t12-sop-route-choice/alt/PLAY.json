@@ -1,0 +1,10 @@
+{
+  "note": "a different correct answer: the refund test committed first and the fix second, then the spec, then BK-215, then the review; other code and other words",
+  "commits": [
+    { "dir": "1-test", "message": "Failing test for the 24-48 hour refund tier" },
+    { "dir": "2-fix", "message": "Refund half between 24 and 48 hours before check-in" },
+    { "dir": "3-spec", "message": "docs/specs/waitlist: requirements, design and tasks, awaiting sign-off" },
+    { "dir": "4-change", "message": "BK-215: summary.nights" },
+    { "dir": "5-review", "message": "docs/reviews: 0001-overlap-check needs changes" }
+  ]
+}

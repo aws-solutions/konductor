@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout · Larkspur Tea</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header"><h1>Larkspur Tea</h1></header>
+  <main id="checkout">
+    <section aria-labelledby="basket-heading">
+      <h2 id="basket-heading">Your basket</h2>
+      <ul id="basket-lines" class="basket"></ul>
+      <p id="basket-empty" hidden>Your basket is empty</p>
+    </section>
+
+    <section aria-labelledby="ship-heading">
+      <h2 id="ship-heading">Delivery</h2>
+      <fieldset class="shipping">
+        <legend>Delivery speed</legend>
+        <div><input type="radio" name="ship" id="ship-standard" value="standard" checked><label for="ship-standard"></label></div>
+        <div><input type="radio" name="ship" id="ship-express" value="express"><label for="ship-express"></label></div>
+      </fieldset>
+    </section>
+
+    <section aria-labelledby="promo-heading">
+      <h2 id="promo-heading">Promo code</h2>
+      <form id="promo-form" class="promo">
+        <label for="promo-code">Promo code</label>
+        <input id="promo-code" name="promo" autocomplete="off">
+        <button type="submit">Apply</button>
+        <p id="promo-message" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section aria-label="Order summary" class="summary">
+      <h2>Order summary</h2>
+      <dl>
+        <dt>Subtotal</dt><dd id="sum-subtotal"></dd>
+        <div id="row-discount" hidden><dt>Discount</dt><dd id="sum-discount"></dd></div>
+        <dt>Delivery</dt><dd id="sum-shipping"></dd>
+        <dt>Total</dt><dd id="sum-total"></dd>
+      </dl>
+    </section>
+
+    <section aria-labelledby="details-heading">
+      <h2 id="details-heading">Your details</h2>
+      <form id="details-form" novalidate>
+        <div class="field">
+          <label for="f-name">Full name</label>
+          <input id="f-name" name="name" autocomplete="name" aria-describedby="err-name">
+          <p id="err-name" class="error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="f-email">Email</label>
+          <input id="f-email" name="email" type="email" autocomplete="email" aria-describedby="err-email">
+          <p id="err-email" class="error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="f-postcode">Postcode</label>
+          <input id="f-postcode" name="postcode" autocomplete="postal-code" aria-describedby="err-postcode">
+          <p id="err-postcode" class="error" hidden></p>
+        </div>
+        <button id="place-order" type="submit">Place order</button>
+      </form>
+    </section>
+  </main>
+
+  <section id="confirmation" hidden>
+    <h2 tabindex="-1">Thank you for your order</h2>
+    <p>We have emailed a receipt to <span id="confirm-email"></span>.</p>
+    <p>Order total: <strong id="confirm-total"></strong></p>
+  </section>
+
+  <script type="module" src="src/checkout.js"></script>
+</body>
+</html>
