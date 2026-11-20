@@ -14,8 +14,8 @@ colleague (no model) holds 4 to 8 facts that it reveals only when the agent asks
 | `solutions/<id>/` | the reference overlay; `ASKS.json` holds the reference asking turns of a scripted task (not part of the overlay) |
 | `briefs/<id>.json` | the brief each task was written from (phase, role, folder kind, public source) |
 | `prompts/` | the author, mapping and review prompts |
-| `scenario.config.js` | this batch's config for the shared tools in `bench/scenarios/lib`: prompt renderer, scripted conversation of the dry run, task builder |
-| `tools/` | `fake-user.js`, the expert keys and the author's self-check kit |
+| `scenario.config.js` | this batch's config for the shared tools in `bench/scenarios/lib`: prompt renderer, scripted conversation of the dry run, task builder, and the further correct answers `answers/<id>/alt-*` the dry run scores and gates at 80 |
+| `tools/` | `fake-user.js`, the expert keys, the author's self-check kit, and `feasibility-gen-sample.js` (the seeded generator of `t6-developer-feasibility-spike`'s data, kept out of its fixture) |
 | `AUTHORING-LOG.md` | every model call: task, step, model, credits |
 
 ## Scoring of a scripted task

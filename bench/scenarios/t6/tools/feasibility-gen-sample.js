@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-// Writes the three synthetic sample files used for import-preview work.
-//   node tools/gen-sample.js            -> data/sample-a.csv, sample-b.csv, sample-c.csv
-// Output is deterministic: same seeds, same bytes.
+// T6 authoring tool, not part of any fixture: the seeded generator of the three synthetic sample files of
+// t6-developer-feasibility-spike. It lived in that fixture as tools/gen-sample.js until the spot review
+// (reports/spot-review-fixes-2026-11-20.md, addendum 3) found that its row thresholds show where sample-c's type
+// changes are planted, so it moved here, out of the agent's view.
+//   node bench/scenarios/t6/tools/feasibility-gen-sample.js   -> fixtures/t6-developer-feasibility-spike/data/sample-{a,b,c}.csv
+// Output is deterministic: same seeds, same bytes as the committed files.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -121,12 +124,12 @@ function sampleC(rows = 42000) {
 }
 
 function main() {
-  const dir = path.join(__dirname, '..', 'data');
+  const dir = path.join(__dirname, '..', 'fixtures', 't6-developer-feasibility-spike', 'data');
   fs.mkdirSync(dir, { recursive: true });
   const files = { 'sample-a.csv': sampleA, 'sample-b.csv': sampleB, 'sample-c.csv': sampleC };
   for (const [name, make] of Object.entries(files)) {
     fs.writeFileSync(path.join(dir, name), make());
-    console.log(`wrote data/${name}`);
+    console.log(`wrote ${path.join(dir, name)}`);
   }
 }
 

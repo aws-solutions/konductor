@@ -7,6 +7,7 @@
 //   stub       the untouched fixture (an agent that changed nothing), repeated the same way;
 //   lazy, alt  a shallow answer and a second correct answer, when the batch has them (answers/<id>/{lazy,alt} by
 //              default; `bench/scenarios/lib/answers.js` writes mechanical ones), scored once each;
+//   other      a hand-written correct answer that differs in substance (answers/<id>/other), gated at 80 like alt;
 //   variants   any other answers the batch config names (for example T2's dump review), scored once each.
 // It also checks that every `tests` check runs under a per-test timeout, that the task file loads in the runner, and,
 // when the batch asks for it, that a hung hidden test fails alone (the canary). The gates are the plan's (4.6):
@@ -97,6 +98,7 @@ function defaultGates(out) {
     ...(s.lazy !== undefined ? { lazy: s.lazy !== null && s.lazy <= 40 } : {}),
     ...(s.shallow !== undefined ? { shallow: s.shallow !== null && s.shallow <= 40 } : {}),
     ...(s.alt !== undefined ? { alt: s.alt !== null && s.alt >= 80 } : {}),
+    ...(s.other !== undefined ? { other: s.other !== null && s.other >= 80 } : {}),
     ...(out.canary ? { canary: out.canary.ok } : {}),
     ...(out.errors.length ? { task: false } : {}),
   };

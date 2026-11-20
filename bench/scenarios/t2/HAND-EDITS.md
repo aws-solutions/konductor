@@ -96,3 +96,23 @@ Who: claude (mate spot-review fix worker session), from the free scan in reports
 - `t2-arch-dr-event-store` (version 4) and `t2-dr-search-reindex` (version 4): the request named the document under `fixture/` (`fixture/docs/adr/0007-event-sourced-orders.md`, `fixture/docs/design/zero-downtime-reindex.md`). The runner copies the fixture to the workspace root, so that path does not exist; the request now says `docs/...`. Free gates unchanged: reference 100, stub 7.1, lazy 28.6, alt 100.
 - `t2-sec-dr-sso-login` (version 3): key item k8 (section 3.5.2, "state parameter described as 32 bytes ... though not strictly a violation") is removed from `hidden/key.json`, `findingsKey` and the reference review. A 32-byte random state is more than the 128 bits RFC 6749 asks for, so k8 rewarded flagging a non-defect and cost a correct review 1 of 8 items (the reference without it scored 87.5 % of the findings score on the old key, 100 % now). The key has 7 items. Free gates: reference 100, stub 7.1, lazy 28.6, alt 100.
   - Found by the gpt-5.6-luna recheck: expert key item e1 said "PKCE is not mentioned", but `docs/design/sso-sign-in.md:13` says the flow uses Authorization Code with PKCE, so e1 rewarded a false finding. e1 now asks how the PKCE code verifier is generated, kept and bound to the browser session, which the design never says (no fixture file names a verifier or challenge). Judge-only, so the code dry run does not move.
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
+(reports/key-improve/reconciled.md in the mate workspace).
+
+- `t2-arch-dr-event-store` (version 5):
+  - Fixture `docs/adr/0007-event-sourced-orders.md`: four sentences that confessed planted gaps are deleted (end of 4.1
+    snapshots, 5.1 missing outbox option, 5.2 reporting replacement, 7.2 personal data left in events). The gaps stay
+    provable from the packet.
+  - `hidden/.../key.json`: `section` becomes a list where the flaw is visible in more than one section (k1 3.2/3.5,
+    k2 3.3/2.3/9.1, k3 6.2/3.4, k4 7.2/3.2/3.5, k7 5.2/7.1); fix words widened (k1 event version, upcast, schema
+    registry; k2 read-after-write, read after write, read your write, read from the event store; k4 crypto, shred,
+    pseudonym, erasure; k6 snapshot interval, snapshot policy; k7 sql access, read replica, reporting schema).
+  - `expertKey`: nine items beyond the seeded findings, one point each, no "Asks..." verbs (measured 11-minute restore,
+    global checkpoint position, monthly partitions against the key, poison event, 2,400 USD budget, dual-path split,
+    team fit, backfill parity, OrderUpdated contract). Rubric r1 anchored on the read-your-writes and replay findings;
+    new r2 (council decision). `review.adjudication` added.
+  - New answer `answers/t2-arch-dr-event-store/other/REVIEW.md`: a different correct review (other wording, findings in
+    neighbouring sections, new fix words). Free gates: reference 100, stub 7.1, lazy 28.6, alt 100, dump 28.6, other 100.

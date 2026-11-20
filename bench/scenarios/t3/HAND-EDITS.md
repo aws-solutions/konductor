@@ -248,3 +248,24 @@ These rows replace the round 1 rows above for the same tasks.
 | t3-api-ingest-batch | deepseek-3.2 (v3, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix; deepseek-3.2 failed key-matches-fixture because the stated key differs from the fixture field name, disposed: the request now states the key |
 | t3-arch-notification-pipeline | deepseek-3.2 (v3, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix; deepseek-3.2 failed key-matches-fixture because the stated key differs from the fixture field name, disposed: the request now states the key |
 | t3-nfr-latency-budget | gpt-5.6-luna (v1, full) | confirmed after fix | D-127: the writer family named the limit keys and option ids in the request; free gates unchanged; non-Claude recheck after the fix |
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
+(reports/key-improve/reconciled.md in the mate workspace). Every `expertKey` item now holds one point with its
+pass figure, accepted equivalents, a weak example and what not to require; items that only rewarded naming a
+superseded figure are gone; `review.adjudication` is added. Each task has a new `answers/<id>/other` answer.
+
+- `t3-adr-db-engine` (version 5): expertKey 9 items (adds 937.5 WCU headroom, 11 ms p99, scheduled launch capacity,
+  shard operations, what changes the choice; drops the three repeats of the hot-partition point and the "superseded"
+  item). Rubric `reasoning-quality` and `tradeoff-explanation` merged into `reasoning-and-tradeoffs` (weight 2).
+  Free gates: reference 100, stub 6, lazy 39, alt 100, other 100.
+- `t3-arch-notification-pipeline` (version 6): expertKey 7 items (adds regional spread, the topic-vs-stream trade
+  with figures, the chosen design's downside). `tradeoff-analysis` anchors updated. The `other` answer picks
+  stream-partitions. Free gates: reference 100, stub 0, lazy 12, alt 100, other 100.
+- `t3-tpm-migration-cutover` (version 4): fixture `migration-model.json` no longer carries the `downtime_formula`
+  string; `handoff_steps_min` becomes named steps and big bang is `copy_during_write_pause`; `change-calendar.md` says
+  every handoff step runs inside the measured write pause and that big bang copies at the off-hours rate during it
+  (same in `_pristine`); `hidden/decision.test.js` reads the new shape. expertKey 8 items (drops the two items met by
+  copying change-calendar.md; adds seed lead time, writes lost after the switch, zero throughput margin). New lazy,
+  alt (answers.js) and other answers. Free gates: reference 100, stub 0, lazy 16, alt 100, other 100.

@@ -3,29 +3,46 @@
   "items": [
     {
       "id": "k1",
-      "section": "3.2",
+      "section": [
+        "3.2",
+        "3.5"
+      ],
       "severity": "high",
       "fix": [
         "versioning",
         "upcasters",
-        "compatibility"
+        "compatibility",
+        "event version",
+        "upcast",
+        "schema registry"
       ],
       "finding": "The design keeps immutable events for the life of the service but only promises optional fields and consumer tolerance, with no event versioning, upcaster policy, or procedure for incompatible domain changes over years of stored data."
     },
     {
       "id": "k2",
-      "section": "3.3",
+      "section": [
+        "3.3",
+        "2.3",
+        "9.1"
+      ],
       "severity": "critical",
       "fix": [
         "read-your-writes",
         "consistent read",
-        "projection catch-up"
+        "projection catch-up",
+        "read-after-write",
+        "read your write",
+        "read from the event store",
+        "read after write"
       ],
       "finding": "The customer endpoints read an asynchronous projection and explicitly return stale data when it is behind, contradicting the product requirement that a successful placement is immediately visible and leaving no read-your-writes mechanism."
     },
     {
       "id": "k3",
-      "section": "6.2",
+      "section": [
+        "6.2",
+        "3.4"
+      ],
       "severity": "critical",
       "fix": [
         "recalculate",
@@ -36,12 +53,20 @@
     },
     {
       "id": "k4",
-      "section": "7.2",
+      "section": [
+        "7.2",
+        "3.2",
+        "3.5"
+      ],
       "severity": "critical",
       "fix": [
         "redaction",
         "tokenization",
-        "retention"
+        "retention",
+        "crypto",
+        "shred",
+        "pseudonym",
+        "erasure"
       ],
       "finding": "The proposal stores customer and delivery personal data in an indefinitely retained immutable event log but only deletes projections, so the product deletion contract has no way to erase or irreversibly de-identify the source data."
     },
@@ -63,18 +88,26 @@
       "fix": [
         "snapshot trigger",
         "snapshot storage",
-        "retention"
+        "retention",
+        "snapshot interval",
+        "snapshot policy"
       ],
       "finding": "Snapshots are deferred to a later spike without specifying when they are created, how writes coordinate with them, where they are stored and indexed, or how their format and retention are operated."
     },
     {
       "id": "k7",
-      "section": "5.2",
+      "section": [
+        "5.2",
+        "7.1"
+      ],
       "severity": "high",
       "fix": [
         "reporting projection",
         "schema contract",
-        "warehouse feed"
+        "warehouse feed",
+        "sql access",
+        "read replica",
+        "reporting schema"
       ],
       "finding": "Removing the reporting team's direct SQL access and pointing vaguely to an API, daily export, or future feed does not replace its current-day SQL contract, seven-year reproducibility, or full audit fields."
     }
