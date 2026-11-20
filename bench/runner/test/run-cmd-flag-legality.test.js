@@ -13,7 +13,7 @@ const { tmp, write, makeBench } = require('./helpers.js');
 
 const BENCH = path.join(__dirname, '..', 'bench.js');
 
-function setup({ autonomy = false } = {}) {
+function setup({ autonomy = false, freshSessions = false } = {}) {
   const root = tmp();
   const bench = makeBench(path.join(root, 'bench'));
   fs.mkdirSync(path.join(bench, 'suites'), { recursive: true });
@@ -22,6 +22,10 @@ function setup({ autonomy = false } = {}) {
     const taskFile = path.join(bench, 'tasks', 't1.json');
     const task = JSON.parse(fs.readFileSync(taskFile, 'utf8'));
     fs.writeFileSync(taskFile, JSON.stringify({ ...task, autonomy: { clarifications: [], maxInterjections: 2, noQuestionNeeded: true } }));
+  }
+  if (freshSessions) {
+    const taskFile = path.join(bench, 'tasks', 't1.json');
+    fs.writeFileSync(taskFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(taskFile, 'utf8')), freshSessions: [{ prompt: 'A new session: finish it.' }] }));
   }
   const repo = path.join(root, 'repo');
   fs.mkdirSync(repo);
@@ -201,6 +205,16 @@ test('opencode and kiro-cli arms are not refused an autonomy task by the flag ch
   try {
     const oc = run(s, ['--arms', 'oc-vanilla']);
     assert.doesNotMatch(oc.stderr, /multi-turn/);
+    const kiro = run(s, ['--arms', 'vanilla', '--prepare-only']);
+    assert.equal(kiro.status, 0, kiro.stderr);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
+test('a fresh-session task is refused on opencode arms and accepted on kiro-cli arms', () => {
+  const s = setup({ freshSessions: true });
+  try {
+    const oc = run(s, ['--arms', 'oc-vanilla']);
+    assert.match(oc.stderr, /fresh-session tasks are not supported on the opencode harness: t1/);
     const kiro = run(s, ['--arms', 'vanilla', '--prepare-only']);
     assert.equal(kiro.status, 0, kiro.stderr);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }

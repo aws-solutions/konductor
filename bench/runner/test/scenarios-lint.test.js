@@ -29,6 +29,7 @@ test('a prompt that names a skill, SOP or agent is refused', () => {
   assert.deepEqual(rules({ prompt: 'Follow the k-plan SOP.' }), ['names-unit']);
   assert.deepEqual(rules({ prompt: 'Ask k-architect to draw it.' }), ['names-unit']);
   assert.deepEqual(rules({ prompt: 'Use the skill:code-review skill.' }), ['names-unit']);
+  assert.deepEqual(rules({ prompt: 'Save what you learn.', freshSessions: [{ prompt: 'Follow the k-plan SOP.' }] }), ['names-unit'], 'a later session prompt is read too');
 });
 
 test('a one-word name counts only in code style or next to skill, SOP or agent', () => {

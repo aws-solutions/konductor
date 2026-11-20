@@ -13,7 +13,7 @@ module.exports = Object.freeze({
   armPrefix: 'st-',
   costUnit: 'usd',
   streamFormat: 'strands-jsonl',
-  supports: Object.freeze({ trace: false, stopOn: false, effort: false, runCreditLimit: false, multiTurn: false, capCommands: false, skillStudy: false, agentEngine: false, prepareOnly: false, armConfig: false }),
+  supports: Object.freeze({ trace: false, stopOn: false, effort: false, runCreditLimit: false, multiTurn: false, freshSessions: false, capCommands: false, skillStudy: false, agentEngine: false, prepareOnly: false, armConfig: false }),
   flags: Object.freeze({
     own: Object.freeze(['strands-python', 'strands-agent']),
     // Table order is the order `run` checks them in.

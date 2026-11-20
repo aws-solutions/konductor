@@ -182,6 +182,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     ...(meta.tamperedFiles?.length ? { tamperedFiles: meta.tamperedFiles } : {}),
     ...(meta.usageUnavailableReason ? { usageUnavailableReason: meta.usageUnavailableReason } : {}),
     ...(meta.plant ? { plant: meta.plant } : {}),
+    ...(exec.sessions ? { sessions: exec.sessions, sessionsPlanned: exec.sessionsPlanned } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }

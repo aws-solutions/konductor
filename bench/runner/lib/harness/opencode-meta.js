@@ -9,7 +9,7 @@ module.exports = Object.freeze({
   armPrefix: 'oc-',
   costUnit: 'usd',
   streamFormat: 'opencode-json',
-  supports: Object.freeze({ trace: false, stopOn: true, effort: true, runCreditLimit: false, multiTurn: true, capCommands: true, skillStudy: false, agentEngine: false, prepareOnly: false, armConfig: false }),
+  supports: Object.freeze({ trace: false, stopOn: true, effort: true, runCreditLimit: false, multiTurn: true, freshSessions: false, capCommands: true, skillStudy: false, agentEngine: false, prepareOnly: false, armConfig: false }),
   flags: Object.freeze({ own: Object.freeze([]), refused: Object.freeze({}), perRunCapFlag: null }),
   // How runs skip the agent's own approval prompts (design 15.3, A-4): opencode-translate.js writes an allow map.
   noPrompt: Object.freeze({ flags: Object.freeze([]), env: Object.freeze({}), note: 'the agent file permission map sets every tool to allow' }),

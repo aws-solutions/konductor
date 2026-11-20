@@ -52,7 +52,8 @@ const blank = (v) => typeof v !== 'string' || !v.trim();
 /** Findings for the prompt of one task: [{ rule, detail }]. */
 function promptFindings(task, matchers) {
   const found = [];
-  const prompt = String(task.prompt ?? '');
+  // A fresh-session task's later prompts are read the same way.
+  const prompt = [task.prompt ?? '', ...(task.freshSessions ?? []).map((s) => s?.prompt ?? '')].map(String).join('\n\n');
   for (const m of matchers) {
     if (m.re.test(prompt)) found.push({ rule: 'names-unit', detail: `names the ${m.kind} "${m.name}"` });
   }
