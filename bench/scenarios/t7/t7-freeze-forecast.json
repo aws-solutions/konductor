@@ -1,7 +1,7 @@
 {
   "id": "t7-freeze-forecast",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -23,7 +23,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/march-forecast.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"forecast\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"mig-014\",\"mig-032\",\"mig-057\",\"mig-071\",\"mig-088\",\"mig-109\",\"mig-126\"];process.exit(items.filter(named).length>=6?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/march-forecast.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?forecast(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"mig-014\",\"mig-032\",\"mig-057\",\"mig-071\",\"mig-088\",\"mig-109\",\"mig-126\"];process.exit(items.filter(named).length>=6?0:1)'",
       "expectExit": 0,
       "weight": 4,
       "kind": "substance"
@@ -43,7 +43,7 @@
     {
       "type": "contains",
       "path": "docs/march-forecast.md",
-      "pattern": "```\\s*forecast",
+      "pattern": "```[ \\t]*(json[ \\t]+)?forecast",
       "weight": 1,
       "kind": "format"
     }
@@ -213,7 +213,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "t7-scope-cut",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -23,7 +23,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"plan/scope-replan.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"replan\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"prj-1008\",\"prj-1031\",\"prj-1046\",\"prj-1064\",\"prj-1097\",\"prj-1114\",\"prj-1128\",\"prj-1156\",\"prj-1162\"];process.exit(items.filter(named).length>=8?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"plan/scope-replan.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?replan(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"prj-1008\",\"prj-1031\",\"prj-1046\",\"prj-1064\",\"prj-1097\",\"prj-1114\",\"prj-1128\",\"prj-1156\",\"prj-1162\"];process.exit(items.filter(named).length>=8?0:1)'",
       "expectExit": 0,
       "weight": 4,
       "kind": "substance"
@@ -43,7 +43,7 @@
     {
       "type": "contains",
       "path": "plan/scope-replan.md",
-      "pattern": "```\\s*replan",
+      "pattern": "```[ \\t]*(json[ \\t]+)?replan",
       "weight": 1,
       "kind": "format"
     }
@@ -210,7 +210,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

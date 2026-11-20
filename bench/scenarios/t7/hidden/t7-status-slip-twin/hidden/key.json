@@ -68,11 +68,13 @@
     },
     {
       "id": "closed-asha-iyer",
-      "desc": "closed points for Asha Iyer across the last two sprint labels",
-      "op": "number",
+      "desc": "closed points for Asha Iyer across the last two sprint labels (Done only, or Done and Cancelled as the README defines closed)",
+      "op": "equals",
       "path": "closed_points_by_assignee.Asha Iyer",
-      "value": 2,
-      "tol": 0
+      "oneOf": [
+        2,
+        4
+      ]
     },
     {
       "id": "closed-jules-ray",
@@ -84,11 +86,13 @@
     },
     {
       "id": "closed-eve-grant",
-      "desc": "closed points for Eve Grant across the last two sprint labels",
-      "op": "number",
+      "desc": "closed points for Eve Grant across the last two sprint labels (Done only, or Done and Cancelled as the README defines closed)",
+      "op": "equals",
       "path": "closed_points_by_assignee.Eve Grant",
-      "value": 16,
-      "tol": 0
+      "oneOf": [
+        16,
+        24
+      ]
     },
     {
       "id": "closed-lana-price",

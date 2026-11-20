@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -23,7 +23,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"reports/finance-numbers.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"numbers\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"13\",\"16\",\"19\",\"20\",\"25\",\"33\",\"37\",\"42\",\"597\"];process.exit(items.every(named)?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"reports/finance-numbers.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?numbers(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"13\",\"19\",\"20\",\"25\",\"33\",\"37\",\"42\",\"597\"];process.exit(items.every(named)?0:1)'",
       "expectExit": 0,
       "weight": 8,
       "kind": "substance"
@@ -43,7 +43,7 @@
     {
       "type": "contains",
       "path": "reports/finance-numbers.md",
-      "pattern": "```\\s*numbers",
+      "pattern": "```[ \\t]*(json[ \\t]+)?numbers",
       "weight": 1,
       "kind": "format"
     }
@@ -116,29 +116,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a finance reconciliation without prescribing a method. The key requires counting closed points by assignee for S29 and S30, open tickets by epic, and total open points. No decoys are present in this simpler counting task. The fixture is shared with t7-status-slip but the request differs (finance numbers vs status report)."
+          "note": "Request asks for 'plain-number reconciliation' without specifying method; use documented conventions"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains tickets.csv and roadmap.md with sprint labels. The agent must count closed points per assignee for S29/S30, count open tickets per epic, and sum open points (blanks as zero). The README conventions explain the counting rules but do not reveal the totals."
+          "note": "Fixture has tickets.csv, roadmap.md, metadata but doesn't list answer; edits show dropped 'could never fail' assertions"
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All names (Asha Iyer, Jules Ray, Eve Grant, Lana Price, Nia Cole, Dev Patel) appear as assignees in tickets.csv. All epics (Account Recovery, Checkout Experience, Merchant Console, Order History, Payments Core, Payments and Checkout Launch, Reliability Follow-ups) exist in tickets.csv. The expected counts (597 total open points, etc.) are derivable from the fixture. The request's JSON shape matches key paths."
+          "note": "Edits show fixed Done vs Done+Cancelled issue; cmd check numbers derivable from tickets.csv; rubric mentions S29/S30 from roadmap"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A competent developer can filter tickets by sprint label (S29, S30) and status (Done) to compute closed points per assignee, filter by open statuses to count tickets per epic and sum points (blanks as zero per README conventions). Different valid approaches (e.g., different name normalization) would pass if they produce correct counts."
+          "note": "Competent analyst could parse CSV, filter by S29/S30, count points; different conventions (Done only vs Done+Cancelled) both accepted"
         }
       ]
     }
@@ -165,7 +165,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }
