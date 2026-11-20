@@ -11,6 +11,48 @@ const LIGHT_BLOCK = '.wf-layout';
 const DARK_BLOCK = ":root[data-theme='dark'] .wf-layout";
 
 const light = sheet.declarations(LIGHT_BLOCK);
+
+function withoutComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+// The index of the brace that closes the block whose opening brace is the
+// first one in `text`.
+function closingOf(text: string): number {
+  let depth = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === '{') depth += 1;
+    if (text[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return text.length;
+}
+
+function narrowBlock(): string {
+  const code = withoutComments(sheet.text);
+  const rest = code.slice(code.indexOf('@media (max-width: 900px)'));
+  return rest.slice(rest.indexOf('{') + 1, closingOf(rest));
+}
+
+// Each rule of `text`, as its selector and the properties it sets.
+function rulesOf(text: string): [string, string[]][] {
+  return [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => [
+    match[1]!.trim().replace(/\s+/g, ' '),
+    [...match[2]!.matchAll(/([\w-]+)\s*:/g)].map((p) => p[1]!),
+  ]);
+}
+
+function declarationsOf(block: string): [string, string][] {
+  return rulesOf(block).flatMap(([selector, props]) =>
+    selector
+      .split(',')
+      .flatMap((one) =>
+        props.map((prop): [string, string] => [one.trim(), prop]),
+      ),
+  );
+}
 const MODES: [ThemeMode, Record<string, string>][] = [
   ['light', light],
   ['dark', { ...light, ...sheet.declarations(DARK_BLOCK) }],
@@ -71,21 +113,39 @@ describe('designer-layout.css', () => {
     expect(sheet.text).not.toMatch(/scroll-behavior:\s*smooth/);
   });
 
-  it('stacks the columns below 900 pixels, as the Designer does, with the drawing first', () => {
-    const narrow =
-      /@media \(max-width: 900px\) \{([\s\S]*?)\n\}/.exec(sheet.text)?.[1] ??
-      '';
+  it('stacks the columns below 900 pixels, as the Designer does, in the order of the page', () => {
     const designer = readStyleSheet(
       new URL('../src/designer/designer.css', import.meta.url),
     ).text;
 
     expect(designer).toContain('@media (max-width: 900px)');
-    expect(narrow).toMatch(
+    expect(narrowBlock()).toMatch(
       /\.wf-layout,\s*\.wf-layout\[data-folded='true'\] \{\s*grid-template-columns: minmax\(0, 1fr\);/,
     );
-    expect(narrow).toMatch(/\.wf-layout-drawing \{\s*order: -1;/);
-    expect(narrow).not.toMatch(/\.wf-layout-(left|side) \{[^}]*order:/);
-    expect(narrow).not.toMatch(/display: none/);
+    expect(narrowBlock()).not.toMatch(/display: none/);
+  });
+
+  it('reorders nothing, so the visual order is the keyboard order', () => {
+    const code = withoutComments(sheet.text);
+
+    expect(code).not.toMatch(/(^|[\s;{])order\s*:/m);
+    expect(code).not.toMatch(/grid-(row|column|area)\s*:/);
+    expect(code).not.toMatch(/-reverse/);
+  });
+
+  it('puts the narrow block last, so no later rule undoes one of its declarations', () => {
+    const code = withoutComments(sheet.text);
+    const at = code.indexOf('@media (max-width: 900px)');
+    const rest = code.slice(at + '@media (max-width: 900px)'.length);
+
+    expect(at).toBeGreaterThan(0);
+    expect(rest.slice(closingOf(rest) + 1).trim()).toBe('');
+    for (const [selector, property] of declarationsOf(narrowBlock())) {
+      const later = rulesOf(rest.slice(closingOf(rest) + 1)).filter(
+        ([other, props]) => other === selector && props.includes(property),
+      );
+      expect(later, `${selector} ${property}`).toEqual([]);
+    }
   });
 
   it('marks the selected tab and the focus with system colours in forced-colors mode', () => {

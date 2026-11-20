@@ -166,6 +166,36 @@ describe('DesignerLayout', () => {
     expect(tab('Properties').getAttribute('aria-selected')).toBe('true');
   });
 
+  it('takes the slots in the order of the page with Tab: the components, the drawing, then the side panel', () => {
+    render(
+      <DesignerLayout
+        drawing={<button type="button">Drawing node</button>}
+        yaml={{ file: 'hello.yml', text: TEXT }}
+        stage={STAGE}
+        agents={AGENTS}
+        onStageChange={() => {}}
+      >
+        <button type="button">Component</button>
+      </DesignerLayout>,
+    );
+    const tabbable = [
+      ...document.body.querySelectorAll<HTMLElement>(
+        'button, [tabindex], input, textarea, select, a[href]',
+      ),
+    ].filter(
+      (element) => element.tabIndex >= 0 && !element.closest('[hidden]'),
+    );
+
+    expect(tabbable.every((element) => element.tabIndex === 0)).toBe(true);
+    expect(tabbable.slice(0, 4).map((element) => element.textContent)).toEqual([
+      'Component',
+      'Drawing node',
+      'Hide the side panel',
+      'YAML',
+    ]);
+    expect(tabbable[4]?.getAttribute('role')).toBe('tabpanel');
+  });
+
   it('says to pick a stage when none is picked', () => {
     renderLayout(undefined);
     fireEvent.click(tab('Properties'));
