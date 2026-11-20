@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
-      "min": 11,
+      "min": 20,
       "weight": 3,
       "kind": "substance"
     },
@@ -214,7 +214,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "FX3 job",
     "log": "HAND-EDITS.md"
   }
 }
