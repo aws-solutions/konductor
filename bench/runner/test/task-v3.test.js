@@ -90,6 +90,29 @@ test('the loader rules catch what the schema cannot', () => {
   }
 });
 
+test('target: null may sit beside the v3 target fields, and review may name its model (T3, D-79)', () => {
+  const t = { ...V3, target: null, review: { ...V3.review, model: 'glm-5' } };
+  assert.deepEqual(validate(loadSchema('task'), t), []);
+  assert.deepEqual(v3Errors(t), []);
+});
+
+test('a findings key item takes the grader shape or the prose shape, and needs one of them (T5, D-72)', () => {
+  const schema = loadSchema('task');
+  const graded = { id: 'k2', location: ['test/a.test.js'], severity: 'high', fix: ['expected', 'boundary'], fixMin: 2 };
+  const t = { ...V3, findingsKey: [V3.findingsKey[0], graded, { id: 'k3', location: 'src/x.js', severity: 'low', fix: 'guard' }] };
+  assert.deepEqual(validate(schema, t), []);
+  assert.deepEqual(v3Errors(t), []);
+  for (const bad of [{ ...graded, severity: 'huge' }, { ...graded, fixMin: 0 }, { ...graded, extra: 1 }]) assert.ok(validate(schema, { ...V3, findingsKey: [bad] }).length, JSON.stringify(bad));
+  assert.ok(v3Errors({ ...V3, findingsKey: [{ id: 'k4', weight: 1 }] }).some((e) => /k4 needs "finding" or "location"/.test(e)));
+});
+
+test('every scenario pack folder loads through the run loader (D-79)', () => {
+  const pack = path.join(BENCH_DIR, 'scenarios');
+  for (const b of fs.readdirSync(pack).filter((d) => /^t\d+$/.test(d))) {
+    assert.doesNotThrow(() => loadTasks(BENCH_DIR, { extraDirs: [path.join(pack, b)] }), b);
+  }
+});
+
 test('an old target maps by kind from the repo listing, with kind prefixes and unknown names', () => {
   const cat = { skills: ['backend-review'], sops: ['k-plan'], agents: ['k-architect', 'konductor'] };
   const of = (target) => targetsOf({ ...OLD, target }, cat);

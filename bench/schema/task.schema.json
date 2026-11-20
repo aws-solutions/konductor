@@ -685,8 +685,7 @@
       "items": {
         "type": "object",
         "required": [
-          "id",
-          "finding"
+          "id"
         ],
         "additionalProperties": false,
         "properties": {
@@ -701,6 +700,39 @@
           "weight": {
             "type": "number",
             "minimum": 0
+          },
+          "location": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "nit"
+            ]
+          },
+          "fix": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "fixMin": {
+            "type": "integer",
+            "minimum": 1
           }
         }
       }
@@ -987,6 +1019,10 @@
               }
             }
           }
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
