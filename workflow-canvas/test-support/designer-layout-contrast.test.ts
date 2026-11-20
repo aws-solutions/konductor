@@ -71,6 +71,23 @@ describe('designer-layout.css', () => {
     expect(sheet.text).not.toMatch(/scroll-behavior:\s*smooth/);
   });
 
+  it('stacks the columns below 900 pixels, as the Designer does, with the drawing first', () => {
+    const narrow =
+      /@media \(max-width: 900px\) \{([\s\S]*?)\n\}/.exec(sheet.text)?.[1] ??
+      '';
+    const designer = readStyleSheet(
+      new URL('../src/designer/designer.css', import.meta.url),
+    ).text;
+
+    expect(designer).toContain('@media (max-width: 900px)');
+    expect(narrow).toMatch(
+      /\.wf-layout,\s*\.wf-layout\[data-folded='true'\] \{\s*grid-template-columns: minmax\(0, 1fr\);/,
+    );
+    expect(narrow).toMatch(/\.wf-layout-drawing \{\s*order: -1;/);
+    expect(narrow).not.toMatch(/\.wf-layout-(left|side) \{[^}]*order:/);
+    expect(narrow).not.toMatch(/display: none/);
+  });
+
   it('marks the selected tab and the focus with system colours in forced-colors mode', () => {
     expect(sheet.text).toMatch(
       /@media \(forced-colors: active\) \{[\s\S]*Highlight/,
