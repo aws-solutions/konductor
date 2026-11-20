@@ -13,8 +13,9 @@ use common::TempDir;
 use workflow_adapters::fake_harness::Entry;
 use workflow_adapters::process::current_owner;
 use workflow_adapters::{
-    choose_harness, ensure_runs_ignored, FakeHarness, FileRunLock, FileRunStore, HarnessChoice,
-    HarnessRefusal, Script, SimulatedClock, SystemClock,
+    choose_harness, ensure_runs_ignored, resolve_harness, FakeHarness, FileRunLock, FileRunStore,
+    HarnessChoice, HarnessRefusal, InstalledRunners, Script, SimulatedClock, SystemClock,
+    SystemLauncher,
 };
 use workflow_core::limits::STAGE_TIME_LIMIT_MS;
 use workflow_core::ports::{
@@ -71,7 +72,15 @@ fn run_hello_plan(project: &Path, script: Script) -> Result<Run, StartError> {
     let mut lock = FileRunLock::new(project);
     let clock = Rc::new(SimulatedClock::default());
     let owner = current_owner();
-    let started = start(&prepared, "fake", owner, &mut store, &mut lock, &*clock)?;
+    let started = start(
+        &prepared,
+        "fake",
+        owner,
+        &mut store,
+        &mut lock,
+        &*clock,
+        &mut SystemLauncher::new(),
+    )?;
     let mut run = started.run;
     let mut harness = FakeHarness::new(script, Rc::clone(&clock));
     execute(
@@ -745,14 +754,73 @@ fn fake_is_accepted_with_a_flag_or_the_variable_and_the_flag_wins() {
 }
 
 #[test]
-fn the_real_harnesses_wait_for_step_1f_and_other_names_are_unknown() {
-    for name in ["kiro-cli", "claude"] {
-        let refusal = choose_harness(name, Some(Path::new("a.json")), None).unwrap_err();
-        assert_eq!(refusal, HarnessRefusal::NotInThisBuild(name.to_string()));
-        assert!(refusal.to_string().contains("step 1f"), "{refusal}");
-    }
+fn kiro_cli_is_accepted_claude_waits_for_step_1f_2_and_other_names_are_unknown() {
+    assert_eq!(
+        choose_harness("kiro-cli", None, None),
+        Ok(HarnessChoice::KiroCli)
+    );
+    let refusal = choose_harness("claude", Some(Path::new("a.json")), None).unwrap_err();
+    assert_eq!(
+        refusal,
+        HarnessRefusal::NotInThisBuild("claude".to_string())
+    );
+    assert!(refusal.to_string().contains("step 1f-2"), "{refusal}");
     assert_eq!(
         choose_harness("kiro", None, None),
         Err(HarnessRefusal::Unknown("kiro".to_string()))
+    );
+}
+
+fn installed(kiro_cli: bool, claude: bool) -> InstalledRunners {
+    InstalledRunners { kiro_cli, claude }
+}
+
+#[test]
+fn without_a_name_the_one_installed_runner_harness_is_used() {
+    let pick = |kiro, claude| resolve_harness(None, installed(kiro, claude), None, None);
+    assert_eq!(pick(true, false), Ok(HarnessChoice::KiroCli));
+    // `claude` is the only one installed, so it is chosen, and step 1f-2 has not added it yet.
+    assert_eq!(
+        pick(false, true),
+        Err(HarnessRefusal::NotInThisBuild("claude".to_string()))
+    );
+    assert_eq!(pick(true, true), Err(HarnessRefusal::BothInstalled));
+    assert_eq!(pick(false, false), Err(HarnessRefusal::NoneInstalled));
+    for refusal in [HarnessRefusal::BothInstalled, HarnessRefusal::NoneInstalled] {
+        assert!(
+            refusal.to_string().contains("`--harness` is required"),
+            "{refusal}"
+        );
+    }
+}
+
+#[test]
+fn a_name_wins_over_what_is_installed_and_fake_is_never_a_default() {
+    for (kiro, claude) in [(false, false), (true, false), (false, true), (true, true)] {
+        let all = installed(kiro, claude);
+        assert_eq!(
+            resolve_harness(Some("kiro-cli"), all, None, None),
+            Ok(HarnessChoice::KiroCli)
+        );
+        assert_eq!(
+            resolve_harness(Some("fake"), all, None, None),
+            Err(HarnessRefusal::FakeWithoutScript)
+        );
+        assert_eq!(
+            resolve_harness(Some("fake"), all, Some(Path::new("s.json")), None)
+                .unwrap()
+                .name(),
+            "fake"
+        );
+    }
+    // A script alone never picks `fake`.
+    assert_eq!(
+        resolve_harness(
+            None,
+            installed(false, false),
+            Some(Path::new("s.json")),
+            None
+        ),
+        Err(HarnessRefusal::NoneInstalled)
     );
 }

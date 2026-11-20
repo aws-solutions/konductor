@@ -27,10 +27,22 @@ not per individual commit.
 - The workflow canvas contract and stub read the first-release workflow format and name the slice of a key they do not read yet. The contract also covers stage evidence, trust and one run per workspace; `STUB_WORKFLOW` picks a stub fixture for each answer of a run.
 - `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
   engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
-- `konductor flow run <name> --harness <harness>` runs a workflow. Each stage gets the stage prompt and passes on a
-  valid `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in
-  `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
-  The only harness so far is `fake`, which is test-only: it runs no agent, and the last line of its runs says so.
+- `konductor flow run <name> --harness fake` runs a workflow on the `fake` harness, which replays scripted replies. It is
+  test-only: it runs no agent, and the last line of its runs says so. `--harness kiro-cli` runs each stage in a headless Kiro CLI session (V2 or V3, chosen from the agent
+  file), started in the project root in its own process group, with the stage time limit and a kill after 10 seconds.
+  The runner passes no `--trust-tools` and no `--trust-all-tools`: the agent file says what the session may run without
+  asking.
+  Without `--harness` the one runner harness in `~/.konductor/installs` is used, and with both or neither installed
+  the flag is required. A stage whose agent Kiro CLI cannot see exits 64 before the first stage. A session is also
+  ended when the owner gets Ctrl-C, SIGTERM or SIGHUP, and the run halts with exit 1. The session runs under `timeout`
+  (or `gtimeout`), which holds the stage limit if the owner is killed with SIGKILL; without either program the run
+  warns once and the limit lasts only while the owner does. A session left running by an owner that was killed with
+  SIGKILL is ended by the next run if its limit has not ended it. A failed session shows the last 4 KiB of its standard
+  error on the terminal, never in the run state. `konductor doctor` checks the version of `kiro-cli` against the lowest
+  version that was tested and warns when it is lower. `claude` is a usage error until a later
+  release. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts the
+  run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is
+  active per workspace, and a second one exits 75.
 - `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
   record. To confirm you type the first 8 characters of the trust hash, so a key pressed before the summary was on
   screen cannot confirm it. `flow run` asks before it runs a project workflow, or any workflow in a repository that has
@@ -46,9 +58,10 @@ not per individual commit.
   current directory up to the git root, and the install manifest is read once, when the run starts. The manifest leaves
   out only files that cannot carry a hook, an MCP server, a permission mode or a tool grant. A Claude agent is
   found by the exact `name` in its front matter, and two files with that name, or a declaring file whose name is not
-  `<id>.md`, refuse the run with exit 77. The summary names the file of each agent, the keys such as `hooks` and
-  `mcpServers` that a Claude agent file sets (by name only), and `tools: unreadable` with the reason for a list it
-  cannot read.
+  `<id>.md`, refuse the run with exit 77. On `kiro-cli` the agent is looked for in the project root and then in the home
+  folder, which is where Kiro CLI looks, and the summary shows that file. The summary names the file of each agent,
+  the keys such as `hooks` and `mcpServers` that a Claude agent file sets (by name only), and `tools: unreadable` with
+  the reason for a list it cannot read.
 
 ### Changed
 

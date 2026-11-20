@@ -25,3 +25,10 @@ pub const STAGE_TIME_LIMIT_MS: u64 = 30 * 60 * 1000;
 /// The runner keeps this many bytes from the end of a session's stdout (1 MiB), because the result line is the last
 /// line of the final message.
 pub const MAX_SESSION_OUTPUT_BYTES: usize = 1_048_576;
+
+/// How long a stopped session gets to end after the terminate signal before its process group is killed.
+pub const KILL_GRACE_MS: u64 = 10_000;
+
+/// The launcher keeps this many bytes from the end of a session's standard error (4 KiB), to show them under the
+/// failure line. They go to the terminal only and never to the run state.
+pub const MAX_SESSION_STDERR_BYTES: usize = 4096;
