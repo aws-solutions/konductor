@@ -191,6 +191,56 @@
         "verdict": "pass",
         "note": "Key numbers (65%, 24%, 78%) exist in fixture data which agent must analyze - this is the input, not an answer key. No separate answer provided."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The task.json prompt field asks for an analysis of the project materials and specifies the output fields, but does not prescribe a method or reveal the expected recommendation. Its quoted business request for \"a proper search engine\" is context to evaluate, not an instruction to choose that solution."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "fail",
+          "note": "fixture/docs/meeting_notes_20231122.md lines 54-67 explicitly states that the problem is data handling, recommends phased normalization, and records the decision to start with PostgreSQL normalization. fixture/docs/technical_design_part_number_normalization.md lines 14-46 also gives the proposed solution, schema, index, and migration outright."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "The expertKey item \"like-limits\" is contradicted by fixture/code/search.js lines 58-65, which uses PostgreSQL full-text search with ts_rank_cd and ordering, and by fixture/data/database_stats.txt lines 11-14, which documents a GIN full-text index. Thus the key's claim that text queries lack ranking and index support does not follow from this fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The required evidence and a passing recommendation are available in fixture/data/query_analysis_summary.md lines 11-32, fixture/docs/ops_cost_analysis.xlsx.md, and fixture/docs/meeting_notes_20231122.md lines 17-67. The prompt and fixture provide the required figures, options, constraints, and JSON shape without needing hidden tests or solution files."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 97.8,
+    "stub": 4.3,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: fixture-lists-no-answer: fixture/docs/meeting_notes_20231122.md lines 54-67 explicitly states that the problem is data handling, recommends phased normalization, and records the decision to start with PostgreSQL normalization. fixture/docs/technical_design_part_num",
+      "recheck-failed: key-matches-fixture: The expertKey item \"like-limits\" is contradicted by fixture/code/search.js lines 58-65, which uses PostgreSQL full-text search with ts_rank_cd and ordering, and by fixture/data/database_stats.txt lines 11-14, which documents a GIN full-text"
+    ],
+    "dryRun": {
+      "reference": 97.8,
+      "stub": 4.3,
+      "lazy": 21.4,
+      "alt": 97.8,
+      "date": "2026-11-20"
+    }
   }
 }
