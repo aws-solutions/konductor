@@ -151,7 +151,9 @@
       "licence": "MIT (12factor.net, as listed in the plan datasets note); idea only",
       "licenceCheckedAt": "2026-11-20",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T10, owner decision 2026-11-20); second-family attempts failed, see DEBT D-122"
   },
   "review": {
     "family": "alibaba",

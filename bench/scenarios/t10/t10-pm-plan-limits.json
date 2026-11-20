@@ -144,7 +144,9 @@
       "licence": "CC BY 4.0 (kubernetes/website LICENSE)",
       "licenceCheckedAt": "2026-11-20",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T10, owner decision 2026-11-20); second-family attempts failed, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
