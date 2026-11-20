@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-feature-bets",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -50,8 +50,8 @@
     {
       "type": "min_matches",
       "path": "docs/framing.md",
-      "pattern": "Acme Corp|export.*CSV|sales.*notes|support.*ticket",
-      "min": 3,
+      "pattern": "\"customers\"\\s*:\\s*1[4-6]\\b|\"monthly_cost_savings\"\\s*:\\s*18[1-8]\\d\\d\\b|\"annual_cost_savings\"\\s*:\\s*2(1[7-9]|2[0-6])\\d{3}\\b",
+      "min": 2,
       "weight": 1,
       "kind": "substance"
     },
@@ -176,6 +176,56 @@
         "verdict": "pass",
         "note": "Fixture data contains raw numbers but nothing telling the agent to deduplicate, detect double counting, or align with Q3 goals. The hidden tests (answer key) are in the hidden/ directory, not accessible to the agent under test."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json prompt states the three feature options, source materials, desired recommendation, output path, and JSON shape, but names no method or hidden trap and does not point to any expected finding."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains source evidence and explicitly labeled preliminary or author opinions, such as old-draft-recommendation.md lines 1-24 and email-thread-priya-to-ceo.md, rather than a final answer matching the hidden JSON key."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "hidden/hidden/feature-analysis.test.js lines 16-18 and 91-95 require about 15 unique customers and $6,785 monthly revenue, but fixture/data/feature-requests-export.csv lines 2-29 contain 20 unique customer IDs and their deduplicated revenue sums to $7,890; Acme has 9 rows, meaning 8 repeats, not a 15-customer/$6,785 result."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "A careful calculation from fixture/data/feature-requests-export.csv lines 2-29 yields 20 unique customers and $7,890, while the hidden checks require 15 and $6,785 and neither value appears in the fixture, so an accurate agent cannot produce a passing output from the available evidence."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 10.2,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: key-matches-fixture: hidden/hidden/feature-analysis.test.js lines 16-18 and 91-95 require about 15 unique customers and $6,785 monthly revenue, but fixture/data/feature-requests-export.csv lines 2-29 contain 20 unique customer IDs and their deduplicated revenue",
+      "recheck-failed: solvable-from-fixture: A careful calculation from fixture/data/feature-requests-export.csv lines 2-29 yields 20 unique customers and $7,890, while the hidden checks require 15 and $6,785 and neither value appears in the fixture, so an accurate agent cannot produc"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 10.2,
+      "lazy": 13.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

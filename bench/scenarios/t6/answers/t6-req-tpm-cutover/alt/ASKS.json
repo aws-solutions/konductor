@@ -1,0 +1,8 @@
+[
+  "What's the exact maximum downtime the business approved for the cutover?",
+  "What's the time limit for rollback if the cutover isn't going well?",
+  "Who needs to sign off before we get the final go from Sarah?",
+  "How are we guaranteeing message ordering for payment processing and what's the throughput impact?",
+  "How long do we need to run both systems in parallel?",
+  "Are there any change freezes that could block our planned April cutover dates?"
+]

@@ -223,6 +223,52 @@
         "verdict": "pass",
         "note": "Fixture documents contain gaps and explicitly state what they do NOT define; all key numbers (15 min, 72 hrs, 7 days, 2 GB, 400 days) are only in scripted facts, not in fixture."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a requirements document from source material without naming methods, techniques, or pointing at the hidden fact checks."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain notes, open questions, and source material requiring reasoning; no file lists the answers or expected findings outright."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The 8 scripted facts are user-provided answers; the 3 grounded.test.js checks (record families, one-active limit, secrets/tenants) follow from data-model.md, infra-limits.md, and legal-team-email.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Fixture provides record families, job limits, plan matrix, and security concerns; scripted user fills specific decisions, enabling a complete requirements document."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 9.9,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 9.9,
+      "lazy": 24.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

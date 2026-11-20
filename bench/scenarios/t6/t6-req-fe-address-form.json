@@ -217,6 +217,52 @@
         "verdict": "pass",
         "note": "Key decisions (ParcelPin v2, 3-request limit, WCAG 2.2 AA, PO box rules, specific event names) are only in scriptedUser facts, not in fixture. Fixture contains permissive validation code and broader country list that would mislead without asking."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal (requirements document), output format (markdown with JSON block), and topic areas, but does not name any specific method, tool, or decoy to use."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain source material like validation code, event schemas, design notes, and data exports, but none list the expected requirements or hidden answers directly."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All hidden test expectations are either from scriptedUser.facts (which provide authoritative answers via conversation) or grounded.test.js checks that reference fixture files (privacy policy for logging, address.js for core fields, events.json for analytics names)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can derive all requirements from the prompt, fixture source material (code, data, notes), and scripted user's factual answers without seeing hidden/ or solution/."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.1,
+      "lazy": 14.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

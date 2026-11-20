@@ -207,6 +207,52 @@
         "verdict": "pass",
         "note": "The fixture contains event names (from code), SLO values (99.9%, 60s), and security constraints (TLS, no card data in logs), but the critical webhook contract details (throughput, retry window, ordering, key rotation, etc.) are only in scripted facts. The event-volume CSV shows peak_per_second values (31-38) that don't match the scripted answer (2,400-4,000/minute = 40-67/second), so guessing from fixture would fail."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt specifies the goal (create requirements document), input sources, and output format without naming a method, tool, or pointing at the hidden test facts."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides event types, SLO values, and security/data guidelines but does not list the throughput numbers, retry window, signing method, ordering rules, or verification requirements that the hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The grounded.test.js requirements (event names from event-types.js, payment-data restriction from data-handling.md and security-standard.md, SLO values from slo.md) all exist in the fixture. The scriptedUser facts (F1-F7) are user-provided answers, not contradicted by fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "An engineer can read the fixture, ask about gaps (throughput, retry policy, signing, ordering, residency, verification), receive scripted user answers, and combine fixture evidence with user facts to produce requirements. The solution demonstrates this path."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.5,
+      "lazy": 16.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }
