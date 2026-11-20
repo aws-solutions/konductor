@@ -123,5 +123,10 @@
         "note": "The task is substantial but fair: the fixture provides working migrations 001-012, a migration runner, repository patterns, and test examples. No contradictory requirements, no timing-dependent tests, and all necessary context is discoverable."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "t1-worker",
+    "log": "HAND-EDITS.md"
   }
 }
