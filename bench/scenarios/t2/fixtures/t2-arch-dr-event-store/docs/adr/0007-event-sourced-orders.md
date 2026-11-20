@@ -107,7 +107,7 @@ The customer projection includes the customer ID, order number, status, totals, 
 
 Snapshots will be used for long-lived orders so the command handler does not apply every event on every load. A snapshot contains aggregate state, the last applied sequence, and a format marker. Snapshot records are derived data associated with an order; a corrupt or old snapshot can be bypassed and rebuilt from the stream.
 
-The implementation will choose the snapshot interval during the schema spike based on observed stream lengths. Snapshots are expected to live in PostgreSQL beside the event table and will be covered by the existing database backup. The design does not yet specify the creation trigger, the write coordination with stream versions, the storage and index layout, or the retention and format-rotation procedure.
+The implementation will choose the snapshot interval during the schema spike based on observed stream lengths. Snapshots are expected to live in PostgreSQL beside the event table and will be covered by the existing database backup.
 
 ### 4.2 Ordering and conflicts
 
@@ -129,7 +129,7 @@ The comparison is:
 | Event-sourced PostgreSQL | Complete event stream | Projections | Existing database plus workers | Moderate |
 | Hosted event database | Complete event stream | Projections | New vendor | Highest |
 
-The event-sourced design wins because history and projection rebuilds matter more than the extra worker. The comparison does not include a design that retains the existing outbox and audit table while improving their contracts, so the migration cost is evaluated against a reduced CRUD baseline rather than that simpler option.
+The event-sourced design wins because history and projection rebuilds matter more than the extra worker.
 
 We will first create the event table and projection schemas. A one-time converter will read each current order and its audit rows, create an `OrderPlaced` event plus subsequent events where the old audit row contains enough information, and record the source row identifier. Orders without a detailed old value will receive a state capture event so their current behavior remains available.
 
@@ -143,7 +143,7 @@ A flag can route commands back to the legacy handler before the event path becom
 
 The reporting team will no longer read mutable order tables after the migration. The reporting projection will expose current order state, line items, status transitions, actor identifiers, and event timestamps. A reporting API can serve ad hoc questions, while scheduled reports can consume a daily export of the projection. This removes direct database access from reporting and prevents analytical queries from competing with command traffic.
 
-The projection can be indexed for the report shapes, and a separate worker can publish a compact report feed to the warehouse. Existing fulfillment messages continue to use their current contract. The migration gates do not yet define a replacement for current-day SQL questions, the seven-year reproducibility contract, or the full audit payload used by existing reports.
+The projection can be indexed for the report shapes, and a separate worker can publish a compact report feed to the warehouse. Existing fulfillment messages continue to use their current contract.
 
 ## 6. Operations
 
@@ -175,7 +175,7 @@ An event is an accepted domain fact, not a statement that every downstream view 
 
 The event payload includes the customer identifier and the delivery address because those values are required to reconstruct an order and to explain a support action. It may also include the recipient name and contact details when the shipping destination differs from the account. The event log is append-only and is retained indefinitely as the source of truth.
 
-The deletion worker will delete customer rows from the customer projection and remove the customer from search indexes. Support and reporting projections will receive the same deletion notification. The immutable event stream remains available for reconstruction and audit, while normal API responses will no longer find the deleted customer record. This leaves personal data in the source event history after an account deletion request.
+The deletion worker will delete customer rows from the customer projection and remove the customer from search indexes. Support and reporting projections will receive the same deletion notification. The immutable event stream remains available for reconstruction and audit, while normal API responses will no longer find the deleted customer record.
 
 Access to the event table is limited to the order service role and the recovery role. Payloads are encrypted at rest, and application logs will use order IDs rather than full event bodies. The event history gives support a reliable account of who changed an order and when.
 
