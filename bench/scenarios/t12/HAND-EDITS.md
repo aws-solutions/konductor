@@ -83,3 +83,23 @@ gpt-5.6-luna verdicts are recorded here and not in the task files. c06 (all four
 t12-spec-rate-limits pass all four items; t12-parallel-backlog and t12-sdlc-contact-import fail key-matches-fixture and
 solvable-from-fixture (fixed above). s1 (the two fixed tasks): key-matches-fixture, fixture-lists-no-answer and
 solvable-from-fixture pass; no-method-or-decoy fails because the request lays out the process (D-127).
+
+## Prompts state the outcome, not the process (2026-11-20, mate hand-edit recheck worker, claude)
+
+Owner decision on D-127 (b): the request must not name the method. Prompt only; hidden tests, key and answers
+unchanged; versions 3 to 4. Free gates after the change are unchanged (t12-parallel-backlog 100 / 0 / 20 / 100,
+t12-sdlc-contact-import 100 / 0 / 36.4 / 100), and the scenarios lint is clean.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-parallel-backlog | 2026-11-20 | "Plan the work ... then carry the plan out", "do each package as its own separate piece of work" and "merge the packages one at a time" replaced by the outcome (every item that can ship merged by the freeze, the work split to run at the same time, each part reviewable before its merge) and the same delivered files (release plan block, work/P/ with REPORT.md, merge log in mergeOrder, tests green after every merge) | gpt-5.6-luna (s1) failed no-method-or-decoy: the request laid out the process |
+| t12-sdlc-contact-import | 2026-11-20 | "from request to done, the way you would before handing it to review: pin down the requirements, decide the design, build it, test it" replaced by "Customers need the contact import ..., ready to hand to review"; the API, files and feature-note block are unchanged | the same finding |
+
+## Non-Claude recheck, round 2 (D-108, D-127, 2026-11-20, mate hand-edit recheck worker)
+
+These rows replace the round 1 rows above for the same tasks.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t12-parallel-backlog | gpt-5.6-luna (c17, full) | confirmed after fix | gpt-5.6-luna found the login-only key match unfair (fixed, hidden test) and then the process named in the request (prompt rewritten to the outcome, owner decision); gpt-5.6-luna (c17) passes all four; verdicts in HAND-EDITS.md (no author review to hold them) |
+| t12-sdlc-contact-import | gpt-5.6-luna (c17, full) | confirmed after fix | gpt-5.6-luna found the blank-line rule unfair (fixed, hidden test) and then the process named in the request (prompt rewritten to the outcome, owner decision); gpt-5.6-luna (c17) passes all four; verdicts in HAND-EDITS.md (no author review to hold them) |

@@ -1,0 +1,18 @@
+{
+ "id": "t6-developer-feasibility-spike",
+ "wave": 3,
+ "kind": "doc",
+ "phase": "ideation",
+ "role": "developer",
+ "out": "docs/feasibility.md",
+ "repo": "a small Node.js 24 repository (no dependencies, tests with node --test that pass) for a CSV import service: lib/csv.js (a streaming row reader), lib/infer.js (infers a column type from the values seen so far: integer, decimal, date, text), a deterministic sample generator tools/gen-sample.js (seeded; writes data/sample-a.csv, sample-b.csv, sample-c.csv, each tens of thousands of rows), the product one-pager that states the premise 'the import preview can show the inferred column types after reading only the first 500 rows, because column types are stable across a file', support notes, a CHANGELOG, a README. About 20 files.",
+ "idea": "A developer proves or rejects a product premise with code and measured evidence. Seed: types are stable in two sample files and drift late in the third (for example a text value or a decimal appears after row 20,000), and a value such as '007' or an empty-string run makes a naive reading differ from the repo's own infer.js rule; so the premise is rejected in general and holds only under a stated condition. The agent writes `spike/measure.js` (interface given in the request: `node spike/measure.js <csv path>` prints one JSON object on stdout with rows and, per column name, the 1-based row where the inferred type first differs from its type after 500 rows, or null) and docs/feasibility.md ending with a JSON block: premise, verdict, evidence (per sample file: file, rows, first_drift_rows by column), recommendation, conditions (list). Hidden tests run the agent's script on the three samples AND on two other files the tests generate with known drift rows, and check the verdict and numbers in the document against the fixture's own data.",
+ "source": {
+  "url": "https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works",
+  "licence": "OGL-3.0 (GOV.UK Service Manual, Open Government Licence v3.0 stated in the page footer)",
+  "licenceCheckedAt": "2026-11-20",
+  "use": "idea"
+ },
+ "author": "claude-sonnet-5.5",
+ "reviewer": "gpt-5.6-luna"
+}

@@ -152,3 +152,24 @@ Outcomes:
 - t6-idea-arch-search: DROPPED. deepseek-3.2 rewrote four fixture files and one key item; the recheck still failed fixture-lists-no-answer because docs/quick_notes_random.md and docs/slack_chat_search_discussion.md state the decision. Task files are not kept in the tree.
 - t6-plan-mvp-cut: DROPPED. deepseek-3.2 turned the answers in the email thread into hints and blanked the TEN-123 estimate; the recheck failed key-matches-fixture (the reference totalPoints, 209, is not the sum of the chosen items plus the open estimate). Task files are not kept in the tree.
 - t6-neg-glossary-rename, t6-neg-release-notes-csv: first non-Claude recheck of the scorer fixes, both pass; no change to the tasks.
+
+## CV-D calls
+
+Coverage-review wave (2026-11-20), batch CV-D (t6-research-backed-framing, t6-architect-idea-spike, t6-developer-feasibility-spike): estimate 135 credits, hard stop 140. The run script counts every row below plus 15 for the next call and refuses a call that could pass 140. Same isolation as the earlier T6 calls (scratch HOME with the login database only, memory and knowledge off, empty working directory outside every git worktree). A tool-call cap of 70 stops a runaway call.
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t6-research-backed-framing | data | gpt-5.6-luna | 1.71 |  |
+| t6-research-backed-framing | key | gpt-5.6-luna | 2.42 |  |
+| t6-architect-idea-spike | author | claude-sonnet-5.5 | 8.41 |  |
+| t6-developer-feasibility-spike | author | claude-sonnet-5.5 | 10.08 |  |
+| cv-d-three | map | glm-5 | 0.19 | one call, three tasks |
+| t6-research-backed-framing | review | glm-5 | 1.46 |  |
+| t6-architect-idea-spike | review | glm-5 | 2.38 |  |
+| t6-developer-feasibility-spike | review | gpt-5.6-luna | 0.77 |  |
+| t6-developer-feasibility-spike | fix | claude-sonnet-5.5 | 1.07 | review fix round |
+| t6-research-backed-framing | fix | gpt-5.6-luna | 2.25 | gate fix: lazy 86.6, alt 68.8 |
+| t6-architect-idea-spike | fix | claude-sonnet-5.5 | 4.23 | gate fix: lazy 94.9 |
+| t6-research-backed-framing | key2 | deepseek-3.2 | 15.64 | second key writer after the gpt fix left lazy at 56.3 |
+| t6-research-backed-framing | key2-fix | deepseek-3.2 | 16.19 | fix failed: reference 93, 19 of 21; task dropped |
+| t6-developer-feasibility-spike | review2 | gpt-5.6-luna | 0.32 | re-review after the author's fix |

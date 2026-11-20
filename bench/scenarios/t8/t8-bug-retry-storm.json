@@ -1,7 +1,7 @@
 {
   "id": "t8-bug-retry-storm",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "bugfix",
   "role": "sre",
   "phases2": [
@@ -20,7 +20,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js regress.test.js",
-      "min": 11,
+      "min": 25,
       "weight": 3,
       "kind": "substance"
     },
@@ -114,19 +114,55 @@
         "verdict": "pass",
         "note": "All requirements are achievable: the fix (removing '/ 1000') is derivable from evidence (logs show 5ms delay between retries when Retry-After says 2-3 seconds), the client contract preservation is straightforward, and the regression test pattern is clear from existing test files. No key value cannot be derived from the fixture."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request names no specific method or framework; focuses on evidence investigation and fixing shared HTTP client without misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains logs and metrics as evidence but doesn't describe the finished behavior; hidden tests check retry logic with fake clock."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check retry behavior with explicit options; all names, paths and formats exist in fixture; rubric anchors reward correct root cause fix and evidence linking."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can find bug (backoffMs returns milliseconds but sleep divides by 1000) from evidence and fixture; alternative implementations passing tests would differ from reference."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {
       "fixReason": "cannot pass by re-weighting: the mechanical lazy answer passes 10 of 11 hidden tests (lazy 72.1); no alternative answer is recorded, so pilot.dryRun is missing. Paid fix list: one fix by the original writer (gpt-5.6-luna) of the hidden tests"
     },
-    "decision": "fix",
-    "date": "2026-11-20"
+    "decision": "keep",
+    "date": "2026-11-20",
+    "reference": 100,
+    "stub": 10,
+    "dryRun": {
+      "reference": 100,
+      "stub": 10,
+      "lazy": 35.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   },
   "lockedAt": null
 }

@@ -1,0 +1,20 @@
+ticket_id,opened,cause,rows_in_file,customer,status,note
+4388,2025-01-06,encoding,12040,Brightwell Ltd,closed,resaved utf8
+4391,2025-01-08,leading zeros,5522,Orme & Sons,closed,
+4396,2025-01-14,header,48,Quill Supplies,closed,"title page in file, 2 lines"
+4402,2025-01-20,wrong type partway,88313,Halden Freight,closed,customer sent corrected file
+4405,2025-01-22,duplicates,20011,Marlow Catering,closed,re-upload after timeout
+4409,2025-01-29,leading zeros,31000,Penhallow Group,closed,
+4411,2025-02-03,,7410,Tarn Valley Co-op,closed,"unclear, no reply from customer"
+4414,2025-02-05,encoding,9080,Brightwell Ltd,closed,second time
+4418,2025-02-11,wrong type partway,152004,Ostrand Metals,closed,"customer says ""it worked in the preview of our other tool"""
+4422,2025-02-14,leading zeros,2210,Orme & Sons,closed,
+4425,2025-02-19,header,,Fenwick Dental,closed,rows not recorded
+4429,2025-02-24,wrong type partway,41200,Kestlow Imports,closed,
+4433,2025-03-01,duplicates,63990,Marlow Catering,closed,
+4417,2025-03-03,wrong type partway,60214,Halden Freight,closed,212 rows rejected
+4431,2025-03-12,encoding,15060,Tarn Valley Co-op,closed,
+4440,2025-03-19,leading zeros,8800,Penhallow Group,closed,postcodes
+4442,2025-03-19,leading zeros,3150,Dunmore Clinics,closed,postcodes
+4455,2025-03-26,header,1020,Quill Supplies,open,header block
+4468,2025-04-01,duplicates,27300,Fenwick Dental,open,partial import

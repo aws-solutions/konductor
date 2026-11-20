@@ -154,7 +154,34 @@
         "verdict": "pass",
         "note": "All key values are derivable: availability is calculated from real_user rows in request-minute.csv (99.97762185371705%), p99 is the bucket-edge at 1,200ms, the 28-day window is explicit, and the metric names come from catalogue.csv."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to analyze data and produce SLO document; names no specific method or framework, no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains raw metrics data but doesn't reveal specific SLO values or calculations needed for hidden tests."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden key expects availability 99.9776% and latency 1200ms based on fixture data; all referenced metrics exist in catalogue.csv."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent SRE can calculate metrics from CSV data and design SLOs; alternative valid SLO designs would pass hidden tests."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
