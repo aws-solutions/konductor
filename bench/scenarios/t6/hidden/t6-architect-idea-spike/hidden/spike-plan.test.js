@@ -20,13 +20,19 @@ const asMs = (v) => {
 };
 const days = (v) => (typeof v === 'number' ? v : Number(v));
 
-/** Part tests only count for a plan that fills the free time: 7 or 8 engineer-days, 4 or 5 days, steps that add up to the budget. */
-const fullPlan = () => {
-  const b = block();
+// Free time before the freeze (planning/team-calendar.csv): Tomas 5 days, Priya 3, so 8 engineer-days in 5 working days.
+const MAX_ENGINEER_DAYS = 8;
+const MAX_TIMEBOX_DAYS = 5;
+const fits = (b) => {
   const ed = days(b.engineer_days);
   const tb = days(b.timebox_days);
-  assert.ok(ed >= 7 && ed <= 8, `engineer_days ${b.engineer_days} is not 7 or 8`);
-  assert.ok(tb >= 4 && tb <= 5, `timebox_days ${b.timebox_days} is not 4 or 5`);
+  assert.ok(ed > 0 && ed <= MAX_ENGINEER_DAYS, `engineer_days ${b.engineer_days} does not fit the ${MAX_ENGINEER_DAYS} free engineer-days`);
+  assert.ok(tb > 0 && tb <= MAX_TIMEBOX_DAYS, `timebox_days ${b.timebox_days} does not fit the ${MAX_TIMEBOX_DAYS} days before the freeze`);
+  return ed;
+};
+/** Part tests only count for a plan that fits the team's free time and whose steps add up to its own budget. */
+const fullPlan = () => {
+  const ed = fits(block());
   const total = itemSteps().reduce((n, s) => n + (days(s.days) || 0), 0);
   assert.ok(Math.abs(total - ed) <= 1 + 1e-9, `steps add up to ${total}, not within a day of engineer_days ${ed}`);
 };
@@ -105,16 +111,13 @@ test('precision: no headline average or all-invoice percentile, not the 10 days 
   const v = asMs(b.baseline?.value);
   for (const d of DECOYS) assert.ok(Math.abs(v - d) / d > 0.15, `baseline.value ${v} is close to the decoy ${d}`);
   assert.doesNotMatch(text(b.baseline?.sample), /^\W*3,?00\d\s*(rows|jobs|invoices|requests)?\W*$/i);
-  assert.ok(days(b.engineer_days) >= 7, `engineer_days ${b.engineer_days} leaves free time unused`);
   assert.notEqual(days(b.engineer_days), 10);
   assert.ok(Array.isArray(b.steps) && b.steps.length <= 9);
   assert.ok(itemTexts(b.scope_out).length <= 12);
 });
 
-test('the plan uses the free time: 7 or 8 engineer-days (two engineers, one on leave two days of five) in a 4 or 5 day timebox', () => {
-  const b = block();
-  assert.ok(days(b.engineer_days) >= 7 && days(b.engineer_days) <= 8, `engineer_days ${b.engineer_days} is not 7 or 8`);
-  assert.ok(days(b.timebox_days) >= 4 && days(b.timebox_days) <= 5, `timebox_days ${b.timebox_days} is not 4 or 5`);
+test('the plan fits the free time: at most 8 engineer-days (two engineers, one on leave two days of five) in a timebox of at most 5 days, with steps that add up to it', () => {
+  fullPlan();
 });
 
 test('steps are named, 3 to 9 of them, and add up to engineer_days within one day (and to no more than 8)', () => {

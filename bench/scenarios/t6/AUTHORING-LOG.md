@@ -173,3 +173,14 @@ Coverage-review wave (2026-11-20), batch CV-D (t6-research-backed-framing, t6-ar
 | t6-research-backed-framing | key2 | deepseek-3.2 | 15.64 | second key writer after the gpt fix left lazy at 56.3 |
 | t6-research-backed-framing | key2-fix | deepseek-3.2 | 16.19 | fix failed: reference 93, 19 of 21; task dropped |
 | t6-developer-feasibility-spike | review2 | gpt-5.6-luna | 0.32 | re-review after the author's fix |
+
+## CV-D2 calls
+
+CV-D2 (2026-11-20): the non-Claude checklist recheck of the two hand-edited spike tasks (HAND-EDITS.md, "CV-D2 fixes"). Stop 30 counted credits; the run script counts every call flat at 15 before it starts and refuses one past 30. Isolation as above (scratch HOME with the login database only, empty working directory outside every git worktree).
+
+| task | step | model | counted | real | note |
+| --- | --- | --- | --- | --- | --- |
+| t6-architect-idea-spike, t6-developer-feasibility-spike | recheck r1 | deepseek-3.2 | 15 | 0.000 | void: the run script passed a relative prompt path after changing directory, so the model got an empty prompt and did nothing |
+| t6-architect-idea-spike, t6-developer-feasibility-spike | recheck r2 | deepseek-3.2 | 15 | 2.876 | one call, both tasks; stream read only files of its work dir |
+
+Total: 30 counted of 30 (2.9 real).

@@ -3,6 +3,7 @@
 ## 0.4.1 - 2025-03-27
 - `readRecords` pads short rows with empty strings instead of leaving the key out.
 - Fix: a quote that ended exactly at a chunk boundary was dropped when the next chunk started with a quote.
+- `gen-sample.js` moved to the data team's tools; `data/` keeps its output.
 
 ## 0.4.0 - 2025-03-14
 - `infer.js`: calendar check for dates, so `2025-02-30` is text.

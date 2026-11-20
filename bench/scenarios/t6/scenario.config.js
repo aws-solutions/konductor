@@ -160,10 +160,23 @@ function writeAnswers(s, id) {
   return out;
 }
 
+// Further correct answers (answers/<id>/alt-*), for example a plan that books less than all the free time.
+const extraAnswers = (id) => {
+  const d = path.join(DIR, 'answers', id);
+  return fs.existsSync(d) ? fs.readdirSync(d).filter((n) => n.startsWith('alt-')).sort() : [];
+};
+
 module.exports = {
   dir: DIR,
   conversation,
   taskErrors,
+  variants: (task) => extraAnswers(task.id).map((name) => ({ name, overlay: path.join(DIR, 'answers', task.id, name) })),
+  // Each further correct answer must score 80 or more, like the alternative.
+  gates: (out, defaults) => {
+    const g = { ...defaults };
+    for (const name of extraAnswers(out.id)) g[name] = out.scores[name] != null && out.scores[name] >= 80;
+    return g;
+  },
   prompt: { render },
   stage: {
     authEnv: 'T6_AUTH',
