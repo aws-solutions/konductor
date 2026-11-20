@@ -153,6 +153,52 @@
         "verdict": "pass",
         "note": "Every hidden test checks a behavior the prompt explicitly requires or follows directly from documented values; a careful engineer who reads the docs and follows AWS IAM patterns can pass all tests."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal (tighten trust policies, restrict monitoring permissions) and points to source files without naming methods or revealing trap patterns like NotAction inversion or missing external IDs."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains onboarding records with account IDs, role names, and external IDs - evidence the agent must use - but no file lists the bugs or explicitly states what fixes are needed."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All test values (principals like arn:aws:iam::222233334444:role/TelemetryReader, external IDs like monitoring-ext-8d21, org ID o-exampleorgid) match the fixture docs/integrations/*.md files and config/accounts.json."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture provides all needed information: onboarding docs specify principals and conditions, trust/permission JSON files show current policies with bugs (wildcard principal, NotAction allow, missing external IDs), and an engineer can reason out the fixes."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.2,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.2,
+      "lazy": 19.2,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

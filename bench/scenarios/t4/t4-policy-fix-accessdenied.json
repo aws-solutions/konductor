@@ -126,6 +126,52 @@
         "verdict": "pass",
         "note": "A careful engineer can infer all requirements from the prompt, config, log, and fake-client: the index ARN, the exports/* prefix, the KMS key ID, and the need for SSEKMSKeyId on all upload paths including completeMultipartUpload."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the problem scenario, points to specific log and config files, and states constraints without naming methods, tools, or revealing which traps the checks target."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain evidence (logs showing AccessDenied, policy JSON with explicit Deny statements, config with ARNs) but no direct statements of what the solution should be or what hidden tests expect."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All ARNs and key IDs used in hidden tests (export-permissions.test.js lines 12-20) come directly from fixture config/export.json fields: bucketArn, tableArn, indexArn, kmsKeyArn, roleArn."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The log shows AccessDenied on s3:PutObject and dynamodb:Query; fixture policies show explicit Deny on the index ARN, KMS key, and S3 prefix; config provides all needed ARNs; careful analysis of IAM evaluation logic leads to the solution."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 17,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 17,
+      "lazy": 17,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

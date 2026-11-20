@@ -1,0 +1,17 @@
+{
+    "Statement": [
+        {
+            "Resource": "arn:aws:kms:us-test-1:111122223333:key/12345678-1234-4abc-8def-1234567890ab",
+            "Action": [
+                "kms:GenerateDataKey",
+                "kms:Decrypt"
+            ],
+            "Principal": {
+                "AWS": "arn:aws:iam::111122223333:role/nightly-export-job"
+            },
+            "Effect": "Allow",
+            "Sid": "AllowWorkerDataKey"
+        }
+    ],
+    "Version": "2012-10-17"
+}

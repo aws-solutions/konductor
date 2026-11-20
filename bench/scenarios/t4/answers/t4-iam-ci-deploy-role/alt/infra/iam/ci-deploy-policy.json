@@ -1,0 +1,64 @@
+{
+    "Statement": [
+        {
+            "Resource": [
+                "arn:aws:s3:::lantern-staging-assets-111122223333",
+                "arn:aws:s3:::lantern-production-assets-111122223333"
+            ],
+            "Action": "s3:ListBucket",
+            "Effect": "Allow",
+            "Sid": "ListStageBuckets"
+        },
+        {
+            "Resource": [
+                "arn:aws:s3:::lantern-staging-assets-111122223333/*",
+                "arn:aws:s3:::lantern-production-assets-111122223333/*"
+            ],
+            "Action": "s3:PutObject",
+            "Effect": "Allow",
+            "Sid": "UploadStageAssets"
+        },
+        {
+            "Resource": [
+                "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-staging",
+                "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-production"
+            ],
+            "Action": [
+                "lambda:UpdateFunctionCode",
+                "lambda:PublishVersion"
+            ],
+            "Effect": "Allow",
+            "Sid": "UpdateApiFunctions"
+        },
+        {
+            "Resource": "arn:aws:cloudfront::111122223333:distribution/E1PRODUCTIONLANTERN",
+            "Action": "cloudfront:CreateInvalidation",
+            "Effect": "Allow",
+            "Sid": "RefreshProductionDistributions"
+        },
+        {
+            "Condition": {
+                "StringEquals": {
+                    "iam:PassedToService": "lambda.amazonaws.com"
+                }
+            },
+            "Resource": [
+                "arn:aws:iam::111122223333:role/lantern-api-staging-exec",
+                "arn:aws:iam::111122223333:role/lantern-api-production-exec"
+            ],
+            "Action": "iam:PassRole",
+            "Effect": "Allow",
+            "Sid": "PassApiExecutionRoles"
+        },
+        {
+            "Resource": [
+                "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-staging:live",
+                "arn:aws:lambda:us-east-1:111122223333:function:lantern-api-production:live"
+            ],
+            "Action": "lambda:UpdateAlias",
+            "Effect": "Allow",
+            "Sid": "RollbackLiveAliases"
+        }
+    ],
+    "Version": "2012-10-17"
+}

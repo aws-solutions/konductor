@@ -1,0 +1,33 @@
+{
+    "Statement": [
+        {
+            "Resource": [
+                "arn:aws:dynamodb:us-east-1:111122223333:table/staging-report-orders/index/by-status",
+                "arn:aws:dynamodb:us-west-2:111122223333:table/prod-report-orders/index/by-status"
+            ],
+            "Action": "dynamodb:Query",
+            "Effect": "Allow"
+        },
+        {
+            "Resource": [
+                "arn:aws:s3:::lantern-staging-reports-111122223333/reports/*",
+                "arn:aws:s3:::lantern-prod-reports-111122223333/reports/*"
+            ],
+            "Action": "s3:PutObject",
+            "Effect": "Allow"
+        },
+        {
+            "Resource": [
+                "arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/staging-nightly-report:*",
+                "arn:aws:logs:us-west-2:111122223333:log-group:/aws/lambda/prod-nightly-report:*"
+            ],
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Effect": "Allow"
+        }
+    ],
+    "Version": "2012-10-17"
+}

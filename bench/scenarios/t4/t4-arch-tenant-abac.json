@@ -158,6 +158,52 @@
         "verdict": "fixed",
         "note": "Reviewer said the tests need explicit denies the prompt never asked for. The prompt now says a missing tag and support document or write access must be refused even if another policy allows them; an identity policy with deny statements passes (the tests need no Principal element)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (replace per-tenant policies with shared access model), the constraints, the rules, and points to config files. It does not name specific methods like ABAC, IAM policy variables, Null condition operators, or ForAllValues:StringLike patterns needed to pass the hidden tests."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture shows the problem (40 individual tenant policies, existing broken shared policies) but does not reveal the correct ABAC policy structure or the specific IAM condition operators needed to pass the hidden tests."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests expect tenant isolation, missing-tag explicit deny, support read-only metadata access, premium export writes - all derivable from fixture config (bucket/table ARNs, supportPrincipal, tenants.json showing tier values) and prompt requirements."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can derive the correct ABAC policies from: infra/config/access-config.json (resource ARNs, support principal), prompt requirements (tenant isolation, missing-tag fail-closed, premium exports, support restrictions), and knowledge of IAM policy syntax with condition operators."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.7,
+      "lazy": 14.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }
