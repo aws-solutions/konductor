@@ -2,7 +2,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { EDIT_HISTORY_LIMIT } from './edit-history';
-import { useEditHistory } from './useEditHistory';
+import { useEditHistory } from './use-edit-history';
 
 function renderHistory(text = 'v0') {
   return renderHook(() => useEditHistory(text));

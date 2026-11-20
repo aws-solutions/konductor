@@ -43,17 +43,31 @@ export interface EventsReply {
 }
 
 /**
- * Sends a `GET` to a path of the API and resolves to the reply, like
- * `fetch`. It must reject when its signal aborts, as `fetch` does.
+ * Reads `GET /api/runs/{id}/events` for one session, with `after` and
+ * `wait`, and resolves to the reply, like `fetch`. The module that holds the
+ * session token builds it, so the follower never sees the token, and
+ * `runEventsPath` gives it the path. It must reject when its signal aborts,
+ * as `fetch` does.
  */
-export type SendRequest = (
-  path: string,
-  init: { headers: Record<string, string>; signal: AbortSignal },
+export type ReadEvents = (
+  runId: string,
+  after: number,
+  wait: number,
+  signal: AbortSignal,
 ) => Promise<EventsReply>;
 
-/** The ports of the follower: the network and the clock. */
+/** The path of `GET /api/runs/{id}/events`, with the run id as one segment. */
+export function runEventsPath(
+  runId: string,
+  after: number,
+  wait: number,
+): string {
+  return `/api/runs/${encodeURIComponent(runId)}/events?after=${after}&wait=${wait}`;
+}
+
+/** The ports of the follower: the session's reads and the clock. */
 export interface RunEventsPorts {
-  readonly send: SendRequest;
+  readonly readEvents: ReadEvents;
   readonly scheduler: Scheduler;
   /** The time now, in milliseconds. */
   readonly now: () => number;
@@ -62,7 +76,6 @@ export interface RunEventsPorts {
 /** What `followRunEvents` needs. */
 export interface FollowEventsRequest {
   readonly ports: RunEventsPorts;
-  readonly token: string;
   readonly runId: string;
   /** What is known of the run so far; its `next` is the first `after`. */
   readonly from: FollowedRun;
@@ -76,12 +89,14 @@ export interface FollowEventsRequest {
  * How following ended, with what is known of the run. `finished` has no
  * `outcome` on the run when the server said the run ended but its
  * `run_finished` never came, so the caller reads the run instead.
+ * `session_lost` is a 401: the server no longer knows the session, so the
+ * caller drops it as for any other call that carries the token.
  */
 export type FollowEnd =
   | { readonly kind: 'finished'; readonly run: FollowedRun }
   | { readonly kind: 'aborted'; readonly run: FollowedRun }
   | {
-      readonly kind: 'failed';
+      readonly kind: 'failed' | 'session_lost';
       readonly run: FollowedRun;
       readonly message: string;
     };
@@ -89,7 +104,11 @@ export type FollowEnd =
 type Read =
   | { readonly kind: 'answer'; readonly answer: RunEventsAnswer }
   | { readonly kind: 'retry'; readonly message: string }
-  | { readonly kind: 'refused'; readonly message: string };
+  | { readonly kind: 'refused'; readonly message: string }
+  | { readonly kind: 'session_lost'; readonly message: string };
+
+/** The status of an answer that says the server no longer knows the session. */
+const SESSION_LOST_STATUS = 401;
 
 function errorTextOf(body: unknown): string | undefined {
   if (typeof body !== 'object' || body === null) return undefined;
@@ -142,21 +161,20 @@ async function withLimit<T>(
 
 function failedReply(status: number, body: unknown): Read {
   const message = errorTextOf(body) ?? `The server answered ${status}.`;
+  if (status === SESSION_LOST_STATUS) return { kind: 'session_lost', message };
   return canRetryStatus(status)
     ? { kind: 'retry', message }
     : { kind: 'refused', message };
 }
 
 async function readOnce(
-  { ports, token, runId, signal }: FollowEventsRequest,
+  { ports, runId, signal }: FollowEventsRequest,
   after: number,
   wait: number,
 ): Promise<Read> {
-  const path = `/api/runs/${encodeURIComponent(runId)}/events?after=${after}&wait=${wait}`;
-  const headers = { Authorization: `Bearer ${token}` };
   try {
     return await withLimit(ports.scheduler, signal, async (limited) => {
-      const reply = await ports.send(path, { headers, signal: limited });
+      const reply = await ports.readEvents(runId, after, wait, limited);
       if (!reply.ok)
         return failedReply(reply.status, await bodyOrNothing(reply));
       const answer = parseRunEventsAnswer(await jsonOf(reply, limited));
@@ -178,7 +196,8 @@ function retryDelay(failures: number): number {
  * and folds each answer into the run with `applyRunEvents`. One call is in
  * flight at a time. A call that fails for a reason that can pass, such as no
  * answer or a 5xx, is tried again after a wait that doubles up to
- * `RETRY_MAX_MS`; any other failure ends the follower.
+ * `RETRY_MAX_MS`; any other failure ends the follower, and a 401 ends it
+ * with `session_lost`.
  *
  * Once `run_finished` is read the follower stops, as no event comes after
  * it. An answer that says the run has finished may still lack the last
@@ -209,6 +228,9 @@ export async function followRunEvents(
     if (signal.aborted) return { kind: 'aborted', run };
     if (read.kind === 'refused') {
       return { kind: 'failed', run, message: read.message };
+    }
+    if (read.kind === 'session_lost') {
+      return { kind: 'session_lost', run, message: read.message };
     }
     if (read.kind === 'retry') {
       failures += 1;
