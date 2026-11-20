@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: reviewer. Packet kind: a design for per-customer API rate limits across a fleet of stateless API servers using a shared counter store. Context: fleet size and traffic, customer tiers and contracts, the counter store's own limits and failover behaviour, an incident when the store went down, a latency budget. Plant: behaviour when the counter store is unreachable is not decided (fail open or closed) and the incident shows it matters; the fixed window lets a customer send twice the limit at the window edge, against the contract wording; the extra round trip blows the latency budget at p99 using the given numbers; server clocks are used for window keys with known skew; enterprise customers with contract-specific limits are not covered; the response gives no retry hint headers that the client SDK doc says it needs.",
-  "doc": "docs/design/api-rate-limiting.md"
+  "doc": "docs/design/api-rate-limiting.md",
+  "version": 2
 }

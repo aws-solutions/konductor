@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: reviewer. Packet kind: a design for a notification fan-out service for a mobile app (push, email, in-app), replacing a cron job. The document follows a proposal structure with motivation, goals, non-goals, design, rollout and risks. Context files: current architecture, service targets, traffic numbers by hour, a vendor rate-limit sheet, a cost sheet, and a past incident where a duplicate send angered users. Plant: consumers have no dedupe, so the at-least-once queue causes duplicate pushes (the incident file shows why it matters); retries have no cap or dead-letter path, so a vendor outage becomes a retry storm; the capacity section's peak number is off by 10x against the traffic CSV; the vendor's per-second limit in the sheet is lower than the planned send rate with no throttling; user contact data is copied into every queued event and kept 30 days, against the retention constraint; the availability target claimed needs two zones but the design is single zone; quiet-hours handling ignores user time zones.",
-  "doc": "docs/design/notification-fanout.md"
+  "doc": "docs/design/notification-fanout.md",
+  "version": 2
 }

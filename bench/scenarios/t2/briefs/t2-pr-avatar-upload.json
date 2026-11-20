@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Python 3.12 community forum backend on http.server (users, posts, a storage module, image helpers in pure Python, tests, docs). The PR adds profile picture upload. Plant: the stored file name is built from the client's file name, so ../ escapes the upload folder; there is no size limit though the config defines one; the type check trusts the client's Content-Type; the temp file is not removed on the error path; the public URL returned uses the user's email in the path; the old picture is never deleted and the docs promise it is. Add one decoy.",
   "stack": "python",
-  "pr": 418
+  "pr": 418,
+  "version": 2
 }
