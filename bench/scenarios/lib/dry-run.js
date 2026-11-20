@@ -126,7 +126,7 @@ function dryRun(id, cfg, { repeat = 3 } = {}) {
         }
       }
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
-      const sc = codeScore(runs[0]);
+      const sc = (cfg.score || codeScore)(runs[0]);
       out.scores[m.name] = sc.score === null ? null : round1(sc.score);
       out.modes[m.name] = { ...sc, results: runs[0] };
     }
