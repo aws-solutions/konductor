@@ -1,7 +1,7 @@
 {
   "id": "t8-rollout-ledger-migration",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -138,7 +138,34 @@
         "verdict": "pass",
         "note": "All required values are derivable: error messages from log, dates from calendar, metrics from catalogue, coverage from rota, thresholds from alerts.yaml."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal, constraints, and required JSON structure without naming methods or pointing at traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files provide evidence (logs, runbooks, configs) but do not state the expected JSON values or rollout steps outright."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key items derive from fixture: canary failure from logs/ledger-canary.log:622-626, 8% from capacity.md, thresholds from alerts.yaml, dates from change-calendar.md, coverage gap from oncall.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can infer all required values: root cause from log errors, canary size from capacity note, gate thresholds from alerts.yaml, timing from calendar, coverage from rota."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
@@ -151,15 +178,15 @@
     },
     "reference": 100,
     "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
-      "lazy": 82.1,
+      "lazy": 38.1,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "lockedAt": null
 }

@@ -1,7 +1,7 @@
 {
   "id": "t8-inc-checkout-latency",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -86,7 +86,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture contains all evidence directly: config-diff.yaml line 17 shows pool_size 40\u219212, pooler.log line 1083 shows 'client_pool_size=12 previous=40', checkout-api.log shows 'connection_acquire_timeout' and 'status=503'."
+        "note": "The fixture contains all evidence directly: config-diff.yaml line 17 shows pool_size 40→12, pooler.log line 1083 shows 'client_pool_size=12 previous=40', checkout-api.log shows 'connection_acquire_timeout' and 'status=503'."
       },
       {
         "check": "ceiling",
@@ -98,7 +98,34 @@
         "verdict": "pass",
         "note": "All key values can be derived: config-diff.yaml:17, pooler.log:1083, checkout-api.log evidence, impact values (407 failures, 3505ms P99, 40 min duration) from the CSV, and timeline times from the logs."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the task goal, data sources, output format, and constraints without naming specific methods, tools, or pointing at traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain logs, metrics, and configs the agent must analyze; no file lists the root cause, expected numbers, or findings outright."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key values (pool_size change at 17:42, client_pool_size=12 previous=40 in pooler.log line 1083, connection_acquire_timeout status=503 in checkout-api.log line 2228, duration 40 min, failedRequests 407, peakP99Ms 3505, recovery at 18:41-18:43) exist in the fixture files."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can trace the causal chain from config-diff-week.yaml, pooler.log, checkout-api.log, metrics, deploy-history.csv, and oncall transcript to derive all required findings without hidden files."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
@@ -111,15 +138,15 @@
     },
     "reference": 100,
     "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
-      "lazy": 78.6,
+      "lazy": 39.3,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "lockedAt": null
 }

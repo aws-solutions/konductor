@@ -125,3 +125,19 @@ Tasks: t3-adr-cache-sizing, t3-arch-notification-pipeline, t3-db-audit-retention
 ## Not edited
 
 t3-adr-batch-vs-stream, t3-adr-db-engine, t3-adr-egress-cdn, t3-adr-multiregion-dr, t3-adr-queue-choice, t3-api-booking, t3-api-ingest-batch, t3-api-search-pagination, t3-db-tenant-isolation, t3-dev-lib-choice, t3-dev-module-boundary: `handEdited: null`.
+
+## FX2: t3-adr-multiregion-dr (2026-11-20)
+
+- Who: claude (FX2 job)
+- What:
+  - checks: tests command loads hidden/gate.js with `node --require` (copied from _shared/gate.js)
+  - hidden: added hidden/gate.js
+- Why: the fix by deepseek-3.2 made exactly one option acceptable and passed the reference, empty and alternative gates, but the lazy answer scored 55 (over 40) because the hidden tests that do not depend on the choice still pass; the owner rule of 2026-11-19 is to gate the scorer, as done for five other T3 tasks
+
+## FX2: t3-adr-queue-choice (2026-11-20)
+
+- Who: claude (FX2 job)
+- What:
+  - checks: tests command loads hidden/gate.js with `node --require` (copied from _shared/gate.js)
+  - hidden: added hidden/gate.js
+- Why: after the fix by the original writer the shallow answer still scored over 40, because the hidden tests that do not depend on the chosen option still pass; the owner rule of 2026-11-19 is to gate the scorer, as done for five other T3 tasks

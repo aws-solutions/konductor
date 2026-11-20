@@ -60,21 +60,17 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "recheck-failed: key-matches-fixture: The fixture conflicts on the parallel option's recurring cost: fixture/cost-options.csv line 3 gives maintenance_cost_usd 50, and fixture/cost-analysis.md lines 46-53 report $50 monthly and $50 remaining budget, while hidden tests derive mo",
-      "recheck-failed: solvable-from-fixture: A careful engineer cannot determine one answer that both follows the prompt's monthly-cost and total-budget requirements and passes the hidden checks: fixture/cost-analysis.md lines 46-53 and task.json expertKey e6 imply $50 optimization co"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 25,
-      "alt": 94,
-      "date": "2026-11-19"
+      "alt": 100,
+      "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 2,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -127,22 +123,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json prompt field (line 3) states the checkout goal, inputs, and output schema but names no method, checklist, tool, trap, or answer. It does not point the agent to a particular option."
+          "note": "task.json prompt states the checkout goal, input documentation, output path, JSON schema, and constraints, but does not prescribe a method or identify a trap or answer."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/README.md lines 45-55 and fixture/architecture-diagram.md lines 26-61 list candidate approaches and evidence, but no fixture file declares a selected option or hidden expected deliverable. The latency and cost figures are source evidence the agent must compare."
+          "note": "fixture/README.md and the supporting documents provide measurements, options, and requirements as evidence; no fixture file declares the selected option or lists the hidden findings."
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "fail",
-          "note": "The fixture conflicts on the parallel option's recurring cost: fixture/cost-options.csv line 3 gives maintenance_cost_usd 50, and fixture/cost-analysis.md lines 46-53 report $50 monthly and $50 remaining budget, while hidden tests derive monthly_cost_usd 0 and total budget value 900 from only the CSV base-cost column. This also contradicts task.json expertKey e6 and weakAnswers, which require recognizing the $50 maintenance and $950 total."
+          "verdict": "pass",
+          "note": "fixture/architecture-diagram.md gives the 720 ms sequential path, 570 ms parallel calculation, and no pricing/inventory dependency; fixture/cost-analysis.md and cost-options.csv support the $900 baseline, $50 parallel maintenance, $950 total, and cache overrun, while implementation-notes.md supports the stated risks and feature-flag rollback."
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "fail",
-          "note": "A careful engineer cannot determine one answer that both follows the prompt's monthly-cost and total-budget requirements and passes the hidden checks: fixture/cost-analysis.md lines 46-53 and task.json expertKey e6 imply $50 optimization cost and $950 total, but hidden/hidden/decision.test.js lines 195-200 require $0 and $900. The conflicting cost interpretations make the expected deliverable non-uniquely solvable from the fixture."
+          "verdict": "pass",
+          "note": "fixture/requirements.md, architecture-diagram.md, cost-analysis.md, and cost-options.csv contain enough latency, dependency, budget, and option-cost data to select parallel processing and document its calculations without hidden files or user answers."
         }
       ]
     }
