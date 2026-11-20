@@ -163,7 +163,7 @@
         "deterministic": true,
         "sameTwice": true
       },
-      "fixReason": "lazy 84.7: one-item lists (failing job, flaky job, notes correction) survive halving; 11 of 14 items pass"
+      "fixReason": "cannot pass by re-weighting: the scripted shallow answer meets 11 of 14 hidden items (lazy 84.7; 61.9 even with every non-test check failing). Most items are one-element lists (one failing job, one flaky job, one late cherry-pick, one notes correction) that a half-list keeps. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
     },
     "reference": 100,
     "stub": 4.8,

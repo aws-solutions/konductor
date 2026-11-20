@@ -1,7 +1,7 @@
 {
   "id": "t7-risk-owners",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -17,15 +17,15 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
-      "min": 10,
+      "min": 8,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/risk-register.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"risks\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"mob-052\",\"mob-089\",\"mob-158\",\"key-person\",\"schedule\",\"scope\",\"unowned\",\"vendor\"];process.exit(items.filter(named).length>=7?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/risk-register.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"risks\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"mob-052\",\"mob-089\",\"mob-158\",\"key-person\",\"schedule\",\"scope\",\"unowned\",\"vendor\"];process.exit(items.every(named)?0:1)'",
       "expectExit": 0,
-      "weight": 4,
+      "weight": 8,
       "kind": "substance"
     },
     {
@@ -169,19 +169,18 @@
         "repeats": 3,
         "deterministic": true,
         "sameTwice": true
-      },
-      "fixReason": "lazy 45.2: 5 of 10 items pass, as each risk is checked by one ticket the shallow answer still names"
+      }
     },
     "reference": 100,
-    "stub": 4.8,
+    "stub": 2.9,
     "dryRun": {
       "reference": 100,
-      "stub": 4.8,
-      "lazy": 45.2,
+      "stub": 2.9,
+      "lazy": 32.5,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "handEdited": {

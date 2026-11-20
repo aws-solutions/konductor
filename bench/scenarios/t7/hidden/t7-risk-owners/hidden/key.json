@@ -24,7 +24,7 @@
     },
     {
       "id": "vendor-date-cites-ticket",
-      "desc": "ties provider timing to the compatibility ticket",
+      "desc": "ties provider timing and its owner to the compatibility ticket",
       "op": "cites",
       "path": "risks",
       "field": "tickets",
@@ -33,34 +33,8 @@
       ],
       "where": {
         "kind": "vendor",
-        "trigger_date": "2027-08-20"
-      }
-    },
-    {
-      "id": "vendor-owner",
-      "desc": "assigns the provider risk to the vendor manager",
-      "op": "cites",
-      "path": "risks",
-      "field": "tickets",
-      "ids": [
-        "MOB-052"
-      ],
-      "where": {
-        "kind": "vendor",
+        "trigger_date": "2027-08-20",
         "owner": "Sana Patel"
-      }
-    },
-    {
-      "id": "unowned-cites-chain",
-      "desc": "names the blank-owner chain ticket",
-      "op": "cites",
-      "path": "risks",
-      "field": "tickets",
-      "ids": [
-        "MOB-089"
-      ],
-      "where": {
-        "kind": "unowned"
       }
     },
     {

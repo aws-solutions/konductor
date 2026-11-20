@@ -171,7 +171,7 @@
         "deterministic": true,
         "sameTwice": true
       },
-      "fixReason": "lazy 80.5: the block lists are short (one or two items), so half a list is the whole list; 8 of 11 items and the evidence check pass"
+      "fixReason": "cannot pass by re-weighting: the scripted shallow answer meets 8 of 11 hidden items (lazy 80.5; 57.7 even with every non-test check failing). The key checks single short items a half-list still holds (one shared dependency, two constraints, the decoy); it needs new key items from the data (each workstream with its dependency, the milestone dates). Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
     },
     "reference": 100,
     "stub": 4.8,

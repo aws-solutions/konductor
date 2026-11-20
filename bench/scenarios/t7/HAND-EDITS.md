@@ -48,3 +48,22 @@ Editor: the T7 worker session (family claude, `kirocrew-mate-worker`). No prompt
 Result (free dry run, twice): reference 100, empty 4.8 (twin 14.3), alternative 100, same scores twice, on all 13.
 Lazy 40 or less on 5 (t7-dev-breakdown 39.3, t7-freeze-forecast 28.6, t7-scope-cut 23.8, t7-sprint-capacity 23.8,
 t7-status-slip 30.5); still over on 8, each with its reason in `pilot.scores.fixReason` and `pilot.decision` fix.
+
+## D-86 second pass (2026-11-20, 6 tasks to version 3)
+
+Editor: the T7 worker session (family claude, `kirocrew-mate-worker`). No prompt or fixture changed.
+
+| Task | What changed | Why |
+| --- | --- | --- |
+| t7-dep-conflicts | key (`compute_key.py` and `key.json`): the three per-conflict "names the pair" checks became one `includes` check that all three late producers are named (14 to 12 assertions); evidence check as below | a list naming only the two obvious conflicts earned two of the three name checks |
+| t7-risk-owners | key: the vendor owner and vendor date checks became one check on the vendor risk (ticket, kind, owner and trigger date); the unowned "names the ticket" check was dropped, as the unowned trigger-date check needs the same ticket (10 to 8 assertions); evidence check as below | half-right risk entries earned separate credit for owner and date |
+| t7-dep-conflicts, t7-pm-launch-cut, t7-program-rollup, t7-risk-owners, t7-ship-train, t7-status-slip-twin | checks: the evidence check now needs ALL of the key's exact facts in the answer's block (the ids every all-items assertion needs, each date with no tolerance, each integer of two or more digits with no tolerance, each `equals` string of three or more characters), at weight 8; output exists and input unchanged at weight 1; `tests.min` follows the key | with the 80% rule and weight 4, a shallow answer still passed the evidence check or kept a third of the checks share; the hidden tests and checks together stay 70% of the score (rubric 30%), and a correct answer in other words names every exact fact, so it still passes |
+
+`pilot.decision` of these six is set from the owner's gates on `pilot.dryRun` (reference 95 or more, empty 20 or less,
+lazy 40 or less, alternative 80 or more, same twice). `record-dry.js` also applies the newer `shallow` gate of
+`../t1/dry-run.js` (the reference's non-code files), which for a document task is the reference itself and marks every
+T7 task fix; that gate fits code tasks only (DEBT row added).
+
+Still fix, on the paid single-fix list (one key fix by the original writer, gpt-5.6-luna): t7-program-brief and
+t7-release-gate. Their shallow answer meets most hidden items even with every non-test check failing (57.7 and 61.9),
+because their keys check one-item lists that half a list still holds; reasons in `pilot.scores.fixReason`.
