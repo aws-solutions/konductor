@@ -71,6 +71,7 @@ Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-
 | t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
 | t1-nfr-bounded-fanout | qwen3-coder-next | second-family task: the single-step author stopped at its cap; in its one fix attempt (two-step) the key's checks used `kind` and the check name as the type, so no check could run; dropped, not hand-fixed | see the calls table for credits |
 | t1-nfr-cache-bound | qwen3-coder-next | second-family (two-step) task: the first key call stopped at its cap; after its one fix attempt by its own family the untouched fixture scores 75 (stub gate 20 or less) and the alternative 78.6; dropped, not hand-fixed | see the calls table for credits |
+| t1-ref-package-split | qwen3-coder-next | second-family (two-step) task: the first key call stopped at its 150-tool-call cap; after its one fix attempt by its own family the reference scored 28.6; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -229,3 +230,7 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-nfr-cache-bound | map | glm-5 | 0.17 |
 | t1-nfr-cache-bound | review | gpt-5.6-luna | 2.28 |
 | t1-nfr-cache-bound | lazy+alt answers | gpt-5.6-luna | 3.67 |
+| t1-ref-package-split | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-ref-package-split | map | glm-5 | 0.17 |
+| t1-ref-package-split | review | gpt-5.6-luna | 1.11 |
+| t1-ref-package-split | lazy+alt answers | gpt-5.6-luna | 3.14 |
