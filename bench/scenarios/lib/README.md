@@ -22,6 +22,8 @@ node bench/scenarios/lib/prompt.js --config bench/scenarios/t8/scenario.config.j
 node bench/scenarios/lib/stage.js --config bench/scenarios/t8/scenario.config.js assemble <id>
 ```
 
+A Python task's checks run under Python 3.12, pinned the way the runner pins it (`BENCH_PYTHON`, else `python3.12` on PATH). Point `BENCH_PYTHON` at a real 3.12 binary: a relocatable runtime that finds its libraries from its own path fails when linked (exit 127).
+
 `map`, `review` and a batch's answer or fix commands call a model and cost credits: run them only under an approved cap.
 
 Tests: `node --test bench/runner/test/scenarios-lib.test.js`.

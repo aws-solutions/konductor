@@ -1,16 +1,19 @@
-#!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Renders the author prompt of one T4 task from prompts/author.md and briefs/<id>.json, and seeds the author's empty
-// work directory with the bench-provided hidden helpers the prompt names (lib/iam-eval.js, lib/findings.js, the
-// Python bridge). Usage: node render-prompt.js <task-id> [<work-dir>]   (prints the prompt; seeds <work-dir> if given)
+// T4's batch config for the shared scenario tools (bench/scenarios/lib/config.js lists the fields).
+//   node bench/scenarios/lib/dry-run.js --config bench/scenarios/t4/scenario.config.js [id ...]
+//   node bench/scenarios/lib/prompt.js --config bench/scenarios/t4/scenario.config.js <id>
+//   node bench/scenarios/lib/stage.js --config bench/scenarios/t4/scenario.config.js seed <id> <work-dir>
+// `seed` readies the author's empty work dir with the bench-provided hidden helpers the prompt names (iam-eval.js,
+// findings.js, the Python bridge, from bench/scenarios/lib/hidden). `assemble.js` (this batch's) writes the task; the
+// hidden dirs name the helpers in .bench-lib.json instead of committing copies.
 
 const fs = require('node:fs');
 const path = require('node:path');
 
 const DIR = __dirname;
-const read = (rel) => fs.readFileSync(path.join(DIR, rel), 'utf8');
+const LIB_HIDDEN = path.join(DIR, '..', 'lib', 'hidden');
 
 const NODE_TESTS = 'Hidden tests are `hidden/*.test.js` files using node:test and node:assert.';
 const NODE_CMD = '`node --test --test-timeout=15000 hidden/*.test.js`';
@@ -55,29 +58,28 @@ function parts(b) {
   return k;
 }
 
-function render(id) {
-  const b = JSON.parse(read(`briefs/${id}.json`));
+function render(id, lib) {
+  const b = lib.brief(id);
   const p = parts(b);
-  const brief = `${b.brief}\n\nPublic inspiration: ${b.source.url} (licence ${b.source.licence}). Use the idea only.`;
-  const fill = { BRIEF: brief, SIZE: b.size, STACK: STACKS[b.stack], HIDDEN: p.hidden, TESTCMD: p.cmd, ID: b.id, KINDNOTES: p.notes };
-  return read('prompts/author.md').replace(/\{\{(\w+)\}\}/g, (_, key) => {
-    if (fill[key] === undefined) throw new Error(`no value for {{${key}}}`);
-    return fill[key];
-  });
+  const brief = `${b.brief}\n\n${lib.sourceLine(b.source)}`;
+  const vars = { BRIEF: brief, SIZE: b.size, STACK: STACKS[b.stack], HIDDEN: p.hidden, TESTCMD: p.cmd, ID: b.id, KINDNOTES: p.notes };
+  for (const [k, v] of Object.entries(vars)) if (v === undefined) throw new Error(`no value for {{${k}}}`);
+  return lib.fill(lib.read('prompts/author.md'), vars, { strict: true });
 }
 
-function seed(id, workDir) {
-  const b = JSON.parse(read(`briefs/${id}.json`));
-  const put = (from, to) => { fs.mkdirSync(path.dirname(path.join(workDir, to)), { recursive: true }); fs.copyFileSync(path.join(DIR, from), path.join(workDir, to)); };
+function seed(s, id, workDir) {
+  const b = s.brief(id);
+  const put = (name, to) => { fs.mkdirSync(path.dirname(path.join(workDir, to)), { recursive: true }); fs.copyFileSync(path.join(LIB_HIDDEN, name), path.join(workDir, to)); };
   if (b.twinOf) fs.cpSync(path.join(workDir, '..', b.twinOf, 'fixture'), path.join(workDir, 'fixture'), { recursive: true, verbatimSymlinks: true });
-  if (b.kind === 'policy') put('lib/iam-eval.js', 'hidden/iam-eval.js');
-  if (b.kind === 'findings') put('lib/findings.js', 'hidden/findings.js');
-  if (b.kind === 'code' && b.stack === 'python') { put('lib/py-timeouts.py', 'hidden/py/timeouts.py'); put('lib/py-bridge.test.js', 'hidden/py_bridge.test.js'); }
+  if (b.kind === 'policy') put('iam-eval.js', 'hidden/iam-eval.js');
+  if (b.kind === 'findings') put('findings.js', 'hidden/findings.js');
+  if (b.kind === 'code' && b.stack === 'python') { put('timeouts.py', 'hidden/py/timeouts.py'); put('py_bridge.test.js', 'hidden/py_bridge.test.js'); }
+  return { id, workDir };
 }
 
-if (require.main === module) {
-  const [id, workDir] = process.argv.slice(2);
-  if (workDir) seed(id, workDir);
-  process.stdout.write(render(id));
-}
-module.exports = { render, seed };
+module.exports = {
+  dir: DIR,
+  canary: { node: 'hidden/zz-canary.test.js', python: 'hidden/py/test_zz_canary.py' },
+  prompt: { render },
+  stage: { commands: { seed } },
+};

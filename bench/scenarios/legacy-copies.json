@@ -10,7 +10,10 @@
     "plan-grade.cjs",
     "block-key.js",
     "block.test.js",
-    "regress.test.js"
+    "regress.test.js",
+    "iam-eval.js",
+    "findings.js",
+    "timeouts.py"
   ],
   "legacy": [
     {
@@ -22,7 +25,15 @@
       "debt": "D-58"
     },
     {
+      "path": "t1/hidden/t1-nfr-ndjson-stream/hidden/py/timeouts.py",
+      "debt": "D-58"
+    },
+    {
       "path": "t1/hidden/t1-nfr-report-queries/hidden/py_bridge.test.js",
+      "debt": "D-58"
+    },
+    {
+      "path": "t1/hidden/t1-nfr-report-queries/hidden/py/timeouts.py",
       "debt": "D-58"
     },
     {
@@ -100,18 +111,6 @@
     {
       "path": "t2/render-prompt.js",
       "debt": "D-63"
-    },
-    {
-      "path": "t4/dry-run.js",
-      "debt": "D-84"
-    },
-    {
-      "path": "t4/hidden/t4-dev-sql-report-filters/hidden/py_bridge.test.js",
-      "debt": "D-84"
-    },
-    {
-      "path": "t4/render-prompt.js",
-      "debt": "D-84"
     },
     {
       "path": "t5/dry-run.js",
