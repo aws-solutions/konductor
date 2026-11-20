@@ -49,16 +49,29 @@ function CODE_KEY(b) {
   };
 }
 
-function render(id) {
+// Two-step authoring (second-family authors): step "fixture" writes the project, the prompt and PLANTED.md (each
+// planted problem and decoy in prose); a separate call, step "key", reads them and writes the key and the reference.
+const PLANTED = `2. \`PLANTED.md\` (outside \`fixture/\`): one short paragraph per planted problem, saying the file and line range (or the section number), what is wrong, why it matters in this project, how to fix it, and how severe it is (critical, high, medium, low or nit); then one paragraph per decoy (correct code or text that looks wrong) with its file and lines and why it is correct. Plant {{ITEMCOUNT}} problems. Another person writes the grading key from this file and the fixture alone, so every place must be exact.
+`;
+const FIXTURE_VERIFY = '4. Verify before you finish: run the existing tests of the fixture, check that every place named in PLANTED.md exists and shows the problem, and that nothing in the fixture names a planted problem. {{EXTRAVERIFY}}Do not write `key.json` or `solution/`. Delete any scratch folder and print a short list of what you verified.\n';
+
+function renderStep(text, step) {
+  if (step !== 'fixture') return text;
+  const two = text.indexOf('2. `key.json`'), four = text.indexOf('4. `task-draft.json`'), five = text.indexOf('5. Verify before you finish.'), end = text.indexOf('\n\nKeep everything plain');
+  return text.slice(0, two) + PLANTED + text.slice(four, five).replace('4. `task-draft.json`', '3. `task-draft.json`') + FIXTURE_VERIFY + text.slice(end + 1);
+}
+
+function render(id, step = 'all') {
   const b = JSON.parse(read(`briefs/${id}.json`));
   const brief = `${b.brief}\n\nPublic inspiration: ${b.source.url} (licence ${b.source.licence}). Use the idea only; copy no text or code.`;
   if (b.kind === 'twin') return read('prompts/author-twin.md').replace(/\{\{(\w+)\}\}/g, (_, k) => ({ BRIEF: brief, ID: b.id, OUTPUT: b.output })[k]);
   const fill = { BRIEF: brief, ID: b.id, ITEMCOUNT: '6 to 8', EXPERT: b.kind === 'design' ? read('prompts/expert-key.md').trimEnd() : '', ...KINDS[b.kind](b) };
-  return read('prompts/author.md').replace(/\{\{(\w+)\}\}/g, (_, k) => {
+  const tpl = step === 'key' ? read('prompts/author-key.md') : renderStep(read('prompts/author.md'), step);
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (!(k in fill)) throw new Error(`no value for {{${k}}}`);
     return fill[k];
   });
 }
 
-if (require.main === module) process.stdout.write(render(process.argv[2]));
+if (require.main === module) process.stdout.write(render(process.argv[2], process.argv[3]));
 module.exports = { render };

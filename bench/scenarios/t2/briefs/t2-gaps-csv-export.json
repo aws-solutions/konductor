@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Python 3.12 small-business CRM (contacts, deals, notes, an admin web layer on http.server, tests, docs). The PR adds export of contacts to CSV for admins. A teammate's review already caught some real issues. Plant what it missed: cell values that start with = + - @ are written as-is, so a contact name becomes a spreadsheet formula when opened; the whole table is loaded into memory although docs say tenants have up to two million contacts; dates are written in server local time without a zone; the export endpoint checks login but not the admin role; the file is written with no BOM although the docs say users open it in a spreadsheet that needs it; deleted contacts are included.",
   "stack": "python",
-  "pr": 61
+  "pr": 61,
+  "dropped": "2026-11-20: re-review after the fix round found comments in changes.diff that name the planted problems; replaced by t2-gaps-csv-export-v2"
 }

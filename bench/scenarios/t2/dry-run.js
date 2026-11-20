@@ -89,13 +89,27 @@ function shallowReview(root) {
   return `# Review\n\nOverall this looks reasonable; a few general points.\n\n\`\`\`json\n${JSON.stringify(items, null, 1)}\n\`\`\`\n`;
 }
 
+// Twin answers. Lazy: the PR description or the packet README pasted as the summary (what an agent that reads one
+// file writes). Alternative: the reference with its paragraphs in reverse order and plain headings dropped.
+const twinOutput = () => (task.controlKind === 'twin' ? JSON.parse(fs.readFileSync(path.join(hiddenDir, 'hidden', 'twin-key.json'), 'utf8')).output : null);
+function twinLazy(root) {
+  const pr = path.join(root, 'pr');
+  const desc = fs.existsSync(pr) ? fs.readdirSync(pr).map((d) => path.join(pr, d, 'description.md')).find((f) => fs.existsSync(f)) : null;
+  return fs.readFileSync(desc ?? path.join(root, 'README.md'), 'utf8');
+}
+function twinAlt() {
+  const ref = fs.readFileSync(path.join(solutionDir, twinOutput()), 'utf8');
+  return ref.split(/\n\s*\n/).filter((p) => !/^#+\s/.test(p.trim()) || p.trim().split('\n').length > 1).reverse().join('\n\n');
+}
+
 function runOnce(kind) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `t2dry-${id}-`));
   try {
     fs.cpSync(fixtureDir, root, { recursive: true });
     if (kind === 'reference') fs.cpSync(solutionDir, root, { recursive: true });
-    if (kind === 'shallow') fs.writeFileSync(path.join(root, 'REVIEW.md'), shallowReview(root));
-    if (kind === 'alt') fs.writeFileSync(path.join(root, 'REVIEW.md'), altReview());
+    const twin = task.controlKind === 'twin';
+    if (kind === 'shallow') fs.writeFileSync(path.join(root, twin ? twinOutput() : 'REVIEW.md'), twin ? twinLazy(root) : shallowReview(root));
+    if (kind === 'alt') fs.writeFileSync(path.join(root, twin ? twinOutput() : 'REVIEW.md'), twin ? twinAlt() : altReview());
     if (kind === 'dump') fs.writeFileSync(path.join(root, 'REVIEW.md'), task.class === 'design' ? dumpDesign(root) : dumpReview(root));
     const results = runChecks(root, task.checks, { pristineDir: fixtureDir, hiddenDir, scratchDir: path.join(root, '..', `${path.basename(root)}-chk`) });
     fs.rmSync(path.join(root, '..', `${path.basename(root)}-chk`), { recursive: true, force: true });
@@ -105,7 +119,7 @@ function runOnce(kind) {
   }
 }
 
-const kinds = ['reference', 'stub', ...(task.controlKind !== 'twin' ? ['alt', 'shallow', 'dump'] : [])];
+const kinds = ['reference', 'stub', 'alt', 'shallow', ...(task.controlKind !== 'twin' ? ['dump'] : [])];
 const out = {};
 for (const k of kinds) {
   const runs = [runOnce(k), runOnce(k), runOnce(k)];
@@ -118,7 +132,7 @@ const gates = {
   repeatable: kinds.every((k) => out[k].repeatable),
   // A list that names every changed line or every subsection must not pass for a review.
   ...(out.dump ? { dump: out.dump.score <= 55 } : {}),
-  ...(out.alt ? { alt: out.alt.score >= 90 } : {}),
+  ...(out.alt ? { alt: out.alt.score >= (task.controlKind === 'twin' ? 80 : 90) } : {}),
   ...(out.shallow ? { shallow: out.shallow.score <= 40 } : {}),
 };
 console.log(JSON.stringify({ id, ...out, gates }, null, 1));

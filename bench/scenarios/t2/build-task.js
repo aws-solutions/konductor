@@ -74,7 +74,7 @@ function build(id, work) {
   const rawReview = fs.existsSync(path.join(work, 'review.json')) ? readJson(path.join(work, 'review.json')) : null;
   // The last free dry run (authoring/<id>/dry-run.json) goes into pilot.dryRun; `lazy` is the shallow fake answer.
   const dryFile = path.join(DIR, 'authoring', id, 'dry-run.json');
-  const dry = !twin && fs.existsSync(dryFile) ? { ...readJson(dryFile), date: fs.statSync(dryFile).mtime.toISOString().slice(0, 10) } : null;
+  const dry = fs.existsSync(dryFile) ? { ...readJson(dryFile), date: fs.statSync(dryFile).mtime.toISOString().slice(0, 10) } : null;
   const recheckFile = path.join(work, 'recheck.json');
   const recheck = fs.existsSync(recheckFile) ? readJson(recheckFile) : null;
   const review = rawReview && {
