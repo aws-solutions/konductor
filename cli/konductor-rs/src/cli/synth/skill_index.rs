@@ -127,15 +127,77 @@ fn cap_on_word_boundary(text: &str, max_chars: usize) -> String {
     )
 }
 
-fn kiro_load_rule() -> String {
-    format!(
-        "Load a skill by name with the `{GET_SKILL_TOOL}` tool on the `{MCP_SERVER_NAME}` MCP \
-         server. If the tool is deferred, load it with `tool_load` first."
-    )
+/// Which Kiro CLI agent engine a prompt is synthesized for. The two load a
+/// deferred MCP tool schema through different built-in tools, so the load
+/// rule differs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum KiroEngine {
+    V2,
+    V3,
 }
 
-fn block_preamble(agent_name: &str) -> String {
-    let mut block = format!("{HEADING}\n\n{USE_RULE}\n\n{}\n\n", kiro_load_rule());
+// Both id forms are read off the shipped engines, not inferred:
+// - kiro-cli 3.5.0's `tool_search` schema says "Exact tool identifier to
+//   load (from available-deferred-tools list, format:
+//   server_name::tool_name)", and its own example is
+//   `builder-mcp::InternalSearch`.
+// - @kiro/agent 0.66.119 builds a deferred id as `tool::<server>::<tool>`
+//   for an MCP tool, and its unknown-id hint names the un-prefixed form
+//   for `tool_load` and `tool_call`.
+
+/// The id Kiro CLI V3's `load_resource` catalogue gives the `get_skill`
+/// tool's deferred schema, in its `tool::<server>::<tool>` form.
+pub(crate) fn get_skill_resource_id() -> String {
+    format!("tool::{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
+}
+
+/// The un-prefixed `<server>::<tool>` id, which V2's `tool_search` and V3's
+/// native `tool_load` both take for the same deferred tool.
+pub(crate) fn get_skill_native_id() -> String {
+    format!("{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
+}
+
+fn kiro_load_rule(engine: KiroEngine) -> String {
+    let lead = format!(
+        "Load a skill by name with the `{GET_SKILL_TOOL}` tool on the `{MCP_SERVER_NAME}` MCP \
+         server."
+    );
+    match engine {
+        // V2 defers MCP tools only when Tool Search is active, so its step
+        // stays conditional. It loads a deferred tool with `tool_search`,
+        // then the tool is called by its plain name.
+        KiroEngine::V2 => {
+            let id = get_skill_native_id();
+            format!(
+                "{lead} If `{GET_SKILL_TOOL}` is not in your tool list, call `tool_search` with \
+                 tool_id `{id}` first, then call `{GET_SKILL_TOOL}`."
+            )
+        }
+        // V3 always defers MCP tool schemas, and a schema one agent loads
+        // is not loaded for the subagents it spawns, so every agent loads
+        // it for itself. Only the loader varies, and it is decided per
+        // session, so the rule names both and keys on the tool list: the
+        // catalogue surface exposes `load_resource` and takes the
+        // `tool::`-prefixed id, the native surface exposes `tool_load` and
+        // takes the un-prefixed one. Both end in `tool_call`.
+        KiroEngine::V3 => {
+            let resource_id = get_skill_resource_id();
+            let native_id = get_skill_native_id();
+            format!(
+                "{lead} Before your first `{GET_SKILL_TOOL}` call, load its schema. If \
+                 `load_resource` is in your tool list, call it with id `{resource_id}`; otherwise \
+                 call `tool_load` with tool_ids `[\"{native_id}\"]`. Then call \
+                 `{GET_SKILL_TOOL}` through `tool_call` with the id you loaded. Do this yourself \
+                 in every agent and subagent: a schema loaded by another agent is not loaded for \
+                 you. A konductor skill is not a `skill::` resource, so do not pass a skill name \
+                 to `load_resource`; load skills only with `{GET_SKILL_TOOL}`."
+            )
+        }
+    }
+}
+
+fn block_preamble(agent_name: &str, engine: KiroEngine) -> String {
+    let mut block = format!("{HEADING}\n\n{USE_RULE}\n\n{}\n\n", kiro_load_rule(engine));
     if is_orchestrator(agent_name) {
         block.push_str(ORCHESTRATOR_RULE);
         block.push_str("\n\n");
@@ -152,6 +214,7 @@ pub(crate) fn kiro_skill_block(
     agent_name: &str,
     skill_names: &[&str],
     skills: &[SkillDef],
+    engine: KiroEngine,
 ) -> Option<String> {
     let mut lines = Vec::new();
     for skill in skill_names
@@ -167,7 +230,7 @@ pub(crate) fn kiro_skill_block(
     if lines.is_empty() {
         return None;
     }
-    let mut block = block_preamble(agent_name);
+    let mut block = block_preamble(agent_name, engine);
     block.push_str(&lines.join("\n"));
     Some(block)
 }
@@ -350,7 +413,7 @@ mod tests {
     #[test]
     fn non_string_description_gives_name_only_line() {
         let skills = vec![skill("odd", "[1, 2]")];
-        let block = kiro_skill_block("k-developer", &["odd"], &skills).unwrap();
+        let block = kiro_skill_block("k-developer", &["odd"], &skills, KiroEngine::V3).unwrap();
         assert!(block.ends_with("\n- odd"), "{block}");
     }
 
@@ -361,7 +424,7 @@ mod tests {
             skill("b", "Use for b."),
             skill("c", "Use for c."),
         ];
-        let block = kiro_skill_block("k-developer", &["c", "a"], &skills).unwrap();
+        let block = kiro_skill_block("k-developer", &["c", "a"], &skills, KiroEngine::V3).unwrap();
         let lines: Vec<&str> = block.lines().filter(|l| l.starts_with("- ")).collect();
         assert_eq!(lines, vec!["- c: Use for c.", "- a: Use for a."]);
     }
@@ -369,8 +432,8 @@ mod tests {
     #[test]
     fn orchestrator_paragraph_only_for_konductor_agents() {
         let skills = vec![skill("a", "Use for a.")];
-        let orch = kiro_skill_block("konductor", &["a"], &skills).unwrap();
-        let spec = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
+        let orch = kiro_skill_block("konductor", &["a"], &skills, KiroEngine::V3).unwrap();
+        let spec = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V3).unwrap();
         assert!(orch.contains(ORCHESTRATOR_RULE));
         assert!(!spec.contains(ORCHESTRATOR_RULE));
         assert!(!orch.contains("route it to that specialist"));
@@ -380,7 +443,7 @@ mod tests {
     #[test]
     fn orchestrator_rule_defers_to_the_loaded_rules() {
         let skills = vec![skill("a", "Use for a.")];
-        let orch = kiro_skill_block("konductor", &["a"], &skills).unwrap();
+        let orch = kiro_skill_block("konductor", &["a"], &skills, KiroEngine::V3).unwrap();
         assert!(
             orch.contains("Your loaded orchestration rules decide"),
             "{orch}"
@@ -389,16 +452,16 @@ mod tests {
 
     #[test]
     fn empty_names_give_no_block() {
-        assert!(kiro_skill_block("k-developer", &[], &[]).is_none());
+        assert!(kiro_skill_block("k-developer", &[], &[], KiroEngine::V3).is_none());
     }
 
     #[test]
     fn kiro_block_names_the_installed_server_and_tool() {
         let skills = vec![skill("a", "Use for a.")];
-        let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
+        let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V3).unwrap();
         assert!(block.contains(&format!("`{GET_SKILL_TOOL}`")), "{block}");
         assert!(block.contains(&format!("`{MCP_SERVER_NAME}`")), "{block}");
-        assert!(block.contains("`tool_load`"));
+        assert!(!block.contains("If the tool is deferred"), "{block}");
         assert!(
             block.contains("`ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`"),
             "{block}"
@@ -406,9 +469,95 @@ mod tests {
     }
 
     #[test]
+    fn v3_load_rule_repeats_itself_for_every_agent() {
+        let skills = vec![skill("a", "Use for a.")];
+        for agent in ["k-developer", "konductor"] {
+            let block = kiro_skill_block(agent, &["a"], &skills, KiroEngine::V3).unwrap();
+            assert!(block.contains("in every agent and subagent"), "{block}");
+            // Narrowed to konductor's own skills: `skill::<name>` is a real
+            // V3 catalogue id for a package member, just not for these.
+            assert!(
+                block.contains("A konductor skill is not a `skill::` resource"),
+                "{block}"
+            );
+            assert!(
+                !block.contains("Skills are not `skill::` resources"),
+                "{block}"
+            );
+        }
+    }
+
+    // V3 picks the loader per session, so the rule has to name both. The
+    // catalogue id is the native id with a `tool::` prefix, so a plain
+    // containment check passes even if the two are swapped; split the rule
+    // at the fallback and assert the id each loader is actually given.
+    #[test]
+    fn v3_load_rule_gives_each_loader_its_own_id_form() {
+        let skills = vec![skill("a", "Use for a.")];
+        let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V3).unwrap();
+        let rule = block
+            .lines()
+            .find(|line| line.contains("load_resource"))
+            .expect("V3 rule names load_resource");
+        let (catalogue, native) = rule
+            .split_once("otherwise")
+            .expect("V3 rule names a fallback loader");
+
+        assert!(
+            catalogue.contains("If `load_resource` is in your tool list"),
+            "{rule}"
+        );
+        assert!(
+            catalogue.contains(&format!("id `{}`", get_skill_resource_id())),
+            "{rule}"
+        );
+        assert!(!catalogue.contains("tool_load"), "{rule}");
+
+        assert!(native.contains("`tool_load`"), "{rule}");
+        assert!(
+            native.contains(&format!("tool_ids `[\"{}\"]`", get_skill_native_id())),
+            "{rule}"
+        );
+        // The prefixed id on this surface is what `tool_call` rejects.
+        assert!(!native.contains(&get_skill_resource_id()), "{rule}");
+
+        assert!(
+            rule.contains("`tool_call` with the id you loaded"),
+            "{rule}"
+        );
+    }
+
+    #[test]
+    fn v2_load_rule_names_tool_search_and_its_id() {
+        let skills = vec![skill("a", "Use for a.")];
+        let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V2).unwrap();
+        assert!(
+            block.contains(
+                "If `get_skill` is not in your tool list, call `tool_search` with tool_id \
+                 `konductor-skills::get_skill` first"
+            ),
+            "{block}"
+        );
+        assert!(
+            !block.contains("load_resource") && !block.contains("tool_load"),
+            "{block}"
+        );
+        assert_eq!(get_skill_native_id(), "konductor-skills::get_skill");
+    }
+
+    #[test]
+    fn get_skill_resource_id_uses_the_installed_server_and_tool() {
+        assert_eq!(
+            get_skill_resource_id(),
+            format!("tool::{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
+        );
+        assert_eq!(get_skill_resource_id(), "tool::konductor-skills::get_skill");
+    }
+
+    #[test]
     fn use_rule_asks_for_the_skills_the_task_needs() {
         let skills = vec![skill("a", "Use for a.")];
-        let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
+        let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V3).unwrap();
         assert!(
             block.contains("load the ones the task needs, usually one or two"),
             "{block}"
@@ -422,9 +571,18 @@ mod tests {
             skill("constraints", "MUST USE for every interaction. Core rules."),
             skill("a", "Use for a."),
         ];
-        let block = kiro_skill_block("k-developer", &["constraints", "a"], &skills).unwrap();
+        let block = kiro_skill_block(
+            "k-developer",
+            &["constraints", "a"],
+            &skills,
+            KiroEngine::V3,
+        )
+        .unwrap();
         assert!(
-            block.ends_with(&format!("{}\n\n- a: Use for a.", kiro_load_rule())),
+            block.ends_with(&format!(
+                "{}\n\n- a: Use for a.",
+                kiro_load_rule(KiroEngine::V3)
+            )),
             "{block}"
         );
         assert!(!block.contains("constraints"), "{block}");
@@ -437,20 +595,23 @@ mod tests {
             skill("rules", "Core rules. MUST USE for every interaction."),
             skill("a", "Use for a."),
         ];
-        let block = kiro_skill_block("k-developer", &["rules", "a"], &skills).unwrap();
+        let block =
+            kiro_skill_block("k-developer", &["rules", "a"], &skills, KiroEngine::V3).unwrap();
         assert!(!block.contains("- rules"), "{block}");
     }
 
     #[test]
     fn only_every_task_skills_give_no_block() {
         let skills = vec![skill("constraints", "MUST USE for every interaction.")];
-        assert!(kiro_skill_block("k-developer", &["constraints"], &skills).is_none());
+        assert!(
+            kiro_skill_block("k-developer", &["constraints"], &skills, KiroEngine::V3).is_none()
+        );
     }
 
     #[test]
     fn must_use_for_a_specific_task_stays_in_task_list() {
         let skills = vec![skill("git-merge", "MUST USE for merging branches. More.")];
-        let block = kiro_skill_block("konductor", &["git-merge"], &skills).unwrap();
+        let block = kiro_skill_block("konductor", &["git-merge"], &skills, KiroEngine::V3).unwrap();
         assert!(
             block.ends_with("\n- git-merge: MUST USE for merging branches."),
             "{block}"
@@ -460,7 +621,7 @@ mod tests {
     #[test]
     fn block_contains_no_em_or_en_dashes() {
         let skills = vec![skill("a", "Use for a.")];
-        let block = kiro_skill_block("konductor", &["a"], &skills).unwrap();
+        let block = kiro_skill_block("konductor", &["a"], &skills, KiroEngine::V3).unwrap();
         assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
     }
 

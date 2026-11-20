@@ -610,6 +610,16 @@ not per individual commit.
   the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
   in this repository. They say which tool-ID rows no source confirms, and correctly state that
   `install/registry.rs` registers three install strategies, not two.
+- Kiro CLI V3 agents' skills index now tells every agent and subagent to load the `get_skill`
+  schema before its first `get_skill` call, naming both of V3's loaders with the id each takes:
+  `load_resource` with id `tool::konductor-skills::get_skill` when that tool is in the agent's
+  tool list, `tool_load` with tool_ids `["konductor-skills::get_skill"]` when it is not. The V2
+  index says to call `tool_search` with tool_id `konductor-skills::get_skill` when `get_skill`
+  is not in the tool list. Both indexes used to name `tool_load` alone, which V2 does not have
+  and which V3 exposes only while the `load_resource` catalogue is off.
+- When `get_skill` can't find a skill, its error says if `--skill-name-filter` hides an existing
+  skill from the agent. For a name the index has never seen it lists up to three close skill
+  names instead, so a skill the agent named exactly is never answered with a different one.
 - Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
   orchestrators, which have a `stop` hook, still have a `hooks` field.
 - Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
