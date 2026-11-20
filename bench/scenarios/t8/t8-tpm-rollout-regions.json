@@ -172,7 +172,9 @@
     "log": "HAND-EDITS.md"
   },
   "pilot": {
-    "scores": {},
+    "scores": {
+      "fixReason": "cannot pass by re-weighting: the mechanical lazy answer (lib/answers.js) meets most hidden block-key items, so even with every non-test check failing it would score 77.1 (gate 40). The key needs items a half-copy misses. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
+    },
     "reference": 100,
     "stub": 5.7,
     "dryRun": {
