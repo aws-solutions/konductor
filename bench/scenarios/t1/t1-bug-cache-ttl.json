@@ -166,7 +166,7 @@
     "scores": {},
     "reference": 100,
     "stub": 9.5,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,

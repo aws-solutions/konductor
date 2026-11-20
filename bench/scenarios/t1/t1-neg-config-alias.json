@@ -73,7 +73,7 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The request describes required changes (rename pollIntervalMs to pollingIntervalMs) but does not prescribe a specific method, algorithm, or implementation pattern—only the expected behavior and files to update."
+        "note": "The request describes required changes (rename pollIntervalMs to pollingIntervalMs) but does not prescribe a specific method, algorithm, or implementation pattern\u2014only the expected behavior and files to update."
       },
       {
         "check": "ambiguity",
@@ -83,7 +83,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture contains no hints about the solution implementation—the config.js stub simply loads JSON without alias handling, and no comments or docs reveal the deprecation strategy."
+        "note": "The fixture contains no hints about the solution implementation\u2014the config.js stub simply loads JSON without alias handling, and no comments or docs reveal the deprecation strategy."
       },
       {
         "check": "ceiling",
@@ -101,7 +101,7 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,

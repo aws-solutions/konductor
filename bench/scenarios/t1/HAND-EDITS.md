@@ -64,3 +64,7 @@ Hand-written lazy answers (the review-fix2 lead). Five model-written lazy answer
 - t1-ref-dep-upgrade: the require path and function names are swapped to v2, but no columns and no compact option are passed.
 - t1-ref-callbacks: only runPipeline gains a promise form; processFile, retry and FileStore stay callback-only.
 - t1-ref-schema-migrate: the migration is written, but src/customer-repository.js is not updated.
+
+## Merge of origin/feat/bench-pilot-nk (2026-11-20, t1-worker)
+
+The merge with the other session's gate fixes (d4d31105) had no conflicts; all of its lazy, alternative and anchor changes are kept as they are. One follow-up, in the `pilot` field only (no prompt, fixture, key, check or rubric change): `pilot.decision` was still `fix` on tasks whose recorded `pilot.dryRun` now meets every free gate (reference 95+, stub 20-, lazy 40-, alternative 80+), so it was set to `keep` on: t1-bug-cache-ttl, t1-bug-date-range, t1-bug-event-listeners, t1-impl-cli-envprefix, t1-impl-job-retry, t1-impl-money-split, t1-impl-rate-limit, t1-impl-settings-expand, t1-impl-webhook-verify, t1-neg-config-alias, t1-nfr-ndjson-stream, t1-nfr-startup-lazy, t1-ref-dep-upgrade, t1-twin-webhook-routes. t1-ref-callbacks and t1-ref-schema-migrate were left unchanged (owner ruling pending, D-118).
