@@ -215,7 +215,7 @@ test('recheck adds no hiddenTests field to tasks without tests checks', () => {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the judge bundle shows pass and fail counts for tests checks and nothing else', () => {
+test('the judge bundle shows no hidden test counts or names', () => {
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
@@ -225,7 +225,7 @@ test('the judge bundle shows pass and fail counts for tests checks and nothing e
     }]);
     const result = JSON.parse(fs.readFileSync(path.join(runDir, 'vanilla/t1/1/result.json'), 'utf8'));
     const { text } = buildBundle({ runDir: path.join(runDir, 'vanilla/t1/1'), result, fixtureDir: path.join(bench, 'fixtures/fx'), limits: { maxFileChars: 4000, maxBundleChars: 20000 }, redactions: [] });
-    assert.match(text, /FAIL tests: 3 of 9 hidden tests passed/);
+    assert.doesNotMatch(text, /hidden tests passed|FAIL tests/);
     assert.doesNotMatch(text, /secret-name/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

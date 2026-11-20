@@ -2,6 +2,7 @@
 'use strict';
 
 const { VERDICT_VALUE, MIN_PANEL_FAMILIES } = require('./config.js');
+const { EXPERT_PREFIX } = require('../runner/lib/expert-rubric.js');
 
 // SR-24: a run's panel score is the median over judges from at least this many distinct families other than the agent's.
 const MIN_JUDGES = MIN_PANEL_FAMILIES;
@@ -19,6 +20,10 @@ function panelScore(scores) {
 
 // A verdict whose evidence quote is not found in the output drops one level.
 const DOWNGRADE = { pass: 'partial', partial: 'fail', fail: 'fail' };
+
+// An expert-key criterion (runner/lib/expert-rubric.js) counts only with a quote (D-62), so without one it fails;
+// any other criterion drops one level.
+const unquotedVerdict = (id, verdict) => (String(id).startsWith(EXPERT_PREFIX) ? 'fail' : DOWNGRADE[verdict]);
 
 // Weighted sum of pass=1, partial=0.5, fail=0, divided by the total weight.
 function rubricScore(rubric, criteria) {
@@ -63,4 +68,4 @@ function combineGraded(first, second) {
   };
 }
 
-module.exports = { DOWNGRADE, MIN_JUDGES, panelScore, rubricScore, pairOutcome, combineOrderings, combineGraded };
+module.exports = { DOWNGRADE, unquotedVerdict, MIN_JUDGES, panelScore, rubricScore, pairOutcome, combineOrderings, combineGraded };
