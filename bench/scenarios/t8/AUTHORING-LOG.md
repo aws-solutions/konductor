@@ -84,3 +84,60 @@ A deepseek author is stopped after 85 tool calls (about 25 credits at T5's rate;
 | t8-tpm-rollout-regions | review | qwen3-coder-next | 0.46 |  |
 | t8-tpm-rollout-regions | edit | (worker) | 0.00 | the request offered optional `risk.cause` and `risk.decoy` fields (naming the decoy) that the key graded; removed with their items and an optional canary field; a positional `steps.13` item, a "contract" item that matched the partner contract, and an exact certification start time replaced by "no Solmere step before the certification time"; order patterns widened; gate rule limited to traffic steps; grader gained `timeField` for that item |
 | t8-neg-alert-threshold | note | (worker) | 0.00 | the author wrote one scratch file to /tmp (outside its dir, no unit or batch read); removed |
+| t8-pm-cert-expiry-region | author | qwen3-coder-next | 0.00 |  |
+| t8-pm-cert-expiry-region | map | glm-5 | 0.16 |  |
+| t8-pm-cert-expiry-region | review | minimax-m2.5 | 4.26 |  |
+| t8-inc-memory-leak | author | minimax-m2.5 | 16.14 |  |
+| t8-inc-memory-leak | map | glm-5 | 0.16 |  |
+| t8-inc-memory-leak | review | qwen3-coder-next | 1.15 |  |
+| t8-pm-cert-expiry-region | alt answer | glm-5 | 9.03 |  |
+| t8-inc-memory-leak | alt answer | glm-5 | 7.43 |  |
+| t8-pm-cert-expiry-region | lazy answer | glm-5 | 1.78 |  |
+| t8-inc-memory-leak | lazy answer | glm-5 | 3.73 |  |
+| t8-inc-memory-leak (v2) | edit | (worker) | 0.00 | request named the decoy and listed every source, and left the impact fields undefined; rewritten with the three fields defined; the tests check counted 30 tests for 18; action matchers read the whole item (owner text matched); two keyword `contains` checks removed |
+| t8-inc-memory-leak | alt answer | glm-5 | 8.75 |  |
+| t8-inc-memory-leak | lazy answer | glm-5 | 4.70 |  |
+| t8-inc-memory-leak | lazy answer | glm-5 | 4.32 |  |
+| t8-pm-cert-expiry-region (v2, try 1) | failed | qwen3-coder-next | 0.00 | stopped at 122 tool calls before it checked its work (the cut stream reports no credits); its reference failed its own key (72%), the fixture gave the answer away (a certificate inventory row marked expired, a to-do file listing the action items) and the request gave the outage window; a second try follows |
+| t8-inc-memory-leak (v2, try 1) | failed | minimax-m2.5 | 0.00 | after one fix round (request, impact fields, test count) the reference scored 100 and the alternative 96, but the lazy answer, written from a skim (long files cut to 60 lines), scored 76: a six-line config diff names the cause; a second try follows |
+| t8-runbook-db-failover | author | qwen3-coder-next | 8.49 |  |
+| t8-runbook-db-failover | map | glm-5 | 0.17 |  |
+| t8-runbook-db-failover | review | minimax-m2.5 | 9.50 |  |
+| t8-runbook-db-failover (v2, try 1) | failed | qwen3-coder-next | 0.00 | the request listed the facts to find (hosts, RPO, metric name, CLI commands) and the eight steps the runbook must have; key items had no ids and nested matchers, the reference scored 0, and the author rewrote the bench self-check; a second try follows |
+| t8-runbook-db-failover | alt answer | glm-5 | 0.00 |  |
+| t8-nfr-slo-burn | author | minimax-m2.5 | 12.44 |  |
+| t8-nfr-slo-burn | map | glm-5 | 0.16 |  |
+| t8-runbook-db-failover | lazy answer | glm-5 | 0.74 |  |
+| t8-nfr-slo-burn | review | qwen3-coder-next | 0.49 |  |
+| t8-nfr-slo-burn | alt answer | glm-5 | 5.24 |  |
+| t8-nfr-slo-burn | lazy answer | glm-5 | 1.28 |  |
+| t8-bug-retry-storm | author | qwen3-coder-next | 0.00 |  |
+| t8-nfr-slo-burn (v2, try 1) | failed | minimax-m2.5 | 0.00 | the fixture held the solution document (the stub scored 100); the request listed every file, the dependency cap and the traffic filter; the measured availability (95.38%) sat below the target the key required; a second try follows |
+| t8-bug-retry-storm (v2, try 1) | failed | qwen3-coder-next | 0.00 | stopped at 123 tool calls with no task file written (the cut stream reports no credits); a second try follows |
+| t8-inc-memory-leak | author | qwen3-coder-next | 9.08 |  |
+| t8-inc-memory-leak | map | glm-5 | 0.16 |  |
+| t8-pm-cert-expiry-region | author | minimax-m2.5 | 10.28 |  |
+| t8-pm-cert-expiry-region | map | glm-5 | 0.17 |  |
+| t8-pm-cert-expiry-region | review | qwen3-coder-next | 0.57 |  |
+| t8-pm-cert-expiry-region | alt answer | glm-5 | 0.00 |  |
+| t8-pm-cert-expiry-region | lazy answer | glm-5 | 0.00 |  |
+| t8-inc-memory-leak | review | minimax-m2.5 | 1.88 |  |
+| t8-pm-cert-expiry-region (v2, try 2) | edit | (worker) | 0.00 | fix round: the request said "not the deploy" and listed every source; the impact fields were undefined; the expired certificate's not-after date sat a month before the outage (moved to the outage start, by hand: this author wrote no generator); key patterns listed every word as required ("503" and "error" and "fail"); the reviewer's JSON was repaired by hand |
+| t8-inc-memory-leak | alt answer | glm-5 | 14.66 |  |
+| t8-pm-cert-expiry-region | alt answer | glm-5 | 11.13 |  |
+| t8-inc-memory-leak | lazy answer | glm-5 | 3.90 |  |
+| t8-pm-cert-expiry-region | lazy answer | glm-5 | 3.15 |  |
+| t8-pm-cert-expiry-region (v2, try 2) | failed | minimax-m2.5 | 0.00 | after the fix round the reference scored 100, the stub 7 and the alternative 90, but the lazy answer, written from a skim, scored 92: the incident chat export states the cause and the timeline in its first lines, and the failed-login tolerance (10%) accepted a round guess; failed twice, so version 1 stays |
+| t8-inc-memory-leak (v2, try 2) | failed | qwen3-coder-next | 0.00 | the request listed the "key observations" (the stable container, the campaign) and left impact fields undefined; the fixture contradicts itself (a hotfix that rolls back the cache at 2026-03-17T09:00, yet kills continue until 20:06 and the key puts recovery at 23:55); the alternative scored 64; failed twice, so version 1 stays |
+| t8-runbook-db-failover | author | minimax-m2.5 | 16.08 |  |
+| t8-runbook-db-failover | map | glm-5 | 0.16 |  |
+| t8-runbook-db-failover | review | qwen3-coder-next | 0.42 |  |
+| t8-runbook-db-failover | alt answer | glm-5 | 1.03 |  |
+| t8-runbook-db-failover | lazy answer | glm-5 | 0.68 |  |
+| t8-bug-retry-storm | author | minimax-m2.5 | 16.95 |  |
+| t8-bug-retry-storm | map | glm-5 | 0.16 |  |
+| t8-bug-retry-storm | review | qwen3-coder-next | 0.36 |  |
+| t8-runbook-db-failover (v2, try 2) | failed | minimax-m2.5 | 0.00 | reference 100, stub 0, alternative 87, but the lazy answer scored 87; under the owner rule (one fix attempt by the author family, no hand fixes) and the spend stop it is dropped; version 1 stays |
+| t8-bug-retry-storm (v2, try 2) | failed | minimax-m2.5 | 0.00 | reference 92 and stub 36.5 before the lazy and alternative answers; dropped; version 1 stays |
+| t8-nfr-slo-burn (v2, try 2), t8-twin-latency-tier-report (v2), t8-dec-deploy-strategy (v2) | stopped | qwen3-coder-next, minimax-m2.5 | 0.00 | stopped at the combined T7 and T8 rewrite spend stop; the cut streams report no credits; version 1 stays |
+| (rewrite total) | note | | 0.00 | 190.90 credits: sum of the reported rewrite calls above, from the first rewrite row on; four cut streams (two qwen3-coder-next authors stopped at about 120 tool calls, and the two authors stopped at the spend stop) report no credits, so the real total is higher, about 200 to 215 |
