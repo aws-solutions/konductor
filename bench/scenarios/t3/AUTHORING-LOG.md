@@ -169,3 +169,4 @@ FX2 outcomes (2026-11-20). A fix call stopped at its 540 s limit has no final cr
 - t3-nfr-latency-budget: deepseek-3.2 fix. Recheck by gpt-5.6-luna passed. Kept. Version 2; 100, 0, 25, 100.
 - t3-nfr-capacity-autoscale: DROPPED. The deepseek-3.2 fix left the reference at 74 and the alternative at 74 (gates need 95 and 80). The task's files are not kept in the tree.
 - Not reached (cap): t3-sre-log-retention, and the fixes for t3-db-audit-retention, t3-db-order-history and t3-pm-feature-scope.
+Shared helpers (batch S, 2026-11-20): `decision-lib.js` and `gate.js` moved from `_shared/` to `bench/scenarios/lib/hidden/`; each hidden dir names the ones it uses in `.bench-lib.json` and the tests check copies them in at run time. The dry run is `node bench/scenarios/lib/dry-run.js --config bench/scenarios/t3/scenario.config.js [id]`.

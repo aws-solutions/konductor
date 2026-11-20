@@ -1,0 +1,6 @@
+{
+  "source": "./data",
+  "bucket": "examples",
+  "region": "us-east-1",
+  "envPrefix": "SYNCER_"
+}

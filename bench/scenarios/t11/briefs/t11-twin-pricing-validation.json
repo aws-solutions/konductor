@@ -1,0 +1,12 @@
+{
+  "id": "t11-twin-pricing-validation",
+  "kind": "twin",
+  "twinOf": "t11-merge-pricing-branches",
+  "controlKind": "twin",
+  "phase": "bugfix",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "source": "original",
+  "brief": "Same repository as the merge task, on main as checked out. A plain ask with no branch work: cart lines with a zero, negative, fractional or non-numeric quantity, or a negative unit price, currently slip through and give odd totals. Make the cart input validation reject them with a clear error (a stated error class or `code`, and a message naming the line index), keep valid carts priced exactly as today, and add tests. Name the module and function to change in the request, and the error shape the tests rely on. Do not touch the feature branches."
+}

@@ -14,13 +14,24 @@
 
 const asList = (v) => (v === undefined || v === null ? [] : Array.isArray(v) ? v : [v]);
 
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+// The IAM escapes ${*}, ${?} and ${$} stand for a literal '*', '?' or '$', never a wildcard.
+const LITERAL = /\$\{([*?$])\}/g;
+const unescapeLiterals = (s) => String(s).replace(LITERAL, '$1');
+
 function globToRegExp(pattern, { caseInsensitive = false } = {}) {
   let src = '';
-  for (const ch of String(pattern)) {
-    if (ch === '*') src += '.*';
-    else if (ch === '?') src += '.';
-    else src += ch.replace(/[.+^${}()|[\]\\/]/g, '\\$&');
-  }
+  const parts = String(pattern).split(LITERAL);
+  // split with one capture group: even indexes are glob text, odd indexes are escaped literal characters.
+  parts.forEach((part, i) => {
+    if (i % 2) { src += escapeRe(part); return; }
+    for (const ch of part) {
+      if (ch === '*') src += '.*';
+      else if (ch === '?') src += '.';
+      else src += escapeRe(ch);
+    }
+  });
   return new RegExp(`^${src}$`, caseInsensitive ? 'is' : 's');
 }
 
@@ -30,12 +41,13 @@ const ctxLookup = (context, key) => {
   return undefined;
 };
 
-// Replaces ${key} with the request value; ${*}, ${?} and ${$} are literal characters. A variable with no value
+// Replaces ${key} with the request value. ${*}, ${?} and ${$} stay escaped so globToRegExp reads them as literal
+// characters (unescapeLiterals turns them into plain characters for exact compares). A variable with no value
 // makes the string match nothing (null), as IAM does for Resource and condition values.
 function substitute(value, context) {
   let missing = false;
-  const out = String(value).replace(/\$\{([^}]+)\}/g, (_, key) => {
-    if (key === '*' || key === '?' || key === '$') return key;
+  const out = String(value).replace(/\$\{([^}]+)\}/g, (whole, key) => {
+    if (key === '*' || key === '?' || key === '$') return whole;
     const v = ctxLookup(context, key);
     if (v === undefined || Array.isArray(v)) { missing = true; return ''; }
     return String(v);
@@ -149,7 +161,8 @@ function evalConditionKey(op, key, policyValues, context) {
     return wantNull ? !present : present;
   }
   const [cmp, negated] = BASE[base];
-  const one = (r) => pvals.some((p) => cmp(r, String(p)));
+  const glob = /Like$/.test(base);
+  const one = (r) => pvals.some((p) => cmp(r, glob ? String(p) : unescapeLiterals(p)));
   if (set === 'ForAllValues') {
     if (!present) return true;
     return asList(raw).every((r) => (negated ? !one(r) : one(r)));

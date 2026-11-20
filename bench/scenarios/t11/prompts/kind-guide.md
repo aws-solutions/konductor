@@ -1,0 +1,8 @@
+## What the hidden part is: a fact test of the guide
+
+The agent writes `{{OUTFILE}}`, a document for people, in its own words and layout. The score is the share of hidden tests that pass.
+
+Write `hidden/hidden-guide.test.js` (laid over the repository root before it runs): {{NTESTS}} tests with node:test and node:assert that read `{{OUTFILE}}` and check one fact each: a fact a new contributor needs that the repository's config, scripts or workflow state (a version, a command, a list of allowed values, a limit, a branch name, a tag format, an owner). Match each fact with patterns that accept other wording and order (a number with its unit, a command in backticks, the names in a list in any order), never a sentence. Seed {{NTRAP}} traps: facts where a stale doc in the fixture says something else; for each, one test that the current fact is stated and one that the stale fact is not stated as current (allow it in a sentence that marks it as old or wrong, for example near the words old, outdated, no longer, previously). Add one test that every `npm run <name>` and `node scripts/<file>` the guide names exists in the fixture. A missing file fails every test.
+
+Write `solution/{{OUTFILE}}`: the reference guide.
+The `tests` check is `{ "type": "tests", "cmd": "node --test --test-timeout=30000 hidden-guide.test.js", "min": <the exact number of tests>, "weight": 3, "kind": "substance" }`. Also add a `cmd` check, weight 3, that `{{OUTFILE}}` exists with at least 40 non-empty lines AND the repository's own unit suite still passes, and one `fixture_unchanged` check, weight 1, on a file the request says must not change.

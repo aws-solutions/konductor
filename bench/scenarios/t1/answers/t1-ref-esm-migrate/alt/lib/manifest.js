@@ -1,2 +1,2 @@
-import manifestData from './manifest.json' with { type: 'json' };
+import manifestData from './module-map.json' with { type: 'json' };
 export const manifest = manifestData;
