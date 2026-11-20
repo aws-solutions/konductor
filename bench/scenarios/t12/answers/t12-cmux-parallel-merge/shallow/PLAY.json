@@ -1,0 +1,10 @@
+{
+  "note": "one agent did all three tickets itself, straight on main in one commit: right code, no worker branches, no merges",
+  "direct": [
+    "CMX-1",
+    "CMX-2",
+    "CMX-3",
+    "resolve-cmx-3"
+  ],
+  "message": "CMX-1, CMX-2, CMX-3"
+}

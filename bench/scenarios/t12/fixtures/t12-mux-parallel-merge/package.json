@@ -1,0 +1,12 @@
+{
+  "name": "stockroom",
+  "version": "1.0.0",
+  "description": "A small warehouse stock library and CLI",
+  "main": "src/index.js",
+  "bin": {
+    "stockroom": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

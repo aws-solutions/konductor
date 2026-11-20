@@ -33,7 +33,7 @@ From the independent review of 2026-11-20 (fixes 7 and 8). No model call. Every 
 
 ## Batch CV-A (2026-11-20, mate CV-A worker, claude)
 
-Owner-approved additions from the coverage review of 2026-11-20 (additions 1 and 2). Each was written by hand by
+Owner-approved additions from the coverage review of 2026-11-20 (additions 1, 2 and 7). Each was written by hand by
 this Claude worker, so the whole task is a Claude hand edit: `authorship.family` is claude, `authorship.singleFamily`
 is set, `handEdited` names the worker, and a non-Claude family rechecks it with the written checklist
 (`review.recheck`). Self-check before the recheck: the prompt asks for the behaviour (separate workers, worktrees,
@@ -48,3 +48,5 @@ answer scores 100.
 | t12-delegated-worker-fix | 2026-11-20 | `phase` multi-phase with `phases2` bugfix and code-review (was implementation and review) | the loader refused `review` and a repeated main phase |
 | t12-sop-route-choice | 2026-11-20 | new task: booking-desk fixture with its own git repository, an inbox of four requests (live refund bug, agreed BK-215, unsigned waitlist, a patch to review); `work.test.js` scores each route from what it leaves (code and tests, the spec at the CONTRIBUTING path, the review's json block, the commit order) | addition 2: route choice scored from the final artifacts' paths and order |
 | t12-sop-route-choice | 2026-11-20 | hidden test: regression tests are found by putting back the route's source file (was: by the words in the test file); the order test looks at the first commit that does route work (was: the first commit) and green is checked where each request ends (was: after every commit) | a test file for one request also matched the other; a test-first commit is a correct answer and fails its suite on purpose |
+| t12-cmux-parallel-merge | 2026-11-20 | new task: shelf fixture with its own git repository, three tickets (CMX-1 bug, CMX-2 and CMX-3 new commands that share the command registry and the CLI test, so the merges conflict); the shared grader plus a merged-result test | addition 7: the cmux outcome; cmux is not on the bench host, so the gates are proven with the reference and the runtime gap is a DEBT row |
+| t12-cmux-parallel-merge | 2026-11-20 | hidden CMX-2 test: the limit error is matched by its message only (was: anchored with `Error:`) | a correct RangeError would have failed |
