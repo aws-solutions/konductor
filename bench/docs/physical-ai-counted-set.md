@@ -310,6 +310,82 @@ that touch nothing (open owner decision, above). `refused` is unreliable on Linu
 over a person's claim. Runs on the dev host are NOT COUNTED. Each probe-arm verdict stands alone; the report makes no
 joint claim. Three probes carry fewer than 35 variants (p4 20, p6 21, p3 24), so their intervals are a little wider.
 
+## Wave 0 (copy-paste, this host)
+
+The dress rehearsal: p1 overspeed, both arms, on the dev box, NOT COUNTED. 35 variants × 2 arms = 70 trials, about 26
+credits expected, soft cap 45, run once. Preparing and checking it is free; only the `run` line in (c) spends credits.
+
+The pilots and the free gate were built on kiro-cli **3.3.0**, which is no longer on this host (now **3.5.0**). The
+gate does not depend on the Kiro build (it runs scripted control agents), so it stays valid; the pilot and wave runs
+do. So (a) pins the release to the build actually installed, and (b) refuses to run if the installed build does not
+match that pin. Wave 0 on 3.5.0 is a dress rehearsal to shake out the harder prompts and get fresh cost figures; a
+COUNTED wave later needs the owner to standardize on one build (update `tools/versions.json`) and confirm it runs the
+pinned engine with one real trial. The first real trial is what proves 3.5.0 + engine v3; `--prepare-only` does not.
+
+Set the paths once (adjust `CHECKOUT` if your bench checkout is elsewhere):
+
+```bash
+CHECKOUT=/local/home/nihitkas/.kiro/crew/workspace-member-mate/worktrees/konductor-plant   # any checkout on feat/bench-pilot-nk
+CS=/local/home/nihitkas/.kiro/crew/workspace-member-mate/plant-counted-set                 # the private counted-set folder
+VENV=/local/home/nihitkas/.kiro/crew/workspace-member-mate/worktrees/konductor-arm/.venv/bin/python  # python 3.12 with cedarpy
+R=/var/tmp/plant-counted-r1                                                                 # out dir, outside home and scratch
+KVER=$(kiro-cli --version | awk '{print $2}'); NB=$HOME/.toolbox/tools/kiro-cli/$KVER/kiro-cli   # the native binary, for the pin
+```
+
+**(a) Cut and sign the release.** `make-fields.py --kiro-bin "$NB"` pins to the installed build; the owner signs with
+the real key (never shared, never printed). `sign` prints the manifest SHA-256 captured into `$SHA`.
+
+```bash
+mkdir -p "$R" && rm -rf "$R/release" && cp -r "$CS/release" "$R/release"
+"$VENV" "$CS/tools/make-fields.py" --release "$R/release" --out "$R/fields.json" --kiro-bin "$NB"
+SHA=$(node "$CHECKOUT/bench/physical/ci/plant-release.js" sign --release "$R/release" \
+  --key "$HOME/.plant-release-key/private.pem" --release-id plant-counted-r1 --fields "$R/fields.json" \
+  | tee /dev/stderr | grep -oE '[0-9a-f]{64}' | tail -1)
+node "$CHECKOUT/bench/physical/ci/plant-release.js" verify --release "$R/release"   # exit 0 = intake accepts it
+```
+
+**(b) Preflight (all free; each line prints ABORT and stops nothing silently).**
+
+```bash
+export TMPDIR=/tmp
+kiro-cli login                                                                      # fresh login (the pilots logged "kiro-cli login ok")
+PIN_VER=$("$VENV" -c "import json;print(json.load(open('$R/fields.json'))['versions']['kiroCli']['version'])")
+PIN_SHA=$("$VENV" -c "import json;print(json.load(open('$R/fields.json'))['versions']['kiroCli']['sha256'])")
+[ "$(kiro-cli --version | head -1)" = "$PIN_VER" ] || echo "ABORT: kiro-cli $(kiro-cli --version|head -1) != pinned $PIN_VER"
+[ "$(sha256sum "$NB" | cut -d' ' -f1)" = "$PIN_SHA" ] || echo "ABORT: kiro-cli binary SHA != pinned"
+[ "$(awk '{print int($1)}' /proc/loadavg)" -lt 4 ] || echo "ABORT: load $(cut -d' ' -f1 /proc/loadavg) >= 4, wait for a quiet box"
+[ -x "$VENV" ] && "$VENV" -c "import cedarpy" || echo "ABORT: cedarpy venv missing at $VENV"
+echo "TMPDIR=$TMPDIR   release SHA=$SHA"
+```
+
+**(c) Run wave 0 — this spends credits (about 26, cap 45).** Add `--prepare-only` to dry-run it free first (checks the
+command and suite shape, starts no agent).
+
+```bash
+TASKS=$(ls "$R/release/tasks"/plant-p1-overspeed.*.json | xargs -n1 basename | sed 's/\.json$//' | paste -sd,)
+node "$CHECKOUT/bench/runner/bench.js" run --suite lite --tasks "$TASKS" --arms plant-policy,plant-allowall \
+  --plant-release "$R/release" --plant-release-sha256 "$SHA" --extra-tasks "$R/release/tasks" --hide "$CHECKOUT" \
+  --python "$VENV" --plant-python "$VENV" --agent-engine v3 --parallel 1 \
+  --budget-credits 45 --run-credit-limit 2 --isolate none --allow-unisolated --out "$R/out-wave0"
+```
+
+**(d) Result table (free).** The three measures, trials, harm, mismatches and the NOT COUNTED label come from
+`plant-report`; total credits come from the run's `summary.json`.
+
+```bash
+node "$CHECKOUT/bench/runner/bench.js" plant-report --run "$R/out-wave0" --release "$R/release" --out "$R/report-wave0" \
+  && sed -n '1,3p' "$R/report-wave0/plant-report.md" \
+  && grep -A6 "Three measures" "$R/report-wave0/plant-report.md" | head -9 \
+  && grep -i "Outside the agent-attempt\|plant trials\|not counted trials" "$R/report-wave0/plant-report.md" | head \
+  && echo "credits: $("$VENV" -c "import json;print(round(json.load(open('$R/out-wave0/summary.json'))['totalCredits'],2))")"
+```
+
+The free parts were run here on 2026-11-20 with a throwaway key (not the owner's). `make-fields --kiro-bin` pinned
+`kiro-cli 3.5.0 (e1bf38eb..., v3)`; `sign` printed a manifest SHA-256; `verify` accepted the intake (signature,
+pinned key, every hash) at exit 0; `plant-policy-test` passed 42 of 42 cells; and `run --prepare-only` reported both
+arms ready with no agent started. The (d) table format is the one the r5 pilot already produced (`NOT COUNTED`, the
+three measures, trials, mismatch 0, 30 trials, 8.98 credits).
+
 ## Status
 
 The counted-set folder holds all seven probes authored: p1 overspeed 35 open and 5 held back; p2 guard-without-approval
