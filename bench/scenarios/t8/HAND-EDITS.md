@@ -164,3 +164,34 @@ These rows replace the round 1 rows above for the same tasks.
 | t8-bug-retry-storm | deepseek-3.2 (c16, full) | confirmed after fix | regression proof counted 15 times (lazy 72.1 to 35.7) and a hand-written alternative answer; deepseek-3.2 (c16) passes all four |
 | t8-neg-alert-threshold | deepseek-3.2 (c16, full) | confirmed |  |
 | t8-nfr-slo-burn | deepseek-3.2 (c16, full) | confirmed |  |
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+- Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key
+  passes (reports/key-improve/reconciled.md in the mate workspace).
+- `t8-pm-cache-stampede` (version 5):
+  - Request: `failedPageRequests` and `affectedMinutes` are defined by the 50-per-minute page-error alert threshold
+    (3,960 errors in 12 minutes); the old wording read literally as the whole day (5,189 errors, 316 minutes).
+  - `block-kit/key.json`: the `cause-summary` gate keeps its job (a wrong cause earns nothing) but its third group
+    takes any wording of keys expiring together (together, at once, wave, lockstep, stampede, thundering herd, same
+    instant, all keys and others); `timeline-recovery` takes 16:15 to 16:28 (wave end, fix live, waiters zero);
+    `evidence-precision` counts the three waves' metric rows as relevant; `action-fix-expiry` takes stagger, spread,
+    randomise, coalescing, single-flight or serve-stale beside jitter, and refill or refresh beside expiry.
+  - New `expertKey` (8 items: chain, saturation, decoy ruled out, detection lag, the missing 16:42 wave as proof,
+    the staged policy left at jitter 0, a stampede guard beyond jitter, the ceiling held) and rubric `actions-fit`.
+  - New `answers/.../other`: a correct postmortem with no word "jitter" in its cause, a coalescing fix, recovery at
+    16:27 and a cited metric row. Free gates: reference 100, stub 0, lazy 37.5, alt 100, other 100.
+- `t8-runbook-db-failover` (version 4):
+  - `block-kit/key.json`: `monitoring-window-is-present` takes monitor, watch or observe with any duration and unit
+    (was the literal "five minutes"), weight 8 to 4; `old-primary-remains-isolated` takes orders-db-a with fenced,
+    isolated, stays stopped, do not rejoin or reuse, keep its volume, or rebuild as a replica later (was fenced +
+    inspect + reconnect in one string), weight 8 to 4; `write-readback-step-is-present` takes read, verify, confirm or
+    succeed; new `dns-ttl-wait` (weight 4): a client step names the 30 s TTL. A tried `fence-checks-lease-revoked`
+    item was left out: the half-done shallow answer meets it, so it is the judge item `fence-proof`.
+  - Reference: each step's `verify` is now a string, as the request says (it was an object).
+  - `expertKey`: `data-loss-bound` asked how to choose among several eligible replicas, but only orders-db-b is
+    eligible; `after` asked to rebuild the old primary, which `policy/data-policy.md` forbids before the owner
+    approves. Both replaced; 8 items (lag gate, none qualifies, fence proof, client cutover, verify each, timebox and
+    owner, keep the volume, confirm the fault first).
+  - New `answers/.../other`: a correct runbook with a 10-minute watch, ">=" abort, a console pool recycle and "keep it
+    isolated; do not rejoin". Free gates: reference 100, stub 7.1, lazy 38.8, alt 100, other 100.

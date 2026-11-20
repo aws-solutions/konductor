@@ -2,7 +2,7 @@
   "id": "t3-adr-batch-vs-stream",
   "class": "design",
   "target": null,
-  "prompt": "Our nightly reporting pipeline needs an architectural decision to handle projected growth through 2025. Currently processing 1.4 TB in 2.1 hours, we have a strict 4-hour processing window ending at 6 AM. Data is growing 35% per quarter, and we need a solution that works for the next 4 quarters.\n\nThe business has set a hard monthly budget limit of $10,000 for infrastructure. We must maintain 99.5% uptime and 99.9% data accuracy. The team has expertise in batch processing but would need training for streaming technologies.\n\nI need you to analyze the options and make a recommendation. Create an Architecture Decision Record at docs/adr/0001-processing.md that documents your analysis and decision.\n\nThe ADR must include a fenced code block with info string `decision` containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option (must be one of: batch_current, batch_2x_scaling, batch_3x_scaling, streaming)\n- \"options\": array of option IDs you considered (must include all of: batch_current, batch_2x_scaling, batch_3x_scaling, streaming)\n- \"limits\": object where each key is a limit name and value is {\"limit\": number, \"value\": number} - include every hard limit from the requirements. The limit keys you must use are: data_accuracy_percent, data_volume_tb_q4_2025, monthly_budget_usd, processing_window_hours, system_uptime_percent\n- \"monthly_cost_usd\": the monthly cost for your chosen option, computed from the pricing data\n\nBase your analysis on the documents in the fixture/ directory. Consider all constraints including processing window, budget, and growth projections. The solution must work through Q4 2025.",
+  "prompt": "Our nightly reporting pipeline needs an architectural decision to handle projected growth through 2025. Currently processing 1.4 TB in 2.1 hours, we have a strict 4-hour processing window ending at 6 AM. Data is growing 35% per quarter, and we need a solution that works for the next 4 quarters.\n\nThe business has set a hard monthly budget limit of $10,000 for infrastructure. We must maintain 99.5% uptime and 99.9% data accuracy. The team has expertise in batch processing but would need training for streaming technologies.\n\nI need you to analyze the options and make a recommendation. Create an Architecture Decision Record at docs/adr/0001-processing.md that documents your analysis and decision.\n\nThe ADR must include a fenced code block with info string `decision` containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option (must be one of: batch_current, batch_2x_scaling, batch_3x_scaling, streaming)\n- \"options\": array of option IDs you considered (must include all of: batch_current, batch_2x_scaling, batch_3x_scaling, streaming)\n- \"limits\": object where each key is a limit name and value is {\"limit\": number, \"value\": number} - include every hard limit from the requirements. The limit keys you must use are: data_accuracy_percent, data_volume_tb_q3_2025, monthly_budget_usd, processing_window_hours, system_uptime_percent\n- \"monthly_cost_usd\": the monthly cost for your chosen option, computed from the pricing data\n\nBase your analysis on the documents in the fixture/ directory. Consider all constraints including processing window, budget, and growth projections. The solution must work through Q3 2025.",
   "fixture": "t3-adr-batch-vs-stream",
   "timeoutSec": 900,
   "hidden": "t3-adr-batch-vs-stream",
@@ -27,7 +27,7 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of analytical reasoning and tradeoff analysis. Fail: picks batch_current for its $4,316 price, or batch_3x_scaling or streaming, with no window or budget arithmetic. Partial: the chosen option is batch_2x_scaling but the reasoning checks only one limit (window or budget), or sizes the load at 6.28 TB instead of the 4.65 TB Q3 2025 planning point. Pass: shows 4.65 TB x 1.5 hr/TB = 6.98 hours so batch_current fails the 4-hour window, batch_3x_scaling at $12,948 breaks the $10,000 budget, and batch_2x_scaling at about $8,632 (16 nodes x $68 x about 8 hours x 30 days, storage at $23/TB not the superseded $28) meets both. (not code-checkable: Tests can verify numerical calculations and constraint compliance, but cannot assess the quality of reasoning, consideration of tradeoffs, or clarity of explanation in the ADR narrative.)",
+      "criterion": "Quality of analytical reasoning and tradeoff analysis. Fail: picks batch_current for its $4,316 price, or batch_3x_scaling or streaming, with no window or budget arithmetic. Partial: the chosen option is batch_2x_scaling but the reasoning checks only one limit (window or budget), or sizes the load incorrectly instead of the 4.65 TB Q3 2025 planning point. Pass: shows 4.65 TB x 1.5 hr/TB = 6.98 hours so batch_current fails the 4-hour window, batch_3x_scaling at $12,948 breaks the $10,000 budget, and batch_2x_scaling at about $8,632 (16 nodes x $68 x about 8 hours x 30 days, storage at $23/TB not the superseded $28) meets both. (not code-checkable: Tests can verify numerical calculations and constraint compliance, but cannot assess the quality of reasoning, consideration of tradeoffs, or clarity of explanation in the ADR narrative.)",
       "weight": 1
     },
     {
@@ -70,10 +70,10 @@
       "date": "2026-11-20"
     },
     "blockers": [
-      "recheck-failed: key-matches-fixture, solvable-from-fixture (gpt-5.6-luna v1, 2026-11-20): the request says Q4 2025 but the key is sized for 4.65 TB; the fixture gives 4.65 TB and 6.28 TB for Q4 2025 (D-127)"
+      "recheck-pending: deepseek-3.2 (f5, 2026-11-20) rewrote the horizon to 2025-Q3 / 4.65 TB everywhere; free gates pass (100/0/19/100); the gpt-5.6-luna recheck was not run because the 30-credit cap left 7.4 (D-127)"
     ]
   },
-  "version": 4,
+  "version": 5,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -165,7 +165,7 @@
       },
       {
         "id": "e4",
-        "text": "Recognizes that the 4.65 TB Q3 2025 projection (not Q4 2025's 6.28 TB) is the critical planning threshold because the task requires the solution to work through 4 quarters, and Q3 2025 marks the point where batch_current definitively fails the window constraint.",
+        "text": "Recognizes that the 4.65 TB Q3 2025 projection is the critical planning threshold because the task requires the solution to work through 4 quarters, and Q3 2025 marks the point where batch_current definitively fails the window constraint.",
         "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
       },
       {

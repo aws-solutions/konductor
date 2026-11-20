@@ -74,19 +74,19 @@ Based on current measurements, processing time scales linearly with data volume:
 - **Option**: 8 × m5.4xlarge (16 vCPU, 64GB each)
 - **Cost increase**: ~85% ($68 → $125/hour)
 - **Expected improvement**: ~40% faster processing
-- **Q4 2025 projection**: 4.65 TB → 4.2 hours (still within window)
+- **Q3 2025 projection**: 4.65 TB → 4.2 hours (still within window)
 
 #### Option B: Scale Horizontally (More Nodes)
 - **Current**: 8 worker nodes
 - **Option**: 16 worker nodes (2× cluster size)
 - **Cost increase**: 100% (linear scaling)
 - **Expected improvement**: ~95% faster processing (near linear)
-- **Q4 2025 projection**: 4.65 TB → 3.6 hours (within window)
+- **Q3 2025 projection**: 4.65 TB → 3.6 hours (within window)
 
 #### Option C: Streaming Architecture
 - **Base cost**: $1,250/month fixed
 - **Variable cost**: $0.023/GB-month + $0.85/million events
-- **Q4 2025 projection**: ~$1,800/month total
+- **Q3 2025 projection**: ~$1,800/month total
 - **Processing time**: Near-real-time (no batch window concern)
 
 ## Cost-Benefit Analysis
@@ -112,7 +112,7 @@ Based on current measurements, processing time scales linearly with data volume:
 ## Performance Targets
 
 ### Minimum Viable Targets
-1. **Processing Window**: ≤ 4 hours through Q4 2025
+1. **Processing Window**: ≤ 4 hours through Q3 2025
 2. **Monthly Cost**: ≤ $10,000 all periods
 3. **Uptime**: ≥ 99.5% monthly
 4. **Data Accuracy**: ≥ 99.9%
