@@ -72,7 +72,15 @@ function build(id, work) {
     : reviewChecks({ kind: brief.kind === 'design' ? 'design' : 'code', doc: brief.doc, unchangedPath: brief.kind === 'design' ? brief.doc : codeRoot(key), testsMin });
   const map = fs.existsSync(path.join(work, 'map.json')) ? readJson(path.join(work, 'map.json')) : null;
   const rawReview = fs.existsSync(path.join(work, 'review.json')) ? readJson(path.join(work, 'review.json')) : null;
-  const review = rawReview && { family: FAMILY[brief.reviewer], date: new Date().toISOString().slice(0, 10), verdicts: rawReview.verdicts };
+  const recheckFile = path.join(work, 'recheck.json');
+  const recheck = fs.existsSync(recheckFile) ? readJson(recheckFile) : null;
+  const review = rawReview && {
+    family: FAMILY[brief.reviewer], date: new Date().toISOString().slice(0, 10), verdicts: rawReview.verdicts,
+    ...(recheck ? { recheck: { family: FAMILY[recheck.model], model: recheck.model, date: recheck.date, items: recheck.items } } : {}),
+  };
+  // A task named in HAND-EDITS.md was changed by someone other than its author.
+  const handEdited = fs.readFileSync(path.join(DIR, 'HAND-EDITS.md'), 'utf8').includes(`| ${id} |`)
+    ? { family: 'claude', editor: 'T2 batch worker session', log: 'HAND-EDITS.md' } : null;
   // The full mapper and reviewer answers and the author's notes are kept beside the task for the human check.
   const rec = path.join(DIR, 'authoring', id);
   fs.mkdirSync(rec, { recursive: true });
@@ -107,6 +115,7 @@ function build(id, work) {
     effectSubset: false,
     authorship: { family: FAMILY[brief.author], model: brief.author, date: brief.source.licenceCheckedAt, source },
     ...(review ? { review } : {}),
+    ...(handEdited ? { handEdited } : {}),
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   return task;
