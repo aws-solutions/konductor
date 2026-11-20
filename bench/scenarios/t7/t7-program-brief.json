@@ -1,7 +1,7 @@
 {
   "id": "t7-program-brief",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "ideation",
   "role": "tpm",
   "questions": "allowed",
@@ -162,7 +162,34 @@
         "verdict": "pass",
         "note": "All key values follow from the fixture data: staffing gap (7 requested - 4 available = 3), REQ-012 as shared dependency (all three roadmaps list it), conflict (Atlas and Beacon both own 'Shared deployment migration' in Q3), 365-day retention (ForgeRun active tool in atlas-tools.csv, memo requirement). Tolerances are reasonable (exact for headcount_gap, inclusive string matching for constraints)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal, source files, and output format without naming methods, tools, or revealing the traps like REQ-068 decoy or Atlas/Beacon ownership conflict."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain raw evidence (memo, roadmaps, inventories, requests, headcount) with no explicit answer keys or findings lists."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key expectations are derivable from fixture: REQ-012 in open-requests.csv line 12, Atlas/Beacon conflict in their roadmaps, 3-engineer gap from headcount.csv (7 requested - 4 available), milestone dates and constraints in leadership-memo.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can synthesize all required elements from the fixture: calculate the gap, identify conflicts, find dependencies, extract constraints and dates, and recognize the out-of-scope REQ-068 feature flag request."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {
@@ -175,15 +202,15 @@
     },
     "reference": 100,
     "stub": 4.8,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 4.8,
-      "lazy": 80.5,
+      "lazy": 39.3,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "handEdited": {
     "family": "claude",

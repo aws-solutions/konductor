@@ -1,7 +1,7 @@
 {
   "id": "t7-release-gate",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "release-ops",
   "role": "tpm",
   "questions": "allowed",
@@ -154,7 +154,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture: REL-112 is closed on main but release_branch_present=no (blocker), REL-118 has approved_at after the 2027-04-28 17:00 deadline (late cherry-pick, blocker), REL-131's main_commit c9f1e2a matches linux-integration's first_failure_commit (blocker), REL-145/153 are demoted in triage_notes.csv (not blockers), REL-127 is Reverted but appears in release_notes_draft.md (notes correction), 2027-05-13 is the next calendar slot after 2027-05-06. Owners are named in release_blockers.csv: Mira Sol (REL-112), Jon Bell (REL-118), Asha Nair (REL-131). linux-integration has 50% pass rate and fails every run after c9f1e2a; windows-smoke is 85% intermittent."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal, files, interfaces and constraints without naming a method, technique, tool, or pointing at decoys or specific answers the checks look for."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain evidence the agent must reason from (issue export, cherry-pick queue, CI summary, calendar, notes, triage); no file explicitly lists the bugs, findings, or expected values."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key assertions reference data present in fixture: REL-112/118/131 owners and statuses in release_blockers.csv, REL-118 late approval in cherry_pick_queue.csv, REL-127 reversion and notes mention, REL-145/153 triage demotion in triage_notes.csv, CI job states in ci_signal_summary.json, and 2027-05-13 next slot in release_calendar.json."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {
@@ -167,15 +194,15 @@
     },
     "reference": 100,
     "stub": 4.8,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 4.8,
-      "lazy": 84.7,
+      "lazy": 38.1,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "handEdited": {
     "family": "claude",
