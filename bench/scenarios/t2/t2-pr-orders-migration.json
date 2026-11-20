@@ -155,7 +155,34 @@
         "verdict": "pass",
         "note": "No comments, tests, doc files, or naming in fixture point at planted problems. deployment.md and architecture.md provide general guidance only."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "minimax",
+      "model": "minimax-m2.5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for general PR review of migration and reporting code, with no specific method/framework named, no reference to decoys, and no hint about number of problems."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comment, test, documentation or file name in fixture explicitly states the planted problems. Files like deployment.md document best practices but don't point to specific issues in the code."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 7 key items correctly map to problem locations: k1 (lines 8-10 NOT NULL+default), k2 (lines 14-19 full table UPDATE), k3 (line 29 drop column), k4 (lines 23-24 SQL injection), k5 (lines 48-63 N+1), k6 (lines 74-84 missing composite index), k7 (lines 22-24 non-concurrent index). Decoys d1 and d2 correctly identified as non-issues."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful reviewer can find all issues by examining the migration file and report_repository.py against deployment.md guidelines. The SQL injection at line 24, N+1 pattern at lines 48-63, and migration issues are all discoverable from code inspection alone."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

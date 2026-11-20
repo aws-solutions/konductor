@@ -149,7 +149,34 @@
         "verdict": "pass",
         "note": "No comments, tests, docs, or file names in the fixture point at planted problems. The public key log in index.js is a decoy per notes.txt."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "qwen",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "prompt.txt does not name a review method, checklist, or process, and does not point at a planted problem, decoy, or number of problems. It asks for concrete release blockers without guiding the reviewer toward specific issues."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comment, test, doc, or file name in the fixture states any of the six planted problems (k1-k6). The decoy at src/index.js:8 logs a non-secret publicKeyId which is not presented as a problem."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key items match the fixture exactly: k1 at src/webhooks/receiver.js:24 (JSON.stringify), k2 at src/webhooks/signatures.js:14 (string equality), k3 at src/router.js:10-14 (no replay window/dedup), k4 at src/notify/callback.js:12-18 (follows redirects, no validation), k5 at src/config.js:9 (default test_key_123), k6 at src/webhooks/receiver.js:32-33 (logs header). Severity ratings are defensible."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful reviewer can find all six items directly in the fixture code: line numbers match, severity ratings are defensible based on the impact described, and no external context is needed beyond reading the changed files."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

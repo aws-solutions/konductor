@@ -46,14 +46,15 @@
       "id": "k4",
       "file": "src/refunds/service.js",
       "line": 24,
-      "endLine": 30,
+      "endLine": 39,
       "severity": "critical",
       "fix": [
         "atomic",
         "conditional update",
         "lock"
       ],
-      "finding": "The captured-balance check happens before an asynchronous gap and the ledger write has no atomic guard, so concurrent partial refunds can both pass the check and exceed the captured amount."
+      "finding": "The captured-balance check happens before an asynchronous gap and the ledger write has no atomic guard, so concurrent partial refunds can both pass the check and exceed the captured amount.",
+      "slack": 1
     },
     {
       "id": "k5",

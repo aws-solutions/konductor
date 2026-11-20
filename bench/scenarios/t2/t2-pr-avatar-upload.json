@@ -154,7 +154,34 @@
         "verdict": "pass",
         "note": "No TODO/FIXME/BUG comments pointing at vulnerabilities. No test names revealing issues. Decoy d1 at lines64-66 explained as safe (not a real TOCTOU). Documentation bug (auto-delete claim) is part of the task, not a hint."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "minimax",
+      "model": "minimax-m2.5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt specifies focus areas (security, error handling, consistency) but names no review method, checklist, process, decoy, or number of problems."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comments, tests, docs, or file names in the fixture reveal the planted problems. The api.md at line 105 contains wrong documentation (claiming automatic deletion) which is the planted problem itself, not a hint."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 7 key items correctly match fixture locations: k1 (image_helpers.py:55-56 path traversal), k2 (user_handler.py:263 missing max_size), k3 (image_helpers.py:106-107 Content-Type only), k4 (image_helpers.py:77-125 temp cleanup), k5 (user_handler.py:275 email in URL), k6 (user_handler.py:207-209 no old file deletion), k7 (api.md:105 wrong doc). Severities are defensible."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "All planted problems are discoverable through careful review of the fixture code: path traversal in os.path.join, missing max_size param in function call, Content-Type header check without content verification, missing tempfile cleanup in finally block, email in URL construction, no old file deletion in update handler, and doc claiming automatic deletion that doesn't exist in implementation."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
