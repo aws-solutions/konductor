@@ -27,7 +27,7 @@ const OPTIONS = {
   },
   'pilot-light': {
     rpoMinutes: 5,
-    rtoMinutes: 60,
+    rtoMinutes: 65,
     monthlyCost: 8764 // From decision-options.md
   },
   'warm-standby': {

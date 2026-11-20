@@ -9,7 +9,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { DOWNGRADE, rubricScore } = require('./score.js');
+const { unquotedVerdict, rubricScore } = require('./score.js');
 const { makeQuoteMatcher, DEFAULT_QUOTE_RULE, QUOTE_RULES } = require('./quote.js');
 
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
@@ -37,7 +37,7 @@ function dualCriteria(replyCriteria, matchers, rule = DEFAULT_QUOTE_RULE) {
     // "(nothing in the output)" cites no evidence, so a pass or partial that rests on it drops a level under either rule.
     const none = NO_EVIDENCE.test(evidence);
     const quoteFound = { strict: none ? false : matchers.strict(evidence), lenient: none ? false : matchers.lenient(evidence) };
-    const verdictOf = (r) => (quoteFound[r] === false && raw !== 'fail' ? DOWNGRADE[raw] : raw);
+    const verdictOf = (r) => (quoteFound[r] === false && raw !== 'fail' ? unquotedVerdict(c.id, raw) : raw);
     const verdictScored = verdictOf(rule);
     const downgraded = quoteFound[rule] === false && raw !== 'fail';
     return {

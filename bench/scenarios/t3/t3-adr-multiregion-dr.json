@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 22
     },
     {
@@ -60,20 +60,17 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "gate-failed: lazy answer scores 68 (> 40); meta.json acceptableOptions lists every option, so the T3 choice gate cannot separate a shallow answer"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 68,
+      "lazy": 5,
       "alt": 100,
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator",
@@ -119,7 +116,34 @@
         "verdict": "pass",
         "note": "All needed numbers available: RPO 5m, RTO 45m, budget $12,000, DB size 8TB, restore throughput 2x1.2 GB/s, pricing data. Required JSON format clearly specified in prompt."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal (write an ADR), the files to review, the decision output format, and the constraints to consider without naming specific methods, tools, or revealing the trap (that nightly-backup fails both RPO and RTO)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain requirements, constraints, and option analysis but do not directly state the correct answer; the agent must reason from RPO/RTO requirements and cost limits to determine warm-standby is the only viable option."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All expected values in hidden tests (RPO 5 min, RTO 45 min, budget $12,000, restore throughput 2×1.2 GB/s, database 8 TB, option costs $2,524/$8,764/$11,904) match fixture files requirements.md, technical-constraints.md, traffic-analysis.md, decision-options.md, and pricing-data.json."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can compute restore time (8192 GB ÷ 2.4 GB/s ≈ 57 min), compare all three options against RPO/RTO/budget limits, and conclude warm-standby is the only option meeting all hard limits using only fixture data."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -135,7 +159,7 @@
       },
       {
         "id": "e3",
-        "text": "states that pilot-light at ~$8,764/month meets the 5-minute RPO requirement but fails the 45-minute RTO because scale-up and validation take approximately 60 minutes",
+        "text": "states that pilot-light at ~$8,764/month meets the 5-minute RPO requirement but fails the 45-minute RTO because scale-up and validation take approximately 65 minutes",
         "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
       },
       {

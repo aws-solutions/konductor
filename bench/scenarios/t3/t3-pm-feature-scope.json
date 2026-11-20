@@ -68,7 +68,7 @@
     "decision": "fix",
     "date": "2026-11-20",
     "blockers": [
-      "recheck-failed: fixture-lists-no-answer: fixture/TRAFFIC_ANALYSIS.md lines 45 and 55-70 explicitly identify the superseded benchmark, the 34-second p99 failure, the 5,000 monthly failures, and the synchronous risk. fixture/OPTIONS_ANALYSIS.md lines 93-175 also gives the answer-level comparison, costs, risks, and recommendation conditions, rather than only supplying raw evidence."
+      "recheck-failed: fixture-lists-no-answer: fixture/TRAFFIC_ANALYSIS.md lines 48-55 and 70 state the exact p99 timeout failure and affected volume, while fixture/OPTIONS_ANALYSIS.md lines 100-112 and 151-164 provide the success rates, costs, and recommendation framework the checks expect."
     ],
     "dryRun": {
       "reference": 100,
@@ -133,22 +133,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt (lines 3-4) states the business goal, required deliverable, options, and constraints but does not prescribe a method, checklist, tool, or specific answer."
+          "note": "task.json prompt gives the business goal, required deliverable, options, and constraints, but names no method, tool, or specific answer to use."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "fail",
-          "note": "fixture/TRAFFIC_ANALYSIS.md lines 45 and 55-70 explicitly identify the superseded benchmark, the 34-second p99 failure, the 5,000 monthly failures, and the synchronous risk. fixture/OPTIONS_ANALYSIS.md lines 93-175 also gives the answer-level comparison, costs, risks, and recommendation conditions, rather than only supplying raw evidence."
+          "note": "fixture/TRAFFIC_ANALYSIS.md lines 48-55 and 70 state the exact p99 timeout failure and affected volume, while fixture/OPTIONS_ANALYSIS.md lines 100-112 and 151-164 provide the success rates, costs, and recommendation framework the checks expect."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expected p95/p99 sizes and times, 29-second timeout, 500,000 monthly volume, current $1,200 budget, superseded values, option tradeoffs, and pricing inputs all appear in fixture/TRAFFIC_ANALYSIS.md lines 5-55, fixture/pricing_notes.md lines 7-21 and 58, and fixture/OPTIONS_ANALYSIS.md lines 93-175."
+          "note": "The expected findings are supported by fixture/TRAFFIC_ANALYSIS.md lines 23, 34, 45, and 55, fixture/pricing_notes.md line 58, and fixture/TECHNICAL_CONSTRAINTS.md lines 29 and 66-67; the option cost and reliability figures are also present in fixture/OPTIONS_ANALYSIS.md lines 100-112."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive the required decision from the prompt and fixture: the documents provide all three architectures, current performance measurements, user acceptance, reliability targets, volume, and price data. The calculations and recommendation can be produced without hidden-overlay or solution-overlay files."
+          "note": "The required analysis can be completed from the supplied requirements, traffic measurements, option comparison, architecture, user research, and pricing documents, especially fixture/REQUIREMENTS.md and fixture/OPTIONS_ANALYSIS.md; no hidden fact is needed to choose and justify an approach."
         }
       ]
     }

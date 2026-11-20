@@ -30,7 +30,7 @@ test('chosen option is one of acceptable options', () => {
   const decision = readDecision(decisionFile);
   
   // Acceptable options that meet all limits
-  const acceptableOptions = ['parallel', 'cache_parallel'];
+  const acceptableOptions = ['parallel'];
   
   assert.ok(
     acceptableOptions.includes(decision.chosen),
@@ -73,12 +73,15 @@ test('monthly cost matches cost sheet for chosen option', () => {
   const header = lines[0].split(',');
   const optionIndex = header.indexOf('option_id');
   const costIndex = header.indexOf('monthly_cost_usd');
+  const maintenanceIndex = header.indexOf('maintenance_cost_usd_month');
   
   let expectedCost = null;
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
     if (cols[optionIndex] === decision.chosen) {
-      expectedCost = parseFloat(cols[costIndex]);
+      const monthlyCost = parseFloat(cols[costIndex]);
+      const maintenanceCost = parseFloat(cols[maintenanceIndex]);
+      expectedCost = monthlyCost + maintenanceCost;
       break;
     }
   }
@@ -270,12 +273,15 @@ test('cache option would exceed budget if chosen', () => {
   const header = lines[0].split(',');
   const optionIndex = header.indexOf('option_id');
   const costIndex = header.indexOf('monthly_cost_usd');
+  const maintenanceIndex = header.indexOf('maintenance_cost_usd_month');
   
   let cacheCost = null;
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
     if (cols[optionIndex] === 'cache') {
-      cacheCost = parseFloat(cols[costIndex]);
+      const monthlyCost = parseFloat(cols[costIndex]);
+      const maintenanceCost = parseFloat(cols[maintenanceIndex]);
+      cacheCost = monthlyCost + maintenanceCost;
       break;
     }
   }

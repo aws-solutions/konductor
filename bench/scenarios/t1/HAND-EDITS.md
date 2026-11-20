@@ -14,7 +14,7 @@ Mechanical changes made by `stage.js assemble` to every task, not counted as han
 
 ## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
 
-Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-107).
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
 
 - `t1-bug-cache-ttl`: one-item rubric (a 0/15/30 dial on honest reporting only); added anchored root-cause-minimal (weight 2) on the change itself.
 - `t1-bug-date-range`: one-item rubric (a 0/15/30 dial on honest reporting only); added anchored root-cause-minimal (weight 2) on the change itself.

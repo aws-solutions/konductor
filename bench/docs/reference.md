@@ -836,7 +836,7 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   scratch copy) and rewrites only the check fields of `result.json`: `checks`, `checksAllPassed`,
   `checksRevision`, `checksRecheckedAt`; the first results stay in `checksOriginal`. Repeating it changes
   nothing until the task's checks change. `stream.jsonl` and credit fields are never touched. The report's
-  "pass" then uses the rechecked results and says so. Judge bundles keep showing `checksOriginal`, so
+  "pass" then uses the rechecked results and says so. Judge bundles never show check results, so
   cached judge calls stay valid.
 
 ## Judging
@@ -855,7 +855,10 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   two orders that disagree are a tie.
 - A judge sees the task, rubric, the fixture's `.bench-answer-key.md` and one output bundle: final text,
   files changed versus the fixture (`.kiro/specs/**` included; tool state and test or lint caches such as `.pytest_cache`
-  and `__pycache__` are skipped, see `judge/ephemeral.js`), the tool calls and results of the run, and check results.
+  and `__pycache__` are skipped, see `judge/ephemeral.js`), and the tool calls and results of the run. It never sees the
+  check results, so the rubric share judges the outcome on its own. A task's `expertKey` items are rubric criteria
+  `expert:<id>` (sharing the weight of the `expert-key` item, else 3; `runner/lib/expert-rubric.js`), its weak answers are
+  listed in the prompt, and an expert criterion whose quote is not found in the output fails.
   Rubric items such as "ran the tests and reports the result" judge work, and a coordinator reports its child's work
   second-hand, so with the final text alone it failed for work that was done. Every arm gets the same block: the main
   session's calls, then each child session's under "Helper session N". It never names the child agent, leaves out skill
@@ -1051,7 +1054,9 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
 - Intended tests follow the scripted answers; invariants hold under any reasonable reading (old behavior kept, no crash,
   no data lost). A wrong guess lowers intended, not invariants. One task needs no question (`noQuestionNeeded`), so
   asking there is over-asking; one is risky (delete files), so asking first is right.
-- The scripted user: a turn that ends with a question, an approval request or a non end_turn stop is an ask. Each
+- The scripted user: a turn that ends with a question, an approval request or a non end_turn stop is an ask. A turn with
+  `QUESTION:` lines is an ask too, whatever the rest of the text says: the lines are the question and their number is its
+  count (`signal: "marker"`; otherwise `signal: "heuristic"` and the count is the number of `?`). Each
   clarification has regex keywords; those that match the question and were not used yet are answered (several in one
   numbered reply); no match gets "Use your best judgment and continue." and counts as unmatched. After `maxInterjections`
   (4) it sends "Proceed with your best judgment now and do not ask further questions." once, sets `interjectionCapHit`,
@@ -1068,6 +1073,13 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   `--max-budget-usd` applies to each turn; the flag text comes from `claude --help`, and a real two-turn run has not been done yet). `result.json` records
   `questions` (turn, text, the fact ids matched, the reply), `factsUnlocked` and `factsLocked` (fact ids), `unmatchedQuestions` and the usual turn counts. On a
   scripted task `autonomous` and `completedWithoutHelp` are null, because questions are expected there. A task cannot have both `scriptedUser` and `autonomy`.
+- The question channel of scripted tasks (`runner/lib/ask-channel.js`, D-107). Kiro CLI `--no-interactive` tells the agent that no user can answer
+  and that ending its turn ends the session, so before 2026-11-20 no arm asked on these tasks and all scored the same floor. The loader now appends
+  one fixed paragraph to each scripted task's prompt, the same for every arm and harness: the stakeholder does answer, even if the environment
+  says otherwise; ask by ending the turn with one `QUESTION:` line per question; the answer is the next message; ask only what the files cannot
+  answer. It names no method, skill or agent, so it favours no arm. The heuristic above stays as a fallback, so an arm that asks in prose is
+  answered the same way. Chosen over an answers file in the workspace (an agent would read every answer without asking, so asking is not
+  measured) and over dropping `--no-interactive` (the runner drives each turn as a headless process). Not run on a real model yet.
 - Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
   `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,
   questions on the no-question task and unmatched questions (shown apart), cap hits, intended and invariant tests,

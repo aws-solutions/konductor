@@ -40,8 +40,8 @@ Purple boxes call a model and spend. The rest is local work.
    answer.
 4. **Check.** After the agent exits, the task's checks run on the project it left: file tests, commands and, for
    many tasks, hidden tests the agent never saw.
-5. **Judge.** Three or more judge models score the parts code cannot check. They see the final answer, the changed
-   files and the check results, never the arm's name. A judge never comes from the agent's own model family. With
+5. **Judge.** Three or more judge models score the parts code cannot check. They see the final answer and the changed
+   files, never the check results or the arm's name. A judge never comes from the agent's own model family. With
    fewer than three eligible judges the score is NO DATA.
 6. **Report.** bench combines checks and judges into a score per run, then compares arms with intervals.
 

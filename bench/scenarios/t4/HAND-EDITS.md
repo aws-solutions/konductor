@@ -214,7 +214,7 @@ None.
 
 Who: claude (mate task-fix worker session), owner-approved fixes from the task review of 2026-11-19
 (T1 to T4 report, finding 1). Each task's `version` is bumped and `handEdited` names this session. No paid call ran,
-so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench/DEBT.md` D-107.
+so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench/DEBT.md` D-108.
 
 ### t4-arch-tenant-abac
 
@@ -240,7 +240,7 @@ so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench
 
 ## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
 
-Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-107).
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
 
 - `t4-dev-path-traversal-files`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): root-cause-containment.
 - `t4-dev-sql-report-filters`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): parameterised-design.
