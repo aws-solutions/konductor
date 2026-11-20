@@ -110,6 +110,9 @@ function fix(id) {
   const dry = fs.existsSync(dryFile) && fs.statSync(dryFile).size ? readJson(dryFile) : null;
   const dryLines = dry ? dry.reference.checks_.filter((c) => !c.passed).map((c) => `- dry run, reference: ${c.type} check failed (${c.detail})`) : [];
   if (dry && dry.stub.score > 20) dryLines.push(`- dry run: the untouched fixture scores ${dry.stub.score.toFixed(1)} (must be 20 or less)`);
+  // Facts the pipeline found that neither the review nor the dry run could report (for example a check list the scorer cannot read).
+  const notesFile = path.join(AUTH, 'work', `${id}.fixnotes`);
+  if (fs.existsSync(notesFile)) dryLines.push(...fs.readFileSync(notesFile, 'utf8').split('\n').filter(Boolean).map((l) => `- ${l}`));
   const problems = [...dryLines, ...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
   const w = path.join(AUTH, 'work', id);
   fs.rmSync(`${w}.v1`, { recursive: true, force: true });
