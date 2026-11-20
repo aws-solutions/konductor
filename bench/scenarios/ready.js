@@ -37,10 +37,22 @@ function dryRunReasons(task) {
 
 const HAND_EDIT_FLAG = 'hand-edited, recheck missing';
 
+/** Why a task is marked fix (owner rule): a recorded lazy score over 40, or pilot.decision "fix". [] when neither. */
+function fixReasons(task) {
+  const out = [];
+  const lazy = task.pilot?.dryRun?.lazy;
+  if (finite(lazy) && lazy > 40) out.push(`lazy ${lazy} over 40`);
+  if (task.pilot?.decision === 'fix') out.push('pilot.decision is fix');
+  return out;
+}
+
 /** What blocks a lock but not a pilot run: a task with `handEdited` set and no `review.recheck` (plan section 4). */
 const lockBlockers = (task) => (task.handEdited && !task.review?.recheck ? [HAND_EDIT_FLAG] : []);
 
-/** [{ batch, id, file, ready, reasons, lockBlockers }] for every task of every t* folder under `packDir`. */
+/**
+ * [{ batch, id, file, ready, fix, reasons, lockBlockers }] for every task of every t* folder under `packDir`.
+ * `fix` lists why the task is marked fix; such a task is not ready.
+ */
 function readiness(packDir = PACK_DIR) {
   const schema = loadSchema('task');
   const out = [];
@@ -53,7 +65,8 @@ function readiness(packDir = PACK_DIR) {
       const loadErrors = [...validate(schema, task), ...v3Errors(task)];
       if (loadErrors.length) badFiles.push(f);
       const reasons = loadErrors.length ? [`fails the run loader (${loadErrors.length} error(s), first: ${loadErrors[0]})`] : [];
-      rows.push({ batch, id: task.id, file: path.join(batch, f), reasons: [...reasons, ...dryRunReasons(task)], lockBlockers: lockBlockers(task) });
+      const fix = fixReasons(task);
+      rows.push({ batch, id: task.id, file: path.join(batch, f), fix, reasons: [...reasons, ...dryRunReasons(task).filter((x) => !/^dry run lazy /.test(x)), ...fix.map((x) => `fix: ${x}`)], lockBlockers: lockBlockers(task) });
     }
     for (const r of rows) {
       if (badFiles.length && !badFiles.includes(path.basename(r.file))) r.reasons.unshift(`batch folder fails the run loader (${badFiles.length} file(s), first ${badFiles[0]})`);
@@ -66,13 +79,15 @@ function readiness(packDir = PACK_DIR) {
 function render(rows) {
   const L = [];
   const batches = [...new Set(rows.map((r) => r.batch))];
-  L.push('| batch | tasks | ready | not ready (W9 late) |', '| --- | --- | --- | --- |');
+  L.push('| batch | tasks | ready | fix | not ready (W9 late) |', '| --- | --- | --- | --- | --- |');
   for (const b of batches) {
     const in_ = rows.filter((r) => r.batch === b);
-    L.push(`| ${b} | ${in_.length} | ${in_.filter((r) => r.ready).length} | ${in_.filter((r) => !r.ready).length} |`);
+    L.push(`| ${b} | ${in_.length} | ${in_.filter((r) => r.ready).length} | ${in_.filter((r) => r.fix.length).length} | ${in_.filter((r) => !r.ready).length} |`);
   }
   L.push('', 'Ready:', ...rows.filter((r) => r.ready).map((r) => `- ${r.id}`));
   if (!rows.some((r) => r.ready)) L.push('- none');
+  const fixes = rows.filter((r) => r.fix.length);
+  L.push('', 'Fix (not ready):', ...(fixes.length ? fixes.map((r) => `- ${r.id}: ${r.fix.join('; ')}`) : ['- none']));
   L.push('', 'Not ready (W9 late):', ...rows.filter((r) => !r.ready).map((r) => `- ${r.id}: ${r.reasons.join('; ')}`));
   const blocked = rows.filter((r) => r.lockBlockers.length);
   L.push('', 'Lock blocked (may still run in the pilot):', ...(blocked.length ? blocked.map((r) => `- ${r.id}: ${r.lockBlockers.join('; ')}`) : ['- none']));
@@ -94,4 +109,4 @@ function cmdReady(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : render(rows));
 }
 
-module.exports = { readiness, dryRunReasons, lockBlockers, render, cmdReady, GATES, HAND_EDIT_FLAG };
+module.exports = { readiness, dryRunReasons, fixReasons, lockBlockers, render, cmdReady, GATES, HAND_EDIT_FLAG };

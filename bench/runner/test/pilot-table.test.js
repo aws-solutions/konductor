@@ -18,8 +18,8 @@ const REF = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
 function fakePack(root) {
   const task = (id, model, o = {}) => ({ id, prompt: 'Do it.', fixture: id, hidden: id, authorship: { model }, ...o });
   write(path.join(root, 't9', 't9-easy.json'), json(task('t9-easy', 'gpt-5.6-luna', { handEdited: { family: 'claude', editor: 'lead', log: 'HAND-EDITS.md' } })));
-  write(path.join(root, 't9', 't9-hard.json'), json(task('t9-hard', 'gpt-5.6-luna', { pilot: { scores: {}, decision: 'fix', date: '2026-11-19', dryRun: { reference: 80, stub: 0, lazy: 10, alt: 90, date: '2026-11-19' } } })));
-  write(path.join(root, 't9', 't9-leak.json'), json(task('t9-leak', 'gpt-5.6-luna')));
+  write(path.join(root, 't9', 't9-hard.json'), json(task('t9-hard', 'gpt-5.6-luna', { pilot: { scores: {}, decision: 'keep', date: '2026-11-19', dryRun: { reference: 80, stub: 0, lazy: 55, alt: 90, date: '2026-11-19' } } })));
+  write(path.join(root, 't9', 't9-leak.json'), json(task('t9-leak', 'gpt-5.6-luna', { authorship: { model: 'gpt-5.6-luna', singleFamily: true } })));
   write(path.join(root, 't9', 't9-copy.json'), json(task('t9-copy', 'deepseek-3.2')));
   write(path.join(root, 't9', 'solutions', 't9-copy', 'docs', 'answer.md'), `${REF}\n`);
   write(path.join(root, 't9', 'fixtures', 't9-copy', 'README.md'), 'start\n');
@@ -74,6 +74,12 @@ test('each flag fires on the run that earns it and on no other', () => {
   assert.equal(rows['t8-a#1'].handEdited, 'claude');
   assert.deepEqual(rows['t9-easy#1'].loads, ['code-review']);
   assert.match(rows['t9-hard#1'].flags['too-hard'], /reference 80/);
+  assert.match(rows['t9-hard#1'].flags.fix, /lazy 55 over 40/);
+  assert.equal(rows['t9-easy#1'].flags.fix, undefined);
+  // A task the owner keeps single-family shows it in its column, not as the second-family flag.
+  assert.equal(rows['t9-leak#1'].singleFamily, 'single-family-authored');
+  assert.equal(rows['t9-leak#1'].flags['second-family'], undefined);
+  assert.equal(rows['t9-hard#1'].singleFamily, '-');
   assert.equal(rows['t9-hard#1'].flags['too-easy'], undefined);
   assert.match(rows['t9-leak#1'].flags.broken, /timeout/);
   assert.match(rows['t9-leak#1'].flags.broken, /did not parse/);
@@ -99,7 +105,7 @@ test('the score is the code-scored part: hidden tests 0.5 and substance checks 0
 test('the table lists every run, the totals and the tasks that need a second run', () => {
   const { pack, w1, w2 } = setup();
   const text = renderTable(pilotRows([w1, w2], { packDir: pack }));
-  assert.match(text, /^\| task \| arm \| rep \| handEdited \| score/);
+  assert.match(text, /^\| task \| arm \| rep \| handEdited \| singleFamily \| score/);
   assert.match(text, /hand-edited with no re-check 1\./);
   assert.match(text, /7 run\(s\), 14\.00 credits/);
   assert.match(text, /Second run for noisy tasks: t8-a,t8-b/);
