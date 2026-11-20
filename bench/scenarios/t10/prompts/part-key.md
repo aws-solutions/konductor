@@ -27,6 +27,8 @@ Paths in `fromFile` and `file` are relative to the repository root (no `fixture/
 - Text patterns accept every reasonable phrasing: use alternations with synonyms and require two or more patterns where one word could appear in a wrong answer. Use `none` to fail an answer that falls for a trap.
 - Numbers must be derivable from the fixture; state units; give a tolerance.
 - A hurried reader who skims the README must not be able to pass the traps: the proving facts sit in the existing code, config and docs, not in summary files.
+- `evidence` items cite only lines of files the reference solution does NOT change (a changed file shifts line numbers), and each group accepts every line that shows the same fact.
+- A list whose order matters (phases, steps, rings) sits under a field whose name contains `phases`, `steps` or `rings`, and an `order` item tests it; the bench's alternative-answer writer reverses every other list and rewords free text, so no other list may depend on order, and items must pass a reworded answer.
 - The design keys do not duplicate the expert key below.
 
 ### 3. Expert key (for judges only)
@@ -44,7 +46,7 @@ Write `solution/`: the reference overlay on the fixture (every changed or added 
 Write `task-draft.json`, one JSON object with exactly these keys:
 - `id`: `{{ID}}`
 - `prompt`: the request, as the fixture part describes.
-- `checks`: executable checks, each `{ "type", ..., "weight": number, "kind": "substance" | "format" }`. Allowed types: `tests` (`cmd`, `min`), `cmd` (shell command, optional `expectExit`), `file_exists` (`path`), `contains` / `not_contains` (`path`, `pattern` as a JavaScript regex, case-insensitive), `min_matches` (`path`, `pattern`, `min`), `fixture_unchanged` (`path`). Only POSIX tools, `node` and `python3` may be used in `cmd`. Exactly these three `tests` checks (weight 3, kind substance):
+- `checks`: executable checks, each `{ "type", ..., "weight": number, "kind": "substance" | "format" }`. Allowed types: `tests` (`cmd`, `min`), `cmd` (shell command, optional `expectExit`), `file_exists` (`path`), `contains` / `not_contains` (`path`, `pattern` as a JavaScript regex, case-insensitive), `min_matches` (`path`, `pattern`, `min`), `fixture_unchanged` (`path`). Only POSIX tools and `node` may be used in `cmd` (no python: the check machine may not have it; use `node -e` for any script). Exactly these three `tests` checks (weight 3, kind substance):
   - `{ "type": "tests", "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js", "min": <number of behaviour tests> }`
   - `{ "type": "tests", "cmd": "node --test --test-timeout=15000 block.test.js", "min": <sum of the design item weights> }`
   - `{ "type": "tests", "cmd": "BLOCK_KIT=rollout-kit node --test --test-timeout=15000 block.test.js", "min": <sum of the rollout item weights> }`

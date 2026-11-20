@@ -17,3 +17,12 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | task | step | model | credits | note |
 | --- | --- | --- | --- | --- |
 | t10-pm-plan-limits | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 0.00 of 500 |
+| t10-pm-plan-limits | author | gpt-5.6-luna | 5.43 |  |
+| t10-pm-plan-limits | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 5.43 of 500; reason: python3 in cmd checks, leaking field names, evidence in changed files |
+| t10-pm-plan-limits | fix | gpt-5.6-luna | 1.97 |  |
+| t10-pm-plan-limits | map (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls); batch spend before: 7.40 of 500 |
+| t10-pm-plan-limits | map | glm-5 | 0.17 |  |
+| t10-pm-plan-limits | review (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls); batch spend before: 07.5x of 500 |
+| t10-pm-plan-limits | review | glm-5 | 3.03 |  |
+| t10-pm-plan-limits | audit | - | 0.00 | map, review: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read. The fix stream's `otherBatch` entries are two tool-output files in the author's OWN scratch home (t10auth/home/.kiro/sessions), not another batch |
+| t10-pm-plan-limits | free dry run | - | 0.00 | after the one fix round: reference 100, stub 7.1, lazy 20, alt 100, deterministic, per-test timeouts hold (first run: reference 78.6 and alt 71.1, because two `cmd` checks used python3, which the machine lacks, and the alt writer reversed the rollout phases; the writer's options were set in the T10 config and the author's fix removed python and the leaking field names) |

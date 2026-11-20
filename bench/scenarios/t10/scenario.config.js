@@ -111,8 +111,16 @@ function buildTask(s, id) {
   };
 }
 
+// The reference's config files (JSON, YAML, CSV) are part of the build, not part of the answer: the lazy answer drops
+// half of them, the alternative keeps them. Ordered lists in the documents' JSON blocks stay in order.
+const answers = {
+  codeExt: /\.(c?js|mjs|ts|py|sh|ya?ml|toml|sql|json|csv)$/i,
+  orderedKeys: /path|order|chain|sequence|milestones|steps|timeline|phases|rings|stages/i,
+};
+
 module.exports = {
   dir: __dirname,
+  answers,
   prompt: { render },
   stage: {
     authEnv: 'T10_AUTH',

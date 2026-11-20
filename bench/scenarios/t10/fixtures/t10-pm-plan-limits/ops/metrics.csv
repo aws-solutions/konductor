@@ -1,0 +1,7 @@
+name,unit,meaning
+http_requests_total,count,Completed HTTP requests by route and status
+http_request_duration_ms,milliseconds,Elapsed request duration
+store_write_errors_total,count,JSON store write failures
+member_invites_total,count,Member invitation attempts
+project_import_rows_total,count,Rows received from partner imports
+process_restarts_total,count,Process restarts observed by the supervisor

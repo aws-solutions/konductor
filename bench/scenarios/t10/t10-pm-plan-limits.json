@@ -1,0 +1,195 @@
+{
+  "id": "t10-pm-plan-limits",
+  "class": "hard",
+  "version": 1,
+  "phase": "multi-phase",
+  "role": "pm",
+  "phases2": [
+    "requirements",
+    "architecture",
+    "implementation",
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "Our small-team accounts need a predictable ceiling on active projects. Free, Team, and Business customers should see how close they are to their plan limit before a create fails, while support needs a time-bound way to grant one account more room. This will keep capacity understandable without taking existing work away.\n\nPlease first write a short design note at docs/design/project-limits.md explaining the product and operational decisions behind this feature. Then build the feature in the repository with tests, updating .github/workflows/ci.yml if the new tests require it. Use these public interfaces: src/services/project-limits.js exports createProjectLimitService({ accounts, projects, plans, clock, nearLimitRatio, enforce }), whose service exposes getUsage(accountId), createProject(accountId, {name}), and setProjectLimitOverride(accountId, limit, expiresAt), plus ProjectLimitError. src/repositories/projects.js exposes countProjects(accountId), returning a number. src/app.js exports createApp({store, clock, enforceProjectLimits}) and its returned handle(method, path, body) returns {status, body}; use the existing createJsonStore(file, initial) store. The routes are GET /v1/accounts/:accountId/projects/limit (200), POST /v1/accounts/:accountId/projects (201 or 409 project_limit_reached), POST /v1/accounts/:accountId/projects/batch (207), and POST /v1/accounts/:accountId/project-limit-override (200 or 400 invalid_project_limit). Batch input is {projects:[{name:string}]} and its body is {results:[...]}; a result is {ok:true,project} or {ok:false,error}. The usage body fields are accountId, plan, activeProjects, limit, remaining, nearLimit, warning, source, and expiresAt; activeProjects, limit, and remaining use projects as their unit, and expiresAt is UTC ISO. The catalogue key is plans.<plan>.maxActiveProjects, and nearLimitRatio is a fraction.\n\nNext write docs/rollout/project-limits.md with the staged release and rollback plan, then add a useful CHANGELOG.md entry that works as the release note. Each document must end with its final fenced json block. The design block is one object with decisions (an array of objects with topic, choice, and reason), risks (an array of objects with risk and mitigation), and evidence (an array of path:line strings). The rollout block is one object with phases (objects with name, audience, ring, gate.metric, gate.unit, gate.threshold as a number, and action), rollback (trigger string and steps array), and evidence (path:line strings). Counts use the unit projects, gate units must be stated, and every evidence value cites a repository-relative path:line with a one-based line number. Do not put another fenced json block after either closing block.",
+  "fixture": "t10-pm-plan-limits",
+  "hidden": "t10-pm-plan-limits",
+  "timeoutSec": 4800,
+  "limits": {
+    "softSec": 2400,
+    "hardSec": 4800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "BLOCK_KIT=rollout-kit node --test --test-timeout=15000 block.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design/project-limits.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/rollout/project-limits.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/ && node -e \"const fs=require('node:fs'),path=require('node:path'); function count(dir){let n=0; for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name); if(e.isDirectory()) n+=count(p); else if(e.name.endsWith('.js')) n+=(fs.readFileSync(p,'utf8').match(/\\b(?:test|it)\\s*\\(/g)||[]).length;} return n;} if(count('test')<31) process.exit(1)\"",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('node:fs'); const s=fs.readFileSync('CHANGELOG.md','utf8'); if(!s.includes('## Unreleased')||!s.toLowerCase().includes('active-project limits')) process.exit(1)\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/partners.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are design judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "A decision entry explains that near-limit warnings are advisory product feedback while admission failures are hard and return actionable usage details.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e2",
+        "text": "A decision entry explains how accounts already above a finite limit are handled without deleting projects and how they can recover capacity.",
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e3",
+        "text": "A decision or risk entry defines authorization and audit expectations for support overrides, including bounded scope and expiry rather than treating the route as an ordinary customer setting.",
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e4",
+        "text": "A decision entry addresses partner retries and row identity so a partial batch does not create confusing duplicates or cause a retry to discard prior successes.",
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e5",
+        "text": "A risk entry calls out that the in-process lock does not coordinate separate service processes and states the deployment assumption or follow-up needed before horizontal scaling.",
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e6",
+        "text": "A risk or decision entry names the operational cost of warning noise and a way to compare shadow observations with actual rejected creates before general enablement.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e7",
+        "text": "A risk or decision entry keeps the stored override and project records backward compatible so disabling the flag or reverting the artifact does not require a destructive migration.",
+        "source": "https://12factor.net (MIT)"
+      }
+    ],
+    "weakAnswers": [
+      "A generic note that limits improve scalability and the rollout should be monitored.",
+      "A restatement of Free, Team, and Business limits without explaining existing data, concurrency, or batch outcomes.",
+      "A rollout that says to deploy everywhere and roll back if there are problems, without named gates or reversible actions."
+    ]
+  },
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://kubernetes.io/docs/concepts/policy/resource-quotas/",
+      "licence": "CC BY 4.0 (kubernetes/website LICENSE)",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the business problem and required interfaces without naming specific implementation techniques like in-process locks, shadow mode, or serialization patterns; those must be derived from fixture files like docs/decisions/001-json-store.md and docs/partners.md."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request specifies all routes, status codes, body fields, interfaces, and required documentation structure with sufficient precision; the fixture provides plan values, ring names, metric names, and status semantics to resolve any implementation details."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains maxActiveProjects in config/plans.json, locking semantics in docs/decisions/001-json-store.md, batch behavior in docs/partners.md, ring order in ops/rings.json, and metric names in ops/metrics.csv, but none give away the specific design decisions or rollout structure required by the keys."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick implementation that counts all projects (not active-only), checks the limit outside the lock, or rejects a whole batch would fail the hidden tests and key items like active-definition, atomic-check, partial-batch; a generic rollout without named rings/metrics would fail known-rings and metrics-catalogue."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The request specifies the required interfaces, routes, status codes, and document structure; the fixture provides plan limits, ring names, metrics, locking semantics, and batch behavior; all key items and tests can be satisfied from the stated requirements and fixture facts."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 20,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}
