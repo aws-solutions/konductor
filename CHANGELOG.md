@@ -69,7 +69,8 @@ not per individual commit.
   agent that loads the `k-direct-work.md` context, not only to `konductor`, so forks and custom
   distributions that rename the orchestrator still get `coordinator` mode. On Kiro CLI v2 the
   renamed agent's own file gets the hook. Agents that load the routing rules instead, like the
-  mux and cmux orchestrators, are unchanged.
+  mux and cmux orchestrators, are unchanged. An agent file over 1 MiB that the hook cannot check
+  gets `Orchestration: auto (fallback: ...)` under `coordinator` instead of no output.
 
 ### Changed
 

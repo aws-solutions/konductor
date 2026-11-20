@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // orchestration_hook.rs: `konductor __orchestration-hook`, run by a
-// session-start hook. For a mode agent's session (see `is_mode_agent`)
+// session-start hook. For a mode agent's session (see `mode_agent_check`)
 // whose user config says `orchestration.mode: coordinator`, it prints the
 // coordinator persona:
 // a header, a line telling the agent to read the installed routing rules
@@ -102,6 +102,11 @@ pub(crate) enum PersonaError {
         install_root: PathBuf,
         harness: Option<String>,
     },
+    /// The session's agent file is too large to tell whether it loads
+    /// the Direct Work context.
+    AgentFileTooLarge {
+        path: PathBuf,
+    },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -178,49 +183,109 @@ pub(crate) fn kiro_agent_loads_direct_work(agent: &serde_json::Value) -> bool {
 
 /// Whether a Claude agent file inlines the Direct Work context. Synth
 /// opens each inlined context with a `<Context: name>` line of its own.
-fn claude_agent_loads_direct_work(body: &str) -> bool {
+/// Bytes that are not UTF-8, including a character the cap cut in half,
+/// become U+FFFD and leave every newline and every ASCII line intact, so
+/// they cannot hide the opening line or fake one.
+fn claude_agent_loads_direct_work(body: &[u8]) -> bool {
     let opening = format!("<Context: {DIRECT_WORK_CONTEXT_FILE_NAME}>");
-    body.lines().any(|line| line == opening)
+    // `from_utf8` first: it is faster than the lossy decode on the
+    // common, valid file.
+    let text = match std::str::from_utf8(body) {
+        Ok(text) => std::borrow::Cow::Borrowed(text),
+        Err(_) => String::from_utf8_lossy(body),
+    };
+    text.lines().any(|line| line == opening)
 }
 
-/// Whether the agent file `root` holds for `agent` in `layout` (either
-/// layout when `None`) loads the Direct Work context. `agent` is a name
-/// the install's manifest lists, so it is a single path component.
-fn installed_agent_loads_direct_work(
+/// What an agent file says about the Direct Work context.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DirectWork {
+    Loads,
+    DoesNotLoad,
+    /// The file is longer than `MAX_AGENT_FILE_BYTES` and the part read
+    /// did not settle it. The path is relative to the install root.
+    Undecidable(PathBuf),
+}
+
+/// What the agent file `root` holds for `agent` in `layout` (either
+/// layout when `None`) says about the Direct Work context. `agent` is a
+/// name the install's manifest lists, so it is a single path component.
+///
+/// A missing or unreadable file does not load the context.
+fn installed_agent_direct_work(
     root: &Path,
     layout: Option<AgentLayout>,
     agent: &str,
-) -> bool {
-    let read = |relative: String| {
+) -> DirectWork {
+    // Reads at most one byte past the cap, so `over` tells a file of
+    // exactly the cap from a longer one. With `whole_only`, a file the
+    // stat already shows is over the cap is not read at all.
+    let read = |relative: &Path, whole_only: bool| -> Option<(Vec<u8>, bool)> {
         let file = std::fs::File::open(root.join(relative)).ok()?;
-        let mut text = String::new();
-        file.take(MAX_AGENT_FILE_BYTES)
-            .read_to_string(&mut text)
+        let len = file.metadata().ok()?.len();
+        if whole_only && len > MAX_AGENT_FILE_BYTES {
+            return Some((Vec::new(), true));
+        }
+        let mut bytes = Vec::with_capacity(len.min(MAX_AGENT_FILE_BYTES + 1) as usize);
+        file.take(MAX_AGENT_FILE_BYTES + 1)
+            .read_to_end(&mut bytes)
             .ok()?;
-        Some(text)
+        let over = bytes.len() as u64 > MAX_AGENT_FILE_BYTES;
+        bytes.truncate(MAX_AGENT_FILE_BYTES as usize);
+        Some((bytes, over))
     };
     let kiro = || {
-        read(format!(".kiro/agents/{agent}.json"))
-            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-            .is_some_and(|value| kiro_agent_loads_direct_work(&value))
+        let relative = PathBuf::from(format!(".kiro/agents/{agent}.json"));
+        // A truncated JSON document never parses, so only the whole file
+        // can decide.
+        match read(&relative, true) {
+            None => DirectWork::DoesNotLoad,
+            Some((_, true)) => DirectWork::Undecidable(relative),
+            Some((bytes, false)) => {
+                let loads = serde_json::from_slice::<serde_json::Value>(&bytes)
+                    .is_ok_and(|value| kiro_agent_loads_direct_work(&value));
+                if loads {
+                    DirectWork::Loads
+                } else {
+                    DirectWork::DoesNotLoad
+                }
+            }
+        }
     };
     let claude = || {
-        read(format!(".claude/agents/{agent}.md"))
-            .is_some_and(|text| claude_agent_loads_direct_work(&text))
+        let relative = PathBuf::from(format!(".claude/agents/{agent}.md"));
+        match read(&relative, false) {
+            None => DirectWork::DoesNotLoad,
+            Some((bytes, _)) if claude_agent_loads_direct_work(&bytes) => DirectWork::Loads,
+            Some((_, true)) => DirectWork::Undecidable(relative),
+            Some((_, false)) => DirectWork::DoesNotLoad,
+        }
     };
     match layout {
         Some(AgentLayout::Kiro) => kiro(),
         Some(AgentLayout::Claude) => claude(),
-        None => kiro() || claude(),
+        None => match kiro() {
+            DirectWork::Loads => DirectWork::Loads,
+            DirectWork::DoesNotLoad => claude(),
+            undecidable => match claude() {
+                DirectWork::Loads => DirectWork::Loads,
+                _ => undecidable,
+            },
+        },
     }
 }
 
 /// A mode agent is `MODE_AGENT`, or any agent whose definition in the
 /// install that owns it loads the Direct Work context. This only decides
 /// which sessions get the persona; the persona text still comes from that
-/// install's trusted context directories.
-fn is_mode_agent(owning_root: &Path, layout: Option<AgentLayout>, agent: &str) -> bool {
-    agent == MODE_AGENT || installed_agent_loads_direct_work(owning_root, layout, agent)
+/// install's trusted context directories. An undecidable agent is not a
+/// mode agent: it never gets the persona, only a fallback line under
+/// `coordinator`.
+fn mode_agent_check(owning_root: &Path, layout: Option<AgentLayout>, agent: &str) -> DirectWork {
+    if agent == MODE_AGENT {
+        return DirectWork::Loads;
+    }
+    installed_agent_direct_work(owning_root, layout, agent)
 }
 
 /// Calls `load_persona` only for `coordinator`, so other sessions never
@@ -311,6 +376,12 @@ pub(crate) fn persona_reason(error: &PersonaError) -> String {
                  is not wired{for_harness}; run konductor update in {owner}"
             )
         }
+        PersonaError::AgentFileTooLarge { path } => format!(
+            "the agent file at {} is larger than {} MiB, so konductor could not check whether it \
+             loads {DIRECT_WORK_CONTEXT_FILE_NAME}",
+            display_path(path, home.as_deref()),
+            MAX_AGENT_FILE_BYTES / (1024 * 1024)
+        ),
     }
 }
 
@@ -546,7 +617,8 @@ fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>) -> bool {
 /// inject twice and an install for another harness never silences this one.
 /// A shadowed hook stays silent only while the owner's own hook is wired;
 /// otherwise it prints a fallback line naming the owner, so the mode is
-/// never dropped without a trace.
+/// never dropped without a trace. For the same reason an agent file too
+/// large to check gets a fallback line under `coordinator`, not silence.
 pub(crate) fn dispatch_orchestration_hook(
     cwd: &Path,
     agent_arg: Option<&str>,
@@ -581,16 +653,25 @@ pub(crate) fn dispatch_orchestration_hook(
     let Some(owning_root) = owning_root else {
         return;
     };
-    if !is_mode_agent(owning_root, layout, &agent) {
-        return;
-    }
+    let undecidable = match mode_agent_check(owning_root, layout, &agent) {
+        DirectWork::Loads => None,
+        DirectWork::DoesNotLoad => return,
+        DirectWork::Undecidable(relative) => Some(relative),
+    };
     let shadowed = own_install.is_some_and(|own| !same_dir(own, owning_root));
     if shadowed && owner_hook_is_wired(owning_root, harness) {
         return;
     }
     let persona_root = logical_root(owning_root, home.as_deref());
-    let restate_auto = is_resume_or_compact(&payload);
+    // An undecidable session never had the persona, so there is no
+    // earlier mode line for `AUTO_LINE` to correct.
+    let restate_auto = undecidable.is_none() && is_resume_or_compact(&payload);
     let output = decide(&resolve_user_mode(home.as_deref()), restate_auto, || {
+        if let Some(relative) = &undecidable {
+            return Err(PersonaError::AgentFileTooLarge {
+                path: persona_root.join(relative),
+            });
+        }
         if shadowed {
             return Err(PersonaError::OwnerHookNotWired {
                 install_root: persona_root.clone(),
@@ -853,10 +934,13 @@ mod tests {
     #[test]
     fn a_claude_agent_loads_direct_work_only_through_its_context_block() {
         assert!(claude_agent_loads_direct_work(
-            "Help.\n\n<Context: k-direct-work.md>\nrules\n</Context: k-direct-work.md>"
+            b"Help.\n\n<Context: k-direct-work.md>\nrules\n</Context: k-direct-work.md>"
+        ));
+        assert!(claude_agent_loads_direct_work(
+            b"Help.\r\n<Context: k-direct-work.md>\r\nrules\r\n"
         ));
         assert!(!claude_agent_loads_direct_work(
-            "Shape rules live here and in `k-direct-work.md`.\n\
+            b"Shape rules live here and in `k-direct-work.md`.\n\
              <Context: k-orchestrator-routing-rules.md>\nx\n</Context: k-orchestrator-routing-rules.md>"
         ));
     }
@@ -883,14 +967,155 @@ mod tests {
         )
         .unwrap();
 
-        assert!(is_mode_agent(&root, Some(AgentLayout::Kiro), MODE_AGENT));
-        assert!(is_mode_agent(&root, Some(AgentLayout::Kiro), "acme"));
-        assert!(is_mode_agent(&root, Some(AgentLayout::Claude), "acme"));
-        assert!(is_mode_agent(&root, None, "acme"));
-        assert!(!is_mode_agent(&root, Some(AgentLayout::Kiro), "acme-mux"));
-        assert!(!is_mode_agent(&root, Some(AgentLayout::Claude), "acme-mux"));
-        assert!(!is_mode_agent(&root, None, "k-developer"));
+        let check = |layout, agent| mode_agent_check(&root, layout, agent);
+        assert_eq!(
+            check(Some(AgentLayout::Kiro), MODE_AGENT),
+            DirectWork::Loads
+        );
+        assert_eq!(check(Some(AgentLayout::Kiro), "acme"), DirectWork::Loads);
+        assert_eq!(check(Some(AgentLayout::Claude), "acme"), DirectWork::Loads);
+        assert_eq!(check(None, "acme"), DirectWork::Loads);
+        assert_eq!(
+            check(Some(AgentLayout::Kiro), "acme-mux"),
+            DirectWork::DoesNotLoad
+        );
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "acme-mux"),
+            DirectWork::DoesNotLoad
+        );
+        assert_eq!(check(None, "k-developer"), DirectWork::DoesNotLoad);
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    fn write_agent(root: &Path, relative: &str, bytes: &[u8]) {
+        let file = root.join(relative);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(file, bytes).unwrap();
+    }
+
+    const CAP: usize = MAX_AGENT_FILE_BYTES as usize;
+    const CLAUDE_OPENING: &[u8] = b"<Context: k-direct-work.md>\n";
+
+    /// `opening` first, then filler bytes up to `len`.
+    fn claude_body(opening: &[u8], len: usize) -> Vec<u8> {
+        let mut body = opening.to_vec();
+        body.resize(len, b'x');
+        body
+    }
+
+    /// A Kiro agent JSON that loads Direct Work, padded with spaces to
+    /// exactly `len` bytes.
+    fn kiro_body(len: usize) -> Vec<u8> {
+        let mut body = br#"{"resources":["file://context/k-direct-work.md"]}"#.to_vec();
+        body.resize(len, b' ');
+        body
+    }
+
+    #[test]
+    fn an_agent_file_over_the_cap_is_undecidable_unless_the_read_part_settles_it() {
+        let root = scratch_dir("oversized-agent");
+        let claude_path = |name: &str| format!(".claude/agents/{name}.md");
+        let check = |layout, agent| mode_agent_check(&root, layout, agent);
+
+        write_agent(
+            &root,
+            &claude_path("early"),
+            &claude_body(CLAUDE_OPENING, CAP + 10),
+        );
+        let mut late = claude_body(b"", CAP);
+        late.extend_from_slice(b"\n<Context: k-direct-work.md>\n");
+        write_agent(&root, &claude_path("late"), &late);
+        write_agent(&root, &claude_path("plain"), &claude_body(b"", CAP + 1));
+        write_agent(&root, &claude_path("exact"), &claude_body(b"", CAP));
+
+        assert_eq!(check(Some(AgentLayout::Claude), "early"), DirectWork::Loads);
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "late"),
+            DirectWork::Undecidable(PathBuf::from(claude_path("late")))
+        );
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "plain"),
+            DirectWork::Undecidable(PathBuf::from(claude_path("plain")))
+        );
+        assert_eq!(
+            check(Some(AgentLayout::Claude), "exact"),
+            DirectWork::DoesNotLoad
+        );
+
+        write_agent(&root, ".kiro/agents/fits.json", &kiro_body(CAP));
+        write_agent(&root, ".kiro/agents/big.json", &kiro_body(CAP + 1));
+        assert_eq!(check(Some(AgentLayout::Kiro), "fits"), DirectWork::Loads);
+        assert_eq!(
+            check(Some(AgentLayout::Kiro), "big"),
+            DirectWork::Undecidable(PathBuf::from(".kiro/agents/big.json"))
+        );
+
+        // Without a layout, either file loading Direct Work decides it.
+        write_agent(&root, ".kiro/agents/early.json", &kiro_body(CAP + 1));
+        write_agent(&root, ".kiro/agents/plain.json", br#"{"resources":[]}"#);
+        assert_eq!(check(None, "early"), DirectWork::Loads);
+        assert_eq!(
+            check(None, "big"),
+            DirectWork::Undecidable(PathBuf::from(".kiro/agents/big.json"))
+        );
+        assert_eq!(
+            check(None, "plain"),
+            DirectWork::Undecidable(PathBuf::from(claude_path("plain")))
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_cap_inside_a_multibyte_character_still_finds_the_context_line() {
+        let root = scratch_dir("cap-mid-char");
+        // "é" is two bytes. The prefix has an odd length, so the cap
+        // falls between the two bytes of one of them.
+        let mut body = CLAUDE_OPENING.to_vec();
+        if body.len().is_multiple_of(2) {
+            body.push(b'x');
+        }
+        while body.len() < CAP + 2 {
+            body.extend_from_slice("é".as_bytes());
+        }
+        assert!(std::str::from_utf8(&body[..CAP]).is_err());
+        write_agent(&root, ".claude/agents/acme.md", &body);
+        assert_eq!(
+            mode_agent_check(&root, Some(AgentLayout::Claude), "acme"),
+            DirectWork::Loads
+        );
+
+        // Bytes that are not UTF-8 elsewhere in the file do not hide it.
+        let mut invalid = vec![0xff, 0xfe, b'\n'];
+        invalid.extend_from_slice(CLAUDE_OPENING);
+        write_agent(&root, ".claude/agents/latin.md", &invalid);
+        assert_eq!(
+            mode_agent_check(&root, Some(AgentLayout::Claude), "latin"),
+            DirectWork::Loads
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn an_undecidable_agent_gets_a_fallback_line_only_under_coordinator() {
+        let error = PersonaError::AgentFileTooLarge {
+            path: PathBuf::from("/srv/p/.claude/agents/acme.md"),
+        };
+        let line = decide(&ModeResolution::Explicit(Mode::Coordinator), false, || {
+            Err(error.clone())
+        });
+        assert_eq!(
+            line,
+            HookOutput::Line(
+                "Orchestration: auto (fallback: the agent file at /srv/p/.claude/agents/acme.md \
+                 is larger than 1 MiB, so konductor could not check whether it loads \
+                 k-direct-work.md)"
+                    .to_string()
+            )
+        );
+        assert_eq!(
+            decide(&ModeResolution::Explicit(Mode::Auto), false, || Err(error)),
+            HookOutput::Nothing
+        );
     }
 
     #[test]

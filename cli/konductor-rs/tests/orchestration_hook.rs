@@ -978,6 +978,59 @@ fn a_renamed_agent_that_loads_direct_work_gets_the_persona_on_claude() {
 }
 
 #[test]
+fn an_agent_file_too_large_to_check_gets_a_fallback_line_under_coordinator() {
+    let home = scratch_dir("oversized-claude-home");
+    install_specs(
+        &home,
+        &home,
+        RENAMED,
+        &["--harness", "claude", "--no-telemetry"],
+    );
+    // Over the 1 MiB check cap, with the Direct Work block past it.
+    let agent_file = home.join(".claude/agents/acme.md");
+    let installed = std::fs::read(&agent_file).unwrap();
+    let mut padded = vec![b'#'; 1024 * 1024 + 1];
+    padded.push(b'\n');
+    padded.extend_from_slice(&installed);
+    std::fs::write(&agent_file, padded).unwrap();
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    let args = [
+        "--install-root",
+        &home.display().to_string(),
+        "--harness",
+        "claude",
+    ]
+    .map(str::to_string);
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    assert_eq!(
+        fire(
+            &home,
+            &project,
+            &args,
+            &[],
+            &claude_payload(Some("acme"), "startup")
+        ),
+        "Orchestration: auto (fallback: the agent file at ~/.claude/agents/acme.md is larger \
+         than 1 MiB, so konductor could not check whether it loads k-direct-work.md)\n"
+    );
+    set_mode(&home, "orchestration:\n  mode: auto\n");
+    assert_eq!(
+        fire(
+            &home,
+            &project,
+            &args,
+            &[],
+            &claude_payload(Some("acme"), "resume")
+        ),
+        ""
+    );
+    std::fs::remove_dir_all(&home).ok();
+}
+
+#[test]
 fn kiro_v2_wires_the_hook_on_a_renamed_agent_that_loads_direct_work() {
     let home = scratch_dir("renamed-v2-home");
     install_specs(

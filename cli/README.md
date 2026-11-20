@@ -1085,7 +1085,8 @@ orchestration:
   Install under your home directory or the project root for coordinator mode.
 - When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
   Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
-  file, or an install outside the locations above), it prints one line,
+  file, an install outside the locations above, or an agent file over 1 MiB that it cannot check
+  for `k-direct-work.md`), it prints one line,
   `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
 - The first reply of every `konductor` session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
