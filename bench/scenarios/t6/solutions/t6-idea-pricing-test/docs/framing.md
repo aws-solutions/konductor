@@ -18,7 +18,7 @@ The first-purchase chart makes Variant B look better, but it is not safe to publ
     },
     {
       "name": "Refunds change the outcome",
-      "evidence": "Control has 22 seven-day refunds from 381 gross paid orders (5.77%), while B has 58 from 409 (14.18%). Gross net-of-refund orders are therefore 359 for Control and 351 for B.",
+      "evidence": "Control has 22 refunds from 381 gross paid orders (5.77%), all within seven days, while B has 58 from 409 (14.18%); 24 of B's came 17 to 20 days after 15-18 April purchases, outside the seven-day policy. Counting every refund in the file, net-of-refund orders are 359 for Control and 351 for B.",
       "impact": "Refunds remove most of the gross-purchase advantage and make the B experience less attractive on retained paid conversion."
     }
   ],
