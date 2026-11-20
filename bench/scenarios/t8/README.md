@@ -44,7 +44,7 @@ alternative is wrong on substance, that is recorded in `AUTHORING-LOG.md`.
 
 ## Authorship
 
-Version 1 of all 15 tasks was written by gpt-5.6-luna and reviewed by qwen3-coder-next. Version 2 of five tasks was re-authored by qwen3-coder-next or minimax-m2.5 and reviewed by the other of the two (`briefs/<id>.json` keeps `rewriteOf`), so the batch has two author families. Four deepseek-3.2 drafts were
+Version 1 of all 15 tasks was written by gpt-5.6-luna and reviewed by qwen3-coder-next. A second-family rewrite (qwen3-coder-next or minimax-m2.5 as author, the other as reviewer) was tried on seven tasks on 2026-11-19 and 20. No draft passed the gates (several were caught by the lazy-answer check), and the combined T7 and T8 rewrite spend stop was reached, so every task is still version 1 and the batch has one author family; each brief records its tries in `secondFamilyRewrite`. Claude hand edits are listed in `HAND-EDITS.md`. Four deepseek-3.2 drafts were
 discarded (the request named the decoy or listed every constraint and its file, key matchers used fields the grader
 does not read, the author's answer or key files sat in the fixture) and re-authored; the last three deepseek briefs
 were moved to gpt-5.6-luna before authoring for the same reason. The discarded drafts and the worker's hand fixes
