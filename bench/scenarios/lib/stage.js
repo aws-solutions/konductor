@@ -8,13 +8,15 @@
 //   log-author <id>  logs the author call's credits
 //   map <id>         a third model family tags the finished task from skill, SOP and agent names and descriptions only
 //   review <id>      a model of another family reviews the finished task (work/<id>.review.json)
-//   assemble <id>    writes the task into the batch (task file from the batch's `stage.buildTask`, then its layout)
+//   assemble <id>    writes the task into the batch (task file from the batch's `stage.buildTask`, then its layout),
+//                    and folds copies of shared hidden helpers into .bench-lib.json
+//   fold-helpers <id|all>  the same fold for tasks already in the batch
 // plus the batch's own subcommands (`stage.commands`).
 //   node bench/scenarios/lib/stage.js --config bench/scenarios/tN/scenario.config.js <cmd> <id> [arg]
 // Needs the batch's authoring dir in $<stage.authEnv> (default T<N>_AUTH): run.sh (run.sh <model> <cwd> <promptfile>
 // <outprefix>; it runs kiro-cli in a scratch home with no steering, rules, MCP or skills), work/<id>/ (the author's
 // output) and catalog.json (names and descriptions, t1/catalog-descriptions.js). Every model call is logged with its
-// credits in the batch's AUTHORING-LOG.md. The free parts (assemble, audit) need no model.
+// credits in the batch's AUTHORING-LOG.md. The free parts (audit, assemble, fold-helpers) need no model.
 // Stage config fields: authEnv, mapPrompt (default lib/prompts/map.md), mapModel (default glm-5), timeoutMs,
 // logRow(id, step, model, r), reviewFile(cwd) , buildTask(s, id), layout(s, id) -> [[from, to]], commands { name(s, id, arg) }.
 
@@ -23,6 +25,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { parseStream, aggregateStream } = require('../../runner/lib/stream.js');
 const { loadConfig } = require('./config.js');
+const { listTree } = require('./workspace.js');
+const { MANIFEST, LIB_DIR } = require('../../runner/lib/hidden-lib.js');
 
 const FAMILY = { 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'alibaba', 'minimax-m2.5': 'minimax' };
 // Owner rule (PR 299): these SOPs need the user's own yes for the scope and for committing, so a task that targets one
@@ -71,6 +75,28 @@ function withExpertRubric(rubric, key, why = 'the items are engineering judgment
   return [...(rubric || []).filter((r) => r.id !== 'expert-key'), item];
 }
 
+/**
+ * Replaces every file under a task's hidden dir that is a byte copy of a shared helper (lib/hidden/<same name>) by an
+ * entry of its .bench-lib.json, so the task commits no copy; the tests check copies the helper back in at run time.
+ * Returns the entries added.
+ */
+function foldHelpers(hiddenDir, libDir = LIB_DIR) {
+  if (!fs.existsSync(hiddenDir)) return {};
+  const file = path.join(hiddenDir, MANIFEST);
+  const map = fs.existsSync(file) ? readJson(file) : {};
+  const added = {};
+  for (const rel of listTree(hiddenDir)) {
+    const lib = path.join(libDir, path.basename(rel));
+    if (rel === MANIFEST || !fs.existsSync(lib) || !fs.readFileSync(lib).equals(fs.readFileSync(path.join(hiddenDir, rel)))) continue;
+    const key = rel.split(path.sep).join('/');
+    map[key] = path.basename(rel);
+    added[key] = path.basename(rel);
+    fs.rmSync(path.join(hiddenDir, rel));
+  }
+  if (Object.keys(added).length) fs.writeFileSync(file, `${JSON.stringify(Object.fromEntries(Object.entries(map).sort()), null, 2)}\n`);
+  return added;
+}
+
 /** The stage bound to one batch: paths, brief, model call and log. */
 function stageOf(cfg) {
   const o = cfg.stage || {};
@@ -81,7 +107,7 @@ function stageOf(cfg) {
     return a;
   };
   const s = {
-    cfg, dir: cfg.dir, authEnv, auth, FAMILY, today, readJson, put, jsonIn, streamInfo, reviewed, withExpertRubric, SOP_NEEDS_YES, YES_SENTENCE, NO_MAPPING,
+    cfg, dir: cfg.dir, authEnv, auth, FAMILY, today, readJson, put, jsonIn, streamInfo, reviewed, withExpertRubric, SOP_NEEDS_YES, YES_SENTENCE, NO_MAPPING, REVIEW_CHECKS,
     work: (...p) => path.join(auth(), 'work', ...p),
     brief: (id) => readJson(path.join(cfg.dir, 'briefs', `${id}.json`)),
     workJson: (name, fallback = null) => (fs.existsSync(s.work(name)) ? readJson(s.work(name)) : fallback),
@@ -182,7 +208,12 @@ const COMMANDS = {
     const w = s.work(id);
     const layout = o.layout ? o.layout(s, id, task) : [[path.join(w, 'fixture'), path.join(s.dir, 'fixtures', id)], [path.join(w, 'hidden'), path.join(s.dir, 'hidden', id)], [path.join(w, 'solution'), path.join(s.dir, 'solutions', id)]];
     for (const [from, to] of layout) put(from, to);
-    return { id };
+    return { id, helpers: foldHelpers(s.cfg.hiddenDir(task)) };
+  },
+  // Free: folds helper copies of every task (`all`) or of one task into .bench-lib.json (see foldHelpers).
+  'fold-helpers'(s, id) {
+    const ids = id === 'all' ? s.cfg.ids() : [id];
+    return Object.fromEntries(ids.map((x) => [x, Object.keys(foldHelpers(s.cfg.hiddenDir(s.cfg.readTask(x)))).length]));
   },
 };
 
@@ -200,4 +231,4 @@ function main(argv) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { stageOf, COMMANDS, auditStream, streamInfo, jsonIn, reviewed, withExpertRubric, put, FAMILY, SOP_NEEDS_YES, YES_SENTENCE, main };
+module.exports = { stageOf, COMMANDS, foldHelpers, auditStream, streamInfo, jsonIn, reviewed, withExpertRubric, put, FAMILY, SOP_NEEDS_YES, YES_SENTENCE, main };

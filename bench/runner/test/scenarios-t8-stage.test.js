@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Unit test of the T8 blindness audit (bench/scenarios/t8/stage.js auditStream).
+// Unit tests of the blindness audit (bench/scenarios/lib/stage.js auditStream) and overlayOf (lib/workspace.js),
+// on a T8 layout.
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -13,8 +14,7 @@ test('auditStream flags unit reads and other batches, not the authoring dir', ()
   try {
     const auth = path.join(root, 't8auth');
     fs.mkdirSync(path.join(auth, 'work'), { recursive: true });
-    process.env.T8_AUTH = auth;
-    const { auditStream } = require('../../scenarios/t8/stage.js');
+    const { auditStream } = require('../../scenarios/lib/stage.js');
     const line = (p) => JSON.stringify({ sessionUpdate: 'tool_call', rawInput: { path: p } });
     const stream = path.join(auth, 'work', 'x.author.out');
     fs.writeFileSync(stream, [
@@ -24,7 +24,7 @@ test('auditStream flags unit reads and other batches, not the authoring dir', ()
       line('/var/tmp/repo/skills/some-skill/SKILL.md'),
       JSON.stringify({ text: `${root}/t5auth/not-a-tool-call` }),
     ].join('\n'));
-    const r = auditStream(stream);
+    const r = auditStream(stream, auth);
     assert.deepStrictEqual(r.unitReads, ['/var/tmp/repo/skills/some-skill/SKILL.md']);
     assert.deepStrictEqual(r.otherBatch, [`${root}/t5auth/work/y/task-draft.json`]);
   } finally {
@@ -35,8 +35,7 @@ test('auditStream flags unit reads and other batches, not the authoring dir', ()
 test('overlayOf copies only the files an answer added or changed', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 't8-overlay-'));
   try {
-    process.env.T8_AUTH = root;
-    const { overlayOf } = require('../../scenarios/t8/stage.js');
+    const { overlayOf } = require('../../scenarios/lib/workspace.js');
     const fixture = path.join(root, 'fixture');
     const ws = path.join(root, 'ws');
     fs.mkdirSync(path.join(fixture, 'logs'), { recursive: true });
