@@ -52,6 +52,7 @@ export function ConsolePane({
             <p className="wf-code-note">Earlier lines are not shown.</p>
           )}
           <CodeLines
+            key={name}
             lines={lines}
             label={`Console lines of ${name}`}
             describedBy={noteId}
