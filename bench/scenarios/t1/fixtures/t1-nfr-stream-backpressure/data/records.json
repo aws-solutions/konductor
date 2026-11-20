@@ -1,0 +1,6 @@
+[
+  {"id":"r-100","name":"Juniper","active":true},
+  {"id":"r-101","name":"Mica","active":false},
+  {"id":"r-102","name":"Orchid","active":true},
+  {"id":"r-103","name":"Pine","active":true}
+]

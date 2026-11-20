@@ -1,0 +1,10 @@
+[2026-11-20T14:12:40Z] pagerbot: InvoiceCreateLatencyHigh firing (invoice_create_p99_ms over 1500 for 10 min)
+[2026-11-20T14:14:02Z] Lena Ortiz (on-call): looking. invoice-api 2.41.0 went out at 13:50, suspicious
+[2026-11-20T14:21:55Z] Lena Ortiz (on-call): render-worker is throwing errors like crazy, pinging @documents-oncall
+[2026-11-20T14:30:18Z] Sam Feld (Documents): render-worker is fine, it is timing out on invoice-api fetches. not ours
+[2026-11-20T14:44:37Z] Lena Ortiz (on-call): restarted invoice-api pods, looked better for a few minutes, now bad again
+[2026-11-20T15:02:11Z] Arun Mehta (support): two enterprise customers in the US say they cannot create invoices since around 2pm
+[2026-11-20T15:20:46Z] Lena Ortiz (on-call): thinking about failing over the database if this keeps going
+[2026-11-20T15:41:03Z] Priya Das (Data Platform): before anyone promotes anything, check the replica
+[2026-11-20T16:05:29Z] Lena Ortiz (on-call): rollback of 2.41.0 is queued in deployctl but I have not pressed go
+[2026-11-20T16:28:50Z] Lena Ortiz (on-call): my shift ends at 16:30, handing this over

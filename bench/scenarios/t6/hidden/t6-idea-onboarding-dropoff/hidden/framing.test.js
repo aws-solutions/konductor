@@ -9,6 +9,8 @@ const block = () => blockOf(doc);
 const allText = () => JSON.stringify(block()).toLowerCase();
 const evidence = () => itemTexts(block().evidence).map((t) => t.toLowerCase());
 const options = () => itemTexts(block().options).map((t) => t.toLowerCase());
+// A date in any common spelling: "21 January", "January 21", "Jan 21" or "2025-01-21".
+const onDate = (day, month, mm) => new RegExp(`\\b0?${day}(?:st|nd|rd|th)?\\s*${month}|${month}[a-z]*\\.?\\s*0?${day}\\b|-${mm}-0?${day}\\b`);
 
 // Each test checks one decision-relevant fact while allowing ordinary wording changes.
 test('identifies verification as the main problem and names the affected provider', () => {
@@ -35,11 +37,11 @@ test('shows that Cloudmail is about 64 percent of post-cutover sends', () => {
 });
 
 test('separates the 3 February tracking outage from the behavioral result', () => {
-  assert.ok(evidence().some((t) => /3\s*feb/.test(t) && /3[,.]?020/.test(t) && /5[,.]?605/.test(t) && /(track|analytic|event|instrument)/.test(t) && /(backend|reconcil|not evidence|not a comparable|measurement)/.test(t)), 'reconciled outage evidence is missing');
+  assert.ok(evidence().some((t) => onDate(3, 'feb', '02').test(t) && /3[,.]?020/.test(t) && /5[,.]?605/.test(t) && /(track|analytic|event|instrument)/.test(t) && /(backend|reconcil|not evidence|not a comparable|measurement)/.test(t)), 'reconciled outage evidence is missing');
 });
 
 test('connects the fall to the 21 January sending-domain change without claiming a UI release', () => {
-  assert.ok(evidence().some((t) => /21\s*jan/.test(t) && /domain/.test(t)), 'domain-change timing is missing');
+  assert.ok(evidence().some((t) => onDate(21, 'jan', '01').test(t) && /domain/.test(t)), 'domain-change timing is missing');
 });
 
 test('offers a targeted email or provider remediation option', () => {

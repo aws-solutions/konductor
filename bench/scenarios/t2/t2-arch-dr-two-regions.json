@@ -1,6 +1,6 @@
 {
   "id": "t2-arch-dr-two-regions",
-  "version": 3,
+  "version": 4,
   "class": "design",
   "phase": "design-review",
   "phases2": [],
@@ -62,27 +62,27 @@
   "findingsKey": [
     {
       "id": "k1",
-      "finding": "Last-write-wins conflict resolution allows the same seat to be sold in both regions, violating the core business rule against double booking.",
+      "finding": "Last-write-wins conflict resolution lets both regions sell the same seat; Scenario 1 in 3.3 ends with two buyers for seat A-12 while the counter reads 0, which breaks the zero-tolerance double-booking rule.",
       "weight": 1
     },
     {
       "id": "k2",
-      "finding": "The claimed RPO of 60 seconds in section 6.3 is smaller than the measured replication lag which exceeds 60 seconds at P99, meaning data loss could exceed the recovery target.",
+      "finding": "The recovery targets do not match the service targets or the data: the design's RPO of 60 seconds (3.2, 6.3) is twice the 30-second RPO service-targets.md sets for transactional data, and the measured P99 replication lag (420-720 ms, max 2.2 s) is 4-7 times the design's own < 100 ms P99 lag target and success criterion 4.",
       "weight": 1
     },
     {
       "id": "k3",
-      "finding": "DNS TTL of 300 seconds plus health check timing of 60 seconds exceeds the 60-second RTO stated in section 6.2, meaning failover will take longer than the recovery target.",
+      "finding": "A DNS TTL of 300 seconds (3.5, dns-config.json) means clients keep resolving the failed region for up to 5 minutes after Route 53 changes, so failover cannot meet the 60-second RTO; the 6.2 breakdown counts only 20 seconds for DNS propagation.",
       "weight": 1
     },
     {
       "id": "k4",
-      "finding": "The budget allocation in section 8.1 omits the doubled database cost for the second region and underestimates cross-region data transfer costs.",
+      "finding": "The cost analysis (3.9, with no figures in 8.1) prices 1 TB of database storage once although each of the two RDS instances needs it, leaves out the Multi-AZ standbys, and its one-time total ($48,000; $47,400 in budget-breakdown.yaml) already exceeds the $45,000 approved budget.",
       "weight": 1
     },
     {
       "id": "k5",
-      "finding": "The failback procedure in section 7.1 is vague and missing detailed steps for verifying data consistency before returning traffic to the restored region.",
+      "finding": "The failback steps (3.7, 7.1) say only 'verify replication has caught up'; they give no check or pass criterion and no step to reconcile writes the surviving region accepted while the other was down, so returning traffic can reintroduce conflicting seat and payment rows.",
       "weight": 1
     },
     {
@@ -92,12 +92,12 @@
     },
     {
       "id": "k7",
-      "finding": "The estimated recovery time in section 6.1 doesn't account for DNS propagation delay beyond TTL, which could extend the actual outage duration.",
+      "finding": "The design states three different recovery times: RTO 120 seconds in 3.2, an estimated 90 seconds in 3.6 and a 60-second RTO in 6.2, so there is no single target to build or test against; only 60 seconds matches service-targets.md.",
       "weight": 1
     },
     {
       "id": "k8",
-      "finding": "Asynchronous replication contradicts the strong consistency requirement for seat inventory stated in the product rules, creating dependency compatibility issues.",
+      "finding": "Asynchronous replication with eventual consistency for seat counts (3.2, 3.3) contradicts the strong consistency service-targets.md requires for ticket inventory and for payment records.",
       "weight": 1
     }
   ],
@@ -208,36 +208,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric aligns with request for 'gaps in the approach, contradictions with service targets, risks we might have missed'. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks for a general design review with output format (section, severity, issue, fix) but specifies no review method, checklist, process, or decoy. No number of problems mentioned.)."
+          "note": "task.json asks for a concrete architecture review and output format but names no prescribed method, framework, or tool and contains no hint directing the reviewer away from the design risks."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Judge-only rubric; no answer content in criterion. Earlier minimax-m2.5 check of the request, fixture and key: pass (Fixture files (design doc, CSV data, JSON configs, YAML budget) contain planted problems in the content but no comments, tests, or file names explicitly stating what the problems are.)."
+          "note": "The fixture contains the design and source evidence, including its own proposed mechanisms and risks, but no completed review, answer key, or document telling the agent which findings to report."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Verified: design doc has RPO 60s, RTO 120s, last-write-wins conflict resolution, DNS TTL, matching findingsKey. Earlier minimax-m2.5 check of the request, fixture and key: pass (All 8 key items map correctly: k1 (3.2 last-write-wins), k2 (6.3 RPO vs lag CSV data), k3 (6.2 DNS TTL vs RTO), k4 (8.1 budget gaps), k5 (7.1 vague failback), k6 (3.3 global counter), k7 (6.1 DNS propagation), k8 (2.2/3.2 async replication vs strong consistency requirement). Each severity is defensible.)."
+          "note": "The eight keyed findings are grounded in the design sections and supporting files: the design supplies the conflicting RTOs, TTL, LWW counter, failback and cost figures, while service-targets.md and the lag/budget data supply the contradictions. The JSON-section format and severity/fix requirements are stated in task.json and its checks."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Alternative correct reviews can Pass; rubric judges grounding. Earlier minimax-m2.5 check of the request, fixture and key: pass (All problems can be found from fixture alone: design doc sections, replication-lag-measurements.csv (P99 > 60s), dns-config.json (TTL 300s), budget-breakdown.yaml, product-rules.md (strong consistency requirement).)."
+          "note": "A reviewer can derive the findings by comparing the design with service-targets.md, product-rules.md, dns-config.json, replication-lag-measurements.csv, and budget-breakdown.yaml; the key accepts section-based findings rather than requiring the reference wording."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

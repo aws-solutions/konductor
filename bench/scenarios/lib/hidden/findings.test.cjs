@@ -25,12 +25,15 @@ const spec = JSON.parse(fs.readFileSync(path.join(__dirname, 'key.json'), 'utf8'
 
 // The locations that count as naming an item: path:line and basename:line for every line of the item's span
 // widened by `slack` (LINE_SLACK, or the item's own `slack` where two items sit close together), or the section
-// number of a design document item.
+// number of a design document item. `section` may be a list where a reviewer could rightly place the item in more
+// than one section. `also` lists more code spans ({file, line, endLine?}) for an item whose cause sits in two places.
 function locations(item, slack) {
-  if (item.section) return [String(item.section)];
+  if (item.section) return (Array.isArray(item.section) ? item.section : [item.section]).map(String);
   const out = [];
-  const end = item.endLine ?? item.line;
-  for (let l = Math.max(1, item.line - slack); l <= end + slack; l++) out.push(`${item.file}:${l}`, `${path.posix.basename(item.file)}:${l}`);
+  for (const span of [item, ...(item.also ?? [])]) {
+    const end = span.endLine ?? span.line;
+    for (let l = Math.max(1, span.line - slack); l <= end + slack; l++) out.push(`${span.file}:${l}`, `${path.posix.basename(span.file)}:${l}`);
+  }
   return out;
 }
 

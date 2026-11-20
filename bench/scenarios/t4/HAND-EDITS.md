@@ -286,3 +286,13 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t4-policy-fix-accessdenied | glm-5 (r4, rubric) | confirmed |  |
 | t4-secrets-in-repo | glm-5 (r4, rubric) | confirmed |  |
 | t4-threat-model-webhooks | glm-5 (r4, rubric) | confirmed |  |
+
+## Spot-review fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md).
+
+- `t4-iam-bucket-policy-oac` (version 5):
+  - The hidden tests fixed the log-writer principal as `delivery.logs.amazonaws.com` for S3 server access logs too, which the fixture never names and AWS does not use (S3 server access logs come from `logging.s3.amazonaws.com`). Now CloudFront logs must reach `cloudfront-logs/` from `delivery.logs.amazonaws.com`, S3 access logs must reach `s3-access-logs/` from either principal, and every log negative test (wrong account, no source, outside the prefixes) runs for both principals. The S3 request carries `aws:SourceArn` of the stage's assets bucket as well as `aws:SourceAccount`, so a policy may condition on either.
+  - The request now says log delivery from CloudFront and from S3 must keep working "into the log prefixes of the logs buckets" (the prefix-only test had no basis in the request; the prefixes are in `docs/architecture.md:51`).
+  - Removed the empty test "CDN must use HTTPS for assets" and three "(negative test)" cases that repeated earlier tests (anonymous read, HTTP read, cross-stage read). The fourth, a CDN read with no `aws:SourceArn`, is the only test of that case, so it stays as "CDN read without a SourceArn is denied". 31 tests to 27; the `tests` check `min` is 27.
+  - The reference `logs-policy.json` grants S3 access logs to `logging.s3.amazonaws.com`. The old reference (delivery.logs for both) still scores 100, and a second correct answer in another style (no CDN ListBucket, no bucket grant for the same-account deploy role, a source-bucket condition for S3 logs) scores 100. Stub and lazy 15.9.

@@ -1,0 +1,17 @@
+{
+  "seed": 20261119,
+  "batches": {
+    "t1": { "status": "pending" },
+    "t2": { "status": "pinned", "sample": ["t2-arch-dr-two-regions", "t2-gaps-jwt-middleware"] },
+    "t3": { "status": "pending" },
+    "t4": { "status": "pinned", "sample": ["t4-iam-bucket-policy-oac", "t4-iam-ci-deploy-role-twin"] },
+    "t5": { "status": "pinned", "sample": ["t5-qa-ledger-gaps", "t5-qa-scheduler-gaps"] },
+    "t6": { "status": "draw" },
+    "t7": { "status": "pinned", "sample": ["t7-pm-launch-cut", "t7-ship-train"] },
+    "t8": { "status": "pending" },
+    "t9": { "status": "pending" },
+    "t10": { "status": "pending" },
+    "t11": { "status": "pending" },
+    "t12": { "status": "pending" }
+  }
+}

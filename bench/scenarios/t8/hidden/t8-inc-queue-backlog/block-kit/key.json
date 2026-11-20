@@ -12,9 +12,6 @@
         "retr(y|ied|ies|ying)|attempt|dead.?letter|redeliver",
         "partition|block|lag|stuck|backlog|head.of.line"
       ],
-      "none": [
-        "(caused by|due to|because of|result of) (the )?broker[- ]?disk|disk (usage|space|full) (caused|triggered)"
-      ],
       "section": "cause",
       "gate": true
     },

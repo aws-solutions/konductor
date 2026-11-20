@@ -1,7 +1,7 @@
 {
   "id": "t12-parallel-backlog",
   "class": "orchestration",
-  "version": 3,
+  "version": 4,
   "phase": "multi-phase",
   "phases2": [
     "planning",
@@ -9,7 +9,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "We have three people (or agents) free until Wednesday's freeze and the backlog in docs/backlog.md (docs/team.md says who). Plan the work so as much as possible runs at the same time without people stepping on each other, then carry the plan out. Write the plan to docs/plan/release-plan.md and end it with one fenced json block holding an object with: waves (list of waves in time order; each wave is a list of the backlog ids that start in it; an item that must wait for another goes in a later wave, even if the same person does both), packages (list of {id, items: backlog ids, owner, files: repository paths it changes or adds, doneWhen: string}), dependencies (list of {before, after, reason}), conflicts (list of {items, reason}: items that must not be worked on at the same time), notScheduled (list of {item, reason}) and mergeOrder (list of package ids). Then do each package as its own separate piece of work, kept apart from the others until it is merged: put the files package P changes or adds in work/P/ at their repository paths, as they are once P is done (a package builds on what the packages before it in mergeOrder merged, and nothing else), with no file outside P's files list, and add work/P/REPORT.md saying what was done, the test command it ran and the pass and fail counts it printed. Finally merge the packages into the repository one at a time in mergeOrder; after each merge run node --test test/*.test.js and add a line to docs/plan/merge-log.md with the package id and the pass and fail counts. The tests must pass after every merge. Do not change docs/backlog.md or docs/team.md.",
+  "prompt": "We have three people (or agents) free until Wednesday's freeze and the backlog in docs/backlog.md (docs/team.md says who). By the freeze, every backlog item that can ship should be merged into the repository, with the work split so that as much as possible ran at the same time without people stepping on each other, and each part reviewable on its own before it was merged. Leave these records. docs/plan/release-plan.md ends with one fenced json block holding an object with: waves (list of waves in time order; each wave is a list of the backlog ids that start in it; an item that must wait for another goes in a later wave, even if the same person does both), packages (list of {id, items: backlog ids, owner, files: repository paths it changes or adds, doneWhen: string}), dependencies (list of {before, after, reason}), conflicts (list of {items, reason}: items that must not be worked on at the same time), notScheduled (list of {item, reason}) and mergeOrder (list of package ids). For each package P, work/P/ holds the files P changes or adds, at their repository paths, as they were once P was done (built on what the packages before it in mergeOrder had merged, and nothing else), with no file outside P's files list, and work/P/REPORT.md says what was done, the test command it ran and the pass and fail counts it printed. docs/plan/merge-log.md has one line per merged package, in mergeOrder, with the package id and the pass and fail counts of node --test test/*.test.js after that merge; the tests must pass after every merge. Do not change docs/backlog.md or docs/team.md.",
   "fixture": "t12-parallel-backlog",
   "hidden": "t12-parallel-backlog",
   "timeoutSec": 2400,
@@ -130,10 +130,7 @@
       "date": "2026-11-20"
     },
     "decision": "keep",
-    "date": "2026-11-20",
-    "blockers": [
-      "recheck-failed: no-method-or-decoy (gpt-5.6-luna second pass: the request prescribes the plan, package and merge process); owner call, since that process is the T12 deliverable (D-127)"
-    ]
+    "date": "2026-11-20"
   },
   "lockedAt": null
 }

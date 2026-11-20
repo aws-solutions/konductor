@@ -1,0 +1,8 @@
+name,unit,description
+invoice_create_requests,requests/min,POST /v1/invoices calls per minute
+invoice_create_5xx,requests/min,POST /v1/invoices answered with a 5xx
+invoice_create_p99_ms,ms,99th percentile latency of POST /v1/invoices
+invoice_create_p50_ms,ms,median latency of POST /v1/invoices
+db_lock_waits,waits/min,invoice-api statements that waited on a row lock for more than 1 s
+replica_replay_lag_s,s,how far the replica's replay is behind the primary
+render_errors,errors/min,render-worker jobs that failed a fetch or render

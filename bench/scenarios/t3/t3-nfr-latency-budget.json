@@ -2,7 +2,7 @@
   "id": "t3-nfr-latency-budget",
   "class": "design",
   "target": null,
-  "prompt": "We need to optimize our e-commerce checkout system to meet latency requirements within budget. The checkout request flows through gateway, auth, pricing, inventory, and payment services sequentially. Current measurements show the end-to-end p99 latency exceeds our target.\n\nPlease review the documentation in the fixture directory and propose an optimization strategy. Your analysis should identify which optimization option to implement, considering both performance improvements and cost constraints.\n\nCreate a deliverable document at `docs/latency.md` that explains your recommendation with supporting calculations. The document must include a fenced code block with info string `decision` containing JSON with these exact keys:\n\n- \"chosen\": the id of the selected option\n- \"options\": array of option ids you considered  \n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements, where value is your computed figure for the chosen option\n- \"monthly_cost_usd\": the monthly cost of your chosen option computed from the price sheet\n\nMake sure your recommendation meets all hard limits including the p99 latency target and stays within the monthly budget. Show your work for latency calculations and cost analysis.",
+  "prompt": "We need to optimize our e-commerce checkout system to meet latency requirements within budget. The checkout request flows through gateway, auth, pricing, inventory, and payment services sequentially. Current measurements show the end-to-end p99 latency exceeds our target.\n\nPlease review the documentation in the fixture directory and propose an optimization strategy. Your analysis should identify which optimization option to implement, considering both performance improvements and cost constraints.\n\nCreate a deliverable document at `docs/latency.md` that explains your recommendation with supporting calculations. The document must include a fenced code block with info string `decision` containing JSON with these exact keys:\n\n- \"chosen\": the ID of the selected option (must be one of: base, parallel, cache, cache_parallel)\n- \"options\": array of option IDs you considered (must include all of: base, parallel, cache, cache_parallel)\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements, where value is your computed figure for the chosen option. The limit keys you must use are: monthly_budget_usd, p99_latency_ms\n- \"monthly_cost_usd\": the monthly cost of your chosen option computed from the price sheet\n\nMake sure your recommendation meets all hard limits including the p99 latency target and stays within the monthly budget. Show your work for latency calculations and cost analysis.",
   "fixture": "t3-nfr-latency-budget",
   "timeoutSec": 900,
   "hidden": "t3-nfr-latency-budget",
@@ -68,12 +68,9 @@
       "lazy": 25,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit names p99_latency_ms, monthly_budget_usd are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -119,29 +116,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates reasoning quality and budget analysis for the optimization decision requested. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json prompt states the checkout goal, input documentation, output path, JSON schema, and constraints, but does not prescribe a method or identify a trap or answer.)."
+          "note": "The request asks for an optimization recommendation and a document, without naming a working method, framework, or tool or supplying a misleading decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides latency measurements and cost options; no pre-selected answer visible. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/README.md and the supporting documents provide measurements, options, and requirements as evidence; no fixture file declares the selected option or lists the hidden findings.)."
+          "note": "The fixture describes the baseline and candidate optimizations with their measured latency and costs, but leaves the recommendation to the agent and contains no completed deliverable."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (720ms base latency, 600ms target, $1,000 total ceiling including $900 baseline, parallel 570ms using max) match fixture data. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/architecture-diagram.md gives the 720 ms sequential path, 570 ms parallel calculation, and no pricing/inventory dependency; fixture/cost-analysis.md and cost-options.csv support the $900 baseline, $50 parallel maintenance, $950 total, and cache overrun, while implementation-notes.md supports the stated risks and feature-flag rollback.)."
+          "note": "The request states the option IDs, deliverable path, decision format, and both limit keys (task.json:5); the fixture supplies the latency, budget, baseline, and option-cost data used by the tests."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Valid reasoning with different prose structure and risk discussions can achieve Pass. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/requirements.md, architecture-diagram.md, cost-analysis.md, and cost-options.csv contain enough latency, dependency, budget, and option-cost data to select parallel processing and document its calculations without hidden files or user answers.)."
+          "note": "The fixture alone supports the 720 ms baseline, 570 ms parallel result, and $950 total cost, making parallel the only option that satisfies both hard limits. The tests validate those semantics rather than a required prose structure."
         }
       ]
     }

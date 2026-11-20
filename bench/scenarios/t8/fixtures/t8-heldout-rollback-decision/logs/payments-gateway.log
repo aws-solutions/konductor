@@ -1,0 +1,1150 @@
+2026-11-20T10:00:22.172Z INFO payments-gateway req=r-e5cb5b782e merchant=basketry idem_key=ord-7329375 result=approved
+2026-11-20T10:00:30.942Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=40
+2026-11-20T10:00:43.993Z INFO payments-gateway req=r-e8d0f5a6e8 merchant=basketry idem_key=ord-7309259 result=approved
+2026-11-20T10:00:53.043Z INFO payments-gateway req=r-f921326623 merchant=basketry idem_key=ord-7364540 result=approved
+2026-11-20T10:01:17.433Z INFO payments-gateway req=r-2feff3457b merchant=basketry idem_key=ord-7316267 result=approved
+2026-11-20T10:01:30.625Z INFO payments-gateway req=r-8e949f47e3 merchant=basketry idem_key=ord-7366234 result=approved
+2026-11-20T10:01:35.884Z INFO payments-gateway req=r-b6421fbb1f merchant=basketry idem_key=ord-7327436 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:01:42.192Z INFO payments-gateway req=r-121fffaa2e merchant=basketry idem_key=ord-7332879 result=approved
+2026-11-20T10:02:08.888Z INFO payments-gateway req=r-b295cb2ba8 merchant=basketry idem_key=ord-7338015 result=approved
+2026-11-20T10:02:26.912Z INFO payments-gateway req=r-873a24e0de merchant=basketry idem_key=ord-7371719 result=approved
+2026-11-20T10:02:30.306Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=65
+2026-11-20T10:02:54.917Z INFO payments-gateway req=r-a43d0d69da merchant=basketry idem_key=ord-7377195 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:02:59.867Z INFO payments-gateway req=r-8ed8ecbd42 merchant=basketry idem_key=ord-7337031 result=approved
+2026-11-20T10:03:10.954Z INFO payments-gateway req=r-b40e4a393d merchant=basketry idem_key=ord-7307660 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:03:19.016Z INFO payments-gateway req=r-ec96293da5 merchant=basketry idem_key=ord-7384524 result=approved
+2026-11-20T10:03:23.549Z INFO payments-gateway req=r-6f22395c2f merchant=basketry idem_key=ord-7339361 result=approved
+2026-11-20T10:03:32.055Z INFO payments-gateway req=r-3a3de02f34 merchant=basketry idem_key=ord-7367180 result=approved
+2026-11-20T10:04:24.127Z INFO payments-gateway req=r-ae6051d277 merchant=basketry idem_key=ord-7332769 result=approved
+2026-11-20T10:04:30.401Z INFO payments-gateway req=r-a111266108 merchant=basketry idem_key=ord-7384004 result=approved
+2026-11-20T10:04:30.980Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=64
+2026-11-20T10:04:37.736Z INFO payments-gateway req=r-6a02d9700d merchant=basketry idem_key=ord-7397260 result=approved
+2026-11-20T10:04:51.934Z INFO payments-gateway req=r-828328b5a9 merchant=basketry idem_key=ord-7365819 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:05:11.925Z INFO payments-gateway req=r-c77797a0bf merchant=basketry idem_key=ord-7332416 result=approved
+2026-11-20T10:05:13.816Z INFO payments-gateway req=r-2d865a9fb9 merchant=basketry idem_key=ord-7334355 result=approved
+2026-11-20T10:05:40.636Z INFO payments-gateway req=r-875cdd1850 merchant=basketry idem_key=ord-7363607 result=approved
+2026-11-20T10:06:15.659Z INFO payments-gateway req=r-1f52f5be21 merchant=basketry idem_key=ord-7327534 result=approved
+2026-11-20T10:06:16.447Z INFO payments-gateway req=r-5ae1c4c41d merchant=basketry idem_key=ord-7311975 result=approved
+2026-11-20T10:06:19.452Z INFO payments-gateway req=r-45ccf49de1 merchant=basketry idem_key=ord-7340729 result=approved
+2026-11-20T10:06:30.135Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=61
+2026-11-20T10:07:04.199Z INFO payments-gateway req=r-3acfdc2c53 merchant=basketry idem_key=ord-7372239 result=approved
+2026-11-20T10:07:04.563Z INFO payments-gateway req=r-e5d85343ea merchant=basketry idem_key=ord-7327791 result=approved
+2026-11-20T10:07:52.656Z INFO payments-gateway req=r-04c1de0f96 merchant=basketry idem_key=ord-7316542 result=approved
+2026-11-20T10:08:01.842Z INFO payments-gateway req=r-5d5e705927 merchant=basketry idem_key=ord-7380808 result=approved
+2026-11-20T10:08:27.648Z INFO payments-gateway req=r-3067318a4c merchant=basketry idem_key=ord-7314402 result=approved
+2026-11-20T10:08:30.211Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=40
+2026-11-20T10:08:32.499Z INFO payments-gateway req=r-b743174c24 merchant=basketry idem_key=ord-7376302 result=approved
+2026-11-20T10:08:58.926Z INFO payments-gateway req=r-f8b72c5152 merchant=basketry idem_key=ord-7319610 result=soft_decline code=NSF
+2026-11-20T10:09:07.245Z INFO payments-gateway req=r-727b1c46c3 merchant=basketry idem_key=ord-7357072 result=approved
+2026-11-20T10:09:23.769Z INFO payments-gateway req=r-901b26f038 merchant=basketry idem_key=ord-7354429 result=approved
+2026-11-20T10:09:25.827Z INFO payments-gateway req=r-28f5c43798 merchant=basketry idem_key=ord-7379919 result=approved
+2026-11-20T10:10:20.896Z INFO payments-gateway req=r-1aa9d10491 merchant=basketry idem_key=ord-7317603 result=approved
+2026-11-20T10:10:22.466Z INFO payments-gateway req=r-a05f29f231 merchant=basketry idem_key=ord-7374653 result=approved
+2026-11-20T10:10:30.345Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=47
+2026-11-20T10:10:42.546Z INFO payments-gateway req=r-592b3b4390 merchant=basketry idem_key=ord-7323461 result=approved
+2026-11-20T10:10:48.880Z INFO payments-gateway req=r-603001d1c9 merchant=basketry idem_key=ord-7350378 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:11:09.540Z INFO payments-gateway req=r-7d03051ed3 merchant=basketry idem_key=ord-7347033 result=approved
+2026-11-20T10:11:23.207Z INFO payments-gateway req=r-71266cd9ee merchant=basketry idem_key=ord-7365710 result=approved
+2026-11-20T10:11:58.861Z INFO payments-gateway req=r-18c575ad28 merchant=basketry idem_key=ord-7323070 result=approved
+2026-11-20T10:12:23.944Z INFO payments-gateway req=r-8677c73f46 merchant=basketry idem_key=ord-7359911 result=approved
+2026-11-20T10:12:30.139Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=61
+2026-11-20T10:12:32.042Z INFO payments-gateway req=r-8fffe103e4 merchant=basketry idem_key=ord-7382754 result=approved
+2026-11-20T10:12:40.013Z INFO payments-gateway req=r-7b091fa4d9 merchant=basketry idem_key=ord-7367985 result=approved
+2026-11-20T10:13:14.112Z INFO payments-gateway req=r-0afd4efc97 merchant=basketry idem_key=ord-7327388 result=approved
+2026-11-20T10:13:18.647Z INFO payments-gateway req=r-6105f268b6 merchant=basketry idem_key=ord-7335688 result=approved
+2026-11-20T10:13:34.737Z INFO payments-gateway req=r-fc8308d143 merchant=basketry idem_key=ord-7312075 result=approved
+2026-11-20T10:14:04.275Z INFO payments-gateway req=r-12a8938a28 merchant=basketry idem_key=ord-7344328 result=approved
+2026-11-20T10:14:20.921Z INFO payments-gateway req=r-3af6b5a1d7 merchant=basketry idem_key=ord-7395914 result=approved
+2026-11-20T10:14:30.169Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=39
+2026-11-20T10:14:48.766Z INFO payments-gateway req=r-316e4f9760 merchant=basketry idem_key=ord-7382560 result=approved
+2026-11-20T10:15:25.952Z INFO payments-gateway req=r-d93ada9132 merchant=basketry idem_key=ord-7305024 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:15:36.282Z INFO payments-gateway req=r-c0f1d28961 merchant=basketry idem_key=ord-7381204 result=approved
+2026-11-20T10:15:43.904Z INFO payments-gateway req=r-55046c4120 merchant=basketry idem_key=ord-7342753 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:15:44.546Z INFO payments-gateway req=r-a5e656c43c merchant=basketry idem_key=ord-7366704 result=approved
+2026-11-20T10:15:58.490Z INFO payments-gateway req=r-e801ea08a4 merchant=basketry idem_key=ord-7339325 result=approved
+2026-11-20T10:16:03.163Z INFO payments-gateway req=r-c7e66ecb84 merchant=basketry idem_key=ord-7385481 result=approved
+2026-11-20T10:16:15.673Z INFO payments-gateway req=r-278ee06509 merchant=basketry idem_key=ord-7399646 result=approved
+2026-11-20T10:16:30.575Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=45
+2026-11-20T10:16:36.938Z INFO payments-gateway req=r-8346a07f9a merchant=basketry idem_key=ord-7344532 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:16:43.926Z INFO payments-gateway req=r-634882df4d merchant=basketry idem_key=ord-7347739 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:16:46.208Z INFO payments-gateway req=r-29d9ef06eb merchant=basketry idem_key=ord-7364602 result=approved
+2026-11-20T10:17:19.081Z INFO payments-gateway req=r-81ed70a749 merchant=basketry idem_key=ord-7364127 result=approved
+2026-11-20T10:17:22.459Z INFO payments-gateway req=r-c4412e2be4 merchant=basketry idem_key=ord-7311713 result=approved
+2026-11-20T10:17:31.993Z INFO payments-gateway req=r-651957c426 merchant=basketry idem_key=ord-7342320 result=approved
+2026-11-20T10:18:21.112Z INFO payments-gateway req=r-30358a0c9f merchant=basketry idem_key=ord-7338012 result=approved
+2026-11-20T10:18:30.297Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=48
+2026-11-20T10:18:41.857Z INFO payments-gateway req=r-5ada49468a merchant=basketry idem_key=ord-7314357 result=approved
+2026-11-20T10:18:51.323Z INFO payments-gateway req=r-333818c921 merchant=basketry idem_key=ord-7336200 result=approved
+2026-11-20T10:19:27.090Z INFO payments-gateway req=r-1a3b18d73a merchant=basketry idem_key=ord-7344724 result=approved
+2026-11-20T10:19:50.394Z INFO payments-gateway req=r-8dbe9e9a7e merchant=basketry idem_key=ord-7370527 result=approved
+2026-11-20T10:19:52.478Z INFO payments-gateway req=r-93fc0df517 merchant=basketry idem_key=ord-7327010 result=approved
+2026-11-20T10:20:04.508Z INFO payments-gateway req=r-40c2030b09 merchant=basketry idem_key=ord-7311251 result=approved
+2026-11-20T10:20:18.430Z INFO payments-gateway req=r-254a391e25 merchant=basketry idem_key=ord-7313060 result=approved
+2026-11-20T10:20:24.475Z INFO payments-gateway req=r-3b6bf99668 merchant=basketry idem_key=ord-7343230 result=approved
+2026-11-20T10:20:30.982Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=39
+2026-11-20T10:21:01.355Z INFO payments-gateway req=r-f464e8addd merchant=basketry idem_key=ord-7326982 result=approved
+2026-11-20T10:21:08.574Z INFO payments-gateway req=r-db38d6fd08 merchant=basketry idem_key=ord-7345952 result=approved
+2026-11-20T10:21:09.903Z INFO payments-gateway req=r-5bcda658c0 merchant=basketry idem_key=ord-7361974 result=approved
+2026-11-20T10:21:22.899Z INFO payments-gateway req=r-9fa38d6449 merchant=basketry idem_key=ord-7385223 result=soft_decline code=NSF
+2026-11-20T10:21:35.921Z INFO payments-gateway req=r-aea6dd0671 merchant=basketry idem_key=ord-7318331 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:22:20.084Z INFO payments-gateway req=r-d9b6733159 merchant=basketry idem_key=ord-7374152 result=approved
+2026-11-20T10:22:30.887Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=43
+2026-11-20T10:22:52.822Z INFO payments-gateway req=r-b1772f16a2 merchant=basketry idem_key=ord-7341660 result=approved
+2026-11-20T10:22:55.399Z INFO payments-gateway req=r-93140b9fc8 merchant=basketry idem_key=ord-7356355 result=approved
+2026-11-20T10:23:06.153Z INFO payments-gateway req=r-dcfb708b6f merchant=basketry idem_key=ord-7398484 result=approved
+2026-11-20T10:23:12.681Z INFO payments-gateway req=r-32a2e0722e merchant=basketry idem_key=ord-7399972 result=approved
+2026-11-20T10:23:43.946Z INFO payments-gateway req=r-051523b22d merchant=basketry idem_key=ord-7397195 result=approved
+2026-11-20T10:24:01.159Z INFO payments-gateway req=r-81a5b18bfb merchant=basketry idem_key=ord-7343633 result=approved
+2026-11-20T10:24:20.092Z INFO payments-gateway req=r-bf576b4cb9 merchant=basketry idem_key=ord-7376937 result=approved
+2026-11-20T10:24:30.690Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=41
+2026-11-20T10:24:36.827Z INFO payments-gateway req=r-382fa2274d merchant=basketry idem_key=ord-7385644 result=approved
+2026-11-20T10:25:07.774Z INFO payments-gateway req=r-115de3f71b merchant=basketry idem_key=ord-7342461 result=approved
+2026-11-20T10:25:22.932Z INFO payments-gateway req=r-f265d9e216 merchant=basketry idem_key=ord-7350584 result=approved
+2026-11-20T10:25:30.284Z INFO payments-gateway req=r-ef9dc50a04 merchant=basketry idem_key=ord-7306316 result=approved
+2026-11-20T10:26:00.895Z INFO payments-gateway req=r-7742b44bbe merchant=basketry idem_key=ord-7344758 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:26:19.434Z INFO payments-gateway req=r-9ee14b66ff merchant=basketry idem_key=ord-7351446 result=approved
+2026-11-20T10:26:30.479Z INFO payments-gateway req=r-c750a59433 merchant=basketry idem_key=ord-7378638 result=approved
+2026-11-20T10:26:30.801Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=63
+2026-11-20T10:26:49.295Z INFO payments-gateway req=r-5a5d527b20 merchant=basketry idem_key=ord-7362684 result=approved
+2026-11-20T10:27:01.702Z INFO payments-gateway req=r-629977cbd8 merchant=basketry idem_key=ord-7370505 result=approved
+2026-11-20T10:27:02.007Z INFO payments-gateway req=r-3765747801 merchant=basketry idem_key=ord-7386372 result=approved
+2026-11-20T10:27:53.839Z INFO payments-gateway req=r-621c40be11 merchant=basketry idem_key=ord-7326308 result=approved
+2026-11-20T10:28:08.300Z INFO payments-gateway req=r-239612b9dd merchant=basketry idem_key=ord-7350424 result=approved
+2026-11-20T10:28:18.647Z INFO payments-gateway req=r-c32d6f6007 merchant=basketry idem_key=ord-7348884 result=approved
+2026-11-20T10:28:30.005Z INFO payments-gateway req=r-8fc09713dc merchant=basketry idem_key=ord-7345909 result=approved
+2026-11-20T10:28:30.263Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=46
+2026-11-20T10:28:38.903Z INFO payments-gateway req=r-8df265bd80 merchant=basketry idem_key=ord-7314492 result=soft_decline code=NSF
+2026-11-20T10:29:01.491Z INFO payments-gateway req=r-2bd7b65b6f merchant=basketry idem_key=ord-7365209 result=approved
+2026-11-20T10:29:34.946Z INFO payments-gateway req=r-0d467d0910 merchant=basketry idem_key=ord-7389028 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:29:40.882Z INFO payments-gateway req=r-abc6c5e778 merchant=basketry idem_key=ord-7341168 result=approved
+2026-11-20T10:29:45.210Z INFO payments-gateway req=r-f8d02cc9cd merchant=basketry idem_key=ord-7339501 result=approved
+2026-11-20T10:30:20.254Z INFO payments-gateway req=r-90eddd4948 merchant=basketry idem_key=ord-7328318 result=approved
+2026-11-20T10:30:24.972Z INFO payments-gateway req=r-bc83010aba merchant=basketry idem_key=ord-7370061 result=approved
+2026-11-20T10:30:28.899Z INFO payments-gateway req=r-60b1b79958 merchant=basketry idem_key=ord-7325890 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:30:30.938Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=42
+2026-11-20T10:30:44.919Z INFO payments-gateway req=r-0caababc6b merchant=basketry idem_key=ord-7338731 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:30:48.535Z INFO payments-gateway req=r-2168df9630 merchant=basketry idem_key=ord-7395419 result=approved
+2026-11-20T10:30:53.919Z INFO payments-gateway req=r-0a91b76d7c merchant=basketry idem_key=ord-7391668 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:31:33.156Z INFO payments-gateway req=r-0b99498afb merchant=basketry idem_key=ord-7387938 result=approved
+2026-11-20T10:31:37.789Z INFO payments-gateway req=r-8a95205afd merchant=basketry idem_key=ord-7379559 result=approved
+2026-11-20T10:31:50.884Z INFO payments-gateway req=r-58058f002c merchant=basketry idem_key=ord-7393897 result=approved
+2026-11-20T10:32:06.115Z INFO payments-gateway req=r-99199c2d5c merchant=basketry idem_key=ord-7361985 result=approved
+2026-11-20T10:32:22.456Z INFO payments-gateway req=r-bb6c7f18bd merchant=basketry idem_key=ord-7325456 result=approved
+2026-11-20T10:32:30.065Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=48
+2026-11-20T10:32:50.692Z INFO payments-gateway req=r-4b4db28fa7 merchant=basketry idem_key=ord-7344438 result=approved
+2026-11-20T10:33:13.865Z INFO payments-gateway req=r-a88719ce13 merchant=basketry idem_key=ord-7379473 result=approved
+2026-11-20T10:33:31.089Z INFO payments-gateway req=r-1eccea1269 merchant=basketry idem_key=ord-7302374 result=approved
+2026-11-20T10:33:37.904Z INFO payments-gateway req=r-ff117898be merchant=basketry idem_key=ord-7358782 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:33:42.313Z INFO payments-gateway req=r-8d4a2dc64a merchant=basketry idem_key=ord-7377493 result=approved
+2026-11-20T10:34:06.595Z INFO payments-gateway req=r-d46d22788d merchant=basketry idem_key=ord-7392648 result=approved
+2026-11-20T10:34:09.899Z INFO payments-gateway req=r-b8bb341993 merchant=basketry idem_key=ord-7327384 result=approved
+2026-11-20T10:34:25.349Z INFO payments-gateway req=r-39cbeffe12 merchant=basketry idem_key=ord-7329587 result=approved
+2026-11-20T10:34:30.965Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=47
+2026-11-20T10:35:06.003Z INFO payments-gateway req=r-00d9fa0fc3 merchant=basketry idem_key=ord-7334851 result=approved
+2026-11-20T10:35:45.538Z INFO payments-gateway req=r-0a444ba8b8 merchant=basketry idem_key=ord-7371685 result=approved
+2026-11-20T10:35:57.930Z INFO payments-gateway req=r-f52e648272 merchant=basketry idem_key=ord-7369454 result=approved
+2026-11-20T10:36:07.251Z INFO payments-gateway req=r-5444af0380 merchant=basketry idem_key=ord-7367251 result=approved
+2026-11-20T10:36:12.055Z INFO payments-gateway req=r-83a268d157 merchant=basketry idem_key=ord-7351588 result=approved
+2026-11-20T10:36:19.852Z INFO payments-gateway req=r-201ec825a5 merchant=basketry idem_key=ord-7361523 result=approved
+2026-11-20T10:36:30.349Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=61
+2026-11-20T10:37:05.005Z INFO payments-gateway req=r-f2e45b6358 merchant=basketry idem_key=ord-7332718 result=approved
+2026-11-20T10:37:21.370Z INFO payments-gateway req=r-426498ee5e merchant=basketry idem_key=ord-7319728 result=approved
+2026-11-20T10:37:47.196Z INFO payments-gateway req=r-5ace4a9f60 merchant=basketry idem_key=ord-7314522 result=approved
+2026-11-20T10:37:54.951Z INFO payments-gateway req=r-f41b2cb646 merchant=basketry idem_key=ord-7328135 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:38:01.305Z INFO payments-gateway req=r-99fd82c212 merchant=basketry idem_key=ord-7333352 result=approved
+2026-11-20T10:38:21.249Z INFO payments-gateway req=r-51a73d4adb merchant=basketry idem_key=ord-7386350 result=approved
+2026-11-20T10:38:30.830Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=56
+2026-11-20T10:38:35.522Z INFO payments-gateway req=r-849bfb3bb1 merchant=basketry idem_key=ord-7391663 result=approved
+2026-11-20T10:39:24.305Z INFO payments-gateway req=r-e68fd9208f merchant=basketry idem_key=ord-7374533 result=approved
+2026-11-20T10:39:44.819Z INFO payments-gateway req=r-2da7037241 merchant=basketry idem_key=ord-7335822 result=approved
+2026-11-20T10:39:58.550Z INFO payments-gateway req=r-f7869b2c52 merchant=basketry idem_key=ord-7376443 result=approved
+2026-11-20T10:40:01.919Z INFO payments-gateway req=r-6ab45853ff merchant=basketry idem_key=ord-7374628 result=soft_decline code=NSF
+2026-11-20T10:40:30.662Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=49
+2026-11-20T10:40:30.937Z INFO payments-gateway req=r-8c63be3985 merchant=basketry idem_key=ord-7376412 result=approved
+2026-11-20T10:40:44.204Z INFO payments-gateway req=r-36817be141 merchant=basketry idem_key=ord-7354794 result=approved
+2026-11-20T10:40:52.426Z INFO payments-gateway req=r-208130f7cb merchant=basketry idem_key=ord-7335238 result=approved
+2026-11-20T10:41:21.744Z INFO payments-gateway req=r-6c610fd571 merchant=basketry idem_key=ord-7323482 result=approved
+2026-11-20T10:41:37.211Z INFO payments-gateway req=r-44ba623fa2 merchant=basketry idem_key=ord-7357543 result=approved
+2026-11-20T10:41:43.895Z INFO payments-gateway req=r-e739ba22b4 merchant=basketry idem_key=ord-7393697 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:41:47.496Z INFO payments-gateway req=r-5c1b4b0141 merchant=basketry idem_key=ord-7301054 result=approved
+2026-11-20T10:42:14.631Z INFO payments-gateway req=r-47d49013b0 merchant=basketry idem_key=ord-7367727 result=approved
+2026-11-20T10:42:30.137Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=57
+2026-11-20T10:42:30.316Z INFO payments-gateway req=r-59c0d0da06 merchant=basketry idem_key=ord-7323031 result=approved
+2026-11-20T10:42:41.615Z INFO payments-gateway req=r-89e0d341c1 merchant=basketry idem_key=ord-7370288 result=approved
+2026-11-20T10:43:23.323Z INFO payments-gateway req=r-e7772e0d9a merchant=basketry idem_key=ord-7343058 result=approved
+2026-11-20T10:43:46.716Z INFO payments-gateway req=r-e143605206 merchant=basketry idem_key=ord-7332259 result=approved
+2026-11-20T10:43:48.432Z INFO payments-gateway req=r-498d93103b merchant=basketry idem_key=ord-7334251 result=approved
+2026-11-20T10:43:53.950Z INFO payments-gateway req=r-0830ca7494 merchant=basketry idem_key=ord-7317533 result=soft_decline code=NSF
+2026-11-20T10:44:00.295Z INFO payments-gateway req=r-e2bcb5e56a merchant=basketry idem_key=ord-7367296 result=approved
+2026-11-20T10:44:12.460Z INFO payments-gateway req=r-2662c4d66e merchant=basketry idem_key=ord-7394458 result=approved
+2026-11-20T10:44:30.300Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=47
+2026-11-20T10:44:46.201Z INFO payments-gateway req=r-32ead64bcf merchant=basketry idem_key=ord-7374364 result=approved
+2026-11-20T10:45:23.936Z INFO payments-gateway req=r-8236986038 merchant=basketry idem_key=ord-7322831 result=approved
+2026-11-20T10:45:29.311Z INFO payments-gateway req=r-7bc6fa07e1 merchant=basketry idem_key=ord-7374896 result=approved
+2026-11-20T10:45:47.913Z INFO payments-gateway req=r-6fa20bb0ab merchant=basketry idem_key=ord-7319945 result=approved
+2026-11-20T10:46:08.993Z INFO payments-gateway req=r-0c3c73065b merchant=basketry idem_key=ord-7389398 result=approved
+2026-11-20T10:46:30.769Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=41
+2026-11-20T10:46:32.637Z INFO payments-gateway req=r-3218806483 merchant=basketry idem_key=ord-7332860 result=approved
+2026-11-20T10:46:43.610Z INFO payments-gateway req=r-bf2b16f1fc merchant=basketry idem_key=ord-7302263 result=approved
+2026-11-20T10:47:00.428Z INFO payments-gateway req=r-00d748b939 merchant=basketry idem_key=ord-7381184 result=approved
+2026-11-20T10:47:29.869Z INFO payments-gateway req=r-27f7066c03 merchant=basketry idem_key=ord-7371740 result=approved
+2026-11-20T10:47:45.979Z INFO payments-gateway req=r-ddd0c1edb5 merchant=basketry idem_key=ord-7315169 result=approved
+2026-11-20T10:47:51.886Z INFO payments-gateway req=r-521f744cf7 merchant=basketry idem_key=ord-7328956 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:48:01.882Z INFO payments-gateway req=r-662fdaad48 merchant=basketry idem_key=ord-7323183 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:48:07.913Z INFO payments-gateway req=r-b5b3a0936c merchant=basketry idem_key=ord-7381170 result=approved
+2026-11-20T10:48:30.353Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=67
+2026-11-20T10:48:40.891Z INFO payments-gateway req=r-846408a2f1 merchant=basketry idem_key=ord-7383623 result=approved
+2026-11-20T10:48:56.701Z INFO payments-gateway req=r-6426a8e558 merchant=basketry idem_key=ord-7318013 result=approved
+2026-11-20T10:49:01.124Z INFO payments-gateway req=r-8146b34b16 merchant=basketry idem_key=ord-7362461 result=approved
+2026-11-20T10:49:06.432Z INFO payments-gateway req=r-eb05cc68b0 merchant=basketry idem_key=ord-7368751 result=approved
+2026-11-20T10:49:45.937Z INFO payments-gateway req=r-611d35d734 merchant=basketry idem_key=ord-7370193 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:49:52.301Z INFO payments-gateway req=r-b47baf0f09 merchant=basketry idem_key=ord-7370207 result=approved
+2026-11-20T10:50:17.580Z INFO payments-gateway req=r-24cc5f71d5 merchant=basketry idem_key=ord-7357107 result=approved
+2026-11-20T10:50:27.685Z INFO payments-gateway req=r-be82bdb3a2 merchant=basketry idem_key=ord-7333338 result=approved
+2026-11-20T10:50:30.246Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=63
+2026-11-20T10:50:54.309Z INFO payments-gateway req=r-c8c039be54 merchant=basketry idem_key=ord-7308212 result=approved
+2026-11-20T10:50:56.949Z INFO payments-gateway req=r-38368e64c8 merchant=basketry idem_key=ord-7369898 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:51:00.061Z INFO payments-gateway req=r-7f940f59db merchant=basketry idem_key=ord-7336466 result=approved
+2026-11-20T10:51:45.266Z INFO payments-gateway req=r-4dd7073430 merchant=basketry idem_key=ord-7360269 result=approved
+2026-11-20T10:51:49.573Z INFO payments-gateway req=r-045bf9a464 merchant=basketry idem_key=ord-7363023 result=approved
+2026-11-20T10:51:52.926Z INFO payments-gateway req=r-5d336a2ed3 merchant=basketry idem_key=ord-7348852 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:52:30.495Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=43
+2026-11-20T10:52:35.948Z INFO payments-gateway req=r-8561466aa5 merchant=basketry idem_key=ord-7312135 result=soft_decline code=EXPIRED_CARD
+2026-11-20T10:52:43.383Z INFO payments-gateway req=r-0d95750fa4 merchant=basketry idem_key=ord-7384370 result=approved
+2026-11-20T10:52:51.369Z INFO payments-gateway req=r-5b1c6bf690 merchant=basketry idem_key=ord-7356055 result=approved
+2026-11-20T10:52:56.147Z INFO payments-gateway req=r-eb9a97e195 merchant=basketry idem_key=ord-7367913 result=approved
+2026-11-20T10:53:02.307Z INFO payments-gateway req=r-bfbff68a7a merchant=basketry idem_key=ord-7312030 result=approved
+2026-11-20T10:53:35.370Z INFO payments-gateway req=r-c276020082 merchant=basketry idem_key=ord-7370663 result=approved
+2026-11-20T10:53:39.548Z INFO payments-gateway req=r-933f9a00b3 merchant=basketry idem_key=ord-7320272 result=approved
+2026-11-20T10:54:04.717Z INFO payments-gateway req=r-376a596b80 merchant=basketry idem_key=ord-7380923 result=approved
+2026-11-20T10:54:21.270Z INFO payments-gateway req=r-c3f7949459 merchant=basketry idem_key=ord-7352156 result=approved
+2026-11-20T10:54:26.957Z INFO payments-gateway req=r-fbc86988b4 merchant=basketry idem_key=ord-7364498 result=soft_decline code=NSF
+2026-11-20T10:54:30.333Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=41
+2026-11-20T10:54:42.563Z INFO payments-gateway req=r-59cb7a23c1 merchant=basketry idem_key=ord-7357987 result=approved
+2026-11-20T10:55:21.807Z INFO payments-gateway req=r-b255f804f4 merchant=basketry idem_key=ord-7344283 result=approved
+2026-11-20T10:55:34.260Z INFO payments-gateway req=r-564fe5c9de merchant=basketry idem_key=ord-7387774 result=approved
+2026-11-20T10:55:58.828Z INFO payments-gateway req=r-43a371770b merchant=basketry idem_key=ord-7396548 result=approved
+2026-11-20T10:56:01.854Z INFO payments-gateway req=r-30773dbae9 merchant=basketry idem_key=ord-7341474 result=approved
+2026-11-20T10:56:02.937Z INFO payments-gateway req=r-d618618b0b merchant=basketry idem_key=ord-7322144 result=soft_decline code=ISSUER_SOFT
+2026-11-20T10:56:23.455Z INFO payments-gateway req=r-62ce5c1259 merchant=basketry idem_key=ord-7332552 result=approved
+2026-11-20T10:56:30.610Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=30
+2026-11-20T10:56:49.924Z INFO payments-gateway req=r-f8879a2296 merchant=basketry idem_key=ord-7311624 result=approved
+2026-11-20T10:57:38.587Z INFO payments-gateway req=r-b01335bd25 merchant=basketry idem_key=ord-7390955 result=approved
+2026-11-20T10:57:44.618Z INFO payments-gateway req=r-9efe2e87aa merchant=basketry idem_key=ord-7398747 result=approved
+2026-11-20T10:57:56.480Z INFO payments-gateway req=r-50284ef234 merchant=basketry idem_key=ord-7304056 result=approved
+2026-11-20T10:58:06.784Z INFO payments-gateway req=r-2d5075df00 merchant=basketry idem_key=ord-7379607 result=approved
+2026-11-20T10:58:16.709Z INFO payments-gateway req=r-6fcff61e09 merchant=basketry idem_key=ord-7394621 result=approved
+2026-11-20T10:58:30.037Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=33
+2026-11-20T10:58:33.100Z INFO payments-gateway req=r-0b61a6f678 merchant=basketry idem_key=ord-7389886 result=approved
+2026-11-20T10:59:32.854Z INFO payments-gateway req=r-fdecb6dc34 merchant=basketry idem_key=ord-7342221 result=approved
+2026-11-20T10:59:43.184Z INFO payments-gateway req=r-ce921fbef2 merchant=basketry idem_key=ord-7386584 result=approved
+2026-11-20T10:59:53.428Z INFO payments-gateway req=r-16f803aa22 merchant=basketry idem_key=ord-7309427 result=approved
+2026-11-20T11:00:21.194Z INFO payments-gateway req=r-87dcecc3c2 merchant=basketry idem_key=ord-7398547 result=approved
+2026-11-20T11:00:29.188Z INFO payments-gateway req=r-b7b3d28280 merchant=basketry idem_key=ord-7367170 result=approved
+2026-11-20T11:00:30.915Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=58
+2026-11-20T11:00:38.077Z INFO payments-gateway req=r-45ac5eaddf merchant=basketry idem_key=ord-7358810 result=approved
+2026-11-20T11:01:01.416Z INFO payments-gateway req=r-5be23c00e0 merchant=basketry idem_key=ord-7378337 result=approved
+2026-11-20T11:01:42.735Z INFO payments-gateway req=r-5c8293136b merchant=basketry idem_key=ord-7393148 result=approved
+2026-11-20T11:01:55.516Z INFO payments-gateway req=r-1166b26934 merchant=basketry idem_key=ord-7375205 result=approved
+2026-11-20T11:02:00.930Z INFO payments-gateway req=r-c08488ea61 merchant=basketry idem_key=ord-7391589 result=soft_decline code=ISSUER_SOFT
+2026-11-20T11:02:08.964Z INFO payments-gateway req=r-93ac3a556f merchant=basketry idem_key=ord-7300125 result=approved
+2026-11-20T11:02:23.889Z INFO payments-gateway req=r-35ae90cf7e merchant=basketry idem_key=ord-7353133 result=approved
+2026-11-20T11:02:30.352Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=48
+2026-11-20T11:02:54.945Z INFO payments-gateway req=r-eaf92b34c3 merchant=basketry idem_key=ord-7344766 result=approved
+2026-11-20T11:03:14.881Z INFO payments-gateway req=r-e5be86732f merchant=basketry idem_key=ord-7388784 result=approved
+2026-11-20T11:03:20.505Z INFO payments-gateway req=r-ad37c0dcb9 merchant=basketry idem_key=ord-7371669 result=approved
+2026-11-20T11:03:28.953Z INFO payments-gateway req=r-353782acd0 merchant=basketry idem_key=ord-7309012 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:03:42.914Z INFO payments-gateway req=r-d55eb712f8 merchant=basketry idem_key=ord-7354109 result=approved
+2026-11-20T11:04:16.596Z INFO payments-gateway req=r-bd1a9ec11d merchant=basketry idem_key=ord-7345355 result=approved
+2026-11-20T11:04:30.997Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=37
+2026-11-20T11:04:32.967Z INFO payments-gateway req=r-f95ad8ba3d merchant=basketry idem_key=ord-7306378 result=approved
+2026-11-20T11:04:36.779Z INFO payments-gateway req=r-4b818c5d36 merchant=basketry idem_key=ord-7358623 result=approved
+2026-11-20T11:05:02.552Z INFO payments-gateway req=r-f4290aec21 merchant=basketry idem_key=ord-7326002 result=approved
+2026-11-20T11:05:22.869Z INFO payments-gateway req=r-ba022bd42e merchant=basketry idem_key=ord-7391495 result=approved
+2026-11-20T11:05:45.578Z INFO payments-gateway req=r-7aaf52b0b5 merchant=basketry idem_key=ord-7312822 result=approved
+2026-11-20T11:06:12.410Z INFO payments-gateway req=r-0b71b45ee2 merchant=basketry idem_key=ord-7370348 result=approved
+2026-11-20T11:06:16.258Z INFO payments-gateway req=r-b66f8a7e08 merchant=basketry idem_key=ord-7391549 result=approved
+2026-11-20T11:06:30.351Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=40
+2026-11-20T11:06:30.842Z INFO payments-gateway req=r-13298ed1bd merchant=basketry idem_key=ord-7337788 result=approved
+2026-11-20T11:07:08.462Z INFO payments-gateway req=r-7cbe2ff646 merchant=basketry idem_key=ord-7380351 result=approved
+2026-11-20T11:07:33.205Z INFO payments-gateway req=r-e8651af2aa merchant=basketry idem_key=ord-7309619 result=approved
+2026-11-20T11:07:45.260Z INFO payments-gateway req=r-31973cd70e merchant=basketry idem_key=ord-7302343 result=approved
+2026-11-20T11:08:07.859Z INFO payments-gateway req=r-450bc08795 merchant=basketry idem_key=ord-7397851 result=approved
+2026-11-20T11:08:21.799Z INFO payments-gateway req=r-c825abbed1 merchant=basketry idem_key=ord-7345201 result=approved
+2026-11-20T11:08:30.924Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=33
+2026-11-20T11:08:31.816Z INFO payments-gateway req=r-46f069409b merchant=basketry idem_key=ord-7304896 result=approved
+2026-11-20T11:09:02.595Z INFO payments-gateway req=r-a4becc8916 merchant=basketry idem_key=ord-7377178 result=approved
+2026-11-20T11:09:44.394Z INFO payments-gateway req=r-d2814035c3 merchant=basketry idem_key=ord-7375144 result=approved
+2026-11-20T11:09:56.810Z INFO payments-gateway req=r-9212576ffd merchant=basketry idem_key=ord-7390891 result=approved
+2026-11-20T11:10:09.245Z INFO payments-gateway req=r-47f1615c70 merchant=basketry idem_key=ord-7310801 result=approved
+2026-11-20T11:10:11.511Z INFO payments-gateway req=r-c80faf6736 merchant=basketry idem_key=ord-7323748 result=approved
+2026-11-20T11:10:15.048Z INFO payments-gateway req=r-dc81626a5d merchant=basketry idem_key=ord-7338774 result=approved
+2026-11-20T11:10:30.540Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=46
+2026-11-20T11:11:02.635Z INFO payments-gateway req=r-005abe5fb3 merchant=basketry idem_key=ord-7371128 result=approved
+2026-11-20T11:11:28.003Z INFO payments-gateway req=r-a39fd678d1 merchant=basketry idem_key=ord-7399392 result=approved
+2026-11-20T11:11:47.620Z INFO payments-gateway req=r-017b32cfe1 merchant=basketry idem_key=ord-7387124 result=approved
+2026-11-20T11:12:30.390Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=53
+2026-11-20T11:12:36.710Z INFO payments-gateway req=r-3eaa0a2539 merchant=basketry idem_key=ord-7347132 result=approved
+2026-11-20T11:12:48.567Z INFO payments-gateway req=r-0f160193c0 merchant=basketry idem_key=ord-7370216 result=approved
+2026-11-20T11:12:49.778Z INFO payments-gateway req=r-129731b751 merchant=basketry idem_key=ord-7321376 result=approved
+2026-11-20T11:13:03.242Z INFO payments-gateway req=r-5d70db090d merchant=basketry idem_key=ord-7395285 result=approved
+2026-11-20T11:13:31.463Z INFO payments-gateway req=r-2f5182b741 merchant=basketry idem_key=ord-7329555 result=approved
+2026-11-20T11:13:34.587Z INFO payments-gateway req=r-6bd70fd04e merchant=basketry idem_key=ord-7337359 result=approved
+2026-11-20T11:14:13.313Z INFO payments-gateway req=r-16bbf69116 merchant=basketry idem_key=ord-7326595 result=approved
+2026-11-20T11:14:20.279Z INFO payments-gateway req=r-3cbf04a3a9 merchant=basketry idem_key=ord-7322947 result=approved
+2026-11-20T11:14:30.798Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=63
+2026-11-20T11:14:31.707Z INFO payments-gateway req=r-2d432c29f3 merchant=basketry idem_key=ord-7355589 result=approved
+2026-11-20T11:15:29.342Z INFO payments-gateway req=r-10d7107d21 merchant=basketry idem_key=ord-7396611 result=approved
+2026-11-20T11:15:48.812Z INFO payments-gateway req=r-1e15f1710b merchant=basketry idem_key=ord-7394666 result=approved
+2026-11-20T11:15:53.251Z INFO payments-gateway req=r-75dcfa4a54 merchant=basketry idem_key=ord-7358676 result=approved
+2026-11-20T11:16:30.978Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=55
+2026-11-20T11:16:35.776Z INFO payments-gateway req=r-ac80e2e98f merchant=basketry idem_key=ord-7340580 result=approved
+2026-11-20T11:16:40.806Z INFO payments-gateway req=r-5ad17995c7 merchant=basketry idem_key=ord-7317253 result=approved
+2026-11-20T11:16:43.792Z INFO payments-gateway req=r-21860fa27c merchant=basketry idem_key=ord-7331928 result=approved
+2026-11-20T11:17:32.814Z INFO payments-gateway req=r-c2ecba7ecc merchant=basketry idem_key=ord-7325821 result=approved
+2026-11-20T11:17:43.891Z INFO payments-gateway req=r-8fdf0739c3 merchant=basketry idem_key=ord-7380647 result=approved
+2026-11-20T11:17:48.127Z INFO payments-gateway req=r-8b94deef43 merchant=basketry idem_key=ord-7304949 result=approved
+2026-11-20T11:18:01.898Z INFO payments-gateway req=r-32992a1c49 merchant=basketry idem_key=ord-7351623 result=soft_decline code=ISSUER_SOFT
+2026-11-20T11:18:02.707Z INFO payments-gateway req=r-4cd4bd5b5d merchant=basketry idem_key=ord-7398292 result=approved
+2026-11-20T11:18:04.470Z INFO payments-gateway req=r-56abdc52d1 merchant=basketry idem_key=ord-7397255 result=approved
+2026-11-20T11:18:30.076Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=44
+2026-11-20T11:18:40.910Z INFO payments-gateway req=r-0408858486 merchant=basketry idem_key=ord-7342098 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:18:52.344Z INFO payments-gateway req=r-1e37639a4b merchant=basketry idem_key=ord-7316985 result=approved
+2026-11-20T11:19:21.634Z INFO payments-gateway req=r-4887cbf30f merchant=basketry idem_key=ord-7354455 result=approved
+2026-11-20T11:19:35.337Z INFO payments-gateway req=r-54c44bdd26 merchant=basketry idem_key=ord-7338449 result=approved
+2026-11-20T11:19:37.852Z INFO payments-gateway req=r-db4c7a2c29 merchant=basketry idem_key=ord-7372404 result=approved
+2026-11-20T11:20:00.927Z INFO payments-gateway req=r-ddac22b785 merchant=basketry idem_key=ord-7347553 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:20:19.919Z INFO payments-gateway req=r-3056741178 merchant=basketry idem_key=ord-7333530 result=soft_decline code=ISSUER_SOFT
+2026-11-20T11:20:30.368Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=34
+2026-11-20T11:20:30.983Z INFO payments-gateway req=r-77944fe7aa merchant=basketry idem_key=ord-7382484 result=approved
+2026-11-20T11:20:31.193Z INFO payments-gateway req=r-9c341a716c merchant=basketry idem_key=ord-7336585 result=approved
+2026-11-20T11:20:58.635Z INFO payments-gateway req=r-8ea760a60b merchant=basketry idem_key=ord-7370511 result=approved
+2026-11-20T11:21:10.018Z INFO payments-gateway req=r-408eaf4c78 merchant=basketry idem_key=ord-7307779 result=approved
+2026-11-20T11:21:23.149Z INFO payments-gateway req=r-27da7dd591 merchant=basketry idem_key=ord-7304303 result=approved
+2026-11-20T11:21:42.722Z INFO payments-gateway req=r-be04283bcb merchant=basketry idem_key=ord-7367890 result=approved
+2026-11-20T11:22:27.705Z INFO payments-gateway req=r-4d1036d5ce merchant=basketry idem_key=ord-7303218 result=approved
+2026-11-20T11:22:30.490Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=64
+2026-11-20T11:22:34.928Z INFO payments-gateway req=r-e07b149389 merchant=basketry idem_key=ord-7318573 result=soft_decline code=ISSUER_SOFT
+2026-11-20T11:22:41.280Z INFO payments-gateway req=r-460d1ffa93 merchant=basketry idem_key=ord-7338373 result=approved
+2026-11-20T11:22:46.828Z INFO payments-gateway req=r-997009a7c0 merchant=basketry idem_key=ord-7338168 result=approved
+2026-11-20T11:23:06.965Z INFO payments-gateway req=r-881184b255 merchant=basketry idem_key=ord-7393430 result=approved
+2026-11-20T11:23:17.447Z INFO payments-gateway req=r-1f7ae3bee8 merchant=basketry idem_key=ord-7323724 result=approved
+2026-11-20T11:23:18.457Z INFO payments-gateway req=r-fe34852f88 merchant=basketry idem_key=ord-7341222 result=approved
+2026-11-20T11:24:12.069Z INFO payments-gateway req=r-fed3954a83 merchant=basketry idem_key=ord-7394439 result=approved
+2026-11-20T11:24:18.305Z INFO payments-gateway req=r-7325c841e1 merchant=basketry idem_key=ord-7394633 result=approved
+2026-11-20T11:24:30.046Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=46
+2026-11-20T11:24:50.466Z INFO payments-gateway req=r-01da698794 merchant=basketry idem_key=ord-7356682 result=approved
+2026-11-20T11:25:22.897Z INFO payments-gateway req=r-8ed10f50ea merchant=basketry idem_key=ord-7358244 result=soft_decline code=NSF
+2026-11-20T11:25:23.608Z INFO payments-gateway req=r-b1d604fdd9 merchant=basketry idem_key=ord-7374379 result=approved
+2026-11-20T11:25:35.001Z INFO payments-gateway req=r-6ecdd202d4 merchant=basketry idem_key=ord-7328693 result=approved
+2026-11-20T11:25:55.543Z INFO payments-gateway req=r-585c43eec5 merchant=basketry idem_key=ord-7307445 result=approved
+2026-11-20T11:26:25.589Z INFO payments-gateway req=r-91a4bb9c2f merchant=basketry idem_key=ord-7309336 result=approved
+2026-11-20T11:26:30.455Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=54
+2026-11-20T11:26:41.758Z INFO payments-gateway req=r-0046f230ab merchant=basketry idem_key=ord-7346426 result=approved
+2026-11-20T11:26:46.410Z INFO payments-gateway req=r-f6fb971447 merchant=basketry idem_key=ord-7395883 result=approved
+2026-11-20T11:27:06.922Z INFO payments-gateway req=r-8c525d7e04 merchant=basketry idem_key=ord-7387997 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:27:19.760Z INFO payments-gateway req=r-ccc684cd22 merchant=basketry idem_key=ord-7324799 result=approved
+2026-11-20T11:27:27.805Z INFO payments-gateway req=r-86a25cd075 merchant=basketry idem_key=ord-7334106 result=approved
+2026-11-20T11:27:50.637Z INFO payments-gateway req=r-0f8de056c9 merchant=basketry idem_key=ord-7385009 result=approved
+2026-11-20T11:28:05.913Z INFO payments-gateway req=r-c9eb250a46 merchant=basketry idem_key=ord-7318827 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:28:26.905Z INFO payments-gateway req=r-74b4f3b2ab merchant=basketry idem_key=ord-7332295 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:28:30.459Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=42
+2026-11-20T11:28:48.800Z INFO payments-gateway req=r-3f0a8ccd10 merchant=basketry idem_key=ord-7303515 result=approved
+2026-11-20T11:28:52.604Z INFO payments-gateway req=r-f47b1196ac merchant=basketry idem_key=ord-7356621 result=approved
+2026-11-20T11:28:56.565Z INFO payments-gateway req=r-5b680d5838 merchant=basketry idem_key=ord-7351322 result=approved
+2026-11-20T11:29:02.561Z INFO payments-gateway req=r-e3fefbeff0 merchant=basketry idem_key=ord-7382611 result=approved
+2026-11-20T11:29:08.220Z INFO payments-gateway req=r-3d681667b0 merchant=basketry idem_key=ord-7376403 result=approved
+2026-11-20T11:29:51.541Z INFO payments-gateway req=r-f1cd7111cd merchant=basketry idem_key=ord-7387851 result=approved
+2026-11-20T11:30:16.610Z INFO payments-gateway req=r-e32223227f merchant=basketry idem_key=ord-7304512 result=approved
+2026-11-20T11:30:26.725Z INFO payments-gateway req=r-bd573ef87d merchant=basketry idem_key=ord-7339768 result=approved
+2026-11-20T11:30:27.771Z INFO payments-gateway req=r-c310af445a merchant=basketry idem_key=ord-7328529 result=approved
+2026-11-20T11:30:30.970Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=62
+2026-11-20T11:31:13.537Z INFO payments-gateway req=r-131cdc0b94 merchant=basketry idem_key=ord-7326548 result=approved
+2026-11-20T11:31:30.379Z INFO payments-gateway req=r-747be291dc merchant=basketry idem_key=ord-7343408 result=approved
+2026-11-20T11:31:32.770Z INFO payments-gateway req=r-46e95028b3 merchant=basketry idem_key=ord-7385896 result=approved
+2026-11-20T11:31:57.920Z INFO payments-gateway req=r-2c68db6832 merchant=basketry idem_key=ord-7369930 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:32:03.449Z INFO payments-gateway req=r-678c144642 merchant=basketry idem_key=ord-7352805 result=approved
+2026-11-20T11:32:13.953Z INFO payments-gateway req=r-45a37f1611 merchant=basketry idem_key=ord-7376589 result=approved
+2026-11-20T11:32:30.696Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=53
+2026-11-20T11:32:53.731Z INFO payments-gateway req=r-f722299daf merchant=basketry idem_key=ord-7365633 result=approved
+2026-11-20T11:33:16.481Z INFO payments-gateway req=r-9de20572b9 merchant=basketry idem_key=ord-7372651 result=approved
+2026-11-20T11:33:52.189Z INFO payments-gateway req=r-24845c2209 merchant=basketry idem_key=ord-7359263 result=approved
+2026-11-20T11:33:56.483Z INFO payments-gateway req=r-3dc1c1f4ec merchant=basketry idem_key=ord-7329824 result=approved
+2026-11-20T11:34:07.324Z INFO payments-gateway req=r-d899d3d013 merchant=basketry idem_key=ord-7338611 result=approved
+2026-11-20T11:34:17.939Z INFO payments-gateway req=r-0042f13532 merchant=basketry idem_key=ord-7310971 result=approved
+2026-11-20T11:34:30.364Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=39
+2026-11-20T11:34:57.205Z INFO payments-gateway req=r-23a797317f merchant=basketry idem_key=ord-7323300 result=approved
+2026-11-20T11:35:01.780Z INFO payments-gateway req=r-0b246a96bd merchant=basketry idem_key=ord-7386065 result=approved
+2026-11-20T11:35:37.919Z INFO payments-gateway req=r-ce496f74a3 merchant=basketry idem_key=ord-7398496 result=approved
+2026-11-20T11:35:47.915Z INFO payments-gateway req=r-2fb918ec93 merchant=basketry idem_key=ord-7385163 result=approved
+2026-11-20T11:36:03.253Z INFO payments-gateway req=r-7a1ed032e8 merchant=basketry idem_key=ord-7363846 result=approved
+2026-11-20T11:36:13.882Z INFO payments-gateway req=r-12f19699cb merchant=basketry idem_key=ord-7331043 result=soft_decline code=NSF
+2026-11-20T11:36:30.192Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=58
+2026-11-20T11:36:37.822Z INFO payments-gateway req=r-b23cdbeb61 merchant=basketry idem_key=ord-7324664 result=approved
+2026-11-20T11:36:59.099Z INFO payments-gateway req=r-14c7bb9c50 merchant=basketry idem_key=ord-7337092 result=approved
+2026-11-20T11:37:13.487Z INFO payments-gateway req=r-708dca3146 merchant=basketry idem_key=ord-7315501 result=approved
+2026-11-20T11:37:21.678Z INFO payments-gateway req=r-4084e8546b merchant=basketry idem_key=ord-7371180 result=approved
+2026-11-20T11:37:38.946Z INFO payments-gateway req=r-8849de3fd0 merchant=basketry idem_key=ord-7395271 result=soft_decline code=ISSUER_SOFT
+2026-11-20T11:37:39.540Z INFO payments-gateway req=r-789b1787fd merchant=basketry idem_key=ord-7306950 result=approved
+2026-11-20T11:38:11.796Z INFO payments-gateway req=r-cc9e8f023b merchant=basketry idem_key=ord-7392295 result=approved
+2026-11-20T11:38:13.590Z INFO payments-gateway req=r-c89bc3994d merchant=basketry idem_key=ord-7384879 result=approved
+2026-11-20T11:38:26.066Z INFO payments-gateway req=r-3a2bcf71cb merchant=basketry idem_key=ord-7357946 result=approved
+2026-11-20T11:38:30.485Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=33
+2026-11-20T11:38:37.898Z INFO payments-gateway req=r-48e6e7e0b5 merchant=basketry idem_key=ord-7308342 result=soft_decline code=NSF
+2026-11-20T11:38:40.945Z INFO payments-gateway req=r-5a1e5001aa merchant=basketry idem_key=ord-7358685 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:39:47.770Z INFO payments-gateway req=r-91e294e836 merchant=basketry idem_key=ord-7335046 result=approved
+2026-11-20T11:39:47.945Z INFO payments-gateway req=r-bec5f6f854 merchant=basketry idem_key=ord-7383193 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:39:51.739Z INFO payments-gateway req=r-ce55bc358b merchant=basketry idem_key=ord-7385851 result=approved
+2026-11-20T11:39:59.720Z INFO payments-gateway req=r-717dfc12ce merchant=basketry idem_key=ord-7303850 result=approved
+2026-11-20T11:40:27.272Z INFO payments-gateway req=r-241bffc130 merchant=basketry idem_key=ord-7377557 result=approved
+2026-11-20T11:40:30.450Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=68
+2026-11-20T11:40:37.595Z INFO payments-gateway req=r-31e408e38f merchant=basketry idem_key=ord-7334696 result=approved
+2026-11-20T11:40:56.905Z INFO payments-gateway req=r-50d095c7d6 merchant=basketry idem_key=ord-7330228 result=approved
+2026-11-20T11:41:03.980Z INFO payments-gateway req=r-b7af540601 merchant=basketry idem_key=ord-7347068 result=approved
+2026-11-20T11:41:06.147Z INFO payments-gateway req=r-927bf88a3d merchant=basketry idem_key=ord-7311929 result=approved
+2026-11-20T11:41:34.815Z INFO payments-gateway req=r-31b5c73336 merchant=basketry idem_key=ord-7328995 result=approved
+2026-11-20T11:42:22.854Z INFO payments-gateway req=r-246a1a49e9 merchant=basketry idem_key=ord-7328515 result=approved
+2026-11-20T11:42:29.470Z INFO payments-gateway req=r-c621dbf9a1 merchant=basketry idem_key=ord-7365868 result=approved
+2026-11-20T11:42:30.784Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=31
+2026-11-20T11:42:40.932Z INFO payments-gateway req=r-94a158bbcc merchant=basketry idem_key=ord-7323128 result=soft_decline code=NSF
+2026-11-20T11:42:46.278Z INFO payments-gateway req=r-190c7fd1bc merchant=basketry idem_key=ord-7380853 result=approved
+2026-11-20T11:43:02.923Z INFO payments-gateway req=r-ef874b1088 merchant=basketry idem_key=ord-7325697 result=approved
+2026-11-20T11:43:22.141Z INFO payments-gateway req=r-3b4a6a6383 merchant=basketry idem_key=ord-7341056 result=approved
+2026-11-20T11:43:35.479Z INFO payments-gateway req=r-6a3c281aae merchant=basketry idem_key=ord-7392311 result=approved
+2026-11-20T11:44:05.920Z INFO payments-gateway req=r-647e2c10bb merchant=basketry idem_key=ord-7323089 result=approved
+2026-11-20T11:44:14.759Z INFO payments-gateway req=r-3c1b3d691d merchant=basketry idem_key=ord-7392437 result=approved
+2026-11-20T11:44:30.348Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=57
+2026-11-20T11:44:38.592Z INFO payments-gateway req=r-7614f11cf7 merchant=basketry idem_key=ord-7387959 result=approved
+2026-11-20T11:45:21.207Z INFO payments-gateway req=r-6fbf649aff merchant=basketry idem_key=ord-7338980 result=approved
+2026-11-20T11:45:47.410Z INFO payments-gateway req=r-62f61b528e merchant=basketry idem_key=ord-7357257 result=approved
+2026-11-20T11:45:54.793Z INFO payments-gateway req=r-7639ab5874 merchant=basketry idem_key=ord-7308396 result=approved
+2026-11-20T11:46:08.642Z INFO payments-gateway req=r-5f0afdf0f7 merchant=basketry idem_key=ord-7388569 result=approved
+2026-11-20T11:46:27.519Z INFO payments-gateway req=r-8c16199135 merchant=basketry idem_key=ord-7300741 result=approved
+2026-11-20T11:46:30.232Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=48
+2026-11-20T11:46:34.644Z INFO payments-gateway req=r-a1cc1c5f34 merchant=basketry idem_key=ord-7389986 result=approved
+2026-11-20T11:47:12.548Z INFO payments-gateway req=r-f64687d50e merchant=basketry idem_key=ord-7335825 result=approved
+2026-11-20T11:47:27.057Z INFO payments-gateway req=r-f5334dc7a2 merchant=basketry idem_key=ord-7323249 result=approved
+2026-11-20T11:47:57.083Z INFO payments-gateway req=r-c50a845801 merchant=basketry idem_key=ord-7364845 result=approved
+2026-11-20T11:48:16.924Z INFO payments-gateway req=r-078390abc0 merchant=basketry idem_key=ord-7301340 result=soft_decline code=NSF
+2026-11-20T11:48:27.867Z INFO payments-gateway req=r-523185d736 merchant=basketry idem_key=ord-7359196 result=approved
+2026-11-20T11:48:30.631Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=70
+2026-11-20T11:48:32.403Z INFO payments-gateway req=r-adb80ff1dc merchant=basketry idem_key=ord-7327517 result=approved
+2026-11-20T11:48:51.957Z INFO payments-gateway req=r-05c71a4819 merchant=basketry idem_key=ord-7356699 result=approved
+2026-11-20T11:49:21.911Z INFO payments-gateway req=r-986b660133 merchant=basketry idem_key=ord-7332926 result=approved
+2026-11-20T11:49:53.405Z INFO payments-gateway req=r-019f75574a merchant=basketry idem_key=ord-7358044 result=approved
+2026-11-20T11:49:55.899Z INFO payments-gateway req=r-4060c77fb7 merchant=basketry idem_key=ord-7379929 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:49:59.884Z INFO payments-gateway req=r-03a3d90096 merchant=basketry idem_key=ord-7352610 result=approved
+2026-11-20T11:50:16.460Z INFO payments-gateway req=r-79fbe5af61 merchant=basketry idem_key=ord-7370221 result=approved
+2026-11-20T11:50:29.916Z INFO payments-gateway req=r-638a4e7f2c merchant=basketry idem_key=ord-7369371 result=approved
+2026-11-20T11:50:30.015Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=60
+2026-11-20T11:50:57.320Z INFO payments-gateway req=r-2c562ea128 merchant=basketry idem_key=ord-7339125 result=approved
+2026-11-20T11:51:23.215Z INFO payments-gateway req=r-3040080542 merchant=basketry idem_key=ord-7398027 result=approved
+2026-11-20T11:51:40.333Z INFO payments-gateway req=r-302248da5d merchant=basketry idem_key=ord-7317025 result=approved
+2026-11-20T11:51:53.536Z INFO payments-gateway req=r-0f484c7742 merchant=basketry idem_key=ord-7390470 result=approved
+2026-11-20T11:52:30.413Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=44
+2026-11-20T11:52:37.960Z INFO payments-gateway req=r-087790c8f6 merchant=basketry idem_key=ord-7314191 result=approved
+2026-11-20T11:52:46.807Z INFO payments-gateway req=r-1dc25c6074 merchant=basketry idem_key=ord-7358589 result=approved
+2026-11-20T11:52:55.732Z INFO payments-gateway req=r-c84a200583 merchant=basketry idem_key=ord-7319202 result=approved
+2026-11-20T11:53:04.793Z INFO payments-gateway req=r-812cd09c82 merchant=basketry idem_key=ord-7355041 result=approved
+2026-11-20T11:53:12.975Z INFO payments-gateway req=r-e4843e5f5a merchant=basketry idem_key=ord-7367401 result=approved
+2026-11-20T11:53:52.788Z INFO payments-gateway req=r-233cc3decb merchant=basketry idem_key=ord-7388741 result=approved
+2026-11-20T11:54:10.532Z INFO payments-gateway req=r-0c2932d3e4 merchant=basketry idem_key=ord-7396094 result=approved
+2026-11-20T11:54:30.841Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=34
+2026-11-20T11:54:47.797Z INFO payments-gateway req=r-d205bd95bc merchant=basketry idem_key=ord-7362522 result=approved
+2026-11-20T11:54:48.693Z INFO payments-gateway req=r-70f479a7af merchant=basketry idem_key=ord-7356764 result=approved
+2026-11-20T11:55:00.668Z INFO payments-gateway req=r-22e872c5dc merchant=basketry idem_key=ord-7332199 result=approved
+2026-11-20T11:55:06.490Z INFO payments-gateway req=r-016364f73e merchant=basketry idem_key=ord-7396748 result=approved
+2026-11-20T11:55:08.954Z INFO payments-gateway req=r-aae41950e2 merchant=basketry idem_key=ord-7369107 result=soft_decline code=EXPIRED_CARD
+2026-11-20T11:55:10.959Z INFO payments-gateway req=r-b37990eb27 merchant=basketry idem_key=ord-7316756 result=approved
+2026-11-20T11:56:14.881Z INFO payments-gateway req=r-e369ce96fb merchant=basketry idem_key=ord-7329300 result=soft_decline code=ISSUER_SOFT
+2026-11-20T11:56:22.378Z INFO payments-gateway req=r-66bb81e3ba merchant=basketry idem_key=ord-7312706 result=approved
+2026-11-20T11:56:30.034Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=65
+2026-11-20T11:56:44.984Z INFO payments-gateway req=r-d6ee0112b1 merchant=basketry idem_key=ord-7338093 result=approved
+2026-11-20T11:56:54.848Z INFO payments-gateway req=r-76705d791d merchant=basketry idem_key=ord-7352653 result=approved
+2026-11-20T11:57:00.777Z INFO payments-gateway req=r-f6e3ff4c6d merchant=basketry idem_key=ord-7397927 result=approved
+2026-11-20T11:57:15.040Z INFO payments-gateway req=r-64369ef8c6 merchant=basketry idem_key=ord-7366747 result=approved
+2026-11-20T11:57:42.691Z INFO payments-gateway req=r-4ed6fc0b44 merchant=basketry idem_key=ord-7353632 result=approved
+2026-11-20T11:58:29.186Z INFO payments-gateway req=r-caf542f727 merchant=basketry idem_key=ord-7340857 result=approved
+2026-11-20T11:58:30.842Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=45
+2026-11-20T11:58:56.817Z INFO payments-gateway req=r-9111ecb5b2 merchant=basketry idem_key=ord-7376308 result=approved
+2026-11-20T11:58:59.202Z INFO payments-gateway req=r-3f02aec35a merchant=basketry idem_key=ord-7378982 result=approved
+2026-11-20T11:59:30.049Z INFO payments-gateway req=r-3fce154797 merchant=basketry idem_key=ord-7355929 result=approved
+2026-11-20T11:59:36.384Z INFO payments-gateway req=r-2b1420e420 merchant=basketry idem_key=ord-7331954 result=approved
+2026-11-20T11:59:46.943Z INFO payments-gateway req=r-8678dc1e1c merchant=basketry idem_key=ord-7343355 result=soft_decline code=NSF
+2026-11-20T11:59:55.005Z INFO payments-gateway req=r-6f5b866bdd merchant=basketry idem_key=ord-7380521 result=approved
+2026-11-20T12:00:03.277Z INFO payments-gateway req=r-778869045e merchant=basketry idem_key=ord-7356792 result=approved
+2026-11-20T12:00:03.544Z INFO payments-gateway req=r-7c6205a166 merchant=basketry idem_key=ord-7345887 result=approved
+2026-11-20T12:00:26.128Z INFO payments-gateway req=r-b43bcae880 merchant=basketry idem_key=ord-7326776 result=approved
+2026-11-20T12:00:30.054Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=60
+2026-11-20T12:00:43.937Z INFO payments-gateway req=r-fd73e9b672 merchant=basketry idem_key=ord-7370782 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:01:12.066Z INFO payments-gateway req=r-e86d35f97d merchant=basketry idem_key=ord-7346650 result=approved
+2026-11-20T12:01:48.516Z INFO payments-gateway req=r-c117338210 merchant=basketry idem_key=ord-7335211 result=approved
+2026-11-20T12:01:59.336Z INFO payments-gateway req=r-6aac449629 merchant=basketry idem_key=ord-7341193 result=approved
+2026-11-20T12:02:02.876Z INFO payments-gateway req=r-1b553a9e0c merchant=basketry idem_key=ord-7350396 result=approved
+2026-11-20T12:02:30.369Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=46
+2026-11-20T12:02:34.148Z INFO payments-gateway req=r-3c5f10f238 merchant=basketry idem_key=ord-7381782 result=approved
+2026-11-20T12:02:51.942Z INFO payments-gateway req=r-b5a97a4c34 merchant=basketry idem_key=ord-7330105 result=approved
+2026-11-20T12:03:01.247Z INFO payments-gateway req=r-7d57c47c54 merchant=basketry idem_key=ord-7339085 result=approved
+2026-11-20T12:03:19.961Z INFO payments-gateway req=r-4c17de0684 merchant=basketry idem_key=ord-7310027 result=approved
+2026-11-20T12:03:29.066Z INFO payments-gateway req=r-a75a22d390 merchant=basketry idem_key=ord-7306317 result=approved
+2026-11-20T12:04:14.538Z INFO payments-gateway req=r-c31a8c34ae merchant=basketry idem_key=ord-7373732 result=approved
+2026-11-20T12:04:18.399Z INFO payments-gateway req=r-85529dc448 merchant=basketry idem_key=ord-7397158 result=approved
+2026-11-20T12:04:30.918Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=59
+2026-11-20T12:04:44.242Z INFO payments-gateway req=r-fb5be34507 merchant=basketry idem_key=ord-7367703 result=approved
+2026-11-20T12:05:18.236Z INFO payments-gateway req=r-3b87559f40 merchant=basketry idem_key=ord-7380783 result=approved
+2026-11-20T12:05:27.281Z INFO payments-gateway req=r-c70e8b63f9 merchant=basketry idem_key=ord-7367109 result=approved
+2026-11-20T12:05:31.951Z INFO payments-gateway req=r-9c7f7174ad merchant=basketry idem_key=ord-7352903 result=soft_decline code=NSF
+2026-11-20T12:05:33.673Z INFO payments-gateway req=r-972b8d3c49 merchant=basketry idem_key=ord-7355247 result=approved
+2026-11-20T12:06:28.039Z INFO payments-gateway req=r-4a6b3ed110 merchant=basketry idem_key=ord-7341893 result=approved
+2026-11-20T12:06:30.237Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=47
+2026-11-20T12:06:31.439Z INFO payments-gateway req=r-1bd1932eac merchant=basketry idem_key=ord-7345672 result=approved
+2026-11-20T12:06:31.654Z INFO payments-gateway req=r-5eb45f0cef merchant=basketry idem_key=ord-7371733 result=approved
+2026-11-20T12:07:03.520Z INFO payments-gateway req=r-2bc286d959 merchant=basketry idem_key=ord-7333346 result=approved
+2026-11-20T12:07:03.800Z INFO payments-gateway req=r-46218e596d merchant=basketry idem_key=ord-7376307 result=approved
+2026-11-20T12:07:23.404Z INFO payments-gateway req=r-0c9e7382e3 merchant=basketry idem_key=ord-7317349 result=approved
+2026-11-20T12:07:28.917Z INFO payments-gateway req=r-d3c67e10c6 merchant=basketry idem_key=ord-7326866 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:08:14.192Z INFO payments-gateway req=r-ee123bdfa9 merchant=basketry idem_key=ord-7390976 result=approved
+2026-11-20T12:08:30.410Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=70
+2026-11-20T12:08:53.413Z INFO payments-gateway req=r-fae9199bab merchant=basketry idem_key=ord-7312821 result=approved
+2026-11-20T12:08:54.816Z INFO payments-gateway req=r-b3a3a97444 merchant=basketry idem_key=ord-7386047 result=approved
+2026-11-20T12:09:03.542Z INFO payments-gateway req=r-4b365ada47 merchant=basketry idem_key=ord-7355621 result=approved
+2026-11-20T12:09:24.580Z INFO payments-gateway req=r-ba6138680c merchant=basketry idem_key=ord-7329880 result=approved
+2026-11-20T12:09:27.914Z INFO payments-gateway req=r-92f4576d34 merchant=basketry idem_key=ord-7364011 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:09:46.259Z INFO payments-gateway req=r-fc00bde55c merchant=basketry idem_key=ord-7344786 result=approved
+2026-11-20T12:10:13.526Z INFO payments-gateway req=r-f94225f338 merchant=basketry idem_key=ord-7306801 result=approved
+2026-11-20T12:10:15.945Z INFO payments-gateway req=r-fded9a2402 merchant=basketry idem_key=ord-7397406 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:10:23.035Z INFO payments-gateway req=r-60ea1d50c4 merchant=basketry idem_key=ord-7375377 result=approved
+2026-11-20T12:10:27.722Z INFO payments-gateway req=r-ee76a84292 merchant=basketry idem_key=ord-7361606 result=approved
+2026-11-20T12:10:30.574Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=37
+2026-11-20T12:11:16.015Z INFO payments-gateway req=r-22113790bc merchant=basketry idem_key=ord-7343855 result=approved
+2026-11-20T12:11:29.606Z INFO payments-gateway req=r-c6fcd532c2 merchant=basketry idem_key=ord-7317911 result=approved
+2026-11-20T12:11:45.909Z INFO payments-gateway req=r-71056755ef merchant=basketry idem_key=ord-7338332 result=approved
+2026-11-20T12:12:01.116Z INFO payments-gateway req=r-2d76a5abf2 merchant=basketry idem_key=ord-7301332 result=approved
+2026-11-20T12:12:05.071Z INFO payments-gateway req=r-9d3f5f8d5e merchant=basketry idem_key=ord-7312865 result=approved
+2026-11-20T12:12:29.346Z INFO payments-gateway req=r-f4e40ade51 merchant=basketry idem_key=ord-7313992 result=approved
+2026-11-20T12:12:30.775Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=56
+2026-11-20T12:13:16.266Z INFO payments-gateway req=r-30e2e2bf0b merchant=basketry idem_key=ord-7373773 result=approved
+2026-11-20T12:13:29.536Z INFO payments-gateway req=r-6b94824a64 merchant=basketry idem_key=ord-7372345 result=approved
+2026-11-20T12:13:45.140Z INFO payments-gateway req=r-e911e099bb merchant=basketry idem_key=ord-7373320 result=approved
+2026-11-20T12:14:30.841Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=55
+2026-11-20T12:14:39.797Z INFO payments-gateway req=r-547618cb5e merchant=basketry idem_key=ord-7380876 result=approved
+2026-11-20T12:14:43.574Z INFO payments-gateway req=r-886658f2c8 merchant=basketry idem_key=ord-7361540 result=approved
+2026-11-20T12:14:57.729Z INFO payments-gateway req=r-ad4bedb673 merchant=basketry idem_key=ord-7376694 result=approved
+2026-11-20T12:15:04.550Z INFO payments-gateway req=r-b77c613dad merchant=basketry idem_key=ord-7322370 result=approved
+2026-11-20T12:15:19.894Z INFO payments-gateway req=r-e2b3f69b99 merchant=basketry idem_key=ord-7369968 result=soft_decline code=NSF
+2026-11-20T12:15:27.303Z INFO payments-gateway req=r-b5d77a8063 merchant=basketry idem_key=ord-7324659 result=approved
+2026-11-20T12:15:30.946Z INFO payments-gateway req=r-45855bf437 merchant=basketry idem_key=ord-7370608 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:15:54.420Z INFO payments-gateway req=r-8fa2131947 merchant=basketry idem_key=ord-7351801 result=approved
+2026-11-20T12:16:15.525Z INFO payments-gateway req=r-72d50ab1aa merchant=basketry idem_key=ord-7367977 result=approved
+2026-11-20T12:16:26.055Z INFO payments-gateway req=r-a8749daf5c merchant=basketry idem_key=ord-7305965 result=approved
+2026-11-20T12:16:27.660Z INFO payments-gateway req=r-06daae27d9 merchant=basketry idem_key=ord-7367431 result=approved
+2026-11-20T12:16:30.121Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=39
+2026-11-20T12:17:01.595Z INFO payments-gateway req=r-9c817b4b62 merchant=basketry idem_key=ord-7385112 result=approved
+2026-11-20T12:17:33.989Z INFO payments-gateway req=r-b01ce16b7f merchant=basketry idem_key=ord-7352004 result=approved
+2026-11-20T12:17:52.987Z INFO payments-gateway req=r-3184432e7a merchant=basketry idem_key=ord-7326042 result=approved
+2026-11-20T12:18:30.084Z INFO payments-gateway req=r-e11054c408 merchant=basketry idem_key=ord-7396735 result=approved
+2026-11-20T12:18:30.317Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=35
+2026-11-20T12:18:32.956Z INFO payments-gateway req=r-f6ef29ff50 merchant=basketry idem_key=ord-7322918 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:18:34.535Z INFO payments-gateway req=r-c21b74dcf4 merchant=basketry idem_key=ord-7358582 result=approved
+2026-11-20T12:18:37.861Z INFO payments-gateway req=r-e630add23f merchant=basketry idem_key=ord-7302213 result=approved
+2026-11-20T12:19:08.587Z INFO payments-gateway req=r-4e2fb054ea merchant=basketry idem_key=ord-7355228 result=approved
+2026-11-20T12:19:11.390Z INFO payments-gateway req=r-5ae386e9b5 merchant=basketry idem_key=ord-7307159 result=approved
+2026-11-20T12:19:19.918Z INFO payments-gateway req=r-27b034e567 merchant=basketry idem_key=ord-7343422 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:19:30.925Z INFO payments-gateway req=r-37612afd4a merchant=basketry idem_key=ord-7303951 result=approved
+2026-11-20T12:20:05.930Z INFO payments-gateway req=r-57090978a2 merchant=basketry idem_key=ord-7343056 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:20:13.159Z INFO payments-gateway req=r-7e02457884 merchant=basketry idem_key=ord-7380363 result=approved
+2026-11-20T12:20:16.615Z INFO payments-gateway req=r-fa664c27ff merchant=basketry idem_key=ord-7395033 result=approved
+2026-11-20T12:20:16.874Z INFO payments-gateway req=r-754ae588a2 merchant=basketry idem_key=ord-7379907 result=approved
+2026-11-20T12:20:30.062Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=69
+2026-11-20T12:20:41.939Z INFO payments-gateway req=r-506a234d31 merchant=basketry idem_key=ord-7314386 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:21:06.942Z INFO payments-gateway req=r-688994f710 merchant=basketry idem_key=ord-7364985 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:21:25.222Z INFO payments-gateway req=r-30a246147c merchant=basketry idem_key=ord-7355818 result=approved
+2026-11-20T12:21:39.946Z INFO payments-gateway req=r-d7aa126e8b merchant=basketry idem_key=ord-7360199 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:21:51.731Z INFO payments-gateway req=r-066c5aed6d merchant=basketry idem_key=ord-7390923 result=approved
+2026-11-20T12:21:58.262Z INFO payments-gateway req=r-fa70c6498a merchant=basketry idem_key=ord-7395722 result=approved
+2026-11-20T12:22:01.130Z INFO payments-gateway req=r-2dbeb73d0a merchant=basketry idem_key=ord-7383689 result=approved
+2026-11-20T12:22:19.618Z INFO payments-gateway req=r-3c00eb631e merchant=basketry idem_key=ord-7357129 result=approved
+2026-11-20T12:22:30.250Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=66
+2026-11-20T12:22:47.782Z INFO payments-gateway req=r-2892e6cbcf merchant=basketry idem_key=ord-7372107 result=approved
+2026-11-20T12:23:05.976Z INFO payments-gateway req=r-2ff8e0a115 merchant=basketry idem_key=ord-7371828 result=approved
+2026-11-20T12:23:22.447Z INFO payments-gateway req=r-107959a2b5 merchant=basketry idem_key=ord-7326936 result=approved
+2026-11-20T12:23:38.925Z INFO payments-gateway req=r-cff4fe0983 merchant=basketry idem_key=ord-7392164 result=approved
+2026-11-20T12:24:01.210Z INFO payments-gateway req=r-cd829c3889 merchant=basketry idem_key=ord-7369891 result=approved
+2026-11-20T12:24:30.377Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=56
+2026-11-20T12:24:45.079Z INFO payments-gateway req=r-27bb6787b5 merchant=basketry idem_key=ord-7344630 result=approved
+2026-11-20T12:24:52.073Z INFO payments-gateway req=r-1c55634e2d merchant=basketry idem_key=ord-7377509 result=approved
+2026-11-20T12:24:56.939Z INFO payments-gateway req=r-4f066cca1e merchant=basketry idem_key=ord-7356708 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:25:25.499Z INFO payments-gateway req=r-a44f1a8121 merchant=basketry idem_key=ord-7393564 result=approved
+2026-11-20T12:25:55.151Z INFO payments-gateway req=r-fb1c933fa5 merchant=basketry idem_key=ord-7335885 result=approved
+2026-11-20T12:25:57.887Z INFO payments-gateway req=r-88ada8b7a0 merchant=basketry idem_key=ord-7301380 result=approved
+2026-11-20T12:26:30.532Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=67
+2026-11-20T12:26:34.375Z INFO payments-gateway req=r-6296b9add4 merchant=basketry idem_key=ord-7364414 result=approved
+2026-11-20T12:26:48.116Z INFO payments-gateway req=r-59f805cade merchant=basketry idem_key=ord-7327360 result=approved
+2026-11-20T12:26:49.385Z INFO payments-gateway req=r-a2b36665ec merchant=basketry idem_key=ord-7357321 result=approved
+2026-11-20T12:27:35.085Z INFO payments-gateway req=r-9a2bf388f5 merchant=basketry idem_key=ord-7314612 result=approved
+2026-11-20T12:27:42.591Z INFO payments-gateway req=r-c85556788c merchant=basketry idem_key=ord-7387171 result=approved
+2026-11-20T12:27:43.634Z INFO payments-gateway req=r-958d26ed06 merchant=basketry idem_key=ord-7346662 result=approved
+2026-11-20T12:28:01.034Z INFO payments-gateway req=r-5eaa4271c5 merchant=basketry idem_key=ord-7399800 result=approved
+2026-11-20T12:28:17.856Z INFO payments-gateway req=r-37af02954c merchant=basketry idem_key=ord-7319426 result=approved
+2026-11-20T12:28:24.990Z INFO payments-gateway req=r-74753004d6 merchant=basketry idem_key=ord-7383306 result=approved
+2026-11-20T12:28:26.914Z INFO payments-gateway req=r-c6b4dc5e16 merchant=basketry idem_key=ord-7344284 result=soft_decline code=NSF
+2026-11-20T12:28:30.187Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=50
+2026-11-20T12:29:23.883Z INFO payments-gateway req=r-e2db9b2868 merchant=basketry idem_key=ord-7355398 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:29:29.502Z INFO payments-gateway req=r-2b433cb416 merchant=basketry idem_key=ord-7372589 result=approved
+2026-11-20T12:29:32.908Z INFO payments-gateway req=r-0e2ca4aa75 merchant=basketry idem_key=ord-7371407 result=approved
+2026-11-20T12:29:35.776Z INFO payments-gateway req=r-0cb9f396a8 merchant=basketry idem_key=ord-7335547 result=approved
+2026-11-20T12:30:06.243Z INFO payments-gateway req=r-3596c55712 merchant=basketry idem_key=ord-7353566 result=approved
+2026-11-20T12:30:30.463Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=54
+2026-11-20T12:30:31.694Z INFO payments-gateway req=r-335c02f38f merchant=basketry idem_key=ord-7395515 result=approved
+2026-11-20T12:30:58.545Z INFO payments-gateway req=r-33585f1df2 merchant=basketry idem_key=ord-7352327 result=approved
+2026-11-20T12:31:22.205Z INFO payments-gateway req=r-b50d37f509 merchant=basketry idem_key=ord-7381219 result=approved
+2026-11-20T12:31:23.448Z INFO payments-gateway req=r-7a1d90b0da merchant=basketry idem_key=ord-7362911 result=approved
+2026-11-20T12:31:28.945Z INFO payments-gateway req=r-de449bbcae merchant=basketry idem_key=ord-7391660 result=soft_decline code=NSF
+2026-11-20T12:31:33.779Z INFO payments-gateway req=r-c642ca72f4 merchant=basketry idem_key=ord-7308712 result=approved
+2026-11-20T12:32:10.184Z INFO payments-gateway req=r-619887f6d0 merchant=basketry idem_key=ord-7338224 result=approved
+2026-11-20T12:32:30.544Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=56
+2026-11-20T12:32:50.442Z INFO payments-gateway req=r-6a18d9cf8a merchant=basketry idem_key=ord-7379868 result=approved
+2026-11-20T12:32:51.966Z INFO payments-gateway req=r-50a7738db5 merchant=basketry idem_key=ord-7375302 result=approved
+2026-11-20T12:33:19.196Z INFO payments-gateway req=r-33ad224884 merchant=basketry idem_key=ord-7337806 result=approved
+2026-11-20T12:33:27.578Z INFO payments-gateway req=r-1e34ab41f4 merchant=basketry idem_key=ord-7312876 result=approved
+2026-11-20T12:33:58.255Z INFO payments-gateway req=r-6880aabca0 merchant=basketry idem_key=ord-7355328 result=approved
+2026-11-20T12:34:30.153Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=62
+2026-11-20T12:34:35.657Z INFO payments-gateway req=r-e0364ba20b merchant=basketry idem_key=ord-7306538 result=approved
+2026-11-20T12:34:40.953Z INFO payments-gateway req=r-be503a8b97 merchant=basketry idem_key=ord-7341819 result=approved
+2026-11-20T12:34:47.109Z INFO payments-gateway req=r-e5daf259c0 merchant=basketry idem_key=ord-7399358 result=approved
+2026-11-20T12:35:04.996Z INFO payments-gateway req=r-a293114d0a merchant=basketry idem_key=ord-7384252 result=approved
+2026-11-20T12:35:26.028Z INFO payments-gateway req=r-b6943b7562 merchant=basketry idem_key=ord-7370181 result=approved
+2026-11-20T12:35:38.887Z INFO payments-gateway req=r-64bc5949bb merchant=basketry idem_key=ord-7372345 result=approved
+2026-11-20T12:36:04.916Z INFO payments-gateway req=r-99e0161b1d merchant=basketry idem_key=ord-7391442 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:36:12.086Z INFO payments-gateway req=r-15cdb954f0 merchant=basketry idem_key=ord-7397293 result=approved
+2026-11-20T12:36:22.795Z INFO payments-gateway req=r-3d7e1a191d merchant=basketry idem_key=ord-7367199 result=approved
+2026-11-20T12:36:30.618Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=49
+2026-11-20T12:36:57.991Z INFO payments-gateway req=r-71b6b2ba03 merchant=basketry idem_key=ord-7353079 result=approved
+2026-11-20T12:37:00.238Z INFO payments-gateway req=r-147229c19b merchant=basketry idem_key=ord-7381689 result=approved
+2026-11-20T12:37:31.979Z INFO payments-gateway req=r-219ba986b9 merchant=basketry idem_key=ord-7391696 result=approved
+2026-11-20T12:37:49.520Z INFO payments-gateway req=r-eee4d607d4 merchant=basketry idem_key=ord-7343822 result=approved
+2026-11-20T12:37:51.920Z INFO payments-gateway req=r-a0e5bf2987 merchant=basketry idem_key=ord-7332667 result=soft_decline code=NSF
+2026-11-20T12:38:04.929Z INFO payments-gateway req=r-4ea09e11c9 merchant=basketry idem_key=ord-7368921 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:38:14.711Z INFO payments-gateway req=r-f20756702f merchant=basketry idem_key=ord-7310565 result=approved
+2026-11-20T12:38:27.717Z INFO payments-gateway req=r-2c99dfc17f merchant=basketry idem_key=ord-7318896 result=approved
+2026-11-20T12:38:30.213Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=35
+2026-11-20T12:38:37.918Z INFO payments-gateway req=r-9cd9927d95 merchant=basketry idem_key=ord-7301433 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:38:48.895Z INFO payments-gateway req=r-a3ba7fbad9 merchant=basketry idem_key=ord-7331970 result=approved
+2026-11-20T12:39:14.061Z INFO payments-gateway req=r-c537ca9885 merchant=basketry idem_key=ord-7346719 result=approved
+2026-11-20T12:39:22.524Z INFO payments-gateway req=r-37fb7fd599 merchant=basketry idem_key=ord-7345940 result=approved
+2026-11-20T12:39:39.112Z INFO payments-gateway req=r-e54e945a1c merchant=basketry idem_key=ord-7372503 result=approved
+2026-11-20T12:40:15.513Z INFO payments-gateway req=r-133c40bac5 merchant=basketry idem_key=ord-7345746 result=approved
+2026-11-20T12:40:18.292Z INFO payments-gateway req=r-c375e6de3a merchant=basketry idem_key=ord-7381406 result=approved
+2026-11-20T12:40:27.755Z INFO payments-gateway req=r-19fef47c72 merchant=basketry idem_key=ord-7322384 result=approved
+2026-11-20T12:40:30.189Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=32
+2026-11-20T12:41:01.525Z INFO payments-gateway req=r-41c7a6ff15 merchant=basketry idem_key=ord-7375081 result=approved
+2026-11-20T12:41:20.036Z INFO payments-gateway req=r-38899e97c8 merchant=basketry idem_key=ord-7356271 result=approved
+2026-11-20T12:41:41.109Z INFO payments-gateway req=r-a7dbe16a12 merchant=basketry idem_key=ord-7393491 result=approved
+2026-11-20T12:42:01.947Z INFO payments-gateway req=r-7ad174a82c merchant=basketry idem_key=ord-7375840 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:42:06.520Z INFO payments-gateway req=r-b79c8d06ba merchant=basketry idem_key=ord-7334889 result=approved
+2026-11-20T12:42:14.762Z INFO payments-gateway req=r-c428a17be4 merchant=basketry idem_key=ord-7343474 result=approved
+2026-11-20T12:42:19.894Z INFO payments-gateway req=r-bc9912a48e merchant=basketry idem_key=ord-7370431 result=approved
+2026-11-20T12:42:30.537Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=62
+2026-11-20T12:43:08.495Z INFO payments-gateway req=r-53e66adaef merchant=basketry idem_key=ord-7375102 result=approved
+2026-11-20T12:43:25.080Z INFO payments-gateway req=r-50bed22ebb merchant=basketry idem_key=ord-7343348 result=approved
+2026-11-20T12:43:39.947Z INFO payments-gateway req=r-2808ee95e3 merchant=basketry idem_key=ord-7335945 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:43:48.086Z INFO payments-gateway req=r-b5702f055f merchant=basketry idem_key=ord-7352481 result=approved
+2026-11-20T12:44:17.190Z INFO payments-gateway req=r-653cf52bd6 merchant=basketry idem_key=ord-7376809 result=approved
+2026-11-20T12:44:30.086Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=35
+2026-11-20T12:44:42.889Z INFO payments-gateway req=r-410a4eaa03 merchant=basketry idem_key=ord-7345038 result=approved
+2026-11-20T12:44:53.132Z INFO payments-gateway req=r-ce8fab8719 merchant=basketry idem_key=ord-7364221 result=approved
+2026-11-20T12:45:07.042Z INFO payments-gateway req=r-edc3e13b19 merchant=basketry idem_key=ord-7361356 result=approved
+2026-11-20T12:45:10.104Z INFO payments-gateway req=r-39a93fe353 merchant=basketry idem_key=ord-7391600 result=approved
+2026-11-20T12:45:19.940Z INFO payments-gateway req=r-3557c7a4d1 merchant=basketry idem_key=ord-7359503 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:45:48.786Z INFO payments-gateway req=r-10e62ae702 merchant=basketry idem_key=ord-7320898 result=approved
+2026-11-20T12:46:13.597Z INFO payments-gateway req=r-586226af30 merchant=basketry idem_key=ord-7395866 result=approved
+2026-11-20T12:46:15.094Z INFO payments-gateway req=r-04871cff57 merchant=basketry idem_key=ord-7386473 result=approved
+2026-11-20T12:46:30.010Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=43
+2026-11-20T12:46:44.112Z INFO payments-gateway req=r-6abf5fe085 merchant=basketry idem_key=ord-7392505 result=approved
+2026-11-20T12:47:18.096Z INFO payments-gateway req=r-784e089145 merchant=basketry idem_key=ord-7383988 result=approved
+2026-11-20T12:47:31.561Z INFO payments-gateway req=r-f8388d3783 merchant=basketry idem_key=ord-7380758 result=approved
+2026-11-20T12:47:48.522Z INFO payments-gateway req=r-114a6ac041 merchant=basketry idem_key=ord-7363626 result=approved
+2026-11-20T12:48:03.889Z INFO payments-gateway req=r-53c3fe80fe merchant=basketry idem_key=ord-7311505 result=approved
+2026-11-20T12:48:17.319Z INFO payments-gateway req=r-56e586ab0f merchant=basketry idem_key=ord-7349015 result=approved
+2026-11-20T12:48:30.015Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=70
+2026-11-20T12:48:33.214Z INFO payments-gateway req=r-6b7629db1e merchant=basketry idem_key=ord-7380035 result=approved
+2026-11-20T12:49:14.559Z INFO payments-gateway req=r-d28f5032b5 merchant=basketry idem_key=ord-7375560 result=approved
+2026-11-20T12:49:27.547Z INFO payments-gateway req=r-080af2fa7e merchant=basketry idem_key=ord-7396604 result=approved
+2026-11-20T12:49:52.427Z INFO payments-gateway req=r-4b4ea7a7bf merchant=basketry idem_key=ord-7357988 result=approved
+2026-11-20T12:50:08.136Z INFO payments-gateway req=r-663c5b939f merchant=basketry idem_key=ord-7341670 result=approved
+2026-11-20T12:50:23.894Z INFO payments-gateway req=r-d10e9575f1 merchant=basketry idem_key=ord-7336123 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:50:28.554Z INFO payments-gateway req=r-ffca4770ee merchant=basketry idem_key=ord-7380769 result=approved
+2026-11-20T12:50:30.855Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=51
+2026-11-20T12:50:41.452Z INFO payments-gateway req=r-a2b8dd7a6b merchant=basketry idem_key=ord-7358752 result=approved
+2026-11-20T12:51:01.279Z INFO payments-gateway req=r-07ad53c52c merchant=basketry idem_key=ord-7322034 result=approved
+2026-11-20T12:51:40.027Z INFO payments-gateway req=r-c0439df5b7 merchant=basketry idem_key=ord-7338919 result=approved
+2026-11-20T12:51:52.912Z INFO payments-gateway req=r-adef0c9359 merchant=basketry idem_key=ord-7369635 result=soft_decline code=EXPIRED_CARD
+2026-11-20T12:51:59.677Z INFO payments-gateway req=r-252cd3d975 merchant=basketry idem_key=ord-7354165 result=approved
+2026-11-20T12:52:18.952Z INFO payments-gateway req=r-40eb706d4a merchant=basketry idem_key=ord-7374742 result=approved
+2026-11-20T12:52:30.693Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=67
+2026-11-20T12:52:46.932Z INFO payments-gateway req=r-66115a76d0 merchant=basketry idem_key=ord-7360373 result=approved
+2026-11-20T12:52:52.715Z INFO payments-gateway req=r-0a3c62ac61 merchant=basketry idem_key=ord-7303950 result=approved
+2026-11-20T12:53:11.749Z INFO payments-gateway req=r-8000d172b7 merchant=basketry idem_key=ord-7348027 result=approved
+2026-11-20T12:53:38.019Z INFO payments-gateway req=r-1d18c11036 merchant=basketry idem_key=ord-7384791 result=approved
+2026-11-20T12:53:59.490Z INFO payments-gateway req=r-b025d3b2e4 merchant=basketry idem_key=ord-7384855 result=approved
+2026-11-20T12:54:05.228Z INFO payments-gateway req=r-89d58c6bd8 merchant=basketry idem_key=ord-7348452 result=approved
+2026-11-20T12:54:14.098Z INFO payments-gateway req=r-645394523b merchant=basketry idem_key=ord-7366835 result=approved
+2026-11-20T12:54:21.963Z INFO payments-gateway req=r-6211995beb merchant=basketry idem_key=ord-7398090 result=approved
+2026-11-20T12:54:30.682Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=67
+2026-11-20T12:55:29.541Z INFO payments-gateway req=r-1269681bc0 merchant=basketry idem_key=ord-7391950 result=approved
+2026-11-20T12:55:33.886Z INFO payments-gateway req=r-ff07c334ff merchant=basketry idem_key=ord-7311117 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:55:33.946Z INFO payments-gateway req=r-6ceb993e53 merchant=basketry idem_key=ord-7382622 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:55:56.688Z INFO payments-gateway req=r-53d82403b8 merchant=basketry idem_key=ord-7361247 result=approved
+2026-11-20T12:55:56.939Z INFO payments-gateway req=r-57fc7680b3 merchant=basketry idem_key=ord-7360787 result=approved
+2026-11-20T12:56:21.510Z INFO payments-gateway req=r-a5cf3e9d81 merchant=basketry idem_key=ord-7321887 result=approved
+2026-11-20T12:56:30.845Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=61
+2026-11-20T12:56:49.794Z INFO payments-gateway req=r-312cc3d87a merchant=basketry idem_key=ord-7307524 result=approved
+2026-11-20T12:56:50.280Z INFO payments-gateway req=r-24ac3a9f5c merchant=basketry idem_key=ord-7373864 result=approved
+2026-11-20T12:57:14.085Z INFO payments-gateway req=r-9003d9a6a7 merchant=basketry idem_key=ord-7377174 result=approved
+2026-11-20T12:57:26.332Z INFO payments-gateway req=r-eb7542016a merchant=basketry idem_key=ord-7308894 result=approved
+2026-11-20T12:57:38.948Z INFO payments-gateway req=r-5de1193f2c merchant=basketry idem_key=ord-7386292 result=soft_decline code=ISSUER_SOFT
+2026-11-20T12:57:57.897Z INFO payments-gateway req=r-1e39d6791a merchant=basketry idem_key=ord-7322728 result=approved
+2026-11-20T12:58:00.598Z INFO payments-gateway req=r-095c1d642e merchant=basketry idem_key=ord-7314484 result=approved
+2026-11-20T12:58:05.099Z INFO payments-gateway req=r-0180244bac merchant=basketry idem_key=ord-7374718 result=approved
+2026-11-20T12:58:30.561Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=44
+2026-11-20T12:58:35.234Z INFO payments-gateway req=r-95468528b6 merchant=basketry idem_key=ord-7333949 result=approved
+2026-11-20T12:59:22.262Z INFO payments-gateway req=r-cda50e1029 merchant=basketry idem_key=ord-7346746 result=approved
+2026-11-20T12:59:37.329Z INFO payments-gateway req=r-52c7e0952b merchant=basketry idem_key=ord-7396240 result=approved
+2026-11-20T12:59:40.676Z INFO payments-gateway req=r-f8b607d5a1 merchant=basketry idem_key=ord-7355690 result=approved
+2026-11-20T12:59:48.937Z INFO payments-gateway req=r-555b1e9a04 merchant=basketry idem_key=ord-7352414 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:00:20.150Z INFO payments-gateway req=r-1e5ef778ae merchant=basketry idem_key=ord-7388814 result=approved
+2026-11-20T13:00:30.143Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=40
+2026-11-20T13:00:37.949Z INFO payments-gateway req=r-d087279462 merchant=basketry idem_key=ord-7329764 result=approved
+2026-11-20T13:00:41.194Z INFO payments-gateway req=r-7410ec6157 merchant=basketry idem_key=ord-7308421 result=approved
+2026-11-20T13:01:08.497Z INFO payments-gateway req=r-5858566eeb merchant=basketry idem_key=ord-7313154 result=approved
+2026-11-20T13:01:24.584Z INFO payments-gateway req=r-993f5b34e9 merchant=basketry idem_key=ord-7352504 result=approved
+2026-11-20T13:01:55.528Z INFO payments-gateway req=r-8cd33e17a1 merchant=basketry idem_key=ord-7319333 result=approved
+2026-11-20T13:02:20.690Z INFO payments-gateway req=r-512a134dfe merchant=basketry idem_key=ord-7312312 result=approved
+2026-11-20T13:02:30.504Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=65
+2026-11-20T13:02:41.909Z INFO payments-gateway req=r-b8fd58c474 merchant=basketry idem_key=ord-7387113 result=approved
+2026-11-20T13:02:51.595Z INFO payments-gateway req=r-5ff8ffb6cb merchant=basketry idem_key=ord-7348901 result=approved
+2026-11-20T13:03:02.192Z INFO payments-gateway req=r-4ef08b8072 merchant=basketry idem_key=ord-7386887 result=approved
+2026-11-20T13:03:26.388Z INFO payments-gateway req=r-b7fd791910 merchant=basketry idem_key=ord-7314629 result=approved
+2026-11-20T13:03:26.551Z INFO payments-gateway req=r-8875f54b7c merchant=basketry idem_key=ord-7389981 result=approved
+2026-11-20T13:04:23.715Z INFO payments-gateway req=r-1a0e54ab64 merchant=basketry idem_key=ord-7316642 result=approved
+2026-11-20T13:04:30.356Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=46
+2026-11-20T13:04:39.276Z INFO payments-gateway req=r-a64dd6e37f merchant=basketry idem_key=ord-7301929 result=approved
+2026-11-20T13:04:45.063Z INFO payments-gateway req=r-21d0155562 merchant=basketry idem_key=ord-7354755 result=approved
+2026-11-20T13:05:20.592Z INFO payments-gateway req=r-3e623ccdae merchant=basketry idem_key=ord-7315042 result=approved
+2026-11-20T13:05:21.241Z INFO payments-gateway req=r-fc7f36f715 merchant=basketry idem_key=ord-7371673 result=approved
+2026-11-20T13:05:32.790Z INFO payments-gateway req=r-29148f9e92 merchant=basketry idem_key=ord-7330186 result=approved
+2026-11-20T13:05:54.913Z INFO payments-gateway req=r-7e0e6f1971 merchant=basketry idem_key=ord-7369153 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:06:16.531Z INFO payments-gateway req=r-2b29e57055 merchant=basketry idem_key=ord-7356251 result=approved
+2026-11-20T13:06:24.885Z INFO payments-gateway req=r-3eb4720032 merchant=basketry idem_key=ord-7385909 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:06:30.341Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=37
+2026-11-20T13:06:46.932Z INFO payments-gateway req=r-c68db854a1 merchant=basketry idem_key=ord-7348685 result=approved
+2026-11-20T13:06:49.770Z INFO payments-gateway req=r-081a9d4129 merchant=basketry idem_key=ord-7368520 result=approved
+2026-11-20T13:07:00.114Z INFO payments-gateway req=r-11a11ee6c7 merchant=basketry idem_key=ord-7377476 result=approved
+2026-11-20T13:07:14.888Z INFO payments-gateway req=r-b4f2ffcb7d merchant=basketry idem_key=ord-7393996 result=approved
+2026-11-20T13:07:42.598Z INFO payments-gateway req=r-2c5c2f3e38 merchant=basketry idem_key=ord-7348932 result=approved
+2026-11-20T13:08:10.512Z INFO payments-gateway req=r-66fb6706f9 merchant=basketry idem_key=ord-7337496 result=approved
+2026-11-20T13:08:12.351Z INFO payments-gateway req=r-c266f82e5d merchant=basketry idem_key=ord-7340275 result=approved
+2026-11-20T13:08:30.078Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=49
+2026-11-20T13:08:53.307Z INFO payments-gateway req=r-d5cbe2c097 merchant=basketry idem_key=ord-7376157 result=approved
+2026-11-20T13:08:58.924Z INFO payments-gateway req=r-1629819854 merchant=basketry idem_key=ord-7303003 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:09:44.507Z INFO payments-gateway req=r-53f182209c merchant=basketry idem_key=ord-7381891 result=approved
+2026-11-20T13:09:57.405Z INFO payments-gateway req=r-abbd1bc9dd merchant=basketry idem_key=ord-7380173 result=approved
+2026-11-20T13:09:58.122Z INFO payments-gateway req=r-5a40f3a38f merchant=basketry idem_key=ord-7363276 result=approved
+2026-11-20T13:10:19.421Z INFO payments-gateway req=r-7603c67f4d merchant=basketry idem_key=ord-7372444 result=approved
+2026-11-20T13:10:29.658Z INFO payments-gateway req=r-2a8e2e3524 merchant=basketry idem_key=ord-7332019 result=approved
+2026-11-20T13:10:30.584Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=38
+2026-11-20T13:10:40.958Z WARN payments-gateway req=r-068506ea41 merchant=basketry idem_key=cart-549908 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9483 amount_now=9004
+2026-11-20T13:10:52.377Z INFO payments-gateway req=r-076062155d merchant=basketry idem_key=ord-7315473 result=approved
+2026-11-20T13:11:04.633Z INFO payments-gateway req=r-17e3f8e9d9 merchant=basketry idem_key=ord-7395863 result=approved
+2026-11-20T13:11:11.945Z WARN payments-gateway req=r-2dc76f6fd6 merchant=basketry idem_key=cart-511903 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=2863 amount_now=2057
+2026-11-20T13:11:23.728Z INFO payments-gateway req=r-f5ae6f40da merchant=basketry idem_key=ord-7337314 result=approved
+2026-11-20T13:11:27.973Z INFO payments-gateway req=r-1b4a429187 merchant=basketry idem_key=ord-7308769 result=approved
+2026-11-20T13:11:41.940Z WARN payments-gateway req=r-63e9eacd9b merchant=basketry idem_key=cart-568798 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7210 amount_now=7832
+2026-11-20T13:11:53.913Z INFO payments-gateway req=r-e016568d97 merchant=basketry idem_key=ord-7326392 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:11:55.949Z WARN payments-gateway req=r-8565212dd2 merchant=basketry idem_key=cart-580454 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3061 amount_now=2842
+2026-11-20T13:12:16.776Z INFO payments-gateway req=r-9d4362bcc2 merchant=basketry idem_key=ord-7348349 result=approved
+2026-11-20T13:12:19.352Z INFO payments-gateway req=r-eca8405c1b merchant=basketry idem_key=ord-7362339 result=approved
+2026-11-20T13:12:30.231Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=42
+2026-11-20T13:12:54.739Z INFO payments-gateway req=r-6b9724843b merchant=basketry idem_key=ord-7318911 result=approved
+2026-11-20T13:13:11.949Z WARN payments-gateway req=r-d4b3b2dbc0 merchant=basketry idem_key=cart-510868 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5708 amount_now=4597
+2026-11-20T13:13:18.942Z WARN payments-gateway req=r-c42a8d65f7 merchant=basketry idem_key=cart-551934 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6259 amount_now=7204
+2026-11-20T13:13:23.811Z INFO payments-gateway req=r-91ec53fc38 merchant=basketry idem_key=ord-7353709 result=approved
+2026-11-20T13:13:26.304Z INFO payments-gateway req=r-c5481d0f2d merchant=basketry idem_key=ord-7368188 result=approved
+2026-11-20T13:13:38.391Z INFO payments-gateway req=r-48fcea9150 merchant=basketry idem_key=ord-7333982 result=approved
+2026-11-20T13:13:51.918Z WARN payments-gateway req=r-5239561b71 merchant=basketry idem_key=cart-517611 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5511 amount_now=6547
+2026-11-20T13:14:14.959Z WARN payments-gateway req=r-895c39c8dd merchant=basketry idem_key=cart-536850 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6140 amount_now=5489
+2026-11-20T13:14:20.396Z INFO payments-gateway req=r-6bc2d665a7 merchant=basketry idem_key=ord-7305543 result=approved
+2026-11-20T13:14:29.948Z INFO payments-gateway req=r-3d83d4c60c merchant=basketry idem_key=ord-7348702 result=soft_decline code=NSF
+2026-11-20T13:14:30.806Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=65
+2026-11-20T13:14:45.060Z INFO payments-gateway req=r-992d442d72 merchant=basketry idem_key=ord-7358578 result=approved
+2026-11-20T13:14:45.093Z INFO payments-gateway req=r-cc22f83a89 merchant=basketry idem_key=ord-7300554 result=approved
+2026-11-20T13:15:19.167Z INFO payments-gateway req=r-ad051ae140 merchant=basketry idem_key=ord-7307500 result=approved
+2026-11-20T13:15:19.889Z WARN payments-gateway req=r-66fdb69b0c merchant=basketry idem_key=cart-551665 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4615 amount_now=4157
+2026-11-20T13:15:25.908Z WARN payments-gateway req=r-c906629583 merchant=basketry idem_key=cart-527251 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9261 amount_now=8451
+2026-11-20T13:15:51.361Z INFO payments-gateway req=r-43aca88788 merchant=basketry idem_key=ord-7325184 result=approved
+2026-11-20T13:15:54.314Z INFO payments-gateway req=r-46e9cb7926 merchant=basketry idem_key=ord-7303432 result=approved
+2026-11-20T13:16:25.406Z INFO payments-gateway req=r-7bbb978ad1 merchant=basketry idem_key=ord-7351263 result=approved
+2026-11-20T13:16:27.634Z INFO payments-gateway req=r-082c18787c merchant=basketry idem_key=ord-7345698 result=approved
+2026-11-20T13:16:30.114Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=44
+2026-11-20T13:16:35.418Z INFO payments-gateway req=r-0ac83a025f merchant=basketry idem_key=ord-7371329 result=approved
+2026-11-20T13:17:33.934Z WARN payments-gateway req=r-7fe6d54409 merchant=basketry idem_key=cart-538772 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8404 amount_now=9138
+2026-11-20T13:17:50.410Z INFO payments-gateway req=r-39ab90fe27 merchant=basketry idem_key=ord-7329056 result=approved
+2026-11-20T13:17:55.925Z INFO payments-gateway req=r-f84dc9d944 merchant=basketry idem_key=ord-7332781 result=approved
+2026-11-20T13:17:58.746Z INFO payments-gateway req=r-61f42659bc merchant=basketry idem_key=ord-7322969 result=approved
+2026-11-20T13:18:03.115Z INFO payments-gateway req=r-cac1685fb1 merchant=basketry idem_key=ord-7334224 result=approved
+2026-11-20T13:18:30.554Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=58
+2026-11-20T13:18:45.354Z INFO payments-gateway req=r-7c657522da merchant=basketry idem_key=ord-7315460 result=approved
+2026-11-20T13:18:55.520Z INFO payments-gateway req=r-9ff0ee80ab merchant=basketry idem_key=ord-7315953 result=approved
+2026-11-20T13:19:23.088Z INFO payments-gateway req=r-7ae05dc4a3 merchant=basketry idem_key=ord-7335122 result=approved
+2026-11-20T13:19:34.213Z INFO payments-gateway req=r-7ce8f41d4c merchant=basketry idem_key=ord-7352708 result=approved
+2026-11-20T13:19:38.931Z INFO payments-gateway req=r-61258cc0f5 merchant=basketry idem_key=ord-7302156 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:19:44.901Z WARN payments-gateway req=r-31ebc2b3d7 merchant=basketry idem_key=cart-566981 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6307 amount_now=7152
+2026-11-20T13:19:46.891Z WARN payments-gateway req=r-2651c23f89 merchant=basketry idem_key=cart-588811 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9453 amount_now=10017
+2026-11-20T13:19:53.024Z INFO payments-gateway req=r-062b6749d8 merchant=basketry idem_key=ord-7300671 result=approved
+2026-11-20T13:20:02.161Z INFO payments-gateway req=r-49e04f7893 merchant=basketry idem_key=ord-7371435 result=approved
+2026-11-20T13:20:02.917Z WARN payments-gateway req=r-bcf49c9b9b merchant=basketry idem_key=cart-525037 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8169 amount_now=7461
+2026-11-20T13:20:30.707Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=55
+2026-11-20T13:20:33.814Z INFO payments-gateway req=r-e72262bd6b merchant=basketry idem_key=ord-7334225 result=approved
+2026-11-20T13:20:57.389Z INFO payments-gateway req=r-7b8990843f merchant=basketry idem_key=ord-7392538 result=approved
+2026-11-20T13:21:13.166Z INFO payments-gateway req=r-5ffc29b5ee merchant=basketry idem_key=ord-7386460 result=approved
+2026-11-20T13:21:20.949Z INFO payments-gateway req=r-f1278b19f7 merchant=basketry idem_key=ord-7312053 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:21:24.981Z INFO payments-gateway req=r-577ccd73d0 merchant=basketry idem_key=ord-7318366 result=approved
+2026-11-20T13:21:37.919Z INFO payments-gateway req=r-f53dfbe2e4 merchant=basketry idem_key=ord-7300231 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:21:50.149Z INFO payments-gateway req=r-cac7ca83aa merchant=basketry idem_key=ord-7322967 result=approved
+2026-11-20T13:22:26.944Z INFO payments-gateway req=r-cb5200fb99 merchant=basketry idem_key=ord-7341691 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:22:30.625Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=57
+2026-11-20T13:22:36.973Z INFO payments-gateway req=r-056d6de1b4 merchant=basketry idem_key=ord-7386588 result=approved
+2026-11-20T13:22:39.568Z INFO payments-gateway req=r-effe012684 merchant=basketry idem_key=ord-7335409 result=approved
+2026-11-20T13:22:57.713Z INFO payments-gateway req=r-a128601026 merchant=basketry idem_key=ord-7377134 result=approved
+2026-11-20T13:23:05.171Z INFO payments-gateway req=r-5284545357 merchant=basketry idem_key=ord-7300171 result=approved
+2026-11-20T13:23:10.949Z INFO payments-gateway req=r-5eb1d1ca04 merchant=basketry idem_key=ord-7380753 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:23:11.976Z INFO payments-gateway req=r-58763398cc merchant=basketry idem_key=ord-7324534 result=approved
+2026-11-20T13:23:37.136Z INFO payments-gateway req=r-d0b0dec4d5 merchant=basketry idem_key=ord-7387986 result=approved
+2026-11-20T13:23:43.908Z INFO payments-gateway req=r-6a432cab57 merchant=basketry idem_key=ord-7300964 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:23:50.902Z WARN payments-gateway req=r-5a8b1965d6 merchant=basketry idem_key=cart-506789 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9618 amount_now=9863
+2026-11-20T13:23:58.938Z INFO payments-gateway req=r-1b0674249b merchant=basketry idem_key=ord-7380550 result=soft_decline code=NSF
+2026-11-20T13:24:01.891Z WARN payments-gateway req=r-6a93332018 merchant=basketry idem_key=cart-500469 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8838 amount_now=8278
+2026-11-20T13:24:02.545Z INFO payments-gateway req=r-f5981cca21 merchant=basketry idem_key=ord-7396567 result=approved
+2026-11-20T13:24:18.892Z INFO payments-gateway req=r-5c757d45b6 merchant=basketry idem_key=ord-7329438 result=approved
+2026-11-20T13:24:30.966Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=44
+2026-11-20T13:24:37.489Z INFO payments-gateway req=r-1e8ee71c64 merchant=basketry idem_key=ord-7368304 result=approved
+2026-11-20T13:25:18.020Z INFO payments-gateway req=r-8cd44fd4fd merchant=basketry idem_key=ord-7392601 result=approved
+2026-11-20T13:25:19.571Z INFO payments-gateway req=r-15cba8d233 merchant=basketry idem_key=ord-7327110 result=approved
+2026-11-20T13:25:50.611Z INFO payments-gateway req=r-375e6b4655 merchant=basketry idem_key=ord-7350873 result=approved
+2026-11-20T13:26:19.390Z INFO payments-gateway req=r-b201bc69b1 merchant=basketry idem_key=ord-7383917 result=approved
+2026-11-20T13:26:30.302Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=49
+2026-11-20T13:26:46.344Z INFO payments-gateway req=r-55923dd45a merchant=basketry idem_key=ord-7390107 result=approved
+2026-11-20T13:26:56.134Z INFO payments-gateway req=r-894a79afe8 merchant=basketry idem_key=ord-7302855 result=approved
+2026-11-20T13:27:18.750Z INFO payments-gateway req=r-940396ec0e merchant=basketry idem_key=ord-7349928 result=approved
+2026-11-20T13:27:21.846Z INFO payments-gateway req=r-38c56e4929 merchant=basketry idem_key=ord-7336522 result=approved
+2026-11-20T13:27:28.944Z INFO payments-gateway req=r-29b544e1be merchant=basketry idem_key=ord-7304112 result=approved
+2026-11-20T13:28:06.911Z WARN payments-gateway req=r-2ae92f834d merchant=basketry idem_key=cart-509782 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9649 amount_now=8542
+2026-11-20T13:28:14.937Z WARN payments-gateway req=r-4103c00d73 merchant=basketry idem_key=cart-594043 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5906 amount_now=6463
+2026-11-20T13:28:21.971Z INFO payments-gateway req=r-6f469541b8 merchant=basketry idem_key=ord-7338094 result=approved
+2026-11-20T13:28:23.605Z INFO payments-gateway req=r-ac28463d2c merchant=basketry idem_key=ord-7354842 result=approved
+2026-11-20T13:28:30.831Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=40
+2026-11-20T13:28:32.014Z INFO payments-gateway req=r-ba176c7f68 merchant=basketry idem_key=ord-7372175 result=approved
+2026-11-20T13:29:06.605Z INFO payments-gateway req=r-b45fa38b65 merchant=basketry idem_key=ord-7379236 result=approved
+2026-11-20T13:29:06.949Z WARN payments-gateway req=r-a4bc0eaba5 merchant=basketry idem_key=cart-575903 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8950 amount_now=7990
+2026-11-20T13:29:31.739Z INFO payments-gateway req=r-a330310f06 merchant=basketry idem_key=ord-7394453 result=approved
+2026-11-20T13:29:36.951Z INFO payments-gateway req=r-ddde98884b merchant=basketry idem_key=ord-7318138 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:29:59.395Z INFO payments-gateway req=r-28e695a3e0 merchant=basketry idem_key=ord-7371801 result=approved
+2026-11-20T13:30:04.596Z INFO payments-gateway req=r-e93b2d2d72 merchant=basketry idem_key=ord-7346790 result=approved
+2026-11-20T13:30:08.054Z INFO payments-gateway req=r-f1b30eb4f1 merchant=basketry idem_key=ord-7322793 result=approved
+2026-11-20T13:30:30.850Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=66
+2026-11-20T13:30:38.929Z WARN payments-gateway req=r-5614b8c8d4 merchant=basketry idem_key=cart-549642 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9261 amount_now=9721
+2026-11-20T13:30:43.380Z INFO payments-gateway req=r-b91f70c10e merchant=basketry idem_key=ord-7366482 result=approved
+2026-11-20T13:31:00.760Z INFO payments-gateway req=r-70747c5a41 merchant=basketry idem_key=ord-7329132 result=approved
+2026-11-20T13:31:42.982Z INFO payments-gateway req=r-e5aad00ef6 merchant=basketry idem_key=ord-7380175 result=approved
+2026-11-20T13:31:43.197Z INFO payments-gateway req=r-a7dbd3471d merchant=basketry idem_key=ord-7348148 result=approved
+2026-11-20T13:32:10.044Z INFO payments-gateway req=r-4a2ecbba2e merchant=basketry idem_key=ord-7382224 result=approved
+2026-11-20T13:32:19.092Z INFO payments-gateway req=r-7095434c60 merchant=basketry idem_key=ord-7304013 result=approved
+2026-11-20T13:32:22.912Z WARN payments-gateway req=r-0bea629b9f merchant=basketry idem_key=cart-561526 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5526 amount_now=5348
+2026-11-20T13:32:27.606Z INFO payments-gateway req=r-ea4af0501d merchant=basketry idem_key=ord-7318111 result=approved
+2026-11-20T13:32:30.613Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=55
+2026-11-20T13:32:45.913Z WARN payments-gateway req=r-f84c9cbecc merchant=basketry idem_key=cart-577301 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8686 amount_now=8998
+2026-11-20T13:33:10.161Z INFO payments-gateway req=r-2ff78088ff merchant=basketry idem_key=ord-7380235 result=approved
+2026-11-20T13:33:43.454Z INFO payments-gateway req=r-4b9c350091 merchant=basketry idem_key=ord-7321839 result=approved
+2026-11-20T13:33:55.161Z INFO payments-gateway req=r-180bd790ca merchant=basketry idem_key=ord-7306692 result=approved
+2026-11-20T13:34:25.296Z INFO payments-gateway req=r-949171318e merchant=basketry idem_key=ord-7369035 result=approved
+2026-11-20T13:34:30.684Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=38
+2026-11-20T13:34:41.015Z INFO payments-gateway req=r-e350898ab4 merchant=basketry idem_key=ord-7338056 result=approved
+2026-11-20T13:34:54.776Z INFO payments-gateway req=r-83e08073aa merchant=basketry idem_key=ord-7371800 result=approved
+2026-11-20T13:35:03.925Z WARN payments-gateway req=r-9e454d3c0b merchant=basketry idem_key=cart-563114 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6147 amount_now=5039
+2026-11-20T13:35:06.077Z INFO payments-gateway req=r-e7762f4273 merchant=basketry idem_key=ord-7337139 result=approved
+2026-11-20T13:35:12.918Z INFO payments-gateway req=r-c6252dd297 merchant=basketry idem_key=ord-7309815 result=approved
+2026-11-20T13:35:34.409Z INFO payments-gateway req=r-00dc13f9a8 merchant=basketry idem_key=ord-7394039 result=approved
+2026-11-20T13:36:09.932Z WARN payments-gateway req=r-c30998d6bb merchant=basketry idem_key=cart-502475 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9484 amount_now=8744
+2026-11-20T13:36:16.935Z INFO payments-gateway req=r-bbe0d9288d merchant=basketry idem_key=ord-7308180 result=approved
+2026-11-20T13:36:30.193Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=53
+2026-11-20T13:36:40.540Z INFO payments-gateway req=r-8c9b6e0e38 merchant=basketry idem_key=ord-7328179 result=approved
+2026-11-20T13:36:55.562Z INFO payments-gateway req=r-7355562255 merchant=basketry idem_key=ord-7303343 result=approved
+2026-11-20T13:37:32.786Z INFO payments-gateway req=r-de9e33c335 merchant=basketry idem_key=ord-7336723 result=approved
+2026-11-20T13:37:44.003Z INFO payments-gateway req=r-312680eead merchant=basketry idem_key=ord-7330058 result=approved
+2026-11-20T13:37:48.905Z INFO payments-gateway req=r-8a9380d54d merchant=basketry idem_key=ord-7376274 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:37:53.547Z INFO payments-gateway req=r-1f6ab24ad5 merchant=basketry idem_key=ord-7383702 result=approved
+2026-11-20T13:38:00.814Z INFO payments-gateway req=r-b8be69ac38 merchant=basketry idem_key=ord-7363302 result=approved
+2026-11-20T13:38:06.724Z INFO payments-gateway req=r-4f57969149 merchant=basketry idem_key=ord-7326128 result=approved
+2026-11-20T13:38:07.890Z INFO payments-gateway req=r-9c012be8ff merchant=basketry idem_key=ord-7324280 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:38:09.253Z INFO payments-gateway req=r-fafefba827 merchant=basketry idem_key=ord-7363056 result=approved
+2026-11-20T13:38:30.515Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=62
+2026-11-20T13:38:42.908Z WARN payments-gateway req=r-9c5878c6d7 merchant=basketry idem_key=cart-585353 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9493 amount_now=8565
+2026-11-20T13:39:21.907Z INFO payments-gateway req=r-a7038d4b8d merchant=basketry idem_key=ord-7350480 result=approved
+2026-11-20T13:39:23.343Z INFO payments-gateway req=r-dd838a7c23 merchant=basketry idem_key=ord-7375887 result=approved
+2026-11-20T13:39:32.677Z INFO payments-gateway req=r-88ef9722b0 merchant=basketry idem_key=ord-7365117 result=approved
+2026-11-20T13:39:34.944Z INFO payments-gateway req=r-e5899d7fa0 merchant=basketry idem_key=ord-7337184 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:39:48.940Z WARN payments-gateway req=r-7eec741da1 merchant=basketry idem_key=cart-550641 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5511 amount_now=4823
+2026-11-20T13:40:12.184Z INFO payments-gateway req=r-cecf6ef4c4 merchant=basketry idem_key=ord-7310981 result=approved
+2026-11-20T13:40:30.952Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=62
+2026-11-20T13:40:33.045Z INFO payments-gateway req=r-91610b28e2 merchant=basketry idem_key=ord-7341359 result=approved
+2026-11-20T13:40:46.028Z INFO payments-gateway req=r-8f0c2d968c merchant=basketry idem_key=ord-7349125 result=approved
+2026-11-20T13:41:24.376Z INFO payments-gateway req=r-f1f5396934 merchant=basketry idem_key=ord-7354902 result=approved
+2026-11-20T13:41:42.740Z INFO payments-gateway req=r-b9c26319d3 merchant=basketry idem_key=ord-7388997 result=approved
+2026-11-20T13:41:54.149Z INFO payments-gateway req=r-e70f6afba1 merchant=basketry idem_key=ord-7301604 result=approved
+2026-11-20T13:42:04.493Z INFO payments-gateway req=r-c4cacdc683 merchant=basketry idem_key=ord-7393703 result=approved
+2026-11-20T13:42:08.897Z INFO payments-gateway req=r-e2d380201d merchant=basketry idem_key=ord-7310685 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:42:30.133Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=30
+2026-11-20T13:42:35.421Z INFO payments-gateway req=r-e661c7463a merchant=basketry idem_key=ord-7337691 result=approved
+2026-11-20T13:42:36.896Z WARN payments-gateway req=r-b381745b50 merchant=basketry idem_key=cart-549819 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6488 amount_now=7074
+2026-11-20T13:42:56.528Z INFO payments-gateway req=r-5c455849f8 merchant=basketry idem_key=ord-7332831 result=approved
+2026-11-20T13:43:04.969Z INFO payments-gateway req=r-fbf14c7e10 merchant=basketry idem_key=ord-7346927 result=approved
+2026-11-20T13:43:17.619Z INFO payments-gateway req=r-ed14b6e43c merchant=basketry idem_key=ord-7346620 result=approved
+2026-11-20T13:43:34.642Z INFO payments-gateway req=r-7b15f1bef3 merchant=basketry idem_key=ord-7396756 result=approved
+2026-11-20T13:43:47.904Z INFO payments-gateway req=r-9ef161db34 merchant=basketry idem_key=ord-7397167 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:44:01.988Z INFO payments-gateway req=r-0954fcf7ba merchant=basketry idem_key=ord-7310550 result=approved
+2026-11-20T13:44:10.747Z INFO payments-gateway req=r-4471881e28 merchant=basketry idem_key=ord-7360845 result=approved
+2026-11-20T13:44:17.899Z INFO payments-gateway req=r-14bc3b6e3e merchant=basketry idem_key=ord-7305172 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:44:30.397Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=48
+2026-11-20T13:44:34.075Z INFO payments-gateway req=r-6052ac07ee merchant=basketry idem_key=ord-7344320 result=approved
+2026-11-20T13:44:37.933Z WARN payments-gateway req=r-57f61bf5cf merchant=basketry idem_key=cart-594532 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6830 amount_now=6412
+2026-11-20T13:45:34.895Z INFO payments-gateway req=r-b0c80021f1 merchant=basketry idem_key=ord-7361489 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:45:36.979Z INFO payments-gateway req=r-dd102c895d merchant=basketry idem_key=ord-7351649 result=approved
+2026-11-20T13:45:39.922Z WARN payments-gateway req=r-4c05b40f7e merchant=basketry idem_key=cart-501062 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8370 amount_now=9334
+2026-11-20T13:45:44.370Z INFO payments-gateway req=r-9425804a56 merchant=basketry idem_key=ord-7358794 result=approved
+2026-11-20T13:45:58.274Z INFO payments-gateway req=r-0929ba7f4f merchant=basketry idem_key=ord-7368786 result=approved
+2026-11-20T13:46:15.284Z INFO payments-gateway req=r-d607c9d6dc merchant=basketry idem_key=ord-7353751 result=approved
+2026-11-20T13:46:19.891Z WARN payments-gateway req=r-b9a73f33ce merchant=basketry idem_key=cart-536415 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5531 amount_now=5987
+2026-11-20T13:46:26.925Z INFO payments-gateway req=r-7cc39103c2 merchant=basketry idem_key=ord-7309864 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:46:30.679Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=42
+2026-11-20T13:46:38.829Z INFO payments-gateway req=r-0afbfcd14c merchant=basketry idem_key=ord-7313767 result=approved
+2026-11-20T13:46:41.550Z INFO payments-gateway req=r-179010cd84 merchant=basketry idem_key=ord-7375189 result=approved
+2026-11-20T13:46:41.917Z INFO payments-gateway req=r-8d43537be4 merchant=basketry idem_key=ord-7363984 result=soft_decline code=NSF
+2026-11-20T13:46:47.881Z INFO payments-gateway req=r-0f92b7cdef merchant=basketry idem_key=ord-7339972 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:46:50.927Z INFO payments-gateway req=r-6a126750c2 merchant=basketry idem_key=ord-7305921 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:47:01.314Z INFO payments-gateway req=r-4ceec28bbc merchant=basketry idem_key=ord-7341422 result=approved
+2026-11-20T13:47:10.947Z WARN payments-gateway req=r-76dcaa98c2 merchant=basketry idem_key=cart-579706 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3533 amount_now=3968
+2026-11-20T13:47:42.933Z WARN payments-gateway req=r-2731a0f557 merchant=basketry idem_key=cart-598737 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6453 amount_now=5478
+2026-11-20T13:47:44.926Z WARN payments-gateway req=r-84c9a8ce28 merchant=basketry idem_key=cart-576004 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5171 amount_now=5739
+2026-11-20T13:47:48.137Z INFO payments-gateway req=r-270ba013fc merchant=basketry idem_key=ord-7356944 result=approved
+2026-11-20T13:47:53.161Z INFO payments-gateway req=r-1ecb5fcbf8 merchant=basketry idem_key=ord-7354731 result=approved
+2026-11-20T13:48:01.899Z INFO payments-gateway req=r-a2b8ffec92 merchant=basketry idem_key=ord-7395056 result=approved
+2026-11-20T13:48:17.955Z INFO payments-gateway req=r-b696f9bc44 merchant=basketry idem_key=ord-7339724 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:48:18.183Z INFO payments-gateway req=r-35b2b4bec5 merchant=basketry idem_key=ord-7352593 result=approved
+2026-11-20T13:48:30.000Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=45
+2026-11-20T13:48:32.955Z INFO payments-gateway req=r-146fced3f2 merchant=basketry idem_key=ord-7314982 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:48:37.504Z INFO payments-gateway req=r-b323190a17 merchant=basketry idem_key=ord-7315153 result=approved
+2026-11-20T13:48:59.913Z WARN payments-gateway req=r-5d6995a997 merchant=basketry idem_key=cart-597273 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=9755 amount_now=8843
+2026-11-20T13:49:00.250Z INFO payments-gateway req=r-4af6d0c2a6 merchant=basketry idem_key=ord-7375318 result=approved
+2026-11-20T13:49:25.603Z INFO payments-gateway req=r-d698739bf7 merchant=basketry idem_key=ord-7340830 result=approved
+2026-11-20T13:49:28.912Z INFO payments-gateway req=r-6deaa80d8e merchant=basketry idem_key=ord-7388717 result=soft_decline code=NSF
+2026-11-20T13:49:30.889Z WARN payments-gateway req=r-1507c14be0 merchant=basketry idem_key=cart-577608 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3066 amount_now=3996
+2026-11-20T13:49:36.686Z INFO payments-gateway req=r-3e7dcf45f1 merchant=basketry idem_key=ord-7360264 result=approved
+2026-11-20T13:49:36.932Z WARN payments-gateway req=r-9f13380710 merchant=basketry idem_key=cart-552418 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6402 amount_now=5439
+2026-11-20T13:49:55.926Z WARN payments-gateway req=r-928b6b71e4 merchant=basketry idem_key=cart-573378 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3327 amount_now=2501
+2026-11-20T13:50:08.066Z INFO payments-gateway req=r-82e67e652f merchant=basketry idem_key=ord-7352318 result=approved
+2026-11-20T13:50:26.893Z WARN payments-gateway req=r-42a17ada40 merchant=basketry idem_key=cart-524947 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6400 amount_now=6569
+2026-11-20T13:50:30.715Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=49
+2026-11-20T13:50:31.479Z INFO payments-gateway req=r-f8c432c49a merchant=basketry idem_key=ord-7345962 result=approved
+2026-11-20T13:50:58.791Z INFO payments-gateway req=r-843a9fccdc merchant=basketry idem_key=ord-7381384 result=approved
+2026-11-20T13:51:18.268Z INFO payments-gateway req=r-0b2578dc75 merchant=basketry idem_key=ord-7305563 result=approved
+2026-11-20T13:51:21.823Z INFO payments-gateway req=r-38d3578b29 merchant=basketry idem_key=ord-7318192 result=approved
+2026-11-20T13:51:21.929Z WARN payments-gateway req=r-a312d89059 merchant=basketry idem_key=cart-554813 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5701 amount_now=5430
+2026-11-20T13:51:25.434Z INFO payments-gateway req=r-045b729f19 merchant=basketry idem_key=ord-7358720 result=approved
+2026-11-20T13:51:31.933Z WARN payments-gateway req=r-35583b0bf2 merchant=basketry idem_key=cart-510173 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4875 amount_now=4464
+2026-11-20T13:51:53.942Z WARN payments-gateway req=r-ebf0552cd1 merchant=basketry idem_key=cart-510038 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6046 amount_now=6761
+2026-11-20T13:52:24.852Z INFO payments-gateway req=r-53a50e4e62 merchant=basketry idem_key=ord-7397696 result=approved
+2026-11-20T13:52:27.807Z INFO payments-gateway req=r-827e60189d merchant=basketry idem_key=ord-7334352 result=approved
+2026-11-20T13:52:30.561Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=49
+2026-11-20T13:52:31.990Z INFO payments-gateway req=r-0fd193c520 merchant=basketry idem_key=ord-7334919 result=approved
+2026-11-20T13:53:00.951Z INFO payments-gateway req=r-689b8f1f20 merchant=basketry idem_key=ord-7372869 result=soft_decline code=EXPIRED_CARD
+2026-11-20T13:53:04.558Z INFO payments-gateway req=r-65b9a3ecc7 merchant=basketry idem_key=ord-7390493 result=approved
+2026-11-20T13:53:07.630Z INFO payments-gateway req=r-d023a795fb merchant=basketry idem_key=ord-7371417 result=approved
+2026-11-20T13:53:26.884Z WARN payments-gateway req=r-85fb6f3b81 merchant=basketry idem_key=cart-571597 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7395 amount_now=8505
+2026-11-20T13:53:33.651Z INFO payments-gateway req=r-68c46abf8a merchant=basketry idem_key=ord-7363133 result=approved
+2026-11-20T13:53:37.923Z INFO payments-gateway req=r-8dea0ce270 merchant=basketry idem_key=ord-7329809 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:53:51.934Z WARN payments-gateway req=r-c8cdf43e71 merchant=basketry idem_key=cart-534968 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5852 amount_now=4922
+2026-11-20T13:53:56.899Z INFO payments-gateway req=r-e769111ab7 merchant=basketry idem_key=ord-7349783 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:54:05.888Z INFO payments-gateway req=r-d02cec6b52 merchant=basketry idem_key=ord-7336242 result=soft_decline code=NSF
+2026-11-20T13:54:30.942Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=61
+2026-11-20T13:54:37.979Z INFO payments-gateway req=r-118eb0817a merchant=basketry idem_key=ord-7360018 result=approved
+2026-11-20T13:54:41.105Z INFO payments-gateway req=r-739ce601e4 merchant=basketry idem_key=ord-7351796 result=approved
+2026-11-20T13:54:49.573Z INFO payments-gateway req=r-65836b3002 merchant=basketry idem_key=ord-7331495 result=approved
+2026-11-20T13:55:04.905Z WARN payments-gateway req=r-a3f514d8e3 merchant=basketry idem_key=cart-564989 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7718 amount_now=6776
+2026-11-20T13:55:21.944Z INFO payments-gateway req=r-b6171415de merchant=basketry idem_key=ord-7376393 result=soft_decline code=ISSUER_SOFT
+2026-11-20T13:55:23.475Z INFO payments-gateway req=r-4fa5d1468a merchant=basketry idem_key=ord-7362314 result=approved
+2026-11-20T13:55:24.935Z WARN payments-gateway req=r-463429161e merchant=basketry idem_key=cart-586697 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6506 amount_now=7561
+2026-11-20T13:55:27.556Z INFO payments-gateway req=r-55782aca97 merchant=basketry idem_key=ord-7390963 result=approved
+2026-11-20T13:55:28.011Z INFO payments-gateway req=r-5d25463796 merchant=basketry idem_key=ord-7376363 result=approved
+2026-11-20T13:56:30.622Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=40
+2026-11-20T13:56:30.687Z INFO payments-gateway req=r-a77be5d554 merchant=basketry idem_key=ord-7334320 result=approved
+2026-11-20T13:56:37.400Z INFO payments-gateway req=r-be4538323d merchant=basketry idem_key=ord-7361935 result=approved
+2026-11-20T13:56:41.903Z WARN payments-gateway req=r-2f703a7c0f merchant=basketry idem_key=cart-549464 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5662 amount_now=6416
+2026-11-20T13:56:51.252Z INFO payments-gateway req=r-03aee54913 merchant=basketry idem_key=ord-7393572 result=approved
+2026-11-20T13:57:03.631Z INFO payments-gateway req=r-649163a596 merchant=basketry idem_key=ord-7309613 result=approved
+2026-11-20T13:57:26.906Z WARN payments-gateway req=r-54819344c1 merchant=basketry idem_key=cart-537662 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5397 amount_now=6076
+2026-11-20T13:57:30.762Z INFO payments-gateway req=r-aea46ba56c merchant=basketry idem_key=ord-7355097 result=approved
+2026-11-20T13:57:50.955Z WARN payments-gateway req=r-72decd8971 merchant=basketry idem_key=cart-550904 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5849 amount_now=6772
+2026-11-20T13:57:59.490Z INFO payments-gateway req=r-1a6127e269 merchant=basketry idem_key=ord-7329653 result=approved
+2026-11-20T13:58:30.239Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=53
+2026-11-20T13:58:40.947Z WARN payments-gateway req=r-ab4853a3cd merchant=basketry idem_key=cart-573608 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=2916 amount_now=2158
+2026-11-20T13:58:51.340Z INFO payments-gateway req=r-c1fa753fde merchant=basketry idem_key=ord-7327826 result=approved
+2026-11-20T13:58:53.707Z INFO payments-gateway req=r-e24ad87923 merchant=basketry idem_key=ord-7315853 result=approved
+2026-11-20T13:58:57.721Z INFO payments-gateway req=r-e2f2963ced merchant=basketry idem_key=ord-7395059 result=approved
+2026-11-20T13:59:10.700Z INFO payments-gateway req=r-0d783aebea merchant=basketry idem_key=ord-7385336 result=approved
+2026-11-20T13:59:12.912Z WARN payments-gateway req=r-e3cccd8a05 merchant=basketry idem_key=cart-516683 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4685 amount_now=5536
+2026-11-20T13:59:25.949Z WARN payments-gateway req=r-842b9dac00 merchant=basketry idem_key=cart-538783 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7947 amount_now=7258
+2026-11-20T13:59:32.733Z INFO payments-gateway req=r-1fe73acbe3 merchant=basketry idem_key=ord-7349124 result=approved
+2026-11-20T13:59:58.402Z INFO payments-gateway req=r-fa6c180926 merchant=basketry idem_key=ord-7357429 result=approved
+2026-11-20T14:00:19.579Z INFO payments-gateway req=r-a6f319fcfe merchant=basketry idem_key=ord-7321530 result=approved
+2026-11-20T14:00:29.171Z INFO payments-gateway req=r-2981b8347f merchant=basketry idem_key=ord-7395285 result=approved
+2026-11-20T14:00:30.395Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=42
+2026-11-20T14:00:56.413Z INFO payments-gateway req=r-6e06c1e899 merchant=basketry idem_key=ord-7343563 result=approved
+2026-11-20T14:00:58.910Z WARN payments-gateway req=r-2f44f36cf2 merchant=basketry idem_key=cart-550527 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3376 amount_now=2511
+2026-11-20T14:01:05.066Z INFO payments-gateway req=r-7ee90cd75e merchant=basketry idem_key=ord-7325285 result=approved
+2026-11-20T14:01:30.924Z WARN payments-gateway req=r-3955b8c354 merchant=basketry idem_key=cart-525929 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5910 amount_now=6112
+2026-11-20T14:01:33.326Z INFO payments-gateway req=r-62777fbd46 merchant=basketry idem_key=ord-7306551 result=approved
+2026-11-20T14:01:43.939Z WARN payments-gateway req=r-1881008abc merchant=basketry idem_key=cart-572335 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8487 amount_now=8665
+2026-11-20T14:01:54.453Z INFO payments-gateway req=r-429b5ac340 merchant=basketry idem_key=ord-7349382 result=approved
+2026-11-20T14:02:08.410Z INFO payments-gateway req=r-f0eb5d8551 merchant=basketry idem_key=ord-7329779 result=approved
+2026-11-20T14:02:13.807Z INFO payments-gateway req=r-fbadbe75e2 merchant=basketry idem_key=ord-7375466 result=approved
+2026-11-20T14:02:13.938Z WARN payments-gateway req=r-72a2f42bac merchant=basketry idem_key=cart-568487 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7781 amount_now=7133
+2026-11-20T14:02:30.265Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=55
+2026-11-20T14:02:50.582Z INFO payments-gateway req=r-4249e03b00 merchant=basketry idem_key=ord-7376211 result=approved
+2026-11-20T14:02:59.902Z WARN payments-gateway req=r-0472067802 merchant=basketry idem_key=cart-549826 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7956 amount_now=7490
+2026-11-20T14:03:04.899Z WARN payments-gateway req=r-d7ef2a9463 merchant=basketry idem_key=cart-561970 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5879 amount_now=6310
+2026-11-20T14:03:14.322Z INFO payments-gateway req=r-54cb777ece merchant=basketry idem_key=ord-7397656 result=approved
+2026-11-20T14:03:25.946Z WARN payments-gateway req=r-a7a512ce8b merchant=basketry idem_key=cart-579909 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4465 amount_now=5412
+2026-11-20T14:03:41.825Z INFO payments-gateway req=r-b636da8df1 merchant=basketry idem_key=ord-7392732 result=approved
+2026-11-20T14:03:47.936Z WARN payments-gateway req=r-20a5201746 merchant=basketry idem_key=cart-535010 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=8957 amount_now=9338
+2026-11-20T14:03:57.070Z INFO payments-gateway req=r-2124293b8b merchant=basketry idem_key=ord-7373650 result=approved
+2026-11-20T14:04:03.081Z INFO payments-gateway req=r-4c2c7c86f1 merchant=basketry idem_key=ord-7316817 result=approved
+2026-11-20T14:04:22.928Z WARN payments-gateway req=r-067bf294f5 merchant=basketry idem_key=cart-597061 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6761 amount_now=7219
+2026-11-20T14:04:28.305Z INFO payments-gateway req=r-4f01a2684d merchant=basketry idem_key=ord-7305089 result=approved
+2026-11-20T14:04:30.585Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=60
+2026-11-20T14:04:41.077Z INFO payments-gateway req=r-dde1f42c92 merchant=basketry idem_key=ord-7343878 result=approved
+2026-11-20T14:04:45.890Z WARN payments-gateway req=r-c9dcb2cfb0 merchant=basketry idem_key=cart-596673 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3540 amount_now=4245
+2026-11-20T14:04:53.896Z INFO payments-gateway req=r-1410d7aec0 merchant=basketry idem_key=ord-7318004 result=soft_decline code=EXPIRED_CARD
+2026-11-20T14:05:16.899Z WARN payments-gateway req=r-7fe73ee2b6 merchant=basketry idem_key=cart-515536 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7361 amount_now=8436
+2026-11-20T14:05:29.397Z INFO payments-gateway req=r-7c0d1d1e84 merchant=basketry idem_key=ord-7305087 result=approved
+2026-11-20T14:05:31.541Z INFO payments-gateway req=r-5eac2c4f7b merchant=basketry idem_key=ord-7393739 result=approved
+2026-11-20T14:05:35.406Z INFO payments-gateway req=r-6385867fd9 merchant=basketry idem_key=ord-7304674 result=approved
+2026-11-20T14:06:00.043Z INFO payments-gateway req=r-ec1ad3248b merchant=basketry idem_key=ord-7322237 result=approved
+2026-11-20T14:06:30.115Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=44
+2026-11-20T14:06:38.295Z INFO payments-gateway req=r-21cbdf5967 merchant=basketry idem_key=ord-7359872 result=approved
+2026-11-20T14:06:49.045Z INFO payments-gateway req=r-16d250ae79 merchant=basketry idem_key=ord-7389425 result=approved
+2026-11-20T14:07:05.221Z INFO payments-gateway req=r-3c78f4e063 merchant=basketry idem_key=ord-7395436 result=approved
+2026-11-20T14:07:18.351Z INFO payments-gateway req=r-dff51f161d merchant=basketry idem_key=ord-7393103 result=approved
+2026-11-20T14:07:31.891Z INFO payments-gateway req=r-f81eac7deb merchant=basketry idem_key=ord-7385247 result=soft_decline code=ISSUER_SOFT
+2026-11-20T14:07:58.443Z INFO payments-gateway req=r-4a3d02548c merchant=basketry idem_key=ord-7366244 result=approved
+2026-11-20T14:08:20.887Z WARN payments-gateway req=r-d9176253d4 merchant=basketry idem_key=cart-567224 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3889 amount_now=3518
+2026-11-20T14:08:22.518Z INFO payments-gateway req=r-e2f1809ffb merchant=basketry idem_key=ord-7376023 result=approved
+2026-11-20T14:08:30.993Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=56
+2026-11-20T14:08:31.462Z INFO payments-gateway req=r-739a11f11e merchant=basketry idem_key=ord-7337276 result=approved
+2026-11-20T14:08:44.584Z INFO payments-gateway req=r-2072eb1949 merchant=basketry idem_key=ord-7354073 result=approved
+2026-11-20T14:08:57.916Z WARN payments-gateway req=r-6f07b63ea6 merchant=basketry idem_key=cart-535432 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=2883 amount_now=3823
+2026-11-20T14:09:05.376Z INFO payments-gateway req=r-b0fa1b7c51 merchant=basketry idem_key=ord-7365951 result=approved
+2026-11-20T14:09:10.929Z WARN payments-gateway req=r-a8c13edf01 merchant=basketry idem_key=cart-517371 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6229 amount_now=5405
+2026-11-20T14:09:31.512Z INFO payments-gateway req=r-3302d64140 merchant=basketry idem_key=ord-7330989 result=approved
+2026-11-20T14:09:38.566Z INFO payments-gateway req=r-237c044ab3 merchant=basketry idem_key=ord-7375500 result=approved
+2026-11-20T14:10:01.190Z INFO payments-gateway req=r-1db682072c merchant=basketry idem_key=ord-7322396 result=approved
+2026-11-20T14:10:22.394Z INFO payments-gateway req=r-82b0cd8fb6 merchant=basketry idem_key=ord-7395336 result=approved
+2026-11-20T14:10:30.266Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=38
+2026-11-20T14:10:57.269Z INFO payments-gateway req=r-42c07fb8e3 merchant=basketry idem_key=ord-7312756 result=approved
+2026-11-20T14:11:06.228Z INFO payments-gateway req=r-31cc29a74f merchant=basketry idem_key=ord-7388177 result=approved
+2026-11-20T14:11:37.442Z INFO payments-gateway req=r-7c19f0d405 merchant=basketry idem_key=ord-7366097 result=approved
+2026-11-20T14:11:49.421Z INFO payments-gateway req=r-0ce3d551d1 merchant=basketry idem_key=ord-7346975 result=approved
+2026-11-20T14:12:05.913Z WARN payments-gateway req=r-a428e8d395 merchant=basketry idem_key=cart-515875 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5620 amount_now=4773
+2026-11-20T14:12:29.555Z INFO payments-gateway req=r-8f01fd2997 merchant=basketry idem_key=ord-7354226 result=approved
+2026-11-20T14:12:30.827Z INFO payments-gateway req=r-c08de61a3f merchant=basketry idem_key=ord-7314552 result=approved
+2026-11-20T14:12:30.922Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=64
+2026-11-20T14:12:53.383Z INFO payments-gateway req=r-2097087561 merchant=basketry idem_key=ord-7309447 result=approved
+2026-11-20T14:13:05.334Z INFO payments-gateway req=r-b62ec70a69 merchant=basketry idem_key=ord-7392098 result=approved
+2026-11-20T14:13:21.299Z INFO payments-gateway req=r-077ea0ba5e merchant=basketry idem_key=ord-7379145 result=approved
+2026-11-20T14:13:21.746Z INFO payments-gateway req=r-29dde1c0af merchant=basketry idem_key=ord-7392639 result=approved
+2026-11-20T14:14:22.018Z INFO payments-gateway req=r-f967571ccf merchant=basketry idem_key=ord-7369420 result=approved
+2026-11-20T14:14:30.092Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=32
+2026-11-20T14:14:34.635Z INFO payments-gateway req=r-276157a645 merchant=basketry idem_key=ord-7303713 result=approved
+2026-11-20T14:14:46.548Z INFO payments-gateway req=r-f44217eed9 merchant=basketry idem_key=ord-7348922 result=approved
+2026-11-20T14:15:04.930Z INFO payments-gateway req=r-cd6329f88a merchant=basketry idem_key=ord-7357593 result=approved
+2026-11-20T14:15:05.926Z WARN payments-gateway req=r-548e8acdfd merchant=basketry idem_key=cart-554573 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7272 amount_now=7648
+2026-11-20T14:15:12.678Z INFO payments-gateway req=r-9c5deff824 merchant=basketry idem_key=ord-7309935 result=approved
+2026-11-20T14:15:14.603Z INFO payments-gateway req=r-161902d3f0 merchant=basketry idem_key=ord-7330658 result=approved
+2026-11-20T14:16:05.130Z INFO payments-gateway req=r-89b720b9c8 merchant=basketry idem_key=ord-7309092 result=approved
+2026-11-20T14:16:28.228Z INFO payments-gateway req=r-8caff326fb merchant=basketry idem_key=ord-7332379 result=approved
+2026-11-20T14:16:30.412Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=52
+2026-11-20T14:16:47.868Z INFO payments-gateway req=r-bc0bae98b4 merchant=basketry idem_key=ord-7326332 result=approved
+2026-11-20T14:17:09.653Z INFO payments-gateway req=r-c8a0b8e40b merchant=basketry idem_key=ord-7395831 result=approved
+2026-11-20T14:17:15.928Z WARN payments-gateway req=r-eb042fcaca merchant=basketry idem_key=cart-551780 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3668 amount_now=3960
+2026-11-20T14:17:23.930Z WARN payments-gateway req=r-a7317f4b1b merchant=basketry idem_key=cart-544803 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=6588 amount_now=7444
+2026-11-20T14:17:36.096Z INFO payments-gateway req=r-aebfad01d9 merchant=basketry idem_key=ord-7376576 result=approved
+2026-11-20T14:17:48.840Z INFO payments-gateway req=r-7205c511ae merchant=basketry idem_key=ord-7373102 result=approved
+2026-11-20T14:18:06.872Z INFO payments-gateway req=r-215bdcebe9 merchant=basketry idem_key=ord-7380301 result=approved
+2026-11-20T14:18:14.316Z INFO payments-gateway req=r-b396c8a6cf merchant=basketry idem_key=ord-7346430 result=approved
+2026-11-20T14:18:30.293Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=62
+2026-11-20T14:18:43.657Z INFO payments-gateway req=r-abe12359b1 merchant=basketry idem_key=ord-7329974 result=approved
+2026-11-20T14:19:01.499Z INFO payments-gateway req=r-93f6d7888e merchant=basketry idem_key=ord-7315714 result=approved
+2026-11-20T14:19:15.148Z INFO payments-gateway req=r-3d6e8b72ef merchant=basketry idem_key=ord-7372701 result=approved
+2026-11-20T14:19:43.884Z WARN payments-gateway req=r-88101dc3d8 merchant=basketry idem_key=cart-512664 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3404 amount_now=3898
+2026-11-20T14:19:54.643Z INFO payments-gateway req=r-110e0a02e1 merchant=basketry idem_key=ord-7345202 result=approved
+2026-11-20T14:20:01.079Z INFO payments-gateway req=r-43433079b6 merchant=basketry idem_key=ord-7371465 result=approved
+2026-11-20T14:20:19.938Z INFO payments-gateway req=r-4fde11776a merchant=basketry idem_key=ord-7359532 result=soft_decline code=ISSUER_SOFT
+2026-11-20T14:20:23.656Z INFO payments-gateway req=r-987189b8c1 merchant=basketry idem_key=ord-7351885 result=approved
+2026-11-20T14:20:24.931Z WARN payments-gateway req=r-dec0b2d762 merchant=basketry idem_key=cart-502700 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3625 amount_now=3893
+2026-11-20T14:20:28.942Z WARN payments-gateway req=r-83f2baeb4d merchant=basketry idem_key=cart-553289 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4347 amount_now=3890
+2026-11-20T14:20:30.102Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=57
+2026-11-20T14:20:37.926Z WARN payments-gateway req=r-24ca927f09 merchant=basketry idem_key=cart-570769 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=2838 amount_now=3341
+2026-11-20T14:20:45.897Z WARN payments-gateway req=r-70343301a2 merchant=basketry idem_key=cart-580609 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4913 amount_now=5805
+2026-11-20T14:20:45.908Z WARN payments-gateway req=r-17ad202266 merchant=basketry idem_key=cart-514557 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=4392 amount_now=5002
+2026-11-20T14:20:46.665Z INFO payments-gateway req=r-7e5ea54402 merchant=basketry idem_key=ord-7312094 result=approved
+2026-11-20T14:21:22.310Z INFO payments-gateway req=r-8b85566075 merchant=basketry idem_key=ord-7387076 result=approved
+2026-11-20T14:21:24.100Z INFO payments-gateway req=r-25b46653d6 merchant=basketry idem_key=ord-7388611 result=approved
+2026-11-20T14:21:25.605Z INFO payments-gateway req=r-3cd202238a merchant=basketry idem_key=ord-7331611 result=approved
+2026-11-20T14:21:35.922Z WARN payments-gateway req=r-024c2f7ada merchant=basketry idem_key=cart-507398 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5248 amount_now=4563
+2026-11-20T14:21:50.948Z INFO payments-gateway req=r-44e08e18b0 merchant=basketry idem_key=ord-7320206 result=soft_decline code=NSF
+2026-11-20T14:22:22.907Z INFO payments-gateway req=r-75087b9a5e merchant=basketry idem_key=ord-7335203 result=approved
+2026-11-20T14:22:30.313Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=31
+2026-11-20T14:22:44.679Z INFO payments-gateway req=r-80dce578d0 merchant=basketry idem_key=ord-7372197 result=approved
+2026-11-20T14:22:51.992Z INFO payments-gateway req=r-b17ac4d40e merchant=basketry idem_key=ord-7372537 result=approved
+2026-11-20T14:23:00.931Z INFO payments-gateway req=r-11ae7209d8 merchant=basketry idem_key=ord-7309998 result=approved
+2026-11-20T14:23:04.949Z WARN payments-gateway req=r-8a01610193 merchant=basketry idem_key=cart-531650 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5806 amount_now=6812
+2026-11-20T14:23:31.035Z INFO payments-gateway req=r-d873acb0af merchant=basketry idem_key=ord-7319009 result=approved
+2026-11-20T14:23:32.284Z INFO payments-gateway req=r-fde773088f merchant=basketry idem_key=ord-7358657 result=approved
+2026-11-20T14:24:12.601Z INFO payments-gateway req=r-3a05852aa8 merchant=basketry idem_key=ord-7333301 result=approved
+2026-11-20T14:24:15.893Z INFO payments-gateway req=r-e8851996fb merchant=basketry idem_key=ord-7376675 result=soft_decline code=ISSUER_SOFT
+2026-11-20T14:24:18.224Z INFO payments-gateway req=r-a9b1fcc4f1 merchant=basketry idem_key=ord-7312249 result=approved
+2026-11-20T14:24:30.026Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=60
+2026-11-20T14:24:34.938Z WARN payments-gateway req=r-9d7d3c424c merchant=basketry idem_key=cart-516911 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3125 amount_now=2731
+2026-11-20T14:24:57.398Z INFO payments-gateway req=r-c2d800efcc merchant=basketry idem_key=ord-7356085 result=approved
+2026-11-20T14:25:13.192Z INFO payments-gateway req=r-a35f52831f merchant=basketry idem_key=ord-7371396 result=approved
+2026-11-20T14:25:25.658Z INFO payments-gateway req=r-7855e49905 merchant=basketry idem_key=ord-7347143 result=approved
+2026-11-20T14:25:58.087Z INFO payments-gateway req=r-7b499535df merchant=basketry idem_key=ord-7305909 result=approved
+2026-11-20T14:26:28.000Z INFO payments-gateway req=r-8b4de0973f merchant=basketry idem_key=ord-7368594 result=approved
+2026-11-20T14:26:30.336Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=31
+2026-11-20T14:26:40.942Z WARN payments-gateway req=r-7081461d61 merchant=basketry idem_key=cart-538860 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7510 amount_now=8666
+2026-11-20T14:26:43.856Z INFO payments-gateway req=r-c05c8eb9a2 merchant=basketry idem_key=ord-7363207 result=approved
+2026-11-20T14:26:53.580Z INFO payments-gateway req=r-b4d9dee730 merchant=basketry idem_key=ord-7379890 result=approved
+2026-11-20T14:27:25.705Z INFO payments-gateway req=r-ccac15232b merchant=basketry idem_key=ord-7311254 result=approved
+2026-11-20T14:27:42.053Z INFO payments-gateway req=r-ee087cfbf2 merchant=basketry idem_key=ord-7334025 result=approved
+2026-11-20T14:27:43.520Z INFO payments-gateway req=r-354ebb88dc merchant=basketry idem_key=ord-7329641 result=approved
+2026-11-20T14:28:11.928Z INFO payments-gateway req=r-ef38604287 merchant=basketry idem_key=ord-7302786 result=soft_decline code=NSF
+2026-11-20T14:28:14.937Z INFO payments-gateway req=r-c2c4df8611 merchant=basketry idem_key=ord-7379361 result=approved
+2026-11-20T14:28:22.890Z WARN payments-gateway req=r-8f519e21f7 merchant=basketry idem_key=cart-524157 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=7256 amount_now=8186
+2026-11-20T14:28:30.764Z INFO payments-gateway heartbeat acquirer=northbank latency_ms=69
+2026-11-20T14:28:32.119Z INFO payments-gateway req=r-bef1e39a8a merchant=basketry idem_key=ord-7365817 result=approved
+2026-11-20T14:28:44.307Z INFO payments-gateway req=r-95f524859f merchant=basketry idem_key=ord-7307039 result=approved
+2026-11-20T14:29:07.914Z INFO payments-gateway req=r-9389bea0fd merchant=basketry idem_key=ord-7369213 result=soft_decline code=ISSUER_SOFT
+2026-11-20T14:29:07.935Z WARN payments-gateway req=r-7b99c42641 merchant=basketry idem_key=cart-555560 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=3447 amount_now=3837
+2026-11-20T14:29:08.729Z INFO payments-gateway req=r-2ce6e0b35c merchant=basketry idem_key=ord-7397567 result=approved
+2026-11-20T14:29:18.965Z INFO payments-gateway req=r-f8b262cefc merchant=basketry idem_key=ord-7393319 result=approved
+2026-11-20T14:29:29.895Z WARN payments-gateway req=r-68abc706bd merchant=basketry idem_key=cart-540746 result=soft_decline code=IDEMPOTENCY_KEY_REUSED amount_prev=5353 amount_now=4842
+2026-11-20T14:29:53.552Z INFO payments-gateway req=r-a6608cdbe7 merchant=basketry idem_key=ord-7332082 result=approved

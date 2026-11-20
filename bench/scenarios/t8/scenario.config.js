@@ -20,10 +20,13 @@ const STACKS = {
   node: 'Node.js 24, CommonJS, no dependencies and no install step. Tests use node:test and node:assert, live in `test/`, run with `node --test test/`, all pass today and finish in under 3 seconds. Include a CI config (`.github/workflows/ci.yml`), a changelog and a package.json.',
 };
 
-function render(id, lib) {
+// `twoStep: true` (a second author family): step `a` writes the generator, the fixture and the request
+// (prompts/step-a.md), step `b`, a separate call, the key and the reference (prompts/step-b.md).
+function render(id, lib, step = null) {
   const b = lib.brief(id);
   const brief = `${b.brief}\n\n${lib.sourceLine(b.source, 'Use the idea only; write every word and number fresh.')}`;
   if (b.kind === 'twin') return lib.fill(lib.read('prompts/author-twin.md'), { BRIEF: brief, ID: id });
+  if (b.twoStep && step !== 'a' && step !== 'b') throw new Error(`${id} is written in two steps: give step a or b`);
   const kindFile = { doc: 'kind-doc.md', bugfix: 'kind-bugfix.md', small: 'kind-small.md' }[b.kind];
   const vars = {
     BRIEF: brief, ID: id, SIZE: b.size, STACK: STACKS[b.stack], LOGLINES: String(b.loglines || 3000),
@@ -33,7 +36,12 @@ function render(id, lib) {
     EXTRAKEYS: b.kind === 'doc' ? '- `blockKey`: the key, as the kind section describes.' : '',
   };
   vars.KIND = lib.fill(lib.read(`prompts/${kindFile}`), vars);
-  return lib.fill(lib.read('prompts/author-common.md'), vars);
+  const common = lib.fill(lib.read('prompts/author-common.md'), vars);
+  if (!b.twoStep) return common;
+  // The common prompt's head (intro, brief, fixture rules) opens step a; its tail (task file keys, finish) closes step b.
+  const [head, tail] = common.split(vars.KIND);
+  if (step === 'a') return `${head}${lib.fill(lib.read('prompts/step-a.md'), { ...vars, SEEDEXTRA: b.seedExtra || '' })}`;
+  return lib.fill(lib.read('prompts/step-b.md'), { ...vars, BRIEFLINE: b.briefLine, KINDEXTRA: b.kindExtra || '', TAIL: tail });
 }
 
 const AUTHOR_FILES = new Set(['hidden', 'solution', 'kit', 'gen', 'task-draft.json', 'review.json', 'fixture']);

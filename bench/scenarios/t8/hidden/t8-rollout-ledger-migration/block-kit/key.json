@@ -10,9 +10,6 @@
         "null",
         "(?:v2|2\\.x|old|legacy)"
       ],
-      "none": [
-        "(caused by|due to|because of|result of) (the )?(db |database )?(pool|connection|replica.?lag|authori[sz]er)"
-      ],
       "weight": 2
     },
     {

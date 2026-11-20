@@ -30,7 +30,7 @@ The platform team is evaluating disaster recovery options to meet tightened RTO 
 
 1. **Nightly Backup Copy** - Cost-effective but with higher RPO/RTO
 2. **Pilot Light with Continuous Replication** - Current implementation, meets RPO but exceeds RTO
-3. **Warm Standby** - Meets all requirements but higher cost
+3. **Warm Standby** - Higher cost option with better recovery characteristics
 
 ## How to Use This Documentation
 

@@ -1,0 +1,9 @@
+{
+  "name": "relay-hook-worker",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Small webhook delivery worker",
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "health": "node scripts/healthcheck.js" }
+}

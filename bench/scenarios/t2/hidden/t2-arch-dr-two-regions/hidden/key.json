@@ -3,7 +3,10 @@
   "items": [
     {
       "id": "k1",
-      "section": "3.2",
+      "section": [
+        "3.2",
+        "3.3"
+      ],
       "severity": "critical",
       "fix": [
         "conflict",
@@ -12,25 +15,34 @@
         "double",
         "booking"
       ],
-      "finding": "Last-write-wins conflict resolution allows the same seat to be sold in both regions, violating the core business rule against double booking."
+      "finding": "Last-write-wins conflict resolution lets both regions sell the same seat; Scenario 1 in 3.3 ends with two buyers for seat A-12 while the counter reads 0, which breaks the zero-tolerance double-booking rule."
     },
     {
       "id": "k2",
-      "section": "6.3",
+      "section": [
+        "6.3",
+        "3.2"
+      ],
       "severity": "high",
       "fix": [
-        "recovery",
-        "point",
-        "objective",
+        "recovery point",
         "rpo",
+        "30 second",
+        "30s",
         "lag",
-        "measurements"
+        "measure",
+        "p99"
       ],
-      "finding": "The claimed RPO of 60 seconds in section 6.3 is smaller than the measured replication lag which exceeds 60 seconds at P99, meaning data loss could exceed the recovery target."
+      "finding": "The recovery targets do not match the service targets or the data: the design's RPO of 60 seconds (3.2, 6.3) is twice the 30-second RPO service-targets.md sets for transactional data, and the measured P99 replication lag (420-720 ms, max 2.2 s) is 4-7 times the design's own < 100 ms P99 lag target and success criterion 4."
     },
     {
       "id": "k3",
-      "section": "6.2",
+      "section": [
+        "6.2",
+        "3.5",
+        "3.6",
+        "6.1"
+      ],
       "severity": "high",
       "fix": [
         "dns",
@@ -40,33 +52,41 @@
         "recovery",
         "time"
       ],
-      "finding": "DNS TTL of 300 seconds plus health check timing of 60 seconds exceeds the 60-second RTO stated in section 6.2, meaning failover will take longer than the recovery target."
+      "finding": "A DNS TTL of 300 seconds (3.5, dns-config.json) means clients keep resolving the failed region for up to 5 minutes after Route 53 changes, so failover cannot meet the 60-second RTO; the 6.2 breakdown counts only 20 seconds for DNS propagation."
     },
     {
       "id": "k4",
-      "section": "8.1",
+      "section": [
+        "3.9",
+        "8.1"
+      ],
       "severity": "medium",
       "fix": [
         "budget",
-        "database",
-        "cost",
-        "cross-region",
-        "transfer"
+        "storage",
+        "multi-az",
+        "standby",
+        "over",
+        "cost"
       ],
-      "finding": "The budget allocation in section 8.1 omits the doubled database cost for the second region and underestimates cross-region data transfer costs."
+      "finding": "The cost analysis (3.9, with no figures in 8.1) prices 1 TB of database storage once although each of the two RDS instances needs it, leaves out the Multi-AZ standbys, and its one-time total ($48,000; $47,400 in budget-breakdown.yaml) already exceeds the $45,000 approved budget."
     },
     {
       "id": "k5",
-      "section": "7.1",
+      "section": [
+        "3.7",
+        "7.1"
+      ],
       "severity": "medium",
       "fix": [
         "failback",
-        "procedure",
-        "missing",
-        "detailed",
+        "reconcil",
+        "conflict",
+        "writes",
+        "criteria",
         "steps"
       ],
-      "finding": "The failback procedure in section 7.1 is vague and missing detailed steps for verifying data consistency before returning traffic to the restored region."
+      "finding": "The failback steps (3.7, 7.1) say only 'verify replication has caught up'; they give no check or pass criterion and no step to reconcile writes the surviving region accepted while the other was down, so returning traffic can reintroduce conflicting seat and payment rows."
     },
     {
       "id": "k6",
@@ -84,21 +104,29 @@
     },
     {
       "id": "k7",
-      "section": "6.1",
+      "section": [
+        "3.2",
+        "3.6",
+        "6.2"
+      ],
       "severity": "medium",
       "fix": [
-        "recovery",
-        "time",
-        "estimate",
-        "dns",
-        "propagation"
+        "rto",
+        "120",
+        "90",
+        "single",
+        "one target",
+        "reconcile the"
       ],
-      "finding": "The estimated recovery time in section 6.1 doesn't account for DNS propagation delay beyond TTL, which could extend the actual outage duration."
+      "finding": "The design states three different recovery times: RTO 120 seconds in 3.2, an estimated 90 seconds in 3.6 and a 60-second RTO in 6.2, so there is no single target to build or test against; only 60 seconds matches service-targets.md."
     },
     {
       "id": "k8",
-      "section": "2.2",
-      "severity": "low",
+      "section": [
+        "3.2",
+        "3.3"
+      ],
+      "severity": "high",
       "fix": [
         "asynchronous",
         "replication",
@@ -106,7 +134,7 @@
         "consistency",
         "requirement"
       ],
-      "finding": "Asynchronous replication contradicts the strong consistency requirement for seat inventory stated in the product rules, creating dependency compatibility issues."
+      "finding": "Asynchronous replication with eventual consistency for seat counts (3.2, 3.3) contradicts the strong consistency service-targets.md requires for ticket inventory and for payment records."
     }
   ],
   "decoys": []

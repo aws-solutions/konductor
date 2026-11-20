@@ -1,7 +1,7 @@
 {
   "id": "t8-inc-queue-backlog",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -104,36 +104,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt does not name a method or tool; edits.md confirms 'decoy pattern fails only a summary that blames the disk' (broker disk is the decoy in the fixture, not named in the prompt)."
+          "note": "Prompt asks for incident report with JSON block. Edits mention decoy (disk) designed to be rejected. No prescribed method."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains logs showing decode_error, config showing max_attempts:0, and deploy history showing schema 4.8, but does not state the causal chain or impact numbers explicitly."
+          "note": "Fixture contains deploy showing schema 4.8 with list recipient, logs showing decode errors expecting string, config with max_attempts: 0. Answer requires connecting schema mismatch."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden key requires recipient list/array schema mismatch evidence, rejects blaming 'broker[- ]?disk', and expects impact values (2865 delayedNotifications, 192 minutes) that follow from the fixture logs."
+          "note": "key.json expects evidence from deploy-history.md, consumer-a.log, consumer-config.yaml - all exist. Rubric anchors reward causal chain."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can trace from deploy history (schema 4.8 with recipient list), to consumer log errors (expected=string actual=array), to blocked partition behavior, to mitigation; the decoy (broker disk) appears in notes but is not the answer."
+          "note": "Developer can analyze schema change to list, decode errors, no retry config, and identify schema mismatch causing partition blocking."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

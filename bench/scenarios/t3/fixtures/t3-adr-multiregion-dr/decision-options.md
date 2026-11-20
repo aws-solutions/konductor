@@ -91,7 +91,7 @@
 - **Total**: ~$11,904
 
 ### Pros
-- Meets both RPO and RTO requirements
+- Provides low RPO and RTO capabilities
 - Automated failover reduces human error
 - Minimal data loss
 - Faster recovery
