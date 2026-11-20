@@ -158,7 +158,34 @@
         "verdict": "pass",
         "note": "I independently verified three key values: S1 capacity = 35.23 (matches), Gale Park S1 capacity = 3.6 (matches), T-068 + T-074 bundle = 11 points vs 3.6 capacity (matches). All values follow directly from the stated conventions in capacity_policy.md, team_roster.csv, sprint_calendar.csv, holidays.csv, and on_call.csv."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a sprint plan without prescribing a method. The key includes decoys: T-044 (unrelated copy task) tests that the agent does not misidentify it as a dependency; T-104 (completed task) tests that historical rows are not planned. The edits.md confirms exact sprint placement checks were replaced with 'planned in some sprint' to allow multiple valid plans."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains backlog_export.csv, team_roster.csv, sprint_calendar.csv, holidays.csv, on_call.csv, and capacity_policy.md. The README explains the export contains noise (historical, cancelled rows) but does not reveal which items fit or the capacity numbers. The agent must calculate capacity from workdays, focus factors, and on-call deductions."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All ticket IDs (T-011, T-023, T-037, T-049, T-061, T-068, T-074, T-083, T-096, T-108, T-113, T-119) exist in backlog_export.csv. Gale Park is in team_roster.csv with 'payments' skill. Capacity values (35.23, 22.49, 34.785) can be derived from the policy and calendar. The request's JSON shape matches key paths. The rubric aligns with the expected bottom line."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can identify Must items with dependencies, calculate capacity per sprint from the policy (workdays * focus factor, less holidays and on-call), identify Gale Park as the sole payments specialist, and recognize T-096 has no estimate. Different valid sprint assignments would pass if all estimated Must items and prerequisites are planned and overload/cannot-fit items are identified."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

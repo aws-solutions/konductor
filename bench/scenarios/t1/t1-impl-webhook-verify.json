@@ -123,7 +123,34 @@
         "verdict": "pass",
         "note": "The task is achievable. All requirements are stated in the prompt, the existing code provides clear patterns to follow, and the reference implementation passes all tests. The task-draft notes correctly identify pitfalls (JSON parsing before signing, checking only one secret) that competent implementations should avoid."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt names HMAC-SHA256 and timing-safe comparison as requirements, not implementation hints; no decoy hints present."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has server, config, ledger, router, webhook handler but no signature verification code; docs do not describe webhook authentication."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests use createServer(options) and loadConfig(env) matching fixture exports; prompt now specifies options.secrets as array, webhookSecrets/webhookToleranceSeconds per edits.md fix."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Prompt fully specifies header format, response shapes, error codes, idempotency; fixture provides server scaffold. Edits.md confirms prompt was fixed to state options.secrets array shape."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

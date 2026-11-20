@@ -124,22 +124,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to strengthen tests for scheduler components without naming methods, tools, or pointing at specific mutation targets."
+          "note": "Prompt names components (calendar rule parser, next-run calculation, priority queue, limiter, retry, persistence) with no prescribed method; no decoy hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture files list the bugs, mutation targets, or expected test findings; only implementation code and existing tests are present."
+          "note": "Fixture tests cover basic scheduling; no comments or docs reveal the edge cases mutants test (ranged step overflow, month boundary, timezone drop, retry cap)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 10 mutants (m01-m10) test behaviors that exist in the fixture source files (scheduler.py, retry.py, priority_queue.py, rate_limiter.py, persistence.py)."
+          "note": "Mutant files (schedulerlib/scheduler.py, retry.py, priority_queue.py, rate_limiter.py, persistence.py) all exist in fixture; rubric anchors match stated outcomes."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can write tests for calendar rules, retry limits, priority queue ordering, rate limiting boundaries, and persistence edge cases from the fixture code and prompt alone."
+          "note": "Developer can examine schedulerlib modules and write tests for calendar rules, retry delays, queue ordering, limiter windows and persistence without hidden tests."
         }
       ]
     }

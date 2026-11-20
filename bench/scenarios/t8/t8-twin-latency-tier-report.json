@@ -102,7 +102,34 @@
         "verdict": "pass",
         "note": "All required values can be derived from the fixture: the log contains all checkout records with timestamps, routes, and status codes. The test's expectedFromFixture function computes the exact same counts, proving the key is derivable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to pull checkout request counts from a log file; no method or decoy named."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Log file shows the request pattern; no doc or comment lists the hourly or total counts."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests verify counts match /checkout records in logs/checkout-api.log; path, format, and counting rules (status < 400) match request and fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Parsing logs/checkout-api.log for route=/checkout and status<400 yields correct hourly and total counts."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

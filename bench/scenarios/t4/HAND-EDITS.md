@@ -262,3 +262,27 @@ Who: claude (mate review-fix2 worker session). Each unanchored rubric item now c
 - `t4-iam-ci-deploy-role`: reviewable-policy anchored (Sid per deploy or rollback call).
 - `t4-iam-privesc-groups`: reviewable-scope anchored (grants traced to the guides, routes closed).
 - `t4-secrets-in-repo`: rotation anchored (four credentials, history warning).
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t4-arch-tenant-abac | glm-5 (c05, full) | confirmed |  |
+| t4-dev-path-traversal-files | glm-5 (r4, rubric) | confirmed |  |
+| t4-dev-sql-report-filters | glm-5 (r4, rubric) | confirmed |  |
+| t4-iac-review-terraform | glm-5 (r4, rubric) | confirmed |  |
+| t4-iam-bucket-policy-oac | glm-5 (r4, rubric) | confirmed |  |
+| t4-iam-ci-deploy-role-twin | glm-5 (r4, rubric) | confirmed |  |
+| t4-iam-ci-deploy-role | glm-5 (r4, rubric) | confirmed |  |
+| t4-iam-lambda-role-split | glm-5 (r4, rubric) | confirmed |  |
+| t4-iam-privesc-groups | glm-5 (c05, full) | confirmed |  |
+| t4-iam-vendor-trust | glm-5 (r4, rubric) | confirmed |  |
+| t4-policy-fix-accessdenied | glm-5 (r4, rubric) | confirmed |  |
+| t4-secrets-in-repo | glm-5 (r4, rubric) | confirmed |  |
+| t4-threat-model-webhooks | glm-5 (r4, rubric) | confirmed |  |

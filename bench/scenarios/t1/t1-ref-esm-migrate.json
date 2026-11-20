@@ -154,22 +154,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The request specifies what to achieve (migrate to ESM, set exports map, preserve behavior) without mandating any specific method, framework or tool, and contains no misleading hints."
+          "note": "rubric check: Rubric asks for honest verification and design fit, both grounded in the request's migration requirements; no extra methods or frameworks demanded. Earlier glm-5 check of the request, fixture and key: pass (The request specifies what to achieve (migrate to ESM, set exports map, preserve behavior) without mandating any specific method, framework or tool, and contains no misleading hints.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture's tests and code show current CommonJS behavior but do not reveal the ESM exports map structure, module syntax requirements, or other migration specifics that hidden tests check."
+          "note": "rubric check: Rubric is judge-only prose quality; no answer values are visible in the request or fixture. Earlier glm-5 check of the request, fixture and key: pass (The fixture's tests and code show current CommonJS behavior but do not reveal the ESM exports map structure, module syntax requirements, or other migration specifics that hidden tests check.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All paths, names, and behaviors referenced in hidden tests (lantern-kit, index.js, cli.js, lib/module-map.json, bin/lantern.js, manifest values, banner text, cycle-a-cycle-b) exist in the fixture or are stated in the request."
+          "note": "rubric check: Rubric references commands and outcomes from the prompt (node --test, lantern-kit --version printing 1.4.0), all present in the request. Earlier glm-5 check of the request, fixture and key: pass (All paths, names, and behaviors referenced in hidden tests (lantern-kit, index.js, cli.js, lib/module-map.json, bin/lantern.js, manifest values, banner text, cycle-a-cycle-b) exist in the fixture or are stated in the request.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The request explicitly lists all required behaviors (exports map structure, callable default, named exports, plugin behavior, CLI flags, banner, manifest values), and a developer can derive ESM migration requirements from these and the existing CommonJS structure."
+          "note": "rubric check: Different valid migration approaches and test structures can achieve Pass on both rubric items. Earlier glm-5 check of the request, fixture and key: pass (The request explicitly lists all required behaviors (exports map structure, callable default, named exports, plugin behavior, CLI flags, banner, manifest values), and a developer can derive ESM migration requirements from these and the existing CommonJS structure.)."
         }
       ]
     }

@@ -79,3 +79,33 @@ Owner ruling D-118: a half-done answer must score 40 or less. Both tasks keep th
 | t1-ref-schema-migrate (v4) | `hidden/`: seven one-test files are merged into two tests. `plumbing.test.js` covers the twelve old files kept, the new file exporting both directions, the CLI JSON, and version 13 recorded once. `up-backfill.test.js` covers the table created, legacy columns dropped, fields copied, and duplicates kept apart. The tests check `min` drops from 17 to 12. The five non-test checks are now `kind: format`. | The lazy answer wrote the migration but left the repository untouched. It scored 49.2 on wiring and backfill basics plus cheap checks. It now passes 4 of 12 hidden tests. | 100 / 0 / 33.3 / 100 |
 
 No test was removed: every old assertion still runs inside the merged tests. Both dry runs repeated 3 times with the same result, and the canary and per-test timeouts pass. No model call was made. A non-Claude re-check of this scoring edit has not been run yet.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t1-bug-cache-ttl | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-bug-date-range | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-bug-event-listeners | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-bug-http-retry | glm-5 (c04, full) | confirmed |  |
+| t1-impl-cli-envprefix | glm-5 (c02, full) | confirmed |  |
+| t1-impl-job-retry | glm-5 (c02, full) | confirmed |  |
+| t1-impl-money-split | glm-5 (c03, full) | confirmed |  |
+| t1-impl-rate-limit | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-impl-settings-expand | glm-5 (c02, full) | confirmed |  |
+| t1-impl-webhook-verify | glm-5 (c03, full) | confirmed |  |
+| t1-neg-config-alias | glm-5 (c03, full) | confirmed |  |
+| t1-nfr-ndjson-stream | glm-5 (c04, full) | confirmed |  |
+| t1-nfr-report-queries | glm-5 (c04, full) | confirmed |  |
+| t1-nfr-startup-lazy | glm-5 (c03, full) | confirmed |  |
+| t1-ref-callbacks | - | not checked | owned by chat-50 (D-118), left alone |
+| t1-ref-dep-upgrade | glm-5 (c04, full) | confirmed |  |
+| t1-ref-esm-migrate | glm-5 (r3, rubric) | confirmed |  |
+| t1-ref-schema-migrate | - | not checked | owned by chat-50 (D-118), left alone |
+| t1-twin-webhook-routes | glm-5 (c02, full) | confirmed |  |

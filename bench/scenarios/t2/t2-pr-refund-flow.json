@@ -152,29 +152,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a code review without specifying a method, checklist, process, planted problems, decoys, or number of problems. It requests concrete findings tied to existing source with severity based on impact."
+          "note": "rubric check: Rubric matches request for 'concrete findings tied to existing source, tests, configuration, and documentation'. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a code review without specifying a method, checklist, process, planted problems, decoys, or number of problems. It requests concrete findings tied to existing source with severity based on impact.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains no comments, tests, docs, or file names that state any of the planted problems. The logging.md, ledger.md, capture.test.js, and idempotency.js files provide context but do not explicitly point out the bugs in the refund code."
+          "note": "rubric check: Judge-only rubric; Fail/Partial/Pass are quality thresholds. Earlier glm-5 check of the request, fixture and key: pass (The fixture contains no comments, tests, docs, or file names that state any of the planted problems. The logging.md, ledger.md, capture.test.js, and idempotency.js files provide context but do not explicitly point out the bugs in the refund code.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All key items accurately identify real issues: k1 (routes.js:19-27 missing idempotency), k2 (service.js:18 floating-point conversion), k3 (service.js:16-17 missing ownership check), k4 (service.js:24-39 race condition with slack:1 covering balance check through writes), k5 (service.js:41-45 logs sensitive data), k6 (test file lines 6-22 missing test coverage). Severities are defensible given the security and financial impact."
+          "note": "rubric check: findingsKey references refund flow elements (idempotency key, floating-point, merchantId, audit log) in fixture code. Earlier glm-5 check of the request, fixture and key: pass (All key items accurately identify real issues: k1 (routes.js:19-27 missing idempotency), k2 (service.js:18 floating-point conversion), k3 (service.js:16-17 missing ownership check), k4 (service.js:24-39 race condition with slack:1 covering balance check through writes), k5 (service.js:41-45 logs sensitive data), k6 (test file lines 6-22 missing test coverage). Severities are defensible given the s)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful reviewer can find all issues from the fixture: idempotency helper exists in store/idempotency.js but unused in routes; capture.js shows merchant ownership check pattern missing in refunds; ledger.md specifies integer minor units; logging.md prohibits card fingerprints and customer emails; test/refunds.test.js shows only one happy-path test; async gap at line 28 with balance check before it enables race condition."
+          "note": "rubric check: Alternative correct reviews can Pass; rubric judges grounding in packet. Earlier glm-5 check of the request, fixture and key: pass (A careful reviewer can find all issues from the fixture: idempotency helper exists in store/idempotency.js but unused in routes; capture.js shows merchant ownership check pattern missing in refunds; ledger.md specifies integer minor units; logging.md prohibits card fingerprints and customer emails; test/refunds.test.js shows only one happy-path test; async gap at line 28 with balance check before )."
         }
       ]
     }

@@ -91,3 +91,29 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
 - Who: claude (review-fix2 worker)
 - What: the 5 unanchored prose criteria (t8-bug-retry-storm evidence-use, t8-dec-deploy-strategy operational-clarity, t8-nfr-slo-burn decision-explanation, t8-runbook-db-failover usable-at-3am, t8-tpm-rollout-regions signoff-quality) now carry Fail / Partial / Pass anchors tied to the block key and fixture figures. Ids, weights and expert-key items are unchanged; task versions are up by 1.
 - Why: the independent review found these criteria had no anchors.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t8-bug-retry-storm | none | fix needed | free gates: lazy 72.1 and no alternative answer (known, not ready); its call (c13) was throttled, so no new checklist |
+| t8-dec-deploy-strategy | glm-5 (c11, full) | confirmed |  |
+| t8-inc-checkout-latency | glm-5 (earlier, after the last edit) | confirmed |  |
+| t8-inc-memory-leak | glm-5 (c11, full) | confirmed |  |
+| t8-inc-queue-backlog | glm-5 (c11, full) | confirmed |  |
+| t8-neg-alert-threshold | none | not checked | its call (c13) was throttled and returned nothing; the 300-credit cap was reached |
+| t8-neg-config-question | glm-5 (c12, full) | confirmed |  |
+| t8-nfr-slo-burn | none | not checked | its call (c13) was throttled and returned nothing; the 300-credit cap was reached |
+| t8-oncall-alert-review | glm-5 (c11, full) | confirmed |  |
+| t8-pm-cache-stampede | glm-5 (c12, full) | confirmed |  |
+| t8-pm-cert-expiry-region | glm-5 (c12, full) | confirmed |  |
+| t8-rollout-ledger-migration | glm-5 (earlier, after the last edit) | confirmed |  |
+| t8-runbook-db-failover | glm-5 (r3, rubric) | confirmed |  |
+| t8-tpm-rollout-regions | glm-5 (r3, rubric) | confirmed |  |
+| t8-twin-latency-tier-report | glm-5 (c12, full) | confirmed |  |

@@ -102,7 +102,34 @@
         "verdict": "pass",
         "note": "All key values are derivable: 42 OOM kills (21 in Apr 9 + 21 in Apr 10 logs), 5046 failed requests (summed from CSV), 1865 degraded minutes (from first OOM at 2025-04-09T06:20:00Z to stable at 2025-04-10T13:25:00Z). The notes clarify that the campaign correlated but did not cause the issue, and evidence paths like 'ops/config/release-diff.yaml' are present."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt no longer hints at the decoy; edits.md states 'request hinted at the decoy (\"distinguish correlation from cause\") ... both fixed'."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains logs, config diffs, metrics, and traffic reports but does not state the root cause; the decoy (marketing campaign traffic) appears only as data, not as a described answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key's gate requires 'cache' + 'query' + 'unbound' and explicitly rejects answers blaming 'marketing|campaign|traffic'; the impact values (1865 degradedMinutes, 42 oomKills, 5046 failedRequests) can be computed from the fixture's logs and metrics."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can trace from release-diff.yaml (unbounded max_entries), to log evidence of cache_entries growth, to OOM kills, to mitigation; the traffic campaign is visible as a contributing factor but not the root cause."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

@@ -161,29 +161,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal (tighten trust policies, restrict monitoring permissions) and points to source files without naming methods or revealing trap patterns like NotAction inversion or missing external IDs."
+          "note": "rubric check: Rubric item trust-design-explained asks for explanation of external ID, org condition, and role ARN trust, which matches the request to tighten trust policies per integration docs. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal (tighten trust policies, restrict monitoring permissions) and points to source files without naming methods or revealing trap patterns like NotAction inversion or missing external IDs.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains onboarding records with account IDs, role names, and external IDs - evidence the agent must use - but no file lists the bugs or explicitly states what fixes are needed."
+          "note": "rubric check: The anchors (explains external ID, org condition, role ARN vs account root) are judge-only; the fixture has integration docs but does not explain the design rationale. Earlier glm-5 check of the request, fixture and key: pass (The fixture contains onboarding records with account IDs, role names, and external IDs - evidence the agent must use - but no file lists the bugs or explicitly states what fixes are needed.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All test values (principals like arn:aws:iam::222233334444:role/TelemetryReader, external IDs like monitoring-ext-8d21, org ID o-exampleorgid) match the fixture docs/integrations/*.md files and config/accounts.json."
+          "note": "rubric check: The rubric references the vendor roles needing external ID per integration docs; monitoring-vendor.md shows external ID, deploy-role.md shows org ID. Earlier glm-5 check of the request, fixture and key: pass (All test values (principals like arn:aws:iam::222233334444:role/TelemetryReader, external IDs like monitoring-ext-8d21, org ID o-exampleorgid) match the fixture docs/integrations/*.md files and config/accounts.json.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture provides all needed information: onboarding docs specify principals and conditions, trust/permission JSON files show current policies with bugs (wildcard principal, NotAction allow, missing external IDs), and an engineer can reason out the fixes."
+          "note": "rubric check: Different correct explanations can reach Pass as the rubric judges whether the three design points are explained correctly, not the exact wording. Earlier glm-5 check of the request, fixture and key: pass (The fixture provides all needed information: onboarding docs specify principals and conditions, trust/permission JSON files show current policies with bugs (wildcard principal, NotAction allow, missing external IDs), and an engineer can reason out the fixes.)."
         }
       ]
     }

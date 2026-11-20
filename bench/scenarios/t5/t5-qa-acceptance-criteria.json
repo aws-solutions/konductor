@@ -201,7 +201,34 @@
         "verdict": "pass",
         "note": "The task is fair: the agent can discover all required values through scripted product owner interaction, the template provides clear formatting guidance, and the request specifies what to leave unchanged. The glossary conflict is intentional and explicitly noted as something to confirm rather than copy."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for acceptance criteria with observable conditions, actions, outcomes, and boundaries, without prescribing a specific format beyond using the template for style. The template shows Given/When/Then structure as an example, not a mandate."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "FEATURE-NOTE.md is intentionally thin (the prompt says so) and the glossary's 14-day window is explicitly overridden by the scripted product owner's 30-day answer. The fixture does not list the acceptance criteria."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check for the scripted answers (30-day window, individual item in bundle, SAVE10 coupon treatment, $500 Finance Operations threshold, 15-minute email, 7-year audit retention) which the prompt says to obtain by asking the product owner. The contains checks for 'Finance Operations' and 'audit log' match the scripted facts. Rubric decision-quality rewards asking the product owner and writing confirmed answers as observable criteria."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can ask the scripted product owner questions to obtain the missing details and write observable criteria. The template provides style guidance, and the min 8 bullet-pattern check ensures sufficient criteria without mandating exact wording. A different structure that captures the same observable facts would pass."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

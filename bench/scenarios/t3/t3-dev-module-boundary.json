@@ -119,7 +119,34 @@
         "verdict": "pass",
         "note": "All necessary numbers are present; unit conventions (decimal KB/MB) are stated; the solution correctly derives memory and cost from provided data."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to design retry handling without naming a method. The 120s staging latency in requirements.md is marked superseded - this is a distractor, not a decoy pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains traffic.json (peak_pending_retries: 120000, payload_kb: 8), runtime-limits.json (retry_memory_limit_mb: 312), option-matrix.json but does not state the answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests compute expected memory (base_memory + batch_records * payload) and verify in_memory_delay_queue exceeds 312MB limit. Rubric rewards rejecting in-memory for exceeding memory limit (960MB > 312MB)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can compute 120000 * 8KB = 960MB > 312MB to reject in-memory, and verify database_retry_table/external_retry_queue fit. The memory_model field in option-matrix.json explains the calculation."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [

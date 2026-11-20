@@ -163,22 +163,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal, files, interfaces and constraints without naming a method, technique, tool, or pointing at decoys or specific answers the checks look for."
+          "note": "rubric check: Rubric evaluates bottom-line call and director reasoning for the go/no-go decision requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal, files, interfaces and constraints without naming a method, technique, tool, or pointing at decoys or specific answers the checks look for.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain evidence the agent must reason from (issue export, cherry-pick queue, CI summary, calendar, notes, triage); no file explicitly lists the bugs, findings, or expected values."
+          "note": "rubric check: Fixture provides blockers, CI status, and calendar; no explicit go/no-go answer stated. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain evidence the agent must reason from (issue export, cherry-pick queue, CI summary, calendar, notes, triage); no file explicitly lists the bugs, findings, or expected values.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All key assertions reference data present in fixture: REL-112/118/131 owners and statuses in release_blockers.csv, REL-118 late approval in cherry_pick_queue.csv, REL-127 reversion and notes mention, REL-145/153 triage demotion in triage_notes.csv, CI job states in ci_signal_summary.json, and 2027-05-13 next slot in release_calendar.json."
+          "note": "rubric check: Rubric anchors (Thursday 2027-05-06, REL-112/118/131/127, linux-integration failing, windows-smoke 85%, 2027-05-13 alternative) reference fixture IDs. Earlier glm-5 check of the request, fixture and key: pass (All key assertions reference data present in fixture: REL-112/118/131 owners and statuses in release_blockers.csv, REL-118 late approval in cherry_pick_queue.csv, REL-127 reversion and notes mention, REL-145/153 triage demotion in triage_notes.csv, CI job states in ci_signal_summary.json, and 2027-05-13 next slot in release_calendar.json.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar."
+          "note": "rubric check: Different reasoning prose and blocker presentations can Pass if grounded in fixture evidence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar.)."
         }
       ]
     }

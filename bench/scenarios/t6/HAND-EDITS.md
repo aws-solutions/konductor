@@ -254,3 +254,30 @@ None.
 Who: claude (mate review-fix2 worker session). All 48 unanchored rubric items in 16 tasks now carry Fail, Partial and Pass anchors written against each task's hidden answer key (figures, dates and rules named), because the schema has no anchor field and the judge reads the criterion as written. The honest-summary item of every task now names that task's own deliverable and open points. Rubric text does not move code-only dry-run scores, so pilot.dryRun stands. Versions bumped; no non-Claude recheck yet (bench/DEBT.md D-108).
 
 Tasks: t6-idea-churn-signal, t6-idea-feature-bets, t6-idea-onboarding-dropoff, t6-idea-pricing-test, t6-neg-glossary-rename, t6-neg-release-notes-csv, t6-req-arch-webhooks, t6-req-clinic-reminders, t6-req-data-export, t6-req-expense-approvals, t6-req-fe-address-form, t6-req-field-inspections, t6-req-library-holds, t6-req-tpm-cutover, t6-req-volunteer-shifts, t6-twin-clinic-costs.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t6-idea-churn-signal | glm-5 (r2, rubric) | confirmed |  |
+| t6-idea-feature-bets | glm-5 (r2, rubric) | confirmed |  |
+| t6-idea-onboarding-dropoff | glm-5 (r2, rubric) | confirmed |  |
+| t6-idea-pricing-test | glm-5 (r2, rubric) | confirmed |  |
+| t6-neg-glossary-rename | glm-5 (r2, rubric) | confirmed |  |
+| t6-neg-release-notes-csv | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-arch-webhooks | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-clinic-reminders | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-data-export | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-expense-approvals | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-fe-address-form | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-field-inspections | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-library-holds | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-tpm-cutover | glm-5 (r2, rubric) | confirmed |  |
+| t6-req-volunteer-shifts | glm-5 (r2, rubric) | confirmed |  |
+| t6-twin-clinic-costs | glm-5 (r2, rubric) | confirmed |  |

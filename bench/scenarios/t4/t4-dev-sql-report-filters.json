@@ -154,29 +154,29 @@
       }
     ],
     "recheck": {
-      "family": "gpt",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt states the injection-safety goal, interfaces, and behavioral constraints but names no implementation method, tool, checklist, or hidden answer. The wildcard and fallback requirements are ordinary acceptance constraints rather than a prescribed technique."
+          "note": "rubric check: Rubric item parameterised-design asks for bound parameters and allowlist for identifiers, which matches the request to 'make it safe' while keeping filters working. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the injection-safety goal, interfaces, and behavioral constraints but names no implementation method, tool, checklist, or hidden answer. The wildcard and fallback requirements are ordinary acceptance constraints rather than a prescribed technique.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/src/database.py lines 82-101, 145-162, 206-229, and 290-308 expose the vulnerable query construction but do not state a fix or hidden expected result. The visible tests and docs likewise do not list the security findings or answer values."
+          "note": "rubric check: The rubric anchors (values bound, identifiers from fixed mapping, each injectable input named) are judge-only; the prompt states the wildcard behavior but not the fix approach. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/src/database.py lines 82-101, 145-162, 206-229, and 290-308 expose the vulnerable query construction but do not state a fix or hidden expected result. The visible tests and docs likewise do not list the security findings or answer values.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The key's findings are grounded in the fixture: sort identifiers and schema columns appear in fixture/docs/api.md and fixture/data/seed.py, duplicated list and CSV query paths are in fixture/src/database.py, and detailed logging plus leaked errors are in fixture/src/database.py lines 36-48 and fixture/src/server.py lines 19-24. The SQLite read-only defense-in-depth recommendation follows from the documented SQLite reporting database and read-only report methods."
+          "note": "rubric check: The anchors reference filters, sort, paging, CSV export which match the Database class methods (get_customers, get_sales, get_customers_csv, get_sales_csv) in the request. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The key's findings are grounded in the fixture: sort identifiers and schema columns appear in fixture/docs/api.md and fixture/data/seed.py, duplicated list and CSV query paths are in fixture/src/database.py, and detailed logging plus leaked errors are in fixture/src/database.py lines 36-48 and fixture/src/server.py lines 19-24. The SQLite read-only defense-in-depth recommendation follows from the )."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "task.json field prompt supplies the required interfaces, defaults, wildcard semantics, fallback behavior, error boundary, and test command; fixture/src/database.py and fixture/src/server.py contain all affected paths. The schemas in fixture/data/seed.py and API defaults in fixture/docs/api.md provide enough information to build allowlists and preserve normal filters, sorting, pagination, and CSV behavior."
+          "note": "rubric check: Different correct designs (shared query builder, per-method parameterization, different allowlist structures) can all reach Pass as long as values are bound and identifiers are mapped. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt supplies the required interfaces, defaults, wildcard semantics, fallback behavior, error boundary, and test command; fixture/src/database.py and fixture/src/server.py contain all affected paths. The schemas in fixture/data/seed.py and API defaults in fixture/docs/api.md provide enough information to build allowlists and preserve normal filters, sorting, pagination, and CSV b)."
         }
       ]
     }

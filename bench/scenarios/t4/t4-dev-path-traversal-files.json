@@ -159,29 +159,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the bug class (path traversal) as reported, the required behavior, and the constraints, without naming a method, tool, or checklist to use."
+          "note": "rubric check: Rubric item root-cause-containment asks for a shared containment check and naming open routes, which the request requires ('Every caller must stay inside their own account folder'). Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the bug class (path traversal) as reported, the required behavior, and the constraints, without naming a method, tool, or checklist to use.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files show vulnerable code patterns but never state the specific attack vectors or fixes; evidence must be reasoned from the handlers."
+          "note": "rubric check: The rubric anchors (shared containment, named routes, no storage path in errors) are not visible in the request or fixture; they describe a design approach the agent must implement. Earlier glm-5 check of the request, fixture and key: pass (Fixture files show vulnerable code patterns but never state the specific attack vectors or fixes; evidence must be reasoned from the handlers.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check path traversal variants (../, encoded, absolute paths, symlinks) that directly exploit the vulnerable resolve() calls in fixture/src/handlers.js."
+          "note": "rubric check: The anchors reference the four handlers (download, list, upload, archive entry) which exist in src/handlers.js as specified in the request. Earlier glm-5 check of the request, fixture and key: pass (Hidden tests check path traversal variants (../, encoded, absolute paths, symlinks) that directly exploit the vulnerable resolve() calls in fixture/src/handlers.js.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The prompt explains the vulnerability class and required constraints; a careful engineer can analyze handlers.js to see the unsafe path.resolve() calls and fix them."
+          "note": "rubric check: Different correct implementations (resolve+prefix check, resolve+relative test, real-path check) can all reach Pass as the rubric judges the design coherence, not specific code patterns. Earlier glm-5 check of the request, fixture and key: pass (The prompt explains the vulnerability class and required constraints; a careful engineer can analyze handlers.js to see the unsafe path.resolve() calls and fix them.)."
         }
       ]
     }

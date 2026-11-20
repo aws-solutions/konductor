@@ -161,7 +161,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture: capacity=63 (sum of four sprints per team-capacity.csv), planned=58 (sum of F-004, F-010, F-014, F-021, F-031, F-038, F-052, F-063), F-014 is required by sales-commitments.md, F-031 is a dependency of F-052, F-044 has no customer evidence, F-057 serves field sales (not the launch audience). The task is challenging but fair."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for scope decisions without prescribing a method; F-044 executive wallboard and F-057 mobile approvals are correctly excluded (out-list and absent assertions), not decoys—they are valid options a PM might choose differently."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains backlog, interviews, and commitments; it does not state which features are in/out or the 63-point capacity total."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The key's assertions reference backlog IDs (F-010, F-014, F-021, F-038, F-052, F-063) and the 63-point capacity from team-capacity.csv; all are in fixture data."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A PM can evaluate customer evidence in interviews, check sales commitments, compare estimates to capacity, identify F-031 as a dependency, and decide scope within the eight-week window."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

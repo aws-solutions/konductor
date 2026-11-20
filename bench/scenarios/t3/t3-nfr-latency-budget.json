@@ -68,7 +68,10 @@
       "lazy": 25,
       "alt": 100,
       "date": "2026-11-20"
-    }
+    },
+    "blockers": [
+      "key-names: limit names p99_latency_ms, monthly_budget_usd are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
+    ]
   },
   "version": 3,
   "targetSkills": [
@@ -116,29 +119,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json prompt states the checkout goal, input documentation, output path, JSON schema, and constraints, but does not prescribe a method or identify a trap or answer."
+          "note": "rubric check: Rubric evaluates reasoning quality and budget analysis for the optimization decision requested. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json prompt states the checkout goal, input documentation, output path, JSON schema, and constraints, but does not prescribe a method or identify a trap or answer.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/README.md and the supporting documents provide measurements, options, and requirements as evidence; no fixture file declares the selected option or lists the hidden findings."
+          "note": "rubric check: Fixture provides latency measurements and cost options; no pre-selected answer visible. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/README.md and the supporting documents provide measurements, options, and requirements as evidence; no fixture file declares the selected option or lists the hidden findings.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "fixture/architecture-diagram.md gives the 720 ms sequential path, 570 ms parallel calculation, and no pricing/inventory dependency; fixture/cost-analysis.md and cost-options.csv support the $900 baseline, $50 parallel maintenance, $950 total, and cache overrun, while implementation-notes.md supports the stated risks and feature-flag rollback."
+          "note": "rubric check: Rubric anchors (720ms base latency, 600ms target, $1,000 total ceiling including $900 baseline, parallel 570ms using max) match fixture data. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/architecture-diagram.md gives the 720 ms sequential path, 570 ms parallel calculation, and no pricing/inventory dependency; fixture/cost-analysis.md and cost-options.csv support the $900 baseline, $50 parallel maintenance, $950 total, and cache overrun, while implementation-notes.md supports the stated risks and feature-flag rollback.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "fixture/requirements.md, architecture-diagram.md, cost-analysis.md, and cost-options.csv contain enough latency, dependency, budget, and option-cost data to select parallel processing and document its calculations without hidden files or user answers."
+          "note": "rubric check: Valid reasoning with different prose structure and risk discussions can achieve Pass. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/requirements.md, architecture-diagram.md, cost-analysis.md, and cost-options.csv contain enough latency, dependency, budget, and option-cost data to select parallel processing and document its calculations without hidden files or user answers.)."
         }
       ]
     }

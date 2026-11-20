@@ -178,29 +178,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt states the planning goal, source files, output path, and JSON shape, but does not prescribe a method or point to hidden traps or answers."
+          "note": "rubric check: Rubric assesses clarity of trap explanation and strategic alignment without imposing a framework not requested. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the planning goal, source files, output path, and JSON shape, but does not prescribe a method or point to hidden traps or answers.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains evidence and provisional opinions, such as old-draft-recommendation.md lines 8-25 and email-thread-priya-to-ceo.md lines 10-16, but no file lists the complete expected findings and output values as an answer key."
+          "note": "rubric check: Rubric names the traps (duplicate Acme requests, double-counted revenue) which are discoverable in fixture; the correct conclusion is not handed to agent. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture contains evidence and provisional opinions, such as old-draft-recommendation.md lines 8-25 and email-thread-priya-to-ceo.md lines 10-16, but no file lists the complete expected findings and output values as an answer key.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expected values and findings are supported by fixture/data/feature-requests-export.csv lines 3-30, sales-notes-revenue-forecast.md lines 11-27, support-tickets-analysis-q2.md lines 21-36, and quarterly-goals-q3.md lines 7-30. The strategic and measurement expectations also follow from the goals, risk, competitive, and support documents."
+          "note": "rubric check: Anchors correctly reference fixture figures: 15 unique customers after deduplication, $71,561 revenue, $222,000 annual savings; matches fixture data. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expected values and findings are supported by fixture/data/feature-requests-export.csv lines 3-30, sales-notes-revenue-forecast.md lines 11-27, support-tickets-analysis-q2.md lines 21-36, and quarterly-goals-q3.md lines 7-30. The strategic and measurement expectations also follow from the goals, risk, competitive, and support documents.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can deduplicate the 28 export rows, sum unique-customer revenue, use the weighted pipeline rather than the duplicated upsell figure, and connect support savings to Q3 goals from the fixture. task.json supplies the required deliverable and JSON structure, with no missing scripted-user facts."
+          "note": "rubric check: Different wording and option ordering can still Pass if the traps are identified and Support Tickets is recommended with correct reasoning. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can deduplicate the 28 export rows, sum unique-customer revenue, use the weighted pipeline rather than the duplicated upsell figure, and connect support savings to Q3 goals from the fixture. task.json supplies the required deliverable and JSON structure, with no missing scripted-user facts.)."
         }
       ]
     }

@@ -192,29 +192,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt requests a 'decision-quality review' without naming a specific method, checklist, or process, and does not point at planted problems, decoys, or the number of problems."
+          "note": "rubric check: Rubric matches request for review before 'production change window' checking if design is 'safe to operate'. Earlier glm-5 check of the request, fixture and key: pass (The prompt requests a 'decision-quality review' without naming a specific method, checklist, or process, and does not point at planted problems, decoys, or the number of problems.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No comments, tests, docs, or file names in the fixture state or hint at any of the planted problems."
+          "note": "rubric check: Judge-only rubric; anchors are quality thresholds. Earlier glm-5 check of the request, fixture and key: pass (No comments, tests, docs, or file names in the fixture state or hint at any of the planted problems.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All six key items correctly identify issues in the cited sections (3.2 data loss window, 3.4 missing rollback, 4.1 storage undercount, 3.3 wrong write rate, 4.3 weak validation, 5.1 vague success criteria) with defensible severities."
+          "note": "rubric check: findingsKey references reindex elements (bulk copy, alias swap, capacity calculation, pre-cutover checks) in fixture design. Earlier glm-5 check of the request, fixture and key: pass (All six key items correctly identify issues in the cited sections (3.2 data loss window, 3.4 missing rollback, 4.1 storage undercount, 3.3 wrong write rate, 4.3 weak validation, 5.1 vague success criteria) with defensible severities.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Each finding follows from cross-referencing the design document with supporting fixture files (cluster-sizing.yaml for storage, traffic-by-hour.csv for peak writes, service-targets.md for thresholds, current-architecture.md for update flow)."
+          "note": "rubric check: Different valid findings can Pass; rubric judges consequence and actionability. Earlier glm-5 check of the request, fixture and key: pass (Each finding follows from cross-referencing the design document with supporting fixture files (cluster-sizing.yaml for storage, traffic-by-hour.csv for peak writes, service-targets.md for thresholds, current-architecture.md for update flow).)."
         }
       ]
     }

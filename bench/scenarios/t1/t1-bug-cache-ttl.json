@@ -132,29 +132,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The request describes symptoms (stale data, memory growth, counter mismatch) and specifies APIs to preserve, but never mentions a specific method, framework, or tool for how to work, nor does it contain misleading hints pointing away from the real bugs."
+          "note": "Prompt describes symptoms and asks to fix cache behavior without prescribing methods. Names actual bug location but not misleading."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture tests in test/cache.test.js only cover basic happy-path behavior; nothing in comments, docs, or tests describes the corrected TTL refresh, weight replacement, sweep behavior, or counter semantics that the hidden tests check."
+          "note": "Fixture contains buggy cache implementation but no hints about specific fixes like refresh expiry, entry weight updates, or sweep counter issues."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All names, paths, and behaviors referenced in the hidden tests (TTLCache constructor options, set/get/has/delete/clear/sweep/stats/close/size/weight, DataStore, ProfileService, PermissionService) exist in the fixture and are stated in the request."
+          "note": "Hidden tests check overwriting entries, weight calculation, sweep counters - matching symptoms in prompt and using fixture's TTLCache API."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A competent developer can trace the symptoms in the request to the buggy TTLCache implementation in the fixture: the set method fails to refresh expiresAt and miscalculates weight on overwrite, and sweep incorrectly uses get (inflating counters). These bugs are discoverable from reading the fixture code."
+          "note": "Developer can examine TTLCache implementation for bugs causing stale data, memory growth, and counter mismatches."
         }
       ]
     }

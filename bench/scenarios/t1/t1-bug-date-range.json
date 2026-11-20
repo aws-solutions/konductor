@@ -116,7 +116,34 @@
         "verdict": "pass",
         "note": "The prompt fully specifies the expected behavior and constraints, the fixture compiles and runs, and hidden tests check stated requirements without contradicting the prompt or relying on timing."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to fix three specific date problems without prescribing methods or frameworks."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains buggy date functions but no hints about midnight handling, 31st inclusion, or clock change fixes."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests match three problems: midnight end freeing next day, monthRange including 31st, daysBetween across clock changes."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can examine daysBetween, overlaps, and monthRange functions to fix described edge cases."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

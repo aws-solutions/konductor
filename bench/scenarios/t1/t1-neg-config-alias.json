@@ -97,7 +97,34 @@
         "verdict": "pass",
         "note": "The task is fair and solvable: Node.js is available, file structure is given, tests are deterministic, and no external dependencies or timing-sensitive behavior are required."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes the rename-and-alias pattern without naming a method or framework; no decoy hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture config uses pollIntervalMs; src/index.js references config.pollIntervalMs; docs do not mention pollingIntervalMs alias pattern."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check pollingIntervalMs in config files, both names in docs, and warning behavior; prompt specifies rename-to pollingIntervalMs, keep pollIntervalMs alias, warn on every load with both names."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Prompt fully specifies rename, alias, warning-on-every-load, and both-keys-present behavior; developer could implement warning mechanism differently and still pass tests."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

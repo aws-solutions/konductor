@@ -102,7 +102,34 @@
         "verdict": "pass",
         "note": "The task is fair and achievable. All information needed (route methods and paths from src/router.js, handler imports from the same file, existence of handler files in src/handlers/) is available in the fixture. Tests are deterministic and do not depend on timing or external state."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to document existing routes; specifies exactly which routes and handler files to include."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has src/router.js with the three routes but no docs/ROUTES.md; the router code shows routes that need documenting, not the documentation itself."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests verify docs/ROUTES.md matches src/router.js: the three routes (GET /health, GET /ledger, POST /webhooks/payment), their handler files, and a sentence naming the webhook route."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can read router.js and handlers to create docs/ROUTES.md from prompt spec; prompt names all three routes and their handler files explicitly."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
