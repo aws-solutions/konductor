@@ -154,5 +154,20 @@
         "note": "All key values follow from the fixture data: staffing gap (7 requested - 4 available = 3), REQ-012 as shared dependency (all three roadmaps list it), conflict (Atlas and Beacon both own 'Shared deployment migration' in Q3), 365-day retention (ForgeRun active tool in atlas-tools.csv, memo requirement). Tolerances are reasonable (exact for headcount_gap, inclusive string matching for constraints)."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "repeats": 3,
+        "deterministic": true,
+        "reference": 100,
+        "stub": 7.1,
+        "alt": 100
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20"
   }
 }

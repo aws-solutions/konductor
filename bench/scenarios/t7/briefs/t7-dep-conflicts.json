@@ -2,7 +2,7 @@
   "id": "t7-dep-conflicts",
   "phase": "planning",
   "role": "tpm",
-  "author": "qwen3-coder-next",
+  "author": "gpt-5.6-luna",
   "source": {
     "url": "https://github.com/kubernetes/enhancements",
     "licence": "Apache-2.0",
@@ -19,13 +19,15 @@
   "controlKind": "none",
   "reviewer": "glm-5",
   "date": "2026-11-19",
-  "history": [
+  "version": 1,
+  "rewriteAttempts": [
     {
-      "version": 1,
-      "author": "gpt-5.6-luna",
-      "reviewer": "glm-5"
+      "version": 2,
+      "author": "qwen3-coder-next",
+      "reviewer": "glm-5",
+      "date": "2026-11-19",
+      "result": "failed twice, version 1 kept",
+      "why": "draft 1 named the method and the decoy in the request, titled its README a benchmark and left planted rows at the end of the register; the fix round changed only the days_late checks and left the rest"
     }
-  ],
-  "version": 2,
-  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
+  ]
 }

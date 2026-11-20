@@ -92,7 +92,8 @@ function map(id) {
   const catalog = catalogList.map((c) => `- ${c.kind} ${c.name}${c.description ? `: ${c.description}` : ''}`).join('\n');
   const task = JSON.stringify({ request: draft.prompt, rubric: draft.rubric, notes: draft.notes }, null, 1);
   const text = fs.readFileSync(path.join(DIR, '..', 't1', 'prompts', 'map.md'), 'utf8').replace('{{TASK}}', () => task).replace('{{CATALOG}}', () => catalog);
-  const model = 'glm-5';
+  // A third family by default; T7_MAP_MODEL picks another when glm-5 maps nothing for a task whose units plainly fit.
+  const model = process.env.T7_MAP_MODEL || 'glm-5';
   const r = call(model, work(`${id}-map`), text, `${id}.map`);
   logCall(id, 'map', model, r.credits, r.seconds);
   const known = new Set(catalogList.map((c) => `${c.kind}:${c.name}`));

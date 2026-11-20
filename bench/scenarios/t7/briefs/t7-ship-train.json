@@ -2,7 +2,7 @@
   "id": "t7-ship-train",
   "phase": "planning",
   "role": "tpm",
-  "author": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
   "source": {
     "url": "https://github.com/rust-lang/rust/blob/main/RELEASES.md",
     "licence": "MIT OR Apache-2.0",
@@ -17,20 +17,22 @@
   "shape": "{\"likely_release\": \"<version>\", \"committed_release\": \"<version>\", \"likely_branch_date\": \"YYYY-MM-DD\", \"committed_release_date\": \"YYYY-MM-DD\", \"remaining_points\": n, \"throughput_points_per_sprint\": n, \"sprints_needed\": n, \"excluded_tickets\": [ids], \"notes\": [str]}",
   "expert": true,
   "controlKind": "none",
-  "reviewer": "gpt-5.6-luna",
+  "reviewer": "glm-5",
   "date": "2026-11-19",
   "expertSources": [
     "The Rust Book, How Rust is Made and Nightly Rust, https://doc.rust-lang.org/book/appendix-07-nightly-rust.html (MIT OR Apache-2.0)",
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
   ],
-  "history": [
+  "version": 1,
+  "rewriteAttempts": [
     {
-      "version": 1,
-      "author": "gpt-5.6-luna",
-      "reviewer": "glm-5"
+      "version": 2,
+      "author": "minimax-m2.5",
+      "reviewer": "gpt-5.6-luna",
+      "date": "2026-11-19",
+      "result": "failed twice, version 1 kept",
+      "why": "draft 1 named the decoy in the README and its key disagreed with the reviewer (23 against 29 points); after the fix round remaining_points (115) and sprints_needed (2 at 19 a sprint) still disagree (reviewer ambiguity fail)"
     }
-  ],
-  "version": 2,
-  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
+  ]
 }

@@ -2,7 +2,7 @@
   "id": "t7-release-gate",
   "phase": "release-ops",
   "role": "tpm",
-  "author": "qwen3-coder-next",
+  "author": "gpt-5.6-luna",
   "source": {
     "url": "https://github.com/kubernetes/sig-release",
     "licence": "Apache-2.0",
@@ -24,13 +24,15 @@
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
   ],
-  "history": [
+  "version": 1,
+  "rewriteAttempts": [
     {
-      "version": 1,
-      "author": "gpt-5.6-luna",
-      "reviewer": "glm-5"
+      "version": 2,
+      "author": "qwen3-coder-next",
+      "reviewer": "glm-5",
+      "date": "2026-11-19",
+      "result": "failed twice, version 1 kept",
+      "why": "draft 1 gave pass-rate thresholds and the cherry-pick cutoff in the request and could not map cherry-picks to tickets; after the fix round a fixture file still lists the blockers and the decoy by name, the README states the blocker rule, and the planted cherry-picks have distinct titles"
     }
-  ],
-  "version": 2,
-  "rewrite": "version 2, second author family (owner rule, 2026-11-19: one writer family is not enough); written fresh from this brief"
+  ]
 }

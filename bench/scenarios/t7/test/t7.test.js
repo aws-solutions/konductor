@@ -104,6 +104,25 @@ test('every brief renders a prompt with no placeholder left', () => {
   }
 });
 
+test('alt-answer varies order, own ids and wording but keeps ordered lists', () => {
+  const { vary, follow } = require('../alt-answer.js');
+  const ids = new Map();
+  const v = follow(vary({ risks: [{ id: 'R-A', summary: 's', tickets: ['X-1'] }, { id: 'R-B' }], top_three: ['R-A', 'R-B'], critical_path: ['X-1', 'X-2'] }, '', ids), ids);
+  assert.deepStrictEqual(v.critical_path, ['X-1', 'X-2']);
+  assert.deepStrictEqual(v.top_three, ['item-1', 'item-2'].reverse());
+  assert.strictEqual(v.risks[1].summary, 'In short: s');
+  assert.deepStrictEqual(v.risks[1].tickets, ['X-1']);
+});
+
+test('pad-answer fills id lists with every fixture id and keeps scalars', () => {
+  const { shotgun } = require('../pad-answer.js');
+  const v = shotgun({ n: 3, path: ['A-10'], risks: [{ tickets: ['A-10'], kind: 'x' }], notes: ['plain'] }, ['A-10', 'B-20']);
+  assert.strictEqual(v.n, 3);
+  assert.deepStrictEqual(v.path, ['A-10', 'B-20']);
+  assert.deepStrictEqual(v.risks, [{ tickets: ['A-10'], kind: 'x' }, { tickets: ['B-20'], kind: 'x' }]);
+  assert.deepStrictEqual(v.notes, ['plain']);
+});
+
 test('pilotOf records the dry-run scores and the gate decision', () => {
   const { pilotOf } = require('../record-dry.js');
   const res = { repeat: 3, deterministic: true, pass: false, reference: { score: 100 }, stub: { score: 7.14 }, answers: { lazy: { score: 52.3 }, alt: { score: 90 } } };
