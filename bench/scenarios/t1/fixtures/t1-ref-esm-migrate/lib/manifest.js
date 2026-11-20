@@ -1,3 +1,3 @@
 'use strict';
-const manifest = require('./manifest.json');
+const manifest = require('./module-map.json');
 module.exports = { manifest };
