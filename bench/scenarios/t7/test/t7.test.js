@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Tests of the T7 grader, the task builder, and the files of every assembled T7 task.
+// Tests of the T7 grader (bench/scenarios/lib/hidden/plan-grade.cjs), the task builder in scenario.config.js, the
+// mechanical answers with T7's options, and the files of every assembled T7 task.
 
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { readBlock, gradeAssertion, getPath } = require('../lib/plan-grade.cjs');
-const { buildTask, TEST_CMD, GRADER_FILES, renderPrompt } = require('../stage.js');
+const { readBlock, gradeAssertion, getPath } = require('../../lib/hidden/plan-grade.cjs');
+const CFG = require('../scenario.config.js');
+const { loadConfig } = require('../../lib/config.js');
+const { render } = require('../../lib/prompt.js');
+const { shallow, vary, follow, DEFAULTS } = require('../../lib/answers.js');
+const { sharedHelpers } = require('../../../runner/lib/hidden-lib.js');
+
+const { taskOf, TEST_CMD, GRADER_FILES, decoysOf } = CFG;
 
 const DIR = path.join(__dirname, '..');
 const doc = {
@@ -85,10 +92,10 @@ test('no block fails every assertion; an unknown op is a key error', () => {
   assert.throws(() => g({ op: 'nope' }));
 });
 
-test('buildTask: checks, twin targets and authorship', () => {
+test('taskOf: checks, twin targets and authorship', () => {
   const b = { id: 't7-a-twin', phase: 'planning', role: 'tpm', author: 'gpt-5.6-luna', controlKind: 'twin', twinOf: 't7-a', output: 'r/n.md', block: 'numbers', source: 'original', date: '2026-11-19' };
   const draft = { prompt: 'p', rubric: [], limits: { softSec: 300, hardSec: 600 }, dataFile: 'tickets.csv' };
-  const t = buildTask(b, draft, { assertions: [{}, {}] }, { targetSkills: ['s1'], targetSop: null, targetAgent: null }, null, '2026-11-19');
+  const t = taskOf(b, draft, { assertions: [{}, {}] }, { targetSkills: ['s1'], targetSop: null, targetAgent: null }, null, '2026-11-19');
   assert.strictEqual(t.fixture, 't7-a');
   assert.deepStrictEqual(t.targetSkills, []);
   assert.deepStrictEqual(t.loadCheck, { mustLoad: [], mustNotLoad: ['s1'] });
@@ -99,15 +106,14 @@ test('buildTask: checks, twin targets and authorship', () => {
 
 test('every brief renders a prompt with no placeholder left', () => {
   for (const f of fs.readdirSync(path.join(DIR, 'briefs'))) {
-    const text = renderPrompt(path.basename(f, '.json'));
+    const text = render(loadConfig(CFG), path.basename(f, '.json'));
     assert.ok(!/\{\{[A-Z]+\}\}/.test(text), f);
   }
 });
 
-test('alt-answer varies order, own ids and wording but keeps ordered lists', () => {
-  const { vary, follow } = require('../alt-answer.js');
+test('the mechanical alternative varies order, own ids and wording but keeps ordered lists', () => {
   const ids = new Map();
-  const v = follow(vary({ risks: [{ id: 'R-A', summary: 's', tickets: ['X-1'] }, { id: 'R-B' }], top_three: ['R-A', 'R-B'], critical_path: ['X-1', 'X-2'] }, '', ids), ids);
+  const v = follow(vary({ risks: [{ id: 'R-A', summary: 's', tickets: ['X-1'] }, { id: 'R-B' }], top_three: ['R-A', 'R-B'], critical_path: ['X-1', 'X-2'] }, DEFAULTS, '', ids), ids);
   assert.deepStrictEqual(v.critical_path, ['X-1', 'X-2']);
   assert.deepStrictEqual(v.top_three, ['item-1', 'item-2'].reverse());
   assert.strictEqual(v.risks[1].summary, 'In short: s');
@@ -124,7 +130,7 @@ test('pad-answer fills id lists with every fixture id and keeps scalars', () => 
 });
 
 test('evidence check: required items come from all-items assertions only', () => {
-  const { requiredItems, evidenceCheck, checksFor } = require('../stage.js');
+  const { requiredItems, evidenceCheck, checksFor } = CFG;
   const key = { output: 'o.md', block: 'b', assertions: [
     { op: 'includes', ids: ['AB-1', 'AB-2'] }, { op: 'includes', ids: ['ZZ-9'], any: true },
     { op: 'cites', ids: ['CD-3', 'CD-4'], min: 1 }, { op: 'cites', ids: ['EF-5'] }, { op: 'absent', ids: ['DE-9'] },
@@ -139,7 +145,7 @@ test('evidence check: required items come from all-items assertions only', () =>
 });
 
 test('evidence check passes a block naming enough required items and fails one naming too few', () => {
-  const { evidenceCheck } = require('../stage.js');
+  const { evidenceCheck } = CFG;
   const { execFileSync } = require('node:child_process');
   const os = require('node:os');
   const key = { output: 'o.md', block: 'b', assertions: [{ op: 'includes', ids: ['AB-1', 'AB-2', 'AB-3', 'AB-4', 'AB-5'] }] };
@@ -156,30 +162,23 @@ test('evidence check passes a block naming enough required items and fails one n
   }
 });
 
-test('pilotOf records the dry run under pilot.dryRun and needs every gate and the same scores twice', () => {
-  const { pilotOf } = require('../record-dry.js');
-  const res = { repeat: 3, deterministic: true, pass: true, answersPass: true, answersPresent: true, reference: { score: 100 }, stub: { score: 7.14 }, lazy: { score: 30 }, alt: { score: 90 } };
-  const p = pilotOf(res, res, '2026-11-19');
-  assert.deepStrictEqual(p.dryRun, { reference: 100, stub: 7.1, lazy: 30, alt: 90, date: '2026-11-19' });
-  assert.strictEqual(p.decision, 'keep');
-  assert.strictEqual(pilotOf(res, { ...res, lazy: { score: 31 } }, '2026-11-19').decision, 'fix');
-  assert.strictEqual(pilotOf({ ...res, answersPass: false }, res, '2026-11-19').decision, 'fix');
-});
-
-test('lazy-answer keeps half of each id list, adds the decoys, and shifts numbers and dates', () => {
-  const { shallow, decoysOf } = require('../lazy-answer.js');
+test('the mechanical lazy answer keeps half of each list, adds the decoys of the key, and shifts numbers and dates', () => {
   const key = { assertions: [{ op: 'absent', ids: ['DE-9'] }, { op: 'cites', ids: ['AB-1'] }] };
   assert.deepStrictEqual(decoysOf(key), ['DE-9']);
-  const v = shallow({ path: ['AB-1', 'AB-2', 'AB-3'], n: 10, d: '2027-03-22', word: 'red', files: ['a.js', 'b.js', 'c.js', 'd.js'] }, decoysOf(key));
+  const v = shallow({ path: ['AB-1', 'AB-2', 'AB-3'], n: 10, d: '2027-03-22', word: 'red', files: ['a.js', 'b.js', 'c.js', 'd.js'] }, { ...DEFAULTS, decoys: decoysOf(key) });
   assert.deepStrictEqual(v, { path: ['AB-1', 'AB-2', 'DE-9'], n: 7, d: '2027-03-01', word: 'red', files: ['a.js', 'b.js'] });
 });
 
 const tasks = fs.readdirSync(DIR).filter((f) => /^t7-.*\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')));
 
-test('every assembled task has its grader copies, key and reference', () => {
+test('every assembled task names its grader helpers and has its key and reference', () => {
   for (const t of tasks) {
     const hid = path.join(DIR, 'hidden', t.id, 'hidden');
-    for (const f of GRADER_FILES) assert.ok(fs.readFileSync(path.join(hid, f)).equals(fs.readFileSync(path.join(DIR, 'lib', f))), `${t.id}: ${f} differs from lib/`);
+    const helpers = sharedHelpers(path.join(DIR, 'hidden', t.id)).map(([rel]) => rel);
+    for (const f of GRADER_FILES) {
+      assert.ok(helpers.includes(`hidden/${f}`), `${t.id}: .bench-lib.json does not name ${f}`);
+      assert.ok(!fs.existsSync(path.join(hid, f)), `${t.id}: commits a copy of ${f}`);
+    }
     const key = JSON.parse(fs.readFileSync(path.join(hid, 'key.json'), 'utf8'));
     assert.strictEqual(t.checks[0].min, key.assertions.length, t.id);
     assert.ok(fs.existsSync(path.join(DIR, 'solutions', t.id, key.output)), `${t.id}: reference ${key.output} missing`);

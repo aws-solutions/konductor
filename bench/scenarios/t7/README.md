@@ -13,12 +13,13 @@ the tasks with `--extra-tasks bench/scenarios/t7`.
 | --- | --- |
 | `<id>.json` | the task (schema v3) |
 | `fixtures/<id>/` | the folder the agent gets; the twin `t7-status-slip-twin` uses `fixtures/t7-status-slip/` |
-| `hidden/<id>/hidden/` | `key.json` and copies of `lib/plan-grade.cjs` and `lib/plan.test.cjs` |
+| `hidden/<id>/hidden/` | `key.json`; `hidden/<id>/.bench-lib.json` names the graders `plan-grade.cjs` and `plan.test.cjs` from `bench/scenarios/lib/hidden` |
 | `solutions/<id>/` | the reference answer, an overlay on the fixture |
 | `authoring/<id>/` | the author's `generate.py` (fixed seed) and `compute_key.py`, which derives the key from the fixture alone |
 | `briefs/<id>.json` | the brief the author model got: phase, role, inputs, traps, output shape, public source and licence |
-| `prompts/` | the author and review prompts (mapping uses `../t1/prompts/map.md`) |
-| `stage.js` | the pipeline steps: prompt, author, fix, map, review, assemble |
+| `prompts/` | the author and review prompts (mapping uses the shared `bench/scenarios/lib/prompts/map.md`) |
+| `scenario.config.js` | this batch's config for the shared tools in `bench/scenarios/lib`: the prompt, the task builder and its checks, the pipeline steps prompt, author and fix, and the decoys of the mechanical lazy answer |
+| `answers/<id>/` | the lazy, alternative and padding answers the dry run scores |
 | `AUTHORING-LOG.md` | every model call: task, step, model, seconds, credits |
 
 ## How a task is scored
@@ -33,20 +34,19 @@ on tasks with trade-offs, an `expertKey` cover what code cannot check.
 
 ## Making a task
 
-`T7_AUTH=DIR node stage.js prompt|author|map|review|assemble <id>`, where DIR holds `run.sh` (Kiro CLI in a scratch home
-with no steering, rules, MCP or skills) and `catalog.json` (unit names and descriptions only, from
-`../t1/catalog-descriptions.js`). `node ../t1/dry-run.js <id> --dir bench/scenarios/t7` scores the reference and the
-untouched fixture three times with the runner's check code, and checks that a hung test fails alone. Gates: reference at
-least 95, stub at most 20, identical repeats.
+All through the shared tools with `--config bench/scenarios/t7/scenario.config.js` (`bench/scenarios/lib/README.md`).
+`T7_AUTH=DIR node bench/scenarios/lib/stage.js --config ... prompt|author|fix|map|review|assemble <id>`, where DIR holds
+`run.sh` (Kiro CLI in a scratch home with no steering, rules, MCP or skills) and `catalog.json` (unit names and
+descriptions only, from `../t1/catalog-descriptions.js`). `node bench/scenarios/lib/dry-run.js --config ... [id]` scores
+the reference and the untouched fixture three times with the runner's check code and checks that a hung test fails
+alone. Gates: reference at least 95, stub at most 20, identical repeats.
 
-The checks: the hidden test; an evidence check (weight 4, `stage.js` `evidenceCheck`) that passes when the answer's
+The checks: the hidden test; an evidence check (weight 4, `evidenceCheck` in `scenario.config.js`) that passes when the answer's
 block names at least 80% of the items the key requires in its all-items `includes`, `cites` and `order` assertions;
 the output exists and the main input is unchanged (weight 1 each); the block is present (format, not scored).
-`node lazy-answer.js <id>` writes the scripted shallow answer (`answers/<id>/lazy/`).
-
-`node record-dry.js <id>` runs that dry run and records its scores in the task's `pilot.scores.dryRun`. It also
-scores `answers/<id>/lazy/` (gate: 40 or less) and `answers/<id>/alt/` (gate: 80 or more) when present.
-`node alt-answer.js <id>` writes a mechanical alternative from the reference (other order, ids, wording);
+`node bench/scenarios/lib/answers.js --config ... lazy|alt <id>` writes the mechanical shallow answer (`answers/<id>/lazy/`,
+with the key's decoys) or alternative (other order, ids, wording). The dry run scores `answers/<id>/lazy/` (gate: 40 or
+less) and `answers/<id>/alt/` (gate: 80 or more); `--record` writes the four scores into the task's `pilot.dryRun`.
 `node pad-answer.js <id>` writes `answers/<id>/pad/`, a padding probe that is reported, not gated.
 
 Tests: `node --test bench/scenarios/t7/test/*.test.js`.
