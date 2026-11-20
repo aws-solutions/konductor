@@ -184,3 +184,5 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-twin-webhook-routes | map | glm-5 | 0.16 |
 | t1-twin-webhook-routes | review | qwen3-coder-next | 0.45 |
 | t1-twin-webhook-routes | lazy+alt answers | glm-5 | 1.83 |
+| t1-ref-dataclasses | author-data | minimax-m2.5 | 7.31 |
+| t1-ref-dataclasses | author-key | minimax-m2.5 | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
