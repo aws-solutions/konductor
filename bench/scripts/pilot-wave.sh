@@ -6,6 +6,11 @@
 #   bash "$R/bench/scripts/pilot-wave.sh" 1                 # wave 1 (T4), paid
 #   bash "$R/bench/scripts/pilot-wave.sh" 1 --prepare-only  # free: every check, then bench run --prepare-only
 #   bash "$R/bench/scripts/pilot-wave.sh" --list            # print the wave table
+#   bash "$R/bench/scripts/pilot-wave.sh" 2 --only-skipped-from /tmp/pilot-w2 --ceiling 55 --out /tmp/pilot-w2b
+#                                                            # rerun only the tasks a wave's ceiling skipped
+# Options: --tasks ID,ID (a subset of the ready tasks), --only-skipped-from DIR (the tasks DIR's run marked
+#   budget_skipped), --ceiling N and --run-limit N (override the wave's), --out DIR, --no-wait (stop at once when
+#   load is 4 or more instead of waiting up to 60 minutes for it to drop).
 #
 # Environment (each has a default the script looks for; set it to override):
 #   R      a clean worktree of feat/bench-pilot-nk (default: the repo this script sits in)
@@ -34,25 +39,38 @@ stop() { printf 'STOP: %s\n' "$*" >&2; exit 1; }
 say() { printf '%s\n' "$*"; }
 
 usage() {
-  say "usage: bash pilot-wave.sh WAVE [--prepare-only] | --list"
+  say "usage: bash pilot-wave.sh WAVE [--prepare-only] [--tasks ID,ID] [--only-skipped-from DIR] [--ceiling N] [--run-limit N] [--out DIR] [--no-wait] | --list"
   say "waves (wave batch softcap ceiling per-run-limit):"
   say "$WAVES"
 }
 
-WAVE=""; PREP=0
-for a in "$@"; do
-  case "$a" in
+WAVE=""; PREP=0; WAIT=1; ONLY=""; SKIPFROM=""; CEIL_OPT=""; RUNLIM_OPT=""; OUT_OPT=""
+need() { [ "$#" -ge 2 ] && [ -n "$2" ] || { say "$1 needs a value" >&2; usage >&2; exit 64; }; }
+while [ "$#" -gt 0 ]; do
+  case "$1" in
     --prepare-only) PREP=1 ;;
+    --no-wait) WAIT=0 ;;
+    --tasks) need "$@"; ONLY=$2; shift ;;
+    --only-skipped-from) need "$@"; SKIPFROM=$2; shift ;;
+    --ceiling) need "$@"; CEIL_OPT=$2; shift ;;
+    --run-limit) need "$@"; RUNLIM_OPT=$2; shift ;;
+    --out) need "$@"; OUT_OPT=$2; shift ;;
     --list) usage; exit 0 ;;
     -h|--help) usage; exit 0 ;;
-    [1-8]) WAVE=$a ;;
+    [1-8]) WAVE=$1 ;;
     *) usage >&2; exit 64 ;;
   esac
+  shift
 done
 [ -n "$WAVE" ] || { usage >&2; exit 64; }
+[ -z "$ONLY" ] || [ -z "$SKIPFROM" ] || { say "use --tasks or --only-skipped-from, not both" >&2; exit 64; }
+for n in "$CEIL_OPT" "$RUNLIM_OPT"; do case "$n" in ''|*[!0-9]*) [ -z "$n" ] || { say "--ceiling and --run-limit take a whole number of credits" >&2; exit 64; } ;; esac; done
 
 read -r _ B SOFT CEIL RUNLIM <<<"$(printf '%s\n' "$WAVES" | awk -v w="$WAVE" '$1 == w')"
 [ -n "${B:-}" ] || stop "no wave $WAVE"
+[ -z "$CEIL_OPT" ] || CEIL=$CEIL_OPT
+[ -z "$RUNLIM_OPT" ] || RUNLIM=$RUNLIM_OPT
+[ -z "$OUT_OPT" ] || OUT=$OUT_OPT
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 R=${R:-$(git -C "$here" rev-parse --show-toplevel 2>/dev/null || true)}
@@ -93,18 +111,49 @@ elif [ "$PREP" = 1 ]; then say "kiro login: NOT signed in (would stop a paid run
 else stop "Kiro login expired or missing: run '$KBIN login', then run this script again"; fi
 
 load=$(cut -d' ' -f1 /proc/loadavg)
-if awk -v l="$load" 'BEGIN { exit !(l < 4) }'; then say "load $load: ok"
-else
+if ! awk -v l="$load" 'BEGIN { exit !(l < 4) }'; then
   say "load $load is 4 or more. Top processes by CPU:"
   ps -eo pid,user,pcpu,etime,args --sort=-pcpu | head -6 | cut -c1-140
-  if [ "$PREP" = 1 ]; then say "(a paid run would stop here; --prepare-only goes on)"
-  else stop "load $load is 4 or more: ask the lead to pause its workers, or wait for a quiet host, then run again"; fi
+  if [ "$PREP" = 1 ]; then say "(a paid run would wait here; --prepare-only goes on)"
+  elif [ "$WAIT" = 0 ]; then stop "load $load is 4 or more: ask the lead to pause its workers, or wait for a quiet host, then run again"
+  else
+    waited=0
+    while ! awk -v l="$load" 'BEGIN { exit !(l < 4) }'; do
+      [ "$waited" -lt 3600 ] || stop "load stayed at 4 or more for 60 minutes (now $load): ask the lead to pause its workers, then run again"
+      say "waiting for load under 4 (now $load, waited ${waited}s; Ctrl-C to give up)"
+      sleep 60; waited=$((waited + 60)); load=$(cut -d' ' -f1 /proc/loadavg)
+    done
+  fi
 fi
+awk -v l="$load" 'BEGIN { exit !(l < 4) }' && say "load $load: ok"
 
 if [ "$PREP" = 0 ] && [ -e "$OUT" ]; then stop "$OUT exists: move it aside (mv $OUT $OUT.old), then run again"; fi
 
 TASKS=$("${BJ[@]}" scenarios ready --batch "$B" --ids) || stop "'bench.js scenarios ready --batch $B' failed (see above)"
 [ -n "$TASKS" ] || stop "no ready task in $B: see '${BJ[*]} scenarios ready --batch $B'"
+if [ -n "$SKIPFROM" ]; then
+  [ -d "$SKIPFROM" ] || stop "$SKIPFROM is not a wave output dir"
+  ONLY=$(node -e '
+    const fs = require("fs"), path = require("path");
+    const root = process.argv[1], ids = new Set();
+    for (const arm of fs.readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith(".")))
+      for (const task of fs.readdirSync(path.join(root, arm.name), { withFileTypes: true }).filter((d) => d.isDirectory()))
+        for (const rep of fs.readdirSync(path.join(root, arm.name, task.name))) {
+          const f = path.join(root, arm.name, task.name, rep, "result.json");
+          try { if (JSON.parse(fs.readFileSync(f, "utf8")).status === "budget_skipped") ids.add(task.name); } catch {}
+        }
+    process.stdout.write([...ids].sort().join(","));' "$SKIPFROM")
+  [ -n "$ONLY" ] || stop "no budget_skipped task in $SKIPFROM: nothing to rerun"
+  say "skipped in $SKIPFROM: $ONLY"
+fi
+if [ -n "$ONLY" ]; then
+  keep=""; IFS=, read -r -a want <<<"$ONLY"
+  for t in "${want[@]}"; do
+    case ",$TASKS," in *",$t,"*) keep=${keep:+$keep,}$t ;; *) say "not ready, left out: $t" ;; esac
+  done
+  [ -n "$keep" ] || stop "none of the chosen tasks is ready in $B"
+  TASKS=$keep
+fi
 say "ready tasks ($(printf '%s' "$TASKS" | tr ',' '\n' | grep -c .)): $TASKS"
 
 RUN=(run --suite pilot --tasks "$TASKS" --arms vanilla --replicates 1 --parallel 1
