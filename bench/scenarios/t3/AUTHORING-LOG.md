@@ -170,3 +170,12 @@ FX2 outcomes (2026-11-20). A fix call stopped at its 540 s limit has no final cr
 - t3-nfr-capacity-autoscale: DROPPED. The deepseek-3.2 fix left the reference at 74 and the alternative at 74 (gates need 95 and 80). The task's files are not kept in the tree.
 - Not reached (cap): t3-sre-log-retention, and the fixes for t3-db-audit-retention, t3-db-order-history and t3-pm-feature-scope.
 Shared helpers (batch S, 2026-11-20): `decision-lib.js` and `gate.js` moved from `_shared/` to `bench/scenarios/lib/hidden/`; each hidden dir names the ones it uses in `.bench-lib.json` and the tests check copies them in at run time. The dry run is `node bench/scenarios/lib/dry-run.js --config bench/scenarios/t3/scenario.config.js [id]`.
+
+## FX3 fix round (2026-11-20)
+
+Paid calls of the FX3 job (owner-approved, soft cap 60 credits, every call counted at 15 credits in the spend check, abort limit per call as written in its plan line, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t3-sre-log-retention fix by deepseek-3.2, abort limit 10 credits, counted at 15, spend so far 0.0 of 60
+- result: t3-sre-log-retention fix deepseek-3.2 credits=10 secs=541
+
+FX3 outcome (2026-11-20): t3-sre-log-retention DROPPED. deepseek-3.2 rewrote the prompt (no longer naming the strategies) and changed three fixture files for the key; the reference stayed at 100, but the shallow answer from the shared lib scored 100 (gate 40), so the free gate failed and no recheck was spent. A fix call stopped at its 540 s limit is booked at its 10 credit abort limit.

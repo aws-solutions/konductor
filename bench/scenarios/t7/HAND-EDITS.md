@@ -67,3 +67,11 @@ T7 task fix; that gate fits code tasks only (DEBT row added).
 Still fix, on the paid single-fix list (one key fix by the original writer, gpt-5.6-luna): t7-program-brief and
 t7-release-gate. Their shallow answer meets most hidden items even with every non-test check failing (57.7 and 61.9),
 because their keys check one-item lists that half a list still holds; reasons in `pilot.scores.fixReason`.
+
+## FX3 (2026-11-20)
+
+### t7-program-brief, t7-release-gate
+
+- Who: claude (FX3 job)
+- What: checks[0].min set to the number of key assertions after the writer's key fix (t7-program-brief 11 to 20, t7-release-gate 14 to 15). No other change; the key itself is the writer's (gpt-5.6-luna).
+- Why: the batch test requires the tests check's min to equal the key's assertion count, and the writer added assertions without raising min. Re-scored free after the edit; the glm-5 recheck verdict (pass) was on the writer's key and is unchanged by this count.
