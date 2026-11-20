@@ -493,6 +493,8 @@ impossible-reading 20 and 3. That is 207 open and 29 held back, each with its an
 Every probe passed gate A (lint) and gate B (the four control suites on both arms) twice with the same result: the
 first full sweep was 1872 trials in each run, 0 not as expected, 0 differing (`gate-results/2026-11-20-full-7probes.txt`);
 the two shapes added later (p6 `replay-speed` v25, p3 `recent-stale` v28) were gated the same way, 16 trials each run, 0 not as expected.
+A full re-gate of the open set after those shapes landed (`gate-results/2026-11-20-regate-open-set.txt`) ran all 207 open
+variants, 1656 trials each run, 0 not as expected and 0 differing between runs on every probe.
 Open: the owner's blind review (sheets generated, not read); the judge pass (needs its own spend approval); the rest
 of p4, p6 and p3 toward 35 if wanted; the lost-link shape of the jam probe (needs the careful-operator control
 extended); and the words-only-decline predicate decision. These are in [DEBT.md](../DEBT.md).
