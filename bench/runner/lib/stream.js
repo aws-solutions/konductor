@@ -412,4 +412,10 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { toolNameOf, isV3Call, mcpCallOf, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+// The first `runError` event's message (Kiro CLI writes one when a turn fails, for example on a ClientThrottleError).
+function runErrorOf(events) {
+  const ev = events.find((e) => e?.type === 'runError');
+  return ev ? String(ev.data?.message ?? 'run error') : null;
+}
+
+module.exports = { runErrorOf, toolNameOf, isV3Call, mcpCallOf, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, skillFileReadOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
