@@ -157,3 +157,36 @@ test('a fix that only deletes fixture lines is not an answer leak when the agent
   const rows = byTask(pilotRows([w], { packDir: pack }));
   assert.equal(rows['t9-del#1'].flags['answer-leak'], undefined);
 });
+
+test('a negative control that repeats its reference is not an answer leak; a hidden-path read still is', () => {
+  const root = tmp();
+  const pack = path.join(root, 'pack');
+  write(path.join(pack, 't6', 't6-neg.json'), json({ id: 't6-neg', prompt: 'Do it.', fixture: 't6-neg', hidden: 't6-neg', controlKind: 'negative', authorship: { model: 'gpt-5.6-luna' } }));
+  write(path.join(pack, 't6', 'solutions', 't6-neg', 'docs', 'answer.md'), `${REF}\n`);
+  write(path.join(pack, 't6', 'fixtures', 't6-neg', 'README.md'), 'start\n');
+  const w = path.join(root, 'w');
+  fakeRun(w, [
+    { task: 't6-neg', result: { checks: [tests(8, 8), sub(true)] }, files: { 'docs/answer.md': `${REF}\n` } },
+    { task: 't6-neg', rep: 2, result: { checks: [tests(8, 8), sub(true)] }, files: { 'docs/answer.md': `${REF}\n` }, stream: [call('cat ../hidden/t6-neg/check.test.js')] },
+  ]);
+  const rows = byTask(pilotRows([w], { packDir: pack }));
+  assert.equal(rows['t6-neg#1'].flags['answer-leak'], undefined);
+  assert.match(rows['t6-neg#2'].flags['answer-leak'], /hidden\/t6-neg/);
+});
+
+test('a run the service throttled is broken with a rerun note and raises no too-hard flag', () => {
+  const root = tmp();
+  const pack = path.join(root, 'pack');
+  write(path.join(pack, 't6', 't6-req.json'), json({ id: 't6-req', prompt: 'Do it.', fixture: 't6-req', hidden: 't6-req', authorship: { model: 'gpt-5.6-luna' } }));
+  const w = path.join(root, 'w');
+  const throttle = { type: 'runError', data: { stage: 'prompt', message: "You're sending requests faster than your rate limit allows. {\"errorType\":\"ClientThrottleError\"}" } };
+  fakeRun(w, [
+    { task: 't6-req', result: { status: 'error', checks: [tests(0, 8), sub(false)] }, stream: [throttle] },
+    { task: 't6-req', rep: 2, result: { status: 'error', flags: ['throttled'], checks: [tests(0, 8), sub(false)] } },
+  ]);
+  const rows = byTask(pilotRows([w], { packDir: pack }));
+  for (const k of ['t6-req#1', 't6-req#2']) {
+    assert.match(rows[k].flags.broken, /throttled by the service, rerun it/);
+    assert.equal(rows[k].flags['too-hard'], undefined);
+  }
+});

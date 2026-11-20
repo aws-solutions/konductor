@@ -156,3 +156,28 @@ for (const [key, harness] of Object.entries(HARNESSES)) {
     }
   });
 }
+
+// Pilot wave 3: two kiro-cli runs ended after 11 s on a ClientThrottleError runError. The harness records it as the
+// run error and flags the run `throttled`, so the pilot table reports a rerun instead of a too-hard task.
+test('kiro-cli: a runError in the stream sets meta.runError, and a throttle also flags the run', () => {
+  const harness = HARNESSES['kiro-cli'];
+  const c = CASES['kiro-cli'];
+  const base = fs.readFileSync(path.join(FX, 'kiro-cli.jsonl'), 'utf8').trimEnd();
+  for (const [message, flagged] of [["You're sending requests faster than your rate limit allows. ClientThrottleError", true], ['model refused the request', false]]) {
+    const root = tmp();
+    try {
+      const streamText = `${base}\n${JSON.stringify({ type: 'runError', data: { stage: 'prompt', message } })}\n`;
+      const turn = harness.turnSummary(streamText);
+      const home = path.join(root, 'home');
+      const outDir = path.join(root, 'out');
+      write(path.join(outDir, 'stream.jsonl'), streamText);
+      const ctx = { envKeep: [], skillInfo: new Map(), ...c.setup({ root, home, sessionId: turn.sessionId }) };
+      const acc = { agg: null, session: null, checks: [], transcript: null, meta: { flags: [] } };
+      harness.parseResult(outDir, { home, acc, arm: { id: 'kiro-cli-vanilla', vanilla: true, runtime: 'kiro-cli' }, ctx, config: c.config });
+      assert.equal(acc.meta.runError, message);
+      assert.equal(acc.meta.flags.includes('throttled'), flagged);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
