@@ -63,3 +63,11 @@ test('a kiro-cli that is not the pinned copy stops, and the pin can be set for a
   assert.doesNotMatch(ok.stderr, /not the pinned kiro-cli copy/);
   fs.rmSync(s.d, { recursive: true, force: true });
 });
+
+test('rerun options: bad combinations and values exit 64 before any check', () => {
+  assert.equal(run(['2', '--tasks', 'a', '--only-skipped-from', '/tmp']).status, 64);
+  assert.equal(run(['2', '--ceiling', 'lots']).status, 64);
+  assert.equal(run(['2', '--run-limit', '1.5']).status, 64);
+  assert.equal(run(['2', '--out']).status, 64);
+  assert.match(run(['--list']).stdout, /--only-skipped-from DIR/);
+});

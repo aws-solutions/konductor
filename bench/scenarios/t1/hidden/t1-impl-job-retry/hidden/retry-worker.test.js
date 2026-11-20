@@ -189,7 +189,9 @@ test('run waits on the injected clock and then processes the retry', async () =>
     await q.enqueue({ id: 'wait', type: 'work', payload: {} });
     const clock = clockFactory(0);
     let calls = 0;
-    const runner = new WorkerRunner({ queue: q, handlers: { work: async () => { calls++; if (calls === 1) throw new Error('once'); } }, retryPolicies: { work: { maxAttempts: 2, baseDelayMs: 40 } }, clock, logger: log() });
+    let runner;
+    // The second call finishes the work and stops the runner, so the test does not depend on how run() idles.
+    runner = new WorkerRunner({ queue: q, handlers: { work: async () => { calls++; if (calls === 1) throw new Error('once'); runner.stop(); } }, retryPolicies: { work: { maxAttempts: 2, baseDelayMs: 40 } }, clock, logger: log() });
     const safety = setTimeout(() => runner.stop(), 50);
     await runner.run();
     clearTimeout(safety);
@@ -202,13 +204,23 @@ function clockFactory(value) {
   return { value, sleeps: [], now() { return this.value; }, sleep: async function (ms) { this.sleeps.push(ms); this.value += ms; } };
 }
 
-test('queue does not take a job before availableAt', async () => {
+test('a job is not taken before availableAt', async () => {
   const t = await temp();
   try {
     const q = new JobQueue({ filePath: t.filePath });
-    await q.enqueue({ id: 'future', type: 'work', payload: {}, attempts: 1, availableAt: 50 });
-    assert.equal(await q.takeNext(49), null);
+    await q.enqueue({ id: 'future', type: 'work', payload: {} });
+    let now = 0;
+    const seen = [];
+    const runner = new WorkerRunner({ queue: q, handlers: { work: async (job) => { seen.push(job.attempts); if (job.attempts === 1) throw new Error('later'); } }, retryPolicies: { work: { maxAttempts: 2, baseDelayMs: 50 } }, clock: { now: () => now, sleep: async () => {} }, logger: log() });
+    await runner.runOnce();
     assert.equal((await q.nextAvailableAt()), 50);
-    assert.equal((await q.takeNext(50)).attempts, 2);
+    now = 49;
+    await runner.runOnce();
+    assert.deepEqual(seen, [1]);
+    assert.equal(await q.size(), 1);
+    now = 50;
+    await runner.runOnce();
+    assert.deepEqual(seen, [1, 2]);
+    assert.equal(await q.size(), 0);
   } finally { await clean(t); }
 });

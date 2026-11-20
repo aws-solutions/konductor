@@ -1,7 +1,7 @@
 {
   "id": "t7-dep-conflicts",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line-first",
-      "criterion": "The prose gives the director the honest launch-date bottom line before the supporting detail (code cannot check this because it only reads the structured block).",
+      "criterion": "The prose gives the director the honest launch-date bottom line before the supporting detail. Fail: no launch date up front, or only the roadmap date 2027-09-30 is given as if nothing conflicts. Partial: the opening names a changed launch date but not the driver (CND-017 handing to DLT-011) or the size of the slip, or it comes after a long list of conflicts. Pass: the first paragraph says the launch is planned for 2027-09-30 and moves to 2027-10-08 (eight calendar days) if the CND-017 to DLT-011 handoff stays unresolved, and names that handoff as the launch driver before the three late-handoff conflicts, the BCN-020/CND-020 cycle and the stale milestone are listed. (code cannot check this because it only reads the structured block).",
       "weight": 2
     },
     {
       "id": "reasoning-shown",
-      "criterion": "The prose explains how the reported dates and launch impact follow from the supplied records without claiming more certainty than the records support (code cannot check this because it cannot evaluate written reasoning).",
+      "criterion": "The prose explains how the reported dates and launch impact follow from the supplied records without claiming more certainty than the records support. Fail: dates and conflicts are asserted with no link to the records, or the cancelled ATL-018 row is counted as a live conflict. Partial: the late handoffs are derived from producer due dates against needed-by dates, but the 2027-10-08 date has no stated basis or is presented as certain. Pass: the prose shows the three live conflicts as due date against needed-by date (ATL-007 five days, CND-009 six days, CND-017 eight days), explains why ATL-018 is excluded (cancelled, replacement ATL-019 on time), says the Atlas ingestion contract milestone is marked Done while ATL-007 is open, and states that the unresolved date carries the eight-day slip through the downstream chain on the assumption that no parallel recovery changes it. (code cannot check this because it cannot evaluate written reasoning).",
       "weight": 2
     }
   ],
@@ -144,7 +144,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -81,5 +81,17 @@
       ],
       "note": "Malformed non-empty state is re-raised instead of recovered as empty state."
     }
-  ]
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "schedulerlib/priority_queue.py",
+        "schedulerlib/retry.py"
+      ],
+      "note": "same behaviour, new internals: queue kept as a sorted list, retry loop restructured"
+    }
+  ],
+  "maxTests": 65,
+  "baseTests": 25
 }

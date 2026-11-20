@@ -1,0 +1,6 @@
+'use strict';
+const {nextId}=require('./util/ids'); const {isStatus,requireString}=require('./util/validation'); const {nowIso}=require('./util/clock');
+function createOrder(store,input,clock=Date){requireString(input.externalReference,'externalReference'); const order={id:nextId('ord'),externalReference:input.externalReference,amount:Number(input.amount),currency:input.currency||'USD',paymentStatus:'pending',createdAt:nowIso(clock)}; const orders=store.read('orders'); store.save('orders',orders.concat(order)); return order;}
+function updatePaymentStatus(store,orderId,status,clock=Date,broker){if(!isStatus(status)){const e=new Error('invalid payment status');e.code='INVALID_STATUS';throw e;} const orders=store.read('orders'); const order=orders.find(x=>x.id===orderId); if(!order){const e=new Error('order not found');e.code='ORDER_NOT_FOUND';throw e;} order.paymentStatus=status; order.updatedAt=nowIso(clock); store.save('orders',orders); if(broker)broker.publish('payment.status.changed',{orderId,status,updatedAt:order.updatedAt}); return order;}
+function getOrder(store,id){return store.read('orders').find(x=>x.id===id)||null;}
+module.exports={createOrder,updatePaymentStatus,getOrder};

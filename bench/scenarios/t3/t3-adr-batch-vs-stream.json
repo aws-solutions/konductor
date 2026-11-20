@@ -27,18 +27,18 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of analytical reasoning and tradeoff analysis (not code-checkable: Tests can verify numerical calculations and constraint compliance, but cannot assess the quality of reasoning, consideration of tradeoffs, or clarity of explanation in the ADR narrative.)",
+      "criterion": "Quality of analytical reasoning and tradeoff analysis. Fail: picks batch_current for its $4,316 price, or batch_3x_scaling or streaming, with no window or budget arithmetic. Partial: the chosen option is batch_2x_scaling but the reasoning checks only one limit (window or budget), or sizes the load at 6.28 TB instead of the 4.65 TB Q3 2025 planning point. Pass: shows 4.65 TB x 1.5 hr/TB = 6.98 hours so batch_current fails the 4-hour window, batch_3x_scaling at $12,948 breaks the $10,000 budget, and batch_2x_scaling at about $8,632 (16 nodes x $68 x about 8 hours x 30 days, storage at $23/TB not the superseded $28) meets both. (not code-checkable: Tests can verify numerical calculations and constraint compliance, but cannot assess the quality of reasoning, consideration of tradeoffs, or clarity of explanation in the ADR narrative.)",
       "weight": 1
     },
     {
       "id": "business_context",
-      "criterion": "Appropriate consideration of business context and team capabilities (not code-checkable: While tests can verify cost and performance numbers, they cannot evaluate whether the decision appropriately considers factors like team skills, training requirements, implementation risk, or alignment with business strategy beyond the hard constraints.)",
+      "criterion": "Appropriate consideration of business context and team capabilities. Fail: no mention of the team's batch skills, training or delivery risk. Partial: mentions the skill gap for streaming but gives no figures or timeline. Pass: states streaming needs 60 hours of training (about $7,000) and an 8-week timeline with architectural risk, while batch scaling uses existing Spark skills in about 2 weeks, and notes that near-real-time output is not needed for a nightly report. (not code-checkable: While tests can verify cost and performance numbers, they cannot evaluate whether the decision appropriately considers factors like team skills, training requirements, implementation risk, or alignment with business strategy beyond the hard constraints.)",
       "weight": 1
     },
     {
-      "id": "documentation_quality",
-      "criterion": "Clarity and completeness of Architecture Decision Record documentation (not code-checkable: Tests can verify the presence of required sections and the decision block, but cannot assess the quality of writing, clarity of explanation, appropriate level of detail, or usefulness of the ADR as a decision record for future reference.)",
-      "weight": 1
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -167,5 +167,9 @@
       "Calculates costs for Q4 2025 (6.28 TB) instead of the 4-quarter planning horizon ending at Q3 2025 (4.65 TB), leading to incorrect constraint analysis."
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

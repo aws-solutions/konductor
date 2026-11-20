@@ -1,0 +1,5 @@
+[
+  { "code": "eu-west", "label": "Western Europe" },
+  { "code": "us-east", "label": "Eastern United States" },
+  { "code": "ap-south", "label": "Southern Asia" }
+]

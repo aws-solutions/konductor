@@ -13,7 +13,9 @@
         "rel-8421",
         "(caused|triggered|introduced) by (the )?(auth(-service)? )?(deploy|release|rollout)"
       ],
-      "weight": 3
+      "weight": 3,
+      "section": "cause",
+      "gate": true
     },
     {
       "id": "root-cause-evidence-chain",
@@ -47,7 +49,8 @@
         }
       ],
       "min": 3,
-      "weight": 3
+      "weight": 3,
+      "section": "cause"
     },
     {
       "id": "root-cause-evidence-precision",
@@ -57,7 +60,8 @@
         "not_after|certificate has expired|client_certificate_expired|mtls=failed"
       ],
       "min": 0.5,
-      "weight": 2
+      "weight": 2,
+      "section": "cause"
     },
     {
       "id": "timeline-deployment",
@@ -72,7 +76,8 @@
           "time": "2025-02-14T10:49:00Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-first-symptom",
@@ -86,7 +91,8 @@
           "time": "2025-02-14T11:00:00Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-alert",
@@ -100,7 +106,8 @@
           "time": "2025-02-14T11:04:00Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-rollback-no-effect",
@@ -115,7 +122,8 @@
           "time": "2025-02-14T11:26:00Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-mitigation",
@@ -130,7 +138,8 @@
           "time": "2025-02-14T11:40:00Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-recovery",
@@ -144,14 +153,16 @@
           "time": "2025-02-14T11:42:00Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-bounded",
       "type": "maxLen",
       "path": "timeline",
       "max": 15,
-      "min": 4
+      "min": 4,
+      "section": "timeline"
     },
     {
       "id": "impact-duration",
@@ -159,7 +170,8 @@
       "path": "impact.duration_minutes",
       "value": 40,
       "tol": 2,
-      "weight": 2
+      "weight": 2,
+      "section": "impact"
     },
     {
       "id": "impact-failed-logins",
@@ -167,7 +179,8 @@
       "path": "impact.failed_login_attempts",
       "value": 17465,
       "tolPct": 5,
-      "weight": 2
+      "weight": 2,
+      "section": "impact"
     },
     {
       "id": "impact-peak-tls-errors",
@@ -175,7 +188,8 @@
       "path": "impact.peak_tls_handshake_errors",
       "value": 448,
       "tolPct": 5,
-      "weight": 2
+      "weight": 2,
+      "section": "impact"
     },
     {
       "id": "action-fix-certificate",
@@ -189,7 +203,8 @@
         ]
       },
       "min": 1,
-      "weight": 2
+      "weight": 2,
+      "section": "actions"
     },
     {
       "id": "action-expiry-guard",
@@ -203,7 +218,8 @@
         ]
       },
       "min": 1,
-      "weight": 2
+      "weight": 2,
+      "section": "actions"
     },
     {
       "id": "action-regional-failover",
@@ -216,14 +232,16 @@
           "regional|region|traffic|recovery"
         ]
       },
-      "min": 1
+      "min": 1,
+      "section": "actions"
     },
     {
       "id": "actions-bounded",
       "type": "maxLen",
       "path": "actionItems",
       "max": 10,
-      "min": 2
+      "min": 2,
+      "section": "actions"
     },
     {
       "id": "summary-does-not-blame-release",
@@ -232,7 +250,9 @@
       "none": [
         "rel-8421",
         "(caused|triggered|introduced) by (the )?(auth(-service)? )?(deploy|release|rollout)"
-      ]
+      ],
+      "section": "cause"
     }
-  ]
+  ],
+  "scoring": "sections"
 }

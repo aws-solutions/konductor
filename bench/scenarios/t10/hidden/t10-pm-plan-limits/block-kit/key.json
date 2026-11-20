@@ -1,0 +1,151 @@
+{
+  "outputFile": "docs/design/project-limits.md",
+  "items": [
+    {
+      "id": "hard-admission",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "hard|enforc",
+          "create|new"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "active-definition",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "active",
+          "archiv",
+          "delet"
+        ],
+        "none": [
+          "all projects"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "atomic-check",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "withLock|lock|serializ",
+          "withAccountLock|store"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "existing-data",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "above|over",
+          "keep|retain",
+          "block|reject"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "partial-batch",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "207|partial",
+          "ordered|input order",
+          "continue|row"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "expiring-override",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "account|override",
+          "expires|expiry",
+          "UTC|ISO"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "shadow-before-enforce",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "shadow|observ",
+          "enforc"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "operational-risk",
+      "type": "some",
+      "path": "risks",
+      "match": {
+        "field": "mitigation",
+        "all": [
+          "shared|process|horizontal|coordinate",
+          "lock|write|scale"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "design-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "file": "config/plans",
+          "all": [
+            "free",
+            "maxActiveProjects"
+          ]
+        },
+        {
+          "file": "src/store/json-store",
+          "all": [
+            "withLock",
+            "work"
+          ]
+        },
+        {
+          "file": "docs/partners",
+          "all": [
+            "batch"
+          ]
+        },
+        {
+          "file": "docs/partners",
+          "all": [
+            "row|order"
+          ]
+        }
+      ],
+      "min": 4,
+      "weight": 1
+    }
+  ]
+}

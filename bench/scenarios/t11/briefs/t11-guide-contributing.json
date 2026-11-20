@@ -1,0 +1,22 @@
+{
+  "id": "t11-guide-contributing",
+  "kind": "guide",
+  "twoStep": false,
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "size": "50 to 90",
+  "ntests": "14 to 18",
+  "ntrap": 4,
+  "voice": "a maintainer of an open-source tool who keeps answering the same questions from new contributors",
+  "outFile": "CONTRIBUTING.md",
+  "source": {
+    "url": "https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors",
+    "licence": "CC BY 4.0 (github/docs LICENSE, https://github.com/github/docs/blob/main/LICENSE, checked 2026-11-20); idea only: a contributor guide in the repository root; no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "briefLine": "Write `CONTRIBUTING.md` for an unfamiliar Node.js repository: the facts a new contributor needs (setup, the test kinds and their commands, lint, commit message rules, branch and pull request flow, generated code, releases, who reviews), taken from the repository's real config, not from its stale README.",
+  "brief": "Phase: implementation (documentation of an existing repository). Role: developer. Repo: an open-source Node.js command-line tool and library (invented name and domain, for example a tool that converts and validates subtitle files) with a lived-in layout: `src/`, `test/unit`, `test/integration`, `scripts/` (a lint runner, a code generator, a release script, a commit-message checker), `src/generated/` (files with a do-not-edit header, made by the generator), `.github/workflows/ci.yml`, `.nvmrc`, `package.json` with engines and scripts, a CODEOWNERS file, a CHANGELOG, a README and some docs. Seed these traps: (1) the README is stale and states facts the config contradicts (for example an old Node version, or that `npm test` runs everything when it now runs only unit tests and integration tests need their own script and an environment variable); the guide must state what the config and scripts say; (2) the commit message rules live only in the checker script (allowed types, scope rule, subject length limit), not in any doc; (3) which branch pull requests target and which CI jobs must pass are only in the workflow file and differ from the README; (4) the release script refuses to run outside one branch and tags in one format; the guide must say so. The request: write `CONTRIBUTING.md` in the repository root for new contributors, covering setup, running each kind of test, lint, commit messages, branches and pull requests, generated code, releases and reviews, and fix nothing else. The hidden test reads `CONTRIBUTING.md` and checks each fact (a version, a command in backticks, a type list, a limit, a branch name, a tag format, an owner team) with patterns that accept other wording, checks that the stale facts are not stated as current, and checks that every `npm run <name>` the guide names exists in `package.json`."
+}

@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-ci-deploy-role",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -59,7 +59,7 @@
   "rubric": [
     {
       "id": "reviewable-policy",
-      "criterion": "The permission entries are organized so a reviewer can tell which deploy operation each resource grant supports (code cannot check this because the evaluator checks decisions, not the policy's explanatory structure).",
+      "criterion": "The permission entries are organized so a reviewer can tell which deploy operation each resource grant supports. Fail: one statement or a few broad statements mix all actions, or Sids are generic (Statement1, Allow), so a reviewer cannot tell which call in scripts/deploy.js or scripts/rollback.js needs a grant. Partial: statements are split by service, but Sids do not name the operation, or the final message does not map grants to the calls, or staging and production resources share one statement. Pass: separate statements with Sids that name the operation they serve (list and put objects for the asset upload, pass the execution role to Lambda, update function code and publish a version, invalidate the distribution, move the alias for rollback), each limited to the resource named in config/staging.json and config/production.json, and the final message or notes show which script call each grant supports. (code cannot check this because the evaluator checks decisions, not the policy's explanatory structure)",
       "weight": 1
     }
   ],
@@ -190,7 +190,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

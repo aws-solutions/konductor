@@ -1,0 +1,1 @@
+{ "port": 8080, "dataFile": "./var/orders.json", "requestTimeoutMs": 1500, "maxOrderLines": 40, "currency": "USD" }

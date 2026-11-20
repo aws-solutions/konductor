@@ -1,0 +1,23 @@
+{
+  "id": "t10-tpm-ring-rollout",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "tpm",
+  "phases2": [
+    "planning",
+    "implementation",
+    "release-ops"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "cjs",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template",
+    "licence": "Apache-2.0 (kubernetes/enhancements LICENSE)",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a technical program manager coordinating several teams, writing to the engineer who will do the work",
+  "brief": "Phase: long multi-phase, idea to ship. Role: technical program manager. Repo: a Node.js receipts service with a flag module, a rings file (ops/rings.json), a freeze calendar (ops/freeze-calendar.csv), an error-budget policy doc and metric snapshot CSVs from past rollouts. Several teams depend on a new receipt PDF generator going out ring by ring. The TPM wants a ring-aware rollout library (per ring percentages, never moving backwards without an explicit rollback), a go/no-go script that reads a metrics snapshot CSV and prints PROMOTE, HOLD or ROLLBACK for the next step, a design note on dependencies and ordering, and a rollout plan the other teams can follow. Traps to plant (adapt, five or more): (1) ring order in the rings file is not alphabetical and one ring has a freeze window in the calendar; (2) the budget policy gives different burn thresholds and windows per ring; (3) snapshot CSVs have missing minutes, and a gap must be HOLD, never PROMOTE; (4) metric names in snapshots differ in case or unit suffix from the metrics catalogue; (5) another team consumes the old receipt format until a date stated in docs/partners.md, so the old generator cannot be removed in the same release. Decisions the design note must settle: promotion criteria, who can halt, how a freeze is honoured, rollback order, communication. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note."
+}

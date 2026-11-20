@@ -1,0 +1,170 @@
+{
+  "id": "t11-media-returns-whiteboard",
+  "class": "hard",
+  "version": 2,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I drew the replacement return lifecycle during the operations meeting and will be away next week. Please replace the old flow in `src/returns/lifecycle.js` with the design in `docs/design/returns-whiteboard.png`; that photo is the source of truth, while `docs/design/returns-note.md` only gives context. Keep the public CommonJS interface names exactly as follows: export `STATES`, `createReturn(input)`, and `applyEvent(ret, event, ctx)`. `STATES` exposes this exact key-to-value map: `{ REQUESTED: 'REQUESTED', IN_TRANSIT: 'IN_TRANSIT', RECEIVED: 'RECEIVED', INSPECTING: 'INSPECTING', MANAGER_REVIEW: 'MANAGER_REVIEW', APPROVED: 'APPROVED', REJECTED: 'REJECTED', REFUNDED: 'REFUNDED', CLOSED: 'CLOSED', EXPIRED: 'EXPIRED' }`. The event argument vocabulary is `dispatch`, `scan`, `openCase`, `recheck`, `pass`, `fail`, `managerPass`, `refund`, `reinspect`, and `archive`. A return input has the fields `id`, `orderId`, `lineId`, `amountCents`, `opened`, and `daysSinceDelivery`; lifecycle records use the fields `inspectionAttempts`, `restockingFeeCents`, and `refundCents` where applicable, and the created id has the form `return-<id>`. Amounts and every money result must stay integer cents. `createReturn` should make a new return object, and `applyEvent` must return a new object rather than changing the one it receives. An unavailable event must throw an error whose `code` is `INVALID_TRANSITION`. Preserve the identifiers and existing store, transport, adapter, and configuration behavior. Add or update focused tests for the replacement lifecycle, but do not rewrite unrelated modules or turn the image into a second source of design details.",
+  "fixture": "t11-media-returns-whiteboard",
+  "hidden": "t11-media-returns-whiteboard",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(grep -rhoE '(^|[^a-zA-Z_.])(test|it)\\(' test | wc -l)\" -ge 6",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/returns/lifecycle.js",
+      "pattern": "MANAGER_REVIEW",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "src/returns/lifecycle.js",
+      "pattern": "INVALID_TRANSITION",
+      "min": 1,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/design/returns-whiteboard.png",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "image-legibility",
+      "criterion": "The whiteboard image keeps its state names, event labels, guards, crossed mark, loop and money note readable at normal size. Fail: any of the ten states, the event labels or the crossed mark cannot be read at normal size, or an arrow shows only its head with no visible line, or the money note is cut off. Partial: all states and event labels read, but one of the guard text, the loop back arrow, the crossed mark or the money note is hard to read at normal size. Pass: all ten states, every event label, each guard, the crossed mark, the inspection loop and the money note can be read at normal size with no overlap or clipped text, and every arrow shows its line and head. (code cannot check this because visual legibility requires human review)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": "k-media-analyzer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://en.wikipedia.org/wiki/UML_state_machine",
+      "licence": "CC BY-SA 4.0 (checked on the page footer, 2026-11-20); idea only: states, events, guards and transitions drawn as a diagram; no text or figure used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Not a defect: the leak named is the task's reviewer notes, which never reach the agent; the request states no transition, guard, limit or fee. (reviewer: The notes field in task-draft.json reveals specific implementation details: 'The board includes a crossed-out reinspection arrow that must not become a transition. A small delivery-age branch changes the dispatch destination, and an inspection recheck loops while incrementing a counter. Approval splits at an amount limit, and the sticky note defines an opened-item fee with a minimum in cents.' This tells the agent what traps to find (crossed-out reinspection) and how to work (delivery-age branch, recheck loop, amount split, fee calculation).)"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Fixed in the author's fix round: the request now states the STATES map, the event names, the record fields and the id form; the limits and the fee stay in the image on purpose. (reviewer: Multiple critical details are not stated in the request but required by hidden tests: (1) the exact 30-day threshold for expiration is not specified; (2) the 50000 cents approval limit is not specified; (3) the 15% restocking fee and 300 cents minimum are not specified; (4) the initial state should be REQUESTED not NEW; (5) the `inspectionAttempts` counter starting at 0 is not mentioned; (6) the exact event names (dispatch, scan, openCase, recheck, managerPass, archive) are not listed; (7) STATES object must include all states like MANAGER_REVIEW, EXPIRED, REJECTED, INSPECTING. The agent must guess these from the image.)"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture code has an old lifecycle with states NEW/RECEIVED/REFUNDED/CLOSED and different events (receive, refund, close). There's no泄露 of the new lifecycle states, transitions, or business rules. The CHANGELOG and README are generic. The test/lifecycle.test.js only tests the old behavior. No hidden test details are exposed."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is appropriately difficult. A quick wrong answer (like the lazy implementation that skips MANAGER_REVIEW, EXPIRED, REJECTED states, inspectionAttempts, proper fee calculation) would be caught by at least 12 of 18 hidden tests including: day 30/31 boundary, manager review for amounts over 50000, inspection recheck loop, restocking fee percentage and minimum, crossed-out reinspect event, and missing states."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "By design: the task tests reading an image, so its values are only in the PNG; the image was made legible (author fix round, then a logged hand edit that restored the arrow lines), and a non-Claude re-check passed. (reviewer: The task requires extracting exact numerical values from an image: 30 days threshold, 50000 cents approval limit, 15% restocking fee, 300 cents minimum fee. The task-draft.json rubric notes 'code cannot check this because visual legibility requires human review' but the task fundamentally depends on reading these values. Additionally, the model cannot read the whiteboard image (as indicated by '[image omitted: the selected model does not read images]'), making the task impossible for models without vision capabilities.)"
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt (task-draft.json) only asks to replace the lifecycle with the image as source of truth. It does not mention any specific method names beyond the required exports (STATES, createReturn, applyEvent) nor any decoy techniques."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture test/lifecycle.test.js contains only one minimal test that references STATES.NEW (not in the required STATES map), and the fixture lifecycle.js has only 4 states (NEW, RECEIVED, REFUNDED, CLOSED) with different event vocabulary (receive, refund, close) than the task requires. This is clearly incomplete and not the expected solution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden tests (hidden-behaviour.test.js) use all required states, events, and behaviors described in the task, and match what the solution implements. The fixture test only has a minimal stub test referencing STATES.NEW which is not in the required STATES map, confirming it is intentionally incomplete and the hidden tests are the key."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The task-draft.json specifies exactly the required STATES map, event vocabulary, return record fields, and behavior constraints. The hidden tests show what behavior is expected. The fixture image (returns-whiteboard.png) contains the full state machine diagram. With the prompt's requirements plus the image, the complete implementation can be derived without needing the solution folder."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 17.5,
+    "dryRun": {
+      "reference": 100,
+      "stub": 17.5,
+      "lazy": 23.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

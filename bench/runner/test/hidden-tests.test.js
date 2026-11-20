@@ -215,7 +215,7 @@ test('recheck adds no hiddenTests field to tasks without tests checks', () => {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the judge bundle shows pass and fail counts for tests checks and nothing else', () => {
+test('the judge bundle shows no hidden test counts or names', () => {
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
@@ -225,7 +225,7 @@ test('the judge bundle shows pass and fail counts for tests checks and nothing e
     }]);
     const result = JSON.parse(fs.readFileSync(path.join(runDir, 'vanilla/t1/1/result.json'), 'utf8'));
     const { text } = buildBundle({ runDir: path.join(runDir, 'vanilla/t1/1'), result, fixtureDir: path.join(bench, 'fixtures/fx'), limits: { maxFileChars: 4000, maxBundleChars: 20000 }, redactions: [] });
-    assert.match(text, /FAIL tests: 3 of 9 hidden tests passed/);
+    assert.doesNotMatch(text, /hidden tests passed|FAIL tests/);
     assert.doesNotMatch(text, /secret-name/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
@@ -273,6 +273,18 @@ test('withPerTestTimeout adds a per-test limit and the TAP reporter to node --te
   assert.equal(withPerTestTimeout('node --test --test-timeout=5 a.js'), 'node --test --test-timeout=5 a.js');
   assert.equal(withPerTestTimeout('node --test-only x'), 'node --test-only x');
   assert.equal(withPerTestTimeout('python3 -m pytest'), 'python3 -m pytest');
+});
+
+// Independent review 2026-11-20: `node --require ./x --test` got no per-test timeout, so the T3 queue-choice gate failed.
+test('withPerTestTimeout keeps Node options before --test, with their values', () => {
+  const { withPerTestTimeout, PER_TEST_TIMEOUT_MS } = require('../lib/check-matcher.js');
+  const flags = `--test-timeout=${PER_TEST_TIMEOUT_MS} --test-reporter=tap`;
+  assert.equal(withPerTestTimeout('node --require ./hidden/setup.js --test hidden/'), `node --require ./hidden/setup.js --test ${flags} hidden/`);
+  assert.equal(withPerTestTimeout('node -r ./s.js --no-warnings --test a.js'), `node -r ./s.js --no-warnings --test ${flags} a.js`);
+  assert.equal(withPerTestTimeout('node --import=./s.mjs --test'), `node --import=./s.mjs --test ${flags}`);
+  assert.equal(withPerTestTimeout('cd w && node --test-reporter spec --test x'), `cd w && node --test-reporter spec --test --test-timeout=${PER_TEST_TIMEOUT_MS} x`);
+  assert.equal(withPerTestTimeout('node --require ./s.js app.js'), 'node --require ./s.js app.js');
+  assert.equal(withPerTestTimeout('node --require ./s.js --test-only x'), 'node --require ./s.js --test-only x');
 });
 
 test('parseTapPartial counts finished leaf tests and skips suites', () => {

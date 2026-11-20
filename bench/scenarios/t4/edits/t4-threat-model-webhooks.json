@@ -4,7 +4,8 @@
     "keyword check on constant-time made a format check",
     "no-dependency check dropped (package.json is a docs fixture; keeps the share of checks that pass on the fixture at 25%)",
     "limits raised from 180/360 to 900/1800 s (plan: soft at least 3x the longest pilot run)",
-    "expertKey added (judge-only; seeded threats stay in the hidden script, so the key holds what a script cannot check)"
+    "expertKey added (judge-only; seeded threats stay in the hidden script, so the key holds what a script cannot check)",
+    "2026-11-20 (mate task-fix worker): task review: review-quality replaced by anchored attacker-path-fix (weight 2)"
   ],
   "prompt": "Before we start building Harborline, I want a threat model of the design. Read what is in docs/ (the design, the API page, the decisions and the diagram) and the small prototype, and write it up in docs/threat-model.md: what can go wrong, how bad it is, and what we should change in the design before we build. Explain the findings and fixes in normal Markdown. End the document with one fenced json block holding an array of finding objects, each with exactly these fields: component (the component name as the design spells it), threat, severity (critical, high, medium or low) and mitigation. Keep the list to what really matters; I would rather have the important problems right than a long list. Do not change any existing file and do not add dependencies.",
   "checks": [
@@ -156,5 +157,12 @@
       "Add a rate limiter to prevent abuse.",
       "Follow security best practices and do regular penetration tests."
     ]
-  }
+  },
+  "rubric": [
+    {
+      "id": "attacker-path-fix",
+      "weight": 2,
+      "criterion": "Each finding names an attacker, a path through this design, and a fix the team can build; the document says what stays open. Fail: generic controls (\"use HTTPS\", \"add auth\") or findings not tied to a named component or flow. Partial: findings tied to components with workable fixes, but no attacker model or no residual-risk section. Pass: attacker, path and fix for each finding, plus a residual-risk section, each shown by a quote; weak answers from the key earn nothing. (code cannot check this because the hidden test matches component names and words, so a keyword list scores the same as a threat model)"
+    }
+  ]
 }

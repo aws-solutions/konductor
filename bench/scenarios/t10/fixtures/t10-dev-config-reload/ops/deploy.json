@@ -1,0 +1,6 @@
+{
+  "service": "harbor-hand-worker",
+  "healthPath": "/ready",
+  "maxUnavailable": 1,
+  "drainSeconds": 4
+}

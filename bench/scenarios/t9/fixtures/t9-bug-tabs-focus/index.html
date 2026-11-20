@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northstar Settings</title>
+  <link rel="stylesheet" href="styles/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Northstar</a>
+    <span class="workspace-name">Signal workspace</span>
+  </header>
+  <main class="page-shell">
+    <p class="eyebrow">Workspace settings</p>
+    <h1 id="settings-title">Account settings</h1>
+    <p class="intro">Manage the parts of your workspace that shape every new project.</p>
+
+    <section class="settings-card" aria-labelledby="settings-title">
+      <div class="tabs-heading">
+        <h2>Sections</h2>
+        <span class="hint">Use the arrow keys to move between sections.</span>
+      </div>
+      <div class="tab-list" role="tablist" aria-label="Settings sections" data-tab-list>
+        <div class="tab" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true" tabindex="0" data-roving-item data-name="General">
+          <span>General</span><button type="button" data-close-tab aria-label="Close General tab">Close</button>
+        </div>
+        <div class="tab" role="tab" id="tab-alerts" aria-controls="panel-alerts" aria-selected="false" tabindex="-1" data-roving-item data-name="Alerts">
+          <span>Alerts</span><button type="button" data-close-tab aria-label="Close Alerts tab">Close</button>
+        </div>
+        <div class="tab" role="tab" id="tab-team" aria-controls="panel-team" aria-selected="false" tabindex="-1" data-roving-item data-name="Team">
+          <span>Team</span><button type="button" data-close-tab aria-label="Close Team tab">Close</button>
+        </div>
+        <div class="tab" role="tab" id="tab-billing" aria-controls="panel-billing" aria-selected="false" tabindex="-1" data-roving-item data-name="Billing">
+          <span>Billing</span><button type="button" data-close-tab aria-label="Close Billing tab">Close</button>
+        </div>
+      </div>
+      <div class="panels">
+        <section id="panel-general" role="tabpanel" aria-labelledby="tab-general">
+          <h2>General details</h2><label>Workspace name<input value="Signal workspace"></label>
+        </section>
+        <section id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts" hidden>
+          <h2>Alert preferences</h2><label><input type="checkbox" checked> Send a weekly digest</label>
+        </section>
+        <section id="panel-team" role="tabpanel" aria-labelledby="tab-team" hidden>
+          <h2>Team access</h2><p>Invite people who help maintain this workspace.</p><button type="button">Invite teammate</button>
+        </section>
+        <section id="panel-billing" role="tabpanel" aria-labelledby="tab-billing" hidden>
+          <h2>Billing profile</h2><label>Receipt email<input value="billing@example.test"></label>
+        </section>
+      </div>
+    </section>
+
+    <section class="tool-card" aria-labelledby="tools-title">
+      <div class="tabs-heading"><h2 id="tools-title">Editor tools</h2><span class="hint">Tools keep their place when one is unavailable.</span></div>
+      <div class="toolbar" role="toolbar" aria-label="Editor tools" data-tool-list>
+        <button type="button" data-tool data-roving-item>Format</button>
+        <button type="button" data-tool data-roving-item tabindex="-1">History</button>
+        <button type="button" data-tool data-roving-item tabindex="-1">Preview</button>
+        <button type="button" data-tool data-roving-item tabindex="-1">Publish</button>
+      </div>
+      <div class="tool-actions">
+        <button type="button" data-disable-tab>Disable active section</button>
+        <button type="button" data-enable-tabs>Enable all sections</button>
+        <button type="button" data-disable-tool>Disable active tool</button>
+        <button type="button" data-enable-tools>Enable all tools</button>
+      </div>
+    </section>
+  </main>
+  <footer><small>Northstar build 1.8 · Changes save automatically</small></footer>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

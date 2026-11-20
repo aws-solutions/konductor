@@ -31,18 +31,23 @@
   "rubric": [
     {
       "id": "tenant-boundary-reasoning",
-      "criterion": "Explains why tenant_id must participate in every customer-facing access path and why the composite human-readable key preserves tenant-local reuse. (not code-checkable: A schema can expose the right columns and indexes without showing that the author understands the cross-tenant failure mode or the request contract.)",
+      "criterion": "Explains why tenant_id must participate in every customer-facing access path and why the composite human-readable key preserves tenant-local reuse. Fail: tenant_id is not part of the access paths. Partial: tenant_id leads some indexes but the uniqueness rule is missing. Pass: explains every customer-facing index starts with tenant_id so queries seek into one tenant and cannot read across tenants, and the unique key is (tenant_id, ticket_key) so two tenants can reuse the same human-readable key. (not code-checkable: A schema can expose the right columns and indexes without showing that the author understands the cross-tenant failure mode or the request contract.)",
       "weight": 1
     },
     {
       "id": "capacity-and-cost-tradeoff",
-      "criterion": "Reconciles the uneven tenant distribution, row footprint, throughput headroom, recovery targets, and monthly price into a clear option comparison. (not code-checkable: Tests can recompute figures but cannot judge whether the assumptions are explained, mutually reconciled, or weighed against the operational alternative.)",
+      "criterion": "Reconciles the uneven tenant distribution, row footprint, throughput headroom, recovery targets, and monthly price into a clear option comparison. Fail: chooses on the worksheet cost or per-customer databases. Partial: rejects per-customer databases but does not check the shared option's write rate or recovery. Pass: shows 12,000 logical databases exceed the 1,000 limit (per-customer looks cheaper on the sheet but is infeasible), the shared option gives 2 x 1,400 = 2,800 writes/s against the 2,500 required, costs 505.68 USD (589 GB x 0.12, 2 x 180, 30M x 2.50, 1 x 0.004) under 600, and meets RPO 30 s and RTO 10 min against 60 s and 15 min. (not code-checkable: Tests can recompute figures but cannot judge whether the assumptions are explained, mutually reconciled, or weighed against the operational alternative.)",
       "weight": 1
     },
     {
       "id": "decision-clarity",
-      "criterion": "States a decisive architecture choice and gives a concise, technically accurate explanation of the main tradeoffs and operational consequences. (not code-checkable: Automated checks cannot reliably assess whether the decision is understandable to an architect or whether its rationale is complete without unnecessary material.)",
+      "criterion": "States a decisive architecture choice and gives a concise, technically accurate explanation of the main tradeoffs and operational consequences. Fail: no decisive choice or the 80 ms sandbox lookup target is used. Partial: a clear choice but operational consequences are missing. Pass: states the shared composite design plainly, uses the 120 ms p95 acceptance target (not the superseded 80 ms), and names the operational consequences, including the uneven tenant distribution and where a leak across tenants would show up. (not code-checkable: Automated checks cannot reliably assess whether the decision is understandable to an architect or whether its rationale is complete without unnecessary material.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -74,7 +79,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 3,
   "targetSkills": [
     "dynamodb-design",
     "trade-off-evaluator"
@@ -171,5 +176,9 @@
       "states that the per-customer option is rejected due to higher cost rather than the database count constraint"
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

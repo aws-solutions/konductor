@@ -1,0 +1,5 @@
+[
+  { "key": "qb_free_7f2c", "owner": "acct-104", "plan": "starter", "admin": false },
+  { "key": "qb_team_91ad", "owner": "acct-221", "plan": "studio", "admin": false },
+  { "key": "qb_ops_0001", "owner": "quillbox-ops", "plan": "studio", "admin": true }
+]

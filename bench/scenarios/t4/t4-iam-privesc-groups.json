@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-privesc-groups",
-  "version": 1,
+  "version": 3,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -18,7 +18,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 26,
+      "min": 27,
       "weight": 3,
       "kind": "substance"
     },
@@ -59,7 +59,7 @@
   "rubric": [
     {
       "id": "reviewable-scope",
-      "criterion": "The policy statements make the allowed resources and identity boundary easy for a reviewer to trace to the job descriptions (code cannot check this because it cannot judge whether the policy intent is clear to a human reviewer).",
+      "criterion": "The policy statements make the allowed resources and identity boundary easy for a reviewer to trace to the job descriptions. Fail: a group policy keeps wildcard resources or generic Sids, so a reviewer cannot tell which sentence of the group's guide in docs/ a statement serves, or the final message does not say which routes to raising rights were closed. Partial: resources are the ARNs from config/account.json and the allows are traceable, but the deny or boundary statements do not say which privilege-raising route they close, or one group (for example on-call) is explained and the others are not. Pass: for developers, analysts and on-call, each allow statement has a Sid tied to a duty in its guide and lists the ARNs from config/account.json, own-key actions are limited by aws:username, and the denies in the permissions boundary name the routes they close (policy versions, attaching or putting policies, creating roles or users, passing a more powerful role, editing groups), with the final message listing them. (code cannot check this because it cannot judge whether the policy intent is clear to a human reviewer)",
       "weight": 1
     }
   ],
@@ -190,19 +190,19 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 18.1,
+    "stub": 17.7,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 18.1,
-      "lazy": 18.1,
+      "stub": 17.7,
+      "lazy": 17.7,
       "alt": 100,
       "date": "2026-11-20"
     }

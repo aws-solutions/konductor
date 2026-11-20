@@ -1,0 +1,11 @@
+{
+  "amber": {
+    "seats": 48
+  },
+  "north-stage": {
+    "seats": 120
+  },
+  "quiet-box": {
+    "seats": 12
+  }
+}

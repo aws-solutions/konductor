@@ -1,14 +1,14 @@
 {
   "id": "t5-qa-security-tests",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "phases2": [
     "security"
   ],
   "questions": "allowed",
-  "prompt": "Our pen test last quarter found two holes in this documents API, one in access control and one in input handling. We fixed them, but nobody wrote tests that would catch them coming back, and I would not be surprised if other checks are just as loose. Please build a regression suite for the access control and input handling code: sessions and tokens, roles and permissions, who can read which document, the file download handler, input validation, the HTML export, and the login limiter. Put it in test/security.test.js (you may also add or extend other files under test/), keep the suite runnable with `node --test --test-timeout=4000 test`, and remove any temporary files your tests create. Do not change anything under src/, and do not add dependencies or change the package or CI files.",
+  "prompt": "Our pen test last quarter found two holes in this documents API, one in access control and one in input handling. We fixed them, but nobody wrote tests that would catch them coming back, and I would not be surprised if other checks are just as loose. Please build a regression suite for the access control and input handling code: sessions and tokens, roles and permissions, who can read which document, the file download handler, input validation, the HTML export, and the login limiter. Put it in test/security.test.js (you may also add or extend other files under test/), keep the suite runnable with `node --test --test-timeout=4000 test`, and remove any temporary files your tests create. Do not change anything under src/, and do not add dependencies or change the package or CI files. Keep the suite lean: at most 44 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-security-tests",
   "hidden": "t5-qa-security-tests",
   "timeoutSec": 1200,
@@ -20,29 +20,21 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
-      "kind": "substance"
-    },
-    {
-      "type": "min_matches",
-      "path": "test/security.test.js",
-      "pattern": "test\\(",
-      "min": 10,
-      "weight": 2,
       "kind": "substance"
     },
     {
       "type": "file_exists",
       "path": "test/security.test.js",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "src/handlers/documents.js",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "not_contains",
@@ -55,13 +47,18 @@
   "rubric": [
     {
       "id": "clarity",
-      "criterion": "The cases explain the security behavior they protect in readable test names and assertions (code cannot check this because wording and intent require human review).",
+      "criterion": "The cases explain the security behavior they protect in readable test names and assertions. Fail: names like \"test auth\" or \"security 1\", or assertions that only check a response exists. Partial: names say the area (token, download, export), but not the attack or rule, or assertions check a status code only and not what must not be returned. Pass: each name states the rule in the sessions, roles, document access, download handler, input validation, HTML export or login limiter code (for example a user cannot read another user's document, a path with .. is refused, HTML in a title is escaped), and the assertion checks the refusal or the escaped output exactly.",
       "weight": 1
     },
     {
       "id": "cleanup",
-      "criterion": "Temporary files and directories are cleaned up even when a storage assertion fails (code cannot check this because cleanup quality is a review concern beyond the command result).",
+      "criterion": "Temporary files and directories are cleaned up even when a storage assertion fails. Fail: tests create files or directories and leave them, or do not remove them when an assertion fails before the cleanup line. Partial: tests remove their files at the end of the test, so a failing assertion skips the cleanup, or some tests clean up and others do not. Pass: every test that creates temporary files or directories removes them in an after hook or a finally block that runs on failure too, and a run leaves no new files in the repository or the system temp directory.",
       "weight": 1
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -156,13 +153,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 7.1,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
-      "lazy": 28.6,
+      "stub": 0,
+      "lazy": 16.7,
       "alt": 100,
       "date": "2026-11-20"
     }
@@ -170,7 +167,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

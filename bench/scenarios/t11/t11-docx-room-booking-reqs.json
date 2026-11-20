@@ -1,0 +1,136 @@
+{
+  "id": "t11-docx-room-booking-reqs",
+  "class": "hard",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "Please turn the stakeholder's Word specification at inbox/room-booking-spec-v3.docx into docs/requirements/room-booking.md for the library services team. I need a useful, reviewable set of room-booking requirements for the member portal and service desk, because the tracker and the delivery team need one agreed source of truth. Follow the local requirements style and the template: give each testable statement its own RB-### id, priority, and source section. Keep unresolved decisions in a separate Open questions section and name the relevant spec sections there. Finish the document with exactly one fenced json block containing requirements and openQuestions. Each requirement object must have id, text, priority, and source; each openQuestions object must have question and sections. Use only must, should, or could for priorities. Preserve the distinction between decided behavior and discussion material, and do not turn suggestions into commitments. Do not edit the stakeholder file or the existing requirement files.",
+  "fixture": "t11-docx-room-booking-reqs",
+  "hidden": "t11-docx-room-booking-reqs",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 block.test.js",
+      "min": 32,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements/room-booking.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/requirements/room-booking.md",
+      "pattern": "- \\*\\*RB-\\d{3}\\*\\*",
+      "min": 16,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements/room-booking.md",
+      "pattern": "## Open questions",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "inbox/room-booking-spec-v3.docx",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "narrative-judgment",
+      "criterion": "The prose distinguishes approved behavior from undecided policy and gives reviewers a clear reason to trust the extraction (code cannot check this because narrative judgment and readability are not represented in the import block).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "docx-conversion",
+    "kiro-requirements-generation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "docx-conversion",
+      "kiro-requirements-generation"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://en.wikipedia.org/wiki/Software_requirements_specification",
+      "licence": "CC BY-SA 4.0 (checked on the page footer, 2026-11-20); idea only: a written spec turned into numbered, testable requirements; no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to produce (requirements document with RB-### IDs, priorities, sources) but does not name specific methods, reveal the youth conflict, or mention the revision notes vs. table values trap."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly specifies the output format (RB-### IDs, priorities from must/should/could, source sections, fenced JSON block, Open questions section). The expected count range (14-16) is explicit in the blockKey."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture files reveal the answer. The Word doc contains all source material. Meeting notes mention only style conventions. No commit history or comments give away the youth conflict handling or revision table values."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer (copying table values like 21 days, 4 hours, using 'could' for wishlist items) would fail tests: old-duration-absent (catches '4 hours'), advance-window (needs '30 calendar days'), no-wishlist-priority (catches 'could'), youth-conflict (must be in openQuestions)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests derive from the Word document. The key correctly reads the revision notes as overriding table values. The no-padding constraint (14-16 requirements) is reasonable. The youth conflict is properly flagged as undecided in the source. No timing-dependent or image-based tests."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 4.8,
+    "dryRun": {
+      "reference": 100,
+      "stub": 4.8,
+      "lazy": 39.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

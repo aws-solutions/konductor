@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-onboarding-dropoff",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -64,17 +64,17 @@
   "rubric": [
     {
       "id": "clear-framing",
-      "criterion": "The prose makes the causal chain, uncertainty, and decision boundary easy for a busy product lead to scan (code cannot check this because it cannot judge clarity or usefulness to a human reader).",
+      "criterion": "The prose makes the causal chain, uncertainty, and decision boundary easy for a busy product lead to scan. Fail: the note reads as a list of facts with no chain from the signup drop to a cause, or recommends a redesign with no decision boundary. Partial: it names email verification as the weak step, but the chain to the 21 January sending-domain change, the uncertainty, or the point at which a redesign would be justified is missing or buried. Pass: the prose runs in order: verification fell from about 84 percent to about 54 percent, Cloudmail delivery is 77 percent with 23 percent bounces after the 21 January sending-domain change, the 3 February tracking outage is set aside, the cause is stated as likely and not proven, and a redesign is held until delivery is fixed and re-measured. (code cannot check this because it cannot judge clarity or usefulness to a human reader)",
       "weight": 1
     },
     {
       "id": "honest-tradeoffs",
-      "criterion": "The options and recommendation state practical tradeoffs without presenting the tracking artifact as user behavior (code cannot check this because it cannot assess the quality of reasoning or calibrated uncertainty).",
+      "criterion": "The options and recommendation state practical tradeoffs without presenting the tracking artifact as user behavior. Fail: the options have no cost or risk, or the tracking outage drop is counted as users abandoning signup, or a UI release is blamed for the fall. Partial: the options carry tradeoffs, but the tracking outage is only mentioned, or the do-nothing option has no tradeoff. Pass: do nothing, targeted email or provider remediation and a bounded onboarding or verification experiment each state what they cost and risk, the 3 February tracking outage is kept out of the behavioral result, and the recommendation does not claim a UI release caused the fall. (code cannot check this because it cannot assess the quality of reasoning or calibrated uncertainty)",
       "weight": 1
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the unproven link between the sending-domain change and the drop and the data lost in the tracking outage stay unmentioned, or it does not say that docs/framing.md was written. Partial: it names docs/framing.md and what it holds, but lists no assumptions, or leaves out the unproven link between the sending-domain change and the drop and the data lost in the tracking outage. Pass: it names docs/framing.md and its closing JSON block, lists the assumptions made, says the unproven link between the sending-domain change and the drop and the data lost in the tracking outage still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -203,7 +203,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

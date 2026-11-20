@@ -3,7 +3,8 @@
     "prompt rewritten (traps removed)",
     "checks: the text checks on one file replaced by one check that no function policy holds a wildcard action or resource",
     "limits raised from 15/30 to 1200/2400 s",
-    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)"
+    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)",
+    "2026-11-20 (mate task-fix worker): task review: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): traceable-least-privilege"
   ],
   "prompt": "All five functions of the order service still share one execution role, and its policy (infra/iam/shared-role-policy.json) can do nearly anything. Please give each function its own least-privilege policy instead, in these files: infra/iam/create-order.json, infra/iam/payment-webhook.json, infra/iam/fulfilment-worker.json, infra/iam/nightly-report.json and infra/iam/admin-export.json. Each has to work in both staging and prod (the names per stage are in config/stages.js) and keep its logging working. Read the handlers to see what each one really calls: every handler exports handler(event, context, { client }), and the FakeCloudClient in src/cloud/fake-client.js records each client.request(action, resource, details) in calls. Do not change the handlers, the stage config, the existing tests, the dependencies or shared-role-policy.json. Keep the files valid IAM policy JSON.",
   "checks": [
@@ -126,5 +127,12 @@
       "Removed the wildcard actions.",
       "Scoped resources to staging and prod."
     ]
-  }
+  },
+  "rubric": [
+    {
+      "id": "traceable-least-privilege",
+      "weight": 2,
+      "criterion": "Each function's policy can be traced to the calls its handler makes: the final message or the policy statement ids say which handler call each grant serves, and stage names come from config/stages.js rather than wildcards across stages. Fail: grants are copied from the shared policy or use service-wide wildcards, or nothing ties a grant to a handler call. Partial: grants are scoped, but some cannot be traced to a call, or one stage is covered by a wildcard that also matches the other. Pass: every grant traced to a handler call, each stage named, logging scoped to the function's own log group, and the message says what the shared role allowed that no function needs. (code cannot check this because the evaluator tests decisions on listed requests, not whether a reviewer can see why each grant exists)"
+    }
+  ]
 }

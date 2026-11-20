@@ -27,18 +27,18 @@
   "rubric": [
     {
       "id": "reasoned-choice",
-      "criterion": "Explains why the selected option is preferable, including a concrete tradeoff against the cheaper or simpler alternatives. (not code-checkable: A parser can verify IDs and numbers but cannot judge whether the comparison is meaningful or whether the stated tradeoff follows from the evidence.)",
+      "criterion": "Explains why the selected option is preferable, including a concrete tradeoff against the cheaper or simpler alternatives. Fail: chooses object-direct for its low per-GB rate, or the cheapest plan with no limit check. Partial: rejects object-direct on latency but does not weigh cdn-payg against the committed plan. Pass: rejects object-direct because 1,400 ms p95 start time breaks the 800 ms limit, states that cdn-payg is cheaper (USD 6,820) but has 780 ms against 800 ms and 1.6 against 1.5 Gbps headroom, picks the committed plan (USD 8,600 under the USD 9,500 ceiling), and says to revisit the 150 TB commitment if three-month volume falls well below it. (not code-checkable: A parser can verify IDs and numbers but cannot judge whether the comparison is meaningful or whether the stated tradeoff follows from the evidence.)",
       "weight": 1
     },
     {
       "id": "calculation-explanation",
-      "criterion": "Presents a clear, mutually consistent calculation for the tiered or committed monthly price and relates it to the hard limits. (not code-checkable: Tests can recompute the answer, but they cannot assess whether a human reader can follow the calculation or spot the important billing assumption.)",
+      "criterion": "Presents a clear, mutually consistent calculation for the tiered or committed monthly price and relates it to the hard limits. Fail: no cost working, or the highest tier rate is applied to all 180 TB, or the superseded 120 TB pilot figure is used. Partial: tiers are applied by range but the overage, delivery charges or the budget link is not shown. Pass: shows each tier rate applied only to its own range over the 180 TB production forecast, adds overage and delivery to reach about USD 8,600, checks it against the USD 9,500 ceiling and the measured limits (800 ms, 1.5 Gbps sustained over 15 minutes, not the 2.8 Gbps lab burst). (not code-checkable: Tests can recompute the answer, but they cannot assess whether a human reader can follow the calculation or spot the important billing assumption.)",
       "weight": 1
     },
     {
-      "id": "adr-clarity",
-      "criterion": "Uses a concise ADR structure that states context, decision, consequences, and operational follow-up in language suitable for an architecture review. (not code-checkable: Automated checks do not reliably measure narrative organization, precision, or whether the document gives reviewers enough rationale to act.)",
-      "weight": 1
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 3,
   "targetSkills": [
     "trade-off-evaluator",
     "cost-estimation"
@@ -163,5 +163,9 @@
       "Applies the overage rate ($0.045/GB) to the entire 180 TB for cdn-committed instead of only the 30 TB above the 150 TB commit."
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

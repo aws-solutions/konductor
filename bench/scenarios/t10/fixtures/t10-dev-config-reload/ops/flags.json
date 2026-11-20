@@ -1,0 +1,7 @@
+{
+  "naming": "hh_<area>_<verb>_<noun>",
+  "flags": [
+    { "name": "hh_queue_trace_headers", "owner": "runtime" },
+    { "name": "hh_probe_verbose_body", "owner": "support" }
+  ]
+}

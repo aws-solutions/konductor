@@ -9,8 +9,8 @@ const { logRequest } = require('./utils/log');
 function createServer(options = {}) {
   const config = options.config || loadConfig(options.env);
   const ledger = options.ledger || new Ledger(config.ledgerLabel);
-  const secrets = options.secrets || config.secrets;
-  const toleranceSeconds = options.toleranceSeconds !== undefined ? options.toleranceSeconds : config.toleranceSeconds;
+  const secrets = options.secrets || config.webhookSecrets;
+  const toleranceSeconds = options.toleranceSeconds !== undefined ? options.toleranceSeconds : config.webhookToleranceSeconds;
   const clock = options.clock || (() => Math.floor(Date.now() / 1000));
   
   return http.createServer((req, res) => {

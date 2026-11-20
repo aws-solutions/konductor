@@ -1,0 +1,9 @@
+{
+  "rings": {
+    "staff": { "metric": "receipt_error_rate", "windowMinutes": 15, "promoteBelow": 1.0, "rollbackAt": 3.0, "unit": "percent" },
+    "pilot": { "metric": "receipt_error_rate", "windowMinutes": 30, "promoteBelow": 1.5, "rollbackAt": 4.0, "unit": "percent" },
+    "regional": { "metric": "receipt_error_rate", "windowMinutes": 60, "promoteBelow": 2.0, "rollbackAt": 5.0, "unit": "percent" },
+    "general": { "metric": "receipt_error_rate", "windowMinutes": 120, "promoteBelow": 2.5, "rollbackAt": 6.0, "unit": "percent" }
+  },
+  "minimumCompleteMinutes": 10
+}

@@ -31,18 +31,23 @@
   "rubric": [
     {
       "id": "tradeoff-explanation",
-      "criterion": "The decision document explains why the selected pagination style fits the workload and weighs the cost, response envelope, and operational behavior against the alternative. (not code-checkable: Automated checks can verify numbers and required fields but cannot judge whether the explanation connects the evidence to the choice.)",
+      "criterion": "The decision document explains why the selected pagination style fits the workload and weighs the cost, response envelope, and operational behavior against the alternative. Fail: pagination choice is asserted without cost or limit numbers. Partial: picks cursor but compares on one dimension only. Pass: compares cursor (about $311.38 per month, page size 160 giving 160 x 6,144 = 983,040 bytes under the 1,048,576-byte gateway limit, 320 rps against 240, p95 240 ms against 350) with offset (about $266.98, cheaper but misses or repeats bookings inserted while a client pages). (not code-checkable: Automated checks can verify numbers and required fields but cannot judge whether the explanation connects the evidence to the choice.)",
       "weight": 1
     },
     {
       "id": "contract-boundary-reasoning",
-      "criterion": "The API design clearly separates public client inputs from server-owned booking fields and explains retry-safe creation behavior. (not code-checkable: A schema can check field presence, but it cannot reliably assess whether the documented boundary and retry rationale are coherent.)",
+      "criterion": "The API design clearly separates public client inputs from server-owned booking fields and explains retry-safe creation behavior. Fail: the client can set server fields, or idempotency is just mentioned. Partial: clear separation of fields but no retry reasoning. Pass: lists client inputs (roomId, memberId, startsAt, endsAt, idempotency key, page size) and server-owned fields (id, status), and explains that the required idempotency key makes retries after network failure or regional failover return the first booking rather than create a second one. (not code-checkable: A schema can check field presence, but it cannot reliably assess whether the documented boundary and retry rationale are coherent.)",
       "weight": 1
     },
     {
       "id": "source-reconciliation",
-      "criterion": "The architecture reconciles current production inputs with the historical partner note and makes the superseded setting's status clear. (not code-checkable: Tests can detect a compliant numeric value but cannot evaluate the quality of the source reconciliation or its explanation.)",
+      "criterion": "The architecture reconciles current production inputs with the historical partner note and makes the superseded setting's status clear. Fail: uses the partner note's page size of 500. Partial: avoids 500 but does not say it is superseded. Pass: states the generation-1 partner setting of 500 is superseded and would give 500 x 6,144 = 3,072,000 bytes, over the 1,048,576-byte production limit, and that the production inputs (page size 160, 240 rps peak, 5 and 30 minute RPO and RTO) govern. (not code-checkable: Tests can detect a compliant numeric value but cannot evaluate the quality of the source reconciliation or its explanation.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -79,7 +84,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 3,
   "targetSkills": [
     "smithy-modeling",
     "trade-off-evaluator"
@@ -171,5 +176,9 @@
       "describes pagination trade-offs generically without connecting them to the specific numbers in traffic.json, gateway.json, and service-levels.json."
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

@@ -5,7 +5,8 @@
     "lead: security notes that listed two defects removed from docs/reporting.md",
     "prompt rewritten; checks replaced (the draft ran npm test inside a fixture/ folder that the workspace does not have)",
     "limits kept at 900/1800 s",
-    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)"
+    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)",
+    "2026-11-20 (mate task-fix worker): task review: prioritization given Fail/Partial/Pass anchors"
   ],
   "prompt": "Could you review PR #142 before it merges? It adds our reporting feature to the Terraform repo: a reporting database, an export bucket, a static website bucket and a role for the reporting tasks. The PR description is review/PR-142.md, and the PR is already applied in this tree, so the files it lists are the changed ones. I want to know what in it is risky and what to change before it goes to production. Write the review in REVIEW.md and end it with one fenced json block: a list of findings, each with file, line (a number, approximate is fine), severity (critical, high, medium or low), issue and fix. Do not change any other file.",
   "checks": [
@@ -135,5 +136,17 @@
       "Use least privilege for IAM.",
       "Consider using a secrets manager."
     ]
-  }
+  },
+  "rubric": [
+    {
+      "id": "clarity",
+      "criterion": "Findings are clearly explained with specific file references and actionable fixes (code cannot check this because it requires judgment of explanation quality)",
+      "weight": 2
+    },
+    {
+      "id": "prioritization",
+      "criterion": "Critical and high severity issues are correctly identified and prioritized. Fail: critical issues missing from the top of the list, or decoys ranked high. Partial: critical issues found, but ordered below lower-severity ones or with severities off by more than one level. Pass: the critical and high issues come first with defensible severities, and decoys are absent or marked low with a reason. (code cannot check this because severity assessment requires security expertise)",
+      "weight": 3
+    }
+  ]
 }

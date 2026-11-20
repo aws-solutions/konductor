@@ -1,7 +1,7 @@
 {
   "id": "t8-dec-deploy-strategy",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "decisions",
   "role": "sre",
   "phases2": [
@@ -20,7 +20,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 block.test.js",
-      "min": 14,
+      "min": 4,
       "weight": 3,
       "kind": "substance"
     },
@@ -28,19 +28,19 @@
       "type": "file_exists",
       "path": "decisions/0007-deploy-strategy.md",
       "weight": 3,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "docs/capacity-report.md",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
     {
       "id": "operational-clarity",
-      "criterion": "The prose gives an on-call engineer a clear, service-specific explanation of the trade-offs and the chosen rollout behavior (code cannot check this because the automated key only inspects structured values and selected evidence patterns).",
+      "criterion": "The prose gives an on-call engineer a clear, service-specific explanation of the trade-offs and the chosen rollout behavior. Fail: the record is a generic pros-and-cons list, or names canary without numbers from this folder, so an on-call engineer could not act on it. Partial: it picks one option and gives some rollout or rollback rules, but the first-stage size, the watch time, or the handling of long-lived websocket sessions is missing or has no unit. Pass: it chooses canary and rejects blue/green (second fleet cost against the dollar and host figures in the capacity report) and rolling (whole-fleet exposure and the 40-minute drain against the revert limit) with those numbers, gives a first-stage host count and percent, the signal and minutes to watch before widening, a stop rule, and what happens to sessions on the new version at rollback, each with units. (code cannot check this because the automated key only inspects structured values and selected evidence patterns).",
       "weight": 1
     },
     {
@@ -154,13 +154,13 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The incident-list.md RR-221 incident explicitly describes the failure mechanism as 'upstream connection-pool waiting followed by retries' and identifies the 240\u2192120 pool setting change, directly revealing the cause the key item 'cause-is-pool-reduction-and-retries' requires.)"
+        "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The incident-list.md RR-221 incident explicitly describes the failure mechanism as 'upstream connection-pool waiting followed by retries' and identifies the 240→120 pool setting change, directly revealing the cause the key item 'cause-is-pool-reduction-and-retries' requires.)"
       }
     ]
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -168,15 +168,15 @@
       "fixReason": "cannot pass by re-weighting: the mechanical lazy answer (lib/answers.js) meets most hidden block-key items, so even with every non-test check failing it would score 51.6 (gate 40). The key needs items a half-copy misses. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
     },
     "reference": 100,
-    "stub": 7.1,
+    "stub": 0,
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
-      "lazy": 74.5,
+      "stub": 0,
+      "lazy": 25,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "lockedAt": null

@@ -1,7 +1,7 @@
 {
   "id": "t1-impl-money-split",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -29,23 +29,23 @@
       "kind": "substance"
     },
     {
-      "type": "file_exists",
-      "path": "src/allocation.js",
+      "type": "cmd",
+      "cmd": "node -e \"const a=require('./src');process.exit(typeof a.splitByWeights==='function'&&typeof a.allocatePayment==='function'?0:1)\"",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
     {
-      "type": "min_matches",
-      "path": "test/allocation.test.js",
-      "pattern": "\\btest\\s*\\(",
-      "min": 3,
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');let n=0;for(const f of fs.readdirSync('test')){if(!/\\.test\\.js$/.test(f))continue;const s=fs.readFileSync('test/'+f,'utf8');if(/splitByWeights|allocatePayment/.test(s))n+=(s.match(/\\b(test|it)\\s*\\(/g)||[]).length}process.exit(n>=3?0:1)\"",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
     {
-      "type": "contains",
-      "path": "docs/allocation.md",
-      "pattern": "largest[- ]remainder|tie|currency",
+      "type": "cmd",
+      "cmd": "grep -rqiE 'largest[- ]remainder|\\btie' README.md docs",
+      "expectExit": 0,
       "weight": 1,
       "kind": "format"
     },
@@ -68,7 +68,12 @@
     {
       "weight": 1,
       "id": "verification-report",
-      "criterion": "The final report accurately states which existing, hidden, and reference-overlay checks were run and whether they passed (code cannot check this because it cannot assess the agent's final report)."
+      "criterion": "The final report accurately states which existing, hidden, and reference-overlay checks were run and whether they passed (code cannot check this because it cannot assess the agent's final report). Fail: says every check passed without naming one, or claims hidden or reference-overlay checks passed when it could not run them. Partial: names `node --test test/*.test.js` but not its result, or lumps the hidden and reference-overlay checks in with it. Pass: names each command it ran (the existing suite, its own allocation tests, and a `split` and an `allocate` run of `node bin/billing.js`) with the result of each, and says plainly which checks (hidden, reference overlay) it did not run."
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -99,7 +104,9 @@
       "licence": "MIT",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
@@ -136,14 +143,19 @@
     "scores": {},
     "reference": 100,
     "stub": 9.5,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 9.5,
-      "lazy": 24.5,
-      "alt": 20.8,
+      "lazy": 35.9,
+      "alt": 100,
       "date": "2026-11-20"
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

@@ -8,6 +8,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { extractQuestion } = require('./stream.js');
+const { questionsOf } = require('./ask-channel.js');
 
 const DEFAULT_MAX_INTERJECTIONS = 4;
 const DEFAULT_ANSWER = 'Use your best judgment and continue.';
@@ -104,12 +105,19 @@ function newConversation(autonomy) {
   conv.record = (summary) => {
     conv.turns++;
     if (!summary) return null;
-    const asked = summary.askedUser === true;
+    // One extractor for every harness (ask-channel.js questionsOf): the final text decides, a QUESTION: line counts as the
+    // same question in prose, and no harness's own `askedUser` signal is read. `signal` and `markerLines` are diagnostics.
+    // A turn the model stopped before its end (a stop reason other than end_turn, such as max_tokens) is not a question,
+    // but it is answered with the default too, so the work can go on; `signal: "cut-off"` records it.
+    const found = questionsOf(summary.finalText);
+    const cutOff = !found.asked && Boolean(summary.stopReason) && summary.stopReason !== 'end_turn';
+    const asked = found.asked || cutOff;
     if (conv.turns === 1) conv.askedFirstTurn = asked;
     if (!asked) return null;
-    const text = extractQuestion(summary);
-    // count: questions in this turn (question marks in the full text, at least 1); the text itself is clipped.
-    const q = { turn: conv.turns, text: clip(text.replace(/\s+/g, ' ').trim(), QUESTION_CHARS), count: Math.max(1, (text.match(/\?/g) || []).length), matched: [], answered: false, reply: '' };
+    const text = cutOff ? extractQuestion(summary) : found.text;
+    const count = cutOff ? 1 : found.count;
+    const signal = cutOff ? 'cut-off' : found.markerLines ? 'marker' : 'prose';
+    const q = { turn: conv.turns, text: clip(text.replace(/\s+/g, ' ').trim(), QUESTION_CHARS), count, signal, markerLines: found.markerLines, matched: [], answered: false, reply: '' };
     conv.questions.push(q);
     const r = oracle.reply(text);
     if (!r) return null;

@@ -1,5 +1,4 @@
 "use strict";
-const allocate = require("./allocate");
 module.exports = {
   ...require("./currency"),
   ...require("./money"),
@@ -8,5 +7,5 @@ module.exports = {
   ...require("./format"),
   ...require("./errors"),
   ...require("./importer"),
-  ...allocate
+  ...require("./alloc")
 };

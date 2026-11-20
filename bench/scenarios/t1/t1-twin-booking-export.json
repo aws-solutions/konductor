@@ -1,0 +1,125 @@
+{
+  "id": "t1-twin-booking-export",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Hey, we need a new endpoint that lets finance pull all bookings as CSV. It should be GET /api/v1/bookings/export returning text/csv with a header row (id,room,date,owner columns in that order). The CSV must follow RFC 4180: quote any field containing commas, double quotes, or newlines; escape existing double quotes by doubling them. Also add optional 'from' and 'to' query parameters to filter bookings by date range. Both bounds are inclusive. The date must be in strict ISO format (YYYY-MM-DD), like 2025-06-20. Reject any non-conforming date (wrong format, like MM-DD-YYYY, or impossible dates like 2025-02-30) with a 400 JSON error containing { error: { code: 'bad_request' } }. Don't change any existing behavior.",
+  "fixture": "t1-impl-rate-limit",
+  "hidden": "t1-twin-booking-export",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/routes.js",
+      "pattern": "/api/v1/bookings/export",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "src/handlers/bookings.js",
+      "pattern": "text/csv",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "src/routes.js",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/app.js",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [
+    "backend-development",
+    "verification",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "twin",
+  "twinOf": "t1-impl-rate-limit",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "verification",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "openai",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies externally observable HTTP, CSV, filtering, and validation behavior and names RFC 4180 as the output standard. It does not name an implementation tool, hidden file, test, or agent workflow."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The route, media type, column order, escaping rules, inclusive bounds, strict date format, and error code are stated explicitly. The hidden assertions correspond to those requirements, and the fixture's existing JSON charset convention reasonably explains the CSV charset parameter."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains only the existing booking API and generic routing/service conventions; it has no export route, CSV implementation, hidden-test references, or export-specific comments. The answer is not revealed before applying the reference overlay."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The 14 hidden tests separately exercise the route/header, each required escaping case, column order, both filters and their inclusive combination, four invalid-date cases, and the existing endpoint. A static response, missing filters, missing escaping, or regex-only date validation is caught by multiple targeted assertions or the impossible-date test."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The reference passes all 12 existing fixture tests and all 14 hidden tests without timing or environment failures. The request is implementable within the existing synchronous Node HTTP architecture, and the hidden tests do not reject the stated behavior or existing endpoints."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 7.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  }
+}

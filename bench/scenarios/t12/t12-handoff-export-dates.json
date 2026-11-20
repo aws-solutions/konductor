@@ -1,0 +1,135 @@
+{
+  "id": "t12-handoff-export-dates",
+  "class": "orchestration",
+  "version": 2,
+  "phase": "multi-phase",
+  "phases2": [
+    "planning",
+    "bugfix"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I am off from tomorrow and BILL-1187 is half done (see docs/). Write the hand-off in docs/handoff/BILL-1187.md so that someone who has never seen this repository (another engineer, or an agent working alone) can finish it with only what you leave them (I will be unreachable). End the hand-off with one fenced json block holding an object with: task (string), expectedOutcome (string), mustDo (list of strings), mustNot (list of strings), context (object with files: list of repository paths they should read or change, commands: list of shell commands, facts: list of strings), doneWhen (list of strings: how they know it is finished) and deadline (string). Then the fix must be finished from that hand-off as a second, separate piece of work: whoever does it starts with nothing but the hand-off, reads only the hand-off and the files its context.files lists, changes only those files (or adds new files next to them), and leaves the hand-off as it is. That second step writes docs/handoff/BILL-1187-result.md ending with one fenced json block holding an object with: readFiles (list of the repository paths it read, the hand-off first), changedFiles (list of the paths it changed or added), ranCommands (list of the shell commands it ran) and doneWhen (list of {criterion: copied word for word from the hand-off's doneWhen, met: true or false, evidence: string}). Opening the pull request is not part of this run: leave it to me and say so in the result.",
+  "fixture": "t12-handoff-export-dates",
+  "hidden": "t12-handoff-export-dates",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js work.test.js",
+      "min": 22,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/legacy",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/fixtures",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "cold-start-ready",
+      "weight": 2,
+      "criterion": "A person or agent with no access to the author could finish the work from the hand-off alone. Fail: it restates the bug report, or sends the reader to files without saying what is known in them. Partial: the cause, reproduction and done criteria are there, but a rule the reader would break without being told (column order, the frozen folder, the branch rule) is missing, or something is presented as settled that the notes call a guess. Pass: what is known, what is suspected and what is not yet done are kept apart, every rule from CONTRIBUTING.md and the notes that the change could break is stated, the done criteria are checkable, and the reader is told why CI missed the bug. (code cannot check this because the key sees the summary block, not whether the prose would let a stranger finish)"
+    },
+    {
+      "id": "focused",
+      "weight": 1,
+      "criterion": "The hand-off stays on BILL-1187. Fail: it pulls in the unrelated PDF ticket or asks the reader to change the legacy exporter. Partial: it lists unrelated files or tasks as optional work. Pass: unrelated work is named only to rule it out, and the file list is the few files the reader needs. (code cannot check this because relevance of prose is a judgement)"
+    },
+    {
+      "id": "finished-from-handoff",
+      "weight": 1,
+      "criterion": "The result shows the fix was finished from the hand-off and reports honestly. Fail: the result claims criteria met that the code or tests do not show, or it relies on facts the hand-off never gave (for example it cites Sam's notes when the hand-off did not list them). Partial: the fix and the new test match the hand-off, but the evidence for a criterion is a bare 'done', or the result does not say what is left for the owner (the branch and the pull request). Pass: every done criterion of the hand-off is answered with evidence a reviewer can check (the test runs in both zones, the new test failing on the old code under UTC), only the hand-off's files were read and changed, and the open pull-request step is stated with the INV-3001 before and after lines. (code cannot check this because whether evidence is honest and enough to review is a judgement)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "regression-test-that-fails-in-utc",
+        "text": "Asks for a test that fails on the old code even on the UTC CI (the existing test only fails in Auckland time), not just for the suite to pass.",
+        "source": "original"
+      },
+      {
+        "id": "known-versus-suspected",
+        "text": "Marks the cause as Sam's diagnosis (fairly sure) and says how to confirm it, rather than as a fact.",
+        "source": "original"
+      },
+      {
+        "id": "due-dates",
+        "text": "Points out that due dates go through the same function and are wrong the same way.",
+        "source": "original"
+      },
+      {
+        "id": "contract-rules",
+        "text": "Carries the rules the change could break: column order is a public contract, src/legacy is frozen with a named owner, no push to main.",
+        "source": "original"
+      },
+      {
+        "id": "deadline-reason",
+        "text": "Gives the deadline with its reason (month-end close on 2026-11-28 and totals wrong until then).",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Fix the timezone bug in the export and add tests.",
+      "See docs/ for details. Done when tests pass.",
+      "Change the export to use UTC and update the CSV columns to include the time zone.",
+      "Rewrite the legacy exporter too so both use the same code."
+    ]
+  },
+  "targetSkills": [
+    "delegation-protocol"
+  ],
+  "targetSop": "k-delegate",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 27.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

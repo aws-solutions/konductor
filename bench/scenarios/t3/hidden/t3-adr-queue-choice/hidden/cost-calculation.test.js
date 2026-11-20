@@ -22,7 +22,7 @@ describe('Cost calculation accuracy tests', () => {
     it('should account for all message operations', () => {
       // Each message requires send + receive + delete operations for SQS
       // Kinesis only requires put operation
-      const messagesPerDay = 8_000_000;
+      const messagesPerDay = 11_000_000;
       const daysInMonth = 30;
       const messagesPerMonth = messagesPerDay * daysInMonth;
       

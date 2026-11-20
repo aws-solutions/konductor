@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-bucket-policy-oac",
-  "version": 2,
+  "version": 4,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -53,12 +53,12 @@
   "rubric": [
     {
       "id": "no_wildcard_sourcearn",
-      "criterion": "Does not use wildcard (*) in aws:SourceArn condition that would let staging distribution read prod bucket or vice versa (code cannot check this because the evaluator treats exact ARNs and wildcards differently)",
+      "criterion": "Does not use a wildcard (*) in the aws:SourceArn condition, so the staging distribution cannot read the production bucket or the other way round. Fail: any aws:SourceArn value in the three policies contains * or a pattern, or one statement lets both distributions read both stages. Partial: the CDN read statements use exact distribution ARNs, but another statement (for example the log delivery statement) uses a wildcard source or a missing SourceArn, or the pairing of stage to distribution is right for one bucket kind only. Pass: every read statement in assets, downloads and logs policies uses the exact distribution ARN from infra/cdn-config.json for its own stage (staging bucket with the staging distribution, production bucket with the production distribution), and no aws:SourceArn value contains a wildcard. (code cannot check this because the evaluator treats exact ARNs and wildcards differently)",
       "weight": 2
     },
     {
       "id": "proper_private_handling",
-      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround (code cannot check this because implementation approach varies)",
+      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround. Fail: a separate bucket, a second distribution or a workaround, or private paths still readable. Partial: private paths refused, but by a broad deny that also blocks a needed public path, or with no explanation. Pass: one clear statement keeps downloads/private/ unreadable through the distribution, the public paths still work, and the message says why. (code cannot check this because implementation approach varies)",
       "weight": 1
     }
   ],
@@ -189,7 +189,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

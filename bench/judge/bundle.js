@@ -79,17 +79,9 @@ function conversationBlock(result) {
   return `## Conversation\n${lines.join('\n\n')}`;
 }
 
-function checkLine(c) {
-  // Hidden tests: counts only, never names, paths or output.
-  if (c.type === 'tests' && c.tests) return `- ${c.passed ? 'PASS' : 'FAIL'} tests: ${c.tests.passed} of ${c.tests.total} hidden tests passed${c.regression ? `; ${c.regression.passed} of ${c.regression.total} existing tests still pass` : ''}${c.tests.unparsed ? ' (result could not be read)' : ''}`;
-  const what = c.path ?? c.cmd ?? '';
-  const extra = c.pattern !== undefined ? ` /${c.pattern}/` : '';
-  return `- ${c.passed ? 'PASS' : 'FAIL'} ${c.type} ${what}${extra}${c.detail ? ` (${String(c.detail).slice(0, 200)})` : ''}`;
-}
-
 // Builds the only view of a run that a judge sees. It is assembled from the
-// final text, the files that differ from the fixture, the tool calls of the main session and of any child session it started
-// (see toolcalls.js), and the check results; the transcript's messages and thoughts are never read. Credential-shaped text, and the exact values in `literals`, is scrubbed from
+// final text, the files that differ from the fixture, and the tool calls of the main session and of any child session it started
+// (see toolcalls.js); the transcript's messages and thoughts, and the check results, are never shown. Credential-shaped text, and the exact values in `literals`, is scrubbed from
 // the text and the file texts last, so nothing the run output scrubber missed reaches a model. `literals` defaults to the
 // credential values of this process's environment, the same set the run scrubber uses, so a caller cannot leave it out by
 // accident. Callers that build the same bundle twice (judging, quote matching, rescoring) get the same text. meta.credsScrubbed
@@ -140,20 +132,23 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   }
   if (meta.omittedFiles.length) fileParts.push(`[omitted: bundle limit reached, ${meta.omittedFiles.length} more changed file(s): ${meta.omittedFiles.join(', ')}]`);
   parts.push(`## Files created or changed (${changed.length})\n${fileParts.length ? fileParts.join('\n\n') : '(none)'}`);
+  const deletedPart = deleted.length ? `## Files deleted\n${deleted.map((d) => `- ${d}`).join('\n')}` : null;
+  // The deliverables: the final text and the changed files. An expert: criterion may quote only these (expertText), so a
+  // fixture read in a tool result cannot prove a point the delivered work never makes (independent review, fix 2).
+  const deliverables = [parts[0], parts[parts.length - 1], ...(deletedPart ? [deletedPart] : [])];
   // The tool calls come after the deliverables and share their limit: they get what the files left, at most one file's worth.
   const tools = toolBlock(toolSessions(runDir, result), Math.max(0, Math.min(maxFileChars, maxBundleChars - used)));
   if (tools) parts.push(tools.text);
   meta.toolCalls = tools ? { calls: tools.calls, shown: tools.shown } : null;
-  if (deleted.length) parts.push(`## Files deleted\n${deleted.map((d) => `- ${d}`).join('\n')}`);
-  // After `recheck` the judge keeps seeing the results recorded at run time, so a rechecked run
-  // builds the same bundle and its cached judge calls stay valid.
-  const shownChecks = result.checksOriginal ?? result.checks ?? [];
-  parts.push(`## Deterministic check results\n${shownChecks.map(checkLine).join('\n') || '(none)'}`);
+  if (deletedPart) parts.push(deletedPart);
+  // The deterministic check results are not shown: the rubric share is meant to judge the outcome on its own, and a
+  // judge that reads "PASS tests: 90 of 90" anchors on it (task review F4). `recheck` therefore cannot change a bundle.
 
   const redacted = redact(parts.join('\n\n'), redactions);
   const { fired } = redacted;
   const scrubbedText = scrubStringCounted(redacted.text, literals);
   const text = scrubbedText.text;
+  const expertText = scrubStringCounted(redact(deliverables.join('\n\n'), redactions).text, literals).text;
   let fileReplacements = 0;
   const files = changed.map((f) => {
     const scrubbed = f.binary ? null : scrubStringCounted(f.text, literals);
@@ -163,7 +158,7 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   meta.credsScrubbed = { text: scrubbedText.count, files: fileReplacements };
   // changed and deleted name the workspace files the bundle was built from, so a reader can tell later whether they moved.
   // `files` carries the file texts, credential-scrubbed but not redacted, for local analysis (the quality pack's gating and diff); it is never sent to a judge as is.
-  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
+  return { text, expertText, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
 }
 
 module.exports = { buildBundle, finalTextOf, walk };

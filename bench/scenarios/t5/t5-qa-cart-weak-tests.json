@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-cart-weak-tests",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "We had a wrong charge reach a customer last week even though the dashboard says the test suite covers over 90% of the code. I do not trust the tests under test/ for the cart and checkout pricing any more. Please make them trustworthy for the pricing side of this repo: carts, discounts and coupons, tax, shipping and the order total. Put your new cases in test/qa-edge-cases.test.js (you may also fix or extend the existing test files), keep the suite runnable with `node --test`, and use the existing Node.js 24 CommonJS setup. Do not change anything under src/, the package files, data, docs or CI, and add no dependencies or generated files. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "We had a wrong charge reach a customer last week even though the dashboard says the test suite covers over 90% of the code. I do not trust the tests under test/ for the cart and checkout pricing any more. Please make them trustworthy for the pricing side of this repo: carts, discounts and coupons, tax, shipping and the order total. Put your new cases in test/qa-edge-cases.test.js (you may also fix or extend the existing test files), keep the suite runnable with `node --test`, and use the existing Node.js 24 CommonJS setup. Do not change anything under src/, the package files, data, docs or CI, and add no dependencies or generated files. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 57 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-cart-weak-tests",
   "hidden": "t5-qa-cart-weak-tests",
   "timeoutSec": 1200,
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
@@ -28,30 +28,8 @@
       "kind": "format"
     },
     {
-      "type": "min_matches",
-      "path": "test/qa-edge-cases.test.js",
-      "pattern": "test\\(",
-      "min": 8,
-      "weight": 3,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "test/qa-edge-cases.test.js",
-      "pattern": "expiresAtMs|freeShippingThresholdCents|discountedSubtotalCents",
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
       "type": "fixture_unchanged",
       "path": "src",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "not_contains",
-      "path": "test/qa-edge-cases.test.js",
-      "pattern": "skip|todo",
       "weight": 1,
       "kind": "format"
     }
@@ -59,8 +37,13 @@
   "rubric": [
     {
       "id": "clear-case-names",
-      "criterion": "Test names explain the customer-facing rule each case protects (code cannot check this because executable checks can count cases but cannot judge whether their descriptions are clear).",
+      "criterion": "Test names explain the customer-facing rule each case protects. Fail: names such as \"test discount\" or \"case 2\" that do not say what the customer sees. Partial: most names state the function under test, but not the rule or the figure (which discount, tax or shipping rule, at what boundary). Pass: each case in test/qa-edge-cases.test.js is named for a customer-facing rule (for example how a coupon combines with a discount, a tax rounding boundary, the shipping threshold, the order total) and the name matches what the assertion checks.",
       "weight": 1
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -153,13 +136,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 4.8,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 4.8,
-      "lazy": 19,
+      "stub": 0,
+      "lazy": 16.7,
       "alt": 100,
       "date": "2026-11-20"
     }
@@ -167,7 +150,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

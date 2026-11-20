@@ -1,0 +1,26 @@
+{
+  "outputFile": "docs/plan/release-plan.md",
+  "scoring": "sections",
+  "items": [
+    { "id": "on-hold-not-scheduled", "section": "schedule", "gate": true, "type": "none", "path": "waves", "match": { "all": ["\"A7\""] } },
+    { "id": "a1-scheduled", "section": "schedule", "type": "some", "path": "waves", "match": { "all": ["\"A1\""] } },
+    { "id": "a2-scheduled", "section": "schedule", "type": "some", "path": "waves", "match": { "all": ["\"A2\""] } },
+    { "id": "a3-scheduled", "section": "schedule", "type": "some", "path": "waves", "match": { "all": ["\"A3\""] } },
+    { "id": "a4-scheduled", "section": "schedule", "type": "some", "path": "waves", "match": { "all": ["\"A4\""] } },
+    { "id": "a5-scheduled", "section": "schedule", "type": "some", "path": "waves", "match": { "all": ["\"A5\""] } },
+    { "id": "a6-scheduled", "section": "schedule", "type": "some", "path": "waves", "match": { "all": ["\"A6\""] } },
+    { "id": "first-wave-uses-three", "section": "schedule", "type": "maxLen", "path": "waves.0", "min": 3, "max": 4 },
+    { "id": "few-waves", "section": "schedule", "type": "maxLen", "path": "waves", "min": 2, "max": 3 },
+    { "id": "a1-before-a2", "section": "dependencies", "type": "order", "path": "waves", "first": { "all": ["\"A1\""] }, "then": { "all": ["\"A2\""] } },
+    { "id": "a4-a5-apart", "section": "dependencies", "type": "none", "path": "waves", "match": { "all": ["\"A4\"", "\"A5\""] } },
+    { "id": "a1-a2-reason", "section": "dependencies", "type": "some", "path": "dependencies", "match": { "all": ["A1", "A2", "FIELDS|invoice\\.js|model|column"] } },
+    { "id": "a4-a5-reason", "section": "dependencies", "type": "some", "path": "conflicts", "match": { "all": ["A4", "A5", "config|app\\.ini|app\\.json"] } },
+    { "id": "on-hold-reason", "section": "dependencies", "type": "some", "path": "notScheduled", "match": { "all": ["A7", "hold|sandbox|vendor"] } },
+    { "id": "conflicts-bounded", "section": "dependencies", "type": "maxLen", "path": "conflicts", "min": 1, "max": 4 },
+    { "id": "packages-have-done", "section": "packages", "type": "every", "path": "packages", "min": 3, "match": { "field": "doneWhen", "all": ["\\w{3}"] } },
+    { "id": "packages-have-files", "section": "packages", "type": "every", "path": "packages", "min": 3, "match": { "field": "files", "all": ["src/|\\.ci/|config/|test/"] } },
+    { "id": "config-package-files", "section": "packages", "type": "some", "path": "packages", "match": { "all": ["A5", "src/config\\.js"] } },
+    { "id": "ci-package-files", "section": "packages", "type": "some", "path": "packages", "match": { "all": ["A6", "\\.ci/pipeline\\.yml"] } },
+    { "id": "packages-bounded", "section": "packages", "type": "maxLen", "path": "packages", "min": 3, "max": 6 }
+  ]
+}

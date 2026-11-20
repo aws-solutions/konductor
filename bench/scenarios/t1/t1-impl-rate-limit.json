@@ -1,7 +1,7 @@
 {
   "id": "t1-impl-rate-limit",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 17,
+      "min": 19,
       "weight": 3,
       "kind": "substance"
     },
@@ -29,8 +29,9 @@
       "kind": "substance"
     },
     {
-      "type": "file_exists",
-      "path": "src/rate-limiter.js",
+      "type": "contains",
+      "path": "config/test.json",
+      "pattern": "\\\"rateLimit\\\"",
       "weight": 2,
       "kind": "substance"
     },
@@ -42,10 +43,9 @@
       "kind": "substance"
     },
     {
-      "type": "min_matches",
-      "path": "test/rate-limiter.test.js",
-      "pattern": "test\\(",
-      "min": 1,
+      "type": "cmd",
+      "cmd": "grep -qiE 'rate.?limit|x-api-key|429' test/*.test.js",
+      "expectExit": 0,
       "weight": 1,
       "kind": "substance"
     },
@@ -67,8 +67,13 @@
   "rubric": [
     {
       "id": "honest-verification",
-      "criterion": "The final report accurately states which visible and behavior checks were run and whether they passed (code cannot check this because a report's claims are outside the repository).",
+      "criterion": "The final report accurately states which visible and behavior checks were run and whether they passed (code cannot check this because a report's claims are outside the repository). Fail: claims checks passed that were not run, or does not say whether `npm test` was run. Partial: reports `npm test` truthfully but claims untested behavior (429 after the limit, Retry-After from the injected clock, least-recently-seen eviction at maxClients) as working, or omits a failing check. Pass: names each command run with its real result, and says which of the limit, window, exemption and eviction rules its own tests exercise and which it did not test.",
       "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -99,7 +104,9 @@
       "licence": "MIT",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
@@ -135,15 +142,20 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 16.6,
-    "decision": "fix",
+    "stub": 15.7,
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 16.6,
-      "lazy": 83.6,
-      "alt": 83.6,
+      "stub": 15.7,
+      "lazy": 38.9,
+      "alt": 100,
       "date": "2026-11-20"
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

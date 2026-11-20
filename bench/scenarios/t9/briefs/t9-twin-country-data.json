@@ -1,0 +1,15 @@
+{
+  "id": "t9-twin-country-data",
+  "kind": "twin",
+  "twinOf": "t9-impl-combobox",
+  "controlKind": "twin",
+  "phase": "implementation",
+  "role": "frontend",
+  "phases2": [],
+  "author": "minimax-m2.5",
+  "reviewer": "qwen3-coder-next",
+  "stack": "browser",
+  "size": "30 to 50",
+  "source": "original",
+  "brief": "A plain data and script job on the same repository, with no user-interface work: write `scripts/check-countries.js` (Node, no dependencies) that reads `src/countries.js` data (the request names how to load it), and writes `reports/countries-check.json` with: duplicate codes, entries whose code is not two uppercase letters, names that differ only by case or accents, entries missing a field the registration page needs (the request names the fields), and a count per first letter of the name. It exits with code 1 when any problem is found and 0 otherwise. The request names the exact JSON field names and the sort order."
+}

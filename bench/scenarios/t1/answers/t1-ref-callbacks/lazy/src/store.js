@@ -5,29 +5,18 @@ const path = require('node:path');
 
 class FileStore {
   ensureDir(dir, callback) {
-    const promise = fs.promises.mkdir(dir, { recursive: true });
-    if (callback) {
-      promise.then(() => callback(null), err => callback(err));
-    }
-    return promise;
+    fs.mkdir(dir, { recursive: true }, callback);
   }
 
   readText(file, callback) {
-    const promise = fs.promises.readFile(file, 'utf8');
-    if (callback) {
-      promise.then(data => callback(null, data), err => callback(err));
-    }
-    return promise;
+    fs.readFile(file, 'utf8', callback);
   }
 
   writeJson(file, value, callback) {
-    const promise = this.ensureDir(path.dirname(file)).then(() =>
-      fs.promises.writeFile(file, JSON.stringify(value, null, 2) + '\n', 'utf8')
-    );
-    if (callback) {
-      promise.then(() => callback(null), err => callback(err));
-    }
-    return promise;
+    this.ensureDir(path.dirname(file), (mkdirError) => {
+      if (mkdirError) return callback(mkdirError);
+      fs.writeFile(file, JSON.stringify(value, null, 2) + '\n', 'utf8', callback);
+    });
   }
 }
 

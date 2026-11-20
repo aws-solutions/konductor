@@ -1,0 +1,26 @@
+* { box-sizing: border-box; }
+:root { color: #17324d; background: #f4f7f8; font-family: system-ui, sans-serif; }
+body { margin: 0; min-height: 100vh; }
+.site-header, footer, main { width: min(100% - 2rem, 58rem); margin-inline: auto; }
+.site-header { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem 0; }
+.brand { color: #075985; font-weight: 800; text-decoration: none; }
+.edition, footer { color: #587087; }
+main { padding: 3rem 0 4rem; }
+.intro { max-width: 42rem; }
+.eyebrow { color: #b45309; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+h1 { margin: .2rem 0 1rem; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.05; }
+.card { max-width: 34rem; margin-top: 2rem; padding: 1.5rem; border: 1px solid #d5e0e5; border-radius: .8rem; background: white; box-shadow: 0 1rem 2rem #17324d0d; }
+.field { margin-bottom: 1.1rem; }
+.country-field { position: relative; }
+label { display: block; margin-bottom: .35rem; font-weight: 700; }
+input { width: 100%; padding: .7rem .75rem; border: 1px solid #90a8b8; border-radius: .35rem; color: inherit; font: inherit; }
+input:focus { outline: 3px solid #bae6fd; outline-offset: 1px; }
+button { padding: .7rem 1rem; border: 0; border-radius: .35rem; background: #075985; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+button:hover { background: #0c4a6e; }
+#country-options { position: absolute; z-index: 2; inset: 4.7rem 0 auto; max-height: 15rem; overflow: auto; margin: 0; padding: .25rem; border: 1px solid #90a8b8; border-radius: .35rem; background: white; box-shadow: 0 .5rem 1rem #17324d26; list-style: none; }
+#country-options [role="option"] { padding: .6rem .65rem; border-radius: .25rem; cursor: pointer; }
+#country-options [role="option"][aria-selected="true"] { background: #e0f2fe; color: #0c4a6e; }
+.picker-status { min-height: 1.35em; margin: .4rem 0 0; color: #587087; font-size: .9rem; }
+.form-message { min-height: 1.4em; color: #166534; }
+footer { padding-bottom: 2rem; }
+@media (max-width: 35rem) { .site-header { display: block; } .edition { display: block; margin-top: .4rem; } }

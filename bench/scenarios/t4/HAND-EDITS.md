@@ -209,3 +209,56 @@ Tasks: none (every task already had a dry run).
 ## Not edited
 
 None.
+
+## Edits after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task review of 2026-11-19
+(T1 to T4 report, finding 1). Each task's `version` is bumped and `handEdited` names this session. No paid call ran,
+so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench/DEBT.md` D-108.
+
+### t4-arch-tenant-abac
+
+- What: no task change. The shared evaluator `lib/hidden/iam-eval.js` now keeps `${*}`, `${?}` and `${$}` as literal
+  characters through `globToRegExp` (with a unit test in `t4/lib/iam-eval.test.js`). Before, `${*}` became a wildcard,
+  so a correct deny on a literal `*` tenant matched every tenant and 38 allow tests failed (pilot score 69).
+  `answers/t4-arch-tenant-abac/alt` is now an independent design (the pilot's vanilla answer, with an escaped-literal
+  deny), not the reference with its keys reordered.
+- Why: the tests rejected a policy that real IAM accepts.
+- Dry run: reference 100, stub 14.7, lazy 14.7, alt 96.7. The five other IAM tasks score as before.
+
+### t4-iam-privesc-groups
+
+- What: the hidden "cannot" tests check the outcome (`decide` over identity plus boundary refuses the request), not
+  that the group policy holds an explicit Deny. Each refusal counts only when the group can still do its guide's work,
+  so a boundary that allows nothing earns nothing. One new test: the boundary is a real ceiling (an allow-everything
+  member still cannot create policy versions, attach user policies or pass the admin role). PassRole requests carry
+  `iam:PassedToService` as IAM sends it. Tests check `min` 26 to 27. `answers/.../alt` is now an independent
+  boundary-deny design (the pilot's vanilla answer).
+- Why: the old tests demanded where the Deny sits; the prompt says the boundary applies to every group, so a
+  boundary deny is refused the same way in IAM (pilot score 67 for a correct answer).
+- Dry run: reference 100, stub 17.7, lazy 17.7, alt 100.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t4-dev-path-traversal-files`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): root-cause-containment.
+- `t4-dev-sql-report-filters`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): parameterised-design.
+- `t4-iac-review-terraform`: prioritization given Fail/Partial/Pass anchors.
+- `t4-iam-bucket-policy-oac`: proper_private_handling given Fail/Partial/Pass anchors.
+- `t4-iam-ci-deploy-role-twin`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): change-explained.
+- `t4-iam-lambda-role-split`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): traceable-least-privilege.
+- `t4-iam-vendor-trust`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): trust-design-explained.
+- `t4-policy-fix-accessdenied`: cause given Fail/Partial/Pass anchors.
+- `t4-threat-model-webhooks`: review-quality replaced by anchored attacker-path-fix (weight 2).
+
+## Rubric anchors, review fix 2 (2026-11-20, mate review-fix2 worker)
+
+Who: claude (mate review-fix2 worker session). Each unanchored rubric item now carries Fail, Partial and Pass anchors written against the task's fixture and answer key, because the schema has no anchor field and the judge reads the criterion as written. Rubric text does not move code-only dry-run scores, so pilot.dryRun stands. Versions bumped; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t4-arch-tenant-abac`: R1 anchored (tag source, statement mapping, support denies).
+- `t4-iac-review-terraform`: clarity anchored (file, line, concrete fix, merge blockers).
+- `t4-iam-bucket-policy-oac`: no_wildcard_sourcearn anchored (exact distribution ARN per stage).
+- `t4-iam-ci-deploy-role`: reviewable-policy anchored (Sid per deploy or rollback call).
+- `t4-iam-privesc-groups`: reviewable-scope anchored (grants traced to the guides, routes closed).
+- `t4-secrets-in-repo`: rotation anchored (four credentials, history warning).

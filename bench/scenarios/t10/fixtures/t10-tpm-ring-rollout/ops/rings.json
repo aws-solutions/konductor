@@ -1,0 +1,8 @@
+{
+  "rings": [
+    { "name": "staff", "order": 1, "audience": "employees" },
+    { "name": "pilot", "order": 2, "audience": "selected merchants" },
+    { "name": "regional", "order": 3, "audience": "one region" },
+    { "name": "general", "order": 4, "audience": "all merchants" }
+  ]
+}

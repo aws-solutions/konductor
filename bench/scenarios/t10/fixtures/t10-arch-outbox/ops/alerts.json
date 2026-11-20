@@ -1,0 +1,1 @@
+[{"name":"orders-store-errors","metric":"store.errors","threshold":1,"windowSeconds":60},{"name":"orders-latency","metric":"request.latency","threshold":900,"windowSeconds":300}]

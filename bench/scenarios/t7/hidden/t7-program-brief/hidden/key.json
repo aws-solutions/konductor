@@ -3,32 +3,27 @@
   "block": "program",
   "assertions": [
     {
-      "id": "identity-ticket",
-      "desc": "Names the shared identity dependency ticket",
+      "id": "identity-dependency-owner",
+      "desc": "Names the shared identity dependency ticket and its owner",
       "op": "includes",
       "path": "shared_dependencies",
       "ids": [
-        "REQ-012"
-      ]
-    },
-    {
-      "id": "identity-owner",
-      "desc": "Names the single identity service owner",
-      "op": "includes",
-      "path": "shared_dependencies",
-      "ids": [
+        "REQ-012",
         "Identity Services"
       ]
     },
     {
-      "id": "shared-dep-in-workstreams",
-      "desc": "A workstream depends on the shared identity ticket",
+      "id": "migration-workstream-dependency",
+      "desc": "The migration workstream carries the identity dependency",
       "op": "cites",
       "path": "workstreams",
       "field": "depends_on",
       "ids": [
         "REQ-012"
-      ]
+      ],
+      "where": {
+        "name": "Migration and cutover"
+      }
     },
     {
       "id": "roadmap-teams",
@@ -43,19 +38,6 @@
       "min": 2
     },
     {
-      "id": "conflict-precision",
-      "desc": "Keeps the conflicts list focused on the seeded conflict",
-      "op": "precision",
-      "path": "conflicts",
-      "field": "between",
-      "ids": [
-        "Atlas",
-        "Beacon"
-      ],
-      "min": 0.5,
-      "maxCount": 3
-    },
-    {
       "id": "staffing-gap",
       "desc": "Reports the engineering staffing gap",
       "op": "number",
@@ -64,21 +46,44 @@
       "tol": 0
     },
     {
-      "id": "retention-constraint",
-      "desc": "Carries the audit retention floor",
+      "id": "required-constraints",
+      "desc": "Carries the retention, sign-in, and rollback constraints",
       "op": "includes",
       "path": "constraints",
       "ids": [
-        "365 days"
+        "365 days",
+        "OIDC",
+        "rollback"
       ]
     },
     {
-      "id": "auth-constraint",
-      "desc": "Carries the required sign-in constraint",
-      "op": "includes",
-      "path": "constraints",
+      "id": "tool-decision-date",
+      "desc": "Dates the tool decision checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
       "ids": [
-        "OIDC"
+        "2027-05-14"
+      ]
+    },
+    {
+      "id": "pilot-ready-date",
+      "desc": "Dates the pilot-ready checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        "2027-06-18"
+      ]
+    },
+    {
+      "id": "first-cutover-date",
+      "desc": "Dates the first-cutover checkpoint from the memo",
+      "op": "cites",
+      "path": "milestones",
+      "field": "date",
+      "ids": [
+        "2027-07-30"
       ]
     },
     {
@@ -101,6 +106,83 @@
       ]
     },
     {
+      "id": "all-workstreams",
+      "desc": "Names each workstream required by the program",
+      "op": "includes",
+      "path": "workstreams",
+      "ids": [
+        "Tool selection and governance",
+        "Identity integration",
+        "Migration and cutover"
+      ]
+    },
+    {
+      "id": "open-question-coverage",
+      "desc": "Carries the ownership, identity, pilot, audit, and staffing questions",
+      "op": "includes",
+      "path": "open_questions",
+      "ids": [
+        "ownership",
+        "Identity Services",
+        "pilot",
+        "audit",
+        "leadership"
+      ]
+    },
+    {
+      "id": "tool-decision-date-attached",
+      "desc": "Attaches the tool decision date to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "Tool decision"
+      ],
+      "where": {
+        "date": "2027-05-14"
+      }
+    },
+    {
+      "id": "pilot-ready-date-attached",
+      "desc": "Attaches the pilot-ready date to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "Pilot ready"
+      ],
+      "where": {
+        "date": "2027-06-18"
+      }
+    },
+    {
+      "id": "first-cutover-date-attached",
+      "desc": "Attaches the first-cutover date to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "First product cutover"
+      ],
+      "where": {
+        "date": "2027-07-30"
+      }
+    },
+    {
+      "id": "final-date-attached",
+      "desc": "Attaches the all-teams date to the named milestone",
+      "op": "cites",
+      "path": "milestones",
+      "field": "name",
+      "ids": [
+        "All in-scope teams on shared tool"
+      ],
+      "where": {
+        "date": "2027-08-27"
+      }
+    },
+
+    {
       "id": "decoy-out-of-scope",
       "desc": "Lists the high-vote request as out of scope",
       "op": "includes",
@@ -108,6 +190,55 @@
       "ids": [
         "REQ-068"
       ]
+    },
+    {
+      "id": "tool-selection-teams",
+      "desc": "Names all product teams in tool selection",
+      "op": "cites",
+      "path": "workstreams",
+      "field": "teams",
+      "ids": [
+        "Atlas",
+        "Beacon",
+        "Cedar"
+      ],
+      "min": 3,
+      "where": {
+        "name": "Tool selection and governance"
+      }
+    },
+    {
+      "id": "identity-workstream-teams",
+      "desc": "Names the service and product teams in identity integration",
+      "op": "cites",
+      "path": "workstreams",
+      "field": "teams",
+      "ids": [
+        "Identity Services",
+        "Atlas",
+        "Beacon",
+        "Cedar"
+      ],
+      "min": 4,
+      "where": {
+        "name": "Identity integration"
+      }
+    },
+    {
+      "id": "migration-workstream-teams",
+      "desc": "Names all product teams in migration and cutover",
+      "op": "cites",
+      "path": "workstreams",
+      "field": "teams",
+      "ids": [
+        "Atlas",
+        "Beacon",
+        "Cedar"
+      ],
+      "min": 3,
+      "where": {
+        "name": "Migration and cutover"
+      }
     }
   ]
 }

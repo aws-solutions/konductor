@@ -1,0 +1,205 @@
+{
+  "id": "t10-arch-outbox",
+  "class": "hard",
+  "version": 1,
+  "phase": "multi-phase",
+  "role": "architect",
+  "phases2": [
+    "architecture",
+    "decisions",
+    "implementation",
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "The checkout team needs payment-status notifications that do not disappear when an order write succeeds and do not create a second event when a caller retries. Please take this from design to release.\n\nFirst write a short design note at docs/design/payment-status-events.md explaining the implementation and operational decisions. Then build the feature in the repository with tests, and update .github/workflows/ci.yml if the new tests need a CI change. The public interfaces are: createJsonStore(filePath) and store.read(name), store.atomicWrite(changes) from src/store.js; createOrder(store, input, clock), updatePaymentStatus(store, orderId, status, options), and getOrder(store, id) from src/orders.js; appendStatusEvent(store, orderId, status, occurredAt, options) and publishPending(store, broker, options) from src/status-events.js; InProcessBroker from src/broker.js; request(method, path, body, dependencies) from src/http.js; and loadConfig(env) from src/config.js. publishPending options include now() returning epoch milliseconds, instanceId, claimMs, concurrency, limit, baseDelayMs, maxAttempts, publishTimeoutMs, and metrics. The publisher result includes attempted, published, failed, and deadLettered. Use STATUS_EVENTS_PUBLISH_BASE_DELAY_MS, STATUS_EVENTS_PUBLISH_CLAIM_MS, STATUS_EVENTS_PUBLISH_MAX_ATTEMPTS, STATUS_EVENTS_PUBLISH_CONCURRENCY, and STATUS_EVENTS_PUBLISH_TIMEOUT_MS and boolean STATUS_EVENTS_PUBLISH_ENABLED; durations are integer milliseconds and counts are unitless. Errors use ORDER_NOT_FOUND, INVALID_STATUS, INVALID_INPUT, BROKER_MESSAGE_TOO_LARGE, and BROKER_TIMEOUT. The HTTP paths are POST /orders (201), PATCH /orders/:id/payment-status (202), GET /orders/:id (200 or 404), and POST /internal/status-events/publish (200).\n\nNext write a rollout plan at docs/rollout/payment-status-events.md, and add a useful Unreleased CHANGELOG entry as the release note. End each document with its last fenced json block. The design block is an object with decisions (topic, choice, reason), risks (risk, mitigation), and evidence (strings). The rollout block has phases (name, audience, gate with metric, unit, threshold, action), rollback (trigger and steps), and evidence. Threshold is numeric; units are strings; evidence cites repository-relative path:line with 1-based lines. Keep the JSON blocks last.",
+  "fixture": "t10-arch-outbox",
+  "hidden": "t10-arch-outbox",
+  "timeoutSec": 4800,
+  "limits": {
+    "softSec": 2400,
+    "hardSec": 4800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 9,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "BLOCK_KIT=rollout-kit node --test --test-timeout=15000 block.test.js",
+      "min": 7,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design/payment-status-events.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/rollout/payment-status-events.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js && node -e \"const fs=require('fs'); const n=d=>fs.readdirSync(d).filter(x=>/\\.test\\.js$/.test(x)).reduce((s,x)=>s+(fs.readFileSync(d+'/'+x,'utf8').match(/\\b(?:test|it)\\s*\\(/g)||[]).length,0); if(n('test')<32) process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); const s=fs.readFileSync('CHANGELOG.md','utf8'); if(!/^## Unreleased/m.test(s)||!/statusEvents|publisher|event/i.test(s)) process.exit(1)\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/partners.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are design judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Explains how the cut-over handles a status already in flight so the old publisher and new atomic writer cannot both lose or silently fork it.",
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Distinguishes broker acceptance from consumer processing and describes the duplicate window after publish but before the sent mark.",
+        "source": "https://debezium.io/documentation/reference/stable/transformations/"
+      },
+      {
+        "id": "e3",
+        "text": "Describes how an operator discovers, inspects, and safely replays or resolves a dead-letter event without deleting later useful records.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e4",
+        "text": "Explains how changing publisher timing or attempt settings is validated and rolled out without making existing claims or retries unsafe.",
+        "source": "https://12factor.net (MIT)"
+      },
+      {
+        "id": "e5",
+        "text": "Names the consistency risk of restoring the JSON file or taking a backup while a publisher claim is active and gives a recovery action.",
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "Explains how the system behaves when a single order has a poison event, including the trade-off between preserving per-order order and allowing unrelated orders to proceed.",
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e7",
+        "text": "Assigns an owner and a concrete observation period for deciding that lag, broker errors, and the backlog are healthy after cut-over.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Use status events and retry for reliability; this is scalable and robust.",
+      "Add a publisher, monitor metrics, and roll back if anything goes wrong.",
+      "Store events, publish them later, and update the changelog after testing."
+    ]
+  },
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "design-doc-guidelines"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "design-doc-guidelines"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html",
+      "licence": "Apache-2.0 (debezium/debezium LICENSE.txt)",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T10, owner decision 2026-11-20); second-family attempts failed, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request states the problem (events that disappear, duplicate events on retry) without naming specific methods like atomicWrite, claim-based ownership, or dead-letter queues. The interface names are public API documentation, not implementation hints."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request specifies all paths, field names, units (integer milliseconds), HTTP routes with status codes, and error codes. The JSON block schemas are explicit. Two competent readers would converge on the same deliverables."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture docs (broker-contract.md, consumers.md) describe the broker contract and consumer expectations without revealing the outbox pattern or atomic write solution. The notes field in task-draft.json explicitly states the reference design, but this is in the hidden scorer metadata, not in fixture/."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A generic skim would fail the atomic-transition, claim-retry, per-order, stable-header, and dead-letter key items. The hidden tests verify subtle behaviors like claim contention between instances, exponential backoff timing, and duplicate suppression. A shallow implementation passes only 2-3 of 18 hidden tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All test behaviors derive from the stated requirements: atomic persistence prevents loss (implied by 'do not disappear'), idempotent append handles retries (implied by 'do not create a second event'), claim-based coordination handles dual instances (documented in instance-deploy.json), per-order ordering matches consumers.md. No test requires behavior the request does not imply."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 3.6,
+    "dryRun": {
+      "reference": 100,
+      "stub": 3.6,
+      "lazy": 34,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

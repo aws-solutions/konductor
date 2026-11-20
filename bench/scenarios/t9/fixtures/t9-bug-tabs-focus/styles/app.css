@@ -1,0 +1,33 @@
+:root { color: #18232d; background: #f4f7f8; font: 16px/1.5 system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+.topbar { height: 64px; padding: 0 8vw; display: flex; align-items: center; gap: 22px; background: #102f3d; color: #fff; }
+.brand { color: #f7c873; font-weight: 800; text-decoration: none; letter-spacing: .04em; }
+.workspace-name { color: #c8d9de; }
+.page-shell { max-width: 880px; margin: 52px auto; padding: 0 24px; }
+.eyebrow { margin: 0; color: #52717a; font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+h1 { margin: 5px 0 8px; font-size: 2.2rem; }
+.intro { margin: 0 0 32px; color: #52717a; }
+.settings-card, .tool-card { margin-top: 22px; overflow: hidden; border: 1px solid #cfdbde; border-radius: 10px; background: #fff; box-shadow: 0 4px 14px #18313d0d; }
+.tabs-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; padding: 20px 24px 14px; }
+h2 { margin: 0; font-size: 1.05rem; }
+.hint { color: #687c83; font-size: .82rem; }
+.tab-list { display: flex; gap: 5px; padding: 0 18px; border-bottom: 1px solid #d7e1e3; }
+.tab { display: flex; align-items: center; gap: 9px; padding: 11px 10px 10px; border-bottom: 3px solid transparent; color: #49656d; }
+.tab[aria-selected="true"] { border-bottom-color: #d66f4b; color: #173c49; font-weight: 700; }
+.tab[aria-disabled="true"] { color: #9aa7aa; text-decoration: line-through; }
+.tab:focus-visible, .toolbar button:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #f2ba53; outline-offset: 2px; }
+.tab button { border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; font-size: .72rem; padding: 2px 4px; }
+.tab button:disabled { cursor: not-allowed; opacity: .35; }
+.panels { padding: 25px 24px 30px; min-height: 150px; }
+.panel h2 { margin-bottom: 12px; }
+label { display: block; color: #49656d; }
+input:not([type="checkbox"]) { display: block; width: min(100%, 390px); margin-top: 6px; border: 1px solid #b7c8cc; border-radius: 5px; padding: 9px; font: inherit; }
+.toolbar { display: flex; gap: 8px; padding: 0 24px 20px; }
+button { border: 1px solid #9fb4b9; border-radius: 5px; background: #fff; color: #193d49; cursor: pointer; padding: 8px 12px; font: inherit; }
+button:hover { background: #edf4f4; }
+.toolbar button[disabled] { color: #a2afb2; background: #f2f4f4; cursor: not-allowed; }
+.tool-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 24px 22px; }
+.tool-actions button { font-size: .83rem; }
+footer { max-width: 880px; margin: 0 auto 36px; padding: 0 24px; color: #718388; }
+@media (max-width: 620px) { .tabs-heading { display: block; } .hint { display: block; margin-top: 5px; } .tab-list { overflow-x: auto; } }

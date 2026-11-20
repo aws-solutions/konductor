@@ -1,0 +1,6 @@
+{
+  "currency": "USD",
+  "locale": "en-US",
+  "dateFormat": "yyyy-MM-dd",
+  "receiptMode": "standard"
+}

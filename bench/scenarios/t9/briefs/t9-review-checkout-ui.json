@@ -1,0 +1,23 @@
+{
+  "id": "t9-review-checkout-ui",
+  "kind": "findings",
+  "phase": "code-review",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "browser",
+  "size": "25 to 40",
+  "nkey": 9,
+  "ntrap": 3,
+  "ndecoy": 2,
+  "softSec": 900,
+  "source": {
+    "url": "https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html",
+    "licence": "CC BY-SA 4.0 (checked in the OWASP CheatSheetSeries repository); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "keyExtra": "Findings are about front-end code: unsafe DOM writes, missing escaping, a stale async response overwriting a newer one, double submit, an input without a label, focus lost after a re-render, a secret or token kept in browser storage, a listener never removed, money kept as floats. Give each item a different location (file path plus function).",
+  "brief": "Phase: code review. Role: frontend developer. Repo: a static checkout front end (about 25 to 40 files: ES modules for the cart, address form, payment form, order status polling, a modal dialog, a toast helper; existing passing tests; CI; a changelog with the last few merged changes in prose, and a `docs/` folder). The request: a teammate asks for a review of the whole checkout UI before release, written to `review/REVIEW.md` with a JSON block of findings at the end. Seed 9 real defects of different kinds, 3 that look harmless at first read, and 2 decoys (an ugly but safe use of `innerHTML` with a constant string, and a large function that is well tested and low risk)."
+}

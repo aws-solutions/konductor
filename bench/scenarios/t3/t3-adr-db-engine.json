@@ -27,18 +27,18 @@
   "rubric": [
     {
       "id": "reasoning-quality",
-      "criterion": "The ADR shows a clear, technically sound chain from the traffic skew and service ceilings to the selected architecture, with calculations a reviewer can audit. (not code-checkable: Tests can recompute reported figures but cannot judge whether the reasoning connects the figures to a defensible architectural decision.)",
+      "criterion": "The ADR shows a clear, technically sound chain from the traffic skew and service ceilings to the selected architecture, with calculations a reviewer can audit. Fail: chooses on cost alone (kv-on-demand at about USD 4,965), or ignores the hot key. Partial: mentions the hot key but without the numbers, or uses the superseded 8,000 writes/s staging figure. Pass: shows 60% hot fraction x 25,000 peak writes = 15,000 hot writes/s, over 8 partitions = 1,875 WCU against the 1,000 WCU partition ceiling, so on-demand fails unless writes are spread, and that the provisioned design (cost about USD 6,540 from 3,000 WCU for 700 hours, 30,000 WCU for 30 launch hours, 5,000 RCU for 730 hours) is audited from the price sheet. (not code-checkable: Tests can recompute reported figures but cannot judge whether the reasoning connects the figures to a defensible architectural decision.)",
       "weight": 1
     },
     {
       "id": "tradeoff-explanation",
-      "criterion": "The ADR fairly explains the cost, scalability, latency, recovery, and operational tradeoffs of the rejected options rather than only naming a winner. (not code-checkable: Automated checks cannot determine whether prose gives a balanced explanation of alternatives or omits an important tradeoff.)",
+      "criterion": "The ADR fairly explains the cost, scalability, latency, recovery, and operational tradeoffs of the rejected options rather than only naming a winner. Fail: rejected options are named with no reason. Partial: rejects the relational cluster or on-demand with only one fixture-based reason. Pass: explains that on-demand is cheapest but breaks the partition ceiling, the relational cluster costs USD 8,075 against the USD 7,000 budget, and the chosen option meets RPO 45 s / RTO 240 s against 60 s / 300 s and needs two-shard routing of hot keys, skew monitoring and a launch rehearsal for the 15 ms p99. (not code-checkable: Automated checks cannot determine whether prose gives a balanced explanation of alternatives or omits an important tradeoff.)",
       "weight": 1
     },
     {
-      "id": "decision-record-quality",
-      "criterion": "The record is concise, readable, and actionable, including consequences and follow-up concerns for operating the selected design. (not code-checkable: A script can validate the path and JSON shape but cannot reliably assess clarity, completeness, or usefulness to an architecture reviewer.)",
-      "weight": 1
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -167,5 +167,9 @@
       "calculates monthly cost using only average write rates instead of provisioning for peak, ignoring launch-day traffic requirements"
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

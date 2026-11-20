@@ -31,18 +31,23 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
+      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints. Fail: indexes are chosen with no storage figure, or uses 90 days. Partial: picks the single index but does not show the storage check. Pass: shows the two-index option (120% overhead, over 380 TB) breaks the 300 TB limit, uses 400 days (the 90-day figure is superseded), and keeps the chosen design near 277 TB and about $6,514 per month under the $7,000 limit with the 20% headroom rule. (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
       "weight": 1
     },
     {
       "id": "tradeoff_explanation",
-      "criterion": "Explanation of query performance trade-offs given the single-index constraint (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
+      "criterion": "Explanation of query performance trade-offs given the single-index constraint. Fail: no statement of which queries are slow. Partial: says the index helps user queries but not what suffers. Pass: explains the single (user_id, event_time) index serves the 65% time-range queries with a user filter, resource_type queries (20%) and queries without user_id scan partitions, offers off-peak batch or materialized aggregates, and says a second (resource_type, event_time) index becomes worth it if budget allows. (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
       "weight": 1
     },
     {
       "id": "compliance_integration",
-      "criterion": "Integration of compliance requirements into the architecture justification (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
+      "criterion": "Integration of compliance requirements into the architecture justification. Fail: compliance is not tied to the design. Partial: retention is named but the cleanup mechanism is not linked to it. Pass: connects 400-day retention to monthly partitions so expiry is a partition drop rather than a DELETE scan, and addresses the compliance needs in the fixture (immutable logging, auditor access, legal discovery) in the partitioning and access design. (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -67,9 +72,8 @@
     "decision": "fix",
     "date": "2026-11-20",
     "blockers": [
-      "recheck-failed: no-method-or-decoy: The prompt field in task.json names the implementation approaches \"monthly partitions\" and an \"indexed bucket column\", and specifically requires deleting a month by that bucket, which points directly at the retention mechanism checked by the hidden tests.",
-      "recheck-failed: key-matches-fixture: Several expert-key claims conflict with fixture/architecture/query-patterns.md: it assigns resource_type queries 20% even though 20% is user activity by user_id, and recommends a resource_type index for those user-activity queries. The expected ~277 TB usage also does not leave the 20% headroom required by fixture/finance/budget-constraints.md, and the fixture gives no 120%/single-index overhead figures.",
-      "recheck-failed: solvable-from-fixture: The fixture supports raw retention arithmetic and identifies the query patterns, but it supplies no index-overhead assumptions or defined one-/two-index options from which the keyed 380+ TB and ~277 TB figures can be calculated. fixture/finance/budget-constraints.md additionally requires 20% headroom, which is incompatible with the key's ~277 TB usage under a 300 TB limit."
+      "recheck-failed: key-matches-fixture: The expertKey in task.json lines 45 and 55-60 requires a 2-index option with 120% overhead, a cost near $6,514, and a single-index constraint, but no fixture file defines index overheads, option IDs, or that constraint; traffic-analysis.md lines 34-40 explicitly says index overhead is not included. Also, budget-constraints.md lines 19-21 requires 20% headroom, so the key's ~277 TB usage in task.json line 80 does not leave 20% free within a 300 TB limit.",
+      "recheck-failed: solvable-from-fixture: The fixture supplies raw volume and pricing, but it supplies no mapping from indexing strategies to storage overhead or option IDs, so the requested JSON choice and the key's storage/cost calculations cannot be determined. This gap is explicit in traffic-analysis.md lines 34-40, while query-patterns.md lines 42-49 calls three indexes essential without resolving the storage trade-off."
     ],
     "dryRun": {
       "reference": 100,
@@ -79,7 +83,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 4,
   "targetSkills": [
     "system-design-patterns",
     "decision-writing"
@@ -131,23 +135,23 @@
       "items": [
         {
           "check": "no-method-or-decoy",
-          "verdict": "fail",
-          "note": "The prompt field in task.json names the implementation approaches \"monthly partitions\" and an \"indexed bucket column\", and specifically requires deleting a month by that bucket, which points directly at the retention mechanism checked by the hidden tests."
+          "verdict": "pass",
+          "note": "The task.json prompt (field prompt) states deliverables, query/retention goals, and hard constraints, but does not reveal a particular option or hidden-test answer. Its monthly-partition/indexed-bucket examples specify acceptable retention behavior rather than a decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture files provide requirements, query frequencies, traffic, pricing, and constraints, but no file states the expected option id, index-overhead values, selected schema, or completed decision JSON. The \"Must-Have Indexes\" section in fixture/architecture/query-patterns.md is input guidance rather than the reference answer."
+          "note": "The fixture provides requirements and measurements, including query patterns in architecture/query-patterns.md lines 42-65 and current retention in requirements/compliance.md lines 5-11, but no file lists the hidden findings, option values, or expected output."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "fail",
-          "note": "Several expert-key claims conflict with fixture/architecture/query-patterns.md: it assigns resource_type queries 20% even though 20% is user activity by user_id, and recommends a resource_type index for those user-activity queries. The expected ~277 TB usage also does not leave the 20% headroom required by fixture/finance/budget-constraints.md, and the fixture gives no 120%/single-index overhead figures."
+          "note": "The expertKey in task.json lines 45 and 55-60 requires a 2-index option with 120% overhead, a cost near $6,514, and a single-index constraint, but no fixture file defines index overheads, option IDs, or that constraint; traffic-analysis.md lines 34-40 explicitly says index overhead is not included. Also, budget-constraints.md lines 19-21 requires 20% headroom, so the key's ~277 TB usage in task.json line 80 does not leave 20% free within a 300 TB limit."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "fail",
-          "note": "The fixture supports raw retention arithmetic and identifies the query patterns, but it supplies no index-overhead assumptions or defined one-/two-index options from which the keyed 380+ TB and ~277 TB figures can be calculated. fixture/finance/budget-constraints.md additionally requires 20% headroom, which is incompatible with the key's ~277 TB usage under a 300 TB limit."
+          "note": "The fixture supplies raw volume and pricing, but it supplies no mapping from indexing strategies to storage overhead or option IDs, so the requested JSON choice and the key's storage/cost calculations cannot be determined. This gap is explicit in traffic-analysis.md lines 34-40, while query-patterns.md lines 42-49 calls three indexes essential without resolving the storage trade-off."
         }
       ]
     }
@@ -205,7 +209,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "HE hand-edit backfill session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

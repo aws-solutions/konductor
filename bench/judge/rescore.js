@@ -14,8 +14,9 @@ const { loadRun } = require('../report/load.js');
 const { effectiveLimits } = require('./config.js');
 const { writeAtomic } = require('../runner/lib/owned.js');
 const { buildBundle } = require('./bundle.js');
-const { makeQuoteMatcher, MAX_UNSUPPORTED_LETTERS } = require('./quote.js');
-const { rubricScore, panelScore, DOWNGRADE } = require('./score.js');
+const { MAX_UNSUPPORTED_LETTERS } = require('./quote.js');
+const { bundleMatcher } = require('./views.js');
+const { rubricScore, panelScore, unquotedVerdict } = require('./score.js');
 
 const LENIENT_FILE = 'judgments-lenient.json';
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
@@ -27,10 +28,11 @@ const keyOf = (r) => `${r.armId}\u0000${r.taskId}\u0000${r.replicate}`;
 function rescoredCriteria(criteria, found) {
   return criteria.map((c) => {
     const raw = c.verdictRaw ?? c.judgeVerdict ?? c.verdict;
-    const evidenceFound = NO_EVIDENCE.test(c.evidence ?? '') ? false : found(c.evidence ?? '');
+    const evidenceFound = NO_EVIDENCE.test(c.evidence ?? '') ? false : found(c.evidence ?? '', c.id);
     const downgraded = evidenceFound === false && raw !== 'fail';
     const { evidenceDowngraded, quoteFound, verdictStrict, verdictLenient, ...rest } = c;
-    return { ...rest, verdict: downgraded ? DOWNGRADE[raw] : raw, verdictRaw: raw, verdictScored: downgraded ? DOWNGRADE[raw] : raw, evidenceFound, ...(downgraded ? { evidenceDowngraded: true } : {}) };
+    const verdict = downgraded ? unquotedVerdict(c.id, raw) : raw;
+    return { ...rest, verdict, verdictRaw: raw, verdictScored: verdict, evidenceFound, ...(downgraded ? { evidenceDowngraded: true } : {}) };
   });
 }
 
@@ -78,7 +80,7 @@ function rescoreQuotes({ runDir, benchDir, extraDirs = [], redactions, mode = 'l
       const task = tasks.get(rec.taskId);
       if (!entry || !task) return null;
       if (!bundles.has(k)) bundles.set(k, buildBundle({ runDir: entry.dir, result: entry.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, j.limits ?? {}, {}), redactions }));
-      matchers.set(k, makeQuoteMatcher(bundles.get(k).text, { lenient: mode === 'lenient' }));
+      matchers.set(k, bundleMatcher(bundles.get(k), { lenient: mode === 'lenient' }));
     }
     return matchers.get(k);
   };

@@ -1,0 +1,7 @@
+{
+  "branches": [
+    {"code": "HBR", "name": "Harborview Central"},
+    {"code": "PINE", "name": "Pine Market"},
+    {"code": "EAST", "name": "East Quay"}
+  ]
+}

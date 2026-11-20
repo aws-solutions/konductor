@@ -1,6 +1,6 @@
 {
   "id": "t4-arch-tenant-abac",
-  "version": 1,
+  "version": 3,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -53,7 +53,7 @@
   "rubric": [
     {
       "id": "R1",
-      "criterion": "The access-model document clearly connects verified-token session tags to the storage boundaries and explains the support boundary (code cannot check this because it cannot judge whether the prose gives operators enough implementation guidance).",
+      "criterion": "The access-model document clearly connects verified-token session tags to the storage boundaries and explains the support boundary. Fail: the document names the tags but does not say which statement uses them, or never says the tags must come from the verified token (so a caller could choose its own tenant), or says nothing about how support staff are kept out of documents and metadata writes. Partial: it ties the tenant and tier tags to the object prefix, the list prefix and the metadata partition key, but misses one of: the tag must come from the verified token and the role trust must restrict who can set it, a request with no tenant tag is refused by an explicit deny, or support is refused documents and metadata writes by an explicit deny that wins over any other allow. Pass: it names the tenant and tier tags and the verified token as their only source, maps each tag to the statements that use it (tenants/<id>/ objects, the list prefix, the metadata partition key, exports/<id>/ for premium), states the explicit denies for a missing tag and for support document access and metadata writes, and lists what the code must keep true (tag taken only from the verified token, never from the request). A generic ABAC description with no mapping to these files lands at Fail. (code cannot check this because it cannot judge whether the prose gives operators enough implementation guidance)",
       "weight": 2
     }
   ],
@@ -189,7 +189,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -202,7 +202,7 @@
       "reference": 100,
       "stub": 14.7,
       "lazy": 14.7,
-      "alt": 100,
+      "alt": 96.7,
       "date": "2026-11-20"
     }
   }

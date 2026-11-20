@@ -1,0 +1,5 @@
+{
+  "session.ttlMinutes": 30,
+  "export.delimiter": ",",
+  "login.maxFailedPerMinute": 5
+}

@@ -1,7 +1,7 @@
 {
   "id": "t7-release-gate",
   "class": "design",
-  "version": 2,
+  "version": 4,
   "phase": "release-ops",
   "role": "tpm",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
-      "min": 14,
+      "min": 15,
       "weight": 3,
       "kind": "substance"
     },
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose gives the go or no-go call first and states the practical condition for changing it (code cannot check this because it only reads the structured block).",
+      "criterion": "The prose gives the go or no-go call first and states the practical condition for changing it. Fail: says go, or says no-go with no condition. Partial: says no-go but gives no next date or no condition for changing it. Pass: the first lines say no-go for Thursday 2027-05-06 and name the earliest defensible slot, Thursday 2027-05-13, conditional on the fixes landing before the 2027-05-05 17:00 cherry-pick deadline and a clean validation window of 2027-05-10 to 2027-05-12. (code cannot check this because it only reads the structured block).",
       "weight": 2
     },
     {
       "id": "director-reasoning",
-      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs (code cannot check this because it cannot assess the explanation).",
+      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs. Fail: blocker labels are listed with no evidence or owner. Partial: blockers have owners but do not separate main from the release branch, or the two failing signals are merged. Pass: the prose covers REL-112 (closed on main, a7d4e1c missing from release/27.05, owner Mira Sol), REL-118 (approved 2027-04-29 09:15 after the 2027-04-28 17:00 deadline, owner Jon Bell), REL-131 (linux-integration failing from c9f1e2a, owner Asha Nair), separates that from the intermittent windows-smoke signal (85% pass), removes the REL-127 note promise because it was reverted, excludes REL-145 on the triage record, and requires fresh branch CI evidence. (code cannot check this because it cannot assess the explanation).",
       "weight": 2
     }
   ],
@@ -154,7 +154,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture: REL-112 is closed on main but release_branch_present=no (blocker), REL-118 has approved_at after the 2027-04-28 17:00 deadline (late cherry-pick, blocker), REL-131's main_commit c9f1e2a matches linux-integration's first_failure_commit (blocker), REL-145/153 are demoted in triage_notes.csv (not blockers), REL-127 is Reverted but appears in release_notes_draft.md (notes correction), 2027-05-13 is the next calendar slot after 2027-05-06. Owners are named in release_blockers.csv: Mira Sol (REL-112), Jon Bell (REL-118), Asha Nair (REL-131). linux-integration has 50% pass rate and fails every run after c9f1e2a; windows-smoke is 85% intermittent."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal, files, interfaces and constraints without naming a method, technique, tool, or pointing at decoys or specific answers the checks look for."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain evidence the agent must reason from (issue export, cherry-pick queue, CI summary, calendar, notes, triage); no file explicitly lists the bugs, findings, or expected values."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key assertions reference data present in fixture: REL-112/118/131 owners and statuses in release_blockers.csv, REL-118 late approval in cherry_pick_queue.csv, REL-127 reversion and notes mention, REL-145/153 triage demotion in triage_notes.csv, CI job states in ci_signal_summary.json, and 2027-05-13 next slot in release_calendar.json."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {
@@ -167,19 +194,19 @@
     },
     "reference": 100,
     "stub": 4.8,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 4.8,
-      "lazy": 84.7,
+      "lazy": 38.1,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

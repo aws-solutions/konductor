@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 43
     },
     {
@@ -27,23 +27,18 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning and tradeoff analysis (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
-      "weight": 1
-    },
-    {
-      "id": "explanation_clarity",
-      "criterion": "Clarity and completeness of explanation in the ADR (not code-checkable: Automated checks can verify structure and presence of sections, but cannot assess whether the explanation would be understandable to stakeholders, whether it addresses all relevant concerns, or whether it provides sufficient context for future readers.)",
-      "weight": 1
-    },
-    {
-      "id": "professional_writing",
-      "criterion": "Professional writing quality and appropriate tone (not code-checkable: While basic grammar and spelling can be checked, code cannot evaluate whether the writing is persuasive, appropriately technical, well-structured for the audience, or maintains a professional tone suitable for architectural documentation.)",
+      "criterion": "Quality of reasoning and tradeoff analysis. Fail: picks on price, or cost uses one request per message. Partial: rejects SQS FIFO but the cost model misses chunking or the delete and receive calls. Pass: rejects SQS FIFO because 300 messages/s per group cannot carry the 400 events/s peak (not the outdated 500), bills 90 KB messages as 2 chunks of 64 KB on SQS and 4 units of 25 KB on Kinesis, counts send, receive and delete as three operations, and shows the chosen cost under the $900 budget. (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
       "weight": 1
     },
     {
       "id": "tradeoff_consideration",
-      "criterion": "Consideration of non-quantitative tradeoffs (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
+      "criterion": "Consideration of non-quantitative tradeoffs. Fail: no qualitative factors are discussed. Partial: mentions operational complexity but not duplicates or ordering. Pass: says strict ordering is not required, SQS Standard's at-least-once delivery needs idempotent consumers (acceptable, the old system had the same), and Kinesis adds shard planning and monitoring effort. (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,20 +65,17 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "gate-failed: lazy answer scores 70 (> 40); meta.json acceptableOptions lists every option, so the T3 choice gate cannot separate a shallow answer"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 70,
+      "lazy": 5,
       "alt": 81,
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 4,
   "targetSkills": [
     "decision-research",
     "decision-writing",
@@ -129,7 +121,34 @@
         "verdict": "pass",
         "note": "All needed numbers are provided: 8M events/day, 90KB size, 400/s peak, $900 budget, and detailed pricing. Output format is specified clearly."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to analyze and select a queue service without naming a specific method, skill, or tool, and does not reveal the SQS FIFO throughput trap or the correct answer."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file states the correct answer; agent must reason from throughput limits, pricing data, and cost calculations to reach the decision."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All hidden test values (11M events/day, 400 events/s peak, 90KB size, $900 budget, 300/s FIFO limit, 64KB SQS chunks, 25KB Kinesis units) exist in fixture files."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Engineer can eliminate SQS FIFO (300/s limit < 400/s requirement from pricing-data.json and technical-design.md), then calculate costs using pricing-data.json and cost-calculator.js to determine Kinesis is acceptable and within budget."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -187,5 +206,9 @@
       "Dismisses Kinesis due to operational complexity without calculating its actual cost, missing that it is significantly cheaper than SQS options for this message volume."
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

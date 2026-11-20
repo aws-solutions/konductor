@@ -1,0 +1,163 @@
+{
+  "id": "t11-resume-csv-export",
+  "class": "hard",
+  "version": 2,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please take over the unfinished CSV work on branch feature/csv-export. The handoff notes are in NOTES-csv-export.md, and the branch history has the review context. Finish the `timesheet export --format csv` command through bin/timesheet.js and the library exportTimesheet function already exposed from index.js. The default ledger is data/entries.json, and the command also accepts --file. CSV columns must be, in order: id, startedAt, endedAt, minutes, project, description, billable, tags. The export should follow the repository's timestamp policy and the plan in the notes. Keep the existing JSON export byte-for-byte compatible, including its CLI behavior. Use the repository's normal data file and command options, and add focused coverage for the completed behavior. Keep the work on feature/csv-export and leave the rest of the small time-tracking tool working as it does today.",
+  "fixture": "t11-resume-csv-export",
+  "hidden": "t11-resume-csv-export",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/ 2>/dev/null || node --test test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(grep -rhoE '(^|[^a-zA-Z_.])(test|it)\\(' test | wc -l)\" -ge 9",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "focused-change",
+      "criterion": "The implementation stays focused on the requested export behavior and preserves the surrounding tool's existing contract. Fail: the existing JSON export output or CLI behavior changes, or the diff rewrites unrelated modules, or work lands on another branch than feature/csv-export. Partial: JSON export is unchanged and CSV works, but the diff also touches unrelated files (renames, formatting sweeps, new options not asked for) or ignores part of NOTES-csv-export.md. Pass: the diff on feature/csv-export touches only the CSV export path (src/export.js, bin/timesheet.js, tests and docs for it), the eight columns come in the requested order with the repository's timestamp policy, the JSON export and its CLI behavior are byte-for-byte unchanged, and the plan in the notes is followed. (code cannot check this because scope and maintainability require human review)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging",
+      "licence": "CC BY-NC-SA 3.0 (checked on https://git-scm.com/book/en/v2, 2026-11-20); idea only: work on a branch is interrupted and picked up later; no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt guides the agent to branch history and handoff notes without revealing hidden test specifics like formula neutralization (=+−@ prefix handling), string format shorthand, or exact ISO millisecond format."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Fixed in the author's fix round: the string shorthand test was removed, and the notes now state the agreed neutralisation (leading apostrophe). (reviewer: Test #9-10 require neutralizing formula-like values (=+−@ prefixes) but this is not stated in the request, notes, or any fixture document. Test #15 expects string format shorthand exportTimesheet(rows, 'csv') but the request only mentions 'the library exportTimesheet function already exposed' without specifying this signature variant.)"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's existing export.js has only 5 columns with incomplete CSV escaping. The handoff notes explicitly say timestamps should use 'local time' which is superseded by git commit d06beb2 choosing UTC. No fixture code, tests, or documents reveal formula neutralization or the canonical .000Z format."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow fix adding the 3 missing columns without timestamp normalization would fail tests #5-8. Missing formula neutralization would fail tests #9-10. Missing CSV quoting would fail test #8. The hidden tests provide good coverage depth."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Fixed in the author's fix round: the neutralisation the tests expect is stated in the handoff notes (an uncommitted edit of the notes file in the starting tree). (reviewer: Formula neutralization (prefixing =+−@ with apostrophe) is required by tests #9-10 but is not mentioned in the request, handoff notes, or any fixture document - it cannot be derived from the folder. The string format shorthand in test #15 is also not specified in the request.)"
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt names specific methods (exportTimesheet, timesheet export --format csv) but no decoy methods that would mislead the agent."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture has 6 test files (cli.test.js, clock.test.js, export-json.test.js, index.js, labels.test.js, store.test.js, summary.test.js) that contain no CSV export implementation or tests."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "The hidden tests (hidden-behaviour.test.js) have 15 test cases covering complete CSV export with 8 columns, timestamp normalization, CSV quoting, and formula neutralization. The fixture tests cover only basic CLI and JSON export with no CSV functionality at all. (worker: the missing CSV behaviour is the work the request asks for, so its absence from the fixture is by design; the plan, the column list and the UTC decision are in the notes, the request and the branch history)"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The fixture's export.js only has 5 CSV columns (missing minutes, description, billable, tags), no timestamp normalization to UTC ISO 8601 with toISOString, no CSV escaping for commas/quotes, and no formula neutralization. The task requires CSV behavior not present in the fixture. (worker: the missing CSV behaviour is the work the request asks for, so its absence from the fixture is by design; the plan, the column list and the UTC decision are in the notes, the request and the branch history)"
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 23.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

@@ -268,7 +268,7 @@ async function runJudging(o) {
     const common = { judge: u.judge, armId: u.run.armId, taskId: u.run.taskId, replicate: u.run.replicate };
     if (u.kind === 'rubric') {
       const task = tasks.get(u.run.taskId);
-      const matchers = matchersFor(bundle.text);
+      const matchers = matchersFor(bundle.text, bundle.expertText);
       // Both quote rules are applied to every criterion; the fields older readers use carry the rule this pass ran with.
       const criteria = out.error ? [] : dualCriteria(out.value.criteria, matchers, quoteRule);
       const views = out.error ? null : dualScores(task.rubric, criteria);

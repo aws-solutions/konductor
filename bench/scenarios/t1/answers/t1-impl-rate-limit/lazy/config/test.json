@@ -1,16 +1,4 @@
 {
   "port": 0,
-  "logLevel": "silent",
-  "rateLimit": {
-    "windowMs": 60000,
-    "maxClients": 1000,
-    "defaultPlan": "free",
-    "plans": {
-      "free": { "limit": 5 },
-      "team": { "limit": 20 }
-    },
-    "keyPlans": {
-      "team-demo": "team"
-    }
-  }
+  "logLevel": "silent"
 }

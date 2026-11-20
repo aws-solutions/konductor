@@ -13,7 +13,7 @@
       "none": [
         "(caused by|due to|because of|result of) (the )?(db |database )?(pool|connection|replica.?lag|authori[sz]er)"
       ],
-      "weight": 3
+      "weight": 2
     },
     {
       "id": "canary-evidence",
@@ -55,7 +55,7 @@
           "canary|deploy.*3\\.0|application|cohort"
         ]
       },
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "prepare-before-code",
@@ -73,7 +73,7 @@
           "canary|deploy.*3\\.0|application"
         ]
       },
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "contract-before-close",
@@ -94,48 +94,13 @@
       "weight": 1
     },
     {
-      "id": "all-steps-have-gates",
-      "type": "none",
-      "path": "steps",
-      "match": {
-        "all": [
-          "\"percent\":([1-9]|[1-9][0-9]|100)\\b",
-          "\"gate\":null"
-        ]
-      },
-      "weight": 2
-    },
-    {
-      "id": "no-freeze-starts",
-      "type": "none",
-      "path": "steps",
-      "match": {
-        "field": "start",
-        "timeIn": [
-          "2025-11-21T18:00:00Z",
-          "2025-12-02T08:00:00Z"
-        ]
-      },
-      "weight": 2
-    },
-    {
       "id": "gate-metrics-are-catalogued",
       "type": "inSet",
       "path": "steps",
       "field": "gate.metric",
       "fromFile": "metrics/metrics-catalogue.csv",
       "pattern": "^([a-z0-9_]+),",
-      "min": 6,
-      "weight": 2
-    },
-    {
-      "id": "rollback-metric-is-catalogued",
-      "type": "inSet",
-      "path": "rollback.trigger",
-      "field": "metric",
-      "fromFile": "metrics/metrics-catalogue.csv",
-      "pattern": "^([a-z0-9_]+),",
-      "min": 1,
+      "min": 8,
       "weight": 1
     },
     {
@@ -145,12 +110,54 @@
       "match": {
         "field": "percent",
         "num": {
-          "gte": 5,
-          "lte": 8
+          "gte": 7.5,
+          "lte": 8.5
         }
       },
       "min": 1,
-      "weight": 2
+      "weight": 8
+    },
+    {
+      "id": "replica-lag-threshold",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "gate.threshold",
+        "num": {
+          "gte": 14.99,
+          "lte": 15.01
+        }
+      },
+      "min": 1,
+      "weight": 8
+    },
+    {
+      "id": "latency-threshold",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "gate.threshold",
+        "num": {
+          "gte": 449.99,
+          "lte": 450.01
+        }
+      },
+      "min": 1,
+      "weight": 8
+    },
+    {
+      "id": "write-error-threshold",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "gate.threshold",
+        "num": {
+          "gte": 0.49,
+          "lte": 0.51
+        }
+      },
+      "min": 1,
+      "weight": 8
     },
     {
       "id": "canary-start-time",
@@ -160,10 +167,11 @@
         "field": "start",
         "timeIn": [
           "2025-11-17T15:00:00Z",
-          "2025-11-21T18:00:00Z"
+          "2025-11-21T17:59:59Z"
         ]
       },
-      "weight": 2
+      "min": 8,
+      "weight": 8
     },
     {
       "id": "rollback-threshold",
@@ -171,7 +179,7 @@
       "path": "rollback.trigger.threshold",
       "value": 0.5,
       "tol": 0.05,
-      "weight": 2
+      "weight": 8
     },
     {
       "id": "rollback-trigger-window-and-op",
@@ -192,13 +200,13 @@
         "2\\.9",
         "traffic|cohort|image"
       ],
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "bounded-rollout-plan",
       "type": "maxLen",
       "path": "steps",
-      "min": 6,
+      "min": 8,
       "max": 14,
       "weight": 1
     },

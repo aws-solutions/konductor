@@ -105,7 +105,7 @@ test('help received, a failing intended test or a failing invariant each clear c
   assert.equal(helped.interjections, 1);
   assert.equal(helped.askedFirstTurn, true);
   assert.equal(helped.completedWithoutHelp, false);
-  assert.deepEqual(helped.questions, [{ turn: 1, text: 'Which unit?', count: 1, matched: ['unit'], answered: true, reply: 'Seconds.' }]);
+  assert.deepEqual(helped.questions, [{ turn: 1, text: 'Which unit?', count: 1, signal: 'prose', markerLines: 0, matched: ['unit'], answered: true, reply: 'Seconds.' }]);
 
   const lone = () => { const c = newConversation(AUTONOMY); c.record(summary('Done.')); return c; };
   assert.equal(build({ conv: lone(), checks: [tests('intended', 3, 4), tests('invariant', 2, 2)] }).completedWithoutHelp, false);

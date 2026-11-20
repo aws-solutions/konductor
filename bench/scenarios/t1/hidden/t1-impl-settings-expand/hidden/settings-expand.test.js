@@ -49,12 +49,22 @@ test('uses environment values for references and file keys', () => {
   } finally { clean(dir); }
 });
 
-test('supports defaults, including defaults with references', () => {
+test('supports a default for an empty or missing name', () => {
   const dir = directory();
   try {
-    const file = envFile(dir, 'defaults.env', 'EMPTY=\nONE=${EMPTY:-fallback}\nTWO=${MISSING:-${OTHER:-last}}\n');
+    const file = envFile(dir, 'defaults.env', 'EMPTY=\nONE=${EMPTY:-fallback}\nTWO=${MISSING:-spare}\n');
     const settings = loadSettings({ files: [file], env: {} });
     assert.equal(settings.get('ONE'), 'fallback');
+    assert.equal(settings.get('TWO'), 'spare');
+  } finally { clean(dir); }
+});
+
+test('supports defaults that contain references', () => {
+  const dir = directory();
+  try {
+    const file = envFile(dir, 'nested.env', 'NAME=inner\nONE=${MISSING:-${NAME}}\nTWO=${MISSING:-${OTHER:-last}}\n');
+    const settings = loadSettings({ files: [file], env: {} });
+    assert.equal(settings.get('ONE'), 'inner');
     assert.equal(settings.get('TWO'), 'last');
   } finally { clean(dir); }
 });
@@ -79,8 +89,9 @@ test('reports a missing reference with its key and source file', () => {
   const dir = directory();
   try {
     const file = envFile(dir, 'missing.env', 'MESSAGE=hello ${ABSENT}\n');
+    // The prompt fixes what the error must name (the setting and its source file), not its wording.
     assert.throws(() => loadSettings({ files: [file], env: {} }), error =>
-      /Missing variable ABSENT/.test(error.message) && /MESSAGE/.test(error.message) && /missing\.env/.test(error.message));
+      /MESSAGE/.test(error.message) && /missing\.env/.test(error.message));
   } finally { clean(dir); }
 });
 
@@ -89,7 +100,7 @@ test('reports a reference cycle with its key and source file', () => {
   try {
     const file = envFile(dir, 'cycle.env', 'FIRST=${SECOND}\nSECOND=${FIRST}\n');
     assert.throws(() => loadSettings({ files: [file], env: {} }), error =>
-      /Reference cycle/.test(error.message) && /FIRST/.test(error.message) && /cycle\.env/.test(error.message));
+      /FIRST|SECOND/.test(error.message) && /cycle\.env/.test(error.message));
   } finally { clean(dir); }
 });
 

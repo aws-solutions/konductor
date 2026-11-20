@@ -1,0 +1,24 @@
+{
+  "id": "t10-pm-plan-limits",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "pm",
+  "phases2": [
+    "requirements",
+    "architecture",
+    "implementation",
+    "release-ops"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "cjs",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://kubernetes.io/docs/concepts/policy/resource-quotas/",
+    "licence": "CC BY 4.0 (kubernetes/website LICENSE)",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a product manager who owns the product, writing to the engineer who will do the work",
+  "brief": "Phase: long multi-phase, idea to ship. Role: product manager. Repo: a Node.js project-tracking API for small teams (accounts, projects, members, plans) with its own small HTTP router on node:http, a repository layer over a JSON-file store with a `withLock` helper, a plan catalogue in config/plans.json, a flag registry and a deploy-rings file in ops/. The PM wants plan limits on how many ACTIVE projects an account may have (Free, Team, Business), a visible warning when an account is near its limit, and a way for support to grant one account a higher limit. Traps to plant (adapt, five or more in all): (1) the existing `countProjects` helper counts archived and deleted projects, which the product treats as not active; (2) creating a project is check-then-insert, so two concurrent creates at the limit would both pass, and the store already has a lock helper used for member invites; (3) accounts on an old `legacy` plan have a null limit that means unlimited, and some accounts are already above the new Free limit: they keep their projects and are only blocked from creating more; (4) a partner integration (docs/partners.md) creates projects in bulk through a batch endpoint and expects partial success; (5) ops/ has a metrics catalogue with only some metric names, a rings file with a fixed ring order, and a flag naming rule in a doc. Decisions the design note must settle: soft or hard limit, what counts as active, bulk behaviour, where an override lives, shadow mode before enforcement. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note."
+}

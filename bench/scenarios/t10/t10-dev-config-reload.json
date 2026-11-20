@@ -1,0 +1,204 @@
+{
+  "id": "t10-dev-config-reload",
+  "class": "hard",
+  "version": 1,
+  "phase": "multi-phase",
+  "role": "developer",
+  "phases2": [
+    "implementation",
+    "testing",
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "Mara owns Harbor Hand. The ferry desk needs settings without a process restart. Write the design note at docs/design/config-reload.md first. Then build the feature with tests, updating CI if needed. Next write the rollout plan at docs/rollout/config-reload.md, and add a release note under Unreleased in CHANGELOG.md.\n\nExport WorkerConfig with pollIntervalMs, maxAttempts, leaseSeconds, logLevel, queueName, region, workerConcurrency, maxPayloadBytes, jobTimeoutMs, and backoffMs. Units are milliseconds for pollIntervalMs, jobTimeoutMs, and backoffMs; seconds for leaseSeconds; and counts or bytes for the remaining numeric settings. Export CONFIG_FILES as the two config paths, parseConfig(workerText: string, limitsText: string, env?: Record<string,string|undefined>): WorkerConfig and loadConfig(options?: { rootDir?: string; env?: Record<string,string|undefined> }): WorkerConfig, plus ConfigReloader, ConfigReloadError, ConfigChange, and ReloadResult. ConfigReloadError must expose code values CONFIG_READ, CONFIG_PARSE, CONFIG_SCHEMA, CONFIG_UNKNOWN_KEY, or CONFIG_ENV. ConfigReloader accepts rootDir, env, debounceMs, watch, signal, schedule, and cancelSchedule options; watch is (onChange: () => void) => () => void and schedule is (fn: () => void, delayMs: number) => unknown. Its methods are start(): WorkerConfig, reload(reason?: 'sighup'|'file'): ReloadResult, getSnapshot(): WorkerConfig, withSnapshot(work): Promise, flushPending(): ReloadResult|null, onChange(listener): () => void, and stop(): void. A result has accepted, config, changed, and error fields; a change has changed, previous, current, and reason fields. The supported file keys are exactly the WorkerConfig keys, and The documented WORKER_* names remain required. Keep the existing health routes at /health and /ready returning 200, and unknown routes returning 404.\n\nEach document must end with its last fenced json block containing one object. The design block has decisions, risks, and evidence: decisions is an array of objects with string topic, choice, and reason; risks is an array of objects with string risk and mitigation; evidence is an array of strings. The rollout block has phases, rollback, and evidence: phases is an array of objects with string name, audience, and action plus a gate object with string metric and unit and numeric threshold; rollback has a string trigger and an array of string steps; evidence is an array of strings. Evidence strings cite repository-relative files and one-based lines in path:line form. You may add one or two fitting fields, but the described fields must be present and the JSON blocks must be the final fenced json blocks.",
+  "fixture": "t10-dev-config-reload",
+  "hidden": "t10-dev-config-reload",
+  "timeoutSec": 4800,
+  "limits": {
+    "softSec": 2400,
+    "hardSec": 4800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js",
+      "min": 22,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.cjs",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "BLOCK_KIT=rollout-kit node --test --test-timeout=15000 block.test.cjs",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design/config-reload.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/rollout/config-reload.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test && node -e \"const fs=require('node:fs'); const n=fs.readdirSync('test').filter(x=>x.endsWith('.test.ts')).reduce((a,x)=>a+(fs.readFileSync('test/'+x,'utf8').match(/\\b(?:test|it)\\s*\\(/g)||[]).length,0); if(n<38) process.exit(1);\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('node:fs'); const s=fs.readFileSync('CHANGELOG.md','utf8'); const u=s.indexOf('## Unreleased'); const baseline=s.indexOf('## 1.8.0'); const body=u>=0&&baseline>u?s.slice(u,baseline):''; if(!s.startsWith('# Changelog\\n\\n## Unreleased') || baseline<=u || !/^[-*]\\s+\\S/m.test(body)) process.exit(1);\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/partners.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are design judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Explains how startup behaves when the initial configuration is unreadable or invalid, rather than silently running with guessed values.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Addresses concurrent or overlapping reload attempts and says which candidate wins or how serialization prevents an older read from replacing a newer one.",
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Explains how the service exposes rejected reloads and effective changes to operators without logging configuration secrets.",
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e4",
+        "text": "Discusses compatibility while different deployment rings or process versions coexist and how the rollback leaves jobs safe.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e5",
+        "text": "States how listener failures, watcher errors, and cleanup during shutdown are isolated so they do not strand the worker or leak handles.",
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e6",
+        "text": "Defines the no-op reload case and whether a listener fires when the candidate is valid but no effective key changed, so change metrics stay truthful.",
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e7",
+        "text": "Identifies permission, path, or symlink concerns at the file boundary and limits what a reload may read.",
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Reload the file and validate it. This is simple and scalable.",
+      "Use a watcher, update the values, and monitor the service.",
+      "The design keeps configuration flexible and documents a safe rollout. Consider performance and errors."
+    ]
+  },
+  "targetSkills": [
+    "design-doc-guidelines",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-design-doc-creation",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "design-doc-guidelines",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://12factor.net/config",
+      "licence": "MIT (12factor.net, as listed in the plan datasets note); idea only",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T10, owner decision 2026-11-20); second-family attempts failed, see DEBT D-122"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes what features to build (config reloading, ConfigReloader class, documents) but does not tell the agent how to implement them, which algorithms to use, or which libraries to call. The notes section mentions traps but is separate from the main prompt."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request specifies exact export names, method signatures (watch, schedule, signal types), error codes, and file structure. The only minor ambiguity is the exact error message text (only codes are required) and the precise calling convention for the callback returned by watch()."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "worker check: docs/config.md and the runbook describe how the CURRENT service behaves (environment variables applied after the files; editors write in two steps), as any real repository documents itself; they do not describe the reload design, the snapshot rule or the keys' decisions. The trap is whether the new code keeps that rule, which the agent must find and respect (reviewer: The fixture's docs/config.md explicitly states the environment precedence (file values first, env after), which reveals the expected behavior. The runbook.md mentions zero-bytes during saves, guiding the debounce design. These are documented behaviors, not traps, but the schema.ts in fixture uses permissive validation (accepts extra keys) which contradicts the request's requirement for strict rejection.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick generic implementation would fail many tests: the 22 hidden behavior tests require ConfigReloader functionality, the 10 design key items require specific decision topics, and the rollout key requires matching existing metrics and rings. The request demands non-trivial implementation details (job snapshot isolation, immutable snapshots, debounce, onChange listeners, signal handling)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests and key items can be derived from the request. The required exports, error codes, method signatures, document structure, and evidence requirements are all specified. The fixture context (config structure, env precedence, runbook guidance) supports but does not prevent correct implementation. No test requires behavior the request does not state."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 12.2,
+    "dryRun": {
+      "reference": 100,
+      "stub": 12.2,
+      "lazy": 34.7,
+      "alt": 91.8,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

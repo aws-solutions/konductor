@@ -122,9 +122,9 @@ function retryDelay(policy, attempts, randomValue) {
   const exponentialDelay = base * Math.pow(2, attempts - 1);
   const cappedDelay = Math.min(exponentialDelay, max);
   
-  // Apply jitter: randomValue in [0, 1) scales jitterFactor
-  const jitter = Math.floor(jitterFactor * randomValue);
-  return cappedDelay + jitter;
+  // jitter is a fraction of the capped delay: randomValue 0 gives the low end, 1 the high end, and maxDelayMs still holds.
+  const spread = cappedDelay * jitterFactor;
+  return Math.round(Math.min(max, cappedDelay - spread + 2 * spread * randomValue));
 }
 
 module.exports = { WorkerRunner, retryDelay };

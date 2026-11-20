@@ -1,0 +1,8 @@
+{
+  "rings": [
+    {"name":"dev","audience":"service developers"},
+    {"name":"staging","audience":"internal test accounts"},
+    {"name":"canary","audience":"one percent of customer accounts"},
+    {"name":"general","audience":"all customer accounts"}
+  ]
+}

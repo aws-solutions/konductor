@@ -1,7 +1,7 @@
 {
   "id": "t7-program-brief",
   "class": "design",
-  "version": 2,
+  "version": 4,
   "phase": "ideation",
   "role": "tpm",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
-      "min": 11,
+      "min": 20,
       "weight": 3,
       "kind": "substance"
     },
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "director-bottom-line",
-      "criterion": "The prose gives the director a clear bottom line early and explains why the proposed work and dates are credible or conditional (code cannot check this because it cannot judge narrative clarity or reasoning)",
+      "criterion": "The prose gives the director a clear bottom line early and explains why the proposed work and dates are credible or conditional. Fail: no bottom line, or the brief just picks a tool and a big cutover. Partial: states the program outcome and the 2027-08-27 date but not what makes the date conditional. Pass: the opening says one shared deployment tool for Atlas, Beacon and Cedar by 2027-08-27, credible only if Identity Services is staffed (REQ-012) and the Atlas and Beacon ownership conflict is settled before the pilot, and gives the 3-engineer gap (7 asked, 4 available). (code cannot check this because it cannot judge narrative clarity or reasoning)",
       "weight": 2
     },
     {
       "id": "decision-useful-uncertainty",
-      "criterion": "The prose distinguishes confirmed facts from unresolved decisions and gives practical evidence or ownership needed to close the open questions (code cannot check this because it cannot assess honest uncertainty or usefulness to staff)",
+      "criterion": "The prose distinguishes confirmed facts from unresolved decisions and gives practical evidence or ownership needed to close the open questions. Fail: unknowns are generic (for example risks remain) or the memo's staffing ask is repeated without the gap. Partial: separates known from unknown but names no owner or evidence to close them. Pass: confirmed facts (the 365-day audit retention bar from the Atlas path, OIDC sign-in, approval history, 4 of 7 engineers available, REQ-012 owned by Identity Services) are separated from open decisions (tool choice, single owner for Atlas and Beacon, add people versus reduce waves versus move the date), each open item has an owner or the evidence needed to close it, and the feature-flag request is placed outside this program. (code cannot check this because it cannot assess honest uncertainty or usefulness to staff)",
       "weight": 2
     }
   ],
@@ -162,7 +162,34 @@
         "verdict": "pass",
         "note": "All key values follow from the fixture data: staffing gap (7 requested - 4 available = 3), REQ-012 as shared dependency (all three roadmaps list it), conflict (Atlas and Beacon both own 'Shared deployment migration' in Q3), 365-day retention (ForgeRun active tool in atlas-tools.csv, memo requirement). Tolerances are reasonable (exact for headcount_gap, inclusive string matching for constraints)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal, source files, and output format without naming methods, tools, or revealing the traps like REQ-068 decoy or Atlas/Beacon ownership conflict."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain raw evidence (memo, roadmaps, inventories, requests, headcount) with no explicit answer keys or findings lists."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key expectations are derivable from fixture: REQ-012 in open-requests.csv line 12, Atlas/Beacon conflict in their roadmaps, 3-engineer gap from headcount.csv (7 requested - 4 available), milestone dates and constraints in leadership-memo.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can synthesize all required elements from the fixture: calculate the gap, identify conflicts, find dependencies, extract constraints and dates, and recognize the out-of-scope REQ-068 feature flag request."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {
@@ -175,19 +202,19 @@
     },
     "reference": 100,
     "stub": 4.8,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 4.8,
-      "lazy": 80.5,
+      "lazy": 39.3,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

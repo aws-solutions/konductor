@@ -73,7 +73,7 @@ test('the agent asks on turn 1, the scripted user answers, the same session resu
     assert.equal(r.autonomous, false);
     assert.equal(r.questionsAsked, 1);
     assert.equal(r.unmatchedQuestions, 0);
-    assert.deepEqual(r.questions, [{ turn: 1, text: 'Should the timeout be in seconds or milliseconds?', count: 1, matched: ['unit'], answered: true, reply: 'Seconds.' }]);
+    assert.deepEqual(r.questions, [{ turn: 1, text: 'Should the timeout be in seconds or milliseconds?', count: 1, signal: 'prose', markerLines: 0, matched: ['unit'], answered: true, reply: 'Seconds.' }]);
     assert.equal(r.finalText, 'Done. I assumed seconds.');
     assert.equal(r.askedUser, false);
     assert.equal(r.assumptionsStated, true);

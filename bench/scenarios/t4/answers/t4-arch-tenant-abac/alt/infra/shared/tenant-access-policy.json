@@ -1,88 +1,98 @@
 {
-    "Statement": [
-        {
-            "Condition": {
-                "Null": {
-                    "aws:PrincipalTag/tenant": "true"
-                }
-            },
-            "Resource": [
-                "arn:aws:s3:::ledger-tenant-documents-example",
-                "arn:aws:s3:::ledger-tenant-documents-example/*"
-            ],
-            "Action": "s3:*",
-            "Effect": "Deny",
-            "Sid": "DenyS3WhenTenantTagIsMissing"
-        },
-        {
-            "Condition": {
-                "Null": {
-                    "aws:PrincipalTag/tenant": "true"
-                }
-            },
-            "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
-            "Action": "dynamodb:*",
-            "Effect": "Deny",
-            "Sid": "DenyMetadataWhenTenantTagIsMissing"
-        },
-        {
-            "Resource": "arn:aws:s3:::ledger-tenant-documents-example/tenants/${aws:PrincipalTag/tenant}/*",
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Effect": "Allow",
-            "Sid": "TenantObjects"
-        },
-        {
-            "Condition": {
-                "ForAllValues:StringLike": {
-                    "s3:prefix": [
-                        "tenants/${aws:PrincipalTag/tenant}",
-                        "tenants/${aws:PrincipalTag/tenant}/*"
-                    ]
-                },
-                "Null": {
-                    "s3:prefix": "false"
-                }
-            },
-            "Resource": "arn:aws:s3:::ledger-tenant-documents-example",
-            "Action": "s3:ListBucket",
-            "Effect": "Allow",
-            "Sid": "TenantListing"
-        },
-        {
-            "Condition": {
-                "StringEquals": {
-                    "aws:PrincipalTag/tier": "premium"
-                }
-            },
-            "Resource": "arn:aws:s3:::ledger-tenant-documents-example/exports/${aws:PrincipalTag/tenant}/*",
-            "Action": "s3:PutObject",
-            "Effect": "Allow",
-            "Sid": "PremiumExportWrites"
-        },
-        {
-            "Condition": {
-                "ForAllValues:StringEquals": {
-                    "dynamodb:LeadingKeys": "${aws:PrincipalTag/tenant}"
-                },
-                "Null": {
-                    "dynamodb:LeadingKeys": "false"
-                }
-            },
-            "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
-            "Action": [
-                "dynamodb:GetItem",
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:DeleteItem",
-                "dynamodb:Query"
-            ],
-            "Effect": "Allow",
-            "Sid": "TenantMetadata"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyMissingTenantTag",
+      "Effect": "Deny",
+      "Action": "*",
+      "Resource": "*",
+      "Condition": { "Null": { "aws:PrincipalTag/tenant": "true" } }
+    },
+    {
+      "Sid": "DenyUnsafeTenantTagValue",
+      "Effect": "Deny",
+      "Action": "*",
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "aws:PrincipalTag/tenant": ["", "*${*}*", "*${?}*", "*/*"]
         }
-    ],
-    "Version": "2012-10-17"
+      }
+    },
+    {
+      "Sid": "DenyObjectsOutsideOwnPrefixes",
+      "Effect": "Deny",
+      "Action": "s3:*",
+      "NotResource": [
+        "arn:aws:s3:::ledger-tenant-documents-example",
+        "arn:aws:s3:::ledger-tenant-documents-example/tenants/${aws:PrincipalTag/tenant}/*",
+        "arn:aws:s3:::ledger-tenant-documents-example/exports/${aws:PrincipalTag/tenant}/*"
+      ]
+    },
+    {
+      "Sid": "DenyListingOutsideOwnPrefix",
+      "Effect": "Deny",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::ledger-tenant-documents-example",
+      "Condition": {
+        "StringNotLike": { "s3:prefix": "tenants/${aws:PrincipalTag/tenant}/*" }
+      }
+    },
+    {
+      "Sid": "DenyOtherTenantMetadata",
+      "Effect": "Deny",
+      "Action": "dynamodb:*",
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
+        "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example/index/*"
+      ],
+      "Condition": {
+        "ForAnyValue:StringNotEquals": {
+          "dynamodb:LeadingKeys": "${aws:PrincipalTag/tenant}"
+        }
+      }
+    },
+    {
+      "Sid": "TenantDocumentReadWriteDelete",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::ledger-tenant-documents-example/tenants/${aws:PrincipalTag/tenant}/*"
+    },
+    {
+      "Sid": "TenantDocumentList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::ledger-tenant-documents-example",
+      "Condition": {
+        "StringLike": { "s3:prefix": "tenants/${aws:PrincipalTag/tenant}/*" }
+      }
+    },
+    {
+      "Sid": "PremiumTenantExportWrite",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::ledger-tenant-documents-example/exports/${aws:PrincipalTag/tenant}/*",
+      "Condition": { "StringEquals": { "aws:PrincipalTag/tier": "premium" } }
+    },
+    {
+      "Sid": "TenantMetadataOwnPartition",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/ledger-tenant-metadata-example",
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "dynamodb:LeadingKeys": "${aws:PrincipalTag/tenant}"
+        },
+        "Null": { "dynamodb:LeadingKeys": "false" }
+      }
+    }
+  ]
 }

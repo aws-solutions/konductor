@@ -1,0 +1,32 @@
+# T12 hand edits
+
+Owner rule (2026-11-19): every change that someone other than the recorded author made to a task's prompt, fixture,
+key, checks or rubric is listed here, and the task carries `handEdited`.
+
+All four tasks were written by hand on 2026-11-20 by the mate task-fix worker (claude), owner-approved, with no author
+or reviewer model call. So the whole task is a Claude hand edit: `authorship.family` is claude, `handEdited` names
+the worker, and every task is on the non-Claude recheck list (bench/DEBT.md D-108). The design review was a careful
+self-review: the sub-agent tool of that session could not pick a model, so the requested second-family reviewer did
+not run.
+
+Self-review checklist, per task: the prompt names deliverables and constraints, not a method or the traps; every key
+item can be derived from the fixture; a correct answer worded or ordered differently passes (the alternative answers
+score 100); the shallow fake scores 0 to 22 and the half answer 0 to 36.4.
+
+| Task | Edits during authoring |
+| --- | --- |
+| t12-spec-rate-limits | key: open questions folded into the requirements section, task items for the remaining-requests header and store failure added (the half answer scored 50 with three sections); the alternative keeps task order (the prompt says order matters) |
+| t12-handoff-export-dates | key: legacy-not-affected fact, both-zones check before the pull request, and pull-request evidence added (the half answer scored 66.7); prompt: "without asking anyone" replaced (scenarios lint no-ask rule) |
+| t12-parallel-backlog | reference: A2 moved to the second wave (waves list items by start, an item that waits goes later); prompt: a sentence that pointed at the code overlaps removed (it hinted at the trap); hand-written alternative plan |
+| t12-sdlc-contact-import | hidden tests regrouped from 12 cases to 5 rules (all cases of a rule in one test); a hand-written half-done importer replaced the mechanical lazy answer, which kept the full code |
+
+## Review fix 2 (2026-11-20, mate review-fix2 worker, claude)
+
+From the independent review of 2026-11-20 (fixes 7 and 8). No model call. Every task moved to version 2.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-spec-rate-limits | 2026-11-20 | alt answer rewritten by hand (rules grouped by caller, ids LIM-1..7, sliding window from two counters, `src/limits/` modules, tests first, fail open to a per-instance count); fixture test command `node --test test/*.test.js` | the old alt was the reference reworded; `node --test test/` fails on Node 22 and later |
+| t12-sdlc-contact-import | 2026-11-20 | alt answer rewritten by hand (state-machine record reader in `src/csv-records.js`, `book.add()` gives the skip reasons, `RowLimitError`, two test files); hidden rule 5 accepts any Error; key `dec-parser` also accepts reader, tokenizer or lexer; prompt, `cmd` check and fixture use `node --test test/*.test.js` | old alt was reworded; the prompt asks only for an Error and does not name a parser, so the key was tied to the reference's wording; `node --test test/` fails on Node 22+ |
+| t12-handoff-export-dates | 2026-11-20 | prompt: the fix must be finished from the hand-off alone as a second step that writes `docs/handoff/BILL-1187-result.md` (readFiles, changedFiles, ranCommands, doneWhen); new hidden `work.test.js` (8 checks, each counted twice) with `.bench-base/`; checks now `fixture_unchanged` on `src/legacy` and `test/fixtures` instead of all of `src` and `test`; rubric item `finished-from-handoff` (anchored); reference gains the fix, the regression test and the result; lazy is now the full hand-off with no second step; alt rewritten by hand (numbered walk-through, `toISOString()` fix, new `test/format-date.test.js` setting the zone in-process); timeout 1800 s | review fix 8: the task planned a hand-off but never required anyone to finish from it; review fix 7: the old alt was reworded |
+| t12-parallel-backlog | 2026-11-20 | prompt: carry the plan out, each package in `work/<P>/` with only its files and a `REPORT.md`, merged in mergeOrder with `docs/plan/merge-log.md`; new hidden `work.test.js` (12 checks, each counted twice: isolation, reports, merge replay from `.bench-base/`, final files, merge log order, A5 before A4, and the release outcome); `fixture_unchanged` on `src` replaced by `docs/team.md`; rubric item `packages-done-apart` (anchored); reference gains four packages, the merged code and the log; lazy is now the full plan with no work; alt gains six packages built independently (nested `config/app.json` with a flattening loader, first-failure login window, explicit CSV `COLUMNS`, CI matrix); CI check accepts any form naming both zones; timeout 2400 s | review fix 8: the task planned parallel work but never required it to be done and merged; the CI regex was tied to the reference's form |

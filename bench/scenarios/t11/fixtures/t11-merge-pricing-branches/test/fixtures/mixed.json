@@ -1,0 +1,6 @@
+{
+  "lines": [
+    { "sku": "linen-wrap", "quantity": 3, "unitPrice": 3.25 },
+    { "sku": "mug-blue", "quantity": 1, "unitPrice": 8.5 }
+  ]
+}

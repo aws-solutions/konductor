@@ -27,18 +27,23 @@
   "rubric": [
     {
       "id": "tradeoff-quality",
-      "criterion": "The decision explains why the selected option is preferable across downtime, recovery point, operational complexity, and recurring cost rather than merely naming an option. (not code-checkable: Automated checks can verify figures and option identifiers but cannot judge whether the tradeoff explanation is complete or persuasive.)",
+      "criterion": "The decision explains why the selected option is preferable across downtime, recovery point, operational complexity, and recurring cost rather than merely naming an option. Fail: names an option with no limit check, or picks big_bang_copy or dual_write. Partial: picks continuous_replication but compares only on cost or downtime. Pass: rejects big_bang_copy (1.8 TB at 450 MB/s about 66.7 minutes against the 20-minute downtime limit) and dual_write (6,700 USD against 5,000), and shows continuous_replication meets all five limits (handoff 3 to 5 minutes, RPO 2 minutes under 5, 12 ms under 30, 150 MB/s, 4,300 USD) using production inventory (1.8 TB), not the staging 2.4 TB. (not code-checkable: Automated checks can verify figures and option identifiers but cannot judge whether the tradeoff explanation is complete or persuasive.)",
       "weight": 1
     },
     {
       "id": "cutover-operability",
-      "criterion": "The cutover document gives a clear, actionable handoff sequence with measurable preconditions, rollback awareness, and operator checks. (not code-checkable: Tests can inspect the decision block but cannot reliably assess whether a human operator could execute the prose safely.)",
+      "criterion": "The cutover document gives a clear, actionable handoff sequence with measurable preconditions, rollback awareness, and operator checks. Fail: no handoff sequence. Partial: a sequence without measurable preconditions or a rollback point. Pass: gives ordered steps with measurable preconditions (replication lag under the RPO threshold, write pause timing, target health check), names the source cluster's last confirmed consistent position as the rollback checkpoint, and does not treat a small-dataset rehearsal as proof the production copy will fit the window. (not code-checkable: Tests can inspect the decision block but cannot reliably assess whether a human operator could execute the prose safely.)",
       "weight": 1
     },
     {
       "id": "calculation-clarity",
-      "criterion": "The document presents the important assumptions and arithmetic in a concise, internally consistent way that a reviewer can follow. (not code-checkable: Code can recompute expected values but cannot evaluate readability, explanation quality, or whether assumptions are surfaced at the right level.)",
+      "criterion": "The document presents the important assumptions and arithmetic in a concise, internally consistent way that a reviewer can follow. Fail: figures are given without working. Partial: the main numbers are shown but an assumption is hidden. Pass: states and checks the key arithmetic (1.8 TB at 450 MB/s off hours versus 150 MB/s business hours, the 2,400 + 1,200 + 300 + 2,800 = 6,700 sum), says one-time labor is excluded from the monthly comparison per cost-notes.md, and the figures agree throughout. (not code-checkable: Code can recompute expected values but cannot evaluate readability, explanation quality, or whether assumptions are surfaced at the right level.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,7 +75,7 @@
       "date": "2026-11-19"
     }
   },
-  "version": 1,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -197,7 +202,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T3 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

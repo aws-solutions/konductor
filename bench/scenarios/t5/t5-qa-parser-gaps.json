@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-parser-gaps",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "A bad input reached production last week even though the parser tests look healthy and coverage is high. The suite under test/ for Tide Config, our small configuration format, only uses short, well-formed inputs, and I no longer trust it. Please strengthen it for the tokenizer, parser, validator and printer: add new test files under test/ (you may also extend the existing ones), keep the suite runnable with `node --test --test-timeout=4000 test/*.test.js`, and assert on public results and error messages rather than private details. Do not change anything under src/, package.json or docs/, do not add dependencies, and keep every existing test working. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "A bad input reached production last week even though the parser tests look healthy and coverage is high. The suite under test/ for Tide Config, our small configuration format, only uses short, well-formed inputs, and I no longer trust it. Please strengthen it for the tokenizer, parser, validator and printer: add new test files under test/ (you may also extend the existing ones), keep the suite runnable with `node --test --test-timeout=4000 test/*.test.js`, and assert on public results and error messages rather than private details. Do not change anything under src/, package.json or docs/, do not add dependencies, and keep every existing test working. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 64 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-parser-gaps",
   "hidden": "t5-qa-parser-gaps",
   "timeoutSec": 1200,
@@ -17,29 +17,34 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "node --test --test-timeout=4000 test/*.test.js && test \"$(cat test/*.js | grep -cE '^[[:space:]]*(test|it)\\(')\" -ge 32",
+      "cmd": "node --test --test-timeout=4000 test/*.test.js",
       "expectExit": 0,
-      "weight": 4,
-      "kind": "substance"
+      "weight": 1,
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "src/parser.js",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The regression cases make the important boundary and state assumptions clear in their descriptions (code cannot check this because it can verify outcomes but not the explanation of why each case matters).",
+      "criterion": "The regression cases make the important boundary and state assumptions clear in their descriptions. Fail: cases are named by input (\"case 3\", \"long input\") and the tokenizer, parser, validator and printer inputs are short and well-formed as before. Partial: names describe the input, but not the boundary or the rule it protects, or the error message assertions are missing for malformed Tide Config input. Pass: each new case is named for the rule and boundary it tests (for example an unterminated string, nesting depth, a duplicate key, a round trip through the printer), asserts the public result or exact error message, and states any assumption about the format in its description.",
       "weight": 1
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -130,13 +135,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 5.7,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 5.7,
-      "lazy": 28.6,
+      "stub": 0,
+      "lazy": 16.7,
       "alt": 100,
       "date": "2026-11-20"
     }
@@ -144,7 +149,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

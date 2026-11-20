@@ -1,0 +1,211 @@
+{
+  "id": "t10-tpm-ring-rollout",
+  "class": "hard",
+  "version": 1,
+  "phase": "multi-phase",
+  "role": "tpm",
+  "phases2": [
+    "planning",
+    "implementation",
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "The rendering and fulfillment teams need the new receipt PDF generator to reach merchants in controlled steps, because several consumers share this service and we need a release we can stop or undo. Please first write a short design note at docs/design/ring-aware-receipts.md that explains the operating choices and their reasons. Then build the feature with tests, updating CI only if the added tests need a new check. Add the ring library at src/ring-rollout.js with CommonJS exports createRingRollout({ rings, percentages, initialState, freezeCalendar, now }) and RolloutError. The returned object exposes state() as {rings:[{name,percentage,status,updatedAt,history}]}, canPromote(ring, percentage) as {ok,code}, promote(ring, percentage), rollback(ring, percentage), and isFrozen(ring); state-changing methods return promises, percentages are integers from 0 through 100, and RolloutError.code uses UNKNOWN_RING, INVALID_PERCENTAGE, PRIOR_RING_INCOMPLETE, ROLLOUT_FROZEN, ROLLBACK_REQUIRES_EXPLICIT_CALL, or INVALID_ROLLBACK. Use config/rollout.json with a percentages object whose values are integer arrays. Add src/go-no-go.js with normalizeMetricName(value), parseSnapshot(csv), and evaluate({ ring, snapshot, now }); evaluate returns an object containing decision, reason, metric, unit, and value, with decision exactly PROMOTE, HOLD, or ROLLBACK and metric values expressed in percent. Add scripts/receipt-go-no-go.js, which accepts --ring, --snapshot, and optional --now ISO arguments, prints only the decision, and exits 2 when required arguments are absent. The existing error adapter must continue returning status, body.code, and body.message for its current routes and status behavior. Next write the follow-the-steps rollout plan at docs/rollout/receipt-pdf.md, and finish with a useful Unreleased CHANGELOG entry as the release note. Each document must end with its last fenced json block containing one object. The design block has decisions (an array of objects with string topic, choice, and reason), risks (an array of objects with string risk and mitigation), and evidence (an array of path:line strings); the rollout block has phases (objects with string name and audience, a gate object with metric, unit, and numeric threshold, and string action), rollback (an object with string trigger and steps array), and evidence (an array of path:line strings). Evidence paths are relative to the repository root and use one-based line numbers. You may add at most two fitting fields, but keep the named fields and make each block the final fenced json block.",
+  "fixture": "t10-tpm-ring-rollout",
+  "hidden": "t10-tpm-ring-rollout",
+  "timeoutSec": 4800,
+  "limits": {
+    "softSec": 2400,
+    "hardSec": 4800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "tests",
+      "cmd": "BLOCK_KIT=rollout-kit node --test --test-timeout=15000 block.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design/ring-aware-receipts.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/rollout/receipt-pdf.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test && test $(find test -type f -name '*.test.js' -print0 | xargs -0 grep -E '^[[:space:]]*test\\(' | wc -l) -ge 43",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); const a=fs.readFileSync('CHANGELOG.md','utf8'); if(!/^## Unreleased/m.test(a) || !/ring-aware receipt PDF rollout/i.test(a) || !/PROMOTE, HOLD, and ROLLBACK/i.test(a) || !/legacy receipt generator/i.test(a)) process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/partners.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "ring-aware|PROMOTE|ROLLBACK",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are design judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Explains how an operator distinguishes a healthy metric result from permission to promote during a freeze.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Explains why the evaluator uses a maximum or otherwise conservative view of observations instead of hiding a bad minute in an average.",
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Explains the trade-off between retaining rollout history for auditability and keeping the state record small.",
+        "source": "https://12factor.net (MIT)"
+      },
+      {
+        "id": "e4",
+        "text": "Explains how UTC and an injected clock prevent local-time boundary mistakes in both automation and review.",
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e5",
+        "text": "Explains how a failed or partial rollback is observed and who owns reconciliation before a retry.",
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e6",
+        "text": "Explains why metric names are normalized only for documented aliases and are then checked against an allowlisted catalogue.",
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e7",
+        "text": "Explains the compatibility and data-retention consequence of removing the old receipt generator before its consumer migrates.",
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "A generic note says the rollout should be safe, observable, and scalable.",
+      "A shallow note repeats the request and lists generic monitoring without decisions.",
+      "A short note says teams should communicate and roll back if anything goes wrong."
+    ]
+  },
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-full-sdlc",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template",
+      "licence": "Apache-2.0 (kubernetes/enhancements LICENSE)",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T10, owner decision 2026-11-20); second-family attempts failed, see DEBT D-122"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not name a specific method, process or tool the agent should use, nor does it tell it how to work or list the traps/causes/constraints to find. It asks for design notes, a ring rollout library, go/no-go evaluation, CLI script, rollout plan, and changelog, leaving implementation details to the agent."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All tests and key items are precise about expected values: rings order (staff→pilot→regional→general), freeze dates (2025-12-20 to 2026-01-03 for regional), metric names (receipt_error_rate), percentages (integers 0-100), and specific error codes. The fixture files (ops/rings.json, ops/freeze-calendar.csv, ops/budget-policy.json) provide unambiguous reference data."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "worker check: the snapshot header RECEIPT_ERROR_RATE_PERCENT is data the agent must normalise (the request asks for normalizeMetricName), not an answer to the design or the traps; no fixture file names a trap or the design (reviewer: The fixture file 'ops/snapshots/staff-good.csv' contains the exact header 'RECEIPT_ERROR_RATE_PERCENT' that appears in the test (hidden-behaviour.test.js line 17) and the design key (line 3 pattern 'staff.{0,100}pilot' suggests the staff ring is mentioned), revealing the expected metric name. Similarly, the test file naming and structure hints at the expected implementation structure.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "worker check: the reviewer's example (a generic correct build) is what the free gates test; the scripted shallow answer scores 23.8 and the keys need repository-specific facts (freeze window, per-ring thresholds, gap rule, old-format end date) (reviewer: The task is too easy for a competent agent: a quick implementation building the obvious ring library with serial promotions, using documented freeze dates from ops/freeze-calendar.csv, normalizing 'RECEIPT_ERROR_RATE_PERCENT'→'receipt_error_rate', treating gaps as HOLD, and writing generic design/rollout notes would pass most tests. The hidden tests (18 tests, weight 3) and design/rollout block keys (34 total weighted items, weight 6 each) are easily met by a generic correct implementation without deep understanding of the subtle operational requirements (e.g., 'minimumCompleteMinutes: 10' requiring gaps to trigger HOLD).)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "worker check: the request does state that the script exits 2 when required arguments are absent, and the key's `file` fields are substring regexes (`ops/freeze-calendar` matches ops/freeze-calendar.csv) (reviewer: The task is unfair/impossible in places. The hidden tests require the CLI (scripts/receipt-go-no-go.js) to 'print only the decision' and exit 2 when required args are absent, but the request only says 'accepts --ring, --snapshot, and optional --now' and does not state it must exit 2. The design key's evidence checks (calendar-evidence, policy-evidence) require line numbers referencing files like 'ops/freeze-calendar' and 'ops/budget-policy' (without extension), but the actual files are 'freeze-calendar.csv' and 'budget-policy.json'—the key expects '.csv' and '.json' suffixes to be omitted, making it impossible to derive correct line numbers without guessing.)"
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.7,
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.7,
+      "lazy": 23.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

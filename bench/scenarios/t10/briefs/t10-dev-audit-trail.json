@@ -1,0 +1,29 @@
+{
+  "id": "t10-dev-audit-trail",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "developer",
+  "phases2": [
+    "security",
+    "implementation",
+    "release-ops"
+  ],
+  "author": "minimax-m2.5",
+  "keyAuthor": "qwen3-coder-next",
+  "twoStep": true,
+  "reviewer": "glm-5",
+  "stack": "cjs",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+    "licence": "CC BY-SA 4.0 (OWASP/CheatSheetSeries LICENSE.md)",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a developer on the team who owns the admin API, writing to a teammate",
+  "brief": "Phase: long multi-phase, idea to ship. Role: developer. Repo: a Node.js billing-settings admin API where staff change account settings (tax ids, invoice contacts, payment terms, API secrets). The ask: an audit trail of every change (who, when, what changed as before and after values, request id), a query endpoint with paging, a retention period, and masking of sensitive values. Traps to plant (adapt, five or more): (1) settings change through three code paths (the REST handler, a CSV bulk import, a nightly scheduled job) and two of them skip the service layer; (2) docs/data-classes.md lists which fields are secret or personal, and the existing logger masks only fields named `password`; (3) nested settings objects need a before/after diff, not whole-object copies; (4) system jobs have no human actor and the current code puts `undefined`; (5) config has a retention number of days and a legal-hold flag per account, and the purge must skip held accounts; entries need a monotonic sequence because timestamps collide. Decisions the design note must settle: where the trail is written, what is masked and how, retention and holds, who may read it. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note.",
+  "dropped": {
+    "date": "2026-11-20",
+    "reason": "two-step try (A minimax-m2.5, B qwen3-coder-next): step A stopped at the 100 tool-call cap (it still wrote PLANTED.md, a prompt and a 59-file fixture); step B was interrupted once by a worker restart, and its rerun stopped at the 150 tool-call cap. The free dry run then gave reference 40.4 (design and rollout keys 2 of 15 and 0 of 10 passed on the reference: the keys and reference documents were unfinished). Dropped, not hand-fixed."
+  }
+}

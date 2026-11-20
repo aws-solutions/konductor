@@ -1,0 +1,9 @@
+name: Ledger issue
+description: A problem with a command or stored entry
+body:
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened?
+    validations:
+      required: true

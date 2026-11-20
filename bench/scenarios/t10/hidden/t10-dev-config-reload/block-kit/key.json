@@ -1,0 +1,137 @@
+{
+  "outputFile": "docs/design/config-reload.md",
+  "items": [
+    {
+      "id": "snapshot-boundary",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "topic",
+        "all": [
+          "job",
+          "snapshot"
+        ],
+        "none": [
+          "live only"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "strict-unknown",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "CONFIG_UNKNOWN_KEY|unknown key",
+          "worker\\.json|limits\\.json",
+          "strict|reject"
+        ]
+      }
+    },
+    {
+      "id": "env-order",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "WORKER_",
+          "after|last",
+          "file"
+        ]
+      }
+    },
+    {
+      "id": "debounce-save",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "trailing",
+          "100",
+          "zero bytes|empty|partial"
+        ]
+      }
+    },
+    {
+      "id": "restart-boundary",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "restart|deployment",
+          "credential",
+          "topology"
+        ]
+      }
+    },
+    {
+      "id": "stale-consumer",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "poller",
+          "runner",
+          "source|snapshot"
+        ]
+      }
+    },
+    {
+      "id": "specific-mixed-risk",
+      "type": "some",
+      "path": "risks",
+      "match": {
+        "field": "risk",
+        "all": [
+          "job",
+          "timeout|maxAttempts|attempt",
+          "snapshot|mix"
+        ]
+      }
+    },
+    {
+      "id": "design-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "all": [
+            "worker.json",
+            "limits.json"
+          ],
+          "file": "docs/config\\.md"
+        },
+        {
+          "all": [
+            "environment variables",
+            "after",
+            "wins"
+          ],
+          "file": "docs/config\\.md"
+        },
+        {
+          "all": [
+            "parsed",
+            "validated"
+          ],
+          "file": "docs/config\\.md"
+        },
+        {
+          "all": [
+            "zero bytes",
+            "saves|save"
+          ],
+          "file": "docs/runbook\\.md"
+        }
+      ],
+      "min": 4,
+      "weight": 2
+    }
+  ]
+}

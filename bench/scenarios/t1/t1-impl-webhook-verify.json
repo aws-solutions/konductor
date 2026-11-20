@@ -1,11 +1,11 @@
 {
   "id": "t1-impl-webhook-verify",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Please add verification to POST /webhooks/payment without changing the health endpoint, ledger shape, or existing commands. The request header is payment-signature, formatted as t=<unix seconds>,v1=<hex>, with repeated v1 values allowed. Each v1 is an HMAC-SHA256 over the timestamp, a dot, and the exact raw request bytes. Compare candidates in constant time, allow timestamps within WEBHOOK_TOLERANCE_SECONDS (default 300), and accept WEBHOOK_SECRET_PRIMARY plus the optional WEBHOOK_SECRET_SECONDARY during rotation. Missing, malformed, expired, future, or non-matching signatures must all return HTTP 401 with {\"error\":\"unauthorized\"}; malformed JSON or an invalid event must return HTTP 400 with {\"error\":\"invalid_request\"}. Do not reveal which authentication part failed. Keep duplicate event ids idempotent: acknowledge a verified repeat with {\"ok\":true,\"duplicate\":true} and do not add its amount again; a new verified event keeps the existing {\"ok\":true,\"duplicate\":false} response. The event fields are id, type, amount, and three-letter currency. GET /ledger must still report {label,balance,eventIds}. For deterministic callers, src/server.js must continue exporting createServer(options), with options.secrets, options.toleranceSeconds, and options.clock (a function returning unix seconds). Environment configuration must expose the same settings. Keep this dependency-free and keep the current tests passing.",
+  "prompt": "Please add verification to POST /webhooks/payment without changing the health endpoint, ledger shape, or existing commands. The request header is payment-signature, formatted as t=<unix seconds>,v1=<hex>, with repeated v1 values allowed. Each v1 is an HMAC-SHA256 over the timestamp, a dot, and the exact raw request bytes. Compare candidates in constant time, allow timestamps within WEBHOOK_TOLERANCE_SECONDS (default 300), and accept WEBHOOK_SECRET_PRIMARY plus the optional WEBHOOK_SECRET_SECONDARY during rotation. Missing, malformed, expired, future, or non-matching signatures must all return HTTP 401 with {\"error\":\"unauthorized\"}; malformed JSON or an invalid event must return HTTP 400 with {\"error\":\"invalid_request\"}. Do not reveal which authentication part failed. Keep duplicate event ids idempotent: acknowledge a verified repeat with {\"ok\":true,\"duplicate\":true} and do not add its amount again; a new verified event keeps the existing {\"ok\":true,\"duplicate\":false} response. The event fields are id, type, amount, and three-letter currency. GET /ledger must still report {label,balance,eventIds}. For deterministic callers, src/server.js must continue exporting createServer(options), with options.secrets, options.toleranceSeconds, and options.clock (a function returning unix seconds). options.secrets is an array of secret strings. loadConfig(env) must return the same settings as webhookSecrets (an array of the configured secrets, primary first) and webhookToleranceSeconds (a number). Keep this dependency-free and keep the current tests passing.",
   "fixture": "t1-impl-webhook-verify",
   "hidden": "t1-impl-webhook-verify",
   "timeoutSec": 1200,
@@ -30,14 +30,14 @@
     },
     {
       "type": "cmd",
-      "cmd": "test -f test/webhook-security.test.js && test \"$(grep -c '^test(' test/webhook-security.test.js)\" -ge 1",
+      "cmd": "node -e \"const fs=require('fs');let n=0;for(const f of fs.readdirSync('test')){if(!/\\.test\\.js$/.test(f))continue;const s=fs.readFileSync('test/'+f,'utf8');if(/v1=|createHmac/.test(s))n+=(s.match(/^\\s*test\\(/gm)||[]).length}process.exit(n>=1?0:1)\"",
       "expectExit": 0,
       "weight": 1,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "! grep -Eq '\"dependencies\"[[:space:]]*:' package.json && test -f src/webhook-signature.js",
+      "cmd": "! grep -Eq '\"dependencies\"[[:space:]]*:' package.json && grep -rqE 'timingSafeEqual|\\|=.*\\^' src",
       "expectExit": 0,
       "weight": 1,
       "kind": "substance"
@@ -45,16 +45,21 @@
     {
       "type": "contains",
       "path": "CHANGELOG.md",
-      "pattern": "signed.*callback",
+      "pattern": "(signed|signature|HMAC).*(callback|webhook)|(callback|webhook).*(signed|signature|HMAC)",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
     {
       "id": "verification-report",
-      "criterion": "The final report accurately says which visible and hidden checks were run and whether they passed (code cannot check this because it cannot evaluate the agent's statement).",
+      "criterion": "The final report accurately says which visible and hidden checks were run and whether they passed (code cannot check this because it cannot evaluate the agent's statement). Fail: says verification works without naming a command, or claims the hidden checks passed when it could not run them. Partial: names `npm test` but gives no result, or does not say whether the 401 and 400 cases were exercised. Pass: names each command it ran with its result (the existing suite and its own signature tests, including a missing, an expired and a wrong-secret header), and says which checks (hidden) it did not run.",
       "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -85,7 +90,9 @@
       "licence": "MIT",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
@@ -122,14 +129,19 @@
     "scores": {},
     "reference": 100,
     "stub": 17.3,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 17.3,
-      "lazy": 32.7,
-      "alt": 32.7,
+      "stub": 19.7,
+      "lazy": 35,
+      "alt": 100,
       "date": "2026-11-20"
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

@@ -1,0 +1,59 @@
+{
+  "model": "qwen3-coder-next",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "The request describes what features to build (config reloading, ConfigReloader class, documents) but does not tell the agent how to implement them, which algorithms to use, or which libraries to call. The notes section mentions traps but is separate from the main prompt."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "The request specifies exact export names, method signatures (watch, schedule, signal types), error codes, and file structure. The only minor ambiguity is the exact error message text (only codes are required) and the precise calling convention for the callback returned by watch()."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "fail",
+      "note": "The fixture's docs/config.md explicitly states the environment precedence (file values first, env after), which reveals the expected behavior. The runbook.md mentions zero-bytes during saves, guiding the debounce design. These are documented behaviors, not traps, but the schema.ts in fixture uses permissive validation (accepts extra keys) which contradicts the request's requirement for strict rejection."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "A quick generic implementation would fail many tests: the 22 hidden behavior tests require ConfigReloader functionality, the 10 design key items require specific decision topics, and the rollout key requires matching existing metrics and rings. The request demands non-trivial implementation details (job snapshot isolation, immutable snapshots, debounce, onChange listeners, signal handling)."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All tests and key items can be derived from the request. The required exports, error codes, method signatures, document structure, and evidence requirements are all specified. The fixture context (config structure, env precedence, runbook guidance) supports but does not prevent correct implementation. No test requires behavior the request does not state."
+    }
+  ],
+  "reference": {
+    "estimatedScores": {
+      "reference": 100,
+      "stub": 12.2
+    },
+    "failingChecks": [
+      "snapshot-boundary",
+      "strict-unknown",
+      "env-order",
+      "debounce-save",
+      "restart-boundary",
+      "stale-consumer",
+      "specific-mixed-risk",
+      "design-evidence",
+      "all-metrics-exist",
+      "all-rings-exist",
+      "ring-order",
+      "final-queue-gate",
+      "rollback-restores",
+      "rollout-evidence"
+    ]
+  },
+  "fixes": [
+    "Add a note in the request specifying that environment values (WORKER_*) override file values (to align with existing docs/config.md) or clarify the precedence expectation if it differs.",
+    "Add a note that the validation should reject extra keys not in the defined schema (not just permissive merge).",
+    "Clarify that job_timeout_ms and backoff_ms should be included in the schema validation even though not all are in the reload contract.",
+    "Specify the exact error message format for validation errors if precise text matters.",
+    "Clarify whether the watch callback should be called synchronously or asynchronously when files change."
+  ]
+}

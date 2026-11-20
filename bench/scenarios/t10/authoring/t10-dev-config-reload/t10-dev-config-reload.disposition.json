@@ -1,0 +1,3 @@
+{
+  "hidden-answer": { "verdict": "pass", "note": "worker check: docs/config.md and the runbook describe how the CURRENT service behaves (environment variables applied after the files; editors write in two steps), as any real repository documents itself; they do not describe the reload design, the snapshot rule or the keys' decisions. The trap is whether the new code keeps that rule, which the agent must find and respect" }
+}

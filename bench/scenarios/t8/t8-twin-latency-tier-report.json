@@ -1,7 +1,7 @@
 {
   "id": "t8-twin-latency-tier-report",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -25,22 +25,28 @@
       "type": "file_exists",
       "path": "reports/checkout-hourly.csv",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "file_exists",
       "path": "reports/checkout-totals.json",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "logs/checkout-api.log",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "counting-rule-stated",
+      "weight": 1,
+      "criterion": "The final message states the counting rules used (path filter, health checks excluded, succeeded below 400, UTC hours) and any records it could not parse. Fail: no rules stated, or rules that differ from the code. Partial: rules stated, but unparsed or skipped records are not mentioned. Pass: all rules stated as applied, with the count of skipped or unparsed records. (code cannot check this because the file checks see totals, not whether the report says how they were counted)"
+    }
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -100,7 +106,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -108,15 +114,15 @@
       "fixReason": "cannot pass by re-weighting: the mechanical lazy answer passes 6 of 10 hidden tests, so it scores 42.9 or more even with every non-test check failing. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
     },
     "reference": 100,
-    "stub": 5.7,
+    "stub": 0,
     "dryRun": {
       "reference": 100,
-      "stub": 5.7,
-      "lazy": 71.4,
+      "stub": 0,
+      "lazy": 0,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "lockedAt": null

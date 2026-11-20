@@ -1,0 +1,20 @@
+{
+  "id": "t10-neg-rename-field",
+  "kind": "small",
+  "controlKind": "negative",
+  "phase": "implementation",
+  "role": "developer",
+  "phases2": [],
+  "author": "deepseek-3.2",
+  "reviewer": "minimax-m2.5",
+  "stack": "cjs",
+  "size": "40 to 55",
+  "source": "original",
+  "softSec": 600,
+  "voice": "a developer on the team, writing to a teammate",
+  "brief": "Phase: implementation. Role: developer. A small, clear change in a big repository (a control task: no design or rollout needed). Repo: a Node.js invoicing library with a CLI, JSON data files, docs and a partner export. The ask: rename the invoice field `cust_ref` to `account_ref` in what the library returns and writes, keep reading old stored files that still have `cust_ref`, and update docs and the visible tests. Traps to plant: (1) the legacy CSV export header `cust_ref` is parsed by a partner and docs/partners.md says it stays; (2) a look-alike `customer_ref` in the billing module is a different field; (3) sample data files under data/ still use the old name and must keep loading; (4) a JSON schema file under schemas/ lists the field.",
+  "firstAttempt": {
+    "author": "deepseek-3.2",
+    "result": "dropped: stopped at the 70 tool-call cap (about 20 credits, estimated); the free dry run gave reference 77.3, stub 43.7, lazy 52.1 and a schema error in the checks. Not hand-fixed. Re-author with a second-family model is left for the next wave"
+  }
+}

@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 22
     },
     {
@@ -27,18 +27,18 @@
   "rubric": [
     {
       "id": "reasoning-quality",
-      "criterion": "The ADR demonstrates clear, logical reasoning that connects requirements to the chosen option, explaining why alternatives were rejected. (not code-checkable: Automated tests can verify numerical calculations and limit compliance, but cannot evaluate the quality of explanatory prose, logical flow, or persuasiveness of arguments.)",
+      "criterion": "The ADR demonstrates clear, logical reasoning that connects requirements to the chosen option, explaining why alternatives were rejected. Fail: chooses on price or does not test each option against the limits. Partial: finds warm-standby is the choice but checks only RPO or only cost. Pass: shows nightly-backup fails RPO (up to 24 hours against 5 minutes) and RTO (about 57 minutes restore plus 23 minutes start, about 80 minutes against 45), pilot-light meets RPO but needs about 65 minutes against the 45-minute RTO, and warm-standby (about $11,904 under $12,000, RPO under 2 minutes, RTO about 15 minutes) is the only option that meets all three. (not code-checkable: Automated tests can verify numerical calculations and limit compliance, but cannot evaluate the quality of explanatory prose, logical flow, or persuasiveness of arguments.)",
       "weight": 1
     },
     {
       "id": "tradeoff-explanation",
-      "criterion": "The decision record explains tradeoffs between options beyond just cost, including complexity, operational overhead, risk factors, and implementation considerations. (not code-checkable: While tests can verify that all options were considered, they cannot assess whether the analysis discusses meaningful tradeoffs or merely lists pros/cons without substantive comparison.)",
+      "criterion": "The decision record explains tradeoffs between options beyond just cost, including complexity, operational overhead, risk factors, and implementation considerations. Fail: only cost is discussed. Partial: mentions complexity of warm standby but no figures or traps. Pass: covers the operational complexity of warm-standby justified by the RTO, the thin headroom (about $96 per month) against 200 GB per month data growth, the superseded $0.72 database rate (use $0.68), and why the 15 to 20% annual-commitment note does not change the result for the two failing options. (not code-checkable: While tests can verify that all options were considered, they cannot assess whether the analysis discusses meaningful tradeoffs or merely lists pros/cons without substantive comparison.)",
       "weight": 1
     },
     {
-      "id": "documentation-clarity",
-      "criterion": "The ADR is well-structured, clearly written, and accessible to both technical and non-technical stakeholders, with appropriate section headers and consistent formatting. (not code-checkable: Automated validation focuses on data correctness and structure, not on writing quality, organization, or communication effectiveness for human readers.)",
-      "weight": 1
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -60,20 +60,17 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "gate-failed: lazy answer scores 68 (> 40); meta.json acceptableOptions lists every option, so the T3 choice gate cannot separate a shallow answer"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 68,
+      "lazy": 5,
       "alt": 100,
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator",
@@ -119,7 +116,34 @@
         "verdict": "pass",
         "note": "All needed numbers available: RPO 5m, RTO 45m, budget $12,000, DB size 8TB, restore throughput 2x1.2 GB/s, pricing data. Required JSON format clearly specified in prompt."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal (write an ADR), the files to review, the decision output format, and the constraints to consider without naming specific methods, tools, or revealing the trap (that nightly-backup fails both RPO and RTO)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain requirements, constraints, and option analysis but do not directly state the correct answer; the agent must reason from RPO/RTO requirements and cost limits to determine warm-standby is the only viable option."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All expected values in hidden tests (RPO 5 min, RTO 45 min, budget $12,000, restore throughput 2×1.2 GB/s, database 8 TB, option costs $2,524/$8,764/$11,904) match fixture files requirements.md, technical-constraints.md, traffic-analysis.md, decision-options.md, and pricing-data.json."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can compute restore time (8192 GB ÷ 2.4 GB/s ≈ 57 min), compare all three options against RPO/RTO/budget limits, and conclude warm-standby is the only option meeting all hard limits using only fixture data."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -135,7 +159,7 @@
       },
       {
         "id": "e3",
-        "text": "states that pilot-light at ~$8,764/month meets the 5-minute RPO requirement but fails the 45-minute RTO because scale-up and validation take approximately 60 minutes",
+        "text": "states that pilot-light at ~$8,764/month meets the 5-minute RPO requirement but fails the 45-minute RTO because scale-up and validation take approximately 65 minutes",
         "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
       },
       {
@@ -172,5 +196,9 @@
       "uses the superseded $0.72 database instance hour price instead of the current $0.68 rate from pricing-data.json"
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

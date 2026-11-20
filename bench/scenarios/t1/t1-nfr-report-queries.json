@@ -1,7 +1,7 @@
 {
   "id": "t1-nfr-report-queries",
   "class": "hard",
-  "version": 1,
+  "version": 3,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
@@ -57,8 +57,13 @@
   "rubric": [
     {
       "id": "verification-report",
-      "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response).",
+      "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response). Fail: says the report is faster without naming a test command, or claims a result that was not run. Partial: names `python3 -m unittest discover -s tests` but gives no result, or does not say how it checked the 3-statement limit or the 8 MiB limit. Pass: names each command it ran with its result, and states the SQL statement count and the peak tracemalloc figure it observed, or says plainly that one was not measured.",
       "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -87,7 +92,9 @@
       "licence": "MIT",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
@@ -185,7 +192,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "t1-worker",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

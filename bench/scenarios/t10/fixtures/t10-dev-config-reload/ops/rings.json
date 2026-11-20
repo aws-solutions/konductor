@@ -1,0 +1,7 @@
+{
+  "rings": [
+    { "name": "canary", "audience": "runtime-team" },
+    { "name": "harbor", "audience": "internal-ferries" },
+    { "name": "coast", "audience": "all-ferries" }
+  ]
+}

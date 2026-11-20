@@ -1,0 +1,1 @@
+{ "rings": [ {"name":"canary","audience":"operations"}, {"name":"internal","audience":"staff"}, {"name":"general","audience":"all customers"} ], "order":"canary then internal then general" }

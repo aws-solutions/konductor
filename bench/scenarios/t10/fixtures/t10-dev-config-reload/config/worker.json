@@ -1,0 +1,9 @@
+{
+  "pollIntervalMs": 500,
+  "maxAttempts": 3,
+  "leaseSeconds": 30,
+  "logLevel": "info",
+  "queueName": "harbor-delivery",
+  "region": "fjord-1",
+  "workerConcurrency": 4
+}

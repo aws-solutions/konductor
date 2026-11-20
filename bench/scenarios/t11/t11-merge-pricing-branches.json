@@ -1,0 +1,170 @@
+{
+  "id": "t11-merge-pricing-branches",
+  "class": "hard",
+  "version": 2,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Before the next Lantern Market release, bring the work from feature/promo-codes and feature/tax-regions into main so checkout quotes support both features together. The public entry point is src/index.js, with calculateOrder({ lines, shippingMethod, region, promoCode }) and loadConfig(filePath) available to callers. Cart lines use sku, quantity, and unitPrice; quote results expose subtotal, discount, shipping, tax, and total. Promo data belongs in src/config/default.json under promos, using WELCOME10 as a 10 percent offer and BASKET5 as a fixed 5-unit offer with a 25-unit minimum. Regional data belongs under regions for harbor, ridge, and meadow, with rate and taxShipping fields. Follow the pricing notes in docs/pricing.md and keep everything main already has. Keep the existing catalog and package shape, and leave both feature branches unchanged. Add focused tests under test/, keep the visible suite green, leave no conflict markers or working-tree changes, and commit the finished result on main.",
+  "fixture": "t11-merge-pricing-branches",
+  "hidden": "t11-merge-pricing-branches",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js",
+      "min": 16,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(git rev-list --count --merges HEAD)\" -ge 1",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(grep -rhoE '(^|[^a-zA-Z_.])(test|it)\\(' test | wc -l)\" -ge 11",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/legacy.js",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "release-record",
+      "criterion": "The integration history and release notes make the combined pricing change understandable to the next maintainer. Fail: the history has fewer than two merge commits or only generic messages such as 'merge', or conflicting files were resolved by taking one side so CHANGELOG.md and docs/pricing.md lose the other branch's entry. Partial: both branches are merged with readable commit messages, but CHANGELOG.md or docs/pricing.md describes only one feature, or does not say how promo codes and regional tax combine. Pass: the history has a merge for each of feature/promo-codes and feature/tax-regions with messages naming the feature and any conflict decision, CHANGELOG.md and docs/pricing.md keep what main had and add both features (promo codes WELCOME10 and BASKET5 with its 25-unit minimum, harbor, ridge and meadow rates with taxShipping), and the order of discount before tax is stated. (code cannot check this because it cannot judge whether the record is useful to a human reviewer)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "git-merge",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "git-merge",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging",
+      "licence": "CC BY-NC-SA 3.0 (checked on https://git-scm.com/book/en/v2, 2026-11-20); idea only: two lines of work that change the same code must be merged by hand; no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Fixed in the author's fix round: the request no longer restates the order of steps or the rounding rule; it keeps only interface names (entry points, fields, config keys, promo codes, region ids) that the tests need. (reviewer: The request explicitly names WELCOME10 and BASKET5 promo codes and lists harbor, ridge, and meadow as tax regions, revealing the exact configuration structure the agent must produce.)"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies calculateOrder({ lines, shippingMethod, region, promoCode }) and loadConfig(filePath) as the public entry points, and all required fields and behaviors are documented in the pricing notes."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Not a defect: docs/pricing.md states the intended order on purpose, as the place a careful developer reads; the trap is that a marker-only merge breaks it, and the renamed helper is not documented anywhere. (reviewer: The fixture's docs/pricing.md states the discount must be applied before tax and shipping is added after, which matches the solution logic. The hidden tests also expect specific values that can be derived from the documented rules and the sample data.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires a real merge with conflict resolution, preserving feature branches, adding focused tests, and ensuring the combined logic passes 16 hidden tests - this is not a trivial task."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests can be derived from the request, fixture documentation, and configuration structure. No timing-dependent or non-derivable tests exist."
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt only names the public entry point (src/index.js) and its exported functions (calculateOrder, loadConfig); no internal methods or decoy functions are specified."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture directory contains source files, tests, and docs but no reference answers or expected outputs beyond what the tests themselves verify."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden tests in hidden/hidden-behaviour.test.js (16 tests) cover the same functionality as the fixture's visible tests (pricing, config, catalog, etc.) and add feature-branch integration checks (merge-ancestor verification, conflict markers, working-tree cleanliness) that mirror the fixture's scope."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The fixture test/feature-pricing.test.js file referenced in the check (and task notes) does not exist in fixture/test/; the fixture's pricing.test.js only has 3 tests and lacks the promo/tax region coverage tests that the hidden tests require. Without the missing feature tests in the fixture, solvers cannot verify their implementation matches the hidden expectations. (worker: the promo and tax-region code and tests live on the two feature branches in the fixture repository, which the request asks to merge; the old file-name check was the one this edit removed)"
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 10.2,
+    "dryRun": {
+      "reference": 100,
+      "stub": 10.2,
+      "lazy": 36.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

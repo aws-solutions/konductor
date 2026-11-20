@@ -1,0 +1,99 @@
+{
+  "outputFile": "docs/rollout/config-reload.md",
+  "items": [
+    {
+      "id": "all-metrics-exist",
+      "type": "inSet",
+      "path": "phases",
+      "field": "gate.metric",
+      "fromFile": "ops/metrics.csv",
+      "pattern": "^([a-z_.]+),",
+      "min": 3,
+      "weight": 2
+    },
+    {
+      "id": "all-rings-exist",
+      "type": "inSet",
+      "path": "phases",
+      "field": "ring",
+      "fromFile": "ops/rings.json",
+      "pattern": "\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"",
+      "min": 3,
+      "weight": 2
+    },
+    {
+      "id": "ring-order",
+      "type": "order",
+      "path": "phases",
+      "first": {
+        "field": "audience",
+        "all": [
+          "internal"
+        ]
+      },
+      "then": {
+        "field": "audience",
+        "all": [
+          "all|everyone"
+        ]
+      }
+    },
+    {
+      "id": "final-queue-gate",
+      "type": "some",
+      "path": "phases",
+      "match": {
+        "field": "gate.metric",
+        "all": [
+          "queue_age"
+        ]
+      }
+    },
+    {
+      "id": "rollback-restores",
+      "type": "some",
+      "path": "rollback.steps",
+      "match": {
+        "all": [
+          "previous",
+          "image|bundle|configuration"
+        ]
+      }
+    },
+    {
+      "id": "rollout-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "all": [
+            "hh_",
+            "naming"
+          ],
+          "file": "ops/flags\\.json"
+        },
+        {
+          "all": [
+            "canary",
+            "runtime-team"
+          ],
+          "file": "ops/rings\\.json"
+        },
+        {
+          "all": [
+            "worker_queue_age_seconds",
+            "seconds"
+          ],
+          "file": "ops/metrics\\.csv"
+        },
+        {
+          "all": [
+            "readiness|/ready|zero bytes"
+          ],
+          "file": "docs/runbook\\.md"
+        }
+      ],
+      "min": 4
+    }
+  ]
+}

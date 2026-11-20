@@ -1,3 +1,4 @@
 {
-  "hidden/decision-lib.js": "decision-lib.js"
+  "hidden/decision-lib.js": "decision-lib.js",
+  "hidden/gate.js": "gate.js"
 }
