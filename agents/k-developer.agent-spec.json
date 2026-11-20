@@ -65,7 +65,17 @@
   "clientConfig": {
     "kiroCli": {
       "welcomeMessage": "I'm your development engineer. I break features into tasks, implement backend and frontend code, review my own changes, validate infrastructure, and track progress. Hand me a spec or a feature and I'll build it.\n\nBuilt-in workflows — type any to run it:\n  /k-code-cleanup — strip AI-generated slop from a branch before raising a CR\n  /k-pre-cr-critique — run a fast, read-only pre-CR critique of local changes\n  /k-codebase-analysis — produce a comprehensive codebase analysis report with diagrams\n  /k-code-review-workflow — run a full multi-skill code review consolidated into one report",
-      "tools": ["@builtin", "@aws-mcp"],
+      "tools": [
+        "@builtin",
+        "@aws-mcp/aws___retrieve_skill",
+        "@aws-mcp/aws___search_documentation",
+        "@aws-mcp/aws___read_documentation",
+        "@aws-mcp/aws___list_regions",
+        "@aws-mcp/aws___get_regional_availability",
+        "@aws-mcp/aws___run_script",
+        "@aws-mcp/aws___get_presigned_url",
+        "@aws-mcp/aws___get_tasks"
+      ],
       "allowedTools": [
         "fs_read",
         "fs_write",
@@ -100,7 +110,14 @@
         "WebSearch",
         "TodoWrite",
         "Skill",
-        "mcp__aws-mcp__*"
+        "mcp__aws-mcp__aws___retrieve_skill",
+        "mcp__aws-mcp__aws___search_documentation",
+        "mcp__aws-mcp__aws___read_documentation",
+        "mcp__aws-mcp__aws___list_regions",
+        "mcp__aws-mcp__aws___get_regional_availability",
+        "mcp__aws-mcp__aws___run_script",
+        "mcp__aws-mcp__aws___get_presigned_url",
+        "mcp__aws-mcp__aws___get_tasks"
       ],
       "skills": [
         "constraints",

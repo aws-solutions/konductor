@@ -82,11 +82,23 @@ or audit what the server can do, regardless of which agent triggered the
 call. See [Install for Claude Code](install-claude-code.md#optional-integrations)
 for AWS setup and other MCP integrations.
 
-A plugin agent's tool grant uses the plugin-scoped name
-`mcp__plugin_konductor_aws-mcp__*`, not the standalone `mcp__aws-mcp__*`.
-Grant that exact glob in `permissions.allow` (or `ask`/`deny`) if you set
-Claude Code permissions for this install path; the standalone name has no
-effect on a plugin agent.
+A plugin agent's tool grants use the plugin-scoped names
+`mcp__plugin_konductor_aws-mcp__<tool>`, not the standalone
+`mcp__aws-mcp__<tool>`. Use those names in `permissions.allow` (or
+`ask`/`deny`) if you set Claude Code permissions for this install path; the
+standalone names have no effect on a plugin agent.
+
+A plugin cannot ship permission rules, so this install path does not add the
+rules `konductor install --harness claude` writes. To have Claude Code ask
+before every call to the three tools that act on AWS with your credentials,
+add `mcp__plugin_konductor_aws-mcp__aws___run_script`,
+`mcp__plugin_konductor_aws-mcp__aws___get_presigned_url` and
+`mcp__plugin_konductor_aws-mcp__aws___get_tasks` to `permissions.ask` in your
+`settings.json`. `aws___run_script` runs agent-written Python. To pre-approve the five read-only
+tools as Kiro CLI does, add `mcp__plugin_konductor_aws-mcp__<tool>` to
+`permissions.allow` for `aws___search_documentation`, `aws___retrieve_skill`,
+`aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 
 `k-browser`'s Playwright MCP server is not bundled. Configure it separately:
 

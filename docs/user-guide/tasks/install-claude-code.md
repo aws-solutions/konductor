@@ -33,6 +33,8 @@ Install also wires a session-start hook for `konductor`, a `SessionStart` block 
 
 Install also copies the context files to `.konductor/context/` under the install target, where the hook reads the routing rules and the coordinator digest. No agent loads them from there, and `uninstall` removes them.
 
+Install also adds permission rules for the AWS MCP server to `~/.claude/settings.json` (or `<target>/.claude/settings.json` with `--target`): an ask rule under `permissions.ask` for each of the three tools that act on AWS (`mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and `mcp__aws-mcp__aws___get_tasks`), and the five read-only tools Kiro CLI pre-approves under `permissions.allow`. Only those five read-only tools can get an allow rule. It only appends and keeps any of your entries that already cover a rule. It records the entries it appended, and `uninstall` removes exactly those and keeps yours. The rules apply to every Claude Code session that uses that settings file, not only Konductor's agents: all of `~/.claude` for a default install, or everyone using the project's `.claude` (which may be committed) with `--target`. Claude Code has no per-agent permission settings. If the settings file cannot take the rules (a symlink, malformed JSON, or a `permissions` key of the wrong shape), install writes none of them, still succeeds, and ends with a block that names the file and the reason and prints the rules to add by hand; `--json` reports the same in its `aws_mcp_rules` field. See [Tool grant](#optional-integrations) below.
+
 Agent files land in `~/.claude/agents/`:
 
 ```bash
@@ -214,9 +216,9 @@ the upstream source of truth for the package (`mcp-proxy-for-aws-cli`) and args.
 its own `aws-mcp` server key rather than the toolkit README's `aws` key, for continuity with
 AWS's own getting-started docs, OAuth commands, and existing configs.
 
-**AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
-server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
-AWS-API-acting ones (see Tool grant below). `konductor` requests only five read-only tools:
+**AWS documentation lookups:** `k-architect` and `k-developer` request the eight known `aws-mcp`
+tools by name (`mcp__aws-mcp__<tool>`), including the AWS-API-acting ones (see Tool grant
+below). `konductor` requests only five read-only tools:
 `aws___retrieve_skill`, `aws___search_documentation`, `aws___read_documentation`,
 `aws___list_regions` and `aws___get_regional_availability`. Each
 agent's rendered `.md` file carries an `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
@@ -232,12 +234,23 @@ The server starts with `--skip-auth`, so documentation search and skills work wi
 credentials; configure credentials (`~/.aws/credentials` or environment variables) only for calls
 that act on an AWS account.
 
-**Tool grant: the whole server for `k-architect` and `k-developer`.** These two grant every tool
-the server exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,
-`aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
-`aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
-which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
-`konductor` gets none of the AWS-API-acting tools on Claude Code. Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
+**Tool grant: eight named tools for `k-architect` and `k-developer`.** These two grant the
+server's eight known tools by name: the five AWS knowledge/documentation tools
+(`aws___search_documentation`, `aws___retrieve_skill`, `aws___read_documentation`,
+`aws___list_regions`, `aws___get_regional_availability`) and the three AWS-API-acting tools
+(`aws___run_script`, which runs sandboxed Python with AWS API access; `aws___get_presigned_url`;
+`aws___get_tasks`). The list is the server's tools as of when it was last checked against
+`mcp-proxy-for-aws-cli` 1.7.0. The proxy relays the hosted server's tool list, so AWS can add
+tools; a new one stays unavailable to these agents until Konductor classifies it.
+`konductor` gets none of the AWS-API-acting tools on Claude Code.
+`konductor install --harness claude` puts an ask rule for each of the three AWS-API-acting tools
+in `permissions.ask`: every server tool outside the five read-only ones. Claude Code asks before
+every call to them in an interactive session. In a `-p` run, which cannot ask, the call is denied.
+When that settings file applies to a mux or cmux pane (always for a `$HOME` install, and with
+`--target` only in that project), an `interactive` pane, the default, asks you, and a `headless`
+or `bypass` pane, both of which run with `-p`, cannot run them.
+It also puts the five read-only tools in `permissions.allow`, so they run without asking, as on
+Kiro CLI. Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
 (boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM
 condition keys to scope or audit what an agent can do through the MCP server specifically; see
 [Understanding IAM for managed AWS MCP servers](https://aws.amazon.com/blogs/security/understanding-iam-for-managed-aws-mcp-servers/).

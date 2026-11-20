@@ -57,6 +57,20 @@ not per individual commit.
   this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
   persona load the session-start hook runs, so a digest over the hook's output budget is
   `failed`, and an install root outside the home that is not a git checkout root is `warn`.
+- `konductor install --harness claude` adds the `aws-mcp` tools that the installed agents'
+  Kiro `allowedTools` pre-approve (the five read-only documentation and region tools) to
+  `permissions.allow` in `.claude/settings.json`, as `mcp__aws-mcp__<tool>`, so Claude Code
+  runs them without asking, as Kiro CLI does. `konductor synth` records the list in
+  `dist/claude/agents/_mcp_allowed_tools.json`; a dist without that file gets only the
+  ask rules. Synth leaves a whole-server (`@aws-mcp`), wildcard
+  (`@aws-mcp/*`) or other non rule-safe entry out of that file with a warning naming the agent
+  and entry, so a wildcard allow never covers an ask-gated tool and never breaks install.
+  Only the five read-only tools can get an allow rule: synth leaves any other `aws-mcp` tool
+  out of the file with a warning, and install never writes one. A user `deny` or `ask` entry
+  that covers a tool is kept and that tool is left out. The rules apply to every Claude Code
+  session using that settings file (all of `~/.claude` for a `$HOME` install, or the
+  project's `.claude` for `--target`), not only Konductor's agents; Claude Code has no
+  per-agent permission settings.
 - `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
   32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
   `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
@@ -643,6 +657,36 @@ not per individual commit.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
+- `konductor install --harness claude` adds an ask rule to `permissions.ask` in
+  `.claude/settings.json` for every `aws-mcp` tool outside the five read-only ones
+  (`mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and
+  `mcp__aws-mcp__aws___get_tasks`) when an installed agent uses the `aws-mcp` server, so
+  Claude Code asks before every call to them. Install takes the server's eight tools from a
+  fixed list, not a live call: the tools the server listed through `mcp-proxy-for-aws-cli`
+  1.7.0 when the list was last checked. The proxy relays the hosted server's list, so the server
+  can add tools. `k-architect` and `k-developer` now grant those eight by name on both Claude
+  Code (`mcp__aws-mcp__<tool>`) and Kiro CLI (`@aws-mcp/<tool>`) instead of the whole server
+  (`mcp__aws-mcp__*`, `@aws-mcp`), so a tool the server adds later stays unavailable to them
+  until it is classified, and a test checks every agent spec's named tools against the list.
+  An agent uses the server when its frontmatter lists
+  it under `mcpServers` or its `tools` grants `mcp__aws-mcp` or a tool under it, and CRLF
+  frontmatter is read too; an agent file whose frontmatter cannot be read is skipped with a
+  warning naming the file. These tools act on AWS with your credentials; `aws___run_script`
+  runs agent-written Python. In a mux or cmux pane the rules' settings file applies to (every
+  pane for the default `$HOME` install; for a `--target` install, only panes running in that
+  project), an `interactive` pane asks before each call, and a `headless` or `bypass` pane
+  cannot call them: both run with `-p`, which denies a call that would prompt, and an ask rule
+  is still enforced under `--dangerously-skip-permissions`. Run that work from `konductor` or an
+  `interactive` pane. The merge only appends, keeps any user entry that already covers a rule and says
+  so. Install records the entries it appended in its manifest, and `uninstall` removes exactly
+  those, keeping entries the user already had and the rest of the file. When the settings file cannot take the rules (a
+  symlinked `.claude` or `settings.json`, malformed JSON, or a `permissions`, `ask`, `allow` or
+  `deny` key of the wrong shape), install writes none of them, still exits 0, and ends with a
+  stderr block naming the file, the reason and the rules as JSON to add by hand; `install --json`
+  reports it in a new `aws_mcp_rules` field. No ask rule is written for a plugin install, an
+  unwritable settings file, or a tool a user entry already covers. The Claude Code plugin cannot ship permission rules;
+  plugin users add `mcp__plugin_konductor_aws-mcp__<tool>` for each of the three to
+  `permissions.ask` themselves.
 
 ## [1.2.0] - 2026-10-26
 

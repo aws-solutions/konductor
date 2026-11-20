@@ -158,6 +158,18 @@ Only if you set these for Konductor and want them gone. Edit `~/.claude/settings
 $EDITOR ~/.claude/settings.json
 ```
 
+You do not need to remove the AWS MCP rules `konductor install --harness claude` added. Those are
+`mcp__aws-mcp__aws___run_script`, `mcp__aws-mcp__aws___get_presigned_url` and
+`mcp__aws-mcp__aws___get_tasks` under `permissions.ask`, and `mcp__aws-mcp__<tool>` under
+`permissions.allow` for `aws___search_documentation`, `aws___retrieve_skill`,
+`aws___read_documentation`, `aws___list_regions` and `aws___get_regional_availability`. Install
+records the entries it appended, and `uninstall` removes exactly those, from
+`~/.claude/settings.json` or, with
+`--target`, `<target>/.claude/settings.json`. It keeps any entry you already had before install,
+even one identical to Konductor's, and leaves the file and its other content in place. It never
+follows a symlinked `.claude` or `settings.json`; then it warns and names the entries to remove by
+hand.
+
 Edit rather than delete the file — it very likely holds settings unrelated to Konductor.
 
 ---
@@ -196,6 +208,7 @@ For reference, so you can confirm nothing is left behind:
 | Runtime agent directories | `konductor install` | `konductor uninstall` |
 | Session-start hook: `.kiro/hooks/konductor-orchestration-hooks.json` (Kiro CLI v3), the `agentSpawn` entry in `.kiro/agents/konductor.json` (Kiro CLI v2), the `SessionStart` block in the Claude Code hooks settings file | `konductor install` | `konductor uninstall` |
 | `.konductor/context/` under the install target (Claude Code installs only; `.konductor/memory/` is kept) | `konductor install` | `konductor uninstall` |
+| The AWS MCP `permissions.ask` and `permissions.allow` entries in `.claude/settings.json` (Claude Code installs only; entries you already had are kept) | `konductor install` | `konductor uninstall` |
 | `<project>/.konductor/config.yml` | `konductor init` | you, manually |
 | `<project>/dist/` | `konductor synth` | you, manually — gitignored |
 | `~/.konductor/logs/konductor.log` | every CLI invocation | you, manually |

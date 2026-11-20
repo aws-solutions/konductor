@@ -9,8 +9,12 @@
 //
 // The renderer intentionally preserves the distinction between omitted tools
 // (inherit defaults) and an empty tools list (no tools).
+//
+// `agents/_mcp_allowed_tools.json` records each agent's Kiro `allowedTools`
+// per bundled MCP server, so `konductor install --harness claude` can write
+// matching Claude Code `permissions.allow` rules.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -30,6 +34,7 @@ use super::path_safety::reject_unsafe_agent_name;
 use super::spawn_policy::{is_claude_spawn_tool, is_specialist, CLAUDE_SPAWN_TOOLS};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
+use crate::cli::install::resource_rewrite::{AWS_MCP_READ_ONLY_TOOLS, AWS_MCP_SERVER_NAME};
 
 /// Content-type segment of the agent output directory. Joined onto
 /// `name()` to form the full path relative to `output_root`.
@@ -331,6 +336,7 @@ impl HarnessTransformer for ClaudeTransformer {
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
             }
             write_sop_scopes_sidecar(staging_dir, &model.agents)?;
+            write_mcp_allowed_tools_sidecar(staging_dir, &model.agents)?;
             Ok(())
         })?;
 
@@ -348,6 +354,114 @@ impl HarnessTransformer for ClaudeTransformer {
 
         Ok(())
     }
+}
+
+/// File name of the per-agent MCP allowed-tools sidecar in
+/// `dist/claude/agents/`. Install reads it back; it never collides with an
+/// agent file because Claude agent files end in `.md`.
+pub(crate) const MCP_ALLOWED_TOOLS_SIDECAR_FILE: &str = "_mcp_allowed_tools.json";
+
+/// Whether `name` may become part of a Claude Code permission rule
+/// (`mcp__<server>__<tool>`): one or more letters, digits, `_` or `-`.
+/// Install applies the same check to every sidecar name it reads.
+pub(crate) fn is_mcp_rule_safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+/// Writes `{ "<agent>": { "<server>": ["<tool>", ...] } }` for every Claude
+/// agent with a (bundled-filtered) `mcpRegistry`. The tools come from the
+/// agent's Kiro `allowedTools` entries of the form `@<server>/<tool>`. Agent
+/// specs are not shipped in a release `dist/`, so install cannot read
+/// `allowedTools` any other way.
+fn write_mcp_allowed_tools_sidecar(
+    staging_dir: &Path,
+    agents: &[super::parser::ParsedAgentSpec],
+) -> Result<(), String> {
+    let (allowed, warnings) = mcp_allowed_tools_by_agent(agents);
+    for warning in warnings {
+        eprintln!("konductor: warning: {warning}");
+    }
+
+    let mut rendered = serde_json::to_string_pretty(&allowed)
+        .map_err(|e| format!("failed to serialize {MCP_ALLOWED_TOOLS_SIDECAR_FILE}: {e}"))?;
+    rendered.push('\n');
+    let path = staging_dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE);
+    fs::write(&path, rendered).map_err(|e| format!("failed to write {}: {e}", path.display()))
+}
+
+type McpAllowedToolsByAgent<'a> = BTreeMap<&'a str, BTreeMap<&'a str, BTreeSet<&'a str>>>;
+
+/// The sidecar content, plus one warning per registry-server `allowedTools`
+/// entry left out of it. A whole-server (`@aws-mcp`) or wildcard
+/// (`@aws-mcp/*`) entry is left out because, as a Claude Code allow rule, it
+/// would also cover the ask tools. An `aws-mcp` tool outside
+/// `AWS_MCP_READ_ONLY_TOOLS` is left out because only read-only tools may be
+/// pre-approved. Any other server or tool name that is not rule-safe is left
+/// out because install would reject the whole sidecar.
+fn mcp_allowed_tools_by_agent(
+    agents: &[super::parser::ParsedAgentSpec],
+) -> (McpAllowedToolsByAgent<'_>, Vec<String>) {
+    let mut allowed: McpAllowedToolsByAgent = BTreeMap::new();
+    let mut warnings = Vec::new();
+    for agent in agents {
+        if agent.client_config.claude_cli.is_none() || agent.dependencies.mcp_registry.is_empty() {
+            continue;
+        }
+        let mut per_server: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+        for server in agent.dependencies.mcp_registry.keys() {
+            if is_mcp_rule_safe_name(server) {
+                per_server.insert(server.as_str(), BTreeSet::new());
+            } else {
+                warnings.push(format!(
+                    "agent '{}': MCP server {server:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only names of letters, digits, \
+                     '_' and '-' become Claude Code allow rules",
+                    agent.name
+                ));
+            }
+        }
+        let kiro_allowed = agent
+            .client_config
+            .kiro_cli
+            .as_ref()
+            .map(|kiro| kiro.allowed_tools.as_slice())
+            .unwrap_or_default();
+        for entry in kiro_allowed {
+            let Some(rest) = entry.strip_prefix('@') else {
+                continue;
+            };
+            let (server, tool) = rest.split_once('/').unwrap_or((rest, ""));
+            let Some(tools) = per_server.get_mut(server) else {
+                continue;
+            };
+            if server == AWS_MCP_SERVER_NAME
+                && is_mcp_rule_safe_name(tool)
+                && !AWS_MCP_READ_ONLY_TOOLS.contains(&tool)
+            {
+                warnings.push(format!(
+                    "agent '{}': allowedTools entry {entry:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only the read-only {AWS_MCP_SERVER_NAME} \
+                     tools ({}) become Claude Code allow rules",
+                    agent.name,
+                    AWS_MCP_READ_ONLY_TOOLS.join(", ")
+                ));
+            } else if is_mcp_rule_safe_name(tool) {
+                tools.insert(tool);
+            } else {
+                warnings.push(format!(
+                    "agent '{}': allowedTools entry {entry:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only single named tools \
+                     (letters, digits, '_' and '-') become Claude Code allow rules",
+                    agent.name
+                ));
+            }
+        }
+        allowed.insert(agent.name.as_str(), per_server);
+    }
+    (allowed, warnings)
 }
 
 const CLAUDE_MODEL_FAMILIES: &[&str] = &["opus", "sonnet", "haiku", "fable"];
@@ -2269,6 +2383,182 @@ mod tests {
             "write_sop_scopes_sidecar reads dependencies.agentSops.agentSopNames directly from \
              CanonicalModel.agents, independent of whether the agent has a claudeCli client config"
         );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn agent_with_mcp_server(
+        name: &str,
+        server: &str,
+        kiro_allowed_tools: &[&str],
+    ) -> ParsedAgentSpec {
+        let mut agent = agent_with_claude(name, ClaudeCliConfig::default());
+        agent
+            .dependencies
+            .mcp_registry
+            .insert(server.to_string(), McpServerDef::default());
+        agent.client_config.kiro_cli = Some(crate::cli::synth::parser::KiroCliConfig {
+            allowed_tools: kiro_allowed_tools.iter().map(|t| t.to_string()).collect(),
+            ..Default::default()
+        });
+        agent
+    }
+
+    fn read_mcp_allowed_tools_sidecar(dir: &Path) -> serde_json::Value {
+        let sidecar = dir
+            .join(expected_output_dir())
+            .join(MCP_ALLOWED_TOOLS_SIDECAR_FILE);
+        serde_json::from_str(&fs::read_to_string(&sidecar).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_keeps_only_registry_server_tools_sorted() {
+        let dir = temp_dir("mcp-allowed-tools-sidecar");
+        let model = CanonicalModel {
+            agents: vec![agent_with_mcp_server(
+                "k-x",
+                "aws-mcp",
+                &[
+                    "@aws-mcp/aws___search_documentation",
+                    "@aws-mcp/aws___list_regions",
+                    "@builtin",
+                    "fs_read",
+                    "@other/x",
+                ],
+            )],
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        assert_eq!(
+            read_mcp_allowed_tools_sidecar(&dir),
+            serde_json::json!({"k-x": {"aws-mcp": [
+                "aws___list_regions",
+                "aws___search_documentation"
+            ]}})
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_keeps_only_read_only_aws_mcp_tools() {
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "aws-mcp",
+            &[
+                "@aws-mcp/aws___run_script",
+                "@aws-mcp/aws___get_tasks",
+                "@aws-mcp/aws___not_a_known_tool",
+                "@aws-mcp/aws___read_documentation",
+            ],
+        )];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___read_documentation"]}})
+        );
+        assert_eq!(warnings.len(), 3, "{warnings:?}");
+        for entry in [
+            "@aws-mcp/aws___run_script",
+            "@aws-mcp/aws___get_tasks",
+            "@aws-mcp/aws___not_a_known_tool",
+        ] {
+            assert!(
+                warnings
+                    .iter()
+                    .any(|w| w.contains(&format!("{entry:?}")) && w.contains("read-only")),
+                "no read-only warning for {entry}: {warnings:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_does_not_restrict_other_servers_to_the_aws_mcp_set() {
+        let agents = vec![agent_with_mcp_server("k-x", "other", &["@other/run"])];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {"other": ["run"]}})
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_skips_wildcard_whole_server_and_unsafe_entries_with_warnings() {
+        let dir = temp_dir("mcp-allowed-tools-sidecar-unsafe");
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "aws-mcp",
+            &[
+                "@aws-mcp/*",
+                "@aws-mcp",
+                "@aws-mcp/aws___run_script(x)",
+                "@aws-mcp/aws___list_regions",
+                "@other/*",
+            ],
+        )];
+
+        let (_, warnings) = mcp_allowed_tools_by_agent(&agents);
+        assert_eq!(warnings.len(), 3, "{warnings:?}");
+        for entry in ["@aws-mcp/*", "@aws-mcp", "@aws-mcp/aws___run_script(x)"] {
+            assert!(
+                warnings
+                    .iter()
+                    .any(|w| w.contains("'k-x'") && w.contains(&format!("{entry:?}"))),
+                "no warning names agent k-x and entry {entry}: {warnings:?}"
+            );
+        }
+
+        let model = CanonicalModel {
+            agents,
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+        assert_eq!(
+            read_mcp_allowed_tools_sidecar(&dir),
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}})
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_skips_a_registry_server_name_unsafe_for_a_rule() {
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "bad.server",
+            &["@bad.server/a"],
+        )];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {}})
+        );
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].contains("\"bad.server\""), "{warnings:?}");
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_omits_agents_without_registry_or_claude_config() {
+        let dir = temp_dir("mcp-allowed-tools-sidecar-omits");
+        let mut kiro_only = agent_with_mcp_server("kiro-only", "aws-mcp", &["@aws-mcp/a"]);
+        kiro_only.client_config.claude_cli = None;
+        let mut filtered_out = agent_with_mcp_server("filtered-out", "aws-mcp", &["@aws-mcp/a"]);
+        filtered_out.dependencies.mcp_registry.clear();
+        let model = CanonicalModel {
+            agents: vec![kiro_only, filtered_out],
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        assert_eq!(read_mcp_allowed_tools_sidecar(&dir), serde_json::json!({}));
 
         let _ = fs::remove_dir_all(&dir);
     }

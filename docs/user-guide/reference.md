@@ -436,10 +436,11 @@ Every agent declares `context/k-core-rules.md`. The three orchestrators also dec
 
 `konductor synth --claude-bundled-mcp-servers aws-mcp` (what `make synth` and the release build
 run) writes the `aws-mcp` entry into the Claude Code and Kiro CLI agent files, so `konductor`,
-`k-architect` and `k-developer` launch it themselves. `k-architect` and `k-developer` request all its
-tools (`mcp__aws-mcp__*` in Claude Code, `@aws-mcp` in Kiro CLI). `konductor` requests only five
-read-only `aws-mcp` tools: `aws___retrieve_skill`, `aws___search_documentation`,
-`aws___read_documentation`, `aws___list_regions` and `aws___get_regional_availability`.
+`k-architect` and `k-developer` launch it themselves. `k-architect` and `k-developer` request the
+eight known `aws-mcp` tools by name (`mcp__aws-mcp__<tool>` in Claude Code, `@aws-mcp/<tool>` in
+Kiro CLI). `konductor` requests only five read-only `aws-mcp` tools: `aws___retrieve_skill`,
+`aws___search_documentation`, `aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 `playwright-mcp` is not bundled: `k-browser` requests its tools (`mcp__playwright-mcp__*` in Claude
 Code, `@playwright-mcp` in Kiro CLI) and you configure the server yourself.
 

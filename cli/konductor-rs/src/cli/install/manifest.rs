@@ -299,6 +299,48 @@ pub struct StrategyManifest {
     #[serde(default)]
     pub status: Status,
     pub files: Vec<ManifestFile>,
+    /// The `claude` strategy's `aws-mcp` permission rules outcome for
+    /// `.claude/settings.json`. `None` when no installed agent uses
+    /// `aws-mcp`, for every other strategy, and in a manifest predating
+    /// the field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aws_mcp_rules: Option<AwsMcpRulesRecord>,
+}
+
+/// What a Claude Code install did with the `aws-mcp` `ask`/`allow` rules.
+/// `ask` and `allow` are the full `mcp__aws-mcp__<tool>` rules the install
+/// meant to merge. When `written` is false, `reason` says why the settings
+/// file could not take them, and none of them was written this run.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct AwsMcpRulesRecord {
+    pub written: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub ask: Vec<String>,
+    #[serde(default)]
+    pub allow: Vec<String>,
+    /// The entries Konductor itself appended to the settings file, over
+    /// this and earlier installs, and that are still there. Uninstall
+    /// removes exactly these, never an entry the user already had.
+    #[serde(default, skip_serializing_if = "AddedPermissionRules::is_empty")]
+    pub added: AddedPermissionRules,
+}
+
+/// `permissions.ask` and `permissions.allow` entries Konductor appended to
+/// a Claude Code settings file.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct AddedPermissionRules {
+    #[serde(default)]
+    pub ask: Vec<String>,
+    #[serde(default)]
+    pub allow: Vec<String>,
+}
+
+impl AddedPermissionRules {
+    pub fn is_empty(&self) -> bool {
+        self.ask.is_empty() && self.allow.is_empty()
+    }
 }
 
 impl StrategyManifest {
@@ -320,6 +362,7 @@ impl StrategyManifest {
             source,
             status,
             files,
+            aws_mcp_rules: None,
         }
     }
 }
@@ -373,6 +416,7 @@ impl From<LegacyManifestV1> for Manifest {
                 source: legacy.source,
                 status: legacy.status,
                 files: legacy.files,
+                aws_mcp_rules: None,
             }],
         }
     }
