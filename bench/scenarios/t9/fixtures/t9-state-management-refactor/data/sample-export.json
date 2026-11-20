@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "columns": [
+    { "id": "inbox", "title": "Inbox", "cardIds": ["briefing"] },
+    { "id": "active", "title": "In progress", "cardIds": [] },
+    { "id": "done", "title": "Done", "cardIds": [] }
+  ],
+  "cards": {
+    "briefing": {
+      "id": "briefing",
+      "title": "Outline Monday briefing",
+      "description": "Gather the open questions.",
+      "assignee": "Mara",
+      "labels": ["review"]
+    }
+  }
+}

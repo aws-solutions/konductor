@@ -60,3 +60,7 @@ Coverage-review wave (2026-11-20), batch CV-B: estimate 225 credits, stop 450. T
 | t9-accessibility-performance-nfr | map | glm-5 | 0.16 |  |
 | t9-accessibility-performance-nfr | review | glm-5 | 4.99 |  |
 | t9-state-management-refactor | data | gpt-5.6-luna | 1.65 |  |
+| t9-state-management-refactor | key | gpt-5.6-luna | 4.08 |  |
+| t9-browser-tab-regression | data | gpt-5.6-luna | 1.75 |  |
+| t9-state-management-refactor | review | qwen3-coder-next | 0.48 |  |
+| t9-state-management-refactor | fix | gpt-5.6-luna | 2.61 |  |
