@@ -33,12 +33,31 @@ test('pilot-wave.sh is valid bash and shellcheck-clean when shellcheck exists', 
   }
 });
 
-test('usage errors exit 64 and --list prints all eight waves', () => {
+test('usage errors exit 64 and --list prints all twelve waves', () => {
   assert.equal(run([]).status, 64);
-  assert.equal(run(['9']).status, 64);
+  assert.equal(run(['13']).status, 64);
+  assert.equal(run(['0']).status, 64);
   const l = run(['--list']);
   assert.equal(l.status, 0);
-  for (const b of ['t4', 't5', 't6', 't3', 't1', 't2', 't7', 't8']) assert.match(l.stdout, new RegExp(` ${b} `));
+  const batches = ['t4', 't5', 't6', 't3', 't1', 't2', 't7', 't8', 't9', 't10', 't11', 't12'];
+  batches.forEach((b, i) => assert.match(l.stdout, new RegExp(`^${i + 1} ${b} \\d+ \\d+ \\d+$`, 'm')));
+});
+
+test('waves 9 to 12 keep a 25% ceiling margin, and the browser wave has the lowest per-run limit', () => {
+  const rows = run(['--list']).stdout.split('\n').filter((l) => /^\d+ t\d+ /.test(l)).map((l) => l.split(' '));
+  for (const [w, , soft, ceil] of rows.filter((r) => Number(r[0]) >= 9)) assert.ok(Number(ceil) >= Number(soft) * 1.25, `wave ${w}`);
+  const limit = Object.fromEntries(rows.map((r) => [r[1], Number(r[4])]));
+  assert.equal(Math.min(...Object.values(limit)), limit.t9);
+  assert.equal(Math.max(limit.t9, limit.t10, limit.t11, limit.t12), limit.t10);
+});
+
+test('the script says how waves 9 to 12 are special: heavy lock, fresh session arm, cmux skip, throttle retry', () => {
+  const text = fs.readFileSync(SCRIPT, 'utf8');
+  assert.match(text, /konductor-heavy\.lock/);
+  assert.match(text, /fresh second session, which only the Kiro CLI and Claude Code arms/);
+  assert.match(text, /t12-cmux-parallel-merge:cmux/);
+  assert.match(text, /D-126/);
+  assert.match(text, /wave-retry\.js/);
 });
 
 test('a version-manager shim as PY312 stops before any run', () => {
