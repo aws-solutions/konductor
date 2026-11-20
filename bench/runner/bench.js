@@ -9,7 +9,7 @@
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
- *   node bench/runner/bench.js scenarios lint|coverage|prereg ...   (the scenario pack's authoring tools; free, no credits)
+ *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...   (the scenario pack's authoring tools; free, no credits)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -258,6 +258,19 @@ const USAGE = `Usage:
        tasks and a status: covered (3 targeted tasks, 2 of them HELD-OUT, 1 twin or control), selection-only (a unit listed with a reason in
        --selection-only FILE, default DIR/selection-only.json, as { "skill:name": "reason" }) or hole. --fail-on-hole exits 1 on any hole or any phase
        or role below its minimum. No credits)
+  node bench/runner/bench.js scenarios pilot-table DIR... [--pack DIR] [--json]
+       (one row per pilot run in the wave directories: code-scored quality (hidden tests and substance checks, no judges), time, credits, SOP and skill
+       loads, and the task-health flags of the pilot: broken (error, timeout, hidden suite not parsed), too-easy (90 or more), too-hard (15 or less, or a
+       dry-run reference under 95), answer-leak (a tool call named a hidden or answer path, or an output repeats the reference's own text),
+       second-family (under 1 in 3 tasks of the batch from a second author family), noisy (a check differs between replicates, or flips against a
+       per-check dry run where reference and stub agreed). --pack is the scenario pack, default bench/scenarios. Reads files only; no credits)
+  node bench/runner/bench.js scenarios ready [DIR] [--batch tN] [--ids [--late]] [--json]
+       (which pack tasks may enter a pilot wave: the batch folder loads in the runner and pilot.dryRun records reference >= 95, stub <= 20, lazy <= 40
+       and alternative >= 80. Prints per-batch counts, the ready list and each not-ready task with its reasons (wave W9 late). --ids prints the ready ids
+       as a comma list for the tasks flag of run; with --late the not-ready ones. DIR defaults to bench/scenarios. No credits)
+  node bench/runner/bench.js scenarios spot-review [DIR] [--seed N] [--out FILE]
+       (the owner's spot-review sample: per batch a seeded shuffle of the task ids, the first 10% rounded up and at least one, as markdown with links;
+       default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger

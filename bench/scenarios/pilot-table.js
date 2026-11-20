@@ -1,0 +1,241 @@
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// `bench.js scenarios pilot-table DIR...`: one row per pilot run (task, replicate) with the code-scored quality, time,
+// credits, the task-health flags of plan section 8a and the SOP or skill loads. Reads saved run directories and the
+// task files only: no model call, no credits, nothing written.
+//
+// Flags (plan 8a):
+//   broken        the run ended in an error or a timeout, or a hidden test suite did not parse
+//   too-easy      code score 90 or more
+//   too-hard      code score 15 or less, or the task's recorded dry run has a reference under 95
+//   answer-leak   a tool call named a hidden or answer path, or an output file repeats most of the reference's own text
+//   second-family fewer than 1 in 3 tasks of the batch come from a second author family
+//   noisy         a check gave different results in two replicates of the task, or flipped against a per-check dry run
+//                 in which the reference and the stub agreed on it
+
+const fs = require('node:fs');
+const path = require('node:path');
+const { loadRuns } = require('../report/load.js');
+const { checksScore, qualityOfRun, DEFAULT_WEIGHTS } = require('../report/scores.js');
+const { familyOf } = require('../judge/family.js');
+const { toolNameOf, mcpToolNameOf, mcpInputOf } = require('../runner/lib/stream.js');
+const { aggregateHidden } = require('../runner/lib/check-matcher.js');
+
+const PACK_DIR = __dirname;
+const EASY = 90;
+const HARD = 15;
+const REF_MIN = 95;
+const SECOND_FAMILY_SHARE = 1 / 3;
+// A tool call whose input names one of these was looking for the answer, not the work.
+// shortcut: a name match on the call input, so a fixture folder that is itself called hidden/ would also flag; read the
+// call before acting on it, and move to the sandbox's denied-read log when the runner records one.
+const LEAK_PATH = /bench\/scenarios\/|(^|[\s/'"])(hidden|solutions|answers|authoring|briefs)\/|\.bench-answer-key/;
+const SHINGLE = 12;          // words per shingle when an output is compared with the reference
+const COPY_SHARE = 0.6;      // share of the reference's own shingles (not in the fixture) found in one output file
+const COPY_MIN_SHINGLES = 20;
+
+const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+const batchOf = (id) => (/^(t\d+)-/.exec(id) || [])[1] ?? null;
+
+function readJsonOr(file, fallback = null) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
+}
+
+function walkFiles(root, rel = '') {
+  let ents = [];
+  try { ents = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch { return []; }
+  return ents.flatMap((e) => {
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) return e.name === 'node_modules' || e.name === '.git' ? [] : walkFiles(root, r);
+    return e.isFile() ? [r] : [];
+  });
+}
+
+/** Task files and per-batch facts of the pack: { tasks: Map(id -> {task, dir}), families: Map(batch -> share) }. */
+function loadPack(packDir = PACK_DIR) {
+  const tasks = new Map();
+  const families = new Map();
+  for (const b of fs.readdirSync(packDir).filter((d) => /^t\d+$/.test(d)).sort()) {
+    const dir = path.join(packDir, b);
+    const fams = [];
+    for (const f of fs.readdirSync(dir).filter((x) => /^t\d+-.*\.json$/.test(x))) {
+      const task = readJsonOr(path.join(dir, f));
+      if (!task?.id) continue;
+      tasks.set(task.id, { task, dir });
+      fams.push(familyOf(task.authorship?.model ?? '') ?? task.authorship?.family ?? 'unknown');
+    }
+    families.set(b, secondFamilyShare(fams));
+  }
+  return { tasks, families };
+}
+
+/** Share of tasks whose author family is not the batch's most common one (0 when the batch has one family). */
+function secondFamilyShare(fams) {
+  if (!fams.length) return null;
+  const count = new Map();
+  for (const f of fams) count.set(f, (count.get(f) || 0) + 1);
+  const top = Math.max(...count.values());
+  return (fams.length - top) / fams.length;
+}
+
+/** The code-scored quality of one run, 0..100, or null: hidden tests and substance checks, judges left out. */
+// The hidden-test totals of a result; summed from its tests checks when the result predates the field.
+const hiddenOf = (r) => r.hiddenTests ?? r.intendedTests ?? aggregateHidden(r.checks);
+
+function codeScore(r) {
+  const h = hiddenOf(r);
+  const hidden = h && h.total > 0 ? h.passed / h.total : null;
+  const q = qualityOfRun({ hidden, checks: checksScore(r.checks, DEFAULT_WEIGHTS) }, DEFAULT_WEIGHTS);
+  return q ? q.score : null;
+}
+
+function brokenReasons(r) {
+  const out = [];
+  if (r.status === 'timeout') out.push('timeout');
+  else if (r.status && r.status !== 'success') out.push(r.status);
+  if (r.infraError) out.push('infra error');
+  if (hiddenOf(r)?.unparsed) out.push('hidden suite did not parse');
+  else if ((r.checks || []).some((c) => c.type === 'tests' && !c.tests)) out.push('hidden suite gave no result');
+  return out;
+}
+
+/** Tool-call inputs from a saved stream.jsonl that name a hidden or answer path. */
+function leakedReads(runDir) {
+  let text;
+  try { text = fs.readFileSync(path.join(runDir, 'stream.jsonl'), 'utf8'); } catch { return []; }
+  const hits = [];
+  const seen = new Set();
+  for (const line of text.split('\n')) {
+    if (!line.includes('tool_call')) continue;
+    let ev;
+    try { ev = JSON.parse(line); } catch { continue; }
+    const u = ev?.data?.update;
+    if (ev?.type !== 'sessionUpdate' || u?.sessionUpdate !== 'tool_call') continue;
+    if (u.toolCallId && seen.has(u.toolCallId)) continue;
+    if (u.toolCallId) seen.add(u.toolCallId);
+    const input = JSON.stringify(mcpInputOf(u.rawInput) ?? u.rawInput ?? '');
+    if (LEAK_PATH.test(input)) hits.push(`${toolNameOf(u) ?? mcpToolNameOf(u) ?? 'tool'}: ${input.slice(0, 120)}`);
+  }
+  return hits;
+}
+
+const words = (s) => s.toLowerCase().split(/\s+/).filter(Boolean);
+function shingles(s) {
+  const w = words(s);
+  const out = new Set();
+  for (let i = 0; i + SHINGLE <= w.length; i++) out.add(w.slice(i, i + SHINGLE).join(' '));
+  return out;
+}
+const readText = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
+
+/**
+ * Output files that repeat most of the reference's own text: for each reference file, the shingles that are not in the
+ * fixture's file of the same name, and the share of them found in the run's file of that name.
+ */
+function copiedReference(runDir, entry) {
+  if (!entry) return [];
+  const sol = path.join(entry.dir, 'solutions', entry.task.id);
+  const fix = path.join(entry.dir, 'fixtures', entry.task.fixture ?? entry.task.id);
+  const ws = path.join(runDir, 'workspace');
+  if (!fs.existsSync(sol) || !fs.existsSync(ws)) return [];
+  const out = [];
+  for (const rel of walkFiles(sol)) {
+    const ref = readText(path.join(sol, rel));
+    const got = readText(path.join(ws, rel));
+    if (ref === null || got === null) continue;
+    const base = shingles(readText(path.join(fix, rel)) ?? '');
+    const own = [...shingles(ref)].filter((s) => !base.has(s));
+    if (own.length < COPY_MIN_SHINGLES) continue;
+    const have = shingles(got);
+    const share = own.filter((s) => have.has(s)).length / own.length;
+    if (share >= COPY_SHARE) out.push(`${rel} repeats ${Math.round(share * 100)}% of the reference`);
+  }
+  return out;
+}
+
+/** Per-check results of a dry run where the reference and the stub agreed, by check index: Map(index -> passed). */
+function insensitiveChecks(entry) {
+  const dry = readJsonOr(path.join(entry.dir, 'authoring', entry.task.id, 'dry-run.json'));
+  const ref = dry?.reference?.checks;
+  const stub = dry?.stub?.checks;
+  const out = new Map();
+  if (!Array.isArray(ref) || !Array.isArray(stub) || ref.length !== stub.length) return out;
+  const passed = (s) => /^pass\b/i.test(String(s));
+  ref.forEach((s, i) => { if (passed(s) === passed(stub[i])) out.set(i, passed(s)); });
+  return out;
+}
+
+const loadsOf = (r) => [...(r.sopsLoaded || []).map((s) => `sop:${s}`), ...(r.skillsLoaded || []).map((s) => (typeof s === 'string' ? s : s?.name ?? '?'))];
+
+/** Rows for the runs under `dirs`, in task and replicate order. */
+function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
+  const run = loadRuns(dirs);
+  const pack = loadPack(packDir);
+  const byTask = new Map();
+  for (const e of run.runs) {
+    if (e.result.status === 'budget_skipped') continue;
+    const k = `${e.armId}\u0000${e.taskId}`;
+    if (!byTask.has(k)) byTask.set(k, []);
+    byTask.get(k).push(e);
+  }
+  const rows = [];
+  for (const group of byTask.values()) {
+    // A check index whose pass/fail differs between replicates of the same task and arm.
+    const flips = new Set();
+    for (const e of group) (e.result.checks || []).forEach((c, i) => { if (group.some((o) => (o.result.checks || [])[i] && o.result.checks[i].passed !== c.passed)) flips.add(i); });
+    for (const e of group) {
+      const r = e.result;
+      const entry = pack.tasks.get(e.taskId) ?? null;
+      const batch = batchOf(e.taskId);
+      const score = codeScore(r);
+      const flags = {};
+      const broken = brokenReasons(r);
+      if (broken.length) flags.broken = broken.join(', ');
+      if (finite(score) && score >= EASY) flags['too-easy'] = `score ${score.toFixed(0)}`;
+      const ref = entry?.task.pilot?.dryRun?.reference;
+      if (finite(score) && score <= HARD) flags['too-hard'] = `score ${score.toFixed(0)}`;
+      else if (finite(ref) && ref < REF_MIN) flags['too-hard'] = `reference ${ref} in the dry run`;
+      const leak = [...leakedReads(e.dir), ...copiedReference(e.dir, entry)];
+      if (leak.length) flags['answer-leak'] = leak.join('; ');
+      const share = pack.families.get(batch);
+      if (finite(share) && share < SECOND_FAMILY_SHARE) flags['second-family'] = `${Math.round(share * 100)}% of ${batch} from a second family`;
+      const noisy = [...flips].map((i) => `check ${i + 1} differs between replicates`);
+      if (entry) for (const [i, want] of insensitiveChecks(entry)) { const c = (r.checks || [])[i]; if (c && c.passed !== want) noisy.push(`check ${i + 1} flipped against the dry run`); }
+      if (noisy.length) flags.noisy = noisy.join('; ');
+      rows.push({
+        task: e.taskId, batch, arm: e.armId, rep: e.replicate, status: r.status ?? null, score,
+        sec: finite(r.wallClockMs) ? r.wallClockMs / 1000 : null, credits: finite(r.creditsCharged) ? r.creditsCharged : finite(r.credits) ? r.credits : null,
+        loads: loadsOf(r), flags, knownTask: Boolean(entry),
+      });
+    }
+  }
+  return rows.sort((a, b) => a.task.localeCompare(b.task) || a.arm.localeCompare(b.arm) || a.rep - b.rep);
+}
+
+const fmt = (v, d = 0) => (finite(v) ? v.toFixed(d) : 'n/a');
+
+function renderTable(rows) {
+  const L = ['| task | arm | rep | score | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- |'];
+  for (const r of rows) {
+    const flags = Object.entries(r.flags).map(([k, v]) => `**${k}** (${v})`).join('<br>') || '-';
+    L.push(`| ${r.task}${r.knownTask ? '' : ' (not in the pack)'} | ${r.arm} | ${r.rep} | ${fmt(r.score)} | ${fmt(r.sec)} | ${fmt(r.credits, 2)} | ${flags.replace(/\|/g, '\\|')} | ${r.loads.join(', ') || '-'} |`);
+  }
+  const total = rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0);
+  const count = (k) => rows.filter((r) => r.flags[k]).length;
+  const rerun = [...new Set(rows.filter((r) => r.flags.noisy).map((r) => r.task))];
+  L.push('', `${rows.length} run(s), ${total.toFixed(2)} credits. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
+  L.push(`Flagged runs: broken ${count('broken')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}.`);
+  L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
+  return `${L.join('\n')}\n`;
+}
+
+function cmdPilotTable(opts) {
+  const dirs = opts._.slice(1);
+  if (!dirs.length) throw new Error('scenarios pilot-table needs the wave directories: bench.js scenarios pilot-table DIR...');
+  const packDir = typeof opts.pack === 'string' ? path.resolve(opts.pack) : PACK_DIR;
+  const rows = pilotRows(dirs, { packDir });
+  process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
+}
+
+module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore };
