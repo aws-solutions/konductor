@@ -1,0 +1,2 @@
+00:00:10 Lights up | amber
+00:00:18 First line

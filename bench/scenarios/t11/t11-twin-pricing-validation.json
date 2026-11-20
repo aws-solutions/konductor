@@ -105,7 +105,34 @@
         "verdict": "pass",
         "note": "All tests are fair and derivable from the request. Solution and alt both achieve 100%. Lazy achieves 35.7% (correctly penalized for incomplete implementation). No timing dependencies or unfair tests."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt specifies which files and functions to modify (src/validators.js, assertOrder, test/validators.test.js) without naming hidden test methods or using decoy techniques. It describes the validation requirements without revealing the exact hidden test cases."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's test/validators.test.js contains only one test that accepts zero quantity (line accepts {sku:'x',quantity:0,unitPrice:2}), which directly contradicts the new requirements. It does not list or hint at the hidden test cases for negative, fractional, null, string, NaN quantities or negative unitPrice."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden tests (key) call calculateOrder from the fixture's pricing.js, which internally calls assertOrder from the fixture's validators.js. The validation logic in validators.js is the target of changes, and the hidden tests verify its behavior through pricing.js, creating a proper match."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The task can be solved from the fixture and request alone. The prompt explicitly lists all invalid values to reject (zero, negative, fractional, null, string, NaN for quantity; negative for unitPrice), requires TypeError with 'line <index>' and field name in messages, and specifies keeping valid totals unchanged. The fixture provides the current implementation that needs to be updated."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

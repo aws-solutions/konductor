@@ -1,0 +1,5 @@
+{
+  "bookingCreated": "Your library booking is confirmed",
+  "bookingChanged": "Your library booking was updated",
+  "bookingCancelled": "Your library booking was cancelled"
+}
