@@ -1,5 +1,8 @@
 # How to repeat a run
 
+[← bench home](../README.md) · New to bench? Start with [repeat it yourself](repeat-it-yourself.md), the short path
+from a clone to a first result. This page is the full kit for the 2x2 study: pinned binaries, freeze, gates and caps.
+
 This page is the exact path to repeat the konductor 2x2 study from this repository: build the konductor commit, freeze
 it, run the free checks, run each paid stage under its cap, judge, report, and re-score at other time limits. It ends with
 the three run levels (LITE, STANDARD, FULL) and says which of their pieces exist. Anything that does not exist yet is

@@ -43,7 +43,7 @@ function classifyLaunchFailure({ agg, exec, texts = [] }) {
   return null;
 }
 
-// Kiro CLI with --require-mcp-startup exits 3 when an MCP server did not start (docs/history/STEP0-FINDINGS.md). Under a plant arm that
+// Kiro CLI with --require-mcp-startup exits 3 when an MCP server did not start (docs/history/step0-findings.md). Under a plant arm that
 // server is the plant shim, so the run never reached the gateway: launch failure `plantStartup` (8.5).
 const MCP_STARTUP_EXIT = 3;
 

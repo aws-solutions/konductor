@@ -149,17 +149,22 @@
   },
   "pilot": {
     "scores": {
-      "dryRun": {
+      "dryRunRepeat": {
         "repeats": 3,
         "deterministic": true,
-        "reference": 100,
-        "stub": 7.1,
-        "alt": 100
+        "sameTwice": true
       }
     },
     "reference": 100,
     "stub": 7.1,
-    "decision": "keep",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 84.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
     "date": "2026-11-20"
   }
 }

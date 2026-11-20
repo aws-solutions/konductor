@@ -14,5 +14,16 @@
     "licenceCheckedAt": "2026-11-19",
     "use": "idea"
   },
-  "brief": "A finance analyst needs, from the checkout API log of that day, the number of checkout requests and the number of successful ones per hour (UTC), written as a CSV at `reports/checkout-hourly.csv` with columns `hour` (ISO 8601 hour start, for example 2026-03-17T14:00:00Z), `requests`, `succeeded`, sorted by hour, covering every hour present in the log. They also want the day totals as a one-line JSON file `reports/checkout-totals.json` with keys `requests` and `succeeded`. No analysis of why, no incident talk: just the counts. Count only checkout requests (not health checks or other paths), and count a request as succeeded when its status is below 400."
+  "brief": "A finance analyst needs, from the checkout API log of that day, the number of checkout requests and the number of successful ones per hour (UTC), written as a CSV at `reports/checkout-hourly.csv` with columns `hour` (ISO 8601 hour start, for example 2026-03-17T14:00:00Z), `requests`, `succeeded`, sorted by hour, covering every hour present in the log. They also want the day totals as a one-line JSON file `reports/checkout-totals.json` with keys `requests` and `succeeded`. No analysis of why, no incident talk: just the counts. Count only checkout requests (not health checks or other paths), and count a request as succeeded when its status is below 400.",
+  "secondFamilyRewrite": {
+    "date": "2026-11-20",
+    "result": "dropped; version 1 kept",
+    "tries": [
+      {
+        "author": "qwen3-coder-next",
+        "reviewer": "minimax-m2.5",
+        "result": "stopped: spend stop reached during authoring"
+      }
+    ]
+  }
 }

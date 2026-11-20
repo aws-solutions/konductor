@@ -119,3 +119,6 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-nfr-ndjson-stream | author | gpt-5.6-luna | 3.27 |
 | t1-nfr-ndjson-stream | map | glm-5 | 0.17 |
 | t1-nfr-ndjson-stream | review | glm-5 | 6.19 |
+| t1-ref-split-module | author | minimax-m2.5 | 0.00 |
+| t1-ref-split-module | map | glm-5 | 0.16 |
+| t1-ref-split-module | review | gpt-5.6-luna | 2.84 |

@@ -60,6 +60,9 @@ function v3Errors(task) {
   // A v3 task (one with a phase) records where its idea came from; old tasks are exempt.
   if (task.phase !== undefined && !task.authorship) errors.push('a v3 task (with phase) needs authorship with a source');
   if (task.authorship && task.review && task.authorship.family === task.review.family) errors.push('review.family must differ from authorship.family');
+  // Owner rule (2026-11-19): a task someone other than its author edited is re-checked by a non-Claude reviewer before lock.
+  if (task.handEdited && task.lockedAt && !task.review?.recheck) errors.push('a hand-edited task needs review.recheck before lock');
+  if (/^(claude|anthropic)$/i.test(task.review?.recheck?.family ?? '')) errors.push('review.recheck must come from a non-Claude family');
   return errors;
 }
 

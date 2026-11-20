@@ -331,7 +331,7 @@ within each task, from 6 runs up. None of this changes a score.
 
 ## Appendix C: running a long study safely
 
-For studies that run for hours, read [the runbook](RUNBOOK.md). These are the points that cost people credits.
+For studies that run for hours, read [the runbook](runbook.md). These are the points that cost people credits.
 
 | Risk | What bench does | What you do |
 | --- | --- | --- |

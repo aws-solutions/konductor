@@ -131,5 +131,5 @@ baselines live in `bench/cap/baselines/`, hashed in its `MANIFEST.json`.
 
 ## Where to go next
 
-- The reasoning behind each step, with worked cases: [cap playbook](CAP-PLAYBOOK.md)
+- The reasoning behind each step, with worked cases: [cap playbook](cap-playbook.md)
 - How skills are judged inside the full Konductor study: [how Konductor is benchmarked](konductor-bench.md)
