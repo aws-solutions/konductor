@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// doctor_runner_tools_e2e.rs: drives the REAL compiled binary through `konductor doctor` with a fake `kiro-cli` on
-// PATH, to check the minimum-version check of the runner tools. The fake is a shell script, so these tests start
+// doctor_runner_tools_e2e.rs: drives the REAL compiled binary through `konductor doctor` with a fake `kiro-cli` or
+// `claude` on PATH, to check the minimum-version check of the runner tools. The fake is a shell script, so these tests start
 // processes and live in their own test binary.
 //
 // Isolation: `HOME` and the install target are scratch directories, so nothing of the user's is read. `--no-version-check`
@@ -27,16 +27,28 @@ fn scratch_dir(name: &str) -> PathBuf {
     dir
 }
 
-/// Runs `konductor doctor --json` with a `kiro-cli` whose body is `body` first on PATH, or with no `kiro-cli` on PATH
-/// when `body` is `None`. Gives the output and the check named `kiro_cli_version`.
+/// The lowest `claude` version that the conformance checks passed on, as `doctor` pins it.
+const CLAUDE_MINIMUM: &str = "2.1.323";
+
+/// `doctor_tool` for `kiro-cli`.
 fn doctor(label: &str, body: Option<&str>) -> (Output, serde_json::Value, Duration) {
+    doctor_tool("kiro-cli", label, body)
+}
+
+/// Runs `konductor doctor --json` with a program `tool` whose body is `body` first on PATH, or with none on PATH when
+/// `body` is `None`.
+fn doctor_tool(
+    tool_name: &str,
+    label: &str,
+    body: Option<&str>,
+) -> (Output, serde_json::Value, Duration) {
     let (home, target, bin) = (
         scratch_dir(&format!("{label}-home")),
         scratch_dir(&format!("{label}-target")),
         scratch_dir(&format!("{label}-bin")),
     );
     if let Some(body) = body {
-        let tool = bin.join("kiro-cli");
+        let tool = bin.join(tool_name);
         std::fs::write(&tool, format!("#!/bin/sh\n{body}\n")).unwrap();
         std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
@@ -76,12 +88,16 @@ fn doctor(label: &str, body: Option<&str>) -> (Output, serde_json::Value, Durati
     (output, doc, took)
 }
 
-fn runner_check(doc: &serde_json::Value) -> &serde_json::Value {
+fn named_check<'a>(doc: &'a serde_json::Value, name: &str) -> &'a serde_json::Value {
     let checks = doc["runner_tools"].as_array().expect("runner_tools array");
     checks
         .iter()
-        .find(|c| c["name"] == "kiro_cli_version")
-        .expect("the kiro_cli_version check")
+        .find(|c| c["name"] == name)
+        .unwrap_or_else(|| panic!("the {name} check"))
+}
+
+fn runner_check(doc: &serde_json::Value) -> &serde_json::Value {
+    named_check(doc, "kiro_cli_version")
 }
 
 #[test]
@@ -211,4 +227,51 @@ fn the_plain_report_lists_the_check_once_next_to_cli_version() {
     for dir in [home, target, bin] {
         std::fs::remove_dir_all(dir).ok();
     }
+}
+
+#[test]
+fn the_claude_row_is_ok_at_the_minimum_a_warning_below_it_and_info_when_absent() {
+    let (_, doc, _) = doctor_tool(
+        "claude",
+        "claude-ok",
+        Some(&format!("echo '{CLAUDE_MINIMUM} (Claude Code)'")),
+    );
+    assert_eq!(named_check(&doc, "claude_version")["status"], "ok", "{doc}");
+    // The Kiro row is there too, and reads as absent.
+    assert_eq!(runner_check(&doc)["status"], "info", "{doc}");
+
+    let (ok_run, _, _) = doctor_tool("claude", "claude-exit-ok", Some("echo '99.0.0'"));
+    let (run, doc, _) = doctor_tool("claude", "claude-below", Some("echo '1.0.0 (Claude Code)'"));
+    let check = named_check(&doc, "claude_version");
+    assert_eq!(check["status"], "warn", "{doc}");
+    assert!(check["summary"]
+        .as_str()
+        .unwrap()
+        .contains(&format!("below the minimum {CLAUDE_MINIMUM}")));
+    assert!(check["remediation"]
+        .as_str()
+        .unwrap()
+        .contains("update claude"));
+    assert_eq!(doc["warnings"], true);
+    assert_eq!(run.status.code(), ok_run.status.code());
+
+    let (_, doc, _) = doctor_tool("claude", "claude-absent", None);
+    let check = named_check(&doc, "claude_version");
+    assert_eq!(check["status"], "info", "{doc}");
+    assert!(check["summary"]
+        .as_str()
+        .unwrap()
+        .contains("claude not found on PATH"));
+}
+
+#[test]
+fn a_version_with_four_numbers_is_read_by_its_first_three() {
+    let (_, doc, _) = doctor_tool(
+        "claude",
+        "claude-four",
+        Some("echo '99.1.2.3456 (Claude Code)'"),
+    );
+    let check = named_check(&doc, "claude_version");
+    assert_eq!(check["status"], "ok", "{doc}");
+    assert!(check["summary"].as_str().unwrap().contains("99.1.2 "));
 }

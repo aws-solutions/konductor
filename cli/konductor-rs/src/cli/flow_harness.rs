@@ -45,8 +45,14 @@ pub(crate) fn installed_runners(home: Option<&Path>) -> InstalledRunners {
     installed
 }
 
-/// The targets of Kiro installs in the index that hold an agent file for `agent`, in index order.
-fn kiro_targets_with_agent(home: Option<&Path>, agent: &str) -> Vec<String> {
+/// The targets of installs in the index that have one of `strategies` and hold the agent file `folder/file`, in index
+/// order.
+fn targets_with_agent(
+    home: Option<&Path>,
+    strategies: &[&str],
+    folder: &str,
+    file: &str,
+) -> Vec<String> {
     let Ok(Some(index)) = read_index_at_home(home) else {
         return Vec::new();
     };
@@ -57,39 +63,29 @@ fn kiro_targets_with_agent(home: Option<&Path>, agent: &str) -> Vec<String> {
         .filter(|e| {
             e.strategies
                 .iter()
-                .any(|s| s == "kiro-cli-v2" || s == "kiro-v3")
+                .any(|s| strategies.contains(&s.as_str()))
         })
-        .filter(|e| {
-            Path::new(&e.target_dir)
-                .join(".kiro/agents")
-                .join(format!("{agent}.json"))
-                .is_file()
-        })
+        .filter(|e| Path::new(&e.target_dir).join(folder).join(file).is_file())
         .map(|e| e.target_dir.clone())
         .collect()
 }
 
-/// The text for a stage whose agent Kiro CLI cannot see ("Finding the agent"): the agent, the install index and the
-/// install target that has it, if any. `targets` are the index targets that hold the agent file.
-pub(crate) fn agent_not_visible(
-    stage: &str,
-    agent: &str,
-    project_root: &Path,
-    home: Option<&Path>,
-    targets: &[String],
-) -> String {
-    let stage = plain(stage);
-    let agent = plain(agent);
-    let home_text = home.map_or_else(
-        || "the home folder".to_string(),
-        |h| plain(&h.display().to_string()),
-    );
-    let seen_from = format!(
-        "Kiro CLI looks for `.kiro/agents/{agent}.json` in the project root ({}) and then in the home folder \
-         ({home_text}), and nowhere else",
-        plain(&project_root.display().to_string())
-    );
-    let found = match targets {
+fn kiro_targets_with_agent(home: Option<&Path>, agent: &str) -> Vec<String> {
+    targets_with_agent(
+        home,
+        &["kiro-cli-v2", "kiro-v3"],
+        ".kiro/agents",
+        &format!("{agent}.json"),
+    )
+}
+
+fn claude_targets_with_agent(home: Option<&Path>, agent: &str) -> Vec<String> {
+    targets_with_agent(home, &["claude"], ".claude/agents", &format!("{agent}.md"))
+}
+
+/// What the install index says about where the agent is, and what to do.
+fn install_hint(targets: &[String]) -> String {
+    match targets {
         [] => format!(
             "The install index ({INDEX_NAME}) lists no install that has this agent. Install Konductor's agents with \
              `konductor install`, then run the workflow again."
@@ -114,7 +110,30 @@ pub(crate) fn agent_not_visible(
                 shown.join(", ")
             )
         }
-    };
+    }
+}
+
+/// The text for a stage whose agent Kiro CLI cannot see ("Finding the agent"): the agent, the install index and the
+/// install target that has it, if any. `targets` are the index targets that hold the agent file.
+pub(crate) fn agent_not_visible(
+    stage: &str,
+    agent: &str,
+    project_root: &Path,
+    home: Option<&Path>,
+    targets: &[String],
+) -> String {
+    let stage = plain(stage);
+    let agent = plain(agent);
+    let home_text = home.map_or_else(
+        || "the home folder".to_string(),
+        |h| plain(&h.display().to_string()),
+    );
+    let seen_from = format!(
+        "Kiro CLI looks for `.kiro/agents/{agent}.json` in the project root ({}) and then in the home folder \
+         ({home_text}), and nowhere else",
+        plain(&project_root.display().to_string())
+    );
+    let found = install_hint(targets);
     format!("Stage `{stage}` names the agent `{agent}`, and Kiro CLI cannot see it. {seen_from}. {found}")
 }
 
@@ -149,6 +168,59 @@ pub(crate) fn check_kiro_agents(
                 plain(&stage.name),
                 capitalise(&why),
                 plain(&stage.agent)
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The text for a stage whose agent Claude Code cannot see: the agent, the folders Claude Code searches, the install
+/// index and the install target that has it, if any.
+pub(crate) fn claude_agent_not_visible(
+    stage: &str,
+    agent: &str,
+    project_root: &Path,
+    home: Option<&Path>,
+    targets: &[String],
+) -> String {
+    let stage = plain(stage);
+    let agent = plain(agent);
+    let home_text = home.map_or_else(
+        || "the home folder".to_string(),
+        |h| plain(&h.display().to_string()),
+    );
+    format!(
+        "Stage `{stage}` names the agent `{agent}`, and Claude Code cannot see it. Claude Code looks for \
+         `.claude/agents/{agent}.md` in the project root ({}), in the folders above it up to the git top folder, and \
+         then in the home folder ({home_text}). {}",
+        plain(&project_root.display().to_string()),
+        install_hint(targets)
+    )
+}
+
+/// Checks that Claude Code can see the agent of every stage. `catalog` searches the project root, the folders above it
+/// up to the git top folder, and the home folder. A Kiro definition of the same id does not count. `Err` is the message
+/// for the first stage that fails.
+pub(crate) fn check_claude_agents(
+    stages: &[Stage],
+    catalog: &FileAgentCatalog,
+    project_root: &Path,
+    home: Option<&Path>,
+) -> Result<(), String> {
+    for stage in stages {
+        use workflow_core::ports::AgentCatalog;
+        let visible = catalog
+            .definitions(&stage.agent)
+            .iter()
+            .any(|d| d.runner == Runner::Claude);
+        if !visible {
+            let targets = claude_targets_with_agent(home, &stage.agent);
+            return Err(claude_agent_not_visible(
+                &stage.name,
+                &stage.agent,
+                project_root,
+                home,
+                &targets,
             ));
         }
     }
@@ -215,6 +287,66 @@ mod tests {
         let many: Vec<String> = (1..=5).map(|n| format!("/t{n}")).collect();
         let five = agent_not_visible("plan", "k-architect", Path::new("/work/repo"), None, &many);
         assert!(five.contains("at /t1, /t2, /t3 and 2 more,"), "{five}");
+    }
+
+    #[test]
+    fn the_claude_message_names_the_files_and_folders_claude_searches_and_the_target_that_has_it() {
+        let none = claude_agent_not_visible(
+            "plan",
+            "k-architect",
+            Path::new("/work/repo"),
+            Some(Path::new("/home/me")),
+            &[],
+        );
+        assert!(
+            none.contains("`plan`")
+                && none.contains("`k-architect`")
+                && none.contains("Claude Code cannot see it"),
+            "{none}"
+        );
+        assert!(none.contains(".claude/agents/k-architect.md"), "{none}");
+        assert!(none.contains("up to the git top folder"), "{none}");
+        assert!(
+            none.contains("/work/repo") && none.contains("/home/me"),
+            "{none}"
+        );
+        assert!(none.contains("~/.konductor/installs"), "{none}");
+        assert!(
+            !none.contains("nowhere else") && !none.contains("Kiro"),
+            "{none}"
+        );
+        let one = claude_agent_not_visible(
+            "plan",
+            "k-architect",
+            Path::new("/work/repo"),
+            None,
+            &["/elsewhere".to_string()],
+        );
+        assert!(
+            one.contains("at /elsewhere, which is neither the project root nor the home folder"),
+            "{one}"
+        );
+    }
+
+    #[test]
+    fn only_a_claude_definition_makes_an_agent_visible_to_claude() {
+        let root =
+            std::env::temp_dir().join(format!("konductor-flow-harness-vis-{}", std::process::id()));
+        std::fs::create_dir_all(root.join(".kiro/agents")).unwrap();
+        std::fs::write(root.join(".kiro/agents/k-a.json"), r#"{"allowedTools":[]}"#).unwrap();
+        let stage = |agent: &str| Stage {
+            name: "plan".to_string(),
+            agent: agent.to_string(),
+            prompt: None,
+            prompt_file: None,
+        };
+        let catalog = FileAgentCatalog::new(&root, None);
+        let refused = check_claude_agents(&[stage("k-a")], &catalog, &root, None).unwrap_err();
+        assert!(refused.contains("Claude Code cannot see it"), "{refused}");
+        std::fs::create_dir_all(root.join(".claude/agents")).unwrap();
+        std::fs::write(root.join(".claude/agents/k-a.md"), "---\nname: k-a\n---\n").unwrap();
+        assert!(check_claude_agents(&[stage("k-a")], &catalog, &root, None).is_ok());
+        std::fs::remove_dir_all(root).ok();
     }
 
     #[test]
