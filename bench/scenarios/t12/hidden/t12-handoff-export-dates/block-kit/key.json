@@ -1,0 +1,245 @@
+{
+  "outputFile": "docs/handoff/BILL-1187.md",
+  "scoring": "sections",
+  "items": [
+    {
+      "id": "file-of-cause",
+      "section": "context",
+      "gate": true,
+      "type": "some",
+      "path": "context.files",
+      "match": {
+        "all": [
+          "src/format-date\\.js"
+        ]
+      }
+    },
+    {
+      "id": "file-of-test",
+      "section": "context",
+      "type": "some",
+      "path": "context.files",
+      "match": {
+        "all": [
+          "test/export\\.test\\.js"
+        ]
+      }
+    },
+    {
+      "id": "repro-command",
+      "section": "context",
+      "type": "some",
+      "path": "context.commands",
+      "match": {
+        "all": [
+          "TZ=Pacific/Auckland",
+          "node --test"
+        ]
+      }
+    },
+    {
+      "id": "cause-local-getters",
+      "section": "context",
+      "type": "some",
+      "path": "context.facts",
+      "match": {
+        "all": [
+          "local|getFullYear|getMonth|getDate",
+          "utc"
+        ]
+      }
+    },
+    {
+      "id": "due-dates-too",
+      "section": "context",
+      "type": "some",
+      "path": "context.facts",
+      "match": {
+        "all": [
+          "due"
+        ]
+      }
+    },
+    {
+      "id": "why-ci-missed-it",
+      "section": "context",
+      "type": "some",
+      "path": "context.facts",
+      "match": {
+        "all": [
+          "\\bci\\b|build server|pipeline",
+          "utc"
+        ]
+      }
+    },
+    {
+      "id": "legacy-not-affected",
+      "section": "context",
+      "type": "some",
+      "path": "context.facts",
+      "match": {
+        "all": [
+          "legacy",
+          "not affected|unaffected|slices|not (part|touched)"
+        ]
+      }
+    },
+    {
+      "id": "no-decoy-ticket",
+      "section": "context",
+      "type": "none",
+      "path": "context.files",
+      "match": {
+        "all": [
+          "BILL-842|pdf"
+        ]
+      }
+    },
+    {
+      "id": "files-bounded",
+      "section": "context",
+      "type": "maxLen",
+      "path": "context.files",
+      "min": 2,
+      "max": 8
+    },
+    {
+      "id": "keep-column-order",
+      "section": "constraints",
+      "type": "some",
+      "path": "mustNot",
+      "match": {
+        "all": [
+          "column",
+          "order|reorder|rename|position|add"
+        ]
+      }
+    },
+    {
+      "id": "legacy-frozen",
+      "section": "constraints",
+      "type": "some",
+      "path": "mustNot",
+      "match": {
+        "all": [
+          "legacy"
+        ]
+      }
+    },
+    {
+      "id": "not-on-main",
+      "section": "constraints",
+      "type": "some",
+      "path": "mustNot",
+      "match": {
+        "all": [
+          "\\bmain\\b"
+        ]
+      }
+    },
+    {
+      "id": "fix-branch",
+      "section": "constraints",
+      "type": "some",
+      "path": "mustDo",
+      "match": {
+        "all": [
+          "fix/"
+        ]
+      }
+    },
+    {
+      "id": "pull-request",
+      "section": "constraints",
+      "type": "some",
+      "path": "mustDo",
+      "match": {
+        "all": [
+          "pull request|\\bPR\\b"
+        ]
+      }
+    },
+    {
+      "id": "check-both-zones-first",
+      "section": "constraints",
+      "type": "some",
+      "path": "mustDo",
+      "match": {
+        "all": [
+          "TZ=Pacific/Auckland|auckland|both (time )?zones|two (time )?zones"
+        ]
+      }
+    },
+    {
+      "id": "mustnot-bounded",
+      "section": "constraints",
+      "type": "maxLen",
+      "path": "mustNot",
+      "min": 2,
+      "max": 8
+    },
+    {
+      "id": "passes-both-zones",
+      "section": "done",
+      "type": "some",
+      "path": "doneWhen",
+      "match": {
+        "all": [
+          "auckland|both (time )?zones|two (time )?zones|any (time )?zone|every (time )?zone"
+        ]
+      }
+    },
+    {
+      "id": "test-fails-before-fix",
+      "section": "done",
+      "type": "some",
+      "path": "doneWhen",
+      "match": {
+        "all": [
+          "test",
+          "fail(s|ed)? (on|against|with|for) the (old|original|current|unfixed|buggy)|fails before|would (have )?(failed|caught)|catch(es)? the bug (in|under|on) utc|fails under utc"
+        ]
+      }
+    },
+    {
+      "id": "full-suite",
+      "section": "done",
+      "type": "some",
+      "path": "doneWhen",
+      "match": {
+        "all": [
+          "node --test test/|full (test )?suite|whole (test )?suite|all (the )?tests"
+        ]
+      }
+    },
+    {
+      "id": "pr-shows-evidence",
+      "section": "done",
+      "type": "some",
+      "path": "doneWhen",
+      "match": {
+        "all": [
+          "pull request|\\bPR\\b",
+          "BILL-1187|before and after|INV-3001"
+        ]
+      }
+    },
+    {
+      "id": "deadline",
+      "section": "done",
+      "type": "text",
+      "path": "deadline",
+      "all": [
+        "2026-11-28|28 nov"
+      ]
+    },
+    {
+      "id": "done-bounded",
+      "section": "done",
+      "type": "maxLen",
+      "path": "doneWhen",
+      "min": 2,
+      "max": 8
+    }
+  ]
+}

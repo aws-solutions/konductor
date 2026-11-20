@@ -1,0 +1,4 @@
+{
+  "starter": { "requestsPerMinute": 90, "burst": 15, "monthlyPriceUsd": 0 },
+  "studio": { "requestsPerMinute": 720, "burst": 120, "monthlyPriceUsd": 49 }
+}
