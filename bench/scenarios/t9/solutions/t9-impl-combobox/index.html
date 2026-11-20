@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Register for Harbor Days in Port Alder.">
+    <title>Harbor Days registration</title>
+    <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="src/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./">Harbor Days</a>
+      <span class="edition">Port Alder · 18–20 July</span>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">Community event</p>
+        <h1 id="page-title">Save your place at Harbor Days</h1>
+        <p>Tell us where you are joining from. We will send the weekend guide after registration.</p>
+      </section>
+      <form id="registration-form" class="card">
+        <div class="field country-field">
+          <label for="country">Country</label>
+          <input id="country" name="country_display" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="country-options" aria-activedescendant="">
+          <input id="country-code" name="country_code" type="hidden" value="">
+          <ul id="country-options" role="listbox" hidden></ul>
+          <p id="country-status" class="picker-status" role="status" aria-live="polite" aria-atomic="true">Start typing to search countries.</p>
+        </div>
+        <div class="field">
+          <label for="attendee-name">Your name</label>
+          <input id="attendee-name" name="attendee_name" type="text" required>
+        </div>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" required>
+        </div>
+        <button type="submit">Register</button>
+        <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <footer><small>Harbor Days is organized by the Port Alder neighborhood council.</small></footer>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

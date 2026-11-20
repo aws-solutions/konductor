@@ -1,0 +1,21 @@
+{
+  "id": "t9-bug-tabs-focus",
+  "kind": "bugfix",
+  "phase": "bugfix",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "browser",
+  "size": "30 to 50",
+  "browser": 4,
+  "ntests": "10 to 12",
+  "ntrap": 3,
+  "source": {
+    "url": "https://github.com/w3c/aria-practices",
+    "licence": "W3C Software and Document License (checked in the repository LICENSE); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: bug fix. Role: frontend developer. Repo: a static web app, a settings page with a tabbed panel and a toolbar, both built on a shared `src/roving.js` module (roving tabindex and arrow-key movement over a list of items, skipping disabled ones). Seed ONE real bug in the shared module that shows only after a tab is closed from the keyboard or an item becomes disabled at run time: the tabindex of the remaining items is not updated when the active item disappears or is disabled, so the Tab key skips the whole widget and a screen reader announces the wrong selected tab (aria-selected stays on a removed or disabled tab). A decoy: an odd-looking deferred call (a zero-delay timer) in the tab panel code that looks like a race but is correct. The fix must be in the shared module because the toolbar uses it too. Hidden browser tests open the page, close and disable tabs with the keyboard and check focus, tabindex values, aria-selected and the toolbar; plus a regression check on the agent suite."
+}

@@ -1,0 +1,37 @@
+{
+  "id": "t10-arch-outbox",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "architect",
+  "phases2": [
+    "architecture",
+    "decisions",
+    "implementation",
+    "release-ops"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "cjs",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html",
+    "licence": "Apache-2.0 (debezium/debezium LICENSE.txt)",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a software architect on the team, writing to a senior engineer",
+  "brief": "Phase: long multi-phase, idea to ship. Role: architect. Repo: a Node.js order service (orders, payment status) that saves an order to a JSON-file store through an `atomicWrite` helper and then publishes a status-change event through an in-process broker adapter whose `publish(topic, message)` can throw or time out. Events are lost when the process dies between the save and the publish, and duplicated when callers retry. The architect wants the events written with the order change in one atomic write (an outbox), a relay that publishes and marks them sent with retry and backoff, per-order ordering, a stable event id for consumers, and a cut-over that loses no in-flight event. Traps to plant (adapt, five or more): (1) the store can write several collections only through `atomicWrite`, a plain `save` per collection is not atomic; (2) the broker adapter is at-least-once and rejects messages over a size limit stated in docs; (3) docs/consumers.md says the downstream consumer dedupes on a header named `x-event-id` and requires per-order ordering, but not global ordering; (4) the scheduler module runs a job at most once per instance but the service runs two instances, so the relay needs a claim or lease; (5) the metrics catalogue has only some names (published, errors, status lag), and the rollout must gate on those; the deploy order of the two instances is in ops/. Decisions the design note must settle: where events are written, relay concurrency, ordering, the event id, what to do with events that cannot be published, the cut-over. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note.",
+  "firstAttempt": {
+    "tries": [
+      {
+        "author": "deepseek-3.2",
+        "result": "failed: stopped after 21 tool calls inside a malformed function call, no task file (2.32 credits)"
+      },
+      {
+        "author": "qwen3-coder-next",
+        "step": "A (two-step)",
+        "result": "failed: stopped at the 150 tool-call cap after 16 minutes with a 38-file fixture whose own test run fails, no PLANTED.md and no task-draft.json (about 11.5 credits, estimated: a stopped stream reports none); dropped, not fixed"
+      }
+    ]
+  }
+}

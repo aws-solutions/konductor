@@ -1,0 +1,118 @@
+{
+  "id": "t9-impl-combobox",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "Please turn the Country field on index.html into a type-ahead picker for the event registration form. Keep the visible label exactly Country and the submit button exactly Register. People should be able to type a country, move through suggestions with ArrowUp and ArrowDown, choose with Enter or a click, and dismiss the list with Escape. The selected country name should remain visible while its code is posted through the existing hidden input. Make the control usable with a screen reader: expose it as a combobox with its expanded state, put suggestions in a listbox as options, expose the active option, and expose which option is selected. Empty and unmatched searches need a short message in a polite live region. Keep the existing country data and the ranking behavior in src/filter.js, including its exported rank function, and do not add dependencies, a build step, or network requests. Country names must be rendered as text, including names containing angle brackets or accents. Keep the rest of the registration form working.",
+  "fixture": "t9-impl-combobox",
+  "hidden": "t9-impl-combobox",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js browser.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/ && test \"$(grep -R -E '^[[:space:]]*(test|it)\\(' test --include='*.js' | wc -l)\" -ge 15",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/filter.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "voice",
+      "criterion": "The registration page keeps a clear, welcoming event voice (code cannot check this because prose quality requires human judgment).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/w3c/aria-practices",
+      "licence": "W3C Software and Document License (checked in the repository LICENSE); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to build (combobox with ARIA attributes, keyboard navigation, live regions) but does not name specific methods, tools, or reveal implementation details like the exact rank function or country data structure."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the expected behavior: keyboard navigation (ArrowUp/ArrowDown/Enter/Escape), ARIA roles (combobox, listbox, options), live region announcements, and the hidden input for country codes. Two competent readers would understand the same requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's countries.js already contains the test data including 'Aland <North>' with angle brackets and accented names like 'C\u00f4te d'Ivoire' and 'R\u00e9union'. However, this is legitimate source data the agent should use, not a leak of test expectations."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer (hard-coded 5-country datalist as in lazy/) fails 14 of 18 hidden tests: it misses listbox semantics, proper ARIA states, ranking reuse, code clearing on edit, and the specific country selection behavior. The hidden tests thoroughly exercise the requirements."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests derive from stated requirements. The tests verify: ARIA combobox semantics, keyboard/pointer interaction, live region announcements, ranking reuse via imported filter.js, text rendering of special characters, and form continuity. No test relies on unstated IDs, class names, or hidden behaviors."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 9.5,
+    "dryRun": {
+      "reference": 100,
+      "stub": 9.5,
+      "lazy": 25.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T9 worker session)",
+    "log": "HAND-EDITS.md"
+  }
+}

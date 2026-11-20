@@ -14,7 +14,9 @@
       ],
       "none": [
         "(caused by|due to|because of|result of) (the )?broker[- ]?disk|disk (usage|space|full) (caused|triggered)"
-      ]
+      ],
+      "section": "cause",
+      "gate": true
     },
     {
       "id": "cause-evidence",
@@ -45,7 +47,8 @@
           ]
         }
       ],
-      "min": 2
+      "min": 2,
+      "section": "cause"
     },
     {
       "id": "cause-evidence-precision",
@@ -58,7 +61,8 @@
         "max_attempts|dead_letter|retry",
         "partition.*(blocked|lag)|blocked_offset"
       ],
-      "min": 0.5
+      "min": 0.5,
+      "section": "cause"
     },
     {
       "id": "timeline-rollout",
@@ -72,7 +76,8 @@
           "time": "2025-04-17T13:58:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-first-symptom",
@@ -87,7 +92,8 @@
           "time": "2025-04-17T14:07:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-consumer-failure",
@@ -102,7 +108,8 @@
           "time": "2025-04-17T14:07:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-mitigation",
@@ -117,7 +124,8 @@
           "time": "2025-04-17T16:51:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-recovery",
@@ -131,42 +139,48 @@
           "time": "2025-04-17T17:19:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-bounded",
       "type": "maxLen",
       "path": "timeline",
       "max": 15,
-      "min": 4
+      "min": 4,
+      "section": "timeline"
     },
     {
       "id": "impact-delayed",
       "type": "number",
       "path": "impact.delayedNotifications",
       "value": 2865,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "impact-delay",
       "type": "number",
       "path": "impact.longestDelayMinutes",
       "value": 192,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "impact-duration",
       "type": "number",
       "path": "impact.incidentDurationMinutes",
       "value": 192,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "impact-lag",
       "type": "number",
       "path": "impact.peakConsumerLag",
       "value": 3185,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "action-retry-safety",
@@ -178,7 +192,8 @@
           "finite|limit|cap|maximum",
           "dead.?letter|DLQ|route"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "action-contract-guard",
@@ -190,7 +205,8 @@
           "contract|schema|shape|type",
           "validat|test|canary"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "action-alert-guard",
@@ -202,14 +218,17 @@
           "alert|page|monitor|dashboard",
           "retry|lag|oldest|partition"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "actions-bounded",
       "type": "maxLen",
       "path": "actionItems",
       "max": 10,
-      "min": 3
+      "min": 3,
+      "section": "actions"
     }
-  ]
+  ],
+  "scoring": "sections"
 }

@@ -16,15 +16,87 @@
     "src/validation/input.js"
   ],
   "mutants": [
-    { "id": "m01", "files": ["src/auth/session.js"], "note": "The expiry comparison is strict, so a token remains usable at the exact expiresAt millisecond." },
-    { "id": "m02", "files": ["src/auth/roles.js"], "note": "The role check accepts administrator when admin is required; a near-match role must still be denied." },
-    { "id": "m03", "files": ["src/documents/access.js"], "note": "The owner condition is dropped, allowing any authenticated user to read another user's document." },
-    { "id": "m04", "files": ["src/storage/download.js"], "note": "The dot-segment check is dropped; a path containing ../ can reach a file that should not be addressable." },
-    { "id": "m05", "files": ["src/storage/download.js"], "note": "The download name is not percent-decoded before validation, allowing encoded traversal text through the name check." },
-    { "id": "m06", "files": ["src/storage/download.js"], "note": "The absolute-name guard is dropped; an absolute filesystem name must be rejected by the name validator." },
-    { "id": "m07", "files": ["src/validation/input.js"], "note": "The title limit becomes exclusive, rejecting a title whose length is exactly the documented maximum." },
-    { "id": "m08", "files": ["src/validation/input.js"], "note": "Numeric bodies are accepted as if they were strings; input types must be enforced." },
-    { "id": "m09", "files": ["src/export/html.js"], "note": "The export writes the title without HTML escaping, allowing markup in a title to become document markup." },
-    { "id": "m10", "files": ["src/auth/rate-limit.js"], "note": "A successful login no longer clears the failure state, so a later attempt remains locked." }
-  ]
+    {
+      "id": "m01",
+      "files": [
+        "src/auth/session.js"
+      ],
+      "note": "The expiry comparison is strict, so a token remains usable at the exact expiresAt millisecond."
+    },
+    {
+      "id": "m02",
+      "files": [
+        "src/auth/roles.js"
+      ],
+      "note": "The role check accepts administrator when admin is required; a near-match role must still be denied."
+    },
+    {
+      "id": "m03",
+      "files": [
+        "src/documents/access.js"
+      ],
+      "note": "The owner condition is dropped, allowing any authenticated user to read another user's document."
+    },
+    {
+      "id": "m04",
+      "files": [
+        "src/storage/download.js"
+      ],
+      "note": "The dot-segment check is dropped; a path containing ../ can reach a file that should not be addressable."
+    },
+    {
+      "id": "m05",
+      "files": [
+        "src/storage/download.js"
+      ],
+      "note": "The download name is not percent-decoded before validation, allowing encoded traversal text through the name check."
+    },
+    {
+      "id": "m06",
+      "files": [
+        "src/storage/download.js"
+      ],
+      "note": "The absolute-name guard is dropped; an absolute filesystem name must be rejected by the name validator."
+    },
+    {
+      "id": "m07",
+      "files": [
+        "src/validation/input.js"
+      ],
+      "note": "The title limit becomes exclusive, rejecting a title whose length is exactly the documented maximum."
+    },
+    {
+      "id": "m08",
+      "files": [
+        "src/validation/input.js"
+      ],
+      "note": "Numeric bodies are accepted as if they were strings; input types must be enforced."
+    },
+    {
+      "id": "m09",
+      "files": [
+        "src/export/html.js"
+      ],
+      "note": "The export writes the title without HTML escaping, allowing markup in a title to become document markup."
+    },
+    {
+      "id": "m10",
+      "files": [
+        "src/auth/rate-limit.js"
+      ],
+      "note": "A successful login no longer clears the failure state, so a later attempt remains locked."
+    }
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "src/validation/input.js",
+        "src/documents/access.js"
+      ],
+      "note": "same behaviour, new internals: field limits table, documents kept in a map"
+    }
+  ],
+  "maxTests": 44,
+  "baseTests": 4
 }

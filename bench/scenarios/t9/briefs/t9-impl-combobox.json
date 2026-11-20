@@ -1,0 +1,21 @@
+{
+  "id": "t9-impl-combobox",
+  "kind": "impl",
+  "phase": "implementation",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "browser",
+  "size": "30 to 50",
+  "browser": 4,
+  "ntests": "10 to 12",
+  "ntrap": 4,
+  "source": {
+    "url": "https://github.com/w3c/aria-practices",
+    "licence": "W3C Software and Document License (checked in the repository LICENSE); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: implementation. Role: frontend developer. Repo: a static web app, an event registration page. The country field is a plain text input next to a hidden input that the form posts. A module `src/filter.js` already ranks countries for a query (prefix before substring, accent-insensitive, with a unit-tested `rank(query, items)`), and `src/countries.js` holds about 60 entries, a few with markup-like or accented characters in the name. The feature: turn the country field into a type-ahead picker that works with the keyboard and a screen reader (a list of suggestions under the input, arrow keys, Enter to choose, Escape to close, the chosen country code lands in the hidden input, the visible text shows the country name). The page is `index.html`; the request names the visible label \"Country\" and the submit button \"Register\". Hidden browser tests check roles and states (a combobox with an expanded state, options in a list, the active option exposed to assistive technology, selected state), the keyboard paths, that names with angle brackets show as text, that the existing ranking is reused (a fake ranking injected through a documented hook, or the order of the suggestions), that typing again after choosing clears the stale code, and that an empty or no-match query shows a status message in a polite live region."
+}

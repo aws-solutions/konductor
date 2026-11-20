@@ -186,6 +186,17 @@ function record(id, dryFile) {
   return task.pilot;
 }
 
+// Layout only: an author that wrote `checks` as an object keyed by name gets it as the list the schema needs (a
+// `tests` entry, or one whose command runs the hidden suite, is a tests check; any other with a command is a cmd check).
+function checksList(checks) {
+  if (Array.isArray(checks)) return checks;
+  return Object.entries(checks || {}).map(([name, c]) => {
+    if (c.type) return c;
+    const tests = name === 'tests' || /hidden\//.test(c.cmd || '');
+    return { type: tests ? 'tests' : (c.cmd ? 'cmd' : 'file_exists'), ...c };
+  });
+}
+
 const sourceNote = (s) => (s === 'original' ? 'original (author-written; idea only)' : `${s.url} (${s.licence}; idea only, paraphrased)`);
 
 function assemble(id) {
@@ -208,7 +219,7 @@ function assemble(id) {
     hidden: b.id,
     timeoutSec: limitsOf(draft.limits).hardSec,
     limits: limitsOf(draft.limits),
-    checks: draft.checks,
+    checks: checksList(draft.checks),
     rubric: draft.rubric.map((r) => ({ weight: 1, ...r })),
     targetSkills: mapping.targetSkills,
     targetSop: mapping.targetSop,

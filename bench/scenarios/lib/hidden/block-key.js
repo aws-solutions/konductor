@@ -30,6 +30,10 @@
 //   evidencePrecision {path, relevant: [regex], min}  of the cited lines, the share whose text matches a `relevant` regex is >= min
 //
 // Cited files resolve against the workspace root: the exact relative path, else the one file whose path ends with it.
+//
+// Key options (block.test.js): `gate: true` on an item makes its failure fail every test (a wrong cause or call earns
+// nothing); `"scoring": "sections"` with a `section` on each item scores each section complete (2), one item missed
+// (1) or more missed (0), so a report that covers half of each section earns little.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -187,12 +191,29 @@ function checkItem(block, item, root) {
   }
 }
 
-function gradeBlock(text, items, root) {
+function gradeBlock(text, items, root, { scoring } = {}) {
   const block = readBlock(text);
   const results = items.map((it) => ({ id: it.id, weight: it.weight ?? 1, ...checkItem(block, it, root) }));
+  const gated = items.some((it, i) => it.gate && !results[i].pass);
+  if (scoring === 'sections') {
+    const sections = sectionResults(block, items, root);
+    const earned = gated ? 0 : sections.reduce((n, s) => n + (s.missed.length === 0 ? 2 : s.missed.length === 1 ? 1 : 0), 0);
+    return { found: Boolean(block), score: sections.length ? earned / (2 * sections.length) : 0, results, sections, gated };
+  }
   const total = results.reduce((n, r) => n + r.weight, 0);
-  const passed = results.reduce((n, r) => n + (r.pass ? r.weight : 0), 0);
-  return { found: Boolean(block), score: total ? passed / total : 0, results };
+  const passed = gated ? 0 : results.reduce((n, r) => n + (r.pass ? r.weight : 0), 0);
+  return { found: Boolean(block), score: total ? passed / total : 0, results, gated };
 }
 
-module.exports = { readBlock, checkItem, gradeBlock, resolveRefs };
+/** [{ section, missed: [item ids] }] in first-seen order; an item with no `section` is its own section. */
+function sectionResults(block, items, root) {
+  const by = new Map();
+  for (const it of items) {
+    const s = it.section || it.id;
+    if (!by.has(s)) by.set(s, { section: s, missed: [] });
+    if (!checkItem(block, it, root).pass) by.get(s).missed.push(it.id);
+  }
+  return [...by.values()];
+}
+
+module.exports = { readBlock, checkItem, gradeBlock, sectionResults, resolveRefs };

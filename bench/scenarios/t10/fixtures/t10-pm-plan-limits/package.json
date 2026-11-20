@@ -1,0 +1,12 @@
+{
+  "name": "sprig-track-api",
+  "version": "1.8.0",
+  "description": "Small-team project tracking service",
+  "main": "src/server.js",
+  "engines": {"node": ">=24"},
+  "scripts": {
+    "test": "node --test test/",
+    "check:json": "node scripts/check-json.js",
+    "check:docs": "node scripts/check-doc-links.js"
+  }
+}

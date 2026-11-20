@@ -1,0 +1,1 @@
+{ "primary": "us-central", "failover": "eu-west", "timeZone": "UTC" }

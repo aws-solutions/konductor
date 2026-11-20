@@ -7,7 +7,11 @@
 //                   "pristine": ["src/a.js"], "mutants": [{ "id": "m01", "files": ["src/a.js"], "note": "..." }] }
 //   pristine/<path>        the real source files, restored before every run
 //   mutants/<id>/<path>    the mutated version of each file the mutant lists
-// A mutant is killed when the workspace's tests exit non-zero or hang, and the same tests pass on the real code.
+//   refactors/<id>/<path>  optional: a behaviour-preserving rewrite of each file listed in "refactors": [{ id, files, note }]
+//   "maxTests": N          optional: the suite-size budget (test definitions in the workspace's test files)
+//   "baseTests": N         optional: test definitions the fixture starts with; refactor and size tests need more
+// A mutant is killed when the workspace's tests exit non-zero or hang, and the same tests pass on the real code and on
+// every safe refactor.
 // Python runs get a per-test alarm so one hung test fails alone; node runs use `--test-timeout` in testCmd.
 
 const fs = require('node:fs');
@@ -79,21 +83,60 @@ function runOne(ctx, m) {
   return { id: m.id, killed, detail: r.timedOut ? 'killed by timeout' : killed ? 'killed' : 'survived' };
 }
 
+// A safe refactor (refactors/<id>/<path>) keeps the behaviour and changes the internals. A suite that fails on one
+// pins internals: it would also "kill" every mutant without telling right from wrong, so kills only count when the
+// suite passes every safe refactor.
+function runRefactor(ctx, r) {
+  if (!ctx.realPass) return { id: r.id, passed: false, detail: 'tests fail on the real code' };
+  overlay(ctx.work, ctx.real, ctx.cfg.pristine);
+  overlay(ctx.work, path.join(ctx.hiddenDir, 'refactors', r.id), r.files);
+  const res = runTests(ctx.work, ctx.cfg, ctx.suiteTimeoutMs);
+  overlay(ctx.work, ctx.real, ctx.cfg.pristine);
+  const passed = res.exit === 0 && !res.timedOut;
+  return { id: r.id, passed, detail: passed ? 'passed' : `failed on a behaviour-preserving rewrite: ${res.tail.slice(-200)}` };
+}
+
+/** True when the suite passes every safe refactor of the kit (computed once per context). */
+function refactorsPass(ctx) {
+  if (ctx.refactorsPass === undefined) ctx.refactorsPass = (ctx.cfg.refactors || []).every((r) => runRefactor(ctx, r).passed);
+  return ctx.refactorsPass;
+}
+
+const TEST_DEF = { python: /^[ \t]*(?:async[ \t]+)?def[ \t]+test\w*[ \t]*\(/gm, node: /(?:^|[^\w.])(?:test|it)(?:\.only|\.skip|\.todo)?[ \t]*\(/gm };
+
+/** Number of test definitions in the workspace's own test files (python: def test_*, node: test( and it( calls). */
+function countTests(ctx) {
+  const py = ctx.cfg.runner === 'python';
+  const isTest = py ? (n) => /^test.*\.py$/.test(n) : (n) => /\.test\.[cm]?js$/.test(n);
+  let n = 0;
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (skipCopy(p)) walk(p); } else if (isTest(e.name)) n += (fs.readFileSync(p, 'utf8').match(TEST_DEF[py ? 'python' : 'node']) || []).length;
+    }
+  };
+  walk(ctx.work);
+  return n;
+}
+
 const cleanup = (ctx) => fs.rmSync(ctx.tmp, { recursive: true, force: true });
 
-// Whole run: {realPass, killed, total, score, results}. Score is 0 unless the tests pass on the real code.
+// Whole run: {realPass, refactorsPass, killed, total, score, results}. Score is 0 unless the tests pass on the real
+// code and on every safe refactor.
 function runMutants(workspace, hiddenDir, opts) {
   const ctx = prepare(workspace, hiddenDir, opts);
   try {
+    const safe = refactorsPass(ctx);
     const results = ctx.cfg.mutants.map((m) => runOne(ctx, m));
     const killed = results.filter((x) => x.killed).length;
-    return { realPass: ctx.realPass, realTail: ctx.realPass ? '' : ctx.realTail, killed, total: results.length, score: ctx.realPass ? killed / results.length : 0, results };
+    const ok = ctx.realPass && safe;
+    return { realPass: ctx.realPass, refactorsPass: safe, realTail: ctx.realPass ? '' : ctx.realTail, killed, total: results.length, score: ok ? killed / results.length : 0, results };
   } finally {
     cleanup(ctx);
   }
 }
 
-module.exports = { prepare, runOne, cleanup, runMutants, runTests };
+module.exports = { prepare, runOne, runRefactor, refactorsPass, countTests, cleanup, runMutants, runTests };
 
 if (require.main === module) {
   const [ws, hid] = process.argv.slice(2);

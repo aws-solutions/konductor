@@ -1,0 +1,6 @@
+{
+  "name": "tallyroll",
+  "version": "2.3.1",
+  "private": true,
+  "scripts": { "test": "node --test test/" }
+}
