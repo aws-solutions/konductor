@@ -1,0 +1,83 @@
+ticket_id,created,tenant_id,channel,subject,invoice_pages,category,status,priority
+3102,2025-06-07,t029,email,"how do i add a second user",,account,closed,low
+3105,2025-06-08,t031,portal,"customer cannot open statement - keeps loading",29,pdf-slow,open,high
+3107,2025-06-09,t027,chat,"duplicate customer records",,data,closed,low
+3110,2025-06-09,t043,chat,"Need VAT ID on footer",,template,closed,high
+3111,2025-06-11,t051,portal,"Add PO number field to template",,feature,closed,normal
+3113,2025-06-12,t046,portal,"Customer cannot open statement - keeps loading",36,pdf-slow,open,normal
+3116,2025-06-12,t004,email,"add po number field to template",,feature,solved,normal
+3118,2025-06-13,t034,email,"Duplicate customer records",,data,closed,normal
+3120,2025-06-16,t031,chat,"customer cannot open statement - keeps loading",24,pdf-slow,solved,high
+3123,2025-06-18,t015,email,"Invoice PDF fonts look different on print",2,template,open,normal
+3124,2025-06-18,t049,email,"payment link expired too soon",,payments,closed,high
+3126,2025-06-19,t024,chat,"how do i add a second user",,account,closed,normal
+3128,2025-06-20,t044,portal,"Credit note shows wrong currency symbol",,billing,closed,normal
+3130,2025-06-23,t028,chat,"CSV import rejects dates",,import,closed,low
+3131,2025-06-27,t031,portal,"Download button hangs on statement",44,pdf-slow,closed,high
+3134,2025-06-30,t031,email,"Monthly statement PDF stuck on spinner",29,pdf-slow,closed,high
+3137,2025-06-30,t031,email,"Statement download timed out",24,pdf-slow,closed,high
+3140,2025-07-01,t022,email,"pdf generation slow again",75,pdf-slow,closed,high
+3143,2025-07-01,t001,email,"cannot reset password",,login,closed,normal
+3146,2025-07-03,t001,portal,"Payment link expired too soon",,payments,closed,high
+3149,2025-07-06,t056,email,"CSV import rejects dates",,import,closed,normal
+3150,2025-07-11,t053,portal,"waited over a minute for the pdf",28,pdf-slow,closed,high
+3152,2025-07-13,t014,email,"Customer cannot open statement - keeps loading",29,pdf-slow,closed,normal
+3154,2025-07-13,t022,email,"pdf takes forever to download",75,pdf-slow,closed,high
+3157,2025-07-15,t053,email,"waited over a minute for the pdf",37,pdf-slow,closed,normal
+3158,2025-07-18,t042,email,"cannot reset password",,login,closed,normal
+3161,2025-07-20,t014,portal,"monthly statement pdf stuck on spinner",36,pdf-slow,closed,normal
+3162,2025-07-22,t007,email,"pdf takes forever to download",34,pdf-slow,closed,normal
+3165,2025-07-23,t053,chat,"monthly statement pdf stuck on spinner",33,pdf-slow,closed,normal
+3167,2025-07-23,t046,chat,"Statement download timed out",135,pdf-slow,closed,high
+3168,2025-07-24,t031,portal,"Waited over a minute for the PDF",30,pdf-slow,solved,high
+3170,2025-07-24,t052,portal,"webhook retries not arriving",,api,solved,high
+3173,2025-07-24,t039,portal,"Reminder email went to wrong contact",,email,solved,normal
+3174,2025-07-26,t022,email,"Change company logo",,account,open,normal
+3176,2025-07-29,t053,email,"Customer cannot open statement - keeps loading",40,pdf-slow,closed,normal
+3178,2025-07-29,t042,portal,"Add PO number field to template",,feature,closed,normal
+3179,2025-07-31,t038,portal,"need vat id on footer",,template,closed,high
+3181,2025-08-02,t033,portal,"Duplicate customer records",,data,open,normal
+3183,2025-08-02,t003,portal,"Cannot reset password",,login,solved,low
+3184,2025-08-02,t011,email,"Cannot reset password",,login,closed,low
+3187,2025-08-04,t033,email,"duplicate customer records",,data,open,normal
+3189,2025-08-05,t053,email,"pdf takes forever to download",40,pdf-slow,open,normal
+3190,2025-08-05,t017,email,"export to accounting tool failed",,integration,closed,low
+3191,2025-08-05,t054,email,"export to accounting tool failed",,integration,closed,low
+3192,2025-08-08,t058,portal,"Webhook retries not arriving",,api,closed,low
+3194,2025-08-08,t027,email,"Tax line rounding off by 1 cent",,billing,closed,normal
+3195,09/08/2025,t007,email,"Download button hangs on statement",60,pdf-slow,closed,normal
+3198,2025-08-10,t039,email,"Cannot reset password",,login,closed,normal
+3200,2025-08-11,t031,email,"Customer cannot open statement - keeps loading",26,pdf-slow,closed,high
+3202,14/08/2025,t047,chat,"duplicate customer records",,data,solved,high
+3205,2025-08-16,t055,email,"Payment link expired too soon",,payments,solved,normal
+3207,2025-08-18,t033,email,"invoice pdf fonts look different on print",2,template,closed,high
+3210,2025-08-18,t029,email,"export to accounting tool failed",,integration,closed,normal
+3212,19/08/2025,t033,email,"Credit note shows wrong currency symbol",,billing,closed,normal
+3214,2025-08-20,t022,email,"export to accounting tool failed",,integration,closed,high
+3216,2025-08-22,t045,chat,"duplicate customer records",,data,open,normal
+3217,2025-08-22,t038,chat,"Invoice numbering gap",,billing,closed,high
+3218,2025-08-23,t032,portal,"invoice numbering gap",,billing,open,normal
+3219,2025-08-23,t014,email,"cannot reset password",,login,solved,low
+3222,2025-08-24,t057,chat,"Invoice PDF fonts look different on print",2,template,closed,normal
+3224,2025-08-24,t017,email,"Add PO number field to template",,feature,solved,low
+3227,2025-08-25,t009,email,"credit note shows wrong currency symbol",,billing,closed,low
+3228,2025-08-28,t030,chat,"add po number field to template",,feature,open,normal
+3229,2025-08-29,t031,email,"PDF generation slow again",28,pdf-slow,solved,normal
+3232,2025-08-30,t046,email,"pdf generation slow again",29,pdf-slow,closed,normal
+3235,2025-08-30,t036,portal,"reminder email went to wrong contact",,email,open,high
+3236,2025-08-31,t052,email,"cannot reset password",,login,closed,normal
+3238,2025-09-01,t017,email,"webhook retries not arriving",,api,closed,low
+3239,2025-09-03,t014,email,"Large statement PDF very slow",53,pdf-slow,closed,high
+3242,2025-09-03,t011,chat,"Duplicate customer records",,data,closed,low
+3245,2025-09-08,t006,email,"invoice pdf fonts look different on print",1,template,closed,normal
+3248,2025-09-08,t032,email,"payment link expired too soon",,payments,solved,normal
+3250,2025-09-09,t032,chat,"invoice pdf fonts look different on print",2,template,closed,low
+3252,2025-09-10,t028,email,"duplicate customer records",,data,closed,normal
+3255,2025-09-11,t032,email,"Credit note shows wrong currency symbol",,billing,open,normal
+3256,2025-09-14,t060,portal,"need vat id on footer",,template,closed,normal
+3258,2025-09-14,t015,portal,"Payment link expired too soon",,payments,open,low
+3259,2025-09-15,t022,email,"pdf takes forever to download",26,pdf-slow,solved,high
+3260,2025-09-15,t051,email,"credit note shows wrong currency symbol",,billing,open,high
+3263,2025-09-15,t036,email,"CSV import rejects dates",,import,closed,normal
+3265,2025-09-16,t036,chat,"Credit note shows wrong currency symbol",,billing,closed,normal
+3267,2025-09-16,t007,email,"webhook retries not arriving",,api,closed,high
