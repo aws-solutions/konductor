@@ -1,0 +1,8 @@
+{
+  "workers": [
+    { "branch": "fix/PD-41", "steps": ["PD-41"], "message": "PD-41: pounds at 0.45359237 kg, units in any case" },
+    { "branch": "fix/PD-44", "steps": ["PD-44"], "message": "PD-44: skip weekends and holidays in delivery dates" }
+  ],
+  "merge": ["fix/PD-41", "fix/PD-44"],
+  "cleanup": true
+}

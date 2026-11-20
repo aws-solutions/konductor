@@ -1,0 +1,6 @@
+{
+  "name": "booking-desk",
+  "version": "3.4.0",
+  "private": true,
+  "scripts": { "test": "node --test test/*.test.js" }
+}

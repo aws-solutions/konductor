@@ -1,0 +1,123 @@
+{
+  "id": "t12-sop-route-choice",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "multi-phase",
+  "phases2": [
+    "bugfix",
+    "implementation",
+    "requirements",
+    "code-review"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "It's Monday and the team channel has piled up; I copied it into docs/inbox.md. Please work through all of it the way this team works (CONTRIBUTING.md has our rules). Commit each finished piece of work on main on its own as you go. When you are done, main should be checked out with everything committed and node --test test/*.test.js passing.",
+  "fixture": "t12-sop-route-choice",
+  "hidden": "t12-sop-route-choice",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=120000 work.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/inbox.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/policy.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "route-fits-request",
+      "weight": 1,
+      "criterion": "Each request got the kind of work it needed, at the size it needed. Fail: the unsigned waitlist got code, the patch was applied by the reviewer, or the live refund bug waited behind other work. Partial: every request took the right route, but one artifact is thin for its route: the spec's design or tasks do not follow from its requirements, or the review's findings give no line or no way to see the fault (for example 'room logic looks off'). Pass: the refund fix is small and first, with a test at the 24 and 48 hour edges; the BK-215 change has its test and changelog line and nothing more; the spec traces tasks to requirements and leaves the loyalty question to Dana; the review shows each fault concretely (a failing test or an example) and suggests a fix. (code cannot check this because fit and size are judgements)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "incident-first",
+        "text": "Treats the refund bug as a live incident costing money and fixes it before anything else, with the smallest change and a regression test at the tier edges.",
+        "source": "https://sre.google/sre-book/managing-incidents/"
+      },
+      {
+        "id": "spec-before-code",
+        "text": "Writes the waitlist as requirements, design and tasks under docs/specs/waitlist/ and no code, because product has not signed it off; the loyalty-member ordering is left as an open question for Dana.",
+        "source": "original"
+      },
+      {
+        "id": "review-not-apply",
+        "text": "Reviews Ravi's patch without applying it, finds the dropped room check and the back-to-back clash (both visible by running the existing tests against the patched code), and requests changes.",
+        "source": "https://google.github.io/eng-practices/review/reviewer/looking-for.html"
+      },
+      {
+        "id": "agreed-change-shipped",
+        "text": "Ships BK-215 directly, since it is fully agreed: nights from UTC calendar dates, 0 for day use, a test and a changelog line.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Implements the waitlist right away because the requirements look clear enough.",
+      "Applies Ravi's patch since it is a performance improvement and the author asked for help.",
+      "Works through the inbox top to bottom, so the refund fix lands last.",
+      "Writes one combined commit for all four requests."
+    ]
+  },
+  "targetSkills": [
+    "sdlc-navigator",
+    "pre-planning-analysis"
+  ],
+  "targetSop": null,
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate CV-A worker (owner-approved coverage review addition 2); needs the non-Claude recheck in review.recheck"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-A worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 36.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}
