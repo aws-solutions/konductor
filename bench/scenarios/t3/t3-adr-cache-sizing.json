@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 17
     },
     {
@@ -56,8 +56,21 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 18,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -148,5 +161,10 @@
       "Selects wide-209 solely because it has fewer nodes and lower latency, without comparing the 200 USD/month cost difference against the balanced option.",
       "Lists the candidates without computing the engine reservation (25%) and its impact on usable memory for each topology."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

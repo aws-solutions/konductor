@@ -61,6 +61,28 @@ function workspace(root, task, name, overlay, dir) {
   return ws;
 }
 
+// The free shallow answer: the reference's docs, changelog, config and test files, with none of its code changes. It shows
+// how much of the score a run gets from keyword and file checks without doing the work. A path is code when it has a
+// code extension and is not a test file.
+const isCode = (rel) => /\.(c?m?js|ts|py)$/.test(rel) && !/(^|\/)(tests?|__tests__)\/|(^|\/)test_[^/]*\.py$|\.test\.(c?m?js|ts)$/.test(rel);
+
+function shallowOverlay(root, solutionDir) {
+  const out = path.join(root, 'overlay-shallow');
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(solutionDir, rel), { withFileTypes: true })) {
+      const r = rel ? path.join(rel, e.name) : e.name;
+      if (e.isDirectory()) walk(r);
+      else if (e.name !== 'DELETE.txt' && !isCode(r)) {
+        fs.mkdirSync(path.dirname(path.join(out, r)), { recursive: true });
+        fs.copyFileSync(path.join(solutionDir, r), path.join(out, r));
+      }
+    }
+  };
+  fs.mkdirSync(out, { recursive: true });
+  walk('');
+  return out;
+}
+
 function runChecks(task, ws, hiddenDir, dir, env, scratchDir) {
   return task.checks.map((c) => {
     let r;
@@ -101,10 +123,10 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
     const py = resolvePython({ env, want: wantedVersion(path.join(DIR, '..', '..')) });
     if (py.executable) env.PATH = [linkPython(root, py.executable, py.version), env.PATH].join(path.delimiter);
     const hiddenDir = path.join(dir, 'hidden', id);
-    const out = { id, repeat, reference: null, stub: null, lazy: null, alt: null, deterministic: true, canary: null };
+    const out = { id, repeat, reference: null, stub: null, shallow: null, lazy: null, alt: null, deterministic: true, canary: null };
     // The lazy and alternative answers (answers/<id>/lazy and answers/<id>/alt) are scored once each when present.
     const answerDir = (k) => path.join(dir, 'answers', id, k);
-    const modes = [['reference', path.join(dir, 'solutions', id)], ['stub', null]];
+    const modes = [['reference', path.join(dir, 'solutions', id)], ['stub', null], ['shallow', shallowOverlay(root, path.join(dir, 'solutions', id))]];
     for (const k of ['lazy', 'alt']) if (fs.existsSync(answerDir(k))) modes.push([k, answerDir(k)]);
     for (const [mode, overlay] of modes) {
       const ref = mode === 'reference';
@@ -120,7 +142,7 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
     }
     out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic && out.canary.ok;
     // Gates added 2026-11-19: a lazy answer scores 40 or less, an alternative correct answer 80 or more (each only when present).
-    out.answersPass = (!out.lazy || out.lazy.score <= 40) && (!out.alt || out.alt.score >= 80);
+    out.answersPass = out.shallow.score <= 40 && (!out.lazy || out.lazy.score <= 40) && (!out.alt || out.alt.score >= 80);
     out.answersPresent = Boolean(out.lazy && out.alt);
     return out;
   } finally {
@@ -135,8 +157,8 @@ if (require.main === module) {
   const dir = args.includes('--dir') ? path.resolve(args[args.indexOf('--dir') + 1]) : DIR;
   const res = dryRun(id, { repeat, dir });
   const brief = (m) => (m ? { score: Number(m.score.toFixed(1)), hidden: m.hidden, checks: m.checks } : null);
-  console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), lazy: brief(res.lazy), alt: brief(res.alt), deterministic: res.deterministic, canary: res.canary, pass: res.pass, answersPass: res.answersPass }, null, 2));
+  console.log(JSON.stringify(args.includes('--json') ? res : { id, reference: brief(res.reference), stub: brief(res.stub), shallow: brief(res.shallow), lazy: brief(res.lazy), alt: brief(res.alt), deterministic: res.deterministic, canary: res.canary, pass: res.pass, answersPass: res.answersPass }, null, 2));
   if (!res.pass || !res.answersPass) process.exitCode = 1;
 }
 
-module.exports = { scoreOf, dryRun };
+module.exports = { scoreOf, dryRun, isCode };

@@ -8,12 +8,17 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { cleanupStorage } = require('../scripts/cleanup-storage');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 const ROOT = path.join(__dirname, '..');
 
 // A scratch storage directory next to an "outside" directory that must never be touched.
 // layout: { blobs, referenced, tmp, archive, top } map names to contents; referenced lists blob names in the index.
 function storage({ blobs = {}, referenced = Object.keys(blobs), tmp = {}, archive = {}, top = {}, trash } = {}) {
-  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-'));
+  const parent = tempDir('vault-');
   const dir = path.join(parent, 'storage');
   const put = (folder, files) => {
     for (const [name, text] of Object.entries(files)) {

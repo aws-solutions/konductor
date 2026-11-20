@@ -61,7 +61,20 @@
       "use": "idea"
     }
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 33,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "system-design-patterns"
@@ -157,5 +170,6 @@
       "Recommends cursor-index without explaining why offset-sql is inadequate, or without comparing RPO, RTO, and migration trade-offs.",
       "Proposes exposing storage keys or internal offsets in the API contract instead of an opaque continuation token."
     ]
-  }
+  },
+  "handEdited": null
 }

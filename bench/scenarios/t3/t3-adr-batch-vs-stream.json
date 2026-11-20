@@ -56,7 +56,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 19,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "decision-writing",
@@ -153,5 +166,6 @@
       "Recommends streaming solely because it has the lowest monthly infrastructure cost (~$1,824) without considering the $7,000 training investment or the fact that real-time processing is not needed for nightly reports.",
       "Calculates costs for Q4 2025 (6.28 TB) instead of the 4-quarter planning horizon ending at Q3 2025 (4.65 TB), leading to incorrect constraint analysis."
     ]
-  }
+  },
+  "handEdited": null
 }

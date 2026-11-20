@@ -294,20 +294,24 @@ test('CLI: missing credentials stop the run before claude starts and the message
   }
 });
 
-test('CLI: a multi-turn (autonomy) task is refused before anything is paid for or prepared', async () => {
+// Claude Code runs multi-turn tasks since 2d728141 (`claude -p --resume`, covered in scripted-user.test.js), so the
+// CLI no longer refuses them; the credential check still stops the run before anything is paid for or prepared.
+test('CLI: a multi-turn (autonomy) task is accepted, and missing credentials still stop it before anything is prepared', async () => {
   const s = cliRoot();
   try {
     const taskFile = path.join(s.bench, 'tasks', 't1.json');
     const task = JSON.parse(fs.readFileSync(taskFile, 'utf8'));
     fs.writeFileSync(taskFile, JSON.stringify({ ...task, autonomy: { clarifications: [], maxInterjections: 2, noQuestionNeeded: true } }));
-    for (const env of [CC_ENV, {}]) {
-      const r = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')], env));
-      assert.notEqual(r.code, 0);
-      assert.match(r.err, /multi-turn \(autonomy\) tasks are not supported on the Claude Code harness yet: t1/);
-      assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false, 'claude was never started');
-      assert.deepEqual(fs.readdirSync(path.join(s.root, 'tmp')), [], 'no scratch directory was made');
-      assert.equal(fs.existsSync(path.join(s.root, 'o')), false, 'no output directory was made');
-    }
+    const r = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')], {}));
+    assert.notEqual(r.code, 0);
+    assert.doesNotMatch(r.err, /multi-turn/);
+    assert.match(r.err, /missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY/);
+    assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false, 'claude was never started');
+    assert.deepEqual(fs.readdirSync(path.join(s.root, 'tmp')), [], 'no scratch directory was made');
+    assert.equal(fs.existsSync(path.join(s.root, 'o')), false, 'no output directory was made');
+    const ok = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')], CC_ENV));
+    assert.doesNotMatch(ok.err, /multi-turn/);
+    assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), true, 'with credentials, claude is started for the task');
   } finally {
     fs.rmSync(s.root, { recursive: true, force: true });
   }

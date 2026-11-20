@@ -56,7 +56,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5,
+      "lazy": 37,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "decision-writing",
@@ -153,5 +166,6 @@
       "chooses database_retry_table solely because it has better RPO (1 min) and RTO (18 min) than required, without checking throughput",
       "picks external_retry_queue as the only valid option without recognizing database_retry_table also satisfies all constraints"
     ]
-  }
+  },
+  "handEdited": null
 }

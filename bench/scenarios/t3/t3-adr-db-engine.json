@@ -56,7 +56,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 6,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 6,
+      "lazy": 39,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "decision-writing",
@@ -153,5 +166,6 @@
       "reports only the chosen option without explaining why the alternatives were rejected or what tradeoffs exist",
       "calculates monthly cost using only average write rates instead of provisioning for peak, ignoring launch-day traffic requirements"
     ]
-  }
+  },
+  "handEdited": null
 }

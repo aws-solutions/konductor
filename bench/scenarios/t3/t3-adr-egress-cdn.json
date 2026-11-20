@@ -56,7 +56,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5,
+      "lazy": 25,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "trade-off-evaluator",
@@ -149,5 +162,6 @@
       "Uses the 120 TB pilot estimate from the README warning instead of the 180 TB production forecast, producing an incorrect cost calculation.",
       "Applies the overage rate ($0.045/GB) to the entire 180 TB for cdn-committed instead of only the 30 TB above the 150 TB commit."
     ]
-  }
+  },
+  "handEdited": null
 }

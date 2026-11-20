@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { tmp, write, makeBench, testModeEnv } = require('./helpers.js');
-const { loadTasks, loadSuite, SUITE_DEFAULTS, BENCH_DIR } = require('../lib/tasks.js');
+const { loadTasks, loadSuite, suiteExtraDirs, SUITE_DEFAULTS, BENCH_DIR } = require('../lib/tasks.js');
 const { checkPanel } = require('../../judge/config.js');
 const { mkScratch } = require('./scratch.js');
 
@@ -112,10 +112,17 @@ test('list-arms works, and pr-plan --suite pilot refuses to guess credits unless
 });
 
 // The real validator script on copies of bench/ with a few tasks kept. Other suites then disagree with the task
-// set, so only the lines about the kept tasks and the pilot suite are read.
+// set, so only the lines about the kept tasks and the pilot suite are read. The suites that bring their own task
+// directories (complex, sdlc, skilleval and the rest) are left out of the copy with those directories: validating
+// their tasks ran every hidden test there and made this file take 12 to 16 minutes (DEBT D-14).
+const EXTRA_SUITES = fs.readdirSync(path.join(BENCH_DIR, 'suites')).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
+  .map((f) => path.basename(f, '.json')).filter((name) => suiteExtraDirs(name, BENCH_DIR).length > 0);
+const EXTRA_DIRS = new Set(EXTRA_SUITES.flatMap((name) => suiteExtraDirs(name, BENCH_DIR)));
+const EXTRA_SUITE_FILES = new Set(EXTRA_SUITES.flatMap((name) => [`${name}.json`, `${name}.manifest.json`]).map((f) => path.join(BENCH_DIR, 'suites', f)));
+
 function validateCopy(keep, mutate) {
   const root = mkScratch('val-');
-  fs.cpSync(BENCH_DIR, path.join(root, 'bench'), { recursive: true, filter: (p) => path.basename(p) !== 'results' });
+  fs.cpSync(BENCH_DIR, path.join(root, 'bench'), { recursive: true, filter: (p) => path.basename(p) !== 'results' && !EXTRA_DIRS.has(p) && !EXTRA_SUITE_FILES.has(p) });
   const bench = path.join(root, 'bench');
   const used = new Set();
   for (const f of fs.readdirSync(path.join(bench, 'tasks'))) {

@@ -113,6 +113,56 @@
         "verdict": "pass",
         "note": "The fixture has no leftover solution file or test describing the finished implementation. Its deployment docs and changelog mention manifests and deployment operations generally, but do not name the defects or reveal the answer."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "gpt",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt states the requested behavior, interfaces, values, and constraints but does not prescribe a named implementation method or identify hidden traps or decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture deployment code and docs, including fixture/scripts/deploy.js and fixture/CHANGELOG.md, describe the existing behavior without listing the requested findings or hidden expected answers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "task.json field checks runs hidden/*.test.js, but the only hidden test is hidden/hidden/deploy.test.js; its line 12 resolves ROOT to hidden/ and lines 13-16 therefore expect hidden/scripts and hidden/public, which are not present in the fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "Even though the requested deploy behavior is inferable from task.json and fixture/scripts/deploy.js, the configured hidden check cannot target the fixture: task.json line 10 matches no stored test and hidden/hidden/deploy.test.js line 12 uses the wrong repository root."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: key-matches-fixture: task.json field checks runs hidden/*.test.js, but the only hidden test is hidden/hidden/deploy.test.js; its line 12 resolves ROOT to hidden/ and lines 13-16 therefore expect hidden/scripts and hidden/public, which are not present in the fix",
+      "recheck-failed: solvable-from-fixture: Even though the requested deploy behavior is inferable from task.json and fixture/scripts/deploy.js, the configured hidden check cannot target the fixture: task.json line 10 matches no stored test and hidden/hidden/deploy.test.js line 12 us"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 19.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }
