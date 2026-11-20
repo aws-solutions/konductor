@@ -43,20 +43,20 @@ describe('nodeStatuses', () => {
     ]);
   });
 
-  it('shows the end as halted, the failed stage as failed and the rest as not run', () => {
+  it('shows the end as halted, the blocked stage as blocked and the rest as not run', () => {
     expect(labels(helloRun(0, { blockedAt: 0 }))).toEqual([
       ['intent', 'done', 'Done'],
-      ['stage-draft', 'failed', 'Failed'],
+      ['stage-draft', 'failed', 'Blocked'],
       ['stage-review', 'queued', 'Not run'],
       ['end', 'failed', 'Halted'],
     ]);
   });
 
-  it('keeps the stages that passed before the failed one', () => {
+  it('keeps the stages that passed before the blocked one', () => {
     expect(labels(helloRun(0, { blockedAt: 1 }))).toEqual([
       ['intent', 'done', 'Done'],
       ['stage-draft', 'done', 'Done'],
-      ['stage-review', 'failed', 'Failed'],
+      ['stage-review', 'failed', 'Blocked'],
       ['end', 'failed', 'Halted'],
     ]);
   });

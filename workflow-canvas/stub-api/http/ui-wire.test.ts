@@ -51,6 +51,12 @@ describe('the wire types of the page read GET /api/workflow', () => {
       view: {
         name: 'hello',
         intent: { outcome: 'Add a greeting to the README' },
+        params: {
+          goal: {
+            description: 'What the workflow should accomplish.',
+            default: 'Add a greeting to the README',
+          },
+        },
         stages: [
           { name: 'draft', agent: 'k-developer' },
           { name: 'review', agent: 'k-quality-assurance' },

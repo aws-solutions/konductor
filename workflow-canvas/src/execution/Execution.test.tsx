@@ -10,7 +10,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { Execution } from './Execution';
-import type { RunView } from '../api/types';
+import type { RunView, WorkflowDocument } from '../api/types';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
 import {
@@ -34,11 +34,14 @@ function serverShowing(...readings: RunView[]): RunPort {
   };
 }
 
-async function openExecution(runs: RunPort) {
+async function openExecution(
+  runs: RunPort,
+  document: WorkflowDocument = HELLO_DOCUMENT,
+) {
   const scheduler = new FakeScheduler();
   const { unmount } = render(
     <App
-      load={Promise.resolve(loaded(HELLO_DOCUMENT, runs))}
+      load={Promise.resolve(loaded(document, runs))}
       scheduler={scheduler}
     />,
   );
@@ -105,12 +108,49 @@ describe('the Execution tab before a run', () => {
     expect(statusLine().textContent).toContain('Ready. Press Run to start.');
   });
 
-  it('offers the outcome of the intent as the goal', async () => {
+  it('offers the default of params.goal as the goal, and its description as help', async () => {
     await openExecution(serverShowing(helloRun(0)));
 
     expect((screen.getByLabelText('Goal') as HTMLInputElement).value).toBe(
       'Add a greeting to the README',
     );
+    expect(
+      screen.getByText('What the workflow should accomplish.'),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        'What the run should achieve. Every stage is given it.',
+      ),
+    ).toBeNull();
+  });
+
+  it('does not offer the outcome of the intent as the goal', async () => {
+    const view = { ...HELLO_DOCUMENT.view!, params: {} };
+    await openExecution(serverShowing(helloRun(0)), {
+      ...HELLO_DOCUMENT,
+      view,
+    });
+
+    expect((screen.getByLabelText('Goal') as HTMLInputElement).value).toBe('');
+  });
+
+  it('starts empty with Run off when params.goal has no default, and turns Run on when a goal is typed', async () => {
+    const view = {
+      ...HELLO_DOCUMENT.view!,
+      params: { goal: { description: 'Say what to build.' } },
+    };
+    const runs = serverShowing(helloRun(0));
+    await openExecution(runs, { ...HELLO_DOCUMENT, view });
+
+    expect((screen.getByLabelText('Goal') as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Say what to build.')).toBeTruthy();
+    expect(isOff(runButton())).toBe(true);
+    expect(runs.start).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Goal'), {
+      target: { value: 'Fix the typo' },
+    });
+    expect(isOff(runButton())).toBe(false);
   });
 
   it('announces the status in a polite live region that is always there', async () => {
@@ -255,11 +295,84 @@ describe('a run', () => {
     await press(runButton());
     await tick(scheduler);
 
-    expect(badges()).toEqual(['Done', 'Failed', 'Not run', 'Halted']);
+    expect(badges()).toEqual(['Done', 'Blocked', 'Not run', 'Halted']);
     expect(statusLine().textContent).toContain(
       'Run halted at draft. 0 of 2 stages done. Exit code 1.',
     );
     expect(isOff(runButton())).toBe(false);
+  });
+
+  it.each([
+    ['RESULT_MISSING', 'The final message of the session has no result line.'],
+    ['RESULT_INVALID', 'The result line of the session is not valid.'],
+    ['RESULT_FAILURE', 'The agent reported that it could not do the work.'],
+    [
+      'SESSION_FAILED',
+      'The session could not start, its agent was not found, or it ended with an error.',
+    ],
+    ['TIMEOUT', 'The stage, or one of its checks, ran out of time.'],
+    [
+      'OUTPUT_MISSING',
+      'A file that the stage must leave behind does not exist.',
+    ],
+    [
+      'OUTPUT_UNCHANGED',
+      'A file that the stage must leave behind was not created or changed by the stage.',
+    ],
+    ['CHECK_FAILED', 'A check that the stage must pass failed.'],
+  ])(
+    'shows the blocked stage with the reason %s and what it means',
+    async (reason, sentence) => {
+      await openExecution(serverShowing(helloRun(0, { blockedAt: 1, reason })));
+
+      await press(runButton());
+
+      const blocked = await screen.findByTestId('blocked-stage');
+      expect(blocked.textContent).toBe(
+        `Blocked stagereviewReason${reason}${sentence}`,
+      );
+    },
+  );
+
+  it('shows a reason that the page does not know as it is, with no sentence', async () => {
+    await openExecution(
+      serverShowing(helloRun(0, { blockedAt: 0, reason: 'OUT_OF_CREDIT' })),
+    );
+
+    await press(runButton());
+
+    const blocked = await screen.findByTestId('blocked-stage');
+    expect(blocked.textContent).toBe('Blocked stagedraftReasonOUT_OF_CREDIT');
+  });
+
+  it('shows a blocked stage with no reason in the reply, with no reason block', async () => {
+    const run = helloRun(0, { blockedAt: 1 });
+    await openExecution(
+      serverShowing({
+        ...run,
+        stages: run.stages.map(({ name, status }) => ({ name, status })),
+      }),
+    );
+
+    await press(runButton());
+
+    const blocked = await screen.findByTestId('blocked-stage');
+    expect(blocked.textContent).toBe('Blocked stagereview');
+    expect(statusLine().textContent).toContain('review');
+    expect(screen.queryByTestId('run-error')).toBeNull();
+  });
+
+  it('shows no blocked stage while the run goes on, or after it passed', async () => {
+    const scheduler = await openExecution(
+      serverShowing(helloRun(0), helloRun(2)),
+    );
+
+    await press(runButton());
+    expect(screen.queryByTestId('blocked-stage')).toBeNull();
+    await tick(scheduler);
+
+    expect(statusLine().textContent).toContain('Run passed.');
+    expect(screen.queryByTestId('blocked-stage')).toBeNull();
   });
 
   it('shows no error alert when a stage fails: the failure is a result, not an error', async () => {
@@ -467,12 +580,14 @@ describe('the goal', () => {
     expect(runs.start).not.toHaveBeenCalled();
   });
 
-  it('offers a goal of one line when the outcome of the intent has line breaks', async () => {
+  it('offers a goal of one line when the default of params.goal has line breaks', async () => {
     const many = {
       ...HELLO_DOCUMENT,
       view: {
         ...HELLO_DOCUMENT.view!,
-        intent: { outcome: 'Fix the typo\n  and add a test\r\nthen ship' },
+        params: {
+          goal: { default: 'Fix the typo\n  and add a test\r\nthen ship' },
+        },
       },
     };
     const runs = serverShowing(helloRun(0));
@@ -733,6 +848,30 @@ describe('the live regions', () => {
     expect(statusLive().textContent).toBe('');
   });
 
+  it('say a name in backticks as plain text, while the alert shows it as code', async () => {
+    const runs: RunPort = {
+      start: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'The server no longer knows this session. Start `flow view` again and open the address it prints.',
+          ),
+        ),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    expect(alertLive().textContent).toBe(
+      'The run did not start. The server no longer knows this session. Start flow view again and open the address it prints.',
+    );
+    expect(alertLive().textContent).not.toContain('`');
+    expect(
+      screen.getByTestId('run-error').querySelector('code')?.textContent,
+    ).toBe('flow view');
+  });
+
   it('say that the run ended, while the Designer tab is open', async () => {
     const runs = serverShowing(helloRun(0), helloRun(1), helloRun(2));
     const scheduler = await openExecution(runs);
@@ -745,6 +884,56 @@ describe('the live regions', () => {
 
     expect(statusLive().textContent).toBe(
       'Run passed. 2 of 2 stages done. Exit code 0.',
+    );
+  });
+
+  it('say why the stage of a halted run stopped, in the sentence of its reason', async () => {
+    await openExecution(serverShowing(helloRun(0, { blockedAt: 1 })));
+
+    await press(runButton());
+
+    await waitFor(() =>
+      expect(statusLive().textContent).toBe(
+        'Run halted at review. 1 of 2 stages done. Exit code 1. The final message of the session has no result line.',
+      ),
+    );
+    expect(statusLive().textContent).not.toContain('`');
+  });
+
+  it('say the code of a reason that the page does not know', async () => {
+    await openExecution(
+      serverShowing(helloRun(0, { blockedAt: 0, reason: 'OUT_OF_CREDIT' })),
+    );
+
+    await press(runButton());
+
+    await waitFor(() =>
+      expect(statusLive().textContent).toBe(
+        'Run halted at draft. 0 of 2 stages done. Exit code 1. OUT_OF_CREDIT',
+      ),
+    );
+  });
+
+  it.each([
+    ['no reason', undefined],
+    ['an empty reason', ''],
+  ])('say no reason for a blocked stage with %s', async (_, reason) => {
+    const run = helloRun(0, { blockedAt: 1 });
+    await openExecution(
+      serverShowing({
+        ...run,
+        stages: run.stages.map(({ name, status }) =>
+          reason === undefined ? { name, status } : { name, status, reason },
+        ),
+      }),
+    );
+
+    await press(runButton());
+
+    await waitFor(() =>
+      expect(statusLive().textContent).toBe(
+        'Run halted at review. 1 of 2 stages done. Exit code 1.',
+      ),
     );
   });
 

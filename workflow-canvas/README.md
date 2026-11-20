@@ -12,9 +12,9 @@ a stage, rename it, add a stage, delete one and save the file. A save changes
 only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
 draw. The Run view draws the saved workflow and runs it: a Run button
-starts a run, and each node shows its live state until the run ends. The
-contract, the stub that serves it and the tests around both are in this
-folder.
+starts a run, and each node shows its live state until the run ends. A blocked
+stage shows its reason. The contract, the stub that serves it and the tests
+around both are in this folder.
 
 ## Layout
 
@@ -165,8 +165,9 @@ npm run stub
 ```
 
 The launch code is new each time and works once, within 60 seconds of the
-moment the stub starts listening. A used address is dead: get a fresh launch
-address from the server (the stub prints one each time it starts).
+moment the stub starts listening. A used address is dead: start `flow view`
+again and open the address it prints (the stub stands in for `flow view` and
+prints one each time it starts).
 `POST /api/session` trades the code for the token that the other calls send as
 `Authorization: Bearer <token>`. `STUB_PORT` sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
@@ -318,12 +319,19 @@ The rest wraps the core, so the rules can be tested without a browser:
   adapter over `fetch`. It ignores fields it does not know, refuses a reply
   that breaks the contract, and turns a failed call into an `ApiError` with a
   message fit to show.
+  The harness of a session and of a run is a string that is not empty. The
+  contract names `kiro-cli`, `claude` and `fake` (tests only) and lets a
+  response enum gain values, so the page reads any other name too; an empty or
+  missing harness is a bad reply. The page shows it on each stage as it is and
+  has no control to pick one.
   `messageOf` (`api/message-of.ts`) is how every alert words a failure, and it
   adds what to do next: for no answer, or a 5xx that is not the API's (the
-  answer of a proxy whose server is down), "If it stopped, start it again and
-  get a fresh launch address from the server."; for the API's 401 (the session
-  is gone, as after the server started again), "Get a fresh launch address from
-  the server."
+  answer of a proxy whose server is down), "If it stopped, start `flow view`
+  again and open the address it prints."; for the API's 401 (the session is
+  gone, as after the server started again), "Start `flow view` again and open
+  the address it prints." An address with no launch code gets the same
+  instruction. With the stub, which stands in for `flow view`, start the stub
+  again.
 - `launch/launch-code.ts` and `workflow/` take the launch code from the
   address and load the workflow. `loadWorkflow` never rejects: it returns
   `{ ok: true, workflow }` or `{ ok: false, message }`. `createWorkflowSource`
@@ -345,8 +353,8 @@ The rest wraps the core, so the rules can be tested without a browser:
   session of a code in the address is kept as soon as the code opens it, in
   place of a kept one unless a newer one was kept meanwhile, so a first load
   that fails can be retried by a reload. A 401 on the kept token, on any call
-  (the server was started again), clears it and asks for a fresh launch address
-  (an address works once). A pasted code replaces the kept session only once
+  (the server was started again), clears it and tells the user to start
+  `flow view` again (an address works once). A pasted code replaces the kept session only once
   the workflow of that code is on the page. Until then its session waits under
   a second key as the pending one, and a reload tries it before the kept
   session, so a pasted address whose first load failed is not lost. A session
@@ -545,8 +553,10 @@ The code follows the split of the Run view:
 ## The Run view
 
 The view draws the same graph as the Design view, read-only, with a **Goal** box
-and a **Run** button beside it. The goal starts as the outcome of the
-intent, because the API needs one (1 to 2048 characters) to start a run.
+and a **Run** button beside it. The goal starts as the `default` of the file's
+`params.goal`, and the `description` of that param is the help text of the box.
+A file without a default leaves the box empty and Run off until a goal is typed,
+because the API needs one (1 to 2048 characters) to start a run.
 
 - **Run** calls `POST /api/run` with the goal, then reads
   `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
@@ -562,8 +572,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   already in progress.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). If the server was started
-  again, the kept token is refused and the page asks for a fresh launch
-  address; the run goes on unseen. The tab keeps the id of the latest run in
+  again, the kept token is refused and the page tells the user to start
+  `flow view` again; the run goes on unseen. The tab keeps the id of the latest run in
   the storage of the browser tab (`sessionStorage`; the id is no secret) and
   drops it once the run has ended or turns out to be gone. When the page
   opens again with a session it reads that run, trying again like any read. If the run is still running, the
@@ -586,22 +596,32 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   gets no answer, or is accepted in a reply the page cannot read, says that the
   run may not have started and that Run joins it if it did.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
-  outline), **Running**, **Done** and **Failed**. The word carries the state;
+  outline), **Running**, **Done** and **Blocked**. The word carries the state;
   only Queued and Not run also differ in shape. The intent is Done once the run
-  has it. After a halt, the stages behind the failed one say **Not run**. The end
+  has it. After a halt, the stages behind the blocked one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
+- The stage that stopped a run shows under the status line, with the code of
+  its `reason` (such as `RESULT_MISSING`) and one sentence for each code that
+  the contract lists. A code the page does not know is shown as it is. A
+  blocked stage with a missing or empty `reason` shows with its name and no
+  reason, as the contract has a client treat a reason it does not know like any
+  other blocked stage. A `reason` that is not a string makes the reply a bad
+  reply.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
   done."). A screen reader hears each change from a polite live region that
   `App` keeps outside the tabs, so it is announced while the Design view is
-  open too. Each node's name for a screen reader ends with its state.
+  open too. For a halted run it ends with the sentence of the blocked stage's
+  reason, or the code when the page does not know it. Each node's name for a
+  screen reader ends with its state.
 - An error from the API, whether the run does not start or a read fails, shows
-  in one alert under the Run button, with the sentence the server gave. A
-  screen reader hears it from an alert region that `App` keeps outside the
+  in one alert under the Run button, with the sentence the server gave and
+  each name in backticks shown as code. A screen reader hears the same
+  sentence, without the backticks, from an alert region that `App` keeps outside the
   tabs, so it is read when it appears even if the Design view is open; the
   status line on the tab says only "See the error below.", which the live status region leaves out. When a read fails, the
   nodes are cleared and the alert adds that the run (with its id) may still be
   going on the server. A failed stage is a result, not an error, so it has no
-  alert. The goal is one line: line breaks in the outcome of the intent become
+  alert. The goal is one line: line breaks in the default become
   spaces, and Enter that ends an input method composition starts no run.
 - A workflow can be saved while a run goes on, so the run may have other stages
   than the graph. The graph is the saved workflow, and it is drawn again when
@@ -619,7 +639,8 @@ The code follows the ports-and-adapters split of the graph:
 
 - `src/execution/core/` is the core and does no IO: the state of the tab and
   its reducer, the loop that starts a run and reads it (`startAndFollow`), the
-  node states and the status sentences. Its ports are `RunPort` (start and
+  node states, the status sentences and the sentences of the reasons of a blocked
+  stage. Its ports are `RunPort` (start and
   read a run) and `Scheduler` (wait for some milliseconds), so a test moves
   time by hand and nothing sleeps. A test (`test-support/execution-purity.test.ts`)
   fails if the core imports anything but its own modules, the graph core and the
@@ -768,7 +789,8 @@ also saved with unsaved edits (`designer-editing.png`, and
 (`designer-saved.png`), with a problem the server found
 (`designer-problems.png`), when the file changed on disk
 (`designer-conflict.png`) and with a change it cannot write in place
-(`designer-not-in-place.png`). Pull request
+(`designer-not-in-place.png`). The Run view is also saved after a stage was
+blocked (`execution-tab-blocked.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.
 

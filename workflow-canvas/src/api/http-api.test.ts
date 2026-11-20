@@ -11,17 +11,33 @@ const SESSION_BODY = {
   future_field: true,
 };
 
+// A workflow in the first-release format, and its view as the contract has
+// it. The page reads only the keys it draws, and ignores the others.
+const TEXT =
+  'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting\nstages:\n  - name: draft\n    agent: k-developer\n    prompt: Write the greeting.\n';
+
 const DOCUMENT_BODY = {
   name: 'hello',
-  text: 'name: hello\n',
+  text: TEXT,
   hash: 'a'.repeat(64),
   read_only: false,
   view: {
+    format: 'konductor/1',
+    version: '0.1.0',
     name: 'hello',
     intent: { outcome: 'Add a greeting' },
-    stages: [{ name: 'draft', agent: 'k-developer' }],
+    stages: [
+      { name: 'draft', agent: 'k-developer', prompt: 'Write the greeting.' },
+    ],
   },
   diagnostics: [],
+};
+
+/** The view of `DOCUMENT_BODY` as the page reads it. */
+const VIEW = {
+  name: 'hello',
+  intent: { outcome: 'Add a greeting' },
+  stages: [{ name: 'draft', agent: 'k-developer' }],
 };
 
 const SAVE_BODY = {
@@ -109,6 +125,15 @@ describe('createHttpApi', () => {
     });
   });
 
+  it.each(['kiro-cli', 'claude', 'fake', 'future-harness'])(
+    'reads a session of the harness %s, as it is',
+    async (harness) => {
+      const { api } = apiFor(reply({ ...SESSION_BODY, harness }));
+
+      expect((await api.createSession('c')).harness).toBe(harness);
+    },
+  );
+
   it('gets /api/workflow with the bearer token', async () => {
     const { api, fetchFn } = apiFor(reply(DOCUMENT_BODY));
 
@@ -127,12 +152,45 @@ describe('createHttpApi', () => {
 
     expect(await api.getWorkflow('t')).toEqual({
       name: 'hello',
-      text: 'name: hello\n',
+      text: TEXT,
       hash: 'a'.repeat(64),
       readOnly: false,
-      view: DOCUMENT_BODY.view,
+      view: VIEW,
       diagnostics: [],
     });
+  });
+
+  it('reads the goal param of the view, and leaves out what is not a string', async () => {
+    const withParams = (goal: unknown) =>
+      reply({
+        ...DOCUMENT_BODY,
+        view: {
+          ...DOCUMENT_BODY.view,
+          params: { goal, other: { default: 'x' } },
+        },
+      });
+
+    expect(
+      (
+        await apiFor(
+          withParams({ description: 'Say it.', default: 'Do it' }),
+        ).api.getWorkflow('t')
+      ).view?.params,
+    ).toEqual({ goal: { description: 'Say it.', default: 'Do it' } });
+    expect(
+      (await apiFor(withParams({ default: 7 })).api.getWorkflow('t')).view
+        ?.params,
+    ).toEqual({ goal: {} });
+    expect(
+      (
+        await apiFor(
+          reply({
+            ...DOCUMENT_BODY,
+            view: { ...DOCUMENT_BODY.view, params: {} },
+          }),
+        ).api.getWorkflow('t')
+      ).view?.params,
+    ).toEqual({});
   });
 
   it('reads a read-only workflow', async () => {
@@ -272,6 +330,12 @@ describe('createHttpApi', () => {
       'a session with no version',
       { token: 't', root: 'hello', harness: 'kiro-cli' },
     ],
+    ['a session with no harness', { ...SESSION_BODY, harness: undefined }],
+    ['a session with an empty harness', { ...SESSION_BODY, harness: '' }],
+    [
+      'a session whose harness is not a string',
+      { ...SESSION_BODY, harness: 1 },
+    ],
   ])('fails on %s', async (_, body) => {
     const { api } = apiFor(reply(body));
 
@@ -391,7 +455,7 @@ describe('createHttpApi', () => {
   it('puts the text and base hash as JSON to /api/workflow with the token', async () => {
     const { api, fetchFn } = apiFor(reply(SAVE_BODY));
 
-    await api.saveWorkflow('t-1', 'name: hello\n', 'b'.repeat(64));
+    await api.saveWorkflow('t-1', TEXT, 'b'.repeat(64));
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -404,7 +468,7 @@ describe('createHttpApi', () => {
       'Content-Type': 'application/json',
     });
     expect(JSON.parse(init.body as string)).toEqual({
-      text: 'name: hello\n',
+      text: TEXT,
       base_hash: 'b'.repeat(64),
     });
   });
@@ -414,7 +478,7 @@ describe('createHttpApi', () => {
 
     expect(await api.saveWorkflow('t', 'x', 'b'.repeat(64))).toEqual({
       hash: 'c'.repeat(64),
-      view: DOCUMENT_BODY.view,
+      view: VIEW,
       diagnostics: [],
     });
   });
@@ -522,7 +586,7 @@ describe('createHttpApi', () => {
   it('posts the text as JSON to /api/validate with the token', async () => {
     const { api, fetchFn } = apiFor(reply(CHECK_BODY));
 
-    await api.checkWorkflow('t-1', 'name: hello\n');
+    await api.checkWorkflow('t-1', TEXT);
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -534,7 +598,7 @@ describe('createHttpApi', () => {
       Authorization: 'Bearer t-1',
       'Content-Type': 'application/json',
     });
-    expect(JSON.parse(init.body as string)).toEqual({ text: 'name: hello\n' });
+    expect(JSON.parse(init.body as string)).toEqual({ text: TEXT });
   });
 
   it('reads the view and findings of a check', async () => {
@@ -559,7 +623,7 @@ describe('createHttpApi', () => {
     );
 
     expect(await api.checkWorkflow('t', 'x')).toEqual({
-      view: DOCUMENT_BODY.view,
+      view: VIEW,
       diagnostics: [],
     });
   });
@@ -591,6 +655,7 @@ describe('createHttpApi', () => {
 
     expect(await api.getRun('t', 'r')).toEqual({
       runId: '20261024-0412-a7b3c',
+      harness: 'kiro-cli',
       status: 'running',
       exitCode: null,
       stages: [
@@ -600,6 +665,15 @@ describe('createHttpApi', () => {
     });
   });
 
+  it.each(['kiro-cli', 'claude', 'fake', 'future-harness'])(
+    'reads a run of the harness %s, as it is',
+    async (harness) => {
+      const { api } = apiFor(reply(run({ harness })));
+
+      expect((await api.getRun('t', 'r')).harness).toBe(harness);
+    },
+  );
+
   it('reads a run that halted, with the stage that was blocked', async () => {
     const halted = {
       run: {
@@ -607,7 +681,10 @@ describe('createHttpApi', () => {
         status: 'halted',
         finished_at: '2026-10-24T04:12:49Z',
         exit_code: 1,
-        stages: { write: { status: 'blocked' }, review: { status: 'pending' } },
+        stages: {
+          write: { status: 'blocked', reason: 'RESULT_MISSING' },
+          review: { status: 'pending' },
+        },
       },
     };
     const { api } = apiFor(reply(halted));
@@ -616,10 +693,75 @@ describe('createHttpApi', () => {
       status: 'halted',
       exitCode: 1,
       stages: [
-        { name: 'write', status: 'blocked' },
+        { name: 'write', status: 'blocked', reason: 'RESULT_MISSING' },
         { name: 'review', status: 'pending' },
       ],
     });
+  });
+
+  // A halted run whose blocked stage has the reason given.
+  const haltedWith = (write: Record<string, unknown>) =>
+    run({
+      status: 'halted',
+      finished_at: '2026-10-24T04:12:49Z',
+      exit_code: 1,
+      stages: {
+        write: { status: 'blocked', ...write },
+        review: { status: 'pending' },
+      },
+    });
+
+  it('reads a reason that this page does not know, as it is', async () => {
+    const { api } = apiFor(reply(haltedWith({ reason: 'OUT_OF_CREDIT' })));
+
+    expect((await api.getRun('t', 'r')).stages[0]).toEqual({
+      name: 'write',
+      status: 'blocked',
+      reason: 'OUT_OF_CREDIT',
+    });
+  });
+
+  it('keeps no reason on a stage that is not blocked', async () => {
+    const { api } = apiFor(
+      reply(
+        run({
+          stages: {
+            write: { status: 'passed', reason: 'RESULT_MISSING' },
+            review: { status: 'running' },
+          },
+        }),
+      ),
+    );
+
+    expect((await api.getRun('t', 'r')).stages[0]).toEqual({
+      name: 'write',
+      status: 'passed',
+    });
+  });
+
+  it.each([
+    ['no reason', {}],
+    ['an empty reason', { reason: '' }],
+  ])(
+    'reads a blocked stage with %s as blocked, with no reason',
+    async (_, write) => {
+      const { api } = apiFor(reply(haltedWith(write)));
+
+      const view = await api.getRun('t', 'r');
+
+      expect(view.status).toBe('halted');
+      expect(view.stages[0]).toEqual({ name: 'write', status: 'blocked' });
+    },
+  );
+
+  it.each([
+    ['a number', 1],
+    ['null', null],
+    ['an object', { code: 'TIMEOUT' }],
+  ])('refuses a blocked stage whose reason is %s', async (_, reason) => {
+    const { api } = apiFor(reply(haltedWith({ reason })));
+
+    await expect(api.getRun('t', 'r')).rejects.toBeInstanceOf(ApiError);
   });
 
   it('takes the order from `order`, not from the keys of `stages`', async () => {
@@ -652,6 +794,9 @@ describe('createHttpApi', () => {
   it.each([
     ['a body with no run', {}],
     ['a run with an unknown status', run({ status: 'paused' })],
+    ['a run with no harness', run({ harness: undefined })],
+    ['a run with an empty harness', run({ harness: '' })],
+    ['a run whose harness is not a string', run({ harness: ['claude'] })],
     ['a run with no run id', run({ run_id: undefined })],
     ['an order that is not a list', run({ order: 'write' })],
     ['a stage in `order` that `stages` lacks', run({ order: ['nope'] })],
