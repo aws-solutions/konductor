@@ -4,19 +4,20 @@ import { describe, expect, it } from 'vitest';
 import type { Scheduler } from '../execution/core/ports';
 import {
   REQUEST_LIMIT_MS,
+  runEventsPath,
   type EventsReply,
-  type RunEventsPorts,
-  type SendRequest,
+  type ReadEvents,
 } from './follow-run-events';
-import { useFollowRun, type FollowRunInput } from './useFollowRun';
+import { useFollowRun, type FollowRunInput } from './use-follow-run';
 
 const settle = () => act(async () => {});
 
 /**
- * A server whose every call waits until the test answers it. A call rejects
- * when its signal aborts, as `fetch` does.
+ * The reads of one session, whose every call waits until the test answers
+ * it. A call rejects when its signal aborts, as `fetch` does. `log` may be
+ * shared by two sessions, to tell the order of their calls.
  */
-class HeldServer {
+class HeldSession {
   readonly paths: string[] = [];
   inFlight = 0;
   mostInFlight = 0;
@@ -25,16 +26,31 @@ class HeldServer {
     reject: (error: Error) => void;
   }[] = [];
 
-  readonly send: SendRequest = (path, { signal }) => {
+  constructor(
+    private readonly name = 'session',
+    readonly log: string[] = [],
+  ) {}
+
+  readonly readEvents: ReadEvents = (runId, after, wait, signal) => {
+    const path = runEventsPath(runId, after, wait);
     this.paths.push(path);
+    this.log.push(`${this.name} reads ${runId} after ${after}`);
     this.inFlight += 1;
     this.mostInFlight = Math.max(this.mostInFlight, this.inFlight);
+    let settled = false;
     return new Promise<EventsReply>((resolve, reject) => {
       this.held.push({ resolve, reject });
-      signal.addEventListener('abort', () => reject(new Error('aborted')), {
-        once: true,
-      });
+      signal.addEventListener(
+        'abort',
+        () => {
+          if (settled) return;
+          this.log.push(`${this.name} aborted`);
+          reject(new Error('aborted'));
+        },
+        { once: true },
+      );
     }).finally(() => {
+      settled = true;
       this.inFlight -= 1;
     });
   };
@@ -69,10 +85,6 @@ const scheduler: Scheduler = {
     }),
 };
 
-function portsOf(server: HeldServer): RunEventsPorts {
-  return { send: server.send, scheduler, now: () => 0 };
-}
-
 const at = '2026-10-24T04:12:05Z';
 const stageState = (seq: number, stage: string, status: string) => ({
   seq,
@@ -96,12 +108,15 @@ const page = (events: { seq: number }[], finished = false) => ({
   finished,
 });
 
-function renderFollow(server: HeldServer, input: Partial<FollowRunInput> = {}) {
-  const ports = portsOf(server);
+function renderFollow(
+  session: HeldSession,
+  input: Partial<FollowRunInput> = {},
+) {
   return renderHook((props: Partial<FollowRunInput>) =>
     useFollowRun({
-      ports,
-      token: 'tok',
+      readEvents: session.readEvents,
+      scheduler,
+      now: () => 0,
       runId: 'r1',
       order: ['draft', 'review'],
       ...input,
@@ -113,20 +128,20 @@ function renderFollow(server: HeldServer, input: Partial<FollowRunInput> = {}) {
 const pathRun = (path: string | undefined) => path?.split('/')[3];
 
 describe('useFollowRun', () => {
-  it('is idle with no run id or no token, and calls nothing', async () => {
-    const server = new HeldServer();
-    const noRun = renderFollow(server, { runId: undefined });
-    const noToken = renderFollow(server, { token: undefined });
+  it('is idle with no run id or no session, and reads nothing', async () => {
+    const session = new HeldSession();
+    const noRun = renderFollow(session, { runId: undefined });
+    const noSession = renderFollow(session, { readEvents: undefined });
     await settle();
 
     expect(noRun.result.current).toEqual({ status: { kind: 'idle' } });
-    expect(noToken.result.current).toEqual({ status: { kind: 'idle' } });
-    expect(server.paths).toEqual([]);
+    expect(noSession.result.current).toEqual({ status: { kind: 'idle' } });
+    expect(session.paths).toEqual([]);
   });
 
   it('follows a run to its end', async () => {
-    const server = new HeldServer();
-    const { result } = renderFollow(server);
+    const session = new HeldSession();
+    const { result } = renderFollow(session);
     await settle();
 
     expect(result.current.status).toEqual({ kind: 'following' });
@@ -135,11 +150,11 @@ describe('useFollowRun', () => {
       'pending',
     ]);
 
-    await server.answer(page([stageState(1, 'draft', 'running')]));
+    await session.answer(page([stageState(1, 'draft', 'running')]));
     expect(result.current.status).toEqual({ kind: 'following' });
     expect(result.current.run?.stages[0]?.status).toBe('running');
 
-    await server.answer(
+    await session.answer(
       page(
         [
           stageState(2, 'draft', 'passed'),
@@ -157,83 +172,107 @@ describe('useFollowRun', () => {
   });
 
   it('starts again from the first event when the run id changes, after the old follower ends', async () => {
-    const server = new HeldServer();
-    const { result, rerender } = renderFollow(server);
+    const session = new HeldSession();
+    const { result, rerender } = renderFollow(session);
     await settle();
-    await server.answer(page([stageState(1, 'draft', 'running')]));
+    await session.answer(page([stageState(1, 'draft', 'running')]));
 
     rerender({ runId: 'r2' });
     await settle();
 
     expect(result.current.status).toEqual({ kind: 'following' });
     expect(result.current.run?.stages[0]?.status).toBe('pending');
-    expect(server.paths.map(pathRun)).toEqual(['r1', 'r1', 'r2']);
-    expect(server.paths.at(-1)).toContain('after=0');
-    expect(server.mostInFlight).toBe(1);
+    expect(session.paths.map(pathRun)).toEqual(['r1', 'r1', 'r2']);
+    expect(session.paths.at(-1)).toContain('after=0');
+    expect(session.mostInFlight).toBe(1);
   });
 
   it('keeps no update of the old run once the id has changed', async () => {
-    const server = new HeldServer();
-    const { result, rerender } = renderFollow(server);
+    const session = new HeldSession();
+    const { result, rerender } = renderFollow(session);
     await settle();
     rerender({ runId: 'r2' });
     await settle();
-    await server.answer(page([stageState(1, 'draft', 'blocked')]));
+    await session.answer(page([stageState(1, 'draft', 'blocked')]));
 
     expect(result.current.run?.stages[0]?.status).toBe('pending');
   });
 
-  it('does not restart for new ports with the same run', async () => {
-    const server = new HeldServer();
-    const { rerender } = renderFollow(server);
+  it('aborts the old follower first for a new session, and reads the next events through the new one', async () => {
+    const log: string[] = [];
+    const first = new HeldSession('first', log);
+    const second = new HeldSession('second', log);
+    const { result, rerender } = renderFollow(first);
     await settle();
-    rerender({ ports: portsOf(server) });
+    await first.answer(page([stageState(1, 'draft', 'running')]));
+
+    rerender({ readEvents: second.readEvents });
     await settle();
 
-    expect(server.paths).toHaveLength(1);
+    expect(log).toEqual([
+      'first reads r1 after 0',
+      'first reads r1 after 1',
+      'first aborted',
+      'second reads r1 after 0',
+    ]);
+    expect(first.inFlight).toBe(0);
+    expect(result.current.run?.stages[0]?.status).toBe('pending');
+
+    await second.answer(page([finishedEvent(1)], true));
+    expect(result.current.status).toEqual({ kind: 'finished' });
+  });
+
+  it('does not restart for a new clock with the same session', async () => {
+    const session = new HeldSession();
+    const { rerender } = renderFollow(session);
+    await settle();
+    rerender({ scheduler: { ...scheduler }, now: () => 1 });
+    await settle();
+
+    expect(session.paths).toHaveLength(1);
   });
 
   it('starts again when the stage order changes', async () => {
-    const server = new HeldServer();
-    const { result, rerender } = renderFollow(server);
+    const session = new HeldSession();
+    const { result, rerender } = renderFollow(session);
     await settle();
     rerender({ order: ['draft'] });
     await settle();
 
     expect(result.current.run?.stages.map((s) => s.name)).toEqual(['draft']);
-    expect(server.paths).toHaveLength(2);
+    expect(session.paths).toHaveLength(2);
   });
 
   it('aborts on unmount, and gives no update after it', async () => {
-    const server = new HeldServer();
-    const { result, unmount } = renderFollow(server);
+    const session = new HeldSession();
+    const { result, unmount } = renderFollow(session);
     await settle();
     const before = result.current;
     unmount();
     await settle();
 
-    expect(server.inFlight).toBe(0);
+    expect(session.inFlight).toBe(0);
     expect(result.current).toBe(before);
-    expect(server.paths).toHaveLength(1);
+    expect(session.paths).toHaveLength(1);
   });
 
   it('keeps following after a failed call, then reaches the end', async () => {
-    const server = new HeldServer();
-    const { result } = renderFollow(server);
+    const session = new HeldSession();
+    const { result } = renderFollow(session);
     await settle();
-    await server.drop();
+    await session.drop();
 
     expect(result.current.status).toEqual({ kind: 'following' });
-    await server.answer(page([finishedEvent(1)], true));
+    await session.answer(page([finishedEvent(1)], true));
     expect(result.current.status).toEqual({ kind: 'finished' });
-    expect(server.paths).toHaveLength(2);
+    expect(session.paths).toHaveLength(2);
   });
 
   it('says why following failed, and recovers with the next run id', async () => {
-    const server = new HeldServer();
-    const { result, rerender } = renderFollow(server);
+    const session = new HeldSession();
+    const { result, rerender } = renderFollow(session);
     await settle();
-    await server.answer({ error: 'There is no run with this id.' }, 404);
+    await session.answer({ error: 'There is no run with this id.' }, 404);
 
     expect(result.current.status).toEqual({
       kind: 'failed',
@@ -243,7 +282,20 @@ describe('useFollowRun', () => {
     rerender({ runId: 'r2' });
     await settle();
     expect(result.current.status).toEqual({ kind: 'following' });
-    await server.answer(page([finishedEvent(1)], true));
+    await session.answer(page([finishedEvent(1)], true));
     expect(result.current.status).toEqual({ kind: 'finished' });
+  });
+
+  it('says the session is lost on a 401, and reads no more', async () => {
+    const session = new HeldSession();
+    const { result } = renderFollow(session);
+    await settle();
+    await session.answer({ error: 'The session is not known.' }, 401);
+
+    expect(result.current.status).toEqual({
+      kind: 'session_lost',
+      message: 'The session is not known.',
+    });
+    expect(session.paths).toHaveLength(1);
   });
 });
