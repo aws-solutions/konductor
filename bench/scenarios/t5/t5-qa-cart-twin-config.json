@@ -126,22 +126,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the task goal, file structure, data format, constraints, and expected behaviors without naming specific implementation methods or pointing to hidden test traps."
+          "note": "rubric check: Rubric item config-handling asks for validation of shipping.json and explanation of absent/invalid file handling, which matches the request's requirements for ValidationError and fallback. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the task goal, file structure, data format, constraints, and expected behaviors without naming specific implementation methods or pointing to hidden test traps.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files show the current shipping implementation, errors module, and cart/order-total integration, but no file reveals the expected solution or lists the hidden test cases."
+          "note": "rubric check: The anchors (validation as specified, absent file keeps defaults, invalid file fails loudly) are judge-only; the prompt states the requirements but not the implementation. Earlier glm-5 check of the request, fixture and key: pass (Fixture files show the current shipping implementation, errors module, and cart/order-total integration, but no file reveals the expected solution or lists the hidden test cases.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests expect behaviors that follow from the prompt: reading config/shipping.json, country-specific overrides, default fallbacks (5000/799), ValidationError for invalid configs, and preserving existing option behaviors - all grounded in fixture's shipping.js, errors.js, and order-total.js integration."
+          "note": "rubric check: The rubric references config/shipping.json and the validation rules (non-negative integers, country overrides) which match the prompt's specification. Earlier glm-5 check of the request, fixture and key: pass (Hidden tests expect behaviors that follow from the prompt: reading config/shipping.json, country-specific overrides, default fallbacks (5000/799), ValidationError for invalid configs, and preserving existing option behaviors - all grounded in fixture's shipping.js, errors.js, and order-total.js integration.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture provides the current shipping.js with calculateShipping signature and validation patterns, errors.js with ValidationError, order-total.js showing integration, and docs/shipping.md documenting the 5000/799 defaults - sufficient for a careful engineer to implement the required functionality."
+          "note": "rubric check: Different correct implementations (different validation order, different error messages) can reach Pass as long as validation works and the message states the behavior. Earlier glm-5 check of the request, fixture and key: pass (The fixture provides the current shipping.js with calculateShipping signature and validation patterns, errors.js with ValidationError, order-total.js showing integration, and docs/shipping.md documenting the 5000/799 defaults - sufficient for a careful engineer to implement the required functionality.)."
         }
       ]
     }

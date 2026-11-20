@@ -162,7 +162,34 @@
         "verdict": "pass",
         "note": "I independently verified: (1) capacity values S2=71, S7=60, S8=76 follow from 79 minus holidays and leave per README rules; (2) the 7-ticket chain MIG-014→MIG-126 follows from depends_on links; (3) earliest_date Apr 30 follows from handoff constraints (Tue/Wed for Runtime, Mon/Thu for Release Ops) and leave timing. All key values are derivable from fixture data using stated conventions."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a yes/no forecast without prescribing a method; MIG-142 is a large independent epic correctly excluded from the critical path (absent assertion), not a decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains tickets, capacity, holidays, and calendar files; it does not state that March 31 is missed or list the critical chain MIG-014 through MIG-126."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The key's assertions reference ticket IDs, sprint capacities, and dates present in fixture files; the April 30 forecast follows from the dependency chain, holidays, and leaves in the data."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can trace the dependency chain, sum estimates, account for holidays/leave in capacity, identify handoff constraints, and derive the forecast date."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

@@ -556,7 +556,8 @@
                   "final",
                   "fresh_read_before",
                   "approval_before",
-                  "recovered_or_declined"
+                  "recovered_or_declined",
+                  "held_safe_state"
                 ]
               },
               "sensors": {

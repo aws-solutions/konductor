@@ -139,22 +139,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal, files, output format, and constraints without naming a specific calculation method, technique, or pointing at traps/decoys."
+          "note": "rubric check: Rubric evaluates clear explanation of proportional allocation, honest summary, and reader fit without requiring a methodology. Earlier glm-5 check of the request, fixture and key: pass (The prompt states the goal, files, output format, and constraints without naming a specific calculation method, technique, or pointing at traps/decoys.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files (vendor-quote.txt, appointment-export.csv, clinic-directory.csv) provide pricing data and booking records but do not state the expected cost allocations or identify Cedar Grove as highest-cost clinic."
+          "note": "rubric check: Rubric anchors (proportional allocation by booking volume, platform fee as shared cost, overage if applicable) describe the approach; specific figures come from fixture. Earlier glm-5 check of the request, fixture and key: pass (Fixture files (vendor-quote.txt, appointment-export.csv, clinic-directory.csv) provide pricing data and booking records but do not state the expected cost allocations or identify Cedar Grove as highest-cost clinic.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests expect: Cedar Grove (3 booked, $90), Harbor Point (2 booked, $60), Northgate (1 booked, $30), total $180. All values follow from fixture: appointment-export.csv shows 3/2/1 booked appointments (excluding cancelled), vendor-quote.txt shows $180/month platform fee."
+          "note": "rubric check: Anchors correctly reference approach: shared platform fee split by booking volume, message overage from quote, one-time/unpriced items excluded from monthly total. Earlier glm-5 check of the request, fixture and key: pass (Hidden tests expect: Cedar Grove (3 booked, $90), Harbor Point (2 booked, $60), Northgate (1 booked, $30), total $180. All values follow from fixture: appointment-export.csv shows 3/2/1 booked appointments (excluding cancelled), vendor-quote.txt shows $180/month platform fee.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can count booked appointments from appointment-export.csv (3 Cedar Grove, 2 Harbor Point, 1 Northgate), read $180 platform fee from vendor-quote.txt, and calculate proportional allocations (90/60/30)."
+          "note": "rubric check: Different prose structure can still Pass if allocation is proportional, overage is addressed, and highest-cost clinic is correctly identified. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can count booked appointments from appointment-export.csv (3 Cedar Grove, 2 Harbor Point, 1 Northgate), read $180 platform fee from vendor-quote.txt, and calculate proportional allocations (90/60/30).)."
         }
       ]
     }

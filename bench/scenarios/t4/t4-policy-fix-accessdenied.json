@@ -128,29 +128,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the problem scenario, points to specific log and config files, and states constraints without naming methods, tools, or revealing which traps the checks target."
+          "note": "rubric check: Rubric item cause asks for the real causes of the denied upload and query, which matches the request's final message requirement to explain why upload and index query were denied. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the problem scenario, points to specific log and config files, and states constraints without naming methods, tools, or revealing which traps the checks target.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain evidence (logs showing AccessDenied, policy JSON with explicit Deny statements, config with ARNs) but no direct statements of what the solution should be or what hidden tests expect."
+          "note": "rubric check: The anchors (names missing statement, why needed) are judge-only; the fixture has log file but the agent must diagnose the cause. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain evidence (logs showing AccessDenied, policy JSON with explicit Deny statements, config with ARNs) but no direct statements of what the solution should be or what hidden tests expect.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All ARNs and key IDs used in hidden tests (export-permissions.test.js lines 12-20) come directly from fixture config/export.json fields: bucketArn, tableArn, indexArn, kmsKeyArn, roleArn."
+          "note": "rubric check: The rubric references the key use and header path for upload, index ARN for query, which align with the KMS and DynamoDB requirements in a real AWS scenario. Earlier glm-5 check of the request, fixture and key: pass (All ARNs and key IDs used in hidden tests (export-permissions.test.js lines 12-20) come directly from fixture config/export.json fields: bucketArn, tableArn, indexArn, kmsKeyArn, roleArn.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The log shows AccessDenied on s3:PutObject and dynamodb:Query; fixture policies show explicit Deny on the index ARN, KMS key, and S3 prefix; config provides all needed ARNs; careful analysis of IAM evaluation logic leads to the solution."
+          "note": "rubric check: Different correct explanations can reach Pass as long as they name the missing statements and why needed; the rubric judges correctness not exact phrasing. Earlier glm-5 check of the request, fixture and key: pass (The log shows AccessDenied on s3:PutObject and dynamodb:Query; fixture policies show explicit Deny on the index ARN, KMS key, and S3 prefix; config provides all needed ARNs; careful analysis of IAM evaluation logic leads to the solution.)."
         }
       ]
     }

@@ -114,7 +114,7 @@
     },
     "decision": "fix",
     "date": "2026-11-20",
-    "fixReason": "D-129: the DOM-free hidden tests restore history through a fake window that fires only popstate, so a correct fix that listens for hashchange (all 6 browser tests pass with it) fails 6 of 17 hidden tests and its own regression test. The writer family fixes it; kept out of pilot waves until then."
+    "fixReason": "D-131: the DOM-free hidden tests restore history through a fake window that fires only popstate, so a correct fix that listens for hashchange (all 6 browser tests pass with it) fails 6 of 17 hidden tests and its own regression test. The writer family fixes it; kept out of pilot waves until then."
   },
   "lockedAt": null
 }

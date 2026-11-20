@@ -121,7 +121,34 @@
         "verdict": "pass",
         "note": "Task is fair. All tests use only Node.js standard library, no external tools, no timing dependencies. The implementation is constrained but achievable within given file layering, parser, and Settings object constraints."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt specifies expansion semantics (${NAME}, defaults, escapes, cycles) without prescribing an implementation approach."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture's src/loader.js shows loadSettings with files/env options but no expansion logic; Settings class and parser exist without reference resolution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check expansion behaviors from prompt: ${NAME} resolution, :-default for empty/missing, nested defaults, \\\\${NAME} escapes, cycle detection with key and file in error."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can implement expansion from prompt spec; fixture provides the loader interface, Settings class, and CLI entry point to extend."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

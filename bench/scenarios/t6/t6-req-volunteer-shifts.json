@@ -265,29 +265,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt states the business goal, source folders, output path, JSON ending, and June target, but does not prescribe a method or identify hidden traps or answers."
+          "note": "rubric check: Rubric evaluates requirement actionability and trade-off understanding without demanding a methodology. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the business goal, source folders, output path, JSON ending, and June target, but does not prescribe a method or identify hidden traps or answers.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture provides source evidence and explicitly marks unresolved decisions, such as meetings/2024-03-05-followup.md lines 13-16, 18-21, 23-26, and 35-51; it does not contain a separate answer list for the scripted facts."
+          "note": "rubric check: Rubric anchors (Mountain Time, 5-7 day background check, group minimum 3, 24-hour cancellation exception, 16-17 age bracket) are from scripted user; not a giveaway. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture provides source evidence and explicitly marks unresolved decisions, such as meetings/2024-03-05-followup.md lines 13-16, 18-21, 23-26, and 35-51; it does not contain a separate answer list for the scripted facts.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden grounded checks are supported by fixture sources: policy/safeguarding-policy.md lines 11-25 covers age and role checks, policy/data-privacy-guidelines.md lines 35-43 covers coordinator access, and policy/volunteer-handbook-excerpt.md lines 14-15 covers capacity limits. Scripted values are supplied by the user facts in task.json."
+          "note": "rubric check: Anchors correctly cite scripted facts: Mountain Time with (MT), 5-7 business day background check, group minimum 3, 24-hour cancellation with emergency exception, age bracket 16-17 or 18+. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The hidden grounded checks are supported by fixture sources: policy/safeguarding-policy.md lines 11-25 covers age and role checks, policy/data-privacy-guidelines.md lines 35-43 covers coordinator access, and policy/volunteer-handbook-excerpt.md lines 14-15 covers capacity limits. Scripted values are supplied by the user facts in task.json.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive the required shift-cap, safeguarding, age/consent, privacy, reminder, and background-check requirements from the listed fixture documents and ask the six scripted questions in task.json for the open decisions."
+          "note": "rubric check: Different requirement structure can still Pass if all rules are testable and safeguarding/coordinator visibility limits are addressed. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can derive the required shift-cap, safeguarding, age/consent, privacy, reminder, and background-check requirements from the listed fixture documents and ask the six scripted questions in task.json for the open decisions.)."
         }
       ]
     }

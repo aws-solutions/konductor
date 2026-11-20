@@ -112,7 +112,34 @@
         "verdict": "pass",
         "note": "All mutants are realistic defects that would break production behavior; the behaviors are discoverable from reading the source, and the task is achievable within the constraints (reference solution kills 10/10)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt requests test coverage for specific widget modules without prescribing a testing methodology. No misleading hints point away from real problems."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Existing tests (picker.test.js, validation.test.js, etc.) cover happy paths but not the boundary conditions mutants check (December year edge, disabled interior dates, exact max note length, zero-decimal currencies)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Mutants target src/date-range-picker.js, validation.js, price.js, timing.js, store.js - all present in fixture. The 53-test budget and rubric match the prompt's requirements."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture source files expose the logic a developer must test. The prompt names the modules and the constraint (tests that survive a behaviour-preserving rewrite)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

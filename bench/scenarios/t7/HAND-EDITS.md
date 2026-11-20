@@ -81,3 +81,27 @@ because their keys check one-item lists that half a list still holds; reasons in
 - Who: claude (review-fix2 worker)
 - What: 25 bottom-line, reasoning and actionable-steering criteria across 12 tasks now carry Fail / Partial / Pass anchors that name the key's dates, totals, ticket ids and owners. Ids, weights and expert-key items are unchanged; task versions are up by 1.
 - Why: the independent review found these criteria had no anchors; the lazy answers (a one-line update and a bare JSON block) now land at Fail, and Pass needs the key's bottom line and reasoning.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t7-dep-conflicts | glm-5 (c09, full) | confirmed |  |
+| t7-dev-breakdown | glm-5 (c09, full) | confirmed |  |
+| t7-freeze-forecast | glm-5 (c09, full) | confirmed |  |
+| t7-pm-launch-cut | glm-5 (c09, full) | confirmed |  |
+| t7-program-brief | glm-5 (r3, rubric) | confirmed |  |
+| t7-program-rollup | glm-5 (c09, full) | confirmed |  |
+| t7-release-gate | glm-5 (r3, rubric) | confirmed |  |
+| t7-risk-owners | glm-5 (c09, full) | confirmed |  |
+| t7-scope-cut | glm-5 (c10, full) | confirmed |  |
+| t7-ship-train | glm-5 (c10, full) | confirmed |  |
+| t7-sprint-capacity | glm-5 (c10, full) | confirmed |  |
+| t7-status-slip-twin | glm-5 (c10, full) | confirmed |  |
+| t7-status-slip | glm-5 (c10, full) | confirmed |  |

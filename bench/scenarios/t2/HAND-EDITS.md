@@ -45,3 +45,30 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
 - `t2-pr-stock-reserve`: r1 given Fail/Partial/Pass anchors.
 - `t2-sec-dr-sso-login`: r1 given Fail/Partial/Pass anchors.
 - `t2-sec-pr-webhook-relay`: r1 given Fail/Partial/Pass anchors.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t2-arch-dr-event-store | glm-5 (r1, rubric) | confirmed |  |
+| t2-arch-dr-split-checkout | glm-5 (r1, rubric) | confirmed |  |
+| t2-arch-dr-two-regions | glm-5 (r1, rubric) | confirmed |  |
+| t2-dr-data-erasure | glm-5 (r1, rubric) | confirmed |  |
+| t2-dr-notify-fanout | glm-5 (r1, rubric) | confirmed |  |
+| t2-dr-rate-limits | glm-5 (r1, rubric) | confirmed |  |
+| t2-dr-search-reindex | glm-5 (r1, rubric) | confirmed |  |
+| t2-gaps-jwt-middleware | glm-5 (r1, rubric) | confirmed |  |
+| t2-pr-avatar-upload | glm-5 (r1, rubric) | confirmed |  |
+| t2-pr-cursor-pages | glm-5 (r1, rubric) | confirmed |  |
+| t2-pr-orders-migration | glm-5 (r1, rubric) | confirmed |  |
+| t2-pr-price-cache | glm-5 (r1, rubric) | confirmed |  |
+| t2-pr-refund-flow | glm-5 (r1, rubric) | confirmed |  |
+| t2-pr-stock-reserve | glm-5 (r1, rubric) | confirmed |  |
+| t2-sec-dr-sso-login | glm-5 (r1, rubric) | confirmed |  |
+| t2-sec-pr-webhook-relay | glm-5 (r1, rubric) | confirmed |  |

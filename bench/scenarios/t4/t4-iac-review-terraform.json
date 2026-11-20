@@ -165,29 +165,29 @@
       }
     ],
     "recheck": {
-      "family": "gpt",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json.prompt states the review goal, changed-file context, output format, and constraint without naming a review method, tool, checklist, trap, or expected finding."
+          "note": "rubric check: Rubric items clarity and prioritization ask for specific file references, actionable fixes, and correct severity ranking, which match the request to 'write the review' with findings. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json.prompt states the review goal, changed-file context, output format, and constraint without naming a review method, tool, checklist, trap, or expected finding.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/review/PR-142.md describes the requested feature and deployment sequence, while the Terraform files and docs provide configuration evidence rather than a prewritten findings list or expected answers."
+          "note": "rubric check: The anchors (file, line, concrete fix, merge blockers) are judge-only criteria; the fixture has the PR diff but not the findings or their severities. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/review/PR-142.md describes the requested feature and deployment sequence, while the Terraform files and docs provide configuration evidence rather than a prewritten findings list or expected answers.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expected issues are grounded in fixture/main.tf:140, variables.tf:61-72, and .github/workflows/ci.yml:27-37, plus database/main.tf:44-62, storage/main.tf:47-81, and iam/main.tf:93-125; the deployment and docs support the stated prioritization and public-site exception."
+          "note": "rubric check: The example findings in the Pass anchor (exposed reporting database, wildcard in role policy, default password, missing CI scan) are issues that exist in the fixture's Terraform files per the hidden tests. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expected issues are grounded in fixture/main.tf:140, variables.tf:61-72, and .github/workflows/ci.yml:27-37, plus database/main.tf:44-62, storage/main.tf:47-81, and iam/main.tf:93-125; the deployment and docs support the stated prioritization and public-site exception.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful reviewer can connect the exposed RDS and S3 settings, wildcard reporting policy, plaintext/default credentials, missing CI scan, and production deployment plan directly to the prompt and fixture, with no hidden facts or user answers required."
+          "note": "rubric check: A correct review can use different wording, order, or severity labels (within one level) and still reach Pass; the anchors judge explanation quality not exact phrasing. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful reviewer can connect the exposed RDS and S3 settings, wildcard reporting policy, plaintext/default credentials, missing CI scan, and production deployment plan directly to the prompt and fixture, with no hidden facts or user answers required.)."
         }
       ]
     }

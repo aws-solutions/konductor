@@ -68,7 +68,10 @@
       "lazy": 39,
       "alt": 100,
       "date": "2026-11-20"
-    }
+    },
+    "blockers": [
+      "key-names: limit names peak_write_wps, read_p99_ms, rpo_seconds, rto_seconds, partition_write_wcu are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
+    ]
   },
   "version": 3,
   "targetSkills": [
@@ -114,7 +117,34 @@
         "verdict": "pass",
         "note": "All required numbers are present: peak writes, hot key fraction, partition ceiling, limits for latency/budget/RPO/RTO; no missing data blocks a correct solution."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to choose a database approach, naming no framework or tool; fixture README.md's warning about superseded 8,000 writes/s staging figure is a legitimate trap the task tests for (must use 25,000 peak), not a decoy pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides traffic-profile.json (25,000 peak writes, 60% hot fraction), platform-limits.json (1,000 WCU per partition), price-sheet.json (cost rates), requirements.json (budget), recovery.json (RPO/RTO) - the agent must compute 15,000 hot writes / 8 partitions = 1,875 WCU > 1,000 limit to reject kv-on-demand."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden test decision.test.js reads fixture files and verifies chosen option is kv-provisioned-autoscaling, computed hot-partition WCU against platform ceiling, monthly cost against budget, and RPO/RTO against recovery objectives; rubric's Pass anchor specifies showing 60% x 25,000 / 8 partitions = 1,875 WCU > 1,000 ceiling, matching fixture data."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can compute hot-key partition WCU from traffic-profile.json peak_writes_per_second x hot_key_fraction / partitions, derive monthly cost from price-sheet.json rates, and reject kv-on-demand for partition ceiling violation; alternative option IDs matching fixture would pass tests."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [

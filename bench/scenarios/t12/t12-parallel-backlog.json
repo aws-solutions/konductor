@@ -1,7 +1,7 @@
 {
   "id": "t12-parallel-backlog",
   "class": "orchestration",
-  "version": 2,
+  "version": 3,
   "phase": "multi-phase",
   "phases2": [
     "planning",
@@ -115,7 +115,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -130,7 +130,10 @@
       "date": "2026-11-20"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: no-method-or-decoy (gpt-5.6-luna second pass: the request prescribes the plan, package and merge process); owner call, since that process is the T12 deliverable (D-127)"
+    ]
   },
   "lockedAt": null
 }

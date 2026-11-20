@@ -160,7 +160,34 @@
         "verdict": "pass",
         "note": "I independently re-derived: (1) remaining_points=110 using the median rule for WORK-1008/WORK-1048 blanks, (2) throughput=30 from ordinary sprints (excluding hackathon), (3) sprints_needed=4, (4) likely=2027.06 branch 2027-05-07, (5) committed=2027.07 release 2027-07-30. All match the key."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for train forecasting without naming a method. The edits.md confirms the README rule naming the hackathon sprint was removed, and notes WORK-1063 is a scope decoy (storage-named but Archive Migration initiative). The key tests that the agent excludes WORK-1063 but sizes the unestimated Storage Engine tickets (WORK-1008, WORK-1048)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains release-trains.csv, throughput-history.csv, remaining-work.csv, and review-and-stabilisation.md. The README and review-and-stabilisation.md explain conventions (blank estimate = median, feature flag soak train) without revealing the answer. The hackathon sprint (S-26-24, 86 points) is in throughput-history.csv with kind='hackathon'."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All items in key assertions exist: trains 2027.06 and 2027.07 in release-trains.csv, branch date 2027-05-07, remaining 110 points (13 Storage Engine tickets with blanks sized at 8 each per review-and-stabilisation.md), throughput 30 (ordinary sprints average), WORK-1063 (Archive Migration). The request's JSON shape matches key paths. The rubric aligns with expected reasoning."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can identify the branch date from release-trains.csv, calculate remaining Storage Engine points from remaining-work.csv (filtering by initiative, sizing blanks per the documented rule), compute throughput from ordinary sprints, and determine that 4 sprints from 2027-02-01 lands before 2027-05-07. Different valid forecasts would pass if they use correct dates, points, and exclude non-Storage Engine work."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

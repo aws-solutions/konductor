@@ -288,22 +288,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal (write docs/TEST-STRATEGY.md with risk analysis, test plan, order, and JSON block) but does not name specific methods, tools, or reference the findingsKey items the hidden tests check."
+          "note": "rubric check: Rubric items decision-quality and expert-key ask for go/no-go criteria, rollback conditions, and expertKey scoring, which match the request for a migration test plan. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal (write docs/TEST-STRATEGY.md with risk analysis, test plan, order, and JSON block) but does not name specific methods, tools, or reference the findingsKey items the hidden tests check.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain source code and tests to analyze, but no document listing the expected findings, bugs, or answers the hidden key expects."
+          "note": "rubric check: The anchors (minimum set to pass, go/no-go/rollback conditions, consequence for skipped work) are judge-only; the fixture has migration code but not the strategy. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source code and tests to analyze, but no document listing the expected findings, bugs, or answers the hidden key expects.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 8 locations in findingsKey exist in fixture: batch-runner.js, field-mapper.js, resolve-conflict.js, apply-change.js, verify-migration.js, timestamps.js, dead-letter-queue.js, and resume.js. The risks follow from analyzing these files (e.g., checkpoint written before commit in batch-runner.js line 8-9, silent truncation in field-mapper.js line 6-7, count-only verification in verify-migration.js lines 2-5)."
+          "note": "rubric check: The example consequences (duplicate or missing records, half-copied run that cannot resume) are plausible migration failures for a sync service. Earlier glm-5 check of the request, fixture and key: pass (All 8 locations in findingsKey exist in fixture: batch-runner.js, field-mapper.js, resolve-conflict.js, apply-change.js, verify-migration.js, timestamps.js, dead-letter-queue.js, and resume.js. The risks follow from analyzing these files (e.g., checkpoint written before commit in batch-runner.js line 8-9, silent truncation in field-mapper.js line 6-7, count-only verification in verify-migration.js)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can read the source files, tests, and docs in fixture to identify the risks (atomicity gap, silent coercion, tie-breaking, idempotency, verification depth, timezone handling, dead-letter context, resume path) and produce a test strategy document."
+          "note": "rubric check: Different correct strategies can reach Pass as long as they have decision rules, consequences, and address expertKey items; specific tests can vary. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can read the source files, tests, and docs in fixture to identify the risks (atomicity gap, silent coercion, tie-breaking, idempotency, verification depth, timezone handling, dead-letter context, resume path) and produce a test strategy document.)."
         }
       ]
     }

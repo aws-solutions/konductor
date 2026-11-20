@@ -226,22 +226,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal (requirements document), output format (markdown with JSON block), and topic areas, but does not name any specific method, tool, or decoy to use."
+          "note": "rubric check: Rubric evaluates requirement clarity and coverage without imposing a frontend methodology. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal (requirements document), output format (markdown with JSON block), and topic areas, but does not name any specific method, tool, or decoy to use.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain source material like validation code, event schemas, design notes, and data exports, but none list the expected requirements or hidden answers directly."
+          "note": "rubric check: Rubric anchors (US/Canada/UK only, 3 lookups max, WCAG 2.2 AA, 360px viewport, 48px controls) are from scripted user; not a giveaway. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source material like validation code, event schemas, design notes, and data exports, but none list the expected requirements or hidden answers directly.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All hidden test expectations are either from scriptedUser.facts (which provide authoritative answers via conversation) or grounded.test.js checks that reference fixture files (privacy policy for logging, address.js for core fields, events.json for analytics names)."
+          "note": "rubric check: Anchors correctly cite scripted facts: US/Canada/UK with Australia deferred to 2026-04-15, 3 lookups then manual entry, WCAG 2.2 AA, 360px viewport, 48px touch targets. Earlier glm-5 check of the request, fixture and key: pass (All hidden test expectations are either from scriptedUser.facts (which provide authoritative answers via conversation) or grounded.test.js checks that reference fixture files (privacy policy for logging, address.js for core fields, events.json for analytics names).)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive all requirements from the prompt, fixture source material (code, data, notes), and scripted user's factual answers without seeing hidden/ or solution/."
+          "note": "rubric check: Different requirement structure can still Pass if all constraints appear as testable frontend requirements with assumptions separated. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can derive all requirements from the prompt, fixture source material (code, data, notes), and scripted user's factual answers without seeing hidden/ or solution/.)."
         }
       ]
     }

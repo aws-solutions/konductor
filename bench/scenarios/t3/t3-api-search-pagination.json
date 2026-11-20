@@ -123,7 +123,34 @@
         "verdict": "pass",
         "note": "All required numbers are present in fixture files; no unstated format requirements or impossible constraints."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to choose architecture using supplied requirements without naming a method/framework. The 120ms staging value in traffic.csv is marked superseded and the fixture documents it should not be used - this is a distractor for reasoning, not a decoy pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains measurements, limits, and option profiles but does not state the answer or describe the finished decision. The correct choice requires computing that offset-sql's 4200ms exceeds the 250ms limit."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check decision JSON keys and values against fixture data (traffic.csv, service-limits.csv, option-profiles.csv, price-sheet.json). The meta.json acceptableOptions=['cursor-index'] matches the only option meeting latency. Rubric rewards rejecting offset-sql for exceeding the 250ms limit."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can compute 4200ms > 250ms to reject offset-sql and verify cursor-index meets all limits. The decision document structure (chosen/options/limits/monthly_cost_usd) is specified in the prompt."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [

@@ -123,7 +123,34 @@
         "verdict": "pass",
         "note": "All required numbers are present in fixture files; the 1,000 max_logical_databases limit is explicitly in service-levels.json."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to design tenant-isolated data model without naming a method. The 80ms sandbox target in requirements.md is explicitly marked superseded - this is a distractor for correct reasoning, not a decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains options.json, service-levels.json (1000 max_logical_databases), operations.md (connection-pool budget) but does not explicitly state the answer. Correct choice requires recognizing 12000 > 1000."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden schema.test.js verifies tenant_id-first indexes and (tenant_id, ticket_key) uniqueness. decision.test.js checks shared-composite against acceptableOptions. Rubric rewards rejecting per-customer for exceeding the 1000 database limit."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can read options.json (12000 databases), service-levels.json (max 1000), and compute that per-customer exceeds the limit. The schema requirements (tenant_id-first indexes) are derivable from requirements.md."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [

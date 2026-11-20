@@ -134,22 +134,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt specifies performance requirements and constraints (3 SQL statements, 8 MiB memory, byte-for-byte output) without prescribing any specific method, framework, or tool, and contains no misleading hints pointing away from the real problem."
+          "note": "Prompt describes performance symptoms (slow, high memory) and constraints (3 SQL statements, 8 MiB ceiling) without prescribing join or streaming approach."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture code shows N+1 query patterns in database.py (per-customer queries) and materializes results in memory (report.py, formatters.py), but does not explicitly describe the solution or mention joined queries, streaming, or keyed lookups as the answer."
+          "note": "Fixture shows current implementation; fixtures/expected/ has sample output but does not reveal N+1 query pattern or streaming solution."
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "fail",
-          "note": "The prompt states ReportDatabase must accept an optional sqlite3 connection parameter, but the fixture's ReportDatabase.__init__ only accepts a path and has no connection parameter; the hidden tests use ReportDatabase(path, connection=conn), which will fail on the unmodified fixture."
+          "verdict": "pass",
+          "note": "Hidden tests check 3-statement limit, memory ceiling, byte-for-byte output match; all paths (fixtures/expected/, reportjob module) exist in fixture, rubric anchors fit."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A competent developer can identify the N+1 query problem and quadratic list scan from the fixture code, understand the memory issue from materialized results, and devise solutions (joined queries, dictionary lookups, streaming) from the stated constraints without seeing hidden tests."
+          "note": "Developer can explore fixture's query patterns and understand constraints from prompt; correct alternate implementations that meet statement and memory limits would pass."
         }
       ]
     }

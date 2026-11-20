@@ -115,22 +115,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal (make tests trustworthy) and scope (pricing-related modules) without naming methods, tools, or pointing at specific traps."
+          "note": "The prompt describes the domain (carts, discounts, coupons, tax, shipping, order total) and the goal (trustworthy tests) without prescribing a method or providing decoys."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains source code and existing tests; no file lists the bugs, mutations, or expected findings the hidden checks look for."
+          "note": "Existing tests (discounts.test.js, etc.) check basic cases but not the boundary traps mutants test (percentage vs fixed order, exact expiry timestamp, free-shipping threshold, fractional cent rounding)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 10 mutants in hidden/mutation-kit/mutants.json modify files that exist in fixture/src/: cart.js, discounts.js, coupons.js, tax.js, shipping.js, order-total.js, and store.js."
+          "note": "Mutants target src/discounts.js, cart.js, coupons.js, shipping.js, tax.js, store.js, order-total.js - all present in fixture. The 57-test budget matches the prompt. Rubric 'clear-case-names' and 'suite-economy' align with request."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The source code in fixture/src/ contains the boundary conditions and logic an engineer can analyze (e.g., coupons.js line 12 uses > for expiry, shipping.js line 15 uses >= for threshold) to write tests that kill the mutants."
+          "note": "A developer can read the pricing source files to understand the rules and write tests for edge cases. The prompt clearly states the goal: tests that would have caught the wrong charge."
         }
       ]
     }

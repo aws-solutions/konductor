@@ -159,7 +159,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture: (1) Added tickets: 6 tickets created after 2027-05-07 with active status and no pre-lock parent with split comment = 29 points. (2) Slack: S12(44-0-37) + S13(48-4-41) + S14(45-2-36) = 17 points. (3) Cut: 29-17=12 points, exactly covered by PRJ-1114(5) + PRJ-1162(7). (4) PRJ-1046 protected by PRJ-1102 must-have dependency. (5) PRJ-1008 is customer commitment per product-requests.md. Tolerances are zero but values are integers derived from straightforward calculations."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a scope trade without naming any specific method. The edits.md notes that decoys (bug splits PRJ-1019 and PRJ-1073) were added as 'absent' assertions in the key, testing that the agent does not count them as added work."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains tickets.csv, product-requests.md, roadmap.md, and capacity.csv. None list the solution directly; the agent must analyze created dates vs lock date, identify bug splits from parent comments, find dependencies (PRJ-1046 for PRJ-1102), and calculate slack. The README explains conventions without revealing which tickets to cut."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All ticket IDs in the key (PRJ-1008, PRJ-1031, PRJ-1064, PRJ-1097, PRJ-1128, PRJ-1156, PRJ-1114, PRJ-1162, PRJ-1046, PRJ-1019, PRJ-1073) exist in tickets.csv. The rubric expects 29 added points (5+5+8+5+5+3), 17 slack, 12 cut. The launch date 2027-06-18 matches roadmap.md. The request's JSON shape matches the key's path structure."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can identify added work by comparing ticket created dates to lock date (2027-05-07 in roadmap.md), exclude bug splits by reading parent comments, calculate capacity from capacity.csv, find dependency PRJ-1046 from PRJ-1102's depends_on column, and select different cuts if they total 12 points and avoid the customer commitment and dependency-protected item."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

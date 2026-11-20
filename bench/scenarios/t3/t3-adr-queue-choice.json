@@ -73,7 +73,10 @@
       "lazy": 5,
       "alt": 81,
       "date": "2026-11-20"
-    }
+    },
+    "blockers": [
+      "key-names: limit names peak_throughput_per_second, fifo_throughput_per_group, monthly_budget_usd are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
+    ]
   },
   "version": 4,
   "targetSkills": [
@@ -130,22 +133,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to analyze and select a queue service without naming a specific method, skill, or tool, and does not reveal the SQS FIFO throughput trap or the correct answer."
+          "note": "rubric check: Rubric evaluates reasoning quality and tradeoff consideration for queue selection, within the ADR scope requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks to analyze and select a queue service without naming a specific method, skill, or tool, and does not reveal the SQS FIFO throughput trap or the correct answer.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture file states the correct answer; agent must reason from throughput limits, pricing data, and cost calculations to reach the decision."
+          "note": "rubric check: Fixture provides requirements and pricing; no correct option explicitly stated. Earlier glm-5 check of the request, fixture and key: pass (No fixture file states the correct answer; agent must reason from throughput limits, pricing data, and cost calculations to reach the decision.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All hidden test values (11M events/day, 400 events/s peak, 90KB size, $900 budget, 300/s FIFO limit, 64KB SQS chunks, 25KB Kinesis units) exist in fixture files."
+          "note": "rubric check: Rubric anchors (400 events/s peak, 90 KB messages, 64KB/25KB chunk billing, 3 operations per message, $900 budget) match fixture data. Earlier glm-5 check of the request, fixture and key: pass (All hidden test values (11M events/day, 400 events/s peak, 90KB size, $900 budget, 300/s FIFO limit, 64KB SQS chunks, 25KB Kinesis units) exist in fixture files.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Engineer can eliminate SQS FIFO (300/s limit < 400/s requirement from pricing-data.json and technical-design.md), then calculate costs using pricing-data.json and cost-calculator.js to determine Kinesis is acceptable and within budget."
+          "note": "rubric check: Either SQS Standard or Kinesis can be chosen with valid fixture-based reasoning; different tradeoff analyses can Pass. Earlier glm-5 check of the request, fixture and key: pass (Engineer can eliminate SQS FIFO (300/s limit < 400/s requirement from pricing-data.json and technical-design.md), then calculate costs using pricing-data.json and cost-calculator.js to determine Kinesis is acceptable and within budget.)."
         }
       ]
     }

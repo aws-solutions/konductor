@@ -164,3 +164,27 @@ Who: claude (mate review-fix2 worker session). Each unanchored rubric item now c
 - `t5-qa-security-tests`: clarity and cleanup.
 - `t5-qa-suite-audit`: explanation.
 - `t5-qa-sync-strategy`: decision-quality.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t5-dev-legacy-characterize | glm-5 (c07, full) | confirmed |  |
+| t5-fe-widget-logic-tests | glm-5 (c07, full) | confirmed |  |
+| t5-qa-acceptance-criteria | glm-5 (c05, full) | confirmed |  |
+| t5-qa-cart-twin-config | glm-5 (r4, rubric) | confirmed |  |
+| t5-qa-cart-weak-tests | glm-5 (c07, full) | confirmed |  |
+| t5-qa-checkout-strategy | glm-5 (r4, rubric) | confirmed |  |
+| t5-qa-flaky-fix | glm-5 (r4, rubric) | confirmed |  |
+| t5-qa-ledger-gaps | glm-5 (c07, full) | confirmed |  |
+| t5-qa-parser-gaps | glm-5 (c08, full) | confirmed |  |
+| t5-qa-scheduler-gaps | glm-5 (c08, full) | confirmed |  |
+| t5-qa-security-tests | glm-5 (c08, full) | confirmed |  |
+| t5-qa-suite-audit | glm-5 (r4, rubric) | confirmed |  |
+| t5-qa-sync-strategy | glm-5 (r4, rubric) | confirmed |  |

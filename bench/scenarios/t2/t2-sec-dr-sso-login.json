@@ -213,29 +213,29 @@
       }
     ],
     "recheck": {
-      "family": "minimax",
-      "model": "minimax-m2.5",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to 'look through' design and context files, no review method, checklist, or process named. No planted problem, decoy, or number of problems mentioned."
+          "note": "rubric check: Rubric aligns with request for 'concrete problems that affect security, compliance, or reliability'. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks to 'look through' design and context files, no review method, checklist, or process named. No planted problem, decoy, or number of problems mentioned.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Design document describes proposed solution as correct. Security policy states requirements without marking violations. Incident report describes past event without linking to current design. No comments, tests, or file names state planted problems."
+          "note": "rubric check: Judge-only rubric; no finding content in criterion text. Earlier minimax-m2.5 check of the request, fixture and key: pass (Design document describes proposed solution as correct. Security policy states requirements without marking violations. Incident report describes past event without linking to current design. No comments, tests, or file names state planted problems.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "k1:3.2 - nonce omitted from authorization request (OIDC required). k2:3.3 - email matching without email_verified check (security policy requires email_verification_required). k3:3.4 - localStorage for tokens (prohibited by policy). k4:3.4 - 90-day session (policy max is 30). k5:3.4 - no back-channel revocation (policy requires if supported). k6:3.5.1 - JWKS cached indefinitely vs 24h in section 5.3. k7:3.5.2 - wildcard redirect URI shown. k8:3.5.2 - state 32 bytes stated. All severities defensible."
+          "note": "rubric check: Verified: security-policy.yaml has max_duration_days:30, local_storage:prohibited, back_channel_revocation_check required. Design doc shows localStorage, 90 days, wildcard redirect - matches findingsKey. Earlier minimax-m2.5 check of the request, fixture and key: pass (k1:3.2 - nonce omitted from authorization request (OIDC required). k2:3.3 - email matching without email_verified check (security policy requires email_verification_required). k3:3.4 - localStorage for tokens (prohibited by policy). k4:3.4 - 90-day session (policy max is 30). k5:3.4 - no back-channel revocation (policy requires if supported). k6:3.5.1 - JWKS cached indefinitely vs 24h in section 5)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Security policy provides explicit requirements (max_duration_days:30, local_storage:prohibited, email_verification_required:true, back_channel_revocation_check:required). Design doc shows each problematic pattern (localStorage, 90 days, no revocation check, indefinite JWKS cache, wildcard redirect). Contradiction between 3.5.1 and 5.3 on JWKS caching is findable within the document. Requires domain knowledge for nonce (OIDC spec) but that's reasonable for security review."
+          "note": "rubric check: Different correct security reviews can Pass; rubric judges grounding and actionability. Earlier minimax-m2.5 check of the request, fixture and key: pass (Security policy provides explicit requirements (max_duration_days:30, local_storage:prohibited, email_verification_required:true, back_channel_revocation_check:required). Design doc shows each problematic pattern (localStorage, 90 days, no revocation check, indefinite JWKS cache, wildcard redirect). Contradiction between 3.5.1 and 5.3 on JWKS caching is findable within the document. Requires domai)."
         }
       ]
     }

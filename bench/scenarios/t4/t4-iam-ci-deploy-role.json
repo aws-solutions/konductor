@@ -161,29 +161,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal, the files, the interfaces, and constraints without naming methods, techniques, or pointing at the specific traps the hidden tests check."
+          "note": "rubric check: Rubric item reviewable-policy asks for Sids that name operations and a message mapping grants to calls, which matches the request to tighten the policy to what the deploy tooling does. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal, the files, the interfaces, and constraints without naming methods, techniques, or pointing at the specific traps the hidden tests check.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture files show code and config but do not list the exact permissions, deny rules, or expected policy structure; the agent must derive these from the code paths."
+          "note": "rubric check: The anchors (separate statements, Sid per operation, message mapping grants to calls) are judge-only; the fixture has scripts and config but not the policy structure. Earlier glm-5 check of the request, fixture and key: pass (The fixture files show code and config but do not list the exact permissions, deny rules, or expected policy structure; the agent must derive these from the code paths.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All resources and actions in hidden tests match fixture: bucket names, function ARNs, distribution IDs, and execution role names are in config files; actions map to cloud-client.js and deploy/rollback code paths."
+          "note": "rubric check: The anchor references scripts/deploy.js, scripts/rollback.js, config/staging.json, config/production.json which all exist in the fixture per the request. Earlier glm-5 check of the request, fixture and key: pass (All resources and actions in hidden tests match fixture: bucket names, function ARNs, distribution IDs, and execution role names are in config files; actions map to cloud-client.js and deploy/rollback code paths.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive required actions from cloud-client.js (lines 22-29), required resources from config files, and constraints from deploy.js/rollback.js; the createFakeClient helper reveals action mappings explicitly."
+          "note": "rubric check: Different correct organizations (grouped by service, by operation, by stage) can reach Pass as long as Sids name operations and the message maps grants. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can derive required actions from cloud-client.js (lines 22-29), required resources from config files, and constraints from deploy.js/rollback.js; the createFakeClient helper reveals action mappings explicitly.)."
         }
       ]
     }

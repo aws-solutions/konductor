@@ -232,22 +232,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a requirements document from source material without naming methods, techniques, or pointing at the hidden fact checks."
+          "note": "rubric check: Rubric evaluates scope clarity and honest assumptions without requiring a methodology. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a requirements document from source material without naming methods, techniques, or pointing at the hidden fact checks.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain notes, open questions, and source material requiring reasoning; no file lists the answers or expected findings outright."
+          "note": "rubric check: Rubric anchors (owner/permission-based requesters, 72-hour delivery, 7-day link, 2 GB limit, Pro/Enterprise only) are from scripted user; synthesis required. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain notes, open questions, and source material requiring reasoning; no file lists the answers or expected findings outright.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The 8 scripted facts are user-provided answers; the 3 grounded.test.js checks (record families, one-active limit, secrets/tenants) follow from data-model.md, infra-limits.md, and legal-team-email.md."
+          "note": "rubric check: Anchors correctly cite scripted facts: account owner or granted permission only, ZIP with CSV/JSON, UTC times with Z, 72-hour delivery, 7-day link expiry, 2 GB limit, Pro/Enterprise only. Earlier glm-5 check of the request, fixture and key: pass (The 8 scripted facts are user-provided answers; the 3 grounded.test.js checks (record families, one-active limit, secrets/tenants) follow from data-model.md, infra-limits.md, and legal-team-email.md.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Fixture provides record families, job limits, plan matrix, and security concerns; scripted user fills specific decisions, enabling a complete requirements document."
+          "note": "rubric check: Different requirement numbering and organization can still Pass if scope rules are correct and assumptions are honest about gaps. Earlier glm-5 check of the request, fixture and key: pass (Fixture provides record families, job limits, plan matrix, and security concerns; scripted user fills specific decisions, enabling a complete requirements document.)."
         }
       ]
     }

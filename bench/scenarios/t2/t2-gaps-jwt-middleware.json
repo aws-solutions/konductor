@@ -151,29 +151,29 @@
       }
     ],
     "recheck": {
-      "family": "qwen",
-      "model": "qwen3-coder-next",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for concrete review with defects, consequences, and fixes but does not name a specific review method, checklist, process, planted problem, decoy, or problem count."
+          "note": "rubric check: Rubric demands concrete consequences and actionable fixes aligned with the request for 'concrete defects that matter in this project' - no extra method required. Earlier qwen3-coder-next check of the request, fixture and key: pass (Prompt asks for concrete review with defects, consequences, and fixes but does not name a specific review method, checklist, process, planted problem, decoy, or problem count.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No comment, test, doc, or file name in the fixture explicitly states the planted problems (k1-k6) or decoy (d1)."
+          "note": "rubric check: Rubric is judge-only with Fail/Partial/Pass quality anchors; these don't reveal findings content to the agent. Earlier qwen3-coder-next check of the request, fixture and key: pass (No comment, test, doc, or file name in the fixture explicitly states the planted problems (k1-k6) or decoy (d1).)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Every key item's file and line numbers match the actual problems in the fixture code (k1-k6), and d1 is correctly identified as a decoy per edits.md."
+          "note": "rubric check: findingsKey references scheduling API context (JWT, token handling, auth tests) that exists in the PR 87 fixture. Earlier qwen3-coder-next check of the request, fixture and key: pass (Every key item's file and line numbers match the actual problems in the fixture code (k1-k6), and d1 is correctly identified as a decoy per edits.md.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful reviewer can find all key items (k1-k6) and decoy (d1) by inspecting the fixture files alone."
+          "note": "rubric check: A correct review with different wording/structure can reach Pass; rubric judges explanation quality, not specific findings. Earlier qwen3-coder-next check of the request, fixture and key: pass (A careful reviewer can find all key items (k1-k6) and decoy (d1) by inspecting the fixture files alone.)."
         }
       ]
     }

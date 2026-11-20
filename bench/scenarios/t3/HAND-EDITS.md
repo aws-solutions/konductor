@@ -170,3 +170,33 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
 - Who: claude (review-fix2 worker)
 - What: 47 rubric criteria across 19 tasks now carry Fail / Partial / Pass anchors written from each task's answer key and fixture figures (reasoning, trade-off, clarity and calculation items). Ids, weights and expert-key items are unchanged; task versions are up by 1.
 - Why: the independent review found these criteria had no anchors, so a judge could pass a shallow ADR on tone; each Pass now needs the key's figures and rejections.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t3-adr-batch-vs-stream | glm-5 (c15, full) | fix needed | free key scan: the gate needs option id batch_2x_scaling and the tests need 5 limit names (processing_window_hours, monthly_budget_usd, ...) that neither the fixture nor the prompt gives; glm-5 passed it |
+| t3-adr-cache-sizing-twin | glm-5 (r3, rubric) | confirmed |  |
+| t3-adr-cache-sizing | glm-5 (r3, rubric) | fix needed | free key scan: limit names resident_hit_ratio_percent, monthly_budget_usd, rpo_minutes, rto_minutes are not in the fixture or prompt |
+| t3-adr-db-engine | glm-5 (c14, full) | fix needed | free key scan: limit names peak_write_wps, read_p99_ms, rpo_seconds, rto_seconds, partition_write_wcu are not in the fixture or prompt |
+| t3-adr-egress-cdn | glm-5 (c14, full) | fix needed | free key scan: limit name data_size_tb is not in the fixture or prompt |
+| t3-adr-multiregion-dr | glm-5 (r3, rubric) | fix needed | free key scan: gate option id warm-standby and limit names rpo_min, rto_min, monthly_budget_usd are not in the fixture or prompt |
+| t3-adr-queue-choice | glm-5 (r3, rubric) | fix needed | free key scan: limit names peak_throughput_per_second, fifo_throughput_per_group, monthly_budget_usd are not in the fixture or prompt |
+| t3-api-booking | glm-5 (c14, full) | fix needed | free key scan: limit name response_body_bytes is not in the fixture or prompt; the Pass anchor of contract-boundary-reasoning lists reference field names (startsAt, endsAt) |
+| t3-api-ingest-batch | glm-5 (c14, full) | fix needed | free key scan: limit name max_request_body_bytes is not in the fixture or prompt |
+| t3-api-search-pagination | glm-5 (c15, full) | confirmed |  |
+| t3-arch-notification-pipeline | glm-5 (r3, rubric) | fix needed | free key scan: limit name throughput_msg_s is not in the fixture or prompt |
+| t3-db-audit-retention-twin | glm-5 (r3, rubric) | confirmed |  |
+| t3-db-audit-retention | none | dropped | failed two earlier non-Claude rechecks (FX, FX2); no new call; the free key scan also finds limit names and option id 1-index missing from the fixture |
+| t3-db-order-history | none | dropped | failed two earlier non-Claude rechecks; no new call; option ids composite-optimized, two-table-normalized are not in the fixture |
+| t3-db-tenant-isolation | glm-5 (c15, full) | confirmed |  |
+| t3-dev-module-boundary | glm-5 (c15, full) | confirmed |  |
+| t3-nfr-latency-budget | glm-5 (r3, rubric) | fix needed | free key scan: limit names p99_latency_ms, monthly_budget_usd are not in the fixture or prompt |
+| t3-pm-feature-scope | none | dropped | failed two earlier non-Claude rechecks; no new call |
+| t3-tpm-migration-cutover | glm-5 (r3, rubric) | confirmed |  |

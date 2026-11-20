@@ -19,9 +19,10 @@ test('rule 1: valid rows import in any column order, phone optional, CRLF and bl
   r = run('email,name\ncy@example.test,Cy Moss\n');
   assert.equal(r.book.list()[0].name, 'Cy Moss');
   assert.equal(run('name,email\r\nFa,fa@example.test\r\nGus,gus@example.test\r\n').result.imported, 2);
+  // The request does not say how a blank line is handled: ignoring it or skipping it with its line both pass.
   r = run('name,email\n\nNia,nia@example.test\n\n');
   assert.equal(r.result.imported, 1);
-  assert.deepEqual(r.result.skipped, []);
+  assert.ok(r.result.skipped.every((s) => [2, 4, 5].includes(s.line)), 'only the blank lines may be skipped');
 });
 
 test('rule 2: spreadsheet exports work: byte-order mark, quoted commas and quotes, line numbers after a two-line field', () => {

@@ -95,7 +95,34 @@
         "verdict": "pass",
         "note": "All key values are derivable: timeline events in channel-export.md, duration=40 min (11:00-11:40), failed_logins=17465 and peak_tls_errors=448 from eu-west-1-login.csv, evidence paths all exist with correct line numbers."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to investigate the EU login outage and write a postmortem; no method or decoy is named."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Certificate inventory, gateway logs, and metrics contain the evidence but no doc lists the root cause or finished postmortem."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Key references certs/certificate-inventory.csv, logs/gateway-eu.log, logs/auth-eu.log; all exist. Impact values (17465 failed logins, 448 peak TLS errors) match metrics CSV."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Certificate A7E4-91C2 expired at 2025-02-14T11:00:00Z; failed logins and TLS errors countable from metrics/eu-west-1-login.csv."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

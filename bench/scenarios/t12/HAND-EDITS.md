@@ -50,3 +50,36 @@ answer scores 100.
 | t12-sop-route-choice | 2026-11-20 | hidden test: regression tests are found by putting back the route's source file (was: by the words in the test file); the order test looks at the first commit that does route work (was: the first commit) and green is checked where each request ends (was: after every commit) | a test file for one request also matched the other; a test-first commit is a correct answer and fails its suite on purpose |
 | t12-cmux-parallel-merge | 2026-11-20 | new task: shelf fixture with its own git repository, three tickets (CMX-1 bug, CMX-2 and CMX-3 new commands that share the command registry and the CLI test, so the merges conflict); the shared grader plus a merged-result test | addition 7: the cmux outcome; cmux is not on the bench host, so the gates are proven with the reference and the runtime gap is a DEBT row |
 | t12-cmux-parallel-merge | 2026-11-20 | hidden CMX-2 test: the limit error is matched by its message only (was: anchored with `Error:`) | a correct RangeError would have failed |
+
+## Fixes from the non-Claude recheck (2026-11-20, mate hand-edit recheck worker, claude)
+
+D-108 recheck: gpt-5.6-luna (openai) checked all four tasks with the four-item checklist. It passed
+t12-handoff-export-dates and t12-spec-rate-limits and found one defect each in the other two. Both fixes are in the
+hidden tests only; versions 2 to 3. Free gates after the fix: unchanged (t12-parallel-backlog 100 / 0 / 20 / 100,
+t12-sdlc-contact-import 100 / 0 / 36.4 / 100).
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-parallel-backlog | 2026-11-20 | `work.test.js` "the limit is a setting": the setting's key path may name login, auth, attempt or fail (was login only) | backlog A4 asks for a configurable limit and names no key, so `auth.maxFailedPerMinute` was failed (recheck: key-matches-fixture, solvable-from-fixture) |
+| t12-sdlc-contact-import | 2026-11-20 | `hidden-import.test.js` rule 1: blank lines may be ignored or skipped; only blank lines may appear in `skipped` | the request says nothing about blank lines, and "a row with no name is skipped with its line" is a fair reading of one (recheck: key-matches-fixture, solvable-from-fixture) |
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t12-handoff-export-dates | gpt-5.6-luna (c06, full) | confirmed |  |
+| t12-parallel-backlog | gpt-5.6-luna (s1, full) | fix needed | gpt-5.6-luna (c06) found the login-only key match too narrow; fixed in this job, and its second pass (s1) passes the key and solvable items; the second pass fails no-method-or-decoy because the request lays out the plan, package and merge steps: owner call, that process is the T12 deliverable |
+| t12-sdlc-contact-import | gpt-5.6-luna (s1, full) | fix needed | gpt-5.6-luna (c06) found the blank-line rule unstated; fixed in this job, and its second pass (s1) passes the key and solvable items; the second pass fails no-method-or-decoy because the request lists the SDLC steps: owner call, that process is the T12 deliverable |
+| t12-spec-rate-limits | gpt-5.6-luna (c06, full) | confirmed |  |
+
+The four tasks above have no author review, and the task schema keeps a recheck only inside a review, so their
+gpt-5.6-luna verdicts are recorded here and not in the task files. c06 (all four): t12-handoff-export-dates and
+t12-spec-rate-limits pass all four items; t12-parallel-backlog and t12-sdlc-contact-import fail key-matches-fixture and
+solvable-from-fixture (fixed above). s1 (the two fixed tasks): key-matches-fixture, fixture-lists-no-answer and
+solvable-from-fixture pass; no-method-or-decoy fails because the request lays out the process (D-127).

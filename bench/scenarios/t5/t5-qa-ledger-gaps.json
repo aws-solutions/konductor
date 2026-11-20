@@ -116,22 +116,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to strengthen tests for interest, fees, overdrafts, posting/reversal, statements, and CSV export without naming mutation testing or the specific bugs the mutants represent."
+          "note": "The prompt names the modules to test (interest, fees, overdrafts, posting, reversal, statements, CSV export) without prescribing a testing method or providing decoys."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains source code and existing tests, no file lists the bugs or expected findings that the mutants test for."
+          "note": "Existing tests (test_interest.py, test_postings.py, etc.) cover basic flows but not the boundary cases mutants check (half-up rounding, 365-day year, statement boundary inclusion, overdraft limit edge)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All mutants target behaviors present in fixture code (interest.py, fees.py, ledger.py, export.py), and pristine/ versions match fixture files exactly."
+          "note": "Mutants target ledger/interest.py, fees.py, ledger.py, export.py - all present in fixture. The 54-test budget and rubric 'clarity' and 'suite-economy' match the prompt's request for precise assertions and lean tests."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can identify boundary conditions from the fixture code: rounding mode, day count, negative fees, statement endpoints, overdraft limit boundary, duplicate id handling, reversal guard, and column ordering in CSV."
+          "note": "The fixture source files (ledger/interest.py, etc.) expose the financial calculations. A developer can write tests that pin the exact amounts and boundary behaviors the prompt requests."
         }
       ]
     }

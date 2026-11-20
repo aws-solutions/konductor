@@ -160,29 +160,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal (replace per-tenant policies with shared access model), the constraints, the rules, and points to config files. It does not name specific methods like ABAC, IAM policy variables, Null condition operators, or ForAllValues:StringLike patterns needed to pass the hidden tests."
+          "note": "The prompt states requirements (tenant isolation, missing-tag refusal, support read-only) without naming specific IAM mechanisms like ForAllValues or explicit deny, which the edits confirm were removed from an earlier draft."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture shows the problem (40 individual tenant policies, existing broken shared policies) but does not reveal the correct ABAC policy structure or the specific IAM condition operators needed to pass the hidden tests."
+          "note": "The fixture's docs/access-model.md is a placeholder describing the current generated-role approach, not the ABAC solution. Config files name resources but not policy structure."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests expect tenant isolation, missing-tag explicit deny, support read-only metadata access, premium export writes - all derivable from fixture config (bucket/table ARNs, supportPrincipal, tenants.json showing tier values) and prompt requirements."
+          "note": "Hidden tests use bucketArn and tableArn from access-config.json, the supportPrincipal from the same file, and check the tenant isolation and support read-only behaviors the prompt requires. Rubric R1 anchors to tag source, statement mapping, and support denies matching the prompt's requirements."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive the correct ABAC policies from: infra/config/access-config.json (resource ARNs, support principal), prompt requirements (tenant isolation, missing-tag fail-closed, premium exports, support restrictions), and knowledge of IAM policy syntax with condition operators."
+          "note": "A developer can infer ABAC design from the prompt's requirements (session tags tenant/tier, tenant prefix isolation, metadata partition key, premium exports, support read-only) plus the config file naming the resources. The hidden tests verify outcomes (isolation, denial of missing-tag access), not a specific policy structure."
         }
       ]
     }

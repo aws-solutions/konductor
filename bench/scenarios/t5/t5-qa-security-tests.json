@@ -132,22 +132,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal (security regression suite), the areas to test (sessions, roles, document access, download, input validation, HTML export, login limiter), and constraints (no src/ changes, no dependency changes), without naming specific bugs, methods, or pointing at the mutation test approach."
+          "note": "The prompt names security domains to cover (sessions, roles, download, validation, export, login limiter) but prescribes no method or tool; no decoy hints present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture source files contain the correct implementations with no explicit listing of vulnerabilities or expected test findings. Agents must reason from code behavior to discover the security boundaries."
+          "note": "Fixture tests show happy-path usage; no code, comments or docs list the mutant vulnerabilities (e.g., expiry edge case, near-match role, traversal bypass)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 10 mutants (m01-m10) are valid mutations of fixture source files: m01 changes session.js expiry check from <= to <, m02 adds 'administrator' role bypass in roles.js, m03 removes owner check in access.js, m04/m05/m06 modify download.js traversal guards, m07 changes title validation boundary, m08 allows numeric body, m09 removes HTML escaping, m10 empties recordSuccess. Each mutant's note accurately describes the mutation and the expected test behavior."
+          "note": "All mutant files (src/auth/session.js, src/auth/roles.js, src/storage/download.js, etc.) exist in fixture; rubric anchors (clarity, cleanup, suite-economy) reward stated outcomes."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture contains all source modules, test examples in api.test.js, role configuration in config/roles.json, and API contract documentation. An engineer can analyze each security-critical function (session expiry, role checking, document access control, path traversal prevention, input validation, HTML escaping, rate limiting) and write tests that detect the mutant behaviors. The solution demonstrates 12 tests that kill all 10 mutants."
+          "note": "A competent developer could write security tests for sessions, roles, document access, download, validation, export and login limiter from the fixture code and prompt alone."
         }
       ]
     }

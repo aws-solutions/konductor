@@ -95,7 +95,34 @@
         "verdict": "pass",
         "note": "All required values are derivable: the effective logLevel for each service comes from running the renderer or manually applying overrides.json. Both debug services (catalog via override, inventory natively) have integer replica counts visible in production records. Tests use standard JSON assertions without rejecting correct phrasings."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request names the existing renderer script as the source of truth, which directs the agent correctly rather than misleading or prescribing a method."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Production configs and overrides.json contain the data but no comment or doc lists the services with debug logLevel or the finished answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests verify the answer matches the renderer output; all service names, paths, and field requirements exist in the fixture or are stated in the request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Running scripts/render-config.js production and filtering for logLevel=debug yields the answer; replica counts come from rendered records."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

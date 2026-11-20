@@ -150,29 +150,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to review a PR without naming any review method, checklist, process, or pointing at any planted problem or decoy."
+          "note": "rubric check: Rubric matches request for review of cursor navigation change affecting 'clients and command-line tool'. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks to review a PR without naming any review method, checklist, process, or pointing at any planted problem or decoy.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No comment, test, doc, or file name in the fixture states a planted problem. The code contains bugs but they are unlabeled implementation code."
+          "note": "rubric check: Judge-only rubric; Fail/Partial/Pass are quality thresholds. Earlier glm-5 check of the request, fixture and key: pass (No comment, test, doc, or file name in the fixture states a planted problem. The code contains bugs but they are unlabeled implementation code.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All six key items correctly identify their file and line locations: k1 (line 18, >= filter), k2 (line 15, sort without tie-breaker), k3 (cursor.js line 4, base64 encoding), k4 (line 10, no max limit), k5 (lines 22-23, breaking v1 response shape), k6 (lines 17-18, offset not read). Severities are defensible."
+          "note": "rubric check: findingsKey references pagination elements (cursor encoding, sort order, limit, breaking change) in fixture code. Earlier glm-5 check of the request, fixture and key: pass (All six key items correctly identify their file and line locations: k1 (line 18, >= filter), k2 (line 15, sort without tie-breaker), k3 (cursor.js line 4, base64 encoding), k4 (line 10, no max limit), k5 (lines 22-23, breaking v1 response shape), k6 (lines 17-18, offset not read). Severities are defensible.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "All six findings are discoverable from the fixture: the diff shows the code changes and removed offset support, api.md states the compatibility contract, config has maxPageSize, and the logic bugs are visible in the handler code."
+          "note": "rubric check: Alternative valid reviews can Pass; rubric judges consequence and fix quality. Earlier glm-5 check of the request, fixture and key: pass (All six findings are discoverable from the fixture: the diff shows the code changes and removed offset support, api.md states the compatibility contract, config has maxPageSize, and the logic bugs are visible in the handler code.)."
         }
       ]
     }

@@ -137,7 +137,34 @@
         "verdict": "pass",
         "note": "All requirements are specified in the prompt. No hidden tests rely on unspecified behavior. Tests use standard assertion patterns with clear error message matching."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes behavior (largest remainder, tie-breaking by ID, currency handling) without naming a framework or method, and contains no decoy hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture src/ has Money, Invoice, Ledger modules with no allocation code or split logic; README describes existing features without hinting at allocation."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests use Money.fromMinor() and expect {id, amount} with Money amounts matching fixture's Money class; prompt specifies all shapes (weights, dues, currencies, sorting)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Prompt fully specifies the algorithm (largest remainder, tie-breaking, ID sorting) and fixture provides Money class with currency support; developer could implement differently from reference and still pass."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
