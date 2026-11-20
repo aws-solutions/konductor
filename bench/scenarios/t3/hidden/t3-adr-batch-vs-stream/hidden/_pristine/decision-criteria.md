@@ -1,7 +1,7 @@
 # Decision Criteria and Evaluation Framework
 
 ## Decision Context
-We need to choose an architecture for the nightly reporting pipeline that will support business growth through Q4 2025 while meeting all SLAs and constraints.
+We need to choose an architecture for the nightly reporting pipeline that will support business growth through Q3 2025 while meeting all SLAs and constraints.
 
 ## Core Requirements (Must Have)
 
@@ -138,7 +138,7 @@ We need to choose an architecture for the nightly reporting pipeline that will s
 
 ### Phase 2: Quantitative Analysis
 1. Calculate 4-quarter cost projections
-2. Model performance at Q4 2025 volumes
+2. Model performance at Q3 2025 volumes
 3. Estimate reliability metrics
 4. Score each option (0-100 scale)
 
@@ -190,6 +190,6 @@ We need to choose an architecture for the nightly reporting pipeline that will s
 - Positive ROI demonstrated
 - Strategic alignment validated
 
-**Note**: All options must be evaluated against the Q4 2025 data volume of 4.65 TB, not just current volumes. The 4-hour processing window is non-negotiable for all future states.
+**Note**: All options must be evaluated against the Q3 2025 data volume of 4.65 TB, not just current volumes. The 4-hour processing window is non-negotiable for all future states.
 
 **Important**: The evaluation must consider both the 4-quarter total cost and the monthly cost ceiling. An option with lower total cost but higher peak monthly cost may fail the monthly budget constraint.

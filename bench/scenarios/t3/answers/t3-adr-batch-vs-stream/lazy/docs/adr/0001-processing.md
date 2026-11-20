@@ -108,7 +108,7 @@ This section covers compliance validation. We reviewed the relevant files and th
       "limit": 124.38,
       "value": 124.63
     },
-    "data_volume_tb_q4_2025": {
+    "data_volume_tb_q3_2025": {
       "limit": 5.81,
       "value": 5.81
     }
