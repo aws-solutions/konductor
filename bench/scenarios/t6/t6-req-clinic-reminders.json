@@ -208,6 +208,52 @@
         "verdict": "pass",
         "note": "The fixture deliberately leaves key decisions open in meeting notes. The old reminder draft is marked as abandoned and explicitly warns not to use it. No scripted facts are revealed in the fixture."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal, deliverable location, and output format without naming methods, tools, or pointing at specific answers the tests look for."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain source material (meeting notes, data exports, policies) but no document lists the hidden facts or test answers outright."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All scriptedUser facts are reasonable decisions a user could make; clinic names, timezones, consent fields, and appointment statuses exist in fixture files like clinic-directory.csv, appointment-export.csv, and data-dictionary.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture provides clinic data, privacy constraints, booking process, open decisions, and enough context to write requirements that pass the hidden tests with scripted user answers."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 10.3,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 10.3,
+      "lazy": 19.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

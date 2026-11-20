@@ -163,6 +163,57 @@
         "verdict": "fixed",
         "note": "Comments such as Should be true, seeded issue and Overly permissive were removed in the fix round; the lead removed the defect list from docs/reporting.md and the hand-written diff, which did not apply to the tree."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "gpt",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a PR risk review and specifies the changed-file source, output file, and JSON schema, but it names no review method, checklist, tool, trap, or specific finding."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "fail",
+          "note": "fixture/modules/iam/main.tf:155 explicitly labels the log policy as a decoy and explains its read-only interpretation. fixture/docs/reporting.md:18-37 also states the public database, public bucket policy, and full-access role, including that they will be tightened, disclosing expected findings and classifications."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "fixture/modules/logging/main.tf:18-19 sets multi-region CloudTrail and log validation to true, contradicting the hidden cloudtrail expectation of single-region and validation disabled. fixture/.github/workflows/ci.yml:39-45 also contains a plan step, contradicting the expert-key claim that CI runs only fmt and validate."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "A careful review of fixture/modules/logging/main.tf:13-20 would conclude the CloudTrail settings are enabled and should not report the hidden single-region/disabled-validation issue. The hidden expectation therefore cannot be satisfied from the fixture without contradicting it."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.7,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: fixture-lists-no-answer: fixture/modules/iam/main.tf:155 explicitly labels the log policy as a decoy and explains its read-only interpretation. fixture/docs/reporting.md:18-37 also states the public database, public bucket policy, and full-access role, including th",
+      "recheck-failed: key-matches-fixture: fixture/modules/logging/main.tf:18-19 sets multi-region CloudTrail and log validation to true, contradicting the hidden cloudtrail expectation of single-region and validation disabled. fixture/.github/workflows/ci.yml:39-45 also contains a ",
+      "recheck-failed: solvable-from-fixture: A careful review of fixture/modules/logging/main.tf:13-20 would conclude the CloudTrail settings are enabled and should not report the hidden single-region/disabled-validation issue. The hidden expectation therefore cannot be satisfied from"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.7,
+      "lazy": 17.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

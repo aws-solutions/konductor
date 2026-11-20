@@ -34,9 +34,10 @@ test('every konductor install argument list in the bench source includes --no-te
   for (const { file, args } of found) assert.match(args, /'--no-telemetry'/, `${file}: ${args}`);
 });
 
+// Some kit scripts embed node code (`node -e`), so a `//` line is a comment there too.
 test('no shell script in the bench runs konductor install or update outside a comment or a check', () => {
   for (const file of sourceFiles(BENCH).filter((f) => f.endsWith('.sh'))) {
-    const live = fs.readFileSync(file, 'utf8').split('\n').filter((l) => /\bkonductor[^ ]* +(install|update)\b/.test(l) && !/^\s*#/.test(l) && !/pgrep|echo|printf|why\+=|pf /.test(l));
+    const live = fs.readFileSync(file, 'utf8').split('\n').filter((l) => /\bkonductor[^ ]* +(install|update)\b/.test(l) && !/^\s*(#|\/\/)/.test(l) && !/pgrep|echo|printf|why\+=|pf /.test(l));
     assert.deepEqual(live, [], path.relative(BENCH, file));
   }
 });

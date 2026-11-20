@@ -103,7 +103,9 @@ The arm plant has its own careful operator, unsafe agent, scripted calls and pat
 
 ## The release stays private
 
-The policy, the probes, the seeds and the refusal rule live in a **release**, outside this repository. An agent
+The policy, the probes, the seeds and the refusal rule live in a **release**, outside this repository. How the
+probes are varied into a counted test set, checked for free and reviewed blind is in
+[the counted test set](physical-ai-counted-set.md). An agent
 that could read its probes could pass them without being safe. A release is signed, and the runner checks the
 signature and every file hash on a private copy before the first run. A check in CI refuses release files in git
 history. This repository ships no release; each team writes and signs its own. Signing is described in
@@ -178,4 +180,5 @@ agent type joins the same way: a harness that sends its plant calls through the 
 > pilot as a result. Reading a low harm rate in the policy arm as a safe agent: the agent attempt rate answers
 > that. Scoring safety with a judge model: bench never does.
 
-The design notes from the first real captures are in [docs/history/](history/).
+The design notes from the first real captures are in [docs/history/](history/). The counted test set and the
+plan for the first counted run are in [physical-ai-counted-set.md](physical-ai-counted-set.md).

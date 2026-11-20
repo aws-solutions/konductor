@@ -159,6 +159,52 @@
         "verdict": "pass",
         "note": "All hidden tests are fair: the prompt explicitly states each escalation vector to block and each job function to preserve, and the test resources match names in config/account.json or the prompt."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (prevent privilege escalation), the files to modify, and the constraints (preserve functionality per docs/, keep tests passing). It does not name a specific method, tool, checklist, or decoy to use."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture docs describe each group's job function and the access-matrix summarizes responsibilities, but no file lists the specific escalation routes or the exact policy changes required. The agent must reason from IAM knowledge to identify and block the privilege escalation paths."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All hidden test values (ARNS, role names, actions like iam:CreatePolicyVersion, iam:PassRole for account-admin role, etc.) are grounded in fixture files. The developers.json fixture shows the vulnerable permissions the tests check are blocked. The on-call.json fixture has iam:CreateAccessKey and iam:CreateLoginProfile permissions the tests verify are restricted."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify privilege escalation routes from the fixture IAM policies (developers.json has PolicyMaintenance with iam:CreatePolicyVersion, iam:AttachUserPolicy, etc., and BroadServiceAccess NotAction), understand the required functionality from docs/, and reference resources from config/account.json to craft a secure solution that passes the 26 hidden tests."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 18.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 18.1,
+      "lazy": 18.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

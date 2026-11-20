@@ -102,8 +102,8 @@ node bench/runner/bench.js trace --run $OUT --arm main --task simple-fix-failing
 ## 6. Repeat a full study
 
 The earlier 2x2 study (Kiro CLI and Claude Code, each with and without Konductor) has its own kit with pinned
-binaries, a freeze step, gates between stages and per-stage caps. Follow [docs/REPEAT.md](REPEAT.md) step by step.
-Unattended runs are covered in [the runbook](RUNBOOK.md).
+binaries, a freeze step, gates between stages and per-stage caps. Follow [docs/repeat.md](repeat.md) step by step.
+Unattended runs are covered in [the runbook](runbook.md).
 
 ## Before you share a number
 

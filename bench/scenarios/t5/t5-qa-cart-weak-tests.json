@@ -121,8 +121,53 @@
         "verdict": "pass",
         "note": "The request is fair and answerable. All implementation behavior is visible in the fixture source code, tests can run deterministically without timing or external dependencies, and the Node.js 24 CommonJS setup is available in package.json."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (make tests trustworthy) and scope (pricing-related modules) without naming methods, tools, or pointing at specific traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains source code and existing tests; no file lists the bugs, mutations, or expected findings the hidden checks look for."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 10 mutants in hidden/mutation-kit/mutants.json modify files that exist in fixture/src/: cart.js, discounts.js, coupons.js, tax.js, shipping.js, order-total.js, and store.js."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The source code in fixture/src/ contains the boundary conditions and logic an engineer can analyze (e.g., coupons.js line 12 uses > for expiry, shipping.js line 15 uses >= for threshold) to write tests that kill the mutants."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 4.8,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 4.8,
+      "lazy": 19,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }

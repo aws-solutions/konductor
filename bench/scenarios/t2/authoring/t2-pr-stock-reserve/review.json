@@ -1,0 +1,11 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "Prompt asks for a general PR review without naming a specific method, checklist, or hinting at planted problems." },
+    { "check": "ambiguity", "verdict": "pass", "note": "Clear: review PR in pr/1544/, write REVIEW.md, use specified JSON format with location/severity/issue/fix." },
+    { "check": "ceiling", "verdict": "pass", "note": "Issues require reading across multiple functions (reserve, release, sweepExpired) and understanding async semantics; decoys are documented as intentional." },
+    { "check": "floor", "verdict": "pass", "note": "All key items are directly visible: reserve race condition (lines 44-58), missing await (58), timezone bug (84), catch returns success (74), publish-before-commit (68), flaky test (60)." },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No comments, test names, or file names point at problems; notes.txt explicitly labels decoys as intentional." }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

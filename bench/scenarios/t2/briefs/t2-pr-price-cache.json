@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js multi-tenant catalog API (tenants, products, price lists, a db layer over JSON files, tests, docs). The PR adds a read-through in-memory cache for price lookups. Plant: the cache key omits the tenant id, so one tenant can see another's prices; the bulk price-update path does not invalidate (only single update does); TTL is passed in seconds to a helper that takes milliseconds; a burst of misses for one key all hit the store at once (no in-flight sharing) under the documented traffic; cached objects are returned by reference, so a caller that mutates a price changes the cache; the size limit in config is never enforced, so memory grows. Add one decoy.",
   "stack": "node",
-  "pr": 508
+  "pr": 508,
+  "version": 2
 }

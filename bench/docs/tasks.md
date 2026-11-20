@@ -10,6 +10,7 @@ This document covers the task suite: tasks, fixtures, checks, rubrics, answer ke
 - `tasks/solutions/<id>/`: a reference solution, as files overlaid on the fixture. Only the validator and unit tests use it.
 - `tasks/stubs/<id>/`: a keyword-only imitation of the report, overlaid on the solution (see Mutation proof).
 - `tasks/validate-tasks.js`: offline validator. Run `node bench/tasks/validate-tasks.js`.
+- `scenarios/t*/`: the scenario pack, one folder per batch. Every batch uses the shared tools in `scenarios/lib/` (dry run, mechanical lazy and alternative answers, prompt renderer, authoring stage, hidden test helpers) through its own `scenario.config.js`; see `scenarios/lib/README.md`.
 
 The same prompt goes to every arm, so it must make sense without any add-on. Prompts never name a procedure, skill or agent. The `target` field says what the task exercises and is informational only.
 
@@ -30,13 +31,13 @@ New tasks may add these top-level fields (all optional; old tasks keep working).
 
 - `version`; `phase` and `phases2` (secondary phases, labels only); `role`.
 - `questions`: `allowed`, `scripted` or `forbidden`. `scripted` needs `scriptedUser` (`facts` with the `topics` that unlock each `answer`, and a `defaultReply`).
-- `findingsKey`: seeded items a review, design or planning output must find.
+- `findingsKey`: seeded items a review, design or planning output must find. Each item has an `id` and either a prose `finding` (for a judge or a hidden test) or the shape `runner/lib/findings-key.js` grades: `location` (a string or list), `severity`, `fix` keywords and `fixMin`.
 - `expertKey`: judge-only key of a design-review task: `items` (`id`, `text`, `source`: the public source and its licence) are the risks, trade-offs, constraints and failure modes a good review raises, beyond the seeded findings; `weakAnswers` (3 to 5) are what a shallow review says. A judge marks an item addressed only with a quote from the output; the score is addressed / all items, inside the rubric share. The agent never sees it.
-- `targetSkills`, `targetSop`, `targetAgent`: the units the task exercises. They replace `target`; a task sets either `target` or these, never both. The loader maps an old `target` by looking it up in the repo's `skills/`, `agent-sops/` and `agents/` (a `skill:`, `sop:` or `agent:` prefix decides it directly) and puts the result in `task.targets`. Read `task.targets`, not `target`.
+- `targetSkills`, `targetSop`, `targetAgent`: the units the task exercises. They replace `target`; a task sets either `target` or these, never both (`"target": null` counts as unset). The loader maps an old `target` by looking it up in the repo's `skills/`, `agent-sops/` and `agents/` (a `skill:`, `sop:` or `agent:` prefix decides it directly) and puts the result in `task.targets`. Read `task.targets`, not `target`.
 - `controlKind`: `none`, `twin` (needs `twinOf`, another task's id) or `negative`.
 - `loadCheck`: `mustLoad` (units that must load before the first file write) and `mustNotLoad`. No unit may be in both.
 - `authorship`: `family`, `model`, `date` and `source`. `source` is `"original"` or `{url, licence, licenceCheckedAt, use}`, where `use` is `idea`, `structure` or `quoted`. A task with a `phase` (a v3 task) must have it; old tasks are exempt.
-- `effectSubset`, `limits` (`softSec` at most `hardSec`, optional `maxTurns`), `review` (its `family` must differ from the author's), `pilot`, `lockedAt`.
+- `effectSubset`, `limits` (`softSec` at most `hardSec`, optional `maxTurns`), `review` (its `family` must differ from the author's; it may name the reviewer `model`), `pilot`, `lockedAt`.
 
 A task keeps its own tier and may also carry `"pilot"` (for example `["lite", "full", "pilot"]`). `suites/pilot.json` lists the pilot tasks, and the validator requires the file and the tag to agree.
 

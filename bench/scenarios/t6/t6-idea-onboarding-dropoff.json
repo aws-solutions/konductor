@@ -172,6 +172,52 @@
         "verdict": "pass",
         "note": "The fixture contains the evidence but not the conclusions. The agent must analyze and synthesize; no answer key or scripted facts are present."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the task goal, deliverable format, and data sources without naming analysis methods, frameworks, or pointing at specific answers the hidden tests check for."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain raw data (funnel metrics, delivery rates, reviews, release notes) that require analysis to identify the problem; no file lists the expected conclusions or hidden test values."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All hidden test assertions (84% baseline from 8,232/9,800 in week of Jan 6; 54% post-change; Cloudmail 77% delivery; 64% concentration; 3 Feb outage reconciliation numbers) match values verifiable in fixture data files."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify the email verification drop, correlate it with the 21 Jan domain change via provider_delivery_summary.csv and release-log.md, distinguish the analytics outage via verification_reconciliation.csv, and formulate appropriate options from the evidence."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 3.2,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 3.2,
+      "lazy": 9.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

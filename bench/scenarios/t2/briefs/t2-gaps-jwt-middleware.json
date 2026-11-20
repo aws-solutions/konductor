@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js internal API for a team scheduling app, with a hand-written token module (HMAC and RSA signing helpers it already has), routes, a user store, tests and docs. The PR replaces session cookies with bearer tokens: new middleware that verifies tokens, a refresh endpoint, role checks on admin routes. A teammate's review already caught some real issues. Plant what that review missed: the verifier takes the algorithm from the token header, so a token signed with the public key as an HMAC secret passes; expiry is compared in milliseconds against a seconds claim, so tokens never expire in practice; refresh tokens are not rotated or revoked, though the security doc requires it; the role check reads the role from the token instead of the store, although roles can be removed; the 401 error body echoes the token; no test covers an expired or tampered token.",
   "stack": "node",
-  "pr": 87
+  "pr": 87,
+  "version": 2
 }

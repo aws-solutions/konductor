@@ -1,0 +1,19 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "StringEquals": {
+                    "sts:ExternalId": "partner-ext-42b7"
+                }
+            },
+            "Resource": "*",
+            "Action": "sts:AssumeRole",
+            "Principal": {
+                "AWS": "arn:aws:iam::444455556666:role/BuildReleaseRole"
+            },
+            "Effect": "Allow",
+            "Sid": "PartnerRunnerAssumeRole"
+        }
+    ],
+    "Version": "2012-10-17"
+}

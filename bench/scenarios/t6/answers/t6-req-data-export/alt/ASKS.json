@@ -1,0 +1,5 @@
+[
+  "Who can request an export, which plans should get it, and what size limit should apply?",
+  "What file format and timestamp representation should the archive use, and which data must be excluded?",
+  "What completion deadline and download link expiry should we promise, and what audit trail and retention should we keep?"
+]

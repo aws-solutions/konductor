@@ -10,8 +10,7 @@
 //   - each number is taken at face value from a rough count: the reference value times 0.7, rounded;
 //   - each date assumes the plan holds: the reference date moved 21 days earlier.
 // Strings and objects keep the reference's wording, so the fake hits every keyword the key might reward.
-//   node lazy-answer.js <task-id>            a T7 task: answers/<id>/lazy/
-//   node lazy-answer.js --t8 <task-id>       a T8 document task: ../t8/variants/<id>/lazy/
+//   node lazy-answer.js <task-id>
 // shortcut: one scripted shallow reading for every task, not each brief's own obvious reading; replace a task's
 // answers/<id>/lazy/ with a hand-written one if its key needs a different shallow answer to be tested.
 
@@ -44,21 +43,6 @@ function shallow(value, decoys) {
 /** Ids the key says must not be named: the decoys. */
 const decoysOf = (key) => [...new Set(key.assertions.filter((a) => a.op === 'absent' || a.op === 'excludes').flatMap((a) => a.ids || []).filter((x) => ID.test(x)))];
 
-// T8 document tasks keep their key in hidden/<id>/block-kit/key.json and grade the last fenced json block; T8's own
-// dry run scores variants/<id>/lazy/. Same shallow reading; T8 keys name no decoy ids, so none are added.
-function mainT8(id) {
-  const T8 = path.join(DIR, '..', 't8');
-  const key = JSON.parse(fs.readFileSync(path.join(T8, 'hidden', id, 'block-kit', 'key.json'), 'utf8'));
-  const ref = fs.readFileSync(path.join(T8, 'solutions', id, key.outputFile), 'utf8');
-  const blocks = [...ref.matchAll(/^[ \t]*```json[ \t]*\n([\s\S]*?)^[ \t]*```/gm)].map((m) => { try { return JSON.parse(m[1]); } catch { return null; } }).filter(Boolean);
-  if (!blocks.length) throw new Error(`${id}: the reference has no json block`);
-  const body = `# Notes\n\nI read the README and the main files. Summary below.\n\n\`\`\`json\n${JSON.stringify(shallow(blocks[blocks.length - 1], []), null, 1)}\n\`\`\`\n`;
-  const out = path.join(T8, 'variants', id, 'lazy', key.outputFile);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, body);
-  return out;
-}
-
 function main(id) {
   const key = JSON.parse(fs.readFileSync(path.join(DIR, 'hidden', id, 'hidden', 'key.json'), 'utf8'));
   const block = readBlock(fs.readFileSync(path.join(DIR, 'solutions', id, key.output), 'utf8'), key.block);
@@ -70,6 +54,6 @@ function main(id) {
   return out;
 }
 
-if (require.main === module) console.log(process.argv[2] === '--t8' ? mainT8(process.argv[3]) : main(process.argv[2]));
+if (require.main === module) console.log(main(process.argv[2]));
 
 module.exports = { shallow, decoysOf };

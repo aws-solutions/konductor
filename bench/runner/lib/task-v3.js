@@ -43,7 +43,10 @@ function targetsOf(task, catalog) {
 function v3Errors(task) {
   const errors = [];
   if (task.target === undefined && !hasV3Targets(task)) errors.push('needs "target" (old form) or one of targetSkills, targetSop, targetAgent');
-  if (task.target !== undefined && hasV3Targets(task)) errors.push('"target" and the v3 target fields cannot both be set');
+  // `target: null` (the schema allows it) names no target, so it may sit beside the v3 fields.
+  if (task.target != null && hasV3Targets(task)) errors.push('"target" and the v3 target fields cannot both be set');
+  // A findings key item is graded by `location` (runner/lib/findings-key.js) or judged by its prose `finding`.
+  for (const k of task.findingsKey ?? []) if (k && k.finding === undefined && k.location === undefined) errors.push(`findingsKey item ${k.id} needs "finding" or "location"`);
   if (task.controlKind === 'twin' && !task.twinOf) errors.push('controlKind "twin" needs twinOf');
   if (task.twinOf !== undefined && task.controlKind !== 'twin') errors.push('twinOf is only for controlKind "twin"');
   if (task.twinOf !== undefined && task.twinOf === task.id) errors.push('twinOf cannot name the task itself');

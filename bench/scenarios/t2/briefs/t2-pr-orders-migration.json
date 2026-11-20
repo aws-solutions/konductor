@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Python 3.12 order service using sqlite3 with a tiny in-house migration runner, repository classes, a report endpoint, tests and docs (docs state the production table size and that deploys are rolling, so old and new code run together). The PR adds a fulfilment status column and a report. Plant: the column is NOT NULL with no default, which breaks old code still inserting during the rolling deploy; the backfill updates the whole large table in one transaction; the down migration drops the column with its data and no warning; the new report runs one query per order (N+1); the filter used by the report has no index though the docs give the table size; the report builds SQL with string formatting from a query parameter. Add one decoy.",
   "stack": "python",
-  "pr": 77
+  "pr": 77,
+  "version": 2
 }

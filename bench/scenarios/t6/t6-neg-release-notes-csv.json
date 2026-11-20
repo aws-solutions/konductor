@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-release-notes-csv",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -25,7 +25,7 @@
       "type": "file_exists",
       "path": "docs/release-notes.csv",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "contains",
@@ -128,6 +128,52 @@
         "verdict": "pass",
         "note": "No ASKS.json, no scriptedUser facts, no hints in fixture files. The solution/ directory contains reference output but an agent has no reason to discover or read it. Task-draft.json notes are for task authors only, not visible to agents."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt names the source/output paths and requested columns, but does not prescribe a method or identify any trap or expected answer."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/docs/release-notes.md lines 3-136 provide the release data, while the only CSV and date guidance in the fixture is general source evidence in lines 75 and fixture/docs/style-guide.md line 26; no fixture file lists the expected output."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The source release blocks in fixture/docs/release-notes.md lines 3-136 contain the expected versions, 67 categorized bullets, the Jan 28 date, and the quoted comma-containing summary; fixture/docs/style-guide.md lines 26 and 46 support ISO date normalization and wrapped-line handling."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "task.json field prompt plus fixture/docs/release-notes.md and fixture/docs/style-guide.md specify the source structure, categories, date conventions, and edge-case content needed to produce the checked CSV; the separate Changelog Policy section begins at release-notes.md line 138 and is distinguishable from versioned release entries."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 18.6,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 18.6,
+      "lazy": 34.2,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

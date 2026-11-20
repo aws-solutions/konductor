@@ -213,9 +213,9 @@ class Host {
     return { status: r.status, stdout: r.stdout || '' };
   }
 
-  /** Burns every core for `ms` and resolves when the burners are gone. */
-  async burnCpu(ms) {
-    const burners = os.cpus().map(() => spawn(process.execPath, ['-e', 'for (;;);'], { stdio: 'ignore' }));
+  /** Burns `count` cores (every core by default) for `ms` and resolves when the burners are gone. */
+  async burnCpu(ms, count = os.cpus().length) {
+    const burners = Array.from({ length: count }, () => spawn(process.execPath, ['-e', 'for (;;);'], { stdio: 'ignore' }));
     await new Promise((r) => setTimeout(r, ms));
     burners.forEach((b) => b.kill('SIGKILL'));
   }

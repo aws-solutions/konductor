@@ -1,7 +1,7 @@
 {
   "id": "t6-plan-mvp-cut",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -45,14 +45,14 @@
     {
       "type": "contains",
       "path": "docs/release-plan.md",
-      "pattern": "totalPoints",
+      "pattern": "\"totalPoints\"\\s*:\\s*(1[5-9]\\d|20\\d|21[01])\\b",
       "weight": 2,
       "kind": "substance"
     },
     {
       "type": "contains",
       "path": "docs/release-plan.md",
-      "pattern": "deferred",
+      "pattern": "\"deferred\"\\s*:\\s*\\[(\\s*\"TEN-\\d{3}\",?){3}",
       "weight": 2,
       "kind": "substance"
     },
@@ -61,13 +61,13 @@
       "path": "docs/release-plan.md",
       "pattern": "requirements",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": ".",
       "weight": 1,
-      "kind": "substance",
+      "kind": "format",
       "allowAdditions": true
     }
   ],
@@ -150,7 +150,34 @@
         "verdict": "pass",
         "note": "Fixture contains raw data (backlog, calendar, emails, contract) but no explicit instruction to look for specific traps. The request does not reveal the answer, only the desired output format."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt field in task.json states the planning goal, source documents, deadline, and required output schema, but does not prescribe a method or reveal hidden traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "fail",
+          "note": "fixture/email-thread-archive.md lines 12-16 directly states the duplicate TEN-121/TEN-103 answer, the corrected TEN-123 estimate of 3, and the TEN-113/TEN-108 dependency that the hidden checks look for."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden expectations are grounded in fixture/backlog.csv lines 2-26, fixture/contract-excerpt.md sections 4.2 and 7.1, fixture/email-thread-archive.md lines 12-16, and fixture/team-velocity-analysis.md. The email explicitly supplies the intended correction for the TEN-123 export value."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A feasible dependency-closed scope can be derived from fixture/backlog.csv, with contractual scope from fixture/contract-excerpt.md and capacity from fixture/team-velocity-analysis.md. The schedule, calendar, meeting notes, and clarification email provide enough information to choose and defer items without hidden facts or scripted-user answers."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -186,5 +213,27 @@
       "Cut the lowest-priority items until the points fit, without checking dependencies or the contract.",
       "Move the launch date."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 10.2,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: fixture-lists-no-answer: fixture/email-thread-archive.md lines 12-16 directly states the duplicate TEN-121/TEN-103 answer, the corrected TEN-123 estimate of 3, and the TEN-113/TEN-108 dependency that the hidden checks look for."
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 10.2,
+      "lazy": 35.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

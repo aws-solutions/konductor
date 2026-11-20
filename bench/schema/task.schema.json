@@ -685,8 +685,7 @@
       "items": {
         "type": "object",
         "required": [
-          "id",
-          "finding"
+          "id"
         ],
         "additionalProperties": false,
         "properties": {
@@ -701,6 +700,39 @@
           "weight": {
             "type": "number",
             "minimum": 0
+          },
+          "location": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "nit"
+            ]
+          },
+          "fix": {
+            "type": [
+              "string",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "fixMin": {
+            "type": "integer",
+            "minimum": 1
           }
         }
       }
@@ -987,6 +1019,10 @@
               }
             }
           }
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -1017,6 +1053,14 @@
             "fix",
             "drop"
           ]
+        },
+        "blockers": {
+          "description": "Why the task cannot be locked yet, one string each (for example 'recheck-failed: ...' or 'gate-failed: ...').",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "date": {
           "type": "string",
@@ -1065,7 +1109,8 @@
       "pattern": "^\\d{4}-\\d{2}-\\d{2}"
     },
     "handEdited": {
-      "type": "object",
+      "description": "null: checked, no one but the author changed the prompt, fixture, key, checks or rubric.",
+      "type": ["object", "null"],
       "required": [
         "family",
         "editor",

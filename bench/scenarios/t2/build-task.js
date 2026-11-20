@@ -62,7 +62,9 @@ function build(id, work) {
   const hidden = path.join(DIR, 'hidden', id, 'hidden');
   fs.rmSync(path.join(DIR, 'hidden', id), { recursive: true, force: true });
   fs.mkdirSync(hidden, { recursive: true });
-  for (const f of twin ? ['twin.test.cjs'] : ['findings.test.cjs', 'findings-key.cjs']) fs.copyFileSync(path.join(DIR, 'lib', f), path.join(hidden, f));
+  // The grader comes from bench/scenarios/lib/hidden at run time (.bench-lib.json); no copy is committed.
+  const helpers = twin ? { 'hidden/twin.test.cjs': 'twin.test.cjs' } : { 'hidden/findings.test.cjs': 'findings.test.cjs', 'hidden/findings-key.cjs': 'findings-key.cjs' };
+  fs.writeFileSync(path.join(DIR, 'hidden', id, '.bench-lib.json'), `${JSON.stringify(helpers, null, 2)}\n`);
   fs.writeFileSync(path.join(hidden, keyFile), `${JSON.stringify(key, null, 2)}\n`);
   copyDir(path.join(work, 'solution'), path.join(DIR, 'solutions', id));
 
@@ -72,7 +74,18 @@ function build(id, work) {
     : reviewChecks({ kind: brief.kind === 'design' ? 'design' : 'code', doc: brief.doc, unchangedPath: brief.kind === 'design' ? brief.doc : codeRoot(key), testsMin });
   const map = fs.existsSync(path.join(work, 'map.json')) ? readJson(path.join(work, 'map.json')) : null;
   const rawReview = fs.existsSync(path.join(work, 'review.json')) ? readJson(path.join(work, 'review.json')) : null;
-  const review = rawReview && { family: FAMILY[brief.reviewer], date: new Date().toISOString().slice(0, 10), verdicts: rawReview.verdicts };
+  // pilot (with pilot.dryRun) is written by the shared dry run (`lib/dry-run.js --record`); a rebuild keeps it.
+  const taskFile = path.join(DIR, `${id}.json`);
+  const pilot = fs.existsSync(taskFile) ? readJson(taskFile).pilot : undefined;
+  const recheckFile = path.join(work, 'recheck.json');
+  const recheck = fs.existsSync(recheckFile) ? readJson(recheckFile) : null;
+  const review = rawReview && {
+    family: FAMILY[brief.reviewer], date: new Date().toISOString().slice(0, 10), verdicts: rawReview.verdicts,
+    ...(recheck ? { recheck: { family: FAMILY[recheck.model], model: recheck.model, date: recheck.date, items: recheck.items.map(({ check, verdict, note }) => ({ check, verdict, ...(note ? { note } : {}) })) } } : {}),
+  };
+  // A task named in HAND-EDITS.md was changed by someone other than its author.
+  const handEdited = new RegExp(`\\b${id}\\b`).test(fs.readFileSync(path.join(DIR, 'HAND-EDITS.md'), 'utf8'))
+    ? { family: 'claude', editor: 'T2 batch worker session', log: 'HAND-EDITS.md' } : null;
   // The full mapper and reviewer answers and the author's notes are kept beside the task for the human check.
   const rec = path.join(DIR, 'authoring', id);
   fs.mkdirSync(rec, { recursive: true });
@@ -82,7 +95,8 @@ function build(id, work) {
 
   const task = {
     id,
-    version: 1,
+    // A change to a task's scoring after it was first landed bumps its version (briefs/<id>.json `version`).
+    version: brief.version ?? 1,
     class: brief.kind === 'design' || (twin && brief.phase === 'design-review') ? 'design' : 'review',
     phase: brief.phase,
     phases2: [],
@@ -107,6 +121,8 @@ function build(id, work) {
     effectSubset: false,
     authorship: { family: FAMILY[brief.author], model: brief.author, date: brief.source.licenceCheckedAt, source },
     ...(review ? { review } : {}),
+    ...(handEdited ? { handEdited } : {}),
+    ...(pilot ? { pilot } : {}),
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   return task;

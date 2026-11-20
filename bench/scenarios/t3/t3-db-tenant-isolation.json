@@ -60,7 +60,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 10,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "dynamodb-design",
@@ -157,5 +170,6 @@
       "computes cost correctly but chooses the per-customer option despite the 12,000 database count exceeding operational limits",
       "states that the per-customer option is rejected due to higher cost rather than the database count constraint"
     ]
-  }
+  },
+  "handEdited": null
 }

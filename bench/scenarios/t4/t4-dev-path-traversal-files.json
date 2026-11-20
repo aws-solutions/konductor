@@ -151,6 +151,52 @@
         "verdict": "pass",
         "note": "All hidden tests are fair requirements explicitly stated in the prompt: block traversal attacks, handle encoded paths, reject separators in upload names, prevent overwrites, avoid symlink escapes, and hide internal paths in errors."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the bug class (path traversal) as reported, the required behavior, and the constraints, without naming a method, tool, or checklist to use."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files show vulnerable code patterns but never state the specific attack vectors or fixes; evidence must be reasoned from the handlers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check path traversal variants (../, encoded, absolute paths, symlinks) that directly exploit the vulnerable resolve() calls in fixture/src/handlers.js."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The prompt explains the vulnerability class and required constraints; a careful engineer can analyze handlers.js to see the unsafe path.resolve() calls and fix them."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 14.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

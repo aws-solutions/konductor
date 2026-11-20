@@ -11,21 +11,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const here = __dirname;
-const ROOT = path.resolve(here, '../../../..');
+// The helpers live in bench/scenarios/lib/hidden; an author's kit copy carries them beside this file instead. The
+// stage's assemble step folds the copies back into .bench-lib.json, so no task commits them.
+const helper = (name) => [path.join(__dirname, name), path.join(__dirname, '..', '..', 'lib', 'hidden', name)].find((p) => fs.existsSync(p));
 
 function main([hidden, kind, outputFile], findingsKey) {
   if (kind === 'mutants') {
     fs.mkdirSync(path.join(hidden, 'mutation-kit'), { recursive: true });
-    fs.copyFileSync(path.join(here, 'mutants.js'), path.join(hidden, 'mutation-kit/mutants.js'));
-    fs.copyFileSync(path.join(here, 'mutation.test.js'), path.join(hidden, 'mutation.test.js'));
+    fs.copyFileSync(helper('mutants.js'), path.join(hidden, 'mutation-kit/mutants.js'));
+    fs.copyFileSync(helper('mutation.test.js'), path.join(hidden, 'mutation.test.js'));
     return;
   }
   if (kind === 'findings') {
     const kit = path.join(hidden, 'findings-kit');
     fs.mkdirSync(kit, { recursive: true });
-    fs.copyFileSync(path.join(ROOT, 'bench/runner/lib/findings-key.js'), path.join(kit, 'findings-key.js'));
-    fs.copyFileSync(path.join(here, 'findings.test.js'), path.join(hidden, 'findings.test.js'));
+    fs.copyFileSync(helper('findings-key.cjs'), path.join(kit, 'findings-key.js'));
+    fs.copyFileSync(helper('findings.test.js'), path.join(hidden, 'findings.test.js'));
     fs.writeFileSync(path.join(kit, 'key.json'), JSON.stringify({ outputFile, findingsKey }, null, 2));
     return;
   }

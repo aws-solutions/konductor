@@ -1,0 +1,20 @@
+{
+  "id": "t2-pr-flag-rollout-v2",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "pr",
+  "wave": 2,
+  "author": "qwen3-coder-next",
+  "reviewer": "minimax-m2.5",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/open-feature/spec",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js backend for a subscription app with an in-house feature flag module (flag file, evaluation, percentage rollout), billing, tests, docs. The PR puts a new billing flow behind a flag and starts a 10% rollout. Plant: the flag default is on when the flag file lacks the key, so every environment without the new key gets the new flow; one code path checks the flag inverted; percentage bucketing uses Math.random per request, so a user flips between flows; the flag is read once at module load, so the kill switch the docs describe needs a restart; the old and new flows write different invoice number formats that the docs say must stay one sequence; tests only run with the flag on. Add one decoy.",
+  "stack": "node",
+  "pr": 688,
+  "note": "second family after the deepseek-3.2 draft of t2-pr-flag-rollout was dropped"
+}

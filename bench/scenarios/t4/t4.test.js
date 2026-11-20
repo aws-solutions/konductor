@@ -2,14 +2,16 @@
 'use strict';
 
 // T4 batch checks: the dry-run score rule, the findings helper, the layout of each task, the hidden helper copies,
-// and that nothing names a host path. The IAM evaluator has its own tests in lib/iam-eval.test.js.
+// and that nothing names a host path. The IAM evaluator (bench/scenarios/lib/hidden/iam-eval.js) has its own tests in lib/iam-eval.test.js.
 
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { codeScore } = require('./dry-run.js');
-const { readFindingsBlock, findItem, atLeast } = require('./lib/findings.js');
+const { codeScore } = require('../lib/score.js');
+const { readFindingsBlock, findItem, atLeast } = require('../lib/hidden/findings.js');
+
+const { sharedHelpers } = require('../../runner/lib/hidden-lib.js');
 
 const DIR = __dirname;
 const ids = fs.readdirSync(DIR).filter((f) => /^t4-.*\.json$/.test(f)).map((f) => f.replace(/\.json$/, ''));
@@ -59,13 +61,13 @@ test('tasks that need an expertKey have one, with 3 to 5 weak answers and a name
   }
 });
 
-test('hidden helpers are byte-identical copies of lib/', () => {
-  const copies = [['iam-eval.js', 'iam-eval.js'], ['findings.js', 'findings.js'], ['py-bridge.test.js', 'py_bridge.test.js'], ['py-timeouts.py', path.join('py', 'timeouts.py')]];
+test('hidden dirs commit no copy of a shared helper; .bench-lib.json names them', () => {
+  const names = fs.readdirSync(path.join(DIR, '..', 'lib', 'hidden'));
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
   for (const t of tasks) {
-    for (const [lib, rel] of copies) {
-      const copy = path.join(DIR, 'hidden', t.id, 'hidden', rel);
-      if (fs.existsSync(copy)) assert.equal(fs.readFileSync(copy, 'utf8'), fs.readFileSync(path.join(DIR, 'lib', lib), 'utf8'), `${t.id} ${rel}`);
-    }
+    const root = path.join(DIR, 'hidden', t.id);
+    for (const f of walk(root)) assert.ok(!names.includes(path.basename(f)), `${path.relative(DIR, f)} is a copy of lib/hidden/${path.basename(f)}`);
+    assert.doesNotThrow(() => sharedHelpers(root), t.id);
   }
 });
 

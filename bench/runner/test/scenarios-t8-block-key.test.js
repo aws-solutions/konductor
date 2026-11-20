@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Unit tests of the T8 document grader (bench/scenarios/t8/lib/block-key.js).
+// Unit tests of the T8 document grader (bench/scenarios/lib/hidden/block-key.js).
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { readBlock, checkItem, gradeBlock } = require('../../scenarios/t8/lib/block-key.js');
+const { readBlock, checkItem, gradeBlock } = require('../../scenarios/lib/hidden/block-key.js');
 
 const doc = (obj) => `# Report\n\ntext\n\n\`\`\`json\n{"draft": true}\n\`\`\`\n\n\`\`\`json\n${JSON.stringify(obj)}\n\`\`\`\n`;
 

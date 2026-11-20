@@ -1,0 +1,19 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "StringEquals": {
+                    "sts:ExternalId": "backup-ext-19c2"
+                }
+            },
+            "Resource": "*",
+            "Action": "sts:AssumeRole",
+            "Principal": {
+                "AWS": "arn:aws:iam::333344445555:role/VaultBackupVendor"
+            },
+            "Effect": "Allow",
+            "Sid": "BackupVendorAssumeRole"
+        }
+    ],
+    "Version": "2012-10-17"
+}

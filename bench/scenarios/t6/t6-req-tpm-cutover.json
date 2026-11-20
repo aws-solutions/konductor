@@ -207,6 +207,52 @@
         "verdict": "pass",
         "note": "Fixture contains misleading information (calendar shows freeze without 'absolute', meeting says 30min instead of approved 15, vendor doc mentions ordering without throughput tradeoff, roster lists all three people without hierarchy). No direct answer keys - agent must ask questions to discover the six specific facts."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt in task.json asks for a sponsor-ready cutover requirements document and names the output path, but it does not prescribe a method or reveal hidden findings. Its requests for risks, commitments, and sponsor decisions are ordinary task scope, not pointers to specific answers."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture provides scattered source evidence, including data/rabbitmq-contract.md and the meeting notes, plus explicitly stale drafts and open issues; no fixture file is an answer key or list of hidden findings. The conflicting older values are presented as dated drafts, proposals, or issues rather than a concealed answer list."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The grounded expectations are supported by fixture/data/rabbitmq-contract.md (end date 2025-06-30), fixture/data/timezone-analysis.md (Saturday 02:00-06:00 UTC), fixture/policies/change-management.md and docs/communication-plan-draft.md (two-week notice), and the payment interview. The six remaining fact values are explicitly supplied through task.json scriptedUser, so the keys do not require unsupported facts."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful agent can extract the grounded requirements from the named fixture files, recognize stale proposals and unresolved decisions, and ask the six factual questions represented by solution/ASKS.json; task.json supplies each scripted answer. The output format and minimum requirement count are explicit in task.json, so the hidden checks are reachable without hidden/ or solution/."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.5,
+      "lazy": 15,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

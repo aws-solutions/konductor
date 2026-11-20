@@ -179,14 +179,14 @@ test('the lift column says it is not paired and has no interval; a unit mismatch
 
 test('README and playbook use load rate, no longer claim a paired lift, and tag our own thresholds', () => {
   const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
-  for (const f of ['docs/reference.md', 'docs/CAP-PLAYBOOK.md']) {
+  for (const f of ['docs/reference.md', 'docs/cap-playbook.md']) {
     const doc = read(f);
     for (const line of doc.split('\n')) {
       if (/invocation rate/i.test(line)) assert.match(line, /SkillsBench/, `${f}: ${line}`);
       assert.doesNotMatch(line, /paired lift/i, `${f}: ${line}`);
     }
   }
-  const play = read('docs/CAP-PLAYBOOK.md');
+  const play = read('docs/cap-playbook.md');
   assert.match(play, /not comparable to SkillsBench/);
   assert.match(play, /our own, not from an external source/);
   assert.match(play, /direct read of a SKILL\.md is not counted/);

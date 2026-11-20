@@ -158,6 +158,56 @@
         "verdict": "pass",
         "note": "Fixture documentation repeats the current defects and high-level desired state already stated in the prompt, but it contains no leftover solution, finished-behaviour test, or exact policy implementation."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "gpt",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt in task.json field prompt (line 3) specifies the files, desired access behavior, and constraints without naming an implementation method or revealing policy statements."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture policies in infra/buckets/ show the insecure starting state, while README.md and docs/architecture.md describe broad current and desired behavior; they do not list the exact expected principals, conditions, or policy answers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "task.json expertKey.items[0-2] and [4] expect Block Public Access, OAC signing, encryption/KMS status, endpoint behavior, and private-bucket design facts that are absent from the fixture. infra/cdn-config.json has no OAC or encryption settings, and the only related fixture references are generic OAI troubleshooting notes."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The policy edits themselves are inferable, but the keyed answer also requires determining or addressing OAC, KMS/S3-managed encryption, Block Public Access, and the old endpoint, none of which is specified in task.json or the fixture. The missing configuration is especially material because the prompt forbids changing the CDN config."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 16.1,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: key-matches-fixture: task.json expertKey.items[0-2] and [4] expect Block Public Access, OAC signing, encryption/KMS status, endpoint behavior, and private-bucket design facts that are absent from the fixture. infra/cdn-config.json has no OAC or encryption setti",
+      "recheck-failed: solvable-from-fixture: The policy edits themselves are inferable, but the keyed answer also requires determining or addressing OAC, KMS/S3-managed encryption, Block Public Access, and the old endpoint, none of which is specified in task.json or the fixture. The m"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 16.1,
+      "lazy": 16.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

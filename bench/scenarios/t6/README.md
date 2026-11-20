@@ -10,11 +10,12 @@ colleague (no model) holds 4 to 8 facts that it reveals only when the agent asks
 | --- | --- |
 | `<id>.json` | the task (schema v3) |
 | `fixtures/<id>/` | the folder the agent starts in |
-| `hidden/<id>/hidden/` | hidden tests, copied over the workspace before they run; `doc-key.js` is the shared helper, `answers.json` the scripted answers |
+| `hidden/<id>/hidden/` | hidden tests, copied over the workspace before they run; `.bench-lib.json` names the shared helper `doc-key.js` (in `bench/scenarios/lib/hidden`), `answers.json` holds the scripted answers |
 | `solutions/<id>/` | the reference overlay; `ASKS.json` holds the reference asking turns of a scripted task (not part of the overlay) |
 | `briefs/<id>.json` | the brief each task was written from (phase, role, folder kind, public source) |
-| `prompts/` | the author, mapping and review prompts and the renderer |
-| `tools/` | `doc-key.js`, `fake-user.js`, `dryrun.js` and the author's self-check kit |
+| `prompts/` | the author, mapping and review prompts |
+| `scenario.config.js` | this batch's config for the shared tools in `bench/scenarios/lib`: prompt renderer, scripted conversation of the dry run, task builder |
+| `tools/` | `fake-user.js`, the expert keys and the author's self-check kit |
 | `AUTHORING-LOG.md` | every model call: task, step, model, credits |
 
 ## Scoring of a scripted task
@@ -41,17 +42,18 @@ where `count` is the number of questions in that turn. The hidden tests read it 
 ## Free dry run
 
 ```sh
-TMPDIR=/tmp nice -n 19 node bench/scenarios/t6/tools/dryrun.js [--write] [id ...]
+TMPDIR=/tmp nice -n 19 node bench/scenarios/lib/dry-run.js --config bench/scenarios/t6/scenario.config.js [id ...]
 ```
 
 The reference must score at least 95 and the stub (untouched fixture, no conversation) 20 or less, the same over 3
-repeats, on code parts only (hidden 0.5, checks 0.2). `--write` refreshes the hidden `doc-key.js` copies and
-`answers.json`. Unit tests: `node --test bench/runner/test/scenarios-t6-tools.test.js`.
+repeats, on code parts only (hidden 0.5, checks 0.2); the lazy answer 40 or less and the alternative 80 or more
+(`answers/<id>/`, each with its own `ASKS.json`). `lib/stage.js --config bench/scenarios/t6/scenario.config.js
+write-answers all` refreshes `answers.json`. Unit tests: `node --test bench/runner/test/scenarios-t6-tools.test.js`.
 
 ## Expert answer key
 
 Framing, ideation and planning tasks (the ones scored by a findings script, not the requirements tasks scored by
 hidden facts) carry `expertKey`: `items` (risks and trade-offs a good answer addresses, each with its public source
 by name, URL and licence) and 3 to 5 `weakAnswers`. It is for the judges only and sits inside the rubric share. The
-lead writes the keys in `tools/expert-keys.json`; `tools/stage.js` copies them into the task. Items do not repeat
+lead writes the keys in `tools/expert-keys.json`; `lib/stage.js assemble` copies them into the task. Items do not repeat
 what a hidden test already checks. The judge does not read the key yet (DEBT D-62).

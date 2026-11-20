@@ -1,0 +1,5 @@
+{
+  "stock": { "minimum": 0, "maximum": 100000 },
+  "basket": { "maximumLines": 40, "maximumUnits": 80 },
+  "reservation": { "holdMinutes": 15, "sweepBatch": 100 }
+}
