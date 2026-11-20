@@ -5,7 +5,7 @@
   "role": "frontend",
   "phases2": [],
   "author": "gpt-5.6-luna",
-  "reviewer": "glm-5",
+  "reviewer": "qwen3-coder-next",
   "stack": "browser",
   "size": "25 to 40",
   "nkey": 9,

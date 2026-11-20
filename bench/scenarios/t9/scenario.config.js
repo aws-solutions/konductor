@@ -16,6 +16,7 @@ const { buildHidden, helper } = require('./lib/selfcheck.js');
 
 const STACKS = {
   node: 'Plain JavaScript ES modules (`"type": "module"` in package.json), Node 24, no dependencies, no install step, no bundler. Tests use node:test and node:assert, live in `test/`, and run with `node --test test/`. The logic is DOM-free (stores, view-models, formatters, validators) and the tests call it directly.',
+  cjs: 'Plain JavaScript, CommonJS (`require`, `module.exports`, no `"type": "module"` in package.json), Node 24, no dependencies, no install step. Tests use node:test and node:assert, live in `test/`, and run with `node --test test/`. The logic is DOM-free (stores, view-models, formatters, validators) and the tests call it directly.',
   ts: 'TypeScript source written with erasable syntax only (no enums, namespaces or parameter properties), run directly by Node 24 type stripping: import paths end in `.ts`. No compiler, no dependencies, no install step. Tests use node:test and node:assert, live in `test/` as `*.test.ts`, and run with `node --test test/`. The logic is DOM-free and the tests call it directly.',
   browser: 'A static web app: `index.html` loads ES modules from `src/` with `<script type="module">`, plus CSS. No bundler, no dependencies, no install step, no network at run time (no CDN, no web fonts). Node 24 runs the repository\'s own tests with node:test and node:assert, in `test/`, with `node --test test/`; they cover the DOM-free logic modules only, because no DOM library is installed.',
 };
@@ -67,14 +68,38 @@ function normalize(s, id) {
   buildHidden(w, draft);
 }
 
+// Owner rule: a task named in a row of HAND-EDITS.md (the kept tasks' table) carries `handEdited`.
+function handEditedIds(dir) {
+  const file = path.join(dir, 'HAND-EDITS.md');
+  if (!fs.existsSync(file)) return new Set();
+  const kept = fs.readFileSync(file, 'utf8').split('## Dropped')[0];
+  return new Set([...kept.matchAll(/^\| (t9-[a-z0-9-]+) \|/gm)].map((m) => m[1]));
+}
+
+// A non-Claude re-check of a hand-edited task (owner checklist): work/<id>.recheck.json. `model` defaults to qwen3-coder-next.
+function recheck(s, id, model = 'qwen3-coder-next') {
+  const cwd = s.work(`${id}-recheck`);
+  fs.rmSync(cwd, { recursive: true, force: true });
+  fs.cpSync(s.work(id), cwd, { recursive: true });
+  for (const skip of ['alt', 'lazy']) fs.rmSync(path.join(cwd, skip), { recursive: true, force: true });
+  const rows = fs.readFileSync(path.join(s.dir, 'HAND-EDITS.md'), 'utf8').split('\n').filter((l) => l.startsWith(`| ${id} |`));
+  fs.writeFileSync(path.join(cwd, 'edits.md'), `${rows.join('\n')}\n`);
+  const r = s.call(model, cwd, fs.readFileSync(path.join(s.dir, 'prompts', 'recheck.md'), 'utf8'), `${id}.recheck`);
+  s.logCall(id, 'recheck', model, r);
+  const file = path.join(cwd, 'recheck.json');
+  const out = fs.existsSync(file) ? s.readJson(file) : s.jsonIn(r.finalText);
+  fs.writeFileSync(s.work(`${id}.recheck.json`), `${JSON.stringify({ model, date: s.today(), ...out }, null, 2)}\n`);
+  return out;
+}
+
 function buildTask(s, id) {
   const b = s.brief(id);
   const draft = s.readJson(s.work(id, 'task-draft.json'));
   const disposition = s.workJson(`${id}.disposition.json`, {});
-  const mapped = s.workJson(`${id}.map.json`, s.NO_MAPPING);
-  // A twin has no target by definition of its control: it keeps the mapping, and must not load its source's units.
-  const mapping = mapped;
+  const mapping = s.workJson(`${id}.map.json`, s.NO_MAPPING);
   const rev = s.workJson(`${id}.review.json`);
+  const re = s.workJson(`${id}.recheck.json`);
+  const recheckOf = re ? { recheck: { family: s.FAMILY[re.model], model: re.model, date: re.date, items: re.items.map(({ check, verdict, note }) => ({ check, verdict, ...(note ? { note } : {}) })) } } : {};
   // Authors guess seconds of work; an agent needs minutes to read a repository. shortcut: fixed floor, raise it from pilot timings.
   const softSec = Math.max(draft.limits.softSec, b.softSec || 600);
   const limits = { softSec, hardSec: softSec * 2 };
@@ -89,7 +114,8 @@ function buildTask(s, id) {
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: s.mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: s.FAMILY[b.author], model: b.author, date: b.date || s.today(), source: b.source },
-    ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)) } } : {}),
+    ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)), ...recheckOf } } : {}),
+    ...(handEditedIds(s.dir).has(id) ? { handEdited: { family: 'claude', editor: 'kirocrew-mate-worker (T9 worker session)', log: 'HAND-EDITS.md' } } : {}),
     pilot: null, lockedAt: null,
   };
 }
@@ -107,6 +133,6 @@ module.exports = {
       [s.work(id, 'lazy'), path.join(s.dir, 'answers', id, 'lazy')],
       [s.work(id, 'alt'), path.join(s.dir, 'answers', id, 'alt')],
     ],
-    commands: { prepare, normalize },
+    commands: { prepare, normalize, recheck },
   },
 };

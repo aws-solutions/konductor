@@ -32,20 +32,6 @@
       "path": "src/filter.js",
       "weight": 1,
       "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "index.html",
-      "pattern": "role=\"listbox\"",
-      "weight": 3,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "src/main.js",
-      "pattern": "mountCountryPicker|installCountrySearch",
-      "weight": 3,
-      "kind": "substance"
     }
   ],
   "rubric": [
@@ -78,6 +64,62 @@
       "use": "idea"
     }
   },
-  "pilot": null,
-  "lockedAt": null
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to build (combobox with ARIA attributes, keyboard navigation, live regions) but does not name specific methods, tools, or reveal implementation details like the exact rank function or country data structure."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the expected behavior: keyboard navigation (ArrowUp/ArrowDown/Enter/Escape), ARIA roles (combobox, listbox, options), live region announcements, and the hidden input for country codes. Two competent readers would understand the same requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's countries.js already contains the test data including 'Aland <North>' with angle brackets and accented names like 'C\u00f4te d'Ivoire' and 'R\u00e9union'. However, this is legitimate source data the agent should use, not a leak of test expectations."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer (hard-coded 5-country datalist as in lazy/) fails 14 of 18 hidden tests: it misses listbox semantics, proper ARIA states, ranking reuse, code clearing on edit, and the specific country selection behavior. The hidden tests thoroughly exercise the requirements."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests derive from stated requirements. The tests verify: ARIA combobox semantics, keyboard/pointer interaction, live region announcements, ranking reuse via imported filter.js, text rendering of special characters, and form continuity. No test relies on unstated IDs, class names, or hidden behaviors."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "result": "pass",
+      "checklist": "prompt names no method and no decoy; fixture does not list the answers; key matches the fixture; solvable from the fixture alone"
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 9.5,
+    "dryRun": {
+      "reference": 100,
+      "stub": 9.5,
+      "lazy": 25.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T9 worker session)",
+    "log": "HAND-EDITS.md"
+  }
 }

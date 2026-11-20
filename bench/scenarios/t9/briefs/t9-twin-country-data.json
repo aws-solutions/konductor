@@ -7,7 +7,7 @@
   "role": "frontend",
   "phases2": [],
   "author": "minimax-m2.5",
-  "reviewer": "glm-5",
+  "reviewer": "qwen3-coder-next",
   "stack": "browser",
   "size": "30 to 50",
   "source": "original",

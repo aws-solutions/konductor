@@ -4,7 +4,7 @@
   "phase": "implementation",
   "role": "frontend",
   "phases2": [],
-  "author": "deepseek-3.2",
+  "author": "qwen3-coder-next",
   "reviewer": "minimax-m2.5",
   "stack": "ts",
   "size": "25 to 40",
