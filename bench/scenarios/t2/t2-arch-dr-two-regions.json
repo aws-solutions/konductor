@@ -1,6 +1,6 @@
 {
   "id": "t2-arch-dr-two-regions",
-  "version": 1,
+  "version": 2,
   "class": "design",
   "phase": "design-review",
   "phases2": [],
@@ -179,7 +179,7 @@
   },
   "review": {
     "family": "minimax",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -207,5 +207,24 @@
         "note": "No comments, tests, or file names point to planted problems. The fixture presents the design neutrally. The README lists contents without hints. The dry-run dump achieves 7/20, confirming some difficulty."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

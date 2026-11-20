@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: reviewer. Packet kind: a design, in a summary / motivation / detailed design / drawbacks / alternatives / unresolved questions structure, for re-indexing a product search cluster with no downtime using a new index and an alias swap. Context: cluster sizing, index sizes and growth, write rate by hour, a budget sheet, the current mapping, an incident where a mapping change broke search. Plant: writes that arrive during the bulk copy are lost because dual-writing starts after the copy; no rollback after the alias swap; the storage plan ignores that both indexes exist at once and the disk headroom in the sizing file is too small; the copy-time estimate uses the wrong write rate; there is no check that the new index is complete before the swap; success is defined as 'search works' with no measurable check.",
-  "doc": "docs/design/zero-downtime-reindex.md"
+  "doc": "docs/design/zero-downtime-reindex.md",
+  "version": 2
 }

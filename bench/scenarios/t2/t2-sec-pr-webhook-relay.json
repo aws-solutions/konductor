@@ -1,6 +1,6 @@
 {
   "id": "t2-sec-pr-webhook-relay",
-  "version": 1,
+  "version": 2,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -122,7 +122,7 @@
   },
   "review": {
     "family": "qwen",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -150,5 +150,24 @@
         "note": "No comments, tests, docs, or file names in the fixture point at planted problems. The public key log in index.js is a decoy per notes.txt."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }
