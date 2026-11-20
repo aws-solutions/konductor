@@ -211,7 +211,12 @@ enum DirectWork {
 /// layout when `None`) says about the Direct Work context. `agent` is a
 /// name the install's manifest lists, so it is a single path component.
 ///
-/// A missing or unreadable file does not load the context.
+/// This runs on every session start of an agent the install owns, before
+/// the user config is read, so it stays cheap: a stat rules out an
+/// oversized Kiro file without reading it, and no read goes more than one
+/// byte past the cap. On a typical install a check costs tens of
+/// microseconds, well under the manifest reads that precede it. A missing
+/// or unreadable file does not load the context.
 fn installed_agent_direct_work(
     root: &Path,
     layout: Option<AgentLayout>,
@@ -619,6 +624,11 @@ fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>) -> bool {
 /// otherwise it prints a fallback line naming the owner, so the mode is
 /// never dropped without a trace. For the same reason an agent file too
 /// large to check gets a fallback line under `coordinator`, not silence.
+///
+/// Cost for a session whose agent is not a mode agent: the install index
+/// (each candidate root's manifest) and, unless the agent is
+/// `MODE_AGENT`, one read of its installed agent file, capped at
+/// `MAX_AGENT_FILE_BYTES`. The user config is not opened.
 pub(crate) fn dispatch_orchestration_hook(
     cwd: &Path,
     agent_arg: Option<&str>,
