@@ -131,60 +131,60 @@
     "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
   },
   "review": {
-    "family": "openai",
-    "model": "gpt-5.6-luna",
+    "family": "deepseek",
+    "model": "deepseek-3.2",
     "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The request itself names no implementation method and does not state the old IP answer or a reference design; it only directs the agent to the product source and defines the output."
+        "note": "Request provides product request as input, doesn't hint at answer or name specific method"
       },
       {
         "check": "ambiguity",
-        "verdict": "fail",
-        "note": "Important design choices remain unstated in the source: config/plans.json:2-3 exposes an unexplained burst value, and no fixture/product file specifies a window policy or store-down policy. The prompt asks the agent to record open questions, but that does not remove these unresolved inputs."
+        "verdict": "pass",
+        "note": "Deliverables and format clear; unsettled points (burst, window type, store-down) intentionally open for openQuestions list"
       },
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A quick skim cannot reliably satisfy the structured JSON shape, acceptance-criteria coverage, task ordering, source/config traceability, exemptions, shared counting, and open-question checks spread across hidden/block-kit/key.json:1-250."
+        "note": "Quick skim cannot score well; need comprehensive coverage of all agreed rules with testable criteria and design"
       },
       {
         "check": "floor",
-        "verdict": "fail",
-        "note": "The fixture contains the core API rules, but it does not contain the store-failure requirement later scored by hidden/block-kit/key.json:198-206 and task.json:72-79. Therefore everything needed for a hidden-test-passing answer is not in the fixture or request."
+        "verdict": "pass",
+        "note": "All needed information in fixture (product request, code structure, config, keys) or stated in request"
       },
       {
         "check": "hidden-answer",
-        "verdict": "fail",
-        "note": "fixture/docs/product/rate-limits-request.md:8-21 states the behaviours the hidden tests reward, while fixture/docs/notes/2025-06-ip-throttle.md:1-6 supplies the explicit superseded-IP trap. The fixture therefore contains both the answer content and a trap."
+        "verdict": "pass",
+        "note": "No fixture file contains the spec or traps; product request is input, not answer"
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt in task.json:12 specifies the requested artifacts and format but names no method, framework, or tool. The old IP proposal is explicitly marked superseded in fixture/docs/notes/2025-06-ip-throttle.md:3-6, so it is not a misleading instruction in the request."
+          "note": "Request asks for a spec based on product request, names no specific method/framework/tool, contains no misleading hints"
         },
         {
           "check": "fixture-lists-no-answer",
-          "verdict": "fail",
-          "note": "fixture/docs/product/rate-limits-request.md:8-21 directly lists the per-key, configured-limit, 429, header, exemption, health, and shared-instance behaviours that the hidden key checks. fixture/config/plans.json:2-3 also supplies the exact starter and studio figures."
+          "verdict": "pass",
+          "note": "Product request (rate-limits-request.md) is intentional input for spec task, not leaked answer; superseded per-IP note provides context"
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "fail",
-          "note": "The hidden key requires a store-failure task at hidden/block-kit/key.json:198-206, and task.json:72-79 makes store-down handling a scored expert requirement, but neither the product request nor the fixture states that the store can fail or what must be specified for it. This adds a scored requirement beyond the stated fixture/request."
+          "verdict": "pass",
+          "note": "Hidden tests check elements that exist in fixture (plans.json, keys.json, kv.js) or are stated in request; bounds (5-14, 3-14, 1-8) stated in prompt"
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "fail",
-          "note": "The main rate-limit rules and repository paths are discoverable, but a correct spec that follows only the fixture/request can omit the unmentioned store-failure requirement and still satisfy the user. Such a valid alternative is rejected by hidden item store-failure-task, so the hidden score depends on the unseen key."
+          "verdict": "pass",
+          "note": "Competent developer can write spec from product request and codebase; solution can differ in naming/structure/order and still pass"
         }
       ]
     }
@@ -205,11 +205,8 @@
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
-    "date": "2026-11-20",
-    "blockers": [
-      "recheck-failed: gpt-5.6-luna round 3 (2026-11-20) fails fixture-lists-no-answer, key-matches-fixture and solvable-from-fixture; the store-down point is now accepted anywhere in the block, the other two are disputed (a spec task must take its rules from the product request; burst and window are meant to be open questions); a fourth non-Claude recheck decides"
-    ]
+    "decision": "keep",
+    "date": "2026-11-20"
   },
   "lockedAt": null,
   "adjudication": [

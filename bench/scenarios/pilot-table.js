@@ -297,4 +297,4 @@ function cmdPilotTable(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
 }
 
-module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, FLAG_NAMES };
+module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, throttled, FLAG_NAMES };
