@@ -17,6 +17,7 @@ import {
   nodeOutline,
   spreadStroke,
 } from './card-shape';
+import { StopMark } from '../canvas-parts/StopMark';
 
 type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
   N['data'],
@@ -125,7 +126,13 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
         {data.agent} · {data.harness}
       </div>
       <StatusBadge status={data.status} />
-      <SequenceOut />
+      {data.endsRun ? (
+        <span className="wf-node-stop">
+          <StopMark stage={data.name} state={data.stopState} />
+        </span>
+      ) : (
+        <SequenceOut />
+      )}
     </div>
   );
 }
