@@ -207,7 +207,7 @@
         "field": "action",
         "all": [
           "write",
-          "read.?back|read"
+          "read|verif|confirm|succe"
         ]
       },
       "weight": 8
@@ -219,11 +219,11 @@
       "match": {
         "field": "action",
         "all": [
-          "monitor",
-          "five minutes"
+          "monitor|watch|observe",
+          "\\d+\\s*(s|sec|secs|seconds?|min|mins|minutes?)\\b|\\b(five|ten|fifteen|thirty) (seconds|minutes)\\b"
         ]
       },
-      "weight": 8
+      "weight": 4
     },
     {
       "id": "old-primary-remains-isolated",
@@ -233,12 +233,22 @@
         "field": "action",
         "all": [
           "orders-db-a",
-          "fenced",
-          "inspect",
-          "reconnect"
+          "fenced|isolated|stays? (stopped|down|out)|do not (rejoin|reconnect|restart|reuse)|keep (it|its|the)[^.]*(fenced|volume|stopped)|rebuild[^.]*replica"
         ]
       },
-      "weight": 8
+      "weight": 4
+    },
+    {
+      "id": "dns-ttl-wait",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "reconfigure|endpoint|dns",
+          "\\bttl\\b|30.?s(ec(ond)?s?)?\\b|30-second|30 seconds"
+        ]
+      },
+      "weight": 4
     }
   ]
 }

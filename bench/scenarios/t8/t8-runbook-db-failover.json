@@ -1,7 +1,7 @@
 {
   "id": "t8-runbook-db-failover",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -37,7 +37,7 @@
   "rubric": [
     {
       "id": "usable-at-3am",
-      "criterion": "The prose gives an operator a clear sequence with expected results and explicit stop or escalation behavior. Fail: the runbook is a loose list (for example promote the replica and update the config) with no check after steps, no fence, and no stop rule. Partial: the order is right (check lag on orders-db-b, fence orders-db-a, promote, re-point clients, verify writes) but several steps have no expected result, or the stop and escalation rules are vague with no number or role. Pass: each step in the prose and the JSON has the exact QuorumCtl command from the folder or a named console action, the expected result, and an abort condition; a numeric abort threshold with unit, a time limit, a named rota role who may overrule a failed check, and the order lag check, fence, promote, repoint, write test, aftermath are all there so an engineer can follow it without reading anything else. (code cannot check this because it cannot judge whether the procedure is practically usable under incident pressure).",
+      "criterion": "The prose gives an operator a clear sequence with expected results and explicit stop or escalation behavior. Fail: the runbook is a loose list (for example promote the replica and update the config) with no check after steps, no fence, and no stop rule. Partial: the order is right (check lag on orders-db-b, fence orders-db-a, promote, re-point clients, verify writes) but several steps have no expected result, or the stop and escalation rules are vague with no number or role. Pass: each step in the prose and the JSON has the exact QuorumCtl command from the folder or a named console action, the expected result, and an abort condition; a numeric abort threshold with unit, a time limit, a named rota role who may overrule a failed check, and the order lag check, fence, promote, repoint, write test, aftermath are all there so an engineer can follow it without reading anything else. The JSON matches the request's types (verify is a string). (code cannot check this because it cannot judge whether the procedure is practically usable under incident pressure).",
       "weight": 2
     },
     {
@@ -49,41 +49,51 @@
   "expertKey": {
     "items": [
       {
-        "id": "data-loss-bound",
-        "text": "Explains how to choose among replicas when more than one qualifies, and what to do when none is within the allowed data loss.",
-        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+        "id": "lag-gate",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)",
+        "text": "Promotes orders-db-b only when its replication_lag_seconds is at most 120 (the RPO in policy/data-policy.md), and never promotes orders-db-c, the 900-second delayed copy. Weak: 'check the replica is healthy'. Do not require choosing among several replicas: only orders-db-b is eligible."
       },
       {
-        "id": "fencing",
-        "text": "Says how to confirm the fence held (the old primary cannot take writes even if it comes back) and what to do if fencing fails.",
-        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
+        "id": "none-qualifies",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)",
+        "text": "Says what to do when orders-db-b is over 120 s: stop, keep writes fenced or paused, page Database On-Call, and never discard unapplied WAL to make the promotion look healthy. Weak: 'promote anyway' or silence."
+      },
+      {
+        "id": "fence-proof",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Treats the fence as done only when quorumctl status shows the old lease revoked (the help text's rule, and the 2024 lesson), and says what to do if the node is unreachable (wait out the 45-second lease) or the fence fails (stop and escalate). The revoked-lease check alone is Partial. Weak: 'stop the old primary'."
       },
       {
         "id": "client-cutover",
-        "text": "Covers how clients find the new primary (DNS TTL, pool reconnects) and verifies that real writes succeed afterwards.",
-        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)",
+        "text": "Covers how clients reach the new primary: wait out the 30-second DNS TTL from config/clients.yaml and recycle or watch the orders-api pools (open sockets stay up to the 60-second idle timeout), then prove a real write and read-back (for example quorumctl verify --cluster orders-prod --writes). Weak: 'update DNS'."
       },
       {
         "id": "verify-each",
-        "text": "Gives a check with the expected result after each step, so the operator knows the step worked before going on.",
-        "source": "Google SRE book, Being On-Call, https://sre.google/sre-book/being-on-call/ (CC BY-NC-ND 4.0; idea only)"
+        "source": "Google SRE book, Being On-Call, https://sre.google/sre-book/being-on-call/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Every step has an expected result in its verify field, so the operator knows it worked before going on. Weak: steps with no checks. Judge by the JSON verify fields and the prose."
       },
       {
-        "id": "abort-escalate",
-        "text": "Timeboxes the procedure and says who may decide to continue past a failed check, instead of pushing on alone.",
-        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)"
+        "id": "timebox-and-owner",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Gives a time limit (for example the 15-minute RTO) and names Database On-Call as the one who decides promotion and fencing and may continue past a failed check. Weak: 'escalate if needed'. Any stated limit with a unit passes."
       },
       {
-        "id": "after",
-        "text": "Covers the aftermath: rebuild the old primary as a replica, re-point backups and monitoring, and record the event.",
-        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)"
+        "id": "keep-volume",
+        "source": "SkeltonThatcher run-book-template, https://github.com/SkeltonThatcher/run-book-template (no licence; idea only)",
+        "text": "Keeps orders-db-a fenced and its data volume intact until the database owner confirms the incident record and recovery copy (policy/data-policy.md), and only then rebuilds it as a replica. Weak: 'rebuild the old primary' right away."
+      },
+      {
+        "id": "confirm-fault",
+        "source": "Google SRE book, Emergency Response, https://sre.google/sre-book/emergency-response/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Checks that the primary itself is at fault before failing over (storage_io_await_ms, the 1,840 ms io_wait on orders-db-a, or commit latency), and not only API errors, since the same night had an orders-api retry-tuning deploy at 01:55. Weak: 'API errors are high, so fail over'."
       }
     ],
     "weakAnswers": [
       "Promote the replica and update the config.",
       "Restart the database and see if it recovers.",
       "A list of steps with no check after each.",
-      "No word on the old primary coming back."
+      "Rebuild the old primary as a replica right after the failover."
     ]
   },
   "targetSkills": [],
@@ -167,11 +177,20 @@
           "note": "rubric check: Different valid runbook structures and step organizations can Pass if they cover the required operational sequence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can synthesize the runbook from topology.yaml (nodes, roles, zones), vendor/quorumctl-help.txt (commands), policy/data-policy.md (RPO=120s), config/clients.yaml (DNS TTL=30s), logs (incident pattern), docs/old-failover-notes.md (fencing lesson), and rota/paging.md (escalation roles).)."
         }
       ]
-    }
+    },
+    "adjudication": [
+      "A watch window of any stated length with a unit (5 min, 10 minutes, 300 s) is correct; nothing in the folder fixes 'five minutes'.",
+      "'Keep orders-db-a isolated; do not rejoin it' is the same as 'stays fenced'; the hidden key takes either.",
+      "A runbook that rebuilds orders-db-a before the database owner approves fails keep-volume, whatever older notes say about rebuilding.",
+      "The abort op may be > 120 or >= 120: both are safe readings of 'not more than 120 seconds'. An abort on quorum_lease_age_seconds is the wrong metric for the RPO.",
+      "A fence written as a console action is Partial on fence-proof: the help text gives a command.",
+      "The verify field as a string is what the request asks; an object with check and expected is understood by the judge but is Partial on usable-at-3am.",
+      "Steps beyond the hidden key's 16 are never penalised by the judge."
+    ]
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -185,7 +204,7 @@
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
-      "lazy": 38.1,
+      "lazy": 38.8,
       "alt": 100,
       "date": "2026-11-20"
     }
