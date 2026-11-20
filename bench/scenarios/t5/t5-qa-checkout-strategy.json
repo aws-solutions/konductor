@@ -296,8 +296,53 @@
         "verdict": "pass",
         "note": "All 8 required risks are identifiable by careful code reading: floating-point in price.js, webhook replay in webhook.js (no event id tracking), race condition in reservation.js (read-pause-write), retry ambiguity in retry.js, swallowed email errors, local timezone cutoff in settlement.js, refund rounding in refunds.js, and disabled-by-default guard in checkout.js. The solution demonstrates all are discoverable without special knowledge."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a focused QA plan without naming methods, techniques, tools, or specific risks to find."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file lists bugs, findings, or risks; all must be discovered by analyzing source code."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 8 findingsKey items reference source files (price.js, webhook.js, reservation.js, retry.js, email.js, settlement.js, refunds.js, checkout.js) where the risks exist and are discoverable through code analysis."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify each risk by reading source files: floating-point math in price.js, missing idempotency in webhook.js, race condition in reservation.js, blind retries in retry.js, swallowed errors in email.js, local time in settlement.js, rounding in refunds.js, and disabled guard in checkout.js with feature-flags.json."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 15.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }

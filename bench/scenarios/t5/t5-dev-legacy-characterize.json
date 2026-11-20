@@ -101,8 +101,53 @@
         "verdict": "pass",
         "note": "The task is fair. The behavior is fully defined in the code and discoverable by reading. No contradictory requirements. The mutants represent realistic bugs that characterization tests should catch. The solution demonstrates that focused tests with specific values can kill all mutants without special knowledge."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (write tests to pin behavior), the files (rates.py, tests/), the constraints (do not change existing code, keep unittest discover passing), and does not name a testing method, checklist, or point to specific mutants or edge cases the hidden tests target."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture files contain pricing logic, constants, and existing smoke tests, but no document lists the boundary values, edge cases, or mutant-killing assertions the hidden tests look for. The agent must reason from the code's behavior to discover these."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Each mutant targets specific code behavior that exists in the fixture: weight_band uses <= for boundary checks, UNKNOWN_ZONE is 5, fuel is added before final rounding, calendar_rules.py includes (2,29) in FIXED_HOLIDAYS, zero weight is valid, RateCalculator resets surcharge labels, next_business_day moves one day, labels.py checks for empty postal, cli.py returns 2 on error, formatters.py uses ROUND_HALF_UP. All follow from the fixture code."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer reading rates.py, calendar_rules.py, labels.py, cli.py, and formatters.py can discover all 10 edge cases through code analysis: boundary conditions (weight 1.0 falls in 'letter'), unknown zone fallback, fuel calculation order, leap day holiday, zero weight validity, surcharge label reset, next business day increment, postal normalization emptiness check, CLI error status, and half-up rounding. No external knowledge or hidden information is required."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 7.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }

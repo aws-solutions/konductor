@@ -100,8 +100,53 @@
         "verdict": "pass",
         "note": "The task is achievable with the provided structure. All required functions are exported from ledger/__init__.py, and the standard library is sufficient. The mutation-kit runner confirms tests pass on the real code before checking mutations. The Python 3.12 and standard library constraint is clear."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to strengthen tests for interest, fees, overdrafts, posting/reversal, statements, and CSV export without naming mutation testing or the specific bugs the mutants represent."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains source code and existing tests, no file lists the bugs or expected findings that the mutants test for."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All mutants target behaviors present in fixture code (interest.py, fees.py, ledger.py, export.py), and pristine/ versions match fixture files exactly."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify boundary conditions from the fixture code: rounding mode, day count, negative fees, statement endpoints, overdraft limit boundary, duplicate id handling, reversal guard, and column ordering in CSV."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 12.9,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 12.9,
+      "lazy": 12.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }
