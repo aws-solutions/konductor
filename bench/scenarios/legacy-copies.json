@@ -17,7 +17,8 @@
     "mutants.js",
     "mutation.test.js",
     "findings.test.js",
-    "findings-key.js"
+    "findings-key.js",
+    "doc-key.js"
   ],
   "legacy": [
     {
@@ -115,18 +116,6 @@
     {
       "path": "t2/render-prompt.js",
       "debt": "D-63"
-    },
-    {
-      "path": "t6/prompts/render-prompt.js",
-      "debt": "D-68"
-    },
-    {
-      "path": "t6/tools/dryrun.js",
-      "debt": "D-68"
-    },
-    {
-      "path": "t6/tools/stage.js",
-      "debt": "D-68"
     },
     {
       "path": "t7/hidden/t7-dep-conflicts/hidden/plan-grade.cjs",
