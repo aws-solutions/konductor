@@ -111,10 +111,9 @@ def test_canonical_config_allows_urls_matching_its_own_allowlist(tmp_path):
     match the canonical config's allowlist must still be accepted --
     proving the canonical config's patterns are actually being applied,
     not just causing a blanket rejection. Uses the exact host
-    "example.com" (not a subdomain): url_allowed() matches the host
-    against the pattern with an anchored `^...$` regex, so
-    "docs.example.com" would NOT match an "example.com" pattern --
-    confirmed against the real script before pinning this fixture."""
+    "example.com" (not a subdomain): a pattern with no "*" matches only
+    that exact hostname, so "docs.example.com" would NOT match an
+    "example.com" pattern."""
     write_config(tmp_path / ".konductor" / "memory-config.json", ["example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
     proposed = "- [2026-08-01] [origin:agent] See https://example.com/guide for details\n"
@@ -1335,3 +1334,96 @@ def test_editing_an_existing_untagged_entry_requires_a_tag(tmp_path):
     result = run_validator("- [2026-01-01] Hand-written legacy fact, edited\n", target, cwd=tmp_path)
     assert result.returncode == 1
     assert "no [origin:agent] or [origin:user] tag" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# URL allowlist matching. The pattern is compared with the URL's hostname
+# only: the authority ends at the first / ? # or backslash, userinfo and port
+# are dropped, and a host that is not plain ASCII after percent-decoding (an
+# encoded dot, raw non-ASCII, a bracketed address) is rejected. A "*" that is
+# the whole leftmost label matches one or more labels; any other "*" stays
+# within one label.
+# ---------------------------------------------------------------------------
+
+_ALLOWLIST = ["*.example.com", "docs.example.org", "api-*.example.net"]
+
+
+def _url_verdict(tmp_path: Path, url: str) -> subprocess.CompletedProcess:
+    write_config(tmp_path / ".konductor" / "memory-config.json", _ALLOWLIST)
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-20] [origin:agent] Reference: {url}\n"
+    return run_validator(proposed, target, cwd=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # The allowed suffix sits in the query string or fragment, not the host.
+        "https://evil%2Ecom?.example.com/x",
+        "https://attacker#.example.com",
+        "https://evil.test/.example.com",
+        "https://evil.test\\@docs.example.com",
+        # Userinfo that looks like an allowed host; the real host is evil.test.
+        "https://docs.example.com@evil.test/",
+        "https://docs.example.com:443@evil.test/",
+        # Encoded dot inside the host, with no query trick.
+        "https://evil%2ecom.example.com",
+        # Non-ASCII host and other characters outside a plain hostname.
+        "https://ex\u00e4mple.example.com",
+        "https://docs\u3002example.com",
+        "https://[::1].example.com",
+        "https://docs.example.com:notaport/",
+        # Upper-case scheme is still a URL and must still be checked.
+        "HTTPS://evil.test/",
+        # "*.example.com" does not cover the apex or a look-alike suffix.
+        "https://example.com/",
+        "https://notexample.com/",
+        "https://example.com.evil.test/",
+        # A pattern without "*" matches only that exact host.
+        "https://a.docs.example.org/",
+        # A "*" inside a label stays within that label.
+        "https://api-v1.evil.example.net/",
+    ],
+)
+def test_url_allowlist_rejects_non_matching_hosts(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 1, f"{url!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://docs.example.com/guide",
+        # A leading "*" label covers any number of labels.
+        "https://docs.aws.example.com/guide",
+        "https://eu.api.example.com",
+        "https://a.b.c.example.com/x?y=1#z",
+        # Userinfo and port are not part of the host.
+        "https://user:pw@docs.example.com:8443/path",
+        "https://evil.test:x@docs.example.com/",
+        # Hostnames compare case-insensitively; a trailing root dot is the same host.
+        "https://Docs.Example.COM/",
+        "https://docs.example.com./",
+        # Punycode is plain ASCII and matches like any other label.
+        "https://xn--exmple-cua.example.com/",
+        # A percent-encoded letter decodes to the same host.
+        "https://ex%61mple.example.com/",
+        "http://docs.example.org/",
+        "https://api-v1.example.net/",
+    ],
+)
+def test_url_allowlist_accepts_matching_hosts(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 0, f"{url!r} was rejected: {result.stderr}"
+
+
+def test_bare_star_pattern_allows_any_plain_host(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] See https://docs.example.org/a\n"
+    assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
+
+    proposed = "- [2026-11-20] [origin:agent] See https://evil%2Ecom/a\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert result.returncode == 1, result.stderr

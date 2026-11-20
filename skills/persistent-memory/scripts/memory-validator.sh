@@ -228,16 +228,66 @@ url_allowed() {
   if [[ ${#ALLOWLIST_PATTERNS[@]} -eq 0 ]]; then
     return 0
   fi
-  local host
-  host="$(printf '%s\n' "$url" | sed -E 's|https?://([^/]+).*|\1|')"
-  for pattern in "${ALLOWLIST_PATTERNS[@]}"; do
-    local regex
-    regex="$(echo "$pattern" | sed 's/\./\\./g; s/\*/[^.]*/g')"
-    if [[ "$host" =~ ^${regex}$ ]]; then
-      return 0
-    fi
-  done
-  return 1
+  # Match the pattern against the URL's hostname only. A raw regex over the
+  # text after "://" let a query string or fragment carry the allowed suffix
+  # ("https://evil%2Ecom?.example.com/x"), so the authority is parsed the way
+  # a browser reads it: it ends at the first / ? # or backslash, and userinfo
+  # before the last @ is dropped. Anything that is not a plain ASCII host
+  # afterwards (an encoded dot, a raw non-ASCII label, a bracketed address)
+  # fails closed: allowlist the xn-- punycode form of an IDN host instead.
+  #
+  # Pattern semantics, case-insensitive: a "*" that is the whole leftmost label
+  # matches one or more labels, so "*.example.com" covers docs.example.com and
+  # a.b.example.com but not example.com itself. A "*" anywhere else matches
+  # within a single label. Every other character is literal.
+  python3 - "$url" "${ALLOWLIST_PATTERNS[@]}" <<'PYEOF'
+import re, sys
+from urllib.parse import unquote
+
+url, patterns = sys.argv[1], sys.argv[2:]
+
+def hostname(url):
+    m = re.match(r"(?i)https?://", url)
+    if not m:
+        return None
+    authority = re.split(r"[/?#\\]", url[m.end():], maxsplit=1)[0]
+    authority = authority.rsplit("@", 1)[-1]
+    host, sep, port = authority.rpartition(":")
+    if not sep:
+        host = authority
+    elif not port.isdigit():
+        return None
+    if re.search(r"(?i)%2e", host):
+        return None
+    host = unquote(host)
+    if host.endswith("."):
+        host = host[:-1]
+    # Check before lowercasing: str.lower() folds some non-ASCII letters
+    # (U+212A KELVIN SIGN) into ASCII ones.
+    if not re.fullmatch(r"[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*", host):
+        return None
+    return host.lower()
+
+def label_matches(label, pattern):
+    regex = "[^.]*".join(re.escape(part) for part in pattern.split("*"))
+    return re.fullmatch(regex, label) is not None
+
+def host_matches(host, pattern):
+    want = pattern.lower().rstrip(".").split(".")
+    have = host.split(".")
+    if want[0] == "*":
+        rest = want[1:]
+        if len(have) <= len(rest):
+            return False
+        have = have[len(have) - len(rest):]
+        want = rest
+    elif len(have) != len(want):
+        return False
+    return all(label_matches(h, w) for h, w in zip(have, want))
+
+host = hostname(url)
+sys.exit(0 if host is not None and any(host_matches(host, p) for p in patterns) else 1)
+PYEOF
 }
 
 # Strip the optional leading date and then the origin tag, in the order step 4a
@@ -421,7 +471,7 @@ while IFS= read -r line; do
       echo "REJECT: blocked external URL: $url" >&2
       exit 1
     fi
-  done < <(printf '%s\n' "$entry" | grep -oE 'https?://[^[:space:]]+' || true)
+  done < <(printf '%s\n' "$entry" | grep -oiE 'https?://[^[:space:]]+' || true)
 
   # 3b. Code blocks
   if [[ "$entry" == *'```'* ]]; then

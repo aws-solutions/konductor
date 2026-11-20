@@ -125,7 +125,11 @@ Limits and URL allowlist are configurable via `.konductor/memory-config.json` at
 
 - `limits.memory_max_chars` — max characters for MEMORY.md (default: 2200)
 - `limits.user_max_chars` — max characters for USER.md (default: 1375)
-- `allowlist_patterns` — glob patterns for permitted URL domains in entries. Empty array = all URLs allowed. Populate with your org's domains to restrict external URLs.
+- `allowlist_patterns` — hostname patterns for URLs permitted in entries. Empty array = all URLs allowed. Populate with your org's domains to restrict external URLs.
+  Each pattern is matched, case-insensitively, against the URL's hostname only (userinfo, port, path, query and fragment are ignored).
+  A `*` that is the whole leftmost label matches one or more labels: `*.example.com` covers `docs.example.com` and `a.b.example.com`, but not `example.com`.
+  A `*` anywhere else matches within one label, and a pattern without `*` matches only that exact host.
+  A host with a percent-encoded dot or raw non-ASCII characters is rejected; allowlist an internationalized domain by its `xn--` form.
 
 A template is provided at `skills/persistent-memory/memory-config.json.template`. Copy it to `.konductor/memory-config.json` in your project and customize.
 
