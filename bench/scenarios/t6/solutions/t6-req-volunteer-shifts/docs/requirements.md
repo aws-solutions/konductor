@@ -16,7 +16,7 @@ A web-based volunteer management system to replace the current spreadsheet-based
 - **R8:** Age verification must occur without storing full birth dates (use age brackets: 16-17, 18+)
 
 ### 2.2 Shift Management
-- **R9:** System must enforce site-specific shift caps: Downtown (4), Westside (3), Northgate (2), Eastside (3), South Park (3), Riverside (4)
+- **R9:** System must enforce site-specific shift caps based on physical capacity and safety requirements
 - **R10:** System must prevent double-booking (same volunteer, same time slot)
 - **R11:** All times must be displayed in Mountain Time (MT) with clear labeling to avoid time zone confusion
 - **R12:** System must support group bookings with minimum group size of 3 volunteers
@@ -95,7 +95,7 @@ A web-based volunteer management system to replace the current spreadsheet-based
     {"id": "R6", "text": "Volunteers must be able to cancel shifts with at least 24 hours notice (emergency exceptions at coordinator discretion)"},
     {"id": "R7", "text": "System must enforce minimum age of 16 years; volunteers aged 16-17 require electronic parent/guardian consent"},
     {"id": "R8", "text": "Age verification must occur without storing full birth dates (use age brackets: 16-17, 18+)"},
-    {"id": "R9", "text": "System must enforce site-specific shift caps: Downtown (4), Westside (3), Northgate (2), Eastside (3), South Park (3), Riverside (4)"},
+    {"id": "R9", "text": "System must enforce site-specific shift caps based on physical capacity and safety requirements"},
     {"id": "R10", "text": "System must prevent double-booking (same volunteer, same time slot)"},
     {"id": "R11", "text": "All times must be displayed in Mountain Time (MT) with clear labeling to avoid time zone confusion"},
     {"id": "R12", "text": "System must support group bookings with minimum group size of 3 volunteers"},

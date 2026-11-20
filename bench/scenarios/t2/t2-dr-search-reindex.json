@@ -190,7 +190,34 @@
         "verdict": "pass",
         "note": "No file names, comments, or docs directly point to the planted problems. The traffic data and sizing sheet require cross-referencing to discover the gaps."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt requests a 'decision-quality review' without naming a specific method, checklist, or process, and does not point at planted problems, decoys, or the number of problems."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comments, tests, docs, or file names in the fixture state or hint at any of the planted problems."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All six key items correctly identify issues in the cited sections (3.2 data loss window, 3.4 missing rollback, 4.1 storage undercount, 3.3 wrong write rate, 4.3 weak validation, 5.1 vague success criteria) with defensible severities."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Each finding follows from cross-referencing the design document with supporting fixture files (cluster-sizing.yaml for storage, traffic-by-hour.csv for peak writes, service-targets.md for thresholds, current-architecture.md for update flow)."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

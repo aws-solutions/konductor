@@ -168,6 +168,52 @@
         "verdict": "pass",
         "note": "Fixture has raw data but not the analysis; analyst-slide-notes and old-analysis-draft show premature 'Variant B wins' conclusion but decision-log shows decision is open, requiring real analytical work."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the task (write a launch framing), specifies the source files to read, lists the required sections and JSON structure, but does not name a specific methodology, checklist, or tool to apply, nor does it point at the traps the hidden tests look for (assignment imbalance, campaign confound, refund asymmetry)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain evidence (assignment counts, refund counts, campaign dates) but none state the conclusion that the test is invalid or list the three issues the hidden tests expect. The analyst-slide-notes.md shows an incorrect draft recommendation, and old-analysis-draft.md explicitly says it's outdated and should be replaced."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All values the hidden tests expect are derivable from fixture files: 5584/5256 assigned (assignment-summary.csv), 381/409 paid (first-purchase-summary.csv), 22/58 refunds (refund-summary.csv), 4,860 campaign sends (email-send-log.csv), and date ranges 15-18 April (marketing-calendar.md, email-send-log.csv, variant-b-daily.csv)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can compute gross conversion rates, identify the 51.5/48.5 assignment split, correlate the Spring Skills Credit campaign dates with Variant B's higher daily paid counts, and calculate refund-adjusted retained orders (359 vs 351) to reach the conclusions expected by the hidden tests."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 12.6,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 12.6,
+      "lazy": 25.3,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

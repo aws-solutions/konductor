@@ -56,7 +56,9 @@
       "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "alibaba",
@@ -89,6 +91,21 @@
       }
     ]
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {
+      "fixReason": "cannot pass by re-weighting: the mechanical lazy and alternative answers score the same (79.6; 5 of 7 hidden tests each), so no weighting separates them; the alternative also misses the 80 gate. Paid fix list: one fix by the original writer (gpt-5.6-luna) of the key or the mechanical answers"
+    },
+    "reference": 100,
+    "stub": 17.3,
+    "dryRun": {
+      "reference": 100,
+      "stub": 17.3,
+      "lazy": 79.6,
+      "alt": 79.6,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }

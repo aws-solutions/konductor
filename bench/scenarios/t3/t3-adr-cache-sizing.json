@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 17
     },
     {
@@ -56,8 +56,21 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 18,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -101,7 +114,34 @@
         "verdict": "pass",
         "note": "All necessary numbers are present: peak working set, throughput target, node specs, prices, reservation percentage, and service limits are fully specified."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:3 specifies the deliverable, input interfaces, and exact output schema, but does not prescribe a method, tool, checklist, or specific choice or trap."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/README.md:3-7 and the input files provide source facts and constraints, not a prewritten decision or list of findings; the candidate choice and computed values still require reasoning."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "fixture/candidate-configs.json:4-22, traffic-profile.md:8-11, operating-model.md:3-13, service-requirements.md:7-13, node-benchmarks.csv:2-4, and price-sheet.json:5-7 support the expected options, limits, arithmetic, availability, and tradeoffs."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture contains all required topology, memory-reservation, peak-demand, benchmark, price, and service-objective inputs; the calculations and acceptable candidates follow directly from those files."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -148,5 +188,10 @@
       "Selects wide-209 solely because it has fewer nodes and lower latency, without comparing the 200 USD/month cost difference against the balanced option.",
       "Lists the candidates without computing the engine reservation (25%) and its impact on usable memory for each topology."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

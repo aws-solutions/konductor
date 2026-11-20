@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-glossary-rename",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -47,15 +47,16 @@
     },
     {
       "type": "contains",
-      "path": "docs/glossary.md",
-      "pattern": "\\\"term\\\"\\s*:\\s*\\\"Project\\\"",
+      "path": "docs/product-prd.md",
+      "pattern": "\\|\\s*Project activation rate\\s*\\|[^\\n]*31%[^\\n]*40%",
       "weight": 2,
       "kind": "substance"
     },
     {
-      "type": "not_contains",
+      "type": "min_matches",
       "path": "docs/product-prd.md",
-      "pattern": "\\|\\s*Workspace\\s+(?:activation|active)",
+      "pattern": "^\\|\\s*(Project activation rate|Weekly active Projects|Invited-member conversion)\\s*\\|",
+      "min": 3,
       "weight": 2,
       "kind": "substance"
     }
@@ -127,6 +128,52 @@
         "verdict": "pass",
         "note": "Fixture shows current term (Workspace) but prompt explicitly provides the new term (Project) - these are specifications, not an answer key."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json prompt names the requested files, terms, JSON shapes, and preservation constraints but does not prescribe a method or identify hidden traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/docs/glossary.md and fixture/docs/product-prd.md show the current Workspace wording and metric facts, not the requested Project answers; no fixture file lists hidden findings or expected outputs."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "fixture/docs/glossary.md lines 5-17 contain the current term, definition, and previous_term field, while fixture/docs/product-prd.md lines 21-49 contain all three metric names, definitions, baselines, targets, and term_change values that the rename updates without changing facts."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "task.json gives precise file-scope and JSON-shape constraints, and fixture/docs/glossary.md plus fixture/docs/product-prd.md provide the complete source wording and metric values needed to perform the rename while preserving the PRD context and requirements sections."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 15.3,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 15.3,
+      "lazy": 30.6,
+      "alt": 94.9,
+      "date": "2026-11-20"
+    }
   }
 }

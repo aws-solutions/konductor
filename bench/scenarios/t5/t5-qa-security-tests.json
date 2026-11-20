@@ -124,8 +124,53 @@
         "verdict": "pass",
         "note": "All mutants represent realistic security defects that a thorough security test suite would catch. Each is documented in mutants.json with a clear note explaining the bug. No equivalent mutants found - each represents a real vulnerability (off-by-one in expiry, weak role matching, dropped ownership check, path traversal, type coercion, missing escaping, state not cleared). The fixture code is complete and testable without external dependencies."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal (security regression suite), the areas to test (sessions, roles, document access, download, input validation, HTML export, login limiter), and constraints (no src/ changes, no dependency changes), without naming specific bugs, methods, or pointing at the mutation test approach."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture source files contain the correct implementations with no explicit listing of vulnerabilities or expected test findings. Agents must reason from code behavior to discover the security boundaries."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 10 mutants (m01-m10) are valid mutations of fixture source files: m01 changes session.js expiry check from <= to <, m02 adds 'administrator' role bypass in roles.js, m03 removes owner check in access.js, m04/m05/m06 modify download.js traversal guards, m07 changes title validation boundary, m08 allows numeric body, m09 removes HTML escaping, m10 empties recordSuccess. Each mutant's note accurately describes the mutation and the expected test behavior."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture contains all source modules, test examples in api.test.js, role configuration in config/roles.json, and API contract documentation. An engineer can analyze each security-critical function (session expiry, role checking, document access control, path traversal prevention, input validation, HTML escaping, rate limiting) and write tests that detect the mutant behaviors. The solution demonstrates 12 tests that kill all 10 mutants."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }

@@ -15,10 +15,12 @@ Thirteen tasks (12 real, 1 near-miss twin) for the testing phase. Layout, as for
 
 ## Tools
 
-- `render-prompt.js <id>`: the author prompt from `prompts/` and the brief.
-- `stage.js normalize|map|review|assemble <id>`: after the author call (needs `T5_AUTH`, see the file header).
-- `dry-run.js <id>`: free check; the reference scores at least 95, the untouched fixture 20 or less, three repeats agree.
-- `lib/build-hidden.js`: adds the shared scoring kit to a hidden dir. `lib/mutants.test.js` tests the runner.
+All through the shared tools with `--config bench/scenarios/t5/scenario.config.js` (`bench/scenarios/lib/README.md`):
+
+- `lib/prompt.js <id>`: the author prompt from `prompts/` and the brief.
+- `lib/stage.js normalize|map|review|assemble <id>`: after the author call (needs `T5_AUTH`).
+- `lib/dry-run.js [id ...]`: free check; the reference scores at least 95, the untouched fixture 20 or less, three repeats agree, the lazy answer 40 or less and the alternative 80 or more (`answers/<id>/`).
+- `lib/build-hidden.js` (this batch's): adds the shared scoring kit (`mutants.js`, `mutation.test.js`, `findings.test.js`, `findings-key.cjs` from `bench/scenarios/lib/hidden`) to an author's hidden dir; committed hidden dirs name them in `.bench-lib.json`. `lib/mutants.test.js` tests the mutant runner.
 
 A task that targets one of the three SOPs that need the user's yes (`k-e2e-test-generation`, `k-light-ui-testing`, `k-test-coverage-review`) gets one sentence at the end of its prompt: the scope is confirmed and committing on the branch is fine (`stage.js`, `SOP_NEEDS_YES`).
 

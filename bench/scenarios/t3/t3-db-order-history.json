@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 35
     },
     {
@@ -65,8 +65,24 @@
       "use": "idea"
     }
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: fixture-lists-no-answer: fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ single-column-index option, its 3.1 TB result, the Premium upgrade, and the budget failure. fixture/prototype-results.md lines 97-114 also directly labels Option 2 as the primary recommendation and Option 1 as rejected."
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -110,7 +126,34 @@
         "verdict": "pass",
         "note": "All required numbers (900M rows, 2.5 KB/row, 2.5 TB limit, $300 budget, pricing) are provided in fixture files. Deliverable format (db/schema.sql, docs/decision.md with JSON) is explicitly specified."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt states the design goal, required output files, JSON format, and constraints, but does not name a method, tool, checklist, or specific option/trap."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "fail",
+          "note": "fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ single-column-index option, its 3.1 TB result, the Premium upgrade, and the budget failure. fixture/prototype-results.md lines 97-114 also directly labels Option 2 as the primary recommendation and Option 1 as rejected."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The expected storage, growth, index, option-performance, and pricing facts are stated or derivable from fixture/constraints.txt lines 3-13, fixture/prototype-results.md lines 17-26 and 66-114, fixture/traffic-analysis.md lines 42-57, and fixture/pricing-guide.md lines 5-46."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "task.json gives the deliverables and required decision JSON, while fixture/query-patterns.sql, fixture/constraints.txt, fixture/prototype-results.md, and fixture/pricing-guide.md provide the schema access patterns, constraints, tested indexes, sizing, and pricing needed to produce a passing design."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -162,5 +205,10 @@
       "Calculates cost using the old $0.12/GB-month pricing instead of current $0.10/GB-month rate.",
       "Recommends Option 2 without noting that 2.5 TB leaves zero headroom for the 3M rows/day growth."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

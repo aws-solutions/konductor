@@ -1,7 +1,7 @@
 {
   "id": "t6-req-volunteer-shifts",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -263,6 +263,52 @@
         "verdict": "fixed",
         "note": "Second review (gpt-5.6-luna) failed it; the lead removed the remaining answers from the fixture (coordinator data list, MT in templates), relaxed the F1 and F6 patterns and fixed the JSON check quoting. First review (minimax-m2.5) had failed ambiguity, ceiling and hidden-answer; fix round 1 removed most fixture answers. Note: The fixture directly lists the coordinator privacy restrictions in operations/site-coordinator-checklist.md, and communication templates expose the Mo"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt states the business goal, source folders, output path, JSON ending, and June target, but does not prescribe a method or identify hidden traps or answers."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture provides source evidence and explicitly marks unresolved decisions, such as meetings/2024-03-05-followup.md lines 13-16, 18-21, 23-26, and 35-51; it does not contain a separate answer list for the scripted facts."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden grounded checks are supported by fixture sources: policy/safeguarding-policy.md lines 11-25 covers age and role checks, policy/data-privacy-guidelines.md lines 35-43 covers coordinator access, and policy/volunteer-handbook-excerpt.md lines 14-15 covers capacity limits. Scripted values are supplied by the user facts in task.json."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can derive the required shift-cap, safeguarding, age/consent, privacy, reminder, and background-check requirements from the listed fixture documents and ask the six scripted questions in task.json for the open decisions."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.5,
+      "lazy": 5.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

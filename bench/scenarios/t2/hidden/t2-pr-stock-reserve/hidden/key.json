@@ -1,0 +1,99 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/services/inventory-service.js",
+      "line": 44,
+      "endLine": 57,
+      "severity": "critical",
+      "fix": [
+        "atomic",
+        "transaction",
+        "conditional update"
+      ],
+      "finding": "reserve reads a stock value and later writes a derived value across awaited store operations, so concurrent checkouts can both observe the same units and oversell the SKU."
+    },
+    {
+      "id": "k2",
+      "file": "src/services/inventory-service.js",
+      "line": 58,
+      "endLine": 58,
+      "severity": "high",
+      "fix": [
+        "await",
+        "handle rejection",
+        "propagate error"
+      ],
+      "finding": "The reservation.held publish returns a promise but is not awaited, so a downstream sync failure becomes an unhandled or lost error while reserve reports success."
+    },
+    {
+      "id": "k3",
+      "file": "src/services/inventory-service.js",
+      "line": 84,
+      "endLine": 86,
+      "severity": "medium",
+      "fix": [
+        "utc",
+        "iso 8601",
+        "parse"
+      ],
+      "finding": "The expiry sweep takes a local Date string and compares it lexicographically with stored ISO timestamps, making expiration dependent on timezone and string ordering rather than UTC time."
+    },
+    {
+      "id": "k4",
+      "file": "src/services/inventory-service.js",
+      "line": 74,
+      "endLine": 76,
+      "severity": "high",
+      "fix": [
+        "rethrow",
+        "propagate",
+        "failure"
+      ],
+      "finding": "The release catch converts a store failure into a successful released response, so checkout can discard a hold even though the reservation or stock write may still be present."
+    },
+    {
+      "id": "k5",
+      "file": "src/services/inventory-service.js",
+      "line": 68,
+      "endLine": 73,
+      "severity": "high",
+      "fix": [
+        "write first",
+        "persist first",
+        "publish after commit"
+      ],
+      "finding": "release publishes reservation.released before deleting the reservation and restoring stock, allowing consumers to read state that has not committed or to act on a release that later fails."
+    },
+    {
+      "id": "k6",
+      "file": "tests/reservation.test.js",
+      "line": 60,
+      "endLine": 63,
+      "severity": "low",
+      "fix": [
+        "fake timers",
+        "fake clock",
+        "advance time"
+      ],
+      "finding": "The expiry test waits 15 real milliseconds for a sub-millisecond hold, so scheduler load and timer granularity can make the test intermittently fail."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/http/router.js",
+      "line": 4,
+      "endLine": 7,
+      "why": "bodyJson deliberately accepts both the raw HTTP string and an already parsed object, and the surrounding route catch handles malformed JSON."
+    },
+    {
+      "id": "d2",
+      "file": "src/store/memory-store.js",
+      "line": 39,
+      "endLine": 50,
+      "why": "structuredClone at the reservation store boundary prevents callers and event consumers from mutating persisted records, as required by the architecture document."
+    }
+  ]
+}

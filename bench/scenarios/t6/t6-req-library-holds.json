@@ -234,6 +234,52 @@
         "verdict": "pass",
         "note": "Facts only in scriptedUser, fixture has 'under review' placeholders requiring clarification."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt states the deliverable, source documents, and scope but does not prescribe a method or identify traps or expected answers."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture documents provide source evidence and one explicit vendor conflict, but none lists the final scripted facts or hidden expected findings outright; see fixture/policy, fixture/board, fixture/ebooks, fixture/accessibility, and fixture/meetings."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden tests' required facts are supplied by task.json.scriptedUser.facts F1-F8, while the grounded requirements are supported by the corresponding fixture policy, data, board, vendor, accessibility, and meeting files. The vendor's 48-hour value is explicitly identified as superseded by scripted fact F4, so it is not a contradiction."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "task.json.prompt tells the agent to review the collected documents and write requirements, and task.json.scriptedUser provides answers for the few policy decisions that the fixture leaves open or conflicts on. The fixture contains enough patron, staff, policy, technical, accessibility, and board context to satisfy the hidden checks without hidden or solution files."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 4.5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 4.5,
+      "lazy": 14,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

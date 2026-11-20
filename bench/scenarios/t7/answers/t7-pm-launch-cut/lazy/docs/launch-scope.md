@@ -63,9 +63,7 @@ I went through the exports. The plan mostly holds; the main items are below.
  "open_questions": [
   "Confirm F-052 dashboard metrics and F-031 schema-version display before regional health work starts.",
   "Get Northline acceptance wording for F-014 signature page and delivery manifest.",
-  "Validate F-010 import error-report examples with the target segment before copy lock.",
-  "Assign an owner for F-063 adoption measures before the conference follow-up.",
-  "Keep F-057 mobile approvals as a post-launch field-sales discovery item."
+  "Validate F-010 import error-report examples with the target segment before copy lock."
  ]
 }
 ```

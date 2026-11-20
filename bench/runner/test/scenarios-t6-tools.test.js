@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The T6 scenario tools: the shared hidden-test helper (doc-key.js), the fake scripted user, and that every task's
-// hidden copy of doc-key.js is the current one. The full dry run is bench/scenarios/t6/tools/dryrun.js.
+// The T6 scenario tools: the shared hidden-test helper (bench/scenarios/lib/hidden/doc-key.js), the fake scripted user,
+// and that every task's hidden dir names doc-key.js in .bench-lib.json instead of committing a copy. The full dry run is
+// bench/scenarios/lib/dry-run.js with bench/scenarios/t6/scenario.config.js.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const T6 = path.join(__dirname, '..', '..', 'scenarios', 't6');
-const key = require(path.join(T6, 'tools', 'doc-key.js'));
+const key = require(path.join(T6, '..', 'lib', 'hidden', 'doc-key.js'));
 const { converse, unmatchedFacts } = require(path.join(T6, 'tools', 'fake-user.js'));
 
 test('lastJsonBlock takes the last block that parses', () => {
@@ -51,12 +52,11 @@ test('the fake user answers each fact once, by topic, and gives the default repl
   assert.deepEqual(unmatchedFacts(TASK, converse(TASK, ['Which language?'])), ['F1']);
 });
 
-test('every T6 hidden doc-key.js copy matches tools/doc-key.js', () => {
+test('every T6 hidden dir names doc-key.js in .bench-lib.json and commits no copy', () => {
   const hidden = path.join(T6, 'hidden');
-  const want = fs.readFileSync(path.join(T6, 'tools', 'doc-key.js'), 'utf8');
-  const dirs = fs.existsSync(hidden) ? fs.readdirSync(hidden) : [];
-  for (const d of dirs) {
-    const copy = path.join(hidden, d, 'hidden', 'doc-key.js');
-    if (fs.existsSync(copy)) assert.equal(fs.readFileSync(copy, 'utf8'), want, `${d} has a stale doc-key.js`);
+  for (const d of fs.readdirSync(hidden)) {
+    assert.ok(!fs.existsSync(path.join(hidden, d, 'hidden', 'doc-key.js')), `${d} commits a doc-key.js copy`);
+    const manifest = JSON.parse(fs.readFileSync(path.join(hidden, d, '.bench-lib.json'), 'utf8'));
+    assert.equal(manifest['hidden/doc-key.js'], 'doc-key.js', d);
   }
 });

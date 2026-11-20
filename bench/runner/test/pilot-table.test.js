@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, mkResult } = require('./helpers.js');
-const { pilotRows, renderTable, secondFamilyShare } = require('../../scenarios/pilot-table.js');
+const { pilotRows, renderTable, secondFamilyShare, batchSummary } = require('../../scenarios/pilot-table.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const json = (o) => `${JSON.stringify(o, null, 1)}\n`;
@@ -109,6 +109,22 @@ test('the table lists every run, the totals and the tasks that need a second run
   assert.match(text, /hand-edited with no re-check 1\./);
   assert.match(text, /7 run\(s\), 14\.00 credits/);
   assert.match(text, /Second run for noisy tasks: t8-a,t8-b/);
+  assert.match(text, /script-made copies of the reference, not independent attempts/);
+  assert.match(text, /For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there/);
+});
+
+test('the batch summary counts runs, distinct tasks and flagged tasks per batch, and sums to the whole table', () => {
+  const { pack, w1, w2 } = setup();
+  const rows = pilotRows([w1, w2], { packDir: pack });
+  const sum = batchSummary(rows);
+  assert.deepEqual(sum.map((s) => s.batch), [...new Set(rows.map((r) => r.batch))].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))));
+  assert.equal(sum.reduce((n, s) => n + s.runs, 0), rows.length);
+  for (const s of sum) {
+    const own = rows.filter((r) => r.batch === s.batch);
+    assert.equal(s.tasks, new Set(own.map((r) => r.task)).size);
+    assert.equal(s.flagged.noisy, new Set(own.filter((r) => r.flags.noisy).map((r) => r.task)).size);
+  }
+  assert.match(renderTable(rows), /^\| batch \| runs \| tasks \| broken \(tasks\)/m);
 });
 
 test('secondFamilyShare is the share outside the most common family', () => {

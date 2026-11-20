@@ -106,3 +106,18 @@
 | t3-adr-cache-sizing-twin | lazy+alt answers | glm-5 | 1.41 |
 
 Notes (2026-11-19): the lazy answers of the two twins were written by hand (a model-written lazy answer came out fully correct for a lookup task). The four decision tasks load `hidden/gate.js` with `node --require`, which fails every non-structural test when the chosen option is not an acceptable one. The dry-run score is the hidden-test fraction. Twin tests were rewritten to accept any table layout.
+
+## FX fix round (2026-11-20)
+
+Paid calls of the FX job (owner-approved, hard cap 90 credits for all batches, abort limit 10 credits per call, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t3-adr-cache-sizing recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 45.8 of 90
+- result: t3-adr-cache-sizing recheck gpt-5.6-luna credits=0.397 secs=30
+- plan: t3-arch-notification-pipeline recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 46.2 of 90
+- result: t3-arch-notification-pipeline recheck gpt-5.6-luna credits=0.355 secs=30
+- plan: t3-db-audit-retention recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 46.5 of 90
+- result: t3-db-audit-retention recheck gpt-5.6-luna credits=0.323 secs=20
+- plan: t3-db-order-history recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 46.9 of 90
+- result: t3-db-order-history recheck gpt-5.6-luna credits=0.508 secs=30
+- plan: t3-pm-feature-scope recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 47.4 of 90
+- result: t3-pm-feature-scope recheck gpt-5.6-luna credits=0.599 secs=30

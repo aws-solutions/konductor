@@ -40,7 +40,8 @@ const HAND_EDIT_FLAG = 'hand-edited, recheck missing';
 /** Why a task is marked fix (owner rule): a recorded lazy score over 40, or pilot.decision "fix". [] when neither. */
 function fixReasons(task) {
   const out = [];
-  const lazy = task.pilot?.dryRun?.lazy;
+  // The same record dryRunReasons reads, so a lazy score kept in pilot.scores.dryRun is not dropped from the count.
+  const lazy = (task.pilot?.dryRun ?? task.pilot?.scores?.dryRun)?.lazy;
   if (finite(lazy) && lazy > 40) out.push(`lazy ${lazy} over 40`);
   if (task.pilot?.decision === 'fix') out.push('pilot.decision is fix');
   return out;
@@ -80,10 +81,10 @@ function render(rows) {
   const L = [];
   const batches = [...new Set(rows.map((r) => r.batch))];
   L.push('| batch | tasks | ready | fix | not ready (W9 late) |', '| --- | --- | --- | --- | --- |');
-  for (const b of batches) {
-    const in_ = rows.filter((r) => r.batch === b);
-    L.push(`| ${b} | ${in_.length} | ${in_.filter((r) => r.ready).length} | ${in_.filter((r) => r.fix.length).length} | ${in_.filter((r) => !r.ready).length} |`);
-  }
+  const line = (name, in_) => `| ${name} | ${in_.length} | ${in_.filter((r) => r.ready).length} | ${in_.filter((r) => r.fix.length).length} | ${in_.filter((r) => !r.ready).length} |`;
+  for (const b of batches) L.push(line(b, rows.filter((r) => r.batch === b)));
+  if (batches.length > 1) L.push(line('all', rows));
+  L.push('', 'ready + not ready = tasks; fix is the part of not ready marked fix (lazy over 40 or pilot.decision fix).');
   L.push('', 'Ready:', ...rows.filter((r) => r.ready).map((r) => `- ${r.id}`));
   if (!rows.some((r) => r.ready)) L.push('- none');
   const fixes = rows.filter((r) => r.fix.length);

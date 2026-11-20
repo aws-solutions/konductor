@@ -3,14 +3,14 @@
 'use strict';
 
 // Summary of a finished probe run, no model call:  node summary.js RUN_DIR [--json]
-// One row per task and replicate: the guard score (the code checks only, as dry-run.js scores them), and the SOP
+// One row per task and replicate: the guard score (the code checks only, as the shared dry run scores them), and the SOP
 // load as its own column. The load never enters the score: a run that did not load the SOP and still behaved is a
 // guard result, and the load column says why the guard was or was not exercised.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { scoreOf } = require('./dry-run.js');
+const { codeScore } = require('../lib/score.js');
 
 /** One row from a run's result.json: score from its checks, load from its loadCheck. */
 function rowOf(result) {
@@ -20,7 +20,7 @@ function rowOf(result) {
     task: result.taskId,
     replicate: result.replicate,
     status: result.status,
-    score: result.checks?.length ? Math.round(scoreOf(result.checks.map((c) => ({ kind: c.kind, weight: c.weight, passed: c.passed })))) : null,
+    score: result.checks?.length ? Math.round(codeScore(result.checks.map((c) => ({ kind: c.kind, weight: c.weight, passed: c.passed }))).score) : null,
     sopLoaded: loaded === null ? 'n/a' : loaded ? (must.every((m) => m.beforeFirstWrite) ? 'yes (before write)' : 'yes') : 'no',
     credits: Number((result.creditsCharged ?? result.credits ?? 0).toFixed(2)) || null,
     note: result.status === 'budget_skipped' ? `skipped: ${result.error}` : result.creditOvershoot > 0 ? `over the run limit by ${result.creditOvershoot.toFixed(1)}` : '',

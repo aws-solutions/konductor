@@ -44,7 +44,6 @@ resource "aws_s3_bucket" "exports" {
   })
 }
 
-# This bucket needs to be accessible for external reporting tools
 resource "aws_s3_bucket_acl" "exports" {
   bucket = aws_s3_bucket.exports.id
   acl    = "public-read-write"
@@ -67,7 +66,6 @@ resource "aws_s3_bucket_policy" "exports" {
   })
 }
 
-# Static website bucket - this is intended to be public for CDN
 resource "aws_s3_bucket" "static_website" {
   bucket = "${var.name_prefix}-static"
 

@@ -1,0 +1,194 @@
+{
+  "id": "t2-pr-stock-reserve",
+  "version": 1,
+  "class": "review",
+  "phase": "code-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "Review the open pull request in `pr/1544/` for the Node.js inventory service. It adds checkout reservation holds and their expiry handling, which is going live because checkout now needs to keep requested stock attached to a basket during payment. Read the implementation alongside the existing project contracts. Check that the change preserves the behavior callers and operators rely on, and that its tests support the claimed behavior. Write the review to `REVIEW.md` at the top of the project. Keep the prose focused on concrete problems, their impact here, and an actionable fix. End the file with a fenced json list of findings, each with `location` (`path/to/file.ext:LINE`, using line numbers of the file as it is in the project), `severity` (critical, high, medium, low or nit), `issue`, and `fix`.\n\n```json\n[\n  {\n    \"location\": \"path/to/file.ext:LINE\",\n    \"severity\": \"medium\",\n    \"issue\": \"what is wrong and why it matters\",\n    \"fix\": \"what the developer should change\"\n  }\n]\n```",
+  "questions": "allowed",
+  "fixture": "t2-pr-stock-reserve",
+  "hidden": "t2-pr-stock-reserve",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 22,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);let n=0;for(const x of L)for(const m of String(x.location).matchAll(/([A-Za-z0-9_.\\/-]+\\.[A-Za-z0-9]+):(\\d+)/g)){n++;let c;try{c=fs.readFileSync(m[1],\"utf8\").split(\"\\n\").length}catch{process.exit(1)}if(+m[2]<1||+m[2]>c)process.exit(1)}process.exit(n?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Each important finding explains a concrete consequence in this inventory service and gives a fix a developer can act on, without inventing problems (code cannot check this because it cannot judge the review's reasoning or unsupported claims).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "reserve reads a stock value and later writes a derived value across awaited store operations, so concurrent checkouts can both observe the same units and oversell the SKU.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "The reservation.held publish returns a promise but is not awaited, so a downstream sync failure becomes an unhandled or lost error while reserve reports success.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "The expiry sweep takes a local Date string and compares it lexicographically with stored ISO timestamps, making expiration dependent on timezone and string ordering rather than UTC time.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "The release catch converts a store failure into a successful released response, so checkout can discard a hold even though the reservation or stock write may still be present.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "release publishes reservation.released before deleting the reservation and restoring stock, allowing consumers to read state that has not committed or to act on a release that later fails.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "The expiry test waits 15 real milliseconds for a sub-millisecond hold, so scheduler load and timer granularity can make the test intermittently fail.",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review-pass-integrity"
+  ],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "adversarial-code-review-pass-integrity"
+    ],
+    "mustNotLoad": [
+      "backend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "review": {
+    "family": "qwen",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt asks for a general PR review without naming a specific method, checklist, or hinting at planted problems."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear: review PR in pr/1544/, write REVIEW.md, use specified JSON format with location/severity/issue/fix."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Issues require reading across multiple functions (reserve, release, sweepExpired) and understanding async semantics; decoys are documented as intentional."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items are directly visible: reserve race condition (lines 44-58), missing await (58), timezone bug (84), catch returns success (74), publish-before-commit (68), flaky test (60)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, test names, or file names point at problems; notes.txt explicitly labels decoys as intentional."
+      }
+    ],
+    "recheck": {
+      "family": "qwen",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for a general code review without naming a specific method, checklist, process, or pointing at planted problems/decoys/counts."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains intentional safe practices (structuredClone in memory-store.js:39, bodyJson accepting both string/object in router.js:4-7) but no comment/test/doc/file name states a planted problem. Actual bugs are in inventory-service.js and tests."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 6 key items correctly reference inventory-service.js:44-58, 68-74, 84 and tests/reservation.test.js:60. Severity levels (critical, high, medium, low) are defensible for the described concurrency and error-handling issues."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "All 6 issues are directly observable from reading the fixture: reserve() separate awaits (44-57), unpublished promise (58), publish-before-persist (68-73), catch returns success (74), timezone string comparison (84), flaky 15ms sleep test."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 31.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  }
+}

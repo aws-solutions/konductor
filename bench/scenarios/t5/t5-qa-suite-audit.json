@@ -233,8 +233,53 @@
         "verdict": "pass",
         "note": "The task is achievable: the prompt gives clear direction, the fixture has 22 test files to examine, the implementation files are readable, and the reference report demonstrates the expected depth. No contradictory requirements, flaky tests, or hidden dependencies."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a test audit without naming specific techniques, tools, or decoys. It describes the goal (identify tests that give false confidence), constraints (don't change files), and expected output format."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file lists the audit findings. The test files contain flawed tests (e.g., proration.test.js line 10 self-comparison, invoice-contract.test.js line 9 comparing result to itself), but no document explicitly states these are defects."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All findingsKey locations exist in fixture: test/proration.test.js, test/invoice-contract.test.js, test/retry.test.js, test/webhook-failure.test.js, test/proration-preview.test.js, test/api-routes.test.js, test/discounts.test.js, test/invoice-snapshot.test.js. Each test has a verifiable defect matching its key description."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify all 8 defects from the fixture: self-comparison in proration.test.js:10, stability check without expected values in invoice-contract.test.js:9, stubbed dependency in retry.test.js:6, swallowed error in webhook-failure.test.js:9, shared formula bug in proration-preview.test.js:11, unchecked response body in api-routes.test.js:6, empty iteration in discounts.test.js:9, auto-overwriting snapshot in invoice-snapshot.test.js:10."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 15.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }

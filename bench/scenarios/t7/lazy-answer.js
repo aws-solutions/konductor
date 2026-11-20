@@ -5,8 +5,8 @@
 // Writes answers/<id>/lazy/: a scripted shallow fake answer, scored by the dry run (gate: 40 or less). It is what a
 // quick reader turns in: the right file, the right block shape, the reference's verdict words (go/no-go, red, true or
 // false are easy to guess), but no real analysis:
-//   - each list of ticket ids keeps only its first half (the obvious items; the buried ones are missed), plus the
-//     ids the key says must NOT be named (the decoys look risky, so a quick reader names them);
+//   - each list keeps only its first half (the obvious items; the buried ones are missed); a list of ticket ids also
+//     gets the ids the key says must NOT be named (the decoys look risky, so a quick reader names them);
 //   - each number is taken at face value from a rough count: the reference value times 0.7, rounded;
 //   - each date assumes the plan holds: the reference date moved 21 days earlier.
 // Strings and objects keep the reference's wording, so the fake hits every keyword the key might reward.
@@ -31,10 +31,8 @@ function shallow(value, decoys) {
       const kept = value.slice(0, Math.ceil(value.length / 2));
       return [...kept, ...decoys.filter((d) => !kept.includes(d))];
     }
-    if (value.length && value.every((v) => v && typeof v === 'object' && !Array.isArray(v))) {
-      return value.slice(0, Math.ceil(value.length / 2)).map((v) => shallow(v, []));
-    }
-    return value.map((v) => shallow(v, []));
+    // Any other list (paths, names, objects): only the obvious first half, each item shallow too.
+    return value.slice(0, Math.ceil(value.length / 2)).map((v) => shallow(v, []));
   }
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shallow(v, decoys)]));
   if (typeof value === 'number') return Math.round(value * 0.7);

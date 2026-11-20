@@ -1,0 +1,96 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "high",
+      "fix": [
+        "nonce",
+        "replay",
+        "parameter"
+      ],
+      "finding": "The authorization flow omits the nonce parameter required by OpenID Connect to prevent replay attacks."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "critical",
+      "fix": [
+        "email_verified",
+        "claim",
+        "check"
+      ],
+      "finding": "Accounts are linked by matching email addresses without verifying the email_verified claim, enabling account takeover if an IdP provides unverified emails."
+    },
+    {
+      "id": "k3",
+      "section": "3.4",
+      "severity": "high",
+      "fix": [
+        "localstorage",
+        "cookies",
+        "httponly"
+      ],
+      "finding": "Session tokens stored in browser localStorage violate the security policy that prohibits localStorage for tokens and requires HTTP-only cookies."
+    },
+    {
+      "id": "k4",
+      "section": "3.4",
+      "severity": "medium",
+      "fix": [
+        "30",
+        "days",
+        "reduce",
+        "duration"
+      ],
+      "finding": "90-day session duration exceeds the 30-day maximum specified in the security policy, increasing exposure window from account takeover incidents."
+    },
+    {
+      "id": "k5",
+      "section": "3.4",
+      "severity": "medium",
+      "fix": [
+        "back-channel",
+        "logout",
+        "polling"
+      ],
+      "finding": "Sessions persist without back-channel revocation checks despite the security policy requiring them when supported, allowing continued access after IdP revocation."
+    },
+    {
+      "id": "k6",
+      "section": "3.5.1",
+      "severity": "medium",
+      "fix": [
+        "jwks",
+        "refresh",
+        "cache"
+      ],
+      "finding": "JWKS fetched once at deploy and cached indefinitely contradicts the configuration template requiring refresh every 24 hours minimum, risking signature validation failures after key rotation."
+    },
+    {
+      "id": "k7",
+      "section": "3.5.2",
+      "severity": "high",
+      "fix": [
+        "wildcard",
+        "redirect",
+        "uri"
+      ],
+      "finding": "Wildcard redirect URI pattern allows any subdomain to receive authentication codes, enabling potential open redirect attacks if subdomains are compromised."
+    },
+    {
+      "id": "k8",
+      "section": "3.5.2",
+      "severity": "low",
+      "fix": [
+        "32",
+        "bytes",
+        "clarify",
+        "range"
+      ],
+      "finding": "State parameter described as 32 bytes but RFC 6749 recommends a minimum of 128 bits (16 bytes) with 256 bits (32 bytes) being reasonable for high-security applications, though not strictly a violation."
+    }
+  ],
+  "decoys": []
+}

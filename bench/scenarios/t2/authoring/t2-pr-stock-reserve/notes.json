@@ -1,0 +1,3 @@
+{
+  "notes": "The concurrency issue is easy to miss because the memory store methods are individually awaited; it requires reading the service together with the asynchronous store behavior. The event publisher contract in the architecture and API documents matters for both the missing await and release ordering. The sweep's timestamp assumptions are documented elsewhere, while the short real-time wait is only visible in the new test. The router body normalization and cloned reservation records are deliberate decoys, not findings."
+}

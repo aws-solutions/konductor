@@ -1,0 +1,25 @@
+{
+    "Statement": [
+        {
+            "Resource": [
+                "arn:aws:dynamodb:us-east-1:111122223333:table/staging-orders",
+                "arn:aws:dynamodb:us-west-2:111122223333:table/prod-orders"
+            ],
+            "Action": "dynamodb:PutItem",
+            "Effect": "Allow"
+        },
+        {
+            "Resource": [
+                "arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/staging-create-order:*",
+                "arn:aws:logs:us-west-2:111122223333:log-group:/aws/lambda/prod-create-order:*"
+            ],
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Effect": "Allow"
+        }
+    ],
+    "Version": "2012-10-17"
+}

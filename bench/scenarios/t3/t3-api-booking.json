@@ -65,7 +65,20 @@
       "use": "idea"
     }
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 28,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "smithy-modeling",
@@ -157,5 +170,6 @@
       "lists limits in the decision block but omits the computed values, or copies limit values as computed values without performing the arithmetic.",
       "describes pagination trade-offs generically without connecting them to the specific numbers in traffic.json, gateway.json, and service-levels.json."
     ]
-  }
+  },
+  "handEdited": null
 }

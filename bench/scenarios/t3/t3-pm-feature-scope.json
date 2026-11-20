@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 23
     },
     {
@@ -61,8 +61,24 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: fixture-lists-no-answer: fixture/TRAFFIC_ANALYSIS.md lines 45 and 55-70 explicitly identify the superseded benchmark, the 34-second p99 failure, the 5,000 monthly failures, and the synchronous risk. fixture/OPTIONS_ANALYSIS.md lines 93-175 also gives the answer-level comparison, costs, risks, and recommendation conditions, rather than only supplying raw evidence."
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 13,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "decision-writing",
     "cost-estimation",
@@ -108,7 +124,34 @@
         "verdict": "pass",
         "note": "Output format is clearly specified (fenced decision block with JSON containing chosen, options, limits, monthly_cost_usd). All required data exists in fixture (pricing, timing, constraints)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt (lines 3-4) states the business goal, required deliverable, options, and constraints but does not prescribe a method, checklist, tool, or specific answer."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "fail",
+          "note": "fixture/TRAFFIC_ANALYSIS.md lines 45 and 55-70 explicitly identify the superseded benchmark, the 34-second p99 failure, the 5,000 monthly failures, and the synchronous risk. fixture/OPTIONS_ANALYSIS.md lines 93-175 also gives the answer-level comparison, costs, risks, and recommendation conditions, rather than only supplying raw evidence."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The expected p95/p99 sizes and times, 29-second timeout, 500,000 monthly volume, current $1,200 budget, superseded values, option tradeoffs, and pricing inputs all appear in fixture/TRAFFIC_ANALYSIS.md lines 5-55, fixture/pricing_notes.md lines 7-21 and 58, and fixture/OPTIONS_ANALYSIS.md lines 93-175."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can derive the required decision from the prompt and fixture: the documents provide all three architectures, current performance measurements, user acceptance, reliability targets, volume, and price data. The calculations and recommendation can be produced without hidden-overlay or solution-overlay files."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -160,5 +203,10 @@
       "Selects Option A claiming 99% success rate is acceptable without discussing the 5,000 failed reports per month impact",
       "Recommends Option C for real-time ad-hoc exports without recognizing it only supports pre-defined scheduled reports"
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

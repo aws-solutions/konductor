@@ -131,7 +131,9 @@
       "licence": "Apache-2.0 (repository licence, GitHub API); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "alibaba",
@@ -169,6 +171,21 @@
     "editor": "kirocrew-mate-worker (T8 worker session)",
     "log": "HAND-EDITS.md"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {
+      "fixReason": "cannot pass by re-weighting: the mechanical lazy answer (lib/answers.js) meets most hidden block-key items, so even with every non-test check failing it would score 77.1 (gate 40). The key needs items a half-copy misses. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
+    },
+    "reference": 100,
+    "stub": 5.7,
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.7,
+      "lazy": 100,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }

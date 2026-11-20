@@ -274,11 +274,12 @@ test('the CPU-burn and disk-fill rows pass against a socket that keeps answering
   try {
     const cfg = { ...CFG, socketPath: socket, scratch: dir, diskFillBytes: 1024 * 1024 };
     const only = prober.ROWS.filter((r) => ['cpu-burn-gateway-answers', 'disk-fill-gateway-answers'].includes(r.id));
-    // The real burn spins every core for 3 s, which slows every other test file running beside this one. A 200 ms burn
-    // still has the stub answer while the burners run, on the real Host.
+    // The real burn spins every core for 3 s, which slows every other test file running beside this one, and starts
+    // one node process per core, so its cost grows with the host. Two burners for 200 ms still have the stub answer
+    // while they run, on the real Host.
     const host = new prober.Host();
     const burnCpu = host.burnCpu.bind(host);
-    host.burnCpu = () => burnCpu(200);
+    host.burnCpu = () => burnCpu(200, 2);
     const rows = Object.fromEntries((await prober.runRows(only, cfg, host)).map((r) => [r.row, r]));
     assert.equal(rows['cpu-burn-gateway-answers'].held, true, rows['cpu-burn-gateway-answers'].detail);
     assert.equal(rows['disk-fill-gateway-answers'].held, true, rows['disk-fill-gateway-answers'].detail);

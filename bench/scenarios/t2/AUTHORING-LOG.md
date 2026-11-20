@@ -1,8 +1,14 @@
 # T2 authoring log
 
-Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
+Every model call made to write, map, review or re-check a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills or MCP servers; memory disabled). Credits are read from each call's own stream. A call stopped before its final metering event has no credit figure ("not captured").
 
-Total captured: 227.35 credits over 83 calls.
+| | Calls | Credits captured | Estimate | Stop at |
+| --- | --- | --- | --- | --- |
+| Wave 1 | 37 | 97.53 | 80 | 160 |
+| Rest | 82 | 227.90 | 270 | 540 |
+| **T2 total** | 119 | **325.44** | 350 | 700 |
+
+6 calls were stopped before their metering event and are not in these totals; at 2 to 15 credits each they add an estimated 12 to 90.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -73,7 +79,7 @@ Total captured: 227.35 credits over 83 calls.
 | 2026-11-19T22:20:34Z | t2-pr-avatar-upload | author | deepseek-3.2 | 862 | 12.21 | ok |
 | 2026-11-19T22:20:57Z | t2-pr-avatar-upload | map | glm-5 | 20 | 0.51 | ok |
 | 2026-11-19T22:27:35Z | t2-pr-avatar-upload | review | minimax-m2.5 | 398 | 1.15 | ok |
-| 2026-11-19T22:36:00Z | t2-pr-avatar-upload | fix (killed with the old worktree) | deepseek-3.2 |  | 0.00 | killed |
+| 2026-11-19T22:36:00Z | t2-pr-avatar-upload | fix (killed with the old worktree) | deepseek-3.2 |  | not captured | killed |
 | 2026-11-19T22:53:46.009Z | t2-pr-avatar-upload | fix | deepseek-3.2 | 681 | 11.88 | ok |
 | 2026-11-19T23:06:38Z | t2-pr-avatar-upload | review | minimax-m2.5 | 768 | 2.34 | ok |
 | 2026-11-19T23:12:47.595Z | t2-arch-dr-two-regions | fix | deepseek-3.2 | 365 | 4.51 | ok |
@@ -89,3 +95,39 @@ Total captured: 227.35 credits over 83 calls.
 | 2026-11-19T23:40:45.738Z | t2-sec-dr-sso-login | expert | deepseek-3.2 | 62 | 0.95 | ok |
 | 2026-11-19T23:41:37Z | t2-sec-dr-sso-login | map | glm-5 | 47 | 0.73 | ok |
 | 2026-11-19T23:51:44Z | t2-sec-dr-sso-login | review | minimax-m2.5 | 607 | 1.03 | ok |
+| 2026-11-20T00:16:56Z | t2-gaps-csv-export | author | deepseek-3.2 | 1511 | 17.70 | ok |
+| 2026-11-20T00:17:15Z | t2-gaps-csv-export | map | glm-5 | 15 | 0.52 | ok |
+| 2026-11-20T00:36:04Z | t2-gaps-csv-export | review | minimax-m2.5 | 1129 | 3.27 | ok |
+| 2026-11-20T00:43:42.635Z | t2-gaps-csv-export | fix | deepseek-3.2 | 458 | 7.82 | ok |
+| 2026-11-20T00:50:37Z | t2-gaps-csv-export | review | minimax-m2.5 | 409 | 2.13 | ok |
+| 2026-11-20T00:53:11Z | t2-fe-pr-search-box | author | gpt-5.6-luna | 154 | 2.50 | ok |
+| 2026-11-20T00:54:22.295Z | t2-fe-pr-search-box | fix | gpt-5.6-luna | 47 | 0.83 | ok |
+| 2026-11-20T01:13:38Z | t2-pr-flag-rollout | author | deepseek-3.2 | 1124 | 14.09 | ok |
+| 2026-11-20T01:14:59Z | t2-pr-flag-rollout | map | glm-5 | 45 | 0.52 | ok |
+| 2026-11-20T01:17:54Z | t2-pr-flag-rollout | review | minimax-m2.5 | 174 | 2.00 | ok |
+| 2026-11-20T01:24:28.602Z | t2-pr-flag-rollout | fix | deepseek-3.2 | 394 | 9.04 | ok |
+| 2026-11-20T01:27:45Z | t2-pr-flag-rollout | review | minimax-m2.5 | 171 | 1.26 | ok |
+| 2026-11-20T01:36:00Z | t2-pr-retry-backoff | author (killed by the worker timeout) | qwen3-coder-next |  | not captured | killed |
+| 2026-11-20T01:42:59Z | t2-fe-pr-search-box | map | glm-5 | 36 | 0.53 | ok |
+| 2026-11-20T01:43:49Z | t2-fe-pr-search-box | review | qwen3-coder-next | 50 | 0.26 | ok |
+| 2026-11-20T01:47:39Z | t2-twin-refund-notes | author | deepseek-3.2 | 230 | 2.85 | ok |
+| 2026-11-20T02:01:07.612Z | t2-twin-refund-notes | fix | deepseek-3.2 | 795 | 13.38 | ok |
+| 2026-11-20T02:02:51Z | t2-twin-fanout-brief | author | gpt-5.6-luna | 94 | 1.74 | ok |
+| 2026-11-20T02:04:30.049Z | t2-twin-fanout-brief | fix | gpt-5.6-luna | 85 | 1.90 | ok |
+| 2026-11-20T02:20:38Z | t2-arch-dr-event-store | recheck | glm-5 | 47 | 1.04 | ok |
+| 2026-11-20T02:22:00Z | t2-arch-dr-split-checkout | recheck | glm-5 | 82 | 1.23 | ok |
+| 2026-11-20T02:24:38Z | t2-arch-dr-two-regions | recheck | minimax-m2.5 | 157 | 1.12 | ok |
+| 2026-11-20T02:25:18Z | t2-dr-data-erasure | recheck | qwen3-coder-next | 40 | 0.17 | ok |
+| 2026-11-20T02:27:19Z | t2-dr-notify-fanout | recheck | minimax-m2.5 | 120 | 0.85 | ok |
+| 2026-11-20T02:29:07Z | t2-dr-rate-limits | recheck | minimax-m2.5 | 107 | 0.59 | ok |
+| 2026-11-20T02:29:51Z | t2-dr-search-reindex | recheck | glm-5 | 43 | 1.08 | ok |
+| 2026-11-20T02:30:39Z | t2-gaps-jwt-middleware | recheck | qwen3-coder-next | 48 | 0.12 | ok |
+| 2026-11-20T02:32:05Z | t2-pr-avatar-upload | recheck | minimax-m2.5 | 85 | 0.63 | ok |
+| 2026-11-20T02:33:55Z | t2-pr-cursor-pages | recheck | glm-5 | 109 | 1.90 | ok |
+| 2026-11-20T02:35:04Z | t2-pr-orders-migration | recheck | minimax-m2.5 | 68 | 0.44 | ok |
+| 2026-11-20T02:35:42Z | t2-pr-price-cache | recheck | qwen3-coder-next | 38 | 0.25 | ok |
+| 2026-11-20T02:37:33Z | t2-pr-refund-flow | recheck | glm-5 | 111 | 2.80 | ok |
+| 2026-11-20T02:38:01Z | t2-pr-stock-reserve | recheck | qwen3-coder-next | 27 | 0.13 | ok |
+| 2026-11-20T02:39:39Z | t2-sec-dr-sso-login | recheck | minimax-m2.5 | 97 | 0.45 | ok |
+| 2026-11-20T02:40:30Z | t2-sec-pr-webhook-relay | recheck | qwen3-coder-next | 50 | 0.24 | ok |
+| 2026-11-20T02:43:01Z | t2-pr-refund-flow | recheck | glm-5 | 103 | 2.72 | ok |

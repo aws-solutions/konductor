@@ -1,0 +1,4 @@
+[
+  { "sku": "TEST-ONE", "sellable": true },
+  { "sku": "TEST-TWO", "sellable": false }
+]

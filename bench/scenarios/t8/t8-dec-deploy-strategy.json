@@ -118,7 +118,9 @@
       "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "alibaba",
@@ -152,7 +154,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The incident-list.md RR-221 incident explicitly describes the failure mechanism as 'upstream connection-pool waiting followed by retries' and identifies the 240→120 pool setting change, directly revealing the cause the key item 'cause-is-pool-reduction-and-retries' requires.)"
+        "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The incident-list.md RR-221 incident explicitly describes the failure mechanism as 'upstream connection-pool waiting followed by retries' and identifies the 240\u2192120 pool setting change, directly revealing the cause the key item 'cause-is-pool-reduction-and-retries' requires.)"
       }
     ]
   },
@@ -161,6 +163,21 @@
     "editor": "kirocrew-mate-worker (T8 worker session)",
     "log": "HAND-EDITS.md"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {
+      "fixReason": "cannot pass by re-weighting: the mechanical lazy answer (lib/answers.js) meets most hidden block-key items, so even with every non-test check failing it would score 51.6 (gate 40). The key needs items a half-copy misses. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 74.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }

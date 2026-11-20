@@ -52,7 +52,7 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 0,
@@ -103,7 +103,34 @@
         "verdict": "pass",
         "note": "all figures are present in fixture, tests validate extraction correctly; no unstated format requirements or missing numbers."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt specifies goal (list retention figures), format (one per line with source), and classification (current/superseded/archival) without naming methods, tools, or pointing to traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain retention policies as evidence (compliance.md and budget-constraints.md) without explicitly stating 'these are the answers.'"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Test expects 400, 90, and 180 day figures from compliance.md and budget-constraints.md, all present in fixture with retention context per RETENTION_CONTEXT pattern."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Solution correctly extracts all retention figures (400, 90, 180 days) from the two source files with appropriate status labels derivable from context."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -150,5 +177,10 @@
       "adds architecture recommendations or database schema proposals beyond the requested inventory",
       "conflates current policy with archival thresholds by labeling 180 days as 'current policy'"
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T3 batch worker session",
+    "log": "HAND-EDITS.md"
   }
 }

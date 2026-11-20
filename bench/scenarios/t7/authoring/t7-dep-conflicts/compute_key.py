@@ -43,14 +43,15 @@ def read_roadmap() -> list[dict[str, str]]:
 def key_assertions(conflicts, cycles, driver, launch_planned, launch_if_unresolved, stale):
     by_pair = {(x["producer"], x["consumer"]): x for x in conflicts}
     assertions = []
-    for producer, consumer in [("ATL-007", "BCN-012"), ("CND-009", "BCN-024"), ("CND-017", "DLT-011")]:
+    pairs = [("ATL-007", "BCN-012"), ("CND-009", "BCN-024"), ("CND-017", "DLT-011")]
+    # One check for all three conflicts (version 3, D-86): a list that names only the obvious ones earns nothing here.
+    assertions.append({
+        "id": "conflicts-all-named",
+        "desc": "Names all three late dependencies",
+        "op": "includes", "path": "conflicts", "ids": [p for p, _ in pairs],
+    })
+    for producer, consumer in pairs:
         item = by_pair[(producer, consumer)]
-        assertions.append({
-            "id": f"conflict-{producer.lower()}-identity",
-            "desc": f"Names the {producer} to {consumer} dependency",
-            "op": "cites", "path": "conflicts", "field": "producer", "ids": [producer],
-            "where": {"consumer": consumer},
-        })
         assertions.append({
             "id": f"conflict-{producer.lower()}-dates",
             "desc": f"Reports dates and lateness for {producer} to {consumer}",

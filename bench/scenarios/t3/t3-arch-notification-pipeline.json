@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 17
     },
     {
@@ -56,8 +56,21 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 12,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -102,7 +115,34 @@
         "verdict": "pass",
         "note": "All required numbers (peak rate, quota, pricing, hours, multipliers) are present in the fixture files with clear definitions."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json prompt names the fixture sources, required deliverable structure, and constraints but does not prescribe a method or disclose a candidate answer or hidden trap."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture provides source facts and explicitly labels the staging and sandbox figures as superseded in requirements.md and service-limits.md, but contains no answer key or findings list."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The expected capacity, production quotas, objectives, traffic schedule, recovery values, and pricing all appear in traffic.csv, service-limits.json, requirements-limits.json, options.json, and price-sheet.json; the expected cost follows from those values."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can compare all three options, derive capacity and traffic-weighted monthly cost, and populate the requested decision block from the prompt and fixture alone."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -154,5 +194,10 @@
       "Assumes adding workers to single-queue-pool increases throughput capacity, missing that the quota is per-queue and workers do not affect ingress limits.",
       "Reports monthly cost without showing the traffic-weighted calculation, making it impossible to audit against the source files."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

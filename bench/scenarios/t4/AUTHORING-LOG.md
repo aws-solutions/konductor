@@ -111,3 +111,29 @@ Times are UTC on 2026-11-19. Credits are what each call reported in its stream.
 | 20:44 | t4-dev-path-traversal-files | author | gpt-5.6-luna | 2 | 135 | 2.33 |  |
 | 20:45 | t4-dev-path-traversal-files | map | glm-5 | 2 | 30 | 0.74 |  |
 | 20:46 | t4-dev-path-traversal-files | review | glm-5 | 2 | 81 | 2.88 |  |
+
+## FX fix round (2026-11-20)
+
+Paid calls of the FX job (owner-approved, hard cap 90 credits for all batches, abort limit 10 credits per call, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t4-dev-sql-report-filters fix by deepseek-3.2, abort limit 10 credits, spend so far 0.0 of 90
+- result: t4-dev-sql-report-filters fix deepseek-3.2 credits=10.000 secs=551
+- plan: t4-dev-sql-report-filters recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 10.0 of 90
+- result: t4-dev-sql-report-filters recheck gpt-5.6-luna credits=0.797 secs=40
+- plan: t4-iac-review-terraform fix by deepseek-3.2, abort limit 10 credits, spend so far 10.8 of 90
+- result: t4-iac-review-terraform fix deepseek-3.2 credits=10.000 secs=542
+- plan: t4-iac-review-terraform recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 20.8 of 90
+- result: t4-iac-review-terraform recheck gpt-5.6-luna credits=0.421 secs=20
+- plan: t4-iam-bucket-policy-oac fix by deepseek-3.2, abort limit 10 credits, spend so far 21.2 of 90
+- result: t4-iam-bucket-policy-oac fix deepseek-3.2 credits=7.210 secs=491
+- plan: t4-iam-bucket-policy-oac recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 28.4 of 90
+- result: t4-iam-bucket-policy-oac recheck gpt-5.6-luna credits=0.592 secs=40
+
+A fix call that was stopped at its 540 s limit carries no final credit count; it is booked at the 10 credit abort limit (the first two fix calls above). The recheck was run by gpt-5.6-luna, never the writer's family (deepseek), on a folder where the hidden overlay is laid out as the runner lays it.
+
+Outcomes:
+
+- t4-dev-sql-report-filters: deepseek-3.2 fixed the fixture, but put a warning comment and a security note into it that named the vulnerability and the fix. Those were reverted by hand (a Claude hand edit, in HAND-EDITS.md): the fixture docs now say "substring search", and the prompt states the requirement that a name filter is matched as typed, so `%` and `_` match only themselves. Recheck by gpt-5.6-luna: pass on all four items. Version 2; reference 100, empty 13.3, lazy 13.3, alternative 100.
+- t4-iac-review-terraform: deepseek-3.2 removed the hints (the decoy label, the doc lines that list the public database, bucket and full-access role), made the CloudTrail settings match the key (single region, validation off) and took the plan step out of the CI file so it matches the key. Recheck by gpt-5.6-luna: pass on all four items. Version 2; reference 100, empty 5.7, lazy 17.1, alternative 100.
+- t4-iam-bucket-policy-oac: deepseek-3.2 replaced the four expert-key items that named facts absent from the fixture (Block Public Access, request signing, KMS) with items the fixture supports. Recheck by gpt-5.6-luna: pass on all four items. Version 2; reference 100, empty 16.1, lazy 16.1, alternative 100.
+- t4-iam-ci-deploy-role-twin: false alarm, cleared by hand with no paid call. The recheck folder had put the hidden overlay at `hidden/hidden/deploy.test.js`, so the reviewer read `path.join(__dirname, '..')` as `hidden/`. The runner lays `hidden/t4-iam-ci-deploy-role-twin/` over the repository root, so the test sits at `<root>/hidden/deploy.test.js`, finds `scripts/` and `public/`, and runs 14 tests; `node bench/scenarios/t4/dry-run.js t4-iam-ci-deploy-role-twin` gave reference 100 and empty 19.7. The two failed recheck items were set to pass with that note, the blockers were removed, pilot.decision is keep.

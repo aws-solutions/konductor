@@ -113,6 +113,52 @@
         "verdict": "pass",
         "note": "The fixture has no leftover solution file or test describing the finished implementation. Its deployment docs and changelog mention manifests and deployment operations generally, but do not name the defects or reveal the answer."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "gpt",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt states the requested behavior, interfaces, values, and constraints but does not prescribe a named implementation method or identify hidden traps or decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture deployment code and docs, including fixture/scripts/deploy.js and fixture/CHANGELOG.md, describe the existing behavior without listing the requested findings or hidden expected answers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Cleared by hand (false alarm, see t4/AUTHORING-LOG.md): the staged folder for the reviewer put the overlay at hidden/hidden/, so the test looked one level too deep. Run by the bench loader, hidden/t4-iam-ci-deploy-role-twin/ is laid over the repository root, hidden/deploy.test.js finds scripts/ and public/ through path.join(__dirname, \"..\"), and the reference scores 100 with 14 of 14 tests."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Cleared by hand (false alarm, see t4/AUTHORING-LOG.md): the staged folder for the reviewer put the overlay at hidden/hidden/, so the test looked one level too deep. Run by the bench loader, hidden/t4-iam-ci-deploy-role-twin/ is laid over the repository root, hidden/deploy.test.js finds scripts/ and public/ through path.join(__dirname, \"..\"), and the reference scores 100 with 14 of 14 tests."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 19.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

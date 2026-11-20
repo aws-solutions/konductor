@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-release-notes-csv",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -25,7 +25,7 @@
       "type": "file_exists",
       "path": "docs/release-notes.csv",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "contains",
@@ -128,6 +128,52 @@
         "verdict": "pass",
         "note": "No ASKS.json, no scriptedUser facts, no hints in fixture files. The solution/ directory contains reference output but an agent has no reason to discover or read it. Task-draft.json notes are for task authors only, not visible to agents."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The task.json prompt asks for a CSV conversion, names the output columns, and defines the type field, but does not prescribe a method or point to hidden traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/docs/release-notes.md contains the source release notes and their ordinary bullet content, including the comma-containing phrase and alternate date; it does not state a solution or hidden-test answer key."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The expected versions, dates, headings, 67 bullet rows, wrapped content, and quoted comma-containing summary all appear in fixture/docs/release-notes.md (release sections begin at lines 3-123)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "task.json provides the destination path, four columns, row and type rules, while fixture/docs/release-notes.md provides all values needed to produce the reference CSV; no hidden information is required."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 18.6,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 18.6,
+      "lazy": 34.2,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

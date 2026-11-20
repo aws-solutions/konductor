@@ -24,5 +24,15 @@
     "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
   ],
-  "replaces": "t7-sprint-plan"
+  "replaces": "t7-sprint-plan",
+  "rewriteAttempts": [
+    {
+      "version": 3,
+      "author": "qwen3-coder-next",
+      "reviewer": "minimax-m2.5 (key, step B)",
+      "date": "2026-11-20",
+      "result": "dropped, v1 (version 2) kept",
+      "why": "two-step try: step A (qwen3-coder-next) needed its one fix (the request said not to ask questions and listed the capacity steps; the README was titled a benchmark); step B (minimax-m2.5) key: reference 95.2, stub 0, alternative 95.2, lazy 67.8 (over 40), data-file path wrong; its one fix round ran to the 1100 s abort limit without changing a file"
+    }
+  ]
 }

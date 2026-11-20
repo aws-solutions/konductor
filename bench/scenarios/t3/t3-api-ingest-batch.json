@@ -65,7 +65,20 @@
       "use": "idea"
     }
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 5,
+      "lazy": 37,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "decision-writing",
@@ -163,5 +176,6 @@
       "computes cost using flat per-reading or per-device rates instead of multiplying option usage quantities by the price sheet rates.",
       "treats the 5-minute RTO rehearsal result as the production requirement, unnecessarily disqualifying buffered-batch."
     ]
-  }
+  },
+  "handEdited": null
 }

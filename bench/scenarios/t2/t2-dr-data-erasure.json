@@ -184,7 +184,34 @@
         "verdict": "pass",
         "note": "No fixture file, comment, test, or name points at planted problems"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "qwen",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for review with focus on contradictions, missing behavior, unsafe assumptions, unclear ownership; no specific method/checklist/process named, no planted problem/decoy/count referenced"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file (README, architecture.md, legal-requirements.md, incident-history.md, account-deletion.md) contains a comment, test, doc, or filename stating the planted problems; all must be inferred by careful review"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All six key items map correctly: k1->3.2, k2->3.3, k3->4.1, k4->5.2, k5->3.4, k6->2.2; each section contains the described problem"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful reviewer reading account-deletion.md plus legal-requirements.md can find all issues through close reading of described behavior vs stated requirements"
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

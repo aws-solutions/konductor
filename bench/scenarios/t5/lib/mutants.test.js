@@ -6,7 +6,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { runMutants } = require('./mutants.js');
+const { runMutants } = require('../../lib/hidden/mutants.js');
 
 function build(testSrc) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 't5mt-'));

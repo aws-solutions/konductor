@@ -1,7 +1,7 @@
 {
   "id": "t8-nfr-slo-burn",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "nfr",
   "role": "sre",
   "phases2": [
@@ -25,9 +25,16 @@
       "kind": "substance"
     },
     {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"slo/payments-api-slo.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);let b=null;for(const m of t.matchAll(new RegExp(\"^\"+f+\"([a-z]*)[ \\\\t]*\\\\n([\\\\s\\\\S]*?)^\"+f,\"gim\"))){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;try{const d=JSON.parse(m[2]);if(d&&typeof d===\"object\"&&!Array.isArray(d))b=d}catch{}}const n=(v)=>typeof v===\"number\"?v:Number(String(v??\"\").replace(/[,_%\\\\s]/g,\"\"));const m=(b&&b.measured)||{};const a=n(m.availability28d),l=n(m.latencyP99Ms);process.exit(Math.abs(a-99.97762185371705)<=0.009&&Math.abs(l-1200)<=60?0:1)'",
+      "expectExit": 0,
+      "weight": 8,
+      "kind": "substance"
+    },
+    {
       "type": "file_exists",
       "path": "slo/payments-api-slo.md",
-      "weight": 3,
+      "weight": 1,
       "kind": "substance"
     },
     {
@@ -114,7 +121,9 @@
       "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "alibaba",
@@ -123,7 +132,7 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The request asks the agent to derive objectives from data, set alerts, and write documentation—it does not name a specific method, process, or tool the agent should use, nor does it list constraints or causes to find."
+        "note": "The request asks the agent to derive objectives from data, set alerts, and write documentation\u2014it does not name a specific method, process, or tool the agent should use, nor does it list constraints or causes to find."
       },
       {
         "check": "ambiguity",
@@ -138,7 +147,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A quick wrong answer (e.g., blaming the newest deploy, the loudest error, or listing every action) would fail tests: availability target must be ≤ measured (99.9776%), targets must respect the dependency cap (99.95%), and the incident on April 14 is explicitly tied to connection-pool contention, not CPU/memory."
+        "note": "A quick wrong answer (e.g., blaming the newest deploy, the loudest error, or listing every action) would fail tests: availability target must be \u2264 measured (99.9776%), targets must respect the dependency cap (99.95%), and the incident on April 14 is explicitly tied to connection-pool contention, not CPU/memory."
       },
       {
         "check": "floor",
@@ -152,6 +161,24 @@
     "editor": "kirocrew-mate-worker (T8 worker session)",
     "log": "HAND-EDITS.md"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "runs": 2,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 2.9,
+    "dryRun": {
+      "reference": 100,
+      "stub": 2.9,
+      "lazy": 37.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }
