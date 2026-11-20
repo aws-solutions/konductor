@@ -8,7 +8,7 @@
       "all": [
         "cache",
         "ttl|time-to-live|expiration",
-        "jitter|synchron|same time|simultaneous"
+        "jitter|synchron|same time|simultaneous|together|at once|in one go|wave|lockstep|stampede|thundering|herd|en masse|aligned|same (instant|moment|second|minute)|all (the |\\d[\\d,]* )?keys"
       ],
       "weight": 2,
       "section": "cause",
@@ -54,7 +54,8 @@
         "warmup completed",
         "expiration wave",
         "cache=miss burst",
-        "connection_limit_reached"
+        "connection_limit_reached",
+        "T(15:1[2-5]|15:4[2-5]|16:1[2-5]):00\\.000Z,0\\.1"
       ],
       "min": 0.5,
       "section": "cause"
@@ -142,10 +143,10 @@
         "all": [
           "recover|healthy|normal|stable|resolved"
         ],
-        "timeNear": {
-          "time": "2025-03-18T16:22:00.000Z",
-          "tolMin": 3
-        }
+        "timeIn": [
+          "2025-03-18T16:15:00.000Z",
+          "2025-03-18T16:28:00.000Z"
+        ]
       },
       "section": "timeline"
     },
@@ -197,8 +198,8 @@
       "match": {
         "field": "text",
         "all": [
-          "jitter",
-          "ttl|expiry|expiration",
+          "jitter|stagger|spread|randomi[sz]|coalesc|single.?flight|stale|request collaps",
+          "ttl|expiry|expiration|expire|refill|refresh",
           "cache"
         ]
       },

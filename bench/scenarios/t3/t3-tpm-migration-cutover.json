@@ -147,17 +147,7 @@
           "note": "rubric check: Different prose structure and handoff sequences can achieve Pass if calculations and rejections are grounded in fixture. Earlier glm-5 check of the request, fixture and key: pass (An engineer can calculate each option's metrics from migration-model.json and price-sheet.json, compare against limits in acceptance.json and traffic-profile.csv, and identify continuous_replication as the only option meeting all five constraints.)."
         }
       ]
-    },
-    "adjudication": [
-      "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
-      "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
-      "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
-      "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
-      "Downtime is the sum of the handoff steps (3 + 5 = 8 minutes) now that change-calendar.md says every step runs inside the write pause; an answer that reports only the 5-minute switch step is Partial on e3.",
-      "Seed lead time: 8.3 hours (60 MB/s spare beside the 90 MB/s write load) is the better reading; 3.3 hours at the full 150 MB/s cap is Partial on e4; either with a start-before-02:00 conclusion is never a fail of the decision.",
-      "Copying the rehearsal or rollback sentence from change-calendar.md is not an expert point by itself; e6 needs the post-switch writes point.",
-      "Treating migration_support (400) as one-time and dropping it is wrong: cost-notes.md bills it monthly for the migration period."
-    ]
+    }
   },
   "expertKey": {
     "items": [
@@ -210,6 +200,16 @@
       "Lists handoff steps with no measurable condition and no rollback point."
     ]
   },
+  "adjudication": [
+    "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
+    "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
+    "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
+    "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
+    "Downtime is the sum of the handoff steps (3 + 5 = 8 minutes) now that change-calendar.md says every step runs inside the write pause; an answer that reports only the 5-minute switch step is Partial on e3.",
+    "Seed lead time: 8.3 hours (60 MB/s spare beside the 90 MB/s write load) is the better reading; 3.3 hours at the full 150 MB/s cap is Partial on e4; either with a start-before-02:00 conclusion is never a fail of the decision.",
+    "Copying the rehearsal or rollback sentence from change-calendar.md is not an expert point by itself; e6 needs the post-switch writes point.",
+    "Treating migration_support (400) as one-time and dropping it is wrong: cost-notes.md bills it monthly for the migration period."
+  ],
   "handEdited": {
     "family": "claude",
     "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",

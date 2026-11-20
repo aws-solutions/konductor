@@ -1,7 +1,7 @@
 {
   "id": "t12-spec-rate-limits",
   "class": "orchestration",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "phases2": [
     "architecture",
@@ -59,29 +59,44 @@
   "expertKey": {
     "items": [
       {
+        "id": "per-key-not-ip",
+        "source": "original",
+        "text": "Puts the allowance on the API key (two keys of one account count separately) and treats the June 2025 per-IP note as superseded. Weak: 'limit each client IP to 100 a minute'. Do not require the word 'superseded' if the spec clearly counts per key."
+      },
+      {
         "id": "shared-counter",
-        "text": "Counts in the shared store (src/kv.js) with an atomic increment, so two instances give one allowance, and says what happens when the store is down (fail open or closed).",
-        "source": "https://datatracker.ietf.org/doc/html/rfc6585#section-4"
+        "source": "https://datatracker.ietf.org/doc/html/rfc6585#section-4",
+        "text": "Counts in the shared store with the atomic kv.incr in src/kv.js, so both instances share one allowance. Weak: an in-memory counter per process."
+      },
+      {
+        "id": "store-down",
+        "source": "https://datatracker.ietf.org/doc/html/rfc6585#section-4",
+        "text": "Says what happens when the store is down (fail open or fail closed), with a reason or as a choice for product to make. Either choice with a reason passes. Weak: not covered."
       },
       {
         "id": "window-trade-off",
-        "text": "Names the window type (fixed or sliding) and its edge effect: a fixed window can let up to twice the allowance through across a window edge.",
-        "source": "https://cloud.google.com/architecture/rate-limiting-strategies-techniques"
+        "source": "https://cloud.google.com/architecture/rate-limiting-strategies-techniques",
+        "text": "Names the window type and its cost: a fixed one-minute window can let up to twice the allowance through across an edge; a sliding window or token bucket costs more reads or state. Do not require a fixed window."
       },
       {
         "id": "burst-undefined",
-        "text": "Notices that config/plans.json has a burst figure the request never explains and raises it as an open question instead of guessing.",
-        "source": "original"
+        "source": "original",
+        "text": "Raises the burst figure in config/plans.json as an open question instead of guessing. Using it as a token-bucket size passes only when it is labelled an assumption for product to confirm. Weak: uses burst as if agreed."
       },
       {
         "id": "limit-after-auth",
-        "text": "Places the check after authentication and before routing, so unknown keys get 401 without being counted, /health is never counted, and admin keys skip it.",
-        "source": "original"
+        "source": "original",
+        "text": "Places the check after authentication (unknown keys get 401 and are not counted), skips keys with admin: true, and never counts /health. Two of the three is Partial."
       },
       {
         "id": "config-not-code",
-        "text": "Reads plan figures from config/plans.json rather than copying 90 and 720 into code, because sales quotes the file.",
-        "source": "original"
+        "source": "original",
+        "text": "Reads the 90 and 720 requests-per-minute figures from config/plans.json (requestsPerMinute), not constants in code, because sales quotes the file. Weak: hard-coded figures."
+      },
+      {
+        "id": "more-open",
+        "source": "original",
+        "text": "Names one more point the folder does not settle, with an owner or a default: whether X-RateLimit-Remaining goes on every response or only on limited ones, whether rejected requests count, the default for a key whose plan is missing, Retry-After rounding, or clock skew between instances at a window edge. Weak: no open questions beyond burst."
       }
     ],
     "weakAnswers": [
@@ -117,7 +132,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -134,5 +149,13 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "adjudication": [
+    "A requirement that mentions the old per-IP throttle to reject it ('unlike the 2025 note', 'replaces the per-IP throttle') is per key and fully correct.",
+    "429, Retry-After and the rate_limited body split across several requirements are full credit; the hidden key reads them over the whole requirements list.",
+    "X-RateLimit-Remaining on every response or only on limited responses are both acceptable; raising the choice as an open question is a plus, not an invented rule.",
+    "Fail open and fail closed both pass store-down when a reason is given or the choice is left to product; no reason is Partial.",
+    "A per-account limit on top of the per-key one is an invented rule: Partial on settled-versus-open.",
+    "More than 14 requirements is never penalised by the judge."
+  ]
 }

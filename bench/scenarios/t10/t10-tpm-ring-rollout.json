@@ -1,7 +1,7 @@
 {
   "id": "t10-tpm-ring-rollout",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "multi-phase",
   "role": "tpm",
   "phases2": [
@@ -10,7 +10,7 @@
     "release-ops"
   ],
   "questions": "allowed",
-  "prompt": "The rendering and fulfillment teams need the new receipt PDF generator to reach merchants in controlled steps, because several consumers share this service and we need a release we can stop or undo. Please first write a short design note at docs/design/ring-aware-receipts.md that explains the operating choices and their reasons. Then build the feature with tests, updating CI only if the added tests need a new check. Add the ring library at src/ring-rollout.js with CommonJS exports createRingRollout({ rings, percentages, initialState, freezeCalendar, now }) and RolloutError. The returned object exposes state() as {rings:[{name,percentage,status,updatedAt,history}]}, canPromote(ring, percentage) as {ok,code}, promote(ring, percentage), rollback(ring, percentage), and isFrozen(ring); state-changing methods return promises, percentages are integers from 0 through 100, and RolloutError.code uses UNKNOWN_RING, INVALID_PERCENTAGE, PRIOR_RING_INCOMPLETE, ROLLOUT_FROZEN, ROLLBACK_REQUIRES_EXPLICIT_CALL, or INVALID_ROLLBACK. Use config/rollout.json with a percentages object whose values are integer arrays. Add src/go-no-go.js with normalizeMetricName(value), parseSnapshot(csv), and evaluate({ ring, snapshot, now }); evaluate returns an object containing decision, reason, metric, unit, and value, with decision exactly PROMOTE, HOLD, or ROLLBACK and metric values expressed in percent. Add scripts/receipt-go-no-go.js, which accepts --ring, --snapshot, and optional --now ISO arguments, prints only the decision, and exits 2 when required arguments are absent. The existing error adapter must continue returning status, body.code, and body.message for its current routes and status behavior. Next write the follow-the-steps rollout plan at docs/rollout/receipt-pdf.md, and finish with a useful Unreleased CHANGELOG entry as the release note. Each document must end with its last fenced json block containing one object. The design block has decisions (an array of objects with string topic, choice, and reason), risks (an array of objects with string risk and mitigation), and evidence (an array of path:line strings); the rollout block has phases (objects with string name and audience, a gate object with metric, unit, and numeric threshold, and string action), rollback (an object with string trigger and steps array), and evidence (an array of path:line strings). Evidence paths are relative to the repository root and use one-based line numbers. You may add at most two fitting fields, but keep the named fields and make each block the final fenced json block.",
+  "prompt": "The rendering and fulfillment teams need the new receipt PDF generator to reach merchants in controlled steps, because several consumers share this service and we need a release we can stop or undo. Please first write a short design note at docs/design/ring-aware-receipts.md that explains the operating choices and their reasons. Then build the feature with tests, updating CI only if the added tests need a new check. Add the ring library at src/ring-rollout.js with CommonJS exports createRingRollout({ rings, percentages, initialState, freezeCalendar, now }) (initialState is either the object state() returns or a stored state of the older shape {rings: {<ring name>: {percentage, status}}}; accept both) and RolloutError. The returned object exposes state() as {rings:[{name,percentage,status,updatedAt,history}]}, canPromote(ring, percentage) as {ok,code}, promote(ring, percentage), rollback(ring, percentage), and isFrozen(ring); state-changing methods return promises, percentages are integers from 0 through 100, and RolloutError.code uses UNKNOWN_RING, INVALID_PERCENTAGE, PRIOR_RING_INCOMPLETE, ROLLOUT_FROZEN, ROLLBACK_REQUIRES_EXPLICIT_CALL, or INVALID_ROLLBACK. Use config/rollout.json with a percentages object whose values are integer arrays. Add src/go-no-go.js with normalizeMetricName(value), parseSnapshot(csv), and evaluate({ ring, snapshot, now }); evaluate returns an object containing decision, reason, metric, unit, and value, with decision exactly PROMOTE, HOLD, or ROLLBACK and metric values expressed in percent. Add scripts/receipt-go-no-go.js, which accepts --ring, --snapshot, and optional --now ISO arguments, prints only the decision, and exits 2 when required arguments are absent. The existing error adapter must continue returning status, body.code, and body.message for its current routes and status behavior. Next write the follow-the-steps rollout plan at docs/rollout/receipt-pdf.md, and finish with a useful Unreleased CHANGELOG entry as the release note. Each document must end with its last fenced json block containing one object. The design block has decisions (an array of objects with string topic, choice, and reason), risks (an array of objects with string risk and mitigation), and evidence (an array of path:line strings); the rollout block has phases (objects with string name and audience, a gate object with metric, unit, and numeric threshold, and string action), rollback (an object with string trigger and steps array), and evidence (an array of path:line strings). Evidence paths are relative to the repository root and use one-based line numbers. You may add at most two fitting fields, but keep the named fields and make each block the final fenced json block.",
   "fixture": "t10-tpm-ring-rollout",
   "hidden": "t10-tpm-ring-rollout",
   "timeoutSec": 4800,
@@ -60,7 +60,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e \"const fs=require('fs'); const a=fs.readFileSync('CHANGELOG.md','utf8'); if(!/^## Unreleased/m.test(a) || !/ring-aware receipt PDF rollout/i.test(a) || !/PROMOTE, HOLD, and ROLLBACK/i.test(a) || !/legacy receipt generator/i.test(a)) process.exit(1)\"",
+      "cmd": "node -e \"const fs=require('fs'); const a=fs.readFileSync('CHANGELOG.md','utf8'); const u=(a.split(/^## Unreleased/m)[1]||'').split(/^## /m)[0]; if(!/^## Unreleased/m.test(a) || !/ring/i.test(u) || !/PROMOTE|HOLD|ROLLBACK/.test(u) || !/legacy|old (receipt )?(generator|envelope)|Ledger Lantern/i.test(u)) process.exit(1)\"",
       "weight": 2,
       "kind": "substance"
     },
@@ -83,44 +83,54 @@
       "id": "expert-key",
       "weight": 3,
       "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are design judgment, not a pattern in the text)"
+    },
+    {
+      "id": "plan-follows-policy",
+      "weight": 1,
+      "criterion": "The rollout plan's gates come from ops/budget-policy.json. Fail: gates use made-up thresholds or one threshold for every ring. Partial: thresholds right but windows or units missing. Pass: each phase gate uses its ring's promoteBelow, rollbackAt and window (staff 15 min / 1.0 / 3.0, pilot 30 / 1.5 / 4.0, regional 60 / 2.0 / 5.0, general 120 / 2.5 / 6.0, percent), phases run in ring order, and rollback goes from the highest enabled ring down. (code cannot check this fully: the block key checks two rings, not every gate.)"
     }
   ],
   "expertKey": {
     "items": [
       {
         "id": "e1",
-        "text": "Explains how an operator distinguishes a healthy metric result from permission to promote during a freeze.",
-        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that a green snapshot during a freeze still means no promotion (the regional freeze 2025-12-20 to 2026-01-03 UTC), while rollback stays allowed. Weak: 'respect freezes'."
       },
       {
         "id": "e2",
-        "text": "Explains why the evaluator uses a maximum or otherwise conservative view of observations instead of hiding a bad minute in an average.",
-        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that one bad minute decides, not the average: any minute at or over the ring's rollback level means ROLLBACK (a maximum, 'any minute', or a high percentile all count). Weak: 'use the average error rate'. Do not require the word 'maximum'."
       },
       {
         "id": "e3",
-        "text": "Explains the trade-off between retaining rollout history for auditability and keeping the state record small.",
-        "source": "https://12factor.net (MIT)"
+        "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "States that a missing minute makes the snapshot incomplete and HOLD even when ten rows exist (pilot-gap), with ten complete one-minute observations as the floor. Weak: 'check data quality'."
       },
       {
         "id": "e4",
-        "text": "Explains how UTC and an injected clock prevent local-time boundary mistakes in both automation and review.",
-        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+        "source": "https://github.com/adr/madr (MIT OR CC0-1.0)",
+        "text": "States that all times are UTC and now is injected, so freeze edges (the inclusive 23:59:59Z end) and windows do not depend on the host clock. Weak: 'use timestamps'."
       },
       {
         "id": "e5",
-        "text": "Explains how a failed or partial rollback is observed and who owns reconciliation before a retry.",
-        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)",
+        "text": "Names who owns a failed or half-applied rollback (rendering-oncall, with fulfillment confirming downstream, per docs/runbook.md) and the check before a retry. Weak: 'roll back if needed'."
       },
       {
         "id": "e6",
-        "text": "Explains why metric names are normalized only for documented aliases and are then checked against an allowlisted catalogue.",
-        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+        "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)",
+        "text": "States that metric header aliases (RECEIPT_ERROR_RATE_PERCENT, a _percent or _pct suffix, case) map to receipt_error_rate and anything outside the catalogue is rejected or HOLD, not ignored. Weak: 'parse the CSV'."
       },
       {
         "id": "e7",
-        "text": "Explains the compatibility and data-retention consequence of removing the old receipt generator before its consumer migrates.",
-        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+        "source": "https://github.com/kubernetes/enhancements (Apache-2.0)",
+        "text": "States that Ledger Lantern needs the old receipt envelope until 2025-09-30 (docs/partners.md), so the legacy generator stays and the new PDF is additive. Weak: 'remove old code later'. Do not require the date if 'until their migration ends' is said."
+      },
+      {
+        "id": "e8",
+        "source": "https://12factor.net (MIT)",
+        "text": "States that ring promotions are serialised (a queue, a mutex or one at a time) so two concurrent promotes cannot skip a step or undo one silently. Weak: 'avoid races'. Do not require a percentage step."
       }
     ],
     "weakAnswers": [
@@ -129,6 +139,15 @@
       "A short note says teams should communicate and roll back if anything goes wrong."
     ]
   },
+  "adjudication": [
+    "Facts split across several decisions (serialisation in one, ring budgets in another) are full credit; the hidden key now reads each fact over the whole decisions list.",
+    "Percentage steps other than 0/10/25/50/100 are not wrong: config/rollout.json is the agent's choice.",
+    "'Do not remove the legacy generator before 2025-09-30' asserts keeping it; only 'remove it now' is a fail.",
+    "A CHANGELOG entry that says 'receipt PDF rollout by ring', 'PROMOTE/HOLD/ROLLBACK' and 'old generator kept' is complete.",
+    "The freeze written as 'December 20 to January 3' is the same freeze.",
+    "Ten complete minutes inside the ring window are enough to decide (docs/error-budget-policy.md); a design that waits for the whole window is stricter but not wrong for the judge.",
+    "'Below 1.0' means exactly 1.0 is HOLD; an answer is marked down only if it says it promotes at 1.0."
+  ],
   "targetSkills": [
     "backend-development",
     "code-review",
@@ -200,12 +219,17 @@
     "dryRun": {
       "reference": 100,
       "stub": 5.7,
-      "lazy": 23.8,
+      "lazy": 28.8,
       "alt": 100,
       "date": "2026-11-20"
     },
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

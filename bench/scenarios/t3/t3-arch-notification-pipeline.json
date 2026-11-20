@@ -142,17 +142,7 @@
           "note": "All necessary data exists in fixture files to compute decision, cost, and design architecture; competent developer could solve."
         }
       ]
-    },
-    "adjudication": [
-      "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
-      "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
-      "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
-      "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
-      "Both topic-regional-queues and stream-partitions are correct; never fail an answer for picking one over the other when e6 is argued with figures.",
-      "payload_bytes: the packet makes the 2,048-byte contract the hard target (service-limits.md); an answer that reports the 4,096-byte broker maximum as the limit is Partial on the judge side, and the hidden test wants 2,048.",
-      "rto_minutes given in seconds with the unit stated is credited by the judge; the hidden test wants minutes.",
-      "A cost within 10% with one part missing (for example transfer) is Partial on e4."
-    ]
+    }
   },
   "expertKey": {
     "items": [
@@ -199,6 +189,16 @@
       "Says the chosen option meets every objective without its own p99, RPO and RTO figures."
     ]
   },
+  "adjudication": [
+    "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
+    "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
+    "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
+    "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
+    "Both topic-regional-queues and stream-partitions are correct; never fail an answer for picking one over the other when e6 is argued with figures.",
+    "payload_bytes: the packet makes the 2,048-byte contract the hard target (service-limits.md); an answer that reports the 4,096-byte broker maximum as the limit is Partial on the judge side, and the hidden test wants 2,048.",
+    "rto_minutes given in seconds with the unit stated is credited by the judge; the hidden test wants minutes.",
+    "A cost within 10% with one part missing (for example transfer) is Partial on e4."
+  ],
   "handEdited": {
     "family": "claude",
     "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",

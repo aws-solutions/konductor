@@ -136,17 +136,7 @@
           "note": "Developer can calculate hot writes (60% of 25,000 = 15,000 wps), check partition ceiling (1000 WCU), compute kv-on-demand would exceed limit, check relational cluster cost exceeds budget, choose kv-provisioned-autoscaling."
         }
       ]
-    },
-    "adjudication": [
-      "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
-      "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
-      "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
-      "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
-      "No item fails for not naming the superseded 8,000 writes/s figure; using it in sizing fails e1 and e3.",
-      "'Two shards' and '16 write destinations' describe the same layout: equal credit.",
-      "1,875 called 'requests per second' instead of WCU is credited: one 1 KB item write is one WCU here.",
-      "An ADR that argues on-demand plus the same write sharding would also pass, but keeps the fixed option ids, earns e9 and is not wrong on the rejection items."
-    ]
+    }
   },
   "expertKey": {
     "items": [
@@ -204,6 +194,16 @@
       "States the chosen option is within limits without the 937.5 of 1,000 WCU figure or what would break it."
     ]
   },
+  "adjudication": [
+    "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
+    "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
+    "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
+    "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
+    "No item fails for not naming the superseded 8,000 writes/s figure; using it in sizing fails e1 and e3.",
+    "'Two shards' and '16 write destinations' describe the same layout: equal credit.",
+    "1,875 called 'requests per second' instead of WCU is credited: one 1 KB item write is one WCU here.",
+    "An ADR that argues on-demand plus the same write sharding would also pass, but keeps the fixed option ids, earns e9 and is not wrong on the rejection items."
+  ],
   "handEdited": {
     "family": "claude",
     "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",

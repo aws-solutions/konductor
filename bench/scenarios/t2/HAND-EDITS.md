@@ -113,6 +113,6 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   - `expertKey`: nine items beyond the seeded findings, one point each, no "Asks..." verbs (measured 11-minute restore,
     global checkpoint position, monthly partitions against the key, poison event, 2,400 USD budget, dual-path split,
     team fit, backfill parity, OrderUpdated contract). Rubric r1 anchored on the read-your-writes and replay findings;
-    new r2 (council decision). `review.adjudication` added.
+    new r2 (council decision). `adjudication` added.
   - New answer `answers/t2-arch-dr-event-store/other/REVIEW.md`: a different correct review (other wording, findings in
     neighbouring sections, new fix words). Free gates: reference 100, stub 7.1, lazy 28.6, alt 100, dump 28.6, other 100.

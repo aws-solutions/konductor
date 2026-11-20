@@ -254,7 +254,7 @@ These rows replace the round 1 rows above for the same tasks.
 Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
 (reports/key-improve/reconciled.md in the mate workspace). Every `expertKey` item now holds one point with its
 pass figure, accepted equivalents, a weak example and what not to require; items that only rewarded naming a
-superseded figure are gone; `review.adjudication` is added. Each task has a new `answers/<id>/other` answer.
+superseded figure are gone; `adjudication` is added. Each task has a new `answers/<id>/other` answer.
 
 - `t3-adr-db-engine` (version 5): expertKey 9 items (adds 937.5 WCU headroom, 11 ms p99, scheduled launch capacity,
   shard operations, what changes the choice; drops the three repeats of the hot-partition point and the "superseded"

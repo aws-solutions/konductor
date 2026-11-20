@@ -9,9 +9,6 @@
         "field": "choice",
         "all": [
           "atomicWrite|atomic write"
-        ],
-        "none": [
-          "separate|later"
         ]
       },
       "weight": 2
@@ -119,7 +116,7 @@
           ]
         }
       ],
-      "min": 5,
+      "min": 4,
       "weight": 2
     }
   ]

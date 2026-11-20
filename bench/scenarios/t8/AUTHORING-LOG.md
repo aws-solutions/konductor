@@ -258,3 +258,12 @@ CV-FIX (2026-11-20, owner-approved CV-E2 gate fix; stop 60 credits counted, 15 p
   "Not the maps-geo latency." 100 (was 0), plain 100 (was 100); incident-handoff reference plus "The 2.41.0 deploy is not
   the cause." 100 (was 0).
 - Blindness audit of the recheck stream: 0 reads of a konductor skills/, agent-sops/, agents/ or context/ path.
+
+RC (2026-11-20, owner-approved recheck, stop 60 counted at 15 per call):
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| (none) | recheck, call lost to a wrong prompt path before start | gpt-5.6-luna | 0.00 | counted 15 |
+| t8-heldout-rollback-decision | recheck | gpt-5.6-luna | 1.75 | 4 of 4 pass |
+
+- Earlier rechecks of this task: qwen3-coder-next (after the key hand edit, 4 of 4 pass) and deepseek-3.2 (CV-FIX, 4 of 4 pass). gpt-5.6-luna (openai) is the third family; its verdicts are in `review.recheck`, with the deepseek verdicts folded into each note. No task edit.

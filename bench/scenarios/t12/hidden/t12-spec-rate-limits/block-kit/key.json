@@ -5,7 +5,6 @@
     {
       "id": "limit-per-key-not-ip",
       "section": "requirements",
-      "gate": true,
       "type": "none",
       "path": "requirements",
       "match": {
@@ -13,9 +12,10 @@
           "\\b(by|per) (client |source )?ip\\b"
         ],
         "none": [
-          "\\bnot\\b|never|instead|rather than|superseded"
+          "\\bnot\\b|never|instead|rather than|supersed|unlike|replac|\\bold\\b|previous|former|earlier|2025|no longer|retired|drop"
         ]
-      }
+      },
+      "weight": 2
     },
     {
       "id": "per-key",
@@ -55,15 +55,13 @@
     {
       "id": "over-limit-429",
       "section": "requirements",
-      "type": "some",
+      "type": "text",
       "path": "requirements",
-      "match": {
-        "all": [
-          "429",
-          "retry-after",
-          "rate_limited"
-        ]
-      }
+      "all": [
+        "429",
+        "retry-after",
+        "rate_limited"
+      ]
     },
     {
       "id": "remaining-header",

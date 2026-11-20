@@ -103,3 +103,18 @@ These rows replace the round 1 rows above for the same tasks.
 | --- | --- | --- | --- |
 | t12-parallel-backlog | gpt-5.6-luna (c17, full) | confirmed after fix | gpt-5.6-luna found the login-only key match unfair (fixed, hidden test) and then the process named in the request (prompt rewritten to the outcome, owner decision); gpt-5.6-luna (c17) passes all four; verdicts in HAND-EDITS.md (no author review to hold them) |
 | t12-sdlc-contact-import | gpt-5.6-luna (c17, full) | confirmed after fix | gpt-5.6-luna found the blank-line rule unfair (fixed, hidden test) and then the process named in the request (prompt rewritten to the outcome, owner decision); gpt-5.6-luna (c17) passes all four; verdicts in HAND-EDITS.md (no author review to hold them) |
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
+(reports/key-improve/reconciled.md in the mate workspace). `t12-sop-route-choice` is kept as it is (owner ruling).
+
+- `t12-spec-rate-limits` (version 3): `block-kit/key.json`: `limit-per-key-not-ip` is no longer a gate (one missing
+  negation word zeroed the task: "Unlike the 2025 proposal to throttle by client IP..." failed it); it is a weight-2
+  item whose `none` list also takes unlike, replaces, old, previous, former, earlier, 2025, no longer, retired.
+  `over-limit-429` reads 429, Retry-After and rate_limited over the whole requirements list, so a spec that splits them
+  into three requirements passes. expertKey: 8 single-point items (adds store-down as its own item and one more open
+  question: header scope, whether rejected requests count, unknown plan, Retry-After rounding or clock skew).
+  `adjudication` added. New `answers/.../other`: the reference with the "Unlike the 2025 proposal" wording, the 429
+  rule split in three, fail closed and other open questions. Free gates: reference 100, stub 0, lazy 0, alt 100,
+  shallow 0, other 100.

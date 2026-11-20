@@ -156,6 +156,14 @@
       "Add monitoring for lag and a dead-letter queue."
     ]
   },
+  "adjudication": [
+    "Credit the point, not the grammar: a question, a stated gap or a proposed fix all count, if the consequence is stated or obvious.",
+    "A finding placed in a neighbouring section still counts for the judge when its text names the planted problem; the hidden test accepts the section lists in key.json.",
+    "Severity one level off from the key is half credit in the hidden test; judges do not re-score severity.",
+    "e1 passes only on the 11-minute measured restore; replay arithmetic alone is the seeded finding k3, not e1.",
+    "Score points, not length: an extra correct finding never adds or subtracts; an extra finding the packet contradicts fails r1.",
+    "A review that repeats an ADR sentence without saying what breaks and for whom is Partial at most on r1."
+  ],
   "targetSkills": [
     "adversarial-design-review",
     "doc-accuracy-analyzer"
@@ -241,15 +249,7 @@
           "note": "Competent developer can analyze ADR to identify issues; different wording or structure of findings could still pass."
         }
       ]
-    },
-    "adjudication": [
-      "Credit the point, not the grammar: a question, a stated gap or a proposed fix all count, if the consequence is stated or obvious.",
-      "A finding placed in a neighbouring section still counts for the judge when its text names the planted problem; the hidden test accepts the section lists in key.json.",
-      "Severity one level off from the key is half credit in the hidden test; judges do not re-score severity.",
-      "e1 passes only on the 11-minute measured restore; replay arithmetic alone is the seeded finding k3, not e1.",
-      "Score points, not length: an extra correct finding never adds or subtracts; an extra finding the packet contradicts fails r1.",
-      "A review that repeats an ADR sentence without saying what breaks and for whom is Partial at most on r1."
-    ]
+    }
   },
   "handEdited": {
     "family": "claude",

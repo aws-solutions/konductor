@@ -111,6 +111,13 @@
       "Say the date is safe because the roadmap says so without calculating slack and the required reduction."
     ]
   },
+  "adjudication": [
+    "Slack: all three sprints are ahead of the 2027-06-04 as-of date and committed_points excludes post-lock work (README), so 17 is the slack; an answer that counts fewer sprints is Partial on capacity-assumptions.",
+    "added_after_lock with the two bug splits is one mistake: one Partial on splits-not-new, not a penalty on every item that uses the total.",
+    "cannot_cut listing PRJ-1102 beside PRJ-1008 is correct (PRJ-1102 is a must-have).",
+    "A conditional cut of PRJ-1046 ('cut it if needed') is still a cut and fails dependency-boundary.",
+    "Cutting more than 12 points and naming the extra as buffer passes; cutting PRJ-1008 or PRJ-1046 for it does not."
+  ],
   "targetSkills": [
     "program-decision-docs"
   ],
@@ -196,14 +203,7 @@
           "note": "A competent developer can identify added work by comparing ticket created dates to lock date (2027-05-07 in roadmap.md), exclude bug splits by reading parent comments, calculate capacity from capacity.csv, find dependency PRJ-1046 from PRJ-1102's depends_on column, and select different cuts if they total 12 points and avoid the customer commitment and dependency-protected item."
         }
       ]
-    },
-    "adjudication": [
-      "Slack: all three sprints are ahead of the 2027-06-04 as-of date and committed_points excludes post-lock work (README), so 17 is the slack; an answer that counts fewer sprints is Partial on capacity-assumptions.",
-      "added_after_lock with the two bug splits is one mistake: one Partial on splits-not-new, not a penalty on every item that uses the total.",
-      "cannot_cut listing PRJ-1102 beside PRJ-1008 is correct (PRJ-1102 is a must-have).",
-      "A conditional cut of PRJ-1046 ('cut it if needed') is still a cut and fails dependency-boundary.",
-      "Cutting more than 12 points and naming the extra as buffer passes; cutting PRJ-1008 or PRJ-1046 for it does not."
-    ]
+    }
   },
   "pilot": {
     "scores": {
