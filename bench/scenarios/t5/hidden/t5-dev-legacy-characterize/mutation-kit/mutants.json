@@ -13,53 +13,84 @@
   "mutants": [
     {
       "id": "m01",
-      "files": ["rates.py"],
+      "files": [
+        "rates.py"
+      ],
       "note": "The first weight band excludes a package weighing exactly its upper limit; a boundary test must preserve the inclusive edge."
     },
     {
       "id": "m02",
-      "files": ["rates.py"],
+      "files": [
+        "rates.py"
+      ],
       "note": "Unknown zones use zone 4 instead of the documented fallback zone; a test must inspect both the normalized zone and quote."
     },
     {
       "id": "m03",
-      "files": ["rates.py"],
+      "files": [
+        "rates.py"
+      ],
       "note": "Fuel is rounded before it is added to the service-adjusted base; a test must pin the calculation order at a fractional-cent case."
     },
     {
       "id": "m04",
-      "files": ["calendar_rules.py"],
+      "files": [
+        "calendar_rules.py"
+      ],
       "note": "Leap day is removed from the holiday calendar; a test must exercise February 29 in a leap year."
     },
     {
       "id": "m05",
-      "files": ["rates.py"],
+      "files": [
+        "rates.py"
+      ],
       "note": "Zero weight is rejected along with negative weight; a test must distinguish the valid zero boundary from the error path."
     },
     {
       "id": "m06",
-      "files": ["rates.py"],
+      "files": [
+        "rates.py"
+      ],
       "note": "A reusable calculator does not clear surcharge labels between quotes; a test must make consecutive calls with different flags."
     },
     {
       "id": "m07",
-      "files": ["calendar_rules.py"],
+      "files": [
+        "calendar_rules.py"
+      ],
       "note": "The next-business-day helper starts two calendar days ahead; a test must check an ordinary weekday."
     },
     {
       "id": "m08",
-      "files": ["labels.py"],
+      "files": [
+        "labels.py"
+      ],
       "note": "A postal value that normalizes to empty text is accepted; a test must cover the label validation branch."
     },
     {
       "id": "m09",
-      "files": ["cli.py"],
+      "files": [
+        "cli.py"
+      ],
       "note": "The command line returns success after a rate input error; a test must assert the error status."
     },
     {
       "id": "m10",
-      "files": ["formatters.py"],
+      "files": [
+        "formatters.py"
+      ],
       "note": "Currency formatting rounds half cents down instead of using the established half-up rule; a test must use a half-cent value."
     }
-  ]
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "rates.py"
+      ],
+      "note": "same behaviour, new internals: private helpers and calculator state renamed"
+    }
+  ],
+  "maxTests": 45,
+  "baseTests": 5
 }

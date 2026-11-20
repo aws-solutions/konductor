@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-scheduler-gaps",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "A job fired one day late after a month ended, and I no longer trust the checks around the scheduler and retry path. Please strengthen the tests under tests/ so they give us confidence in the calendar rule parser and next-run calculation, including the priority queue, sliding-window limiter, retry policy, and JSON state persistence that support job execution. The existing tests should stay useful, and the new coverage should exercise the real public behavior rather than implementation details. Keep the suite quick and deterministic, and make sure temporary state used by tests is cleaned up. Do not change anything under schedulerlib/, the command-line behavior, documentation, configuration, or CI files. The repository must continue to run with its existing Python 3.12 test command, and the current README.md must remain present. Keep all additions or edits limited to tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "A job fired one day late after a month ended, and I no longer trust the checks around the scheduler and retry path. Please strengthen the tests under tests/ so they give us confidence in the calendar rule parser and next-run calculation, including the priority queue, sliding-window limiter, retry policy, and JSON state persistence that support job execution. The existing tests should stay useful, and the new coverage should exercise the real public behavior rather than implementation details. Keep the suite quick and deterministic, and make sure temporary state used by tests is cleaned up. Do not change anything under schedulerlib/, the command-line behavior, documentation, configuration, or CI files. The repository must continue to run with its existing Python 3.12 test command, and the current README.md must remain present. Keep all additions or edits limited to tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 65 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-scheduler-gaps",
   "hidden": "t5-qa-scheduler-gaps",
   "timeoutSec": 1200,
@@ -17,22 +17,22 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "python3 -c \"import pathlib,re; files=pathlib.Path('tests').glob('test*.py'); n=sum(len(re.findall(r'^\\s*def test_', p.read_text(), re.M)) for p in files); raise SystemExit(0 if n >= 33 else 1)\" && python3 -m unittest discover -s tests",
+      "cmd": "python3 -B -m unittest discover -s tests",
       "expectExit": 0,
-      "weight": 3,
-      "kind": "substance"
+      "weight": 1,
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "schedulerlib/scheduler.py",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "file_exists",
@@ -46,6 +46,11 @@
       "id": "r1",
       "criterion": "The added tests make their expected scheduling and retry contracts clear to a maintainer (code cannot check this because intent and clarity are not observable from execution.)",
       "weight": 1
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -140,13 +145,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 7.1,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
-      "lazy": 7.1,
+      "stub": 0,
+      "lazy": 16.7,
       "alt": 100,
       "date": "2026-11-20"
     }
@@ -154,7 +159,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

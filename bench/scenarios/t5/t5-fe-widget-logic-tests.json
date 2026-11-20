@@ -1,11 +1,11 @@
 {
   "id": "t5-fe-widget-logic-tests",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "frontend",
   "questions": "allowed",
-  "prompt": "The widget logic has bitten us twice this month, so please add coverage under `test/` that I can rely on. I own the booking flow and need the date-range picker, booking form validation, localized price display, scheduling helpers, subscription store, and rendering view models to behave consistently when they are used without a browser. Keep the checks focused on the public behavior and the messages callers actually receive, including the less obvious paths that are easy to regress. Use the existing CommonJS, dependency-free setup and keep added test files in `test/` with the repository's `.test.js` naming pattern. The existing package test command must continue to pass under Node.js 24. Do not change anything under `src/`, `package.json`, the configuration, or the documentation. Do not add dependencies, browser APIs, temporary files, or generated output. Keep the change limited to new or updated tests, and make the assertions specific enough that a future failure points to the affected widget feature.",
+  "prompt": "The widget logic has bitten us twice this month, so please add coverage under `test/` that I can rely on. I own the booking flow and need the date-range picker, booking form validation, localized price display, scheduling helpers, subscription store, and rendering view models to behave consistently when they are used without a browser. Keep the checks focused on the public behavior and the messages callers actually receive, including the less obvious paths that are easy to regress. Use the existing CommonJS, dependency-free setup and keep added test files in `test/` with the repository's `.test.js` naming pattern. The existing package test command must continue to pass under Node.js 24. Do not change anything under `src/`, `package.json`, the configuration, or the documentation. Do not add dependencies, browser APIs, temporary files, or generated output. Keep the change limited to new or updated tests, and make the assertions specific enough that a future failure points to the affected widget feature. Keep the suite lean: at most 53 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-fe-widget-logic-tests",
   "hidden": "t5-fe-widget-logic-tests",
   "timeoutSec": 1200,
@@ -17,21 +17,21 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "node --test --test-timeout=30000 test/*.test.js && n=$(grep -hE '^[[:space:]]*(test|it)\\(' test/*.test.js | wc -l) && [ \"$n\" -ge 21 ]",
-      "weight": 3,
-      "kind": "substance"
+      "cmd": "node --test --test-timeout=30000 test/*.test.js",
+      "weight": 1,
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "src/date-range-picker.js",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "file_exists",
@@ -45,6 +45,11 @@
       "id": "readable-coverage",
       "criterion": "The added tests use clear behavior-focused names and precise assertions that make failures useful to a maintainer (code cannot check this because it cannot judge diagnostic clarity).",
       "weight": 1
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -110,17 +115,21 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 14.3,
+    "stub": 8.3,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 14.3,
-      "lazy": 14.3,
+      "stub": 8.3,
+      "lazy": 25,
       "alt": 100,
       "date": "2026-11-20"
     }
   },
   "lockedAt": null,
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

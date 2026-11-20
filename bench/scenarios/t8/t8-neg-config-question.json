@@ -1,7 +1,7 @@
 {
   "id": "t8-neg-config-question",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -25,13 +25,13 @@
       "type": "file_exists",
       "path": "answers/prod-debug.json",
       "weight": 3,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "config/production/catalog.json",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
@@ -102,15 +102,15 @@
       "fixReason": "cannot pass by re-weighting: the mechanical lazy and alternative answers score the same (79.6; 5 of 7 hidden tests each), so no weighting separates them; the alternative also misses the 80 gate. Paid fix list: one fix by the original writer (gpt-5.6-luna) of the key or the mechanical answers"
     },
     "reference": 100,
-    "stub": 17.3,
+    "stub": 14.3,
     "dryRun": {
       "reference": 100,
-      "stub": 17.3,
-      "lazy": 79.6,
-      "alt": 79.6,
+      "stub": 14.3,
+      "lazy": 14.3,
+      "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "lockedAt": null,

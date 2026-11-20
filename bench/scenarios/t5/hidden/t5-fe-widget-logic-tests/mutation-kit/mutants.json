@@ -9,15 +9,86 @@
     "src/store.js"
   ],
   "mutants": [
-    { "id": "m01", "files": ["src/date-range-picker.js"], "note": "Advances December to the wrong year; a test must cover the next-month year edge." },
-    { "id": "m02", "files": ["src/date-range-picker.js"], "note": "Checks only range endpoints for disabled dates; a test must reject a selection crossing a disabled interior date." },
-    { "id": "m03", "files": ["src/validation.js"], "note": "Treats a note exactly at its maximum length as too long; a boundary validation test must distinguish equal from greater." },
-    { "id": "m04", "files": ["src/validation.js"], "note": "Accepts one-digit month or day values; a test must reject a date that is not strict YYYY-MM-DD." },
-    { "id": "m05", "files": ["src/price.js"], "note": "Floors fractional amounts instead of rounding them; a test must use a value above the half-unit." },
-    { "id": "m06", "files": ["src/price.js"], "note": "Uses two fractional digits for every currency; a test must cover a zero-decimal currency." },
-    { "id": "m07", "files": ["src/timing.js"], "note": "Does not cancel the prior debounce timer; a test must call the debounced function repeatedly before time advances." },
-    { "id": "m08", "files": ["src/timing.js"], "note": "Stops retrying one attempt too early; a test must verify the configured retry limit." },
-    { "id": "m09", "files": ["src/store.js"], "note": "Notifies the live listener set; a test must unsubscribe another listener during notification and define the current dispatch behavior." },
-    { "id": "m10", "files": ["src/date-range-picker.js"], "note": "Moves previous month forward; a test must cover the January-to-December edge." }
-  ]
+    {
+      "id": "m01",
+      "files": [
+        "src/date-range-picker.js"
+      ],
+      "note": "Advances December to the wrong year; a test must cover the next-month year edge."
+    },
+    {
+      "id": "m02",
+      "files": [
+        "src/date-range-picker.js"
+      ],
+      "note": "Checks only range endpoints for disabled dates; a test must reject a selection crossing a disabled interior date."
+    },
+    {
+      "id": "m03",
+      "files": [
+        "src/validation.js"
+      ],
+      "note": "Treats a note exactly at its maximum length as too long; a boundary validation test must distinguish equal from greater."
+    },
+    {
+      "id": "m04",
+      "files": [
+        "src/validation.js"
+      ],
+      "note": "Accepts one-digit month or day values; a test must reject a date that is not strict YYYY-MM-DD."
+    },
+    {
+      "id": "m05",
+      "files": [
+        "src/price.js"
+      ],
+      "note": "Floors fractional amounts instead of rounding them; a test must use a value above the half-unit."
+    },
+    {
+      "id": "m06",
+      "files": [
+        "src/price.js"
+      ],
+      "note": "Uses two fractional digits for every currency; a test must cover a zero-decimal currency."
+    },
+    {
+      "id": "m07",
+      "files": [
+        "src/timing.js"
+      ],
+      "note": "Does not cancel the prior debounce timer; a test must call the debounced function repeatedly before time advances."
+    },
+    {
+      "id": "m08",
+      "files": [
+        "src/timing.js"
+      ],
+      "note": "Stops retrying one attempt too early; a test must verify the configured retry limit."
+    },
+    {
+      "id": "m09",
+      "files": [
+        "src/store.js"
+      ],
+      "note": "Notifies the live listener set; a test must unsubscribe another listener during notification and define the current dispatch behavior."
+    },
+    {
+      "id": "m10",
+      "files": [
+        "src/date-range-picker.js"
+      ],
+      "note": "Moves previous month forward; a test must cover the January-to-December edge."
+    }
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "src/validation.js"
+      ],
+      "note": "same behaviour, new internals: field checks driven by a table"
+    }
+  ],
+  "maxTests": 53,
+  "baseTests": 13
 }

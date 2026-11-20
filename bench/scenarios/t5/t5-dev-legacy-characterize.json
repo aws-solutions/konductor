@@ -1,14 +1,14 @@
 {
   "id": "t5-dev-legacy-characterize",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "developer",
   "phases2": [
     "refactor"
   ],
   "questions": "allowed",
-  "prompt": "I am going to rework rates.py next week and I want a safety net first. Please write tests under tests/ that pin down what this shipping label tool does today, so that after the refactor I can tell if I changed what it computes or prints. The behaviour as it stands is the contract, including the odd parts customers and the warehouse already rely on. You can read all of the code, but do not change any of it, the existing tests, the CLI, or the package files. Keep the suite quick, add no dependencies, remove any temporary files your tests create, and keep `python3 -m unittest discover -s tests` passing.",
+  "prompt": "I am going to rework rates.py next week and I want a safety net first. Please write tests under tests/ that pin down what this shipping label tool does today, so that after the refactor I can tell if I changed what it computes or prints. The behaviour as it stands is the contract, including the odd parts customers and the warehouse already rely on. You can read all of the code, but do not change any of it, the existing tests, the CLI, or the package files. Keep the suite quick, add no dependencies, remove any temporary files your tests create, and keep `python3 -m unittest discover -s tests` passing. Keep the suite lean: at most 45 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-dev-legacy-characterize",
   "hidden": "t5-dev-legacy-characterize",
   "timeoutSec": 1200,
@@ -20,22 +20,22 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests && test \"$(cat tests/*.py | grep -cE '^[[:space:]]*def[[:space:]]+test_')\" -ge 13",
+      "cmd": "python3 -B -m unittest discover -s tests",
       "expectExit": 0,
-      "weight": 3,
-      "kind": "substance"
+      "weight": 1,
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "rates.py",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
@@ -43,6 +43,11 @@
       "id": "meaningful-assertions",
       "criterion": "The added tests pin observable values, returned state, and failure status instead of only exercising lines (code cannot check this because assertion intent is semantic).",
       "weight": 2
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -133,13 +138,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 7.1,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 7.1,
-      "lazy": 7.1,
+      "stub": 0,
+      "lazy": 16.7,
       "alt": 100,
       "date": "2026-11-20"
     }
@@ -147,7 +152,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

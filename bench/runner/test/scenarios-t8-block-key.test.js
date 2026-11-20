@@ -71,3 +71,20 @@ test('gradeBlock weighs items and scores a missing block as zero', () => {
   assert.strictEqual(gradeBlock(doc({ x: 'y' }), items, '.').score, 0.75);
   assert.strictEqual(gradeBlock('nothing', items, '.').score, 0);
 });
+
+test('section scoring: complete 2, one missed 1, more 0; a failed gate scores 0', () => {
+  const items = [
+    { id: 'cause', type: 'text', path: 'cause', all: ['pool'], section: 'cause', gate: true },
+    { id: 't1', type: 'text', path: 'a', all: ['x'], section: 'timeline' },
+    { id: 't2', type: 'text', path: 'b', all: ['x'], section: 'timeline' },
+    { id: 'i1', type: 'text', path: 'c', all: ['x'], section: 'impact' },
+    { id: 'i2', type: 'text', path: 'd', all: ['x'], section: 'impact' },
+  ];
+  const score = (o) => gradeBlock(doc(o), items, os.tmpdir(), { scoring: 'sections' }).score;
+  assert.strictEqual(score({ cause: 'pool', a: 'x', b: 'x', c: 'x', d: 'x' }), 1);
+  // cause complete (2), timeline one missed (1), impact both missed (0): 3 of 6
+  assert.strictEqual(score({ cause: 'pool', a: 'x', b: 'no', c: 'no', d: 'no' }), 0.5);
+  assert.strictEqual(score({ cause: 'disk', a: 'x', b: 'x', c: 'x', d: 'x' }), 0);
+  // without sections the gate still zeroes the plain item share
+  assert.strictEqual(gradeBlock(doc({ cause: 'disk', a: 'x', b: 'x', c: 'x', d: 'x' }), items, os.tmpdir()).score, 0);
+});
