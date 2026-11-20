@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-esm-migrate",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -126,7 +126,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture files contain no hints about the hidden tests. The banner.txt says 'Lantern Kit\\n' which the prompt already specifies. The manifest.json values are also specified in the prompt. No test stubs or comments reveal the hidden test structure."
+        "note": "The fixture files contain no hints about the hidden tests. The banner.txt says 'Lantern Kit\\n' which the prompt already specifies. The lib/module-map.json (renamed from manifest.json in version 2) values are also specified in the prompt. No test stubs or comments reveal the hidden test structure."
       },
       {
         "check": "ceiling",
@@ -153,5 +153,10 @@
       "alt": 87.8,
       "date": "2026-11-20"
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "t1-worker",
+    "log": "HAND-EDITS.md"
   }
 }
