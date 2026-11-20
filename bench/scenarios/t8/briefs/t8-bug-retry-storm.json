@@ -17,5 +17,21 @@
     "licenceCheckedAt": "2026-11-19",
     "use": "idea"
   },
-  "brief": "Phase: bug fix. Role: SRE. Repo: a Node.js order-sync worker that calls a partner API through a shared HTTP client module with retries, a circuit breaker and a rate limiter, with an `ops/` folder holding the worker logs of the bad night, a per-minute metrics CSV (requests to the partner, 429 and 503 counts, retries, queue depth), the partner's status note and the deploy history. During a partner slowdown the worker multiplied its own traffic and kept the partner down. Seed one real bug in the shared client that the evidence points to (for example: the backoff delay is computed in seconds but passed to a timer as milliseconds, or the retry-after header is ignored for 429, or the jitter is applied so every worker retries in lockstep), so the logs show retries landing within milliseconds of each other. Decoy: a recent change to the rate limiter's config that looks guilty but is ruled out by the numbers. The fix must be in the shared client (other callers use it), and the agent must add a test that fails on the old code. Hidden behaviour tests drive the client with a fake clock and a fake transport."
+  "brief": "Phase: bug fix. Role: SRE. Repo: a Node.js order-sync worker that calls a partner API through a shared HTTP client module with retries, a circuit breaker and a rate limiter, with an `ops/` folder holding the worker logs of the bad night, a per-minute metrics CSV (requests to the partner, 429 and 503 counts, retries, queue depth), the partner's status note and the deploy history. During a partner slowdown the worker multiplied its own traffic and kept the partner down. Seed one real bug in the shared client that the evidence points to (for example: the backoff delay is computed in seconds but passed to a timer as milliseconds, or the retry-after header is ignored for 429, or the jitter is applied so every worker retries in lockstep), so the logs show retries landing within milliseconds of each other. Decoy: a recent change to the rate limiter's config that looks guilty but is ruled out by the numbers. The fix must be in the shared client (other callers use it), and the agent must add a test that fails on the old code. Hidden behaviour tests drive the client with a fake clock and a fake transport.",
+  "secondFamilyRewrite": {
+    "date": "2026-11-20",
+    "result": "dropped; version 1 kept",
+    "tries": [
+      {
+        "author": "qwen3-coder-next",
+        "reviewer": "minimax-m2.5",
+        "result": "failed: stopped at 123 tool calls with no task file"
+      },
+      {
+        "author": "minimax-m2.5",
+        "reviewer": "qwen3-coder-next",
+        "result": "failed: reference 92, stub 36.5"
+      }
+    ]
+  }
 }

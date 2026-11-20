@@ -9,6 +9,8 @@
 //   normalize <id>  moves stray author files into work/<id>/fixture/ and builds hidden/ from the draft (lib/selfcheck.js)
 //   map <id>        glm-5 tags the finished task from skill, SOP and agent names and descriptions only (work/<id>.map.json)
 //   review <id>     a model of another family reviews the finished task (work/<id>.review.json)
+//   variants <id>   a model of a third family answers the request twice on a copy of the fixture, once with care and once in
+//                   a hurry on a skim of it (long files cut short); the changed files become variants/<id>/alt/ and variants/<id>/lazy/ (scored by dry-run.js)
 //   assemble <id>   writes the task into bench/scenarios/t8/ (task file, fixtures/, hidden/, solutions/, authoring/<id>/gen)
 // Needs T8_AUTH: a directory with run.sh (run.sh <model> <cwd> <promptfile> <outprefix>), work/<id>/ (the author's
 // output) and catalog.json (names and descriptions, ../t1/catalog-descriptions.js). Every model call is logged with its credits.
@@ -27,6 +29,8 @@ const AUTHOR_FILES = new Set(['hidden', 'solution', 'kit', 'gen', 'task-draft.js
 const SOP_NEEDS_YES = new Set(['k-e2e-test-generation', 'k-light-ui-testing', 'k-test-coverage-review']);
 const YES_SENTENCE = 'Yes, that scope is confirmed, and committing the work on the branch I am on is fine.';
 const UNIT_READ = /\/(skills|agent-sops|agents|context)\//;
+// The checks a review records (task.schema.json); a reviewer's extra entries (for example its own reference run) are dropped.
+const REVIEW_CHECKS = new Set(['leak', 'ambiguity', 'ceiling', 'floor', 'hidden-answer']);
 const today = () => new Date().toISOString().slice(0, 10);
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const brief = (id) => readJson(path.join(DIR, 'briefs', `${id}.json`));
@@ -120,6 +124,64 @@ function review(id) {
   return out;
 }
 
+const HURRY = '\nYou have ten minutes before a meeting. Read the README and at most two other small files, do not open the large log, metric or data files, and write a plausible answer from what you saw.\n';
+
+function listTree(root, rel = '') {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+    const r = path.join(rel, e.name);
+    if (e.isDirectory()) out.push(...listTree(root, r));
+    else if (e.isFile()) out.push(r);
+  }
+  return out;
+}
+
+// The lazy answer sees a skim of the folder: every file longer than SKIM_LINES lines is cut to its first SKIM_LINES lines,
+// so the model cannot read deeply even when it ignores the hurry note. Its citations are still scored on the real files.
+const SKIM_LINES = 60;
+function skim(root) {
+  for (const rel of listTree(root)) {
+    const p = path.join(root, rel);
+    const lines = fs.readFileSync(p, 'utf8').split('\n');
+    if (lines.length > SKIM_LINES) fs.writeFileSync(p, `${lines.slice(0, SKIM_LINES).join('\n')}\n`);
+  }
+}
+
+// The files an answer added or changed against the folder it started from, copied to `to`.
+function overlayOf(ws, fixture, to) {
+  fs.rmSync(to, { recursive: true, force: true });
+  let n = 0;
+  for (const rel of listTree(ws)) {
+    const orig = path.join(fixture, rel);
+    if (fs.existsSync(orig) && fs.readFileSync(orig).equals(fs.readFileSync(path.join(ws, rel)))) continue;
+    fs.mkdirSync(path.dirname(path.join(to, rel)), { recursive: true });
+    fs.copyFileSync(path.join(ws, rel), path.join(to, rel));
+    n++;
+  }
+  return n;
+}
+
+function variants(id, only) {
+  const b = brief(id);
+  const task = readJson(path.join(DIR, `${id}.json`));
+  const model = b.answerer;
+  const fixture = path.join(DIR, 'fixtures', id);
+  const out = {};
+  for (const [name, hurry] of [['alt', ''], ['lazy', HURRY]].filter(([n]) => !only || n === only)) {
+    const cwd = work(`${id}-${name}`);
+    const base = work(`${id}-${name}-base`);
+    for (const d of [cwd, base]) fs.rmSync(d, { recursive: true, force: true });
+    fs.cpSync(fixture, base, { recursive: true });
+    if (name === 'lazy') skim(base);
+    fs.cpSync(base, cwd, { recursive: true });
+    const prompt = fs.readFileSync(path.join(DIR, 'prompts/answer.md'), 'utf8').replace('{{HURRY}}', () => hurry).replace('{{PROMPT}}', () => task.prompt);
+    const { credits } = call(model, cwd, prompt, `${id}.${name}`);
+    logCall(id, `${name} answer`, model, credits);
+    out[name] = overlayOf(cwd, base, path.join(DIR, 'variants', id, name));
+  }
+  return out;
+}
+
 // A reviewer's verdict, with the worker's disposition for a failed check ({ check: { verdict, note } }).
 function reviewed(v, disposition) {
   const d = disposition[v.check];
@@ -133,6 +195,14 @@ function withExpertRubric(rubric, key) {
   if (!key) return rubric;
   const item = { id: 'expert-key', weight: 3, criterion: 'Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)' };
   return [...(rubric || []).filter((r) => r.id !== 'expert-key'), item];
+}
+
+// Owner rule: a task named in a row of HAND-EDITS.md (the kept tasks' table) carries `handEdited`.
+function handEditedIds() {
+  const file = path.join(DIR, 'HAND-EDITS.md');
+  if (!fs.existsSync(file)) return new Set();
+  const kept = fs.readFileSync(file, 'utf8').split('## Dropped')[0];
+  return new Set([...kept.matchAll(/^\| (t8-[a-z0-9-]+(?:, t8-[a-z0-9-]+)*) \|/gm)].flatMap((m) => m[1].split(', ')));
 }
 
 function mustNotLoad(b, mapping) {
@@ -158,7 +228,7 @@ function assemble(id) {
   const limits = { softSec, hardSec: softSec * 2 };
   const prompt = SOP_NEEDS_YES.has(mapping.targetSop) && !draft.prompt.includes(YES_SENTENCE) ? `${draft.prompt} ${YES_SENTENCE}` : draft.prompt;
   const task = {
-    id, class: 'hard', version: 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
+    id, class: 'hard', version: b.version || 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
     questions: b.questions || 'allowed', prompt, fixture: id, hidden: id,
     timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: withExpertRubric(draft.rubric, b.expertKey),
     ...(b.expertKey ? { expertKey: b.expertKey } : {}),
@@ -167,7 +237,8 @@ function assemble(id) {
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source },
-    ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.map((v) => reviewed(v, disposition)) } } : {}),
+    ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.filter((v) => REVIEW_CHECKS.has(v.check)).map((v) => reviewed(v, disposition)) } } : {}),
+    ...(handEditedIds().has(id) ? { handEdited: { family: 'claude', editor: 'kirocrew-mate-worker (T8 worker session)', log: 'HAND-EDITS.md' } } : {}),
     pilot: null, lockedAt: null,
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
@@ -179,12 +250,12 @@ function assemble(id) {
 }
 
 if (require.main === module) {
-  const [cmd, id] = process.argv.slice(2);
+  const [cmd, id, only] = process.argv.slice(2);
   if (!AUTH) { console.error('set T8_AUTH'); process.exit(2); }
-  const fn = { audit, 'log-author': logAuthor, normalize, map, review, assemble }[cmd];
-  if (!fn || !id) { console.error('usage: stage.js audit|log-author|normalize|map|review|assemble <id>'); process.exit(2); }
-  const r = fn(id);
+  const fn = { audit, 'log-author': logAuthor, normalize, map, review, variants, assemble }[cmd];
+  if (!fn || !id) { console.error('usage: stage.js audit|log-author|normalize|map|review|variants|assemble <id> (variants: optional alt|lazy)'); process.exit(2); }
+  const r = fn(id, only);
   if (r) console.log(JSON.stringify(r, null, 1));
 }
 
-module.exports = { audit, auditStream, normalize, map, review, assemble };
+module.exports = { audit, auditStream, normalize, map, review, variants, overlayOf, assemble };
