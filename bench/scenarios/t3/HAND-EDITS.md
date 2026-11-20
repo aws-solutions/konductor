@@ -304,3 +304,14 @@ request (or one test), and the free gates are unchanged afterwards: reference 10
 ## D-144: the tests check survives an agent-made solution/ (2026-11-20, mate hand-edit recheck worker, claude)
 
 Checks only. All 19 tasks: in the `tests` check command, `ln -sfn . solution` became `( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution`, and each version went up by 1. Before, a real `solution/` folder made the `ln` fail. That ended the `&&` chain before `node --test`, so the run read as an unparsed hidden suite (pilot wave 4, t3-dev-module-boundary). Now the agent's folder is moved aside and the tests read the deliverables at the paths the request gives. Free gates are unchanged on all 19 tasks. The new `test/check-cmd.test.js` checks the guard on a folder, a file, a link and nothing. No prompt, fixture, key or rubric changed, so no recheck was needed.
+
+## t3-tpm-migration-cutover: reference meets the reconciled key; real alternative (2026-11-20, mate hand-edit recheck worker, claude)
+
+D-141 judge pass (gpt-5.6-luna, deepseek-3.2, qwen3-coder-next): the reference scored a panel median of 73.4, and all three judges failed e4 (the seed lead time). The "alt" that got 50 in the wave 4 controls was a byte copy of that reference. So the anchors were fair: the reference predated the reconciled key and lacked its new points. Version 5 to 6.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t3-tpm-migration-cutover | 2026-11-20 | `solutions/.../docs/cutover.md` gains two sections. "Timing, go condition and rollback": the seed takes 8.3 h at the 60 MB/s spare (67 min off hours), so it starts by Saturday 17:00; go at lag under 120 s; abort at the 8-minute pause budget; the checkpoint and the point of no return. "Margins and cost basis": 150 MB/s equals the minimum, the flip at 6,700 USD or 0.54 TB, the 6,700 sum, labor excluded, and the 400 USD support line kept. The decision block is unchanged | the reconciled key items e2, e4 to e8 had no passage in the reference |
+| t3-tpm-migration-cutover | 2026-11-20 | `answers/.../alt/docs/cutover.md` rewritten as an independent answer: an option table, a "before Sunday" seed plan and a numbered Sunday runbook, with the same decision block | the alt was a copy of the reference, so it said nothing about whether other wording passes |
+
+Free gates after the change: reference 100, empty 0, lazy 16, alt 100, other 100. Judged again ($0.022): the reference scored 100 from all three judges under the paraphrase rule, and its raw verdicts are within 1.1 points of each other. Under the lenient rule it is 68.8, because deepseek and qwen restated instead of quoting. The new alt scored a median of 87.5 (68.8 lenient). The four-item checklist recheck of this edit is still open.

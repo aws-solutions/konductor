@@ -29,7 +29,7 @@ const OUT_ORDERED = `Notes.\n${A}.\nMore text between them.\n${B}.\n`;
 
 test('the default rule is lenient and strict stays selectable', () => {
   assert.equal(DEFAULT_QUOTE_RULE, 'lenient');
-  assert.deepEqual(QUOTE_RULES, ['strict', 'lenient']);
+  assert.deepEqual(QUOTE_RULES, ['strict', 'lenient', 'paraphrase']);
   assert.equal(MAX_UNSUPPORTED_LETTERS, 20);
 });
 

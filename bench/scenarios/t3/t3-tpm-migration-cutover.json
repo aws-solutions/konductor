@@ -75,7 +75,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 5,
+  "version": 6,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -212,7 +212,7 @@
   ],
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

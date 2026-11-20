@@ -116,7 +116,7 @@ const USAGE = `Usage:
        (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both
        verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
        fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
-       between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json) or "lenient")
+       between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json), "lenient", or "paraphrase" (profiles/scoring-paraphrase.json: lenient, or a restatement whose figures and most words are in the output, rebuilt from the saved outputs))
        (--rescore-quotes matches the stored evidence quotes of --run again with no model call, for judgments made before both views were recorded, and writes judgments-lenient.json beside
        judgments.json (judgments.json is untouched), then prints the share of verdicts downgraded per judge before and after and the mean rubric per arm. With --quote-match strict it only
        checks that the strict rule reproduces the stored values. Reports build the lenient view of old judgments in memory and no longer read that file)

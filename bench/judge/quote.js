@@ -49,11 +49,14 @@ const INNER_QUOTE_MIN_CHARS = 40; // a quoted span of this length found verbatim
 const COVERAGE_MIN = 0.6; // the checked fragments must carry this share of the quote's letters and digits
 const MAX_UNSUPPORTED_LETTERS = 20; // a quote with this many letters or more that the output does not support is refused, by either path
 
-const QUOTE_RULES = ['strict', 'lenient'];
+// A judge pass records the strict and lenient views; 'paraphrase' is a report-time view rebuilt from the saved outputs.
+const JUDGE_QUOTE_RULES = ['strict', 'lenient'];
+const QUOTE_RULES = [...JUDGE_QUOTE_RULES, 'paraphrase'];
 const DEFAULT_QUOTE_RULE = 'lenient';
 const RULE_TEXT = {
   strict: 'strict (every segment between ellipses must appear in the output, in order)',
   lenient: `lenient (tightened: quotes with ${MAX_UNSUPPORTED_LETTERS} or more unsupported letters are rejected)`,
+  paraphrase: 'paraphrase (lenient, or a restatement whose figures and most content words are in the output)',
 };
 
 const alnumCount = (s) => (s.match(/[\p{L}\p{N}]/gu) || []).length;
@@ -126,17 +129,56 @@ function lenientMatch(looseHaystack, quote) {
   return accepted && unsupportedLetters(looseHaystack, quote) < MAX_UNSUPPORTED_LETTERS;
 }
 
+// ---- paraphrase matching (the opt-in rule 'paraphrase') ----
+// A judge that restates a point in its own words instead of copying it is not inventing it when the output holds what
+// the restatement says. Tried only after the lenient rule refused the evidence. It is accepted when every figure in it (a
+// number of two or more digits, decimals kept, thousands commas dropped) is in the output and at least
+// PARAPHRASE_WORDS_MIN of its content words (4 or more letters, outside a short list of judge phrasing) are too; evidence
+// with no figure needs PARAPHRASE_WORDS_BARE of them and at least PARAPHRASE_MIN_WORDS content words. A cited line number
+// must exist in the output. A restatement whose figures or most words the output lacks, or "(nothing in the output)", fails.
+
+const PARAPHRASE_WORDS_MIN = 0.5;
+const PARAPHRASE_WORDS_BARE = 0.75;
+const PARAPHRASE_MIN_WORDS = 6;
+const JUDGE_WORDS = new Set(('output answer document states stated claims claimed says mentions mentioned notes noted explains explained '
+  + 'shows showed correctly incorrectly does doesn that this with from have been were they their them than then into only also '
+  + 'which while where what when about over under more most some such each other these those there here because response '
+  + 'agent author write writes wrote section line lines heading table block').split(' '));
+
+const figuresOf = (s) => (String(s).match(/\d[\d,]*(?:\.\d+)?/g) || []).map((n) => n.replace(/,/g, '').replace(/\.0+$/, '')).filter((n) => n.replace(/\D/g, '').length >= 2);
+// Words are compared on a crude stem (a trailing "s" or "es" dropped), so "partition" matches "partitions".
+const stem = (w) => (w.length > 4 ? w.replace(/(?:es|s)$/, '') : w);
+const contentWords = (s) => wordsOf(s).filter((w) => w.length >= 4 && !/^\d/.test(w) && !JUDGE_WORDS.has(w)).map(stem);
+
+function paraphraseMatch(outputText, evidence) {
+  const out = String(outputText);
+  const figures = new Set(figuresOf(out));
+  const lines = out.split('\n').length;
+  const cited = [...String(evidence).matchAll(/\blines?\s+(\d+)/gi)].map((m) => Number(m[1]));
+  if (cited.some((n) => n < 1 || n > lines)) return false;
+  const evFigures = figuresOf(evidence).filter((n) => !cited.includes(Number(n)));
+  if (evFigures.some((n) => !figures.has(n))) return false;
+  const words = contentWords(evidence);
+  const outWords = new Set(wordsOf(out).map(stem));
+  const share = words.length ? words.filter((w) => outWords.has(w)).length / words.length : 0;
+  if (evFigures.length) return words.length > 0 && share >= PARAPHRASE_WORDS_MIN;
+  return words.length >= PARAPHRASE_MIN_WORDS && share >= PARAPHRASE_WORDS_BARE;
+}
+
 // Returns quote => boolean for one output; the output is normalized once. `lenient` also accepts the cases above; the
 // strict rule is tried first, so a quote the strict rule accepts is never refused. The argument defaults to strict so a
 // caller that wants the pack's rule says nothing; the judge passes the rule it resolved (DEFAULT_QUOTE_RULE unless told).
-function makeQuoteMatcher(outputText, { lenient = false } = {}) {
+// `paraphrase` (implies lenient) also accepts a faithful restatement (paraphraseMatch).
+function makeQuoteMatcher(outputText, { lenient = false, paraphrase = false } = {}) {
   const haystack = normalize(outputText);
-  const looseHaystack = lenient ? ` ${wordsOf(outputText).join(' ')} ` : null;
+  const loose = lenient || paraphrase;
+  const looseHaystack = loose ? ` ${wordsOf(outputText).join(' ')} ` : null;
   return (quote) => {
     const segments = segmentsOf(quote);
     if (segments.length && inOrder(haystack, segments)) return true;
-    return lenient ? lenientMatch(looseHaystack, quote) : false;
+    if (loose && lenientMatch(looseHaystack, quote)) return true;
+    return paraphrase ? paraphraseMatch(outputText, quote) : false;
   };
 }
 
-module.exports = { makeQuoteMatcher, normalize, segmentsOf, unsupportedLetters, wordsOf, FRAGMENT_MIN_CHARS, INNER_QUOTE_MIN_CHARS, MAX_UNSUPPORTED_LETTERS, QUOTE_RULES, DEFAULT_QUOTE_RULE, RULE_TEXT };
+module.exports = { makeQuoteMatcher, paraphraseMatch, normalize, segmentsOf, unsupportedLetters, wordsOf, FRAGMENT_MIN_CHARS, INNER_QUOTE_MIN_CHARS, MAX_UNSUPPORTED_LETTERS, QUOTE_RULES, JUDGE_QUOTE_RULES, DEFAULT_QUOTE_RULE, RULE_TEXT };
