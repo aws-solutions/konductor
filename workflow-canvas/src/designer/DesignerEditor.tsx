@@ -16,7 +16,7 @@ import {
 } from './core';
 import '../execution/announcements.css';
 import './designer.css';
-import { EditAlerts, ProblemAlerts, RewriteNotice } from './EditAlerts';
+import { EditAlerts, InPlaceNotice, ProblemAlerts } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
 import { SaveControls } from './SaveControls';
 import { useFocusRequest, useFocusWhenDone } from './use-focus';
@@ -99,7 +99,7 @@ export function DesignerEditor({
         <span key={announcement.count}>{announcement.text}</span>
       </div>
       <EditAlerts state={state} onReload={editor.reload} />
-      {editable && <RewriteNotice text={state.saved.text} />}
+      {editable && <InPlaceNotice state={state} />}
       {!editable && (
         <Alert type="info" data-testid="read-only-note">
           {READ_ONLY_REASON} You can look at the stages and select one, but not
