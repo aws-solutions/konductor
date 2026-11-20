@@ -58,3 +58,17 @@ t8-twin-latency-tier-report 42.9 or more), or their lazy and alternative answers
 ## Fix round by the FX job (2026-11-20)
 
 t8-tpm-rollout-regions and t8-runbook-db-failover: the key was tightened by the original writer (gpt-5.6-luna), not by Claude, so no hand edit is added and `handEdited` is unchanged. Recheck by glm-5; calls and credits in AUTHORING-LOG.md.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-107).
+
+- `t8-inc-checkout-latency`: clear-causal-narrative given causal-chain Fail/Partial/Pass anchors.
+- `t8-inc-memory-leak`: narrative-judgment given causal-chain Fail/Partial/Pass anchors.
+- `t8-inc-queue-backlog`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): causal-chain.
+- `t8-neg-alert-threshold`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): no-extra-scope.
+- `t8-neg-config-question`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): answer-sourced.
+- `t8-oncall-alert-review`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): alert-judgement.
+- `t8-pm-cache-stampede`: narrative-clarity given causal-chain Fail/Partial/Pass anchors.
+- `t8-pm-cert-expiry-region`: clear-review-narrative given causal-chain Fail/Partial/Pass anchors.
+- `t8-twin-latency-tier-report`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): counting-rule-stated.

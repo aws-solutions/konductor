@@ -237,3 +237,17 @@ so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench
 - Why: the old tests demanded where the Deny sits; the prompt says the boundary applies to every group, so a
   boundary deny is refused the same way in IAM (pilot score 67 for a correct answer).
 - Dry run: reference 100, stub 17.7, lazy 17.7, alt 100.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-107).
+
+- `t4-dev-path-traversal-files`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): root-cause-containment.
+- `t4-dev-sql-report-filters`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): parameterised-design.
+- `t4-iac-review-terraform`: prioritization given Fail/Partial/Pass anchors.
+- `t4-iam-bucket-policy-oac`: proper_private_handling given Fail/Partial/Pass anchors.
+- `t4-iam-ci-deploy-role-twin`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): change-explained.
+- `t4-iam-lambda-role-split`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): traceable-least-privilege.
+- `t4-iam-vendor-trust`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): trust-design-explained.
+- `t4-policy-fix-accessdenied`: cause given Fail/Partial/Pass anchors.
+- `t4-threat-model-webhooks`: review-quality replaced by anchored attacker-path-fix (weight 2).

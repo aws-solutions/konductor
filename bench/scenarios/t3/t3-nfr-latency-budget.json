@@ -31,14 +31,14 @@
       "weight": 1
     },
     {
-      "id": "explanation_clarity",
-      "criterion": "Clarity of explanation showing how parallel processing reduces latency (not code-checkable: While tests can verify the computed latency numbers are correct, they cannot evaluate whether the agent clearly explained the architectural insight that pricing and inventory services have no data dependency and can run in parallel, nor whether they properly articulated the latency calculation (max instead of sum) for parallel execution.)",
-      "weight": 1
-    },
-    {
       "id": "budget_analysis",
       "criterion": "Comprehensive budget analysis showing total cost calculation (not code-checkable: Tests can verify the final monthly cost and budget compliance, but cannot assess whether the agent explicitly calculated and explained the total cost (baseline + optimization) and showed how it fits within the budget ceiling, including recognition that the $1,000 is a total ceiling, not additional budget.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -74,7 +74,7 @@
       "date": "2026-11-19"
     }
   },
-  "version": 1,
+  "version": 2,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -200,7 +200,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T3 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

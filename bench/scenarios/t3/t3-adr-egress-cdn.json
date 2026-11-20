@@ -36,9 +36,9 @@
       "weight": 1
     },
     {
-      "id": "adr-clarity",
-      "criterion": "Uses a concise ADR structure that states context, decision, consequences, and operational follow-up in language suitable for an architecture review. (not code-checkable: Automated checks do not reliably measure narrative organization, precision, or whether the document gives reviewers enough rationale to act.)",
-      "weight": 1
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 2,
   "targetSkills": [
     "trade-off-evaluator",
     "cost-estimation"
@@ -163,5 +163,9 @@
       "Applies the overage rate ($0.045/GB) to the entire 180 TB for cdn-committed instead of only the 30 TB above the 150 TB commit."
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

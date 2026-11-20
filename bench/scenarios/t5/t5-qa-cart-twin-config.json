@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-cart-twin-config",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -49,7 +49,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "config-handling",
+      "weight": 1,
+      "criterion": "The change validates config/shipping.json as the prompt asks (non-negative integers, country overrides of either value) and the final message says what happens when the file is absent or invalid. Fail: no validation, or the message does not cover the absent or invalid file. Partial: validates values, but the absent or invalid file case is not stated or differs from the code. Pass: validation as specified, the absent file keeps the current defaults, an invalid file fails loudly, and the message says both. (code cannot check this because the tests check results, not whether the report states the fallback the code really has)"
+    }
+  ],
   "targetSkills": [
     "backend-development",
     "code-review",
@@ -155,7 +161,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

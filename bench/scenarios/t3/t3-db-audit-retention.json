@@ -43,6 +43,11 @@
       "id": "compliance_integration",
       "criterion": "Integration of compliance requirements into the architecture justification (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -79,7 +84,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "system-design-patterns",
     "decision-writing"
@@ -205,7 +210,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "HE hand-edit backfill session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -31,11 +31,6 @@
       "weight": 1
     },
     {
-      "id": "explanation_clarity",
-      "criterion": "Clarity and completeness of explanation for the chosen approach (not code-checkable: While code can verify JSON structure and numeric values, it cannot assess whether the explanation clearly communicates the decision rationale to engineering leadership, covers all relevant considerations, and provides actionable next steps.)",
-      "weight": 1
-    },
-    {
       "id": "stakeholder_alignment",
       "criterion": "Alignment with user needs and business constraints beyond hard limits (not code-checkable: Tests can verify compliance with hard limits (timeout, budget) but cannot evaluate how well the solution balances competing stakeholder needs (user experience vs. reliability vs. cost) or addresses soft constraints like team capacity and implementation timeline.)",
       "weight": 1
@@ -44,6 +39,11 @@
       "id": "risk_assessment",
       "criterion": "Thoroughness of risk assessment and mitigation planning (not code-checkable: Code can check if limits are obeyed but cannot evaluate the identification of implementation risks, consideration of failure modes, or quality of proposed mitigation strategies for issues like email delivery failures, queue delays, or user education needs.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -78,7 +78,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "cost-estimation",
@@ -206,7 +206,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "HE hand-edit backfill session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "t8-inc-checkout-latency",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -40,7 +40,7 @@
   "rubric": [
     {
       "id": "clear-causal-narrative",
-      "criterion": "The prose clearly distinguishes the causal configuration change, customer-visible symptoms, and mitigation without assigning blame to a person (code cannot check this because narrative clarity and blame-free framing depend on context).",
+      "criterion": "The prose clearly distinguishes the causal configuration change, customer-visible symptoms, and mitigation without assigning blame to a person. Fail: wrong cause, or blames the decoy, or no causal link between events. Partial: right cause, but no mechanism from cause to symptom, or the decoy is not ruled out. Pass: cause, then mechanism, then symptom, each with a cited log line; why the decoy is not the cause; and why detection lagged. (code cannot check this because narrative clarity and blame-free framing depend on context).",
       "weight": 1
     }
   ],
@@ -86,7 +86,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture contains all evidence directly: config-diff.yaml line 17 shows pool_size 40\u219212, pooler.log line 1083 shows 'client_pool_size=12 previous=40', checkout-api.log shows 'connection_acquire_timeout' and 'status=503'."
+        "note": "The fixture contains all evidence directly: config-diff.yaml line 17 shows pool_size 40→12, pooler.log line 1083 shows 'client_pool_size=12 previous=40', checkout-api.log shows 'connection_acquire_timeout' and 'status=503'."
       },
       {
         "check": "ceiling",
@@ -102,7 +102,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

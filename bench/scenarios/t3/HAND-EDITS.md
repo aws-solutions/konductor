@@ -125,3 +125,27 @@ Tasks: t3-adr-cache-sizing, t3-arch-notification-pipeline, t3-db-audit-retention
 ## Not edited
 
 t3-adr-batch-vs-stream, t3-adr-db-engine, t3-adr-egress-cdn, t3-adr-multiregion-dr, t3-adr-queue-choice, t3-api-booking, t3-api-ingest-batch, t3-api-search-pagination, t3-db-tenant-isolation, t3-dev-lib-choice, t3-dev-module-boundary: `handEdited: null`.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-107).
+
+- `t3-adr-batch-vs-stream`: added anchored rejects-each-option (weight 2); removed generic polish item(s) documentation_quality.
+- `t3-adr-cache-sizing`: added anchored rejects-each-option (weight 2); removed generic polish item(s) decision-quality.
+- `t3-adr-db-engine`: added anchored rejects-each-option (weight 2); removed generic polish item(s) decision-record-quality.
+- `t3-adr-egress-cdn`: added anchored rejects-each-option (weight 2); removed generic polish item(s) adr-clarity.
+- `t3-adr-multiregion-dr`: added anchored rejects-each-option (weight 2); removed generic polish item(s) documentation-clarity.
+- `t3-adr-queue-choice`: added anchored rejects-each-option (weight 2); removed generic polish item(s) explanation_clarity, professional_writing.
+- `t3-api-booking`: added anchored rejects-each-option (weight 2).
+- `t3-api-ingest-batch`: added anchored rejects-each-option (weight 2).
+- `t3-api-search-pagination`: added anchored rejects-each-option (weight 2).
+- `t3-arch-notification-pipeline`: added anchored rejects-each-option (weight 2); removed generic polish item(s) technical-communication.
+- `t3-db-audit-retention`: added anchored rejects-each-option (weight 2).
+- `t3-db-order-history`: added anchored rejects-each-option (weight 2).
+- `t3-db-tenant-isolation`: added anchored rejects-each-option (weight 2).
+- `t3-dev-module-boundary`: added anchored rejects-each-option (weight 2).
+- `t3-nfr-capacity-autoscale`: added anchored rejects-each-option (weight 2).
+- `t3-nfr-latency-budget`: added anchored rejects-each-option (weight 2); removed generic polish item(s) explanation_clarity.
+- `t3-pm-feature-scope`: added anchored rejects-each-option (weight 2); removed generic polish item(s) explanation_clarity.
+- `t3-sre-log-retention`: added anchored rejects-each-option (weight 2).
+- `t3-tpm-migration-cutover`: added anchored rejects-each-option (weight 2).

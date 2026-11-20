@@ -1,7 +1,7 @@
 {
   "id": "t8-inc-memory-leak",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -44,7 +44,7 @@
   "rubric": [
     {
       "id": "narrative-judgment",
-      "criterion": "The prose clearly explains why the traffic campaign changed severity but was not the initiating condition (code cannot check this because it cannot reliably judge causal explanation in the narrative)",
+      "criterion": "The prose clearly explains why the traffic campaign changed severity but was not the initiating condition. Fail: wrong cause, or blames the decoy, or no causal link between events. Partial: right cause, but no mechanism from cause to symptom, or the decoy is not ruled out. Pass: cause, then mechanism, then symptom, each with a cited log line; why the decoy is not the cause; and why detection lagged. (code cannot check this because it cannot reliably judge causal explanation in the narrative)",
       "weight": 2
     }
   ],
@@ -106,7 +106,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
