@@ -5,8 +5,8 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | | Calls | Credits captured | Estimate | Stop at |
 | --- | --- | --- | --- | --- |
 | Wave 1 | 31 | 89.76 | 80 | 160 |
-| Rest | 65 | 199.28 | 270 | 540 |
-| **T2 total** | 96 | **289.04** | 350 | 700 |
+| Rest | 71 | 219.93 | 270 | 540 |
+| **T2 total** | 102 | **309.69** | 350 | 700 |
 
 6 calls were stopped before their metering event and are not in these totals; at 2 to 15 credits each they add an estimated 12 to 90.
 
@@ -108,3 +108,9 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-20T01:24:28.602Z | t2-pr-flag-rollout | fix | deepseek-3.2 | 394 | 9.04 | ok |
 | 2026-11-20T01:27:45Z | t2-pr-flag-rollout | review | minimax-m2.5 | 171 | 1.26 | ok |
 | 2026-11-20T01:36:00Z | t2-pr-retry-backoff | author (killed by the worker timeout) | qwen3-coder-next |  | not captured | killed |
+| 2026-11-20T01:42:59Z | t2-fe-pr-search-box | map | glm-5 | 36 | 0.53 | ok |
+| 2026-11-20T01:43:49Z | t2-fe-pr-search-box | review | qwen3-coder-next | 50 | 0.26 | ok |
+| 2026-11-20T01:47:39Z | t2-twin-refund-notes | author | deepseek-3.2 | 230 | 2.85 | ok |
+| 2026-11-20T02:01:07.612Z | t2-twin-refund-notes | fix | deepseek-3.2 | 795 | 13.38 | ok |
+| 2026-11-20T02:02:51Z | t2-twin-fanout-brief | author | gpt-5.6-luna | 94 | 1.74 | ok |
+| 2026-11-20T02:04:30.049Z | t2-twin-fanout-brief | fix | gpt-5.6-luna | 85 | 1.90 | ok |
