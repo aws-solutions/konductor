@@ -139,6 +139,15 @@
       "A short note says teams should communicate and roll back if anything goes wrong."
     ]
   },
+  "adjudication": [
+    "Facts split across several decisions (serialisation in one, ring budgets in another) are full credit; the hidden key now reads each fact over the whole decisions list.",
+    "Percentage steps other than 0/10/25/50/100 are not wrong: config/rollout.json is the agent's choice.",
+    "'Do not remove the legacy generator before 2025-09-30' asserts keeping it; only 'remove it now' is a fail.",
+    "A CHANGELOG entry that says 'receipt PDF rollout by ring', 'PROMOTE/HOLD/ROLLBACK' and 'old generator kept' is complete.",
+    "The freeze written as 'December 20 to January 3' is the same freeze.",
+    "Ten complete minutes inside the ring window are enough to decide (docs/error-budget-policy.md); a design that waits for the whole window is stricter but not wrong for the judge.",
+    "'Below 1.0' means exactly 1.0 is HOLD; an answer is marked down only if it says it promotes at 1.0."
+  ],
   "targetSkills": [
     "backend-development",
     "code-review",
@@ -201,15 +210,6 @@
         "verdict": "pass",
         "note": "worker check: the request does state that the script exits 2 when required arguments are absent, and the key's `file` fields are substring regexes (`ops/freeze-calendar` matches ops/freeze-calendar.csv) (reviewer: The task is unfair/impossible in places. The hidden tests require the CLI (scripts/receipt-go-no-go.js) to 'print only the decision' and exit 2 when required args are absent, but the request only says 'accepts --ring, --snapshot, and optional --now' and does not state it must exit 2. The design key's evidence checks (calendar-evidence, policy-evidence) require line numbers referencing files like 'ops/freeze-calendar' and 'ops/budget-policy' (without extension), but the actual files are 'freeze-calendar.csv' and 'budget-policy.json'—the key expects '.csv' and '.json' suffixes to be omitted, making it impossible to derive correct line numbers without guessing.)"
       }
-    ],
-    "adjudication": [
-      "Facts split across several decisions (serialisation in one, ring budgets in another) are full credit; the hidden key now reads each fact over the whole decisions list.",
-      "Percentage steps other than 0/10/25/50/100 are not wrong: config/rollout.json is the agent's choice.",
-      "'Do not remove the legacy generator before 2025-09-30' asserts keeping it; only 'remove it now' is a fail.",
-      "A CHANGELOG entry that says 'receipt PDF rollout by ring', 'PROMOTE/HOLD/ROLLBACK' and 'old generator kept' is complete.",
-      "The freeze written as 'December 20 to January 3' is the same freeze.",
-      "Ten complete minutes inside the ring window are enough to decide (docs/error-budget-policy.md); a design that waits for the whole window is stricter but not wrong for the judge.",
-      "'Below 1.0' means exactly 1.0 is HOLD; an answer is marked down only if it says it promotes at 1.0."
     ]
   },
   "pilot": {

@@ -139,6 +139,14 @@
       "Use exactly-once delivery so consumers never see duplicates."
     ]
   },
+  "adjudication": [
+    "A note that says 'one atomicWrite, not a separate later publish' asserts the atomic write; never read it as choosing a separate publish.",
+    "Evidence that cites four of the five source groups is complete enough; the hidden key asks for four.",
+    "A phase action that says STATUS_EVENTS_PUBLISH_ENABLED=false, 'off' or 'dark' before turning it on is the disabled-first phase.",
+    "The README says a data file belongs to one instance at a time while two run; an answer that states its own assumption about sharing (for example overlap during the rolling deploy) passes e3 and e7 either way.",
+    "'Exactly once to the consumer' fails e1: the broker contract is at-least-once.",
+    "A point made in the rollout doc instead of the design note counts for the judge."
+  ],
   "targetSkills": [
     "backend-development",
     "code-review",
@@ -201,14 +209,6 @@
         "verdict": "pass",
         "note": "All test behaviors derive from the stated requirements: atomic persistence prevents loss (implied by 'do not disappear'), idempotent append handles retries (implied by 'do not create a second event'), claim-based coordination handles dual instances (documented in instance-deploy.json), per-order ordering matches consumers.md. No test requires behavior the request does not imply."
       }
-    ],
-    "adjudication": [
-      "A note that says 'one atomicWrite, not a separate later publish' asserts the atomic write; never read it as choosing a separate publish.",
-      "Evidence that cites four of the five source groups is complete enough; the hidden key asks for four.",
-      "A phase action that says STATUS_EVENTS_PUBLISH_ENABLED=false, 'off' or 'dark' before turning it on is the disabled-first phase.",
-      "The README says a data file belongs to one instance at a time while two run; an answer that states its own assumption about sharing (for example overlap during the rolling deploy) passes e3 and e7 either way.",
-      "'Exactly once to the consumer' fails e1: the broker contract is at-least-once.",
-      "A point made in the rollout doc instead of the design note counts for the judge."
     ]
   },
   "pilot": {

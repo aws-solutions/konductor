@@ -110,6 +110,15 @@
       "Move the release to next week and update the notes, without naming owners or branch checks."
     ]
   },
+  "adjudication": [
+    "notes_corrections with REL-127 plus REL-112 and REL-104 (both claimed in the draft, neither commit on release/27.05) is fully correct; the hidden key accepts up to three.",
+    "windows-smoke listed as a blocker or as a risk needing an exception both pass signal-separation if it is kept apart from linux-integration; it must not sit in failing_jobs.",
+    "docs-linkcheck in flaky_jobs is no penalty (an optional job with one transient timeout).",
+    "REL-105 listed as a blocker is wrong (no blocker label; triage 'active' only keeps it in review): Partial on decoys, never a Fail of the call.",
+    "Earliest date 2027-05-20 with a reason is Partial on conditional-date: the calendar makes 2027-05-13 feasible. 2027-05-06 is a Fail.",
+    "Deadlines are UTC per the README; a deadline given only in an owner's local time is Partial on conditional-date.",
+    "Mentioning a decoy and dismissing it is correct; only listing it as a blocker, late pick or notes correction is wrong."
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -191,16 +200,7 @@
           "note": "rubric check: Different reasoning prose and blocker presentations can Pass if grounded in fixture evidence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar.)."
         }
       ]
-    },
-    "adjudication": [
-      "notes_corrections with REL-127 plus REL-112 and REL-104 (both claimed in the draft, neither commit on release/27.05) is fully correct; the hidden key accepts up to three.",
-      "windows-smoke listed as a blocker or as a risk needing an exception both pass signal-separation if it is kept apart from linux-integration; it must not sit in failing_jobs.",
-      "docs-linkcheck in flaky_jobs is no penalty (an optional job with one transient timeout).",
-      "REL-105 listed as a blocker is wrong (no blocker label; triage 'active' only keeps it in review): Partial on decoys, never a Fail of the call.",
-      "Earliest date 2027-05-20 with a reason is Partial on conditional-date: the calendar makes 2027-05-13 feasible. 2027-05-06 is a Fail.",
-      "Deadlines are UTC per the README; a deadline given only in an owner's local time is Partial on conditional-date.",
-      "Mentioning a decoy and dismissing it is correct; only listing it as a blocker, late pick or notes correction is wrong."
-    ]
+    }
   },
   "pilot": {
     "scores": {

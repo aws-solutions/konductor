@@ -128,7 +128,7 @@ Who: claude (mate spot-review fix worker session), from the wave 7 pilot outputs
 
 Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
 (reports/key-improve/reconciled.md in the mate workspace). Each task gets single-point expert items with their figures,
-`review.adjudication`, and a hand-written `answers/<id>/other` answer.
+`adjudication`, and a hand-written `answers/<id>/other` answer.
 
 - `t7-release-gate` (version 6): `hidden/.../key.json`: `third-blocker-summary` (one of six exact sentences) is gone;
   `only-reverted-note` (maxCount 1) becomes `notes-match-branch` (ids REL-127, REL-112, REL-104, maxCount 3), because

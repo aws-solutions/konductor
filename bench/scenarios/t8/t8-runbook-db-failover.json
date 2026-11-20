@@ -96,6 +96,15 @@
       "Rebuild the old primary as a replica right after the failover."
     ]
   },
+  "adjudication": [
+    "A watch window of any stated length with a unit (5 min, 10 minutes, 300 s) is correct; nothing in the folder fixes 'five minutes'.",
+    "'Keep orders-db-a isolated; do not rejoin it' is the same as 'stays fenced'; the hidden key takes either.",
+    "A runbook that rebuilds orders-db-a before the database owner approves fails keep-volume, whatever older notes say about rebuilding.",
+    "The abort op may be > 120 or >= 120: both are safe readings of 'not more than 120 seconds'. An abort on quorum_lease_age_seconds is the wrong metric for the RPO.",
+    "A fence written as a console action is Partial on fence-proof: the help text gives a command.",
+    "The verify field as a string is what the request asks; an object with check and expected is understood by the judge but is Partial on usable-at-3am.",
+    "Steps beyond the hidden key's 16 are never penalised by the judge."
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -177,16 +186,7 @@
           "note": "rubric check: Different valid runbook structures and step organizations can Pass if they cover the required operational sequence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can synthesize the runbook from topology.yaml (nodes, roles, zones), vendor/quorumctl-help.txt (commands), policy/data-policy.md (RPO=120s), config/clients.yaml (DNS TTL=30s), logs (incident pattern), docs/old-failover-notes.md (fencing lesson), and rota/paging.md (escalation roles).)."
         }
       ]
-    },
-    "adjudication": [
-      "A watch window of any stated length with a unit (5 min, 10 minutes, 300 s) is correct; nothing in the folder fixes 'five minutes'.",
-      "'Keep orders-db-a isolated; do not rejoin it' is the same as 'stays fenced'; the hidden key takes either.",
-      "A runbook that rebuilds orders-db-a before the database owner approves fails keep-volume, whatever older notes say about rebuilding.",
-      "The abort op may be > 120 or >= 120: both are safe readings of 'not more than 120 seconds'. An abort on quorum_lease_age_seconds is the wrong metric for the RPO.",
-      "A fence written as a console action is Partial on fence-proof: the help text gives a command.",
-      "The verify field as a string is what the request asks; an object with check and expected is understood by the judge but is Partial on usable-at-3am.",
-      "Steps beyond the hidden key's 16 are never penalised by the judge."
-    ]
+    }
   },
   "handEdited": {
     "family": "claude",

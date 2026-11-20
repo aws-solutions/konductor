@@ -802,6 +802,14 @@
         }
       }
     },
+    "adjudication": {
+      "description": "Rules that settle where two judges would split on this task, one string each. The judge prompt lists them after the weak answers.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "targetSkills": {
       "type": "array",
       "items": {
@@ -992,14 +1000,6 @@
             }
           }
         },
-        "adjudication": {
-          "description": "Rules that settle where two judges would split on this task, one string each. The judge prompt lists them beside the rubric.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
         "recheck": {
           "type": "object",
           "required": [
@@ -1145,7 +1145,10 @@
     },
     "handEdited": {
       "description": "null: checked, no one but the author changed the prompt, fixture, key, checks or rubric.",
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "required": [
         "family",
         "editor",

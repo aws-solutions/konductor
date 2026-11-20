@@ -127,16 +127,7 @@
           "note": "Developer can analyze removed jitter, synchronized TTL expiration waves, DB connection spikes, and identify cache stampede."
         }
       ]
-    },
-    "adjudication": [
-      "A cause that says the keys 'expired together', 'in one wave' or 'in lockstep' without the word 'jitter' is fully correct; the gate now takes those words.",
-      "failedPageRequests and affectedMinutes are defined by the 50-per-minute threshold in the request (3,960 and 12); an answer that also gives the whole-day sum with its window stated is not penalised.",
-      "Recovery at 16:16 (last wave ends), 16:22 (fix live) or 16:27 (waiters zero) is credited when labelled correctly.",
-      "Negation: 'not caused by the reporting job' rules the decoy out and passes decoy-ruled-out; a hedge ('may have contributed') is Partial; naming the rollup as the cause fails.",
-      "Cited metric rows of the three waves are relevant evidence, as are the config, deploy and cache log lines.",
-      "A coalescing-only or serve-stale fix passes stampede-guard and the hidden fix item; it need not say 'jitter'.",
-      "Score points, not length: a long timeline is never penalised by the judge."
-    ]
+    }
   },
   "handEdited": {
     "family": "claude",
@@ -209,5 +200,14 @@
       "Add more monitoring and alerts.",
       "Increase the database connection limit so bursts do not fail."
     ]
-  }
+  },
+  "adjudication": [
+    "A cause that says the keys 'expired together', 'in one wave' or 'in lockstep' without the word 'jitter' is fully correct; the gate now takes those words.",
+    "failedPageRequests and affectedMinutes are defined by the 50-per-minute threshold in the request (3,960 and 12); an answer that also gives the whole-day sum with its window stated is not penalised.",
+    "Recovery at 16:16 (last wave ends), 16:22 (fix live) or 16:27 (waiters zero) is credited when labelled correctly.",
+    "Negation: 'not caused by the reporting job' rules the decoy out and passes decoy-ruled-out; a hedge ('may have contributed') is Partial; naming the rollup as the cause fails.",
+    "Cited metric rows of the three waves are relevant evidence, as are the config, deploy and cache log lines.",
+    "A coalescing-only or serve-stale fix passes stampede-guard and the hidden fix item; it need not say 'jitter'.",
+    "Score points, not length: a long timeline is never penalised by the judge."
+  ]
 }
