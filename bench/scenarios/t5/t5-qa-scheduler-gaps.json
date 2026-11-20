@@ -108,8 +108,53 @@
         "verdict": "pass",
         "note": "All mutants represent realistic defects. None are equivalent mutants: m01 (step overflow), m02 (skip day 1), m03 (skip last day), m04 (drop timezone), m05 (off-by-one max_delay), m06 (extra attempt), m07 (reverse order), m08 (boundary event), m09/m10 (error recovery) all change observable behavior."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to strengthen tests for scheduler components without naming methods, tools, or pointing at specific mutation targets."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture files list the bugs, mutation targets, or expected test findings; only implementation code and existing tests are present."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 10 mutants (m01-m10) test behaviors that exist in the fixture source files (scheduler.py, retry.py, priority_queue.py, rate_limiter.py, persistence.py)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can write tests for calendar rules, retry limits, priority queue ordering, rate limiting boundaries, and persistence edge cases from the fixture code and prompt alone."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 7.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }
