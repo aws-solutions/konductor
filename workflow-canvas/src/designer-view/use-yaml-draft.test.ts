@@ -2,7 +2,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { FakeScheduler } from '../test-support/fake-scheduler';
-import { useYamlDraft, type YamlDraftInput } from './useYamlDraft';
+import { useYamlDraft, type YamlDraftInput } from './use-yaml-draft';
 import {
   CHECK_PAUSE_MS,
   type CheckAnswer,
@@ -63,13 +63,15 @@ class HeldValidate {
 function setUp(input: Partial<YamlDraftInput> = {}) {
   const validate = new HeldValidate();
   const scheduler = new FakeScheduler();
-  const hook = renderHook(() =>
+  const hook = renderHook((props: Partial<YamlDraftInput>) =>
     useYamlDraft({
       initialText: 'v0',
       name: 'hello',
+      baseHash: 'hash-hello',
       validate: validate.port,
       scheduler,
       ...input,
+      ...props,
     }),
   );
   // The pause starts once the check before it has ended, a step later.
@@ -81,6 +83,96 @@ function setUp(input: Partial<YamlDraftInput> = {}) {
 }
 
 describe('useYamlDraft', () => {
+  const OTHER = { initialText: 'w0', name: 'other', baseHash: 'hash-other' };
+
+  it('opens a fresh draft for another workflow, dropping its answer and last good answer', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.answer(0, GOOD);
+    act(() => result.current.edit('v1 broken'));
+    await pause();
+    await validate.answer(1, BAD);
+
+    expect(result.current.answer).toBe(BAD);
+    expect(result.current.lastGood).toBe(GOOD);
+    rerender(OTHER);
+
+    expect(result.current.text).toBe('w0');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.answer).toBeUndefined();
+    expect(result.current.lastGood).toBeUndefined();
+  });
+
+  it('opens a fresh draft for another workflow, dropping its failure', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.fail(0, new Error('The server did not answer.'));
+
+    expect(result.current.failure).toBe('The server did not answer.');
+    rerender(OTHER);
+
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.failure).toBeUndefined();
+  });
+
+  it('aborts the check in flight when another workflow opens, and drops its late answer', async () => {
+    const { result, validate, scheduler, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    expect(validate.inFlight).toBe(1);
+    rerender(OTHER);
+    await act(async () => {});
+
+    expect(validate.signals[0]?.aborted).toBe(true);
+    expect(validate.inFlight).toBe(0);
+    await validate.answer(0, BAD);
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.answer).toBeUndefined();
+    await act(async () => scheduler.tick());
+    expect(validate.requests).toHaveLength(1);
+
+    act(() => result.current.edit('w1'));
+    await pause();
+    expect(validate.requests.at(-1)).toEqual({ name: 'other', text: 'w1' });
+  });
+
+  it('clears the pause of the workflow before when another one opens', async () => {
+    const { result, validate, scheduler, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await act(async () => {});
+    expect(scheduler.pendingCount).toBe(1);
+    rerender(OTHER);
+    await act(async () => {});
+
+    expect(scheduler.pendingCount).toBe(0);
+    await act(async () => scheduler.tick());
+    expect(validate.requests).toEqual([]);
+    expect(result.current.text).toBe('w0');
+  });
+
+  it('opens a fresh draft when the same workflow is loaded again with a new hash', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.answer(0, GOOD);
+    rerender({ initialText: 'v1', baseHash: 'hash-saved' });
+
+    expect(result.current.text).toBe('v1');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.lastGood).toBeUndefined();
+  });
+
+  it('keeps the draft for a render with the same workflow', async () => {
+    const { result, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    rerender({});
+
+    expect(result.current.text).toBe('v1');
+    expect(result.current.status).toBe('waiting');
+  });
+
   it('checks nothing until the text is edited', async () => {
     const { result, validate, scheduler } = setUp();
     await act(async () => {});
