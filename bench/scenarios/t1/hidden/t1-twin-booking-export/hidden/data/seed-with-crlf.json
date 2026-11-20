@@ -1,0 +1,4 @@
+[
+  { "id": "b-100", "room": "Atlas", "date": "2025-06-20", "owner": "Operations" },
+  { "id": "b-101", "room": "Cedar", "date": "2025-06-21", "owner": "Line1\r\nLine2" }
+]
