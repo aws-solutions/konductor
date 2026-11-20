@@ -47,6 +47,8 @@ Scorer check for the lazy gate (free, 2026-11-20): for every task whose lazy ans
 
 Paid calls paused by the lead on 2026-11-20 (the owner's pilot wave 1 shares the host): `run-capped.sh` refuses every call while `work/PAUSE` exists. The call already running (t1-bug-csv-import, first step, minimax-m2.5) was stopped at its 60-tool-call cap; it wrote the repository files at the top of its folder instead of under `fixture/`, so the step failed. It gets its one fix attempt by its own family after the pause; it is not hand-fixed.
 
+Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an abort limit of 15 credits, set before it starts. `run-capped.sh` stops a call at a tool-call count that stands for about 15 credits for its model, refuses a call when the logged spend plus 15 could pass the T1 stop of 880 credits, waits while the host's 1-minute load is 6 or more (the owner's pilot waves share it), and runs one call at a time. A call stopped before it reports is logged at 15.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
