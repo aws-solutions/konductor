@@ -2,20 +2,27 @@
 
 # Workflow engine
 
-The Rust workspace behind `konductor flow`. It reads a workflow file and checks it against the rules in
-[the specification](../docs/design/workflows-spec.md). The design and the plan are in
+The Rust workspace behind `konductor flow`. It reads a workflow file, checks it against the rules in
+[the specification](../docs/design/workflows-spec.md) and runs it. The design and the plan are in
 [docs/design/workflows.md](../docs/design/workflows.md) and [docs/design/workflows-plan.md](../docs/design/workflows-plan.md).
 
-This is step 1c of the plan: the file format and its checks. It has no runner, no trust and no canvas server yet.
+This is step 1d of the plan: the file format and its checks (1c), and the stage prompt and the runner on the `fake`
+harness (1d). It has no real harness, no trust and no canvas server yet.
 
 ## Crates
 
 - `core` holds the format: the YAML loader, the key table, the checks, the diagnostics, the limits, the path rules and
-  the stable JSON. It does no IO. `core/tests/purity.rs` fails the build if the crate reads a file, opens a socket,
-  starts a process, reads the environment, the clock or a random source, uses `unsafe`, or depends on a crate that is
-  not in its allow list. Files reach it through the `WorkflowSource` port.
-- `adapters` holds what touches the world. For now that is the file source, which implements `WorkflowSource`, and the
-  lookup of a bare name in `.konductor/workflows/` of the project and then of the home folder.
+  the stable JSON. It also holds the stage prompt (`prompt.rs`), the stage result parser (`result.rs`), the run, stage
+  and check states (`run.rs`) and the runner (`runner.rs`). It does no IO. `core/tests/purity.rs` fails the build if the
+  crate reads a file, opens a socket, starts a process, reads the environment, the clock or a random source, uses
+  `unsafe`, or depends on a crate that is not in its allow list. The world reaches it through ports: `WorkflowSource`,
+  `Clock`, `Harness`, `RunStore` and `RunLock` (`ports.rs`).
+- `adapters` holds what touches the world: the file source and the lookup of a bare name in `.konductor/workflows/` of
+  the project and then of the home folder; the run store and the workspace lock under `.konductor/runs/`; the system
+  clock; and the `fake` harness, which replays scripted replies and is for tests only. `harness_choice.rs` decides
+  which harness a run may use.
+
+The golden files of the stage prompt are in `core/tests/golden/`. They hold the exact text, with no final newline.
 
 `examples/hello-plan.yml` is the example that the tests check.
 
@@ -33,4 +40,4 @@ cd workflow-engine
 cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings && cargo test --locked
 ```
 
-The crates declare `rust-version = "1.88"`.
+The crates declare `rust-version = "1.89"`, the first release with `File::try_lock`, which the workspace lock uses.

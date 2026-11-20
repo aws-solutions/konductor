@@ -58,9 +58,10 @@ of failing.
 - `--target <dir>` — DESTINATION: install directory to check for a runtime/manifest.
   Defaults to `$HOME` when omitted, same as `install --target`.
 
-Running an SDLC _workflow_ is **not** a CLI subcommand — that is driven by the Konductor
-Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics, and it
-checks and shows workflow files with [`flow`](#flow). It does not run them yet.
+The CLI utility handles setup, content build, lifecycle, and diagnostics, and it checks,
+shows and runs workflow files with [`flow`](#flow). `flow run` has no harness that runs an agent yet (only a
+[test-only `fake` one](#the-fake-harness-test-only)), so SDLC work with real agents is still driven by the Konductor
+Kiro agent.
 
 ---
 
@@ -842,14 +843,24 @@ stdout instead:
 ```bash
 konductor flow check <name> [--json]
 konductor flow show <name> [--json]
+konductor flow run <name> --harness <harness> [--goal "..."] [--json]
 ```
 
 A workflow is a YAML file, `<name>.yml`, that lists the stages of a piece of work and the agent that does each one.
 The rules for the file are in [`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md), and
-[`workflow-engine/examples/hello-plan.yml`](../workflow-engine/examples/hello-plan.yml) is an example. `flow` only
-reads files. It never writes one, and `install`, `update` and `uninstall` never write to `.konductor/workflows/`.
+[`workflow-engine/examples/hello-plan.yml`](../workflow-engine/examples/hello-plan.yml) is an example. `flow check`
+and `flow show` only read files. `flow run` writes only under `.konductor/`, which it makes if it is missing: the
+`runs/` line of `.konductor/.gitignore`, and in `.konductor/runs/` the lock files `lock` and `claim` and one folder per
+run. A run refused before that (exit `64` or `65`) writes nothing, and one that the lock refuses (exit `75`) leaves only
+those files. `install`, `update` and `uninstall` never write to `.konductor/workflows/`.
 
 A bare `<name>` is looked up in `.konductor/workflows/` of the current directory, then in `~/.konductor/workflows/`.
+`flow run` first finds its project root. It walks up from the current directory to the git top folder (the folder that
+holds `.git`) and takes the nearest folder that has `.konductor/`. If the git top folder is `$HOME`, or there is no git
+folder and the current directory is `$HOME`, it exits `77` without looking for `.konductor/` or reading anything in the
+home folder. `HOME` must be set to an absolute path, or it exits `74`. A git folder with no `.konductor/` up to its top
+is a usage error (`64`, "no .konductor/ found, run konductor init"). With no git folder, the current directory is the
+root. `HOME` is compared by path, after resolving links.
 The name follows the pattern `^[a-z0-9][a-z0-9-]{0,63}$`. `library/<name>` names a shipped workflow, and none exist
 yet, so it is a usage error.
 
@@ -870,8 +881,50 @@ directory or anything bigger is treated as not there, and a link is never follow
   machine path, and the bytes are the same whatever order the keys have in the file. `--json` prints the same
   document and makes a failure JSON as well.
 
-Exit codes: `0` when the workflow has no errors, `64` for a usage error (a bad name, `library/<name>`, or a name that
-matches no file), and `65` when the workflow has errors.
+- `flow run` runs the stages in order, each in a fresh session on the harness that `--harness` names. Each session is
+  given the stage prompt, and the stage passes when the session exits 0 and its final message ends with a valid
+  `KONDUCTOR_RESULT {"status": "success", "outputs": [...]}` line. Otherwise the stage is `blocked` with a reason
+  (`RESULT_MISSING`, `RESULT_INVALID`, `RESULT_FAILURE`, `SESSION_FAILED` or `TIMEOUT`), the run is
+  `halted`, and the later stages stay `pending`. The harness decides a time-out: a stage is `TIMEOUT` only when its
+  session reports that it ran past the 30-minute limit. The time a stage took is recorded for information and never
+  blocks a stage that finished. The checks in `intent.accept` are recorded as `deferred`; nothing runs
+  them yet. `--goal` sets the goal, at most 2048 characters, and without it the workflow's default goal is used. A
+  `--goal` that is empty or only white space is a usage error, and so is a rendered stage prompt over 100 KiB. Each
+  stage prints a line such as `stage plan: passed`, and the last line is `run <run-id>: passed` or `halted`. On the
+  `fake` harness that line ends with ` (harness: fake, no agent ran)`. With `--json` it prints only the run state,
+  which names the harness.
+
+  `--harness` is required. This build has only `fake`, which is test-only and runs no agent (see
+  [the `fake` harness](#the-fake-harness-test-only)). `kiro-cli` and `claude` are usage errors until a later release
+  adds them.
+
+  The run state is `.konductor/runs/<run-id>/state.json` under the project root, replaced whole at each change.
+  `flow run` makes sure `.konductor/.gitignore` has the line `runs/` (as `init` writes it) and adds it if it is
+  missing, keeping every other line. Only one run is active in a workspace: the run holds an OS file lock on
+  `.konductor/runs/lock`, which records the PID of the process that owns it, its start time (UTC, to the second) and
+  the run id, and a second `flow run` exits `75` with a message that names that PID. The lock ends when its process
+  ends, however it ends, so a run that such a process left `running` reads as `halted` on the next start. If that
+  run's state cannot be written, the new run still starts, and a `warning:` line on stderr, also under `--json`, names
+  the run, which still reads as `running`. A lock that is held but whose record cannot be read, or that another start
+  is taking at that moment, also exits `75`. Under `--json` the envelope's `code` tells them apart: `already_running`
+  (with `run_id` and `pid`) or `lock_unreadable`.
+
+Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for
+a usage error (a bad name, `library/<name>`, a name that matches no file, or a bad `flow run` input), `65` when the
+workflow has errors, `74` when `flow run` needs `HOME` and it is unset or not an absolute path, `75` when the
+workspace lock refuses the run, and `77` when the project root would be the home folder.
+
+### The `fake` harness (test-only)
+
+`--harness fake` runs no agent. It replays a JSON script, so a run on it can pass or halt without doing any work. It
+exists for tests of the runner and of `flow run`, and the last line of such a run says so. Do not use it to do real work.
+
+The script is named by `--fake-script <path>` or by `KONDUCTOR_FAKE_SCRIPT`, and the flag wins. Without one,
+`--harness fake` is a usage error. `--fake-script` is left out of `--help` because it is for tests. For each stage the
+script gives the reply, the exit status and the duration the session pretends to have, and the format is described in
+[`workflow-engine/adapters/src/fake_harness.rs`](../workflow-engine/adapters/src/fake_harness.rs). A duration past the
+30-minute stage limit makes the fake report that the session timed out. A stage whose script entry has `wait_for` waits
+at most the 30-minute stage limit for it, then reports a time-out in the same way.
 
 ---
 
@@ -912,14 +965,17 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | Code | Meaning |
   |------|---------|
   | 0 | All passed |
-  | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale" |
+  | 1 | Halted (timeout / runtime error / parse error); reused by `doctor` for "at least one check failed/stale". Also a `flow run` that halted, and, once that command exists, a `flow verify` that failed |
   | 2 | Unresolved CRITICAL gate — CI-failing signal (**never** used for usage errors) |
   | 3 | Budget / turn limit exceeded |
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`) |
+  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`, `flow run`) |
+  | 74 | `flow run` needs `HOME` and it is unset or not an absolute path (`EX_IOERR`). Under `--json` the `code` is `home_unusable` |
+  | 75 | The workspace lock refuses the run (`flow run`, `EX_TEMPFAIL`): another run is active, the lock cannot be read, or other starts were taking it. Try again later |
+  | 77 | `flow run` refuses a project root that is the home folder: the git top folder is `$HOME`, or there is no git folder and the working folder is `$HOME`. Under `--json` the `code` is `project_root_is_home` |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
@@ -941,10 +997,13 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
   - `flow check` and `flow show` reading workflow files through the `workflow-engine/` crates
+  - `flow run` running a workflow on the `fake` harness, which is for tests, with its run
+    state in `.konductor/runs/` and one run at a time per workspace
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
-  "unresolved CRITICAL gate" signal), and `.konductor/runs/` storage.
+  "unresolved CRITICAL gate" signal), and `flow run` on a real harness (`kiro-cli` or
+  `claude`).
 
 ## Current limitations
 
