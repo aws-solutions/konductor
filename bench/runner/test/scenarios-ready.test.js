@@ -62,6 +62,10 @@ test('fixReasons reads a lazy score kept in pilot.scores.dryRun, like dryRunReas
   assert.deepEqual(fixReasons({ pilot: { dryRun: { lazy: 30 }, decision: 'keep' } }), []);
 });
 
+test('a dropped task is never ready', () => {
+  assert.deepEqual(fixReasons({ pilot: { ...dry({}), decision: 'drop' } }), ['pilot.decision is drop']);
+});
+
 test('the ready table counts each batch and the whole pack, and ready plus not ready is every task', () => {
   const { render } = require('../../scenarios/ready.js');
   const rows = [

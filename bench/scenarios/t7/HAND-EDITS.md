@@ -105,3 +105,12 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t7-sprint-capacity | glm-5 (c10, full) | confirmed |  |
 | t7-status-slip-twin | glm-5 (c10, full) | confirmed |  |
 | t7-status-slip | glm-5 (c10, full) | confirmed |  |
+
+## Spot-review fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md).
+
+- `t7-pm-launch-cut` (version 5):
+  - Fixture `backlog.csv`: F-044 "Executive vanity wallboard" is now "Executive lobby wallboard"; "vanity" labelled the decoy. `interviews/interview-06.md:6` no longer says the release is "not an executive display"; it says the regional teams would run on it every day.
+  - Rubric `director-bottom-line` Pass asked for exactly eight features and 58 points while the key accepts 58 to 63 planned points. It now asks for a named feature set with planned points between 58 and 63 and the buffer that leaves, and says the reference (eight features, 58 points) is one such plan.
+  - Free gates unchanged: reference 100, stub 2.9, lazy 36.3; a second correct plan with nine features and 63 points scores 100.

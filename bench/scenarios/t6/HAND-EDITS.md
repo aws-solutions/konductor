@@ -281,3 +281,9 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t6-req-tpm-cutover | glm-5 (r2, rubric) | confirmed |  |
 | t6-req-volunteer-shifts | glm-5 (r2, rubric) | confirmed |  |
 | t6-twin-clinic-costs | glm-5 (r2, rubric) | confirmed |  |
+
+## Spot-review drop (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md).
+
+- `t6-idea-feature-bets`: dropped, not fixed (`pilot.decision` drop, reasons in `pilot.blockers`, bench/DEBT.md D-133). No file of the task changed. Four fixture files hand over both traps and the answer, and the key itself does not follow from the data: the "double counting" is asserted, not shown; the $18,500/month saving the key requires does not follow from the ticket counts and the $85 per ticket; and the hidden tests need option names the request spells differently. Saving it means a new fixture, key and tests, which is a new task. `bench/scenarios/ready.js` now counts a dropped task as not ready (it counted only `fix`).

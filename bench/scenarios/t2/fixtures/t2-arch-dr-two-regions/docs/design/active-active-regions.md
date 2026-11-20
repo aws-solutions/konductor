@@ -102,8 +102,8 @@ For ticket inventory, we will maintain a global counter of available seats for e
 - Region us-west-2 sells seat A-12 → local count: 0, timestamp: T2 (where T2 > T1)
 - Replication occurs: Both updates propagate
 - Conflict resolution: Last-write-wins selects us-west-2's transaction
-- Result: Global count becomes -1 (oversold by one seat)
-- System response: Alert triggers for manual reconciliation
+- Result: Global count converges to 0 in both regions
+- System response: None needed; both regions agree on the count
 
 **Scenario 2: Price Update Conflict**
 - Initial state: Seat price: $100
@@ -452,11 +452,9 @@ Financial justification for the active-active migration includes both direct cos
 
 ## 9. Open Questions
 
-1. Should we implement synchronous replication for critical tables?
-2. Can we reduce the TTL for faster failover?
-3. How do we handle timezone differences in timestamp-based conflict resolution?
-4. What additional monitoring capabilities should we prioritize?
-5. How should we evolve the architecture for future region expansion?
+1. What additional monitoring capabilities should we prioritize?
+2. How should we evolve the architecture for future region expansion?
+3. Which team owns the us-west-2 on-call rotation?
 
 ---
 

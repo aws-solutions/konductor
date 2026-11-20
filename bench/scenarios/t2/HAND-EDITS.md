@@ -72,3 +72,19 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t2-pr-stock-reserve | glm-5 (r1, rubric) | confirmed |  |
 | t2-sec-dr-sso-login | glm-5 (r1, rubric) | confirmed |  |
 | t2-sec-pr-webhook-relay | glm-5 (r1, rubric) | confirmed |  |
+
+## Spot-review fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md). Free gates after the edit: reference 100, stub 7.1, lazy 28.6 / 32, and a second correct review written in another style (other sections or lines, other words) 100 on both tasks, where the old key gave it 23.4 and 62.5. Non-Claude recheck: see `review.recheck` and reports/spot-review-fixes-2026-11-20.md.
+
+- `lib/hidden/findings.test.cjs` (shared by every T2 task): a key item's `section` may be a list, and `also` lists more code spans ({file, line, endLine?}) for an item whose cause sits in two places. Every other T2 task's dry run is unchanged (16 of 16 pass with the same scores).
+- `t2-arch-dr-two-regions` (version 4):
+  - k2 was false against `data/replication-lag-measurements.csv` (it said the P99 lag exceeds 60 s; the CSV says 420-720 ms). It now names the real contradictions: RPO 60 s against the 30 s transactional RPO in `docs/service-targets.md`, and measured P99 lag 4-7 times the design's own < 100 ms target. Sections 6.3 or 3.2.
+  - k3 (DNS TTL against the 60 s RTO) may sit at 6.2, 3.5, 3.6 or 6.1. k7 was the same finding split off; it is now the design's three different recovery times (120 s in 3.2, 90 s in 3.6, 60 s in 6.2) at any of those sections.
+  - k4 may sit at 3.9 (where the figures are) or 8.1 and now names what the cost analysis really misses (storage priced once for two databases, Multi-AZ standbys, one-time cost over the $45,000 budget). k5 may sit at 3.7 or 7.1 and names the missing reconcile step. k8 moved from 2.2 (the dependency list) to 3.2 or 3.3 and from low to high. k1 may sit at 3.2 or 3.3.
+  - Fixture `docs/design/active-active-regions.md`: Scenario 1 no longer states its own oversell ("Global count becomes -1", "Alert triggers"); it now ends with the count at 0 and no alert, so the reviewer has to see two buyers for one seat. Section 9 lost the three open questions that named the trap areas (synchronous replication, TTL, timestamp conflicts).
+  - The reference review matches the corrected key.
+- `t2-gaps-jwt-middleware` (version 4):
+  - k2 was inverted. `Date.now() <= payload.exp` compares milliseconds with seconds, so every token that carries `exp` (every token login issues) is rejected, not kept valid. Text corrected, severity high to critical, `Math.floor` added to the fix words; the reference review says the same.
+  - k1 also matches `src/security/token.js:37` (the header-chosen algorithm default) and `src/routes/session-routes.js:30`; k5 also matches `src/middleware/bearer-auth.js:32` (the `invalidAuthorization(rawToken)` call).
+  - The request said "under fixture/pr/87"; the runner copies the fixture to the workspace root, so it now says "under pr/87".

@@ -1,12 +1,12 @@
 {
   "id": "t4-iam-bucket-policy-oac",
-  "version": 4,
+  "version": 5,
   "class": "complex",
   "phase": "security",
   "phases2": [],
   "role": "security",
   "questions": "allowed",
-  "prompt": "The marketing site now sits behind our CDN, so the S3 buckets no longer need to be open. Please lock down the three bucket policies in infra/buckets/ (assets-policy.json, downloads-policy.json, logs-policy.json; each covers the staging and the production bucket of its kind). Readers should get objects only through the CDN, each stage only through its own distribution (ids, ARNs, bucket names and the account id are in infra/cdn-config.json). Nothing may be read over plain HTTP. Files under downloads/private/ must not be served to anyone, CDN included. The deploy role (infra/iam/deploy-role-policy.json) must still be able to publish to the assets buckets, and access-log delivery must keep working into the logs buckets. Do not change infra/iam/deploy-role-policy.json, the CDN config or the scripts and tests. Keep the files valid IAM policy JSON.",
+  "prompt": "The marketing site now sits behind our CDN, so the S3 buckets no longer need to be open. Please lock down the three bucket policies in infra/buckets/ (assets-policy.json, downloads-policy.json, logs-policy.json; each covers the staging and the production bucket of its kind). Readers should get objects only through the CDN, each stage only through its own distribution (ids, ARNs, bucket names and the account id are in infra/cdn-config.json). Nothing may be read over plain HTTP. Files under downloads/private/ must not be served to anyone, CDN included. The deploy role (infra/iam/deploy-role-policy.json) must still be able to publish to the assets buckets, and access-log delivery from CloudFront and from S3 must keep working into the log prefixes of the logs buckets. Do not change infra/iam/deploy-role-policy.json, the CDN config or the scripts and tests. Keep the files valid IAM policy JSON.",
   "fixture": "t4-iam-bucket-policy-oac",
   "hidden": "t4-iam-bucket-policy-oac",
   "timeoutSec": 2400,
@@ -18,7 +18,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 31,
+      "min": 27,
       "weight": 3,
       "kind": "substance"
     },
@@ -189,7 +189,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

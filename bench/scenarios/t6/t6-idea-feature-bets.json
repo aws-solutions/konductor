@@ -214,7 +214,7 @@
     "scores": {},
     "reference": 100,
     "stub": 10.2,
-    "decision": "keep",
+    "decision": "drop",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
@@ -222,6 +222,11 @@
       "lazy": 13.6,
       "alt": 100,
       "date": "2026-11-20"
-    }
+    },
+    "blockers": [
+      "dropped (spot review 2026-11-20, bench/DEBT.md D-133): the fixture states both traps and the answer (financial-impact-summary.md:24-32, email-thread-priya-to-ceo.md:10-16 and 30-32, old-draft-recommendation.md:25, risk-assessment.md:29), so a copy of the finance memo passes every hidden test.",
+      "dropped: the key is not supported by the data. The \"double counting\" is asserted by memos but not shown (the $45,000 upsell and the $71,561 pipeline forecast are different revenue; the pipeline CSV sums to $94,680 and weights to $71,226, not the $110,580 the forecast states), and the $18,500/month support saving the key requires does not follow from the fixture (136 fewer tickets a quarter at $85 is about $11,600 a quarter).",
+      "dropped: the hidden tests need option names containing \"Export CSV\", \"Sales Notes\" and \"Support Tickets\" (case-sensitive) while the request says \"Sales notes integration\" and \"Support ticket linking\", and the precision test fails a block with more than two numbers outside its own list."
+    ]
   }
 }

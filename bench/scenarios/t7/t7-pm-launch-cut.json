@@ -1,7 +1,7 @@
 {
   "id": "t7-pm-launch-cut",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -51,7 +51,7 @@
   "rubric": [
     {
       "id": "director-bottom-line",
-      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail. Fail: no commitment stated, or all High-priority rows listed without a decision. Partial: gives a scope but not the capacity fit or the launch date. Pass: the first paragraph commits to eight features for the 2027-09-20 launch, 58 points against 63 available, a five-point buffer, engineering start on Monday 2027-07-26, and says the signed Northline export (F-014) is in even though its backlog label is Medium. (code cannot check this because it only reads the structured block)",
+      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail. Fail: no commitment stated, or all High-priority rows listed without a decision. Partial: gives a scope but not the capacity fit or the launch date. Pass: the first paragraph commits to a named feature set for the 2027-09-20 launch, states planned points between 58 and 63 against 63 available and the buffer that leaves (the reference plan is eight features, 58 points, a five-point buffer; another set in that range is equally good), engineering start on Monday 2027-07-26, and says the signed Northline export (F-014) is in even though its backlog label is Medium. (code cannot check this because it only reads the structured block)",
       "weight": 2
     },
     {
@@ -212,7 +212,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

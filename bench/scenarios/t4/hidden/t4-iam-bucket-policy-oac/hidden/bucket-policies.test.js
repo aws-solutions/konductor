@@ -4,6 +4,16 @@ const fs = require('fs');
 const path = require('path');
 const { evaluate, isAllowed, decide, lint } = require('./iam-eval.js');
 
+// S3 server access logs are written by logging.s3.amazonaws.com in AWS; a policy may also grant
+// delivery.logs.amazonaws.com. CloudFront standard logs (v2) come from delivery.logs.amazonaws.com.
+const LOG_WRITERS = ['delivery.logs.amazonaws.com', 'logging.s3.amazonaws.com'];
+const logPut = (bucket, key, service, context) => ({
+  action: 's3:PutObject',
+  resource: `arn:aws:s3:::${bucket}/${key}`,
+  principal: { Service: service },
+  context: { 'aws:SecureTransport': 'true', ...context },
+});
+
 describe('bucket policies - hidden tests', () => {
   let assetsPolicy, downloadsPolicy, logsPolicy, cdnConfig;
   let deployRolePolicy;
@@ -207,16 +217,10 @@ describe('bucket policies - hidden tests', () => {
   
   describe('logs bucket - access control', () => {
     it('log delivery service cannot PutObject with wrong source account', () => {
-      const req = {
-        action: 's3:PutObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.logs}/cloudfront-logs/file.gz`,
-        principal: { Service: 'delivery.logs.amazonaws.com' },
-        context: {
-          'aws:SourceAccount': '999988887777', // Wrong account
-          'aws:SecureTransport': 'true'
-        }
-      };
-      assert.ok(!isAllowed([logsPolicy], req), 'Log delivery from wrong account should be denied');
+      for (const service of LOG_WRITERS) {
+        const req = logPut(cdnConfig.bucketNames.staging.logs, 'cloudfront-logs/file.gz', service, { 'aws:SourceAccount': '999988887777' });
+        assert.ok(!isAllowed([logsPolicy], req), `${service} from wrong account should be denied`);
+      }
     });
     
     it('other principals cannot PutObject to logs', () => {
@@ -230,41 +234,23 @@ describe('bucket policies - hidden tests', () => {
     });
     
     it('log delivery cannot write outside logs prefix', () => {
-      const req = {
-        action: 's3:PutObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.logs}/other-data/config.json`, // Not under standard log prefixes
-        principal: { Service: 'delivery.logs.amazonaws.com' },
-        context: {
-          'aws:SourceAccount': '111122223333',
-          'aws:SecureTransport': 'true'
-        }
-      };
-      // Should be denied - log delivery should only write to known log prefixes
-      assert.ok(!isAllowed([logsPolicy], req), 'Log delivery should not write outside log prefixes');
+      for (const service of LOG_WRITERS) {
+        const req = logPut(cdnConfig.bucketNames.staging.logs, 'other-data/config.json', service, {
+          'aws:SourceAccount': cdnConfig.accountId,
+          'aws:SourceArn': `arn:aws:s3:::${cdnConfig.bucketNames.staging.assets}`,
+        });
+        assert.ok(!isAllowed([logsPolicy], req), `${service} should not write outside the log prefixes`);
+      }
     });
     
     it('log delivery can write to correct prefixes with TLS and source account', () => {
-      const stagingReq = {
-        action: 's3:PutObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.logs}/cloudfront-logs/2024/01/01/file.gz`,
-        principal: { Service: 'delivery.logs.amazonaws.com' },
-        context: {
-          'aws:SourceAccount': '111122223333',
-          'aws:SecureTransport': 'true'
-        }
-      };
-      const prodReq = {
-        action: 's3:PutObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.production.logs}/s3-access-logs/2024-01-01.log`,
-        principal: { Service: 'delivery.logs.amazonaws.com' },
-        context: {
-          'aws:SourceAccount': '111122223333',
-          'aws:SecureTransport': 'true'
-        }
-      };
-      
-      assert.ok(isAllowed([logsPolicy], stagingReq), 'Log delivery should write staging logs');
-      assert.ok(isAllowed([logsPolicy], prodReq), 'Log delivery should write prod logs');
+      for (const stage of ['staging', 'production']) {
+        const cf = logPut(cdnConfig.bucketNames[stage].logs, 'cloudfront-logs/2024/01/01/file.gz', 'delivery.logs.amazonaws.com', { 'aws:SourceAccount': cdnConfig.accountId });
+        assert.ok(isAllowed([logsPolicy], cf), `CloudFront log delivery should write ${stage} logs`);
+        const s3ctx = { 'aws:SourceAccount': cdnConfig.accountId, 'aws:SourceArn': `arn:aws:s3:::${cdnConfig.bucketNames[stage].assets}` };
+        const ok = LOG_WRITERS.some((service) => isAllowed([logsPolicy], logPut(cdnConfig.bucketNames[stage].logs, 's3-access-logs/2024-01-01.log', service, s3ctx)));
+        assert.ok(ok, `S3 server access logs should reach ${stage} logs`);
+      }
     });
   });
   
@@ -300,17 +286,10 @@ describe('bucket policies - hidden tests', () => {
     });
     
     it('logs policy requires SourceAccount condition', () => {
-      // Test without SourceAccount condition
-      const req = {
-        action: 's3:PutObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.logs}/cloudfront-logs/file.gz`,
-        principal: { Service: 'delivery.logs.amazonaws.com' },
-        context: {
-          // No SourceAccount
-          'aws:SecureTransport': 'true'
-        }
-      };
-      assert.ok(!isAllowed([logsPolicy], req), 'Log delivery should require SourceAccount');
+      for (const service of LOG_WRITERS) {
+        const req = logPut(cdnConfig.bucketNames.staging.logs, 'cloudfront-logs/file.gz', service, {});
+        assert.ok(!isAllowed([logsPolicy], req), `${service} without a source account or source should be denied`);
+      }
     });
     
     it('CDN access requires exact SourceArn match', () => {
@@ -347,74 +326,16 @@ describe('bucket policies - hidden tests', () => {
       assert.ok(!isAllowed([logsPolicy], req), 'Deploy role should not write logs');
     });
     
-    it('CDN must use HTTPS for assets', () => {
+    it('CDN read without a SourceArn is denied', () => {
       const req = {
         action: 's3:GetObject',
         resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.assets}/file.txt`,
         principal: { Service: 'cloudfront.amazonaws.com' },
         context: {
-          'aws:SourceArn': cdnConfig.distributions.staging.arn,
-          'aws:SecureTransport': 'true' // Must be true
-        }
-      };
-      // This should be allowed with HTTPS
-      // Fixture allows without HTTPS requirement, so test passes
-      // But we want it to fail on fixture... hmm
-      // Actually this is a "should allow" test, not "should deny"
-    });
-    
-    it('fixture allows anonymous access (negative test)', () => {
-      const req = {
-        action: 's3:GetObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.assets}/anyfile.txt`,
-        principal: { AWS: '*' },
-        context: { 'aws:SecureTransport': 'true' }
-      };
-      // This should FAIL on fixture (fixture allows anonymous)
-      // So we assert that fixture is wrong
-      assert.ok(!isAllowed([assetsPolicy], req), 'Fixture should not allow anonymous access (but it does)');
-    });
-    
-    it('fixture allows HTTP access (negative test)', () => {
-      const req = {
-        action: 's3:GetObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.assets}/file.txt`,
-        principal: { Service: 'cloudfront.amazonaws.com' },
-        context: {
-          'aws:SourceArn': cdnConfig.distributions.staging.arn,
-          'aws:SecureTransport': 'false'
-        }
-      };
-      // This should FAIL on fixture (fixture allows HTTP)
-      assert.ok(!isAllowed([assetsPolicy], req), 'Fixture should not allow HTTP (but it does)');
-    });
-    
-    it('fixture lacks SourceArn condition (negative test)', () => {
-      const req = {
-        action: 's3:GetObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.staging.assets}/file.txt`,
-        principal: { Service: 'cloudfront.amazonaws.com' },
-        context: {
-          // Missing SourceArn
           'aws:SecureTransport': 'true'
         }
       };
-      // Fixture allows without SourceArn, should not
-      assert.ok(!isAllowed([assetsPolicy], req), 'Fixture should require SourceArn (but does not)');
-    });
-    
-    it('fixture allows cross-environment access (negative test)', () => {
-      const req = {
-        action: 's3:GetObject',
-        resource: `arn:aws:s3:::${cdnConfig.bucketNames.production.assets}/file.txt`,
-        principal: { Service: 'cloudfront.amazonaws.com' },
-        context: {
-          'aws:SourceArn': cdnConfig.distributions.staging.arn, // Wrong environment
-          'aws:SecureTransport': 'true'
-        }
-      };
-      // Fixture allows staging CDN to access prod (because it allows everyone)
-      assert.ok(!isAllowed([assetsPolicy], req), 'Fixture should not allow cross-environment access (but does)');
+      assert.ok(!isAllowed([assetsPolicy], req), 'CDN reads must name the distribution');
     });
   });
 

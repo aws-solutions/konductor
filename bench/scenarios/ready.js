@@ -37,13 +37,15 @@ function dryRunReasons(task) {
 
 const HAND_EDIT_FLAG = 'hand-edited, recheck missing';
 
-/** Why a task is marked fix (owner rule): a recorded lazy score over 40, or pilot.decision "fix". [] when neither. */
+/** Why a task is marked fix (owner rule): a recorded lazy score over 40, or pilot.decision "fix" or "drop". [] when none. */
 function fixReasons(task) {
   const out = [];
   // The same record dryRunReasons reads, so a lazy score kept in pilot.scores.dryRun is not dropped from the count.
   const lazy = (task.pilot?.dryRun ?? task.pilot?.scores?.dryRun)?.lazy;
   if (finite(lazy) && lazy > 40) out.push(`lazy ${lazy} over 40`);
   if (task.pilot?.decision === 'fix') out.push('pilot.decision is fix');
+  // A dropped task stays in the pack (removing it is the owner's call) but must never count as ready.
+  if (task.pilot?.decision === 'drop') out.push('pilot.decision is drop');
   return out;
 }
 

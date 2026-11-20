@@ -1,11 +1,11 @@
 {
   "id": "t2-gaps-jwt-middleware",
-  "version": 3,
+  "version": 4,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
   "role": "reviewer",
-  "prompt": "Review pull request 87 in this Node.js scheduling API. The change moves internal clients from session cookies to bearer tokens and touches the route wiring, token handling, tests, and authentication documentation. Read the author's description and exact diff under fixture/pr/87, then inspect the surrounding project code and contracts. I need a review before the mobile rollout because errors here would affect every schedule and administration request. Call out concrete defects that matter in this project, explain their consequence, and give a fix a developer can apply. Do not spend the review on broad praise. Write the review to REVIEW.md at the top of the project, and end it with a fenced json list of findings, each with location (path/to/file.ext:LINE, with line numbers of the file as it is in the project), severity (critical, high, medium, low or nit), issue and fix.\n\n```json\n[\n  { \"location\": \"path/to/file.ext:LINE\", \"severity\": \"high\", \"issue\": \"what is wrong and why it matters\", \"fix\": \"an actionable change\" }\n]\n```",
+  "prompt": "Review pull request 87 in this Node.js scheduling API. The change moves internal clients from session cookies to bearer tokens and touches the route wiring, token handling, tests, and authentication documentation. Read the author's description and exact diff under pr/87, then inspect the surrounding project code and contracts. I need a review before the mobile rollout because errors here would affect every schedule and administration request. Call out concrete defects that matter in this project, explain their consequence, and give a fix a developer can apply. Do not spend the review on broad praise. Write the review to REVIEW.md at the top of the project, and end it with a fenced json list of findings, each with location (path/to/file.ext:LINE, with line numbers of the file as it is in the project), severity (critical, high, medium, low or nit), issue and fix.\n\n```json\n[\n  { \"location\": \"path/to/file.ext:LINE\", \"severity\": \"high\", \"issue\": \"what is wrong and why it matters\", \"fix\": \"an actionable change\" }\n]\n```",
   "questions": "allowed",
   "fixture": "t2-gaps-jwt-middleware",
   "hidden": "t2-gaps-jwt-middleware",
@@ -62,12 +62,12 @@
   "findingsKey": [
     {
       "id": "k1",
-      "finding": "The verifier accepts the token-selected algorithm while using a shared verification key, allowing an attacker to present an HS256 token signed with the RSA public key and forge claims.",
+      "finding": "The verifier accepts the token-selected algorithm while using a shared verification key, allowing an attacker to present an HS256 token signed with the RSA public key and forge claims. The same header-chosen algorithm is the default in token.js verifyToken and is passed again by the refresh route.",
       "weight": 1
     },
     {
       "id": "k2",
-      "finding": "The expiry claim is in epoch seconds but is compared directly with Date.now() milliseconds, so normal access tokens remain valid after their intended expiry.",
+      "finding": "The expiry check compares exp, a NumericDate in epoch seconds, with Date.now() in milliseconds (Date.now() <= payload.exp), so every token that carries exp is rejected as expired. Login issues every access and refresh token with expiresIn, so after the rollout every real client gets 401 on every request; the PR's tests pass only because they sign tokens without expiresIn.",
       "weight": 1
     },
     {
@@ -180,7 +180,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
