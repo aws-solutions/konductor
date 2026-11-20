@@ -1,0 +1,14 @@
+{
+  "name": "pulse-notification-service",
+  "version": "2.4.0",
+  "description": "Small real-time notification service for internal tools",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/cli.js",
+    "sample": "node scripts/sample-client.js"
+  },
+  "license": "MIT"
+}

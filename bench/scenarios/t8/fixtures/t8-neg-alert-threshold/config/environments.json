@@ -1,0 +1,5 @@
+{
+  "development": {"region": "eu-west", "windowMinutes": 10},
+  "staging": {"region": "us-central", "windowMinutes": 15},
+  "production": {"region": "us-east", "windowMinutes": 15}
+}

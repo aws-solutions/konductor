@@ -4,8 +4,8 @@
   "controlKind": "negative",
   "phase": "release-ops",
   "role": "sre",
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "node",
   "size": "20 to 40",
   "source": {
@@ -14,5 +14,6 @@
     "licenceCheckedAt": "2026-11-19",
     "use": "idea"
   },
-  "brief": "Negative control, small and clear. Repo: a monitoring-config repo with alert rules in YAML-like JSON files per service, a small Node validator script and its tests (node:test), CI config and README. The ask, stated exactly: in the rules file of one named service, change one named alert's threshold from one stated value to another and its duration from one stated value to another, add the stated runbook URL label to it, and keep the validator tests passing. Nothing else must change. Hidden tests parse the rules file and check the three values, that every other rule and file is unchanged, and that the validator passes."
+  "brief": "Negative control, small and clear. Repo: a monitoring-config repo with alert rules in YAML-like JSON files per service, a small Node validator script and its tests (node:test), CI config and README. The ask, stated exactly: in the rules file of one named service, change one named alert's threshold from one stated value to another and its duration from one stated value to another, add the stated runbook URL label to it, and keep the validator tests passing. Nothing else must change. Hidden tests parse the rules file and check the three values, that every other rule and file is unchanged, and that the validator passes.",
+  "authorSwitchedFrom": "deepseek-3.2"
 }

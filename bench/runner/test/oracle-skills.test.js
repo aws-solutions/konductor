@@ -159,5 +159,5 @@ test('oracle arms never share an A/A identity with the same ref run normally', (
 test('the README and usage text name the flags', () => {
   const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
   assert.match(read('runner/bench.js'), /--oracle-skills \[ARM,ARM\]/);
-  assert.match(read('README.md'), /--oracle-skills/);
+  assert.match(read('docs/reference.md'), /--oracle-skills/);
 });

@@ -1,0 +1,5 @@
+[
+  {"id":"ISS-1001","title":"Add export button","status":"open","assigneeId":"u-1","createdAt":"2025-01-02T09:00:00.000Z"},
+  {"id":"ISS-1002","title":"Correct timezone label","status":"in_progress","assigneeId":"u-2","createdAt":"2025-01-04T11:15:00.000Z"},
+  {"id":"ISS-1003","title":"Archive old milestones","status":"closed","assigneeId":"u-1","createdAt":"2025-01-07T15:30:00.000Z"}
+]

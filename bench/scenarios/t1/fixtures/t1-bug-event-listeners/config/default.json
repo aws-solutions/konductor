@@ -1,0 +1,5 @@
+{
+  "heartbeatIntervalMs": 30000,
+  "maxPayloadBytes": 65536,
+  "environment": "development"
+}

@@ -2,8 +2,8 @@
   "id": "t1-bug-money-rounding",
   "phase": "bugfix",
   "role": "developer",
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "minimax-m2.5",
+  "reviewer": "gpt-5.6-luna",
   "stack": "python",
   "size": "20 to 30",
   "source": {

@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/capacity.md"],
+  "acceptableOptions": ["larger-instance-type", "two-regions", "quota-increase"],
+  "temptingOption": "current-instance-quota-violation",
+  "notes": "The trap is that using current medium instances requires 22 instances (12,000 RPS ÷ (900 × 0.7) = 19.05, plus N+1 redundancy across 2 AZs = 22), exceeding the 14-instance quota. Numbers are spread across requirements.md (peak RPS, max utilization), traffic-analysis.md (instance capacity), and pricing-overview.md (quota)."
+}

@@ -12,30 +12,30 @@ const { SUITE_NAMES } = require('../lib/tasks.js');
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
 
 test('the README lists every suite name that --suite accepts', () => {
-  const line = read('README.md').split('\n').find((l) => l.startsWith('`--suite '));
+  const line = read('docs/reference.md').split('\n').find((l) => l.startsWith('`--suite '));
   assert.ok(line, 'a line starting with --suite');
   for (const name of SUITE_NAMES) assert.ok(line.includes(name), `${name} missing from: ${line}`);
 });
 
 test('the README and playbook say cap plan needs --tasks when the registry links no lift task', () => {
-  for (const f of ['README.md', 'CAP-PLAYBOOK.md']) assert.match(read(f), /pass `--tasks id,id` when the registry links no lift task/, f);
+  for (const f of ['docs/reference.md', 'docs/CAP-PLAYBOOK.md']) assert.match(read(f), /pass `--tasks id,id` when the registry links no lift task/, f);
 });
 
 test('the README names the files each report command writes', () => {
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   assert.match(doc, /prune-report\.md/);
   assert.match(doc, /contrast\.md/);
   assert.match(doc, /report\.md, report\.html, report\.json/);
 });
 
 test('the README documents the profiles, the ledger, the graded judge, the generator, the controls and the verdict', () => {
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   for (const re of [/--profile quick\|detailed/, /credit-ledger\.jsonl/, /--mode graded/, /cap scenarios/, /cap controls/, /--verdict platform/, /calibration-sample\.json/, /orderDisagreement/, /exit code 3/]) assert.match(doc, re);
   assert.doesNotMatch(doc, /More than 10 planned runs need `--budget-credits`/);
 });
 
 test('the playbook documents the scenario, controls and verdict steps and the optional cap', () => {
-  const doc = read('CAP-PLAYBOOK.md');
+  const doc = read('docs/CAP-PLAYBOOK.md');
   for (const s of [/cap scenarios --cap ID --dry-run/, /cap controls --out DIR/, /report --verdict platform/, /A cap is optional/, /references\/NAME\.md/]) assert.match(doc, s);
   assert.doesNotMatch(doc, /Always pass `--budget-credits`/);
 });
@@ -43,7 +43,7 @@ test('the playbook documents the scenario, controls and verdict steps and the op
 test('the shipped profiles match what the README table says', () => {
   const q = JSON.parse(read('profiles/quick.json'));
   const d = JSON.parse(read('profiles/detailed.json'));
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   assert.match(doc, /\| replicates per cell \| 1 to 3 \(default 2\)/);
   assert.match(doc, /at least 5 \(default 5\)/);
   assert.deepEqual([q.replicates.min, q.replicates.max, q.replicates.default], [1, 3, 2]);
@@ -64,7 +64,7 @@ function commandsIn(doc, heading) {
 }
 
 test('the README documents the orchestrator study: gates, arm config, metrics, pass rule, GPT panel and the Claude Code gap', () => {
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   for (const re of [
     /## Orchestrator study/, /isolation-gate\.json/, /exit code 4/, /--arm-config/, /orchestration\.mode=coordinator/, /empty\.md/, /CLAUDE_CONFIG_DIR/,
     /--verdict orchestrator-pass/, /reworks after a pass/i, /profiles\/phase-documents\.json/, /profiles\/orch-metrics\.json/, /--phases/, /pooled within-cell standard deviation/,
@@ -73,7 +73,7 @@ test('the README documents the orchestrator study: gates, arm config, metrics, p
 });
 
 test('the README states the limits the code enforces', () => {
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   assert.equal(op.COST_MAX, 2);
   assert.match(doc, /at most 2\.0x/);
   assert.match(doc, /fewer than 3 scored runs/);
@@ -81,8 +81,8 @@ test('the README states the limits the code enforces', () => {
 });
 
 test('every command in the orchestrator study section of the README and the playbook uses flags the CLI accepts', () => {
-  for (const f of ['README.md', 'CAP-PLAYBOOK.md']) {
-    const heading = f === 'README.md' ? 'Orchestrator study: cells, gates, metrics and the pass rule' : 'Orchestrator study';
+  for (const f of ['docs/reference.md', 'docs/CAP-PLAYBOOK.md']) {
+    const heading = f === 'docs/reference.md' ? 'Orchestrator study: cells, gates, metrics and the pass rule' : 'Orchestrator study';
     const cmds = commandsIn(read(f), heading);
     assert.ok(cmds.length >= 4, `${f}: found ${cmds.length} commands`);
     for (const c of cmds) {
@@ -96,25 +96,71 @@ test('every command in the orchestrator study section of the README and the play
 });
 
 test('the playbook has the orchestrator study section with the cell, arm and A/A advice', () => {
-  const doc = read('CAP-PLAYBOOK.md');
+  const doc = read('docs/CAP-PLAYBOOK.md');
   for (const re of [/## Orchestrator study/, /A\/A/, /--arm-config/, /orchestrator-pass/, /one cell per directory/i]) assert.match(doc, re);
 });
 
 test('the per-skill study is documented in the README and the playbook', () => {
-  const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'README.md'), 'utf8');
-  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'CAP-PLAYBOOK.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/reference.md'), 'utf8');
+  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/CAP-PLAYBOOK.md'), 'utf8');
   for (const re of [/cap skill-plan/, /cap skill-study/, /cap decide/, /--overlay skill:NAME=DIR/, /run-skill-bench\.sh/, /DELETE, PRUNE/, /NEEDS DATA/]) assert.match(readme, re);
   for (const re of [/Per-skill study: delete, prune or keep/, /cap skill-plan/, /run-skill-bench\.sh/, /What it cannot show/]) assert.match(playbook, re);
 });
 
 test('the README and playbook describe the side-by-side review page and its import', () => {
-  const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'README.md'), 'utf8');
-  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'CAP-PLAYBOOK.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/reference.md'), 'utf8');
+  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/CAP-PLAYBOOK.md'), 'utf8');
   for (const re of [/cap review --run DIR/, /cap review-import --ratings FILE/, /review-key\.json/, /opens no port/, /--sample-only/, /raters\/ID\//, /pooled/, /unless `--force`, so a second import never replaces the first/, /result\.prev\.json/, /raterKappa/, /calibration\/review-key\//, /`--key` is always\s+required/, /--run DIR/, /stream\.jsonl/, /A `recheck` does not change it/, /cleared by the next import/, /ratings made on the old page will not import/, /even\s+with `--force`/]) assert.match(readme, re);
   for (const re of [/cap review --run DIR/, /cap review-import/]) assert.match(playbook, re);
 });
 
 test('the README documents the login expiry note, exit code 6, the auth-failure limit and --timeout-sec', () => {
-  const doc = read('README.md');
+  const doc = read('docs/reference.md');
   for (const re of [/token already expired/, /inferred from the message and is not confirmed/, /exit code 6/, /--max-auth-failures N/, /BENCH_MAX_AUTH_FAILURES/, /kiro-cli whoami/, /--timeout-sec N/]) assert.match(doc, re);
+});
+
+test('every relative link in the bench docs points at a file and heading that exist', () => {
+  const { checkAll } = require('../../scripts/check-doc-links.js');
+  assert.deepEqual(checkAll(), []);
+});
+
+test('the generated parts of the bench docs match the code (fix: node bench/scripts/gen-docs.js)', () => {
+  const { run } = require('../../scripts/gen-docs.js');
+  assert.deepEqual(run({ write: false }), []);
+});
+
+// Every `node bench/runner/bench.js` line in a fenced block of the guide pages names a real command and only flags it accepts.
+test('every bench.js command in the README and guide pages uses a known command and flags the CLI accepts', () => {
+  const { COMMANDS, SUBCOMMANDS, BOOLEAN_FLAGS } = require('../lib/cli-flags.js');
+  const pages = ['README.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/konductor-bench.md', 'docs/repeat-it-yourself.md'];
+  let seen = 0;
+  for (const page of pages) {
+    const blocks = [];
+    let open = null;
+    for (const l of read(page).split('\n')) {
+      const f = l.match(/^```(\S*)\s*$/);
+      if (f && open === null) { open = f[1] === '' || f[1] === 'bash' || f[1] === 'sh' ? [] : false; continue; }
+      if (f) { if (open) blocks.push(open.join('\n').replace(/\\\n\s*/g, ' ')); open = null; continue; }
+      if (open) open.push(l);
+    }
+    for (const line of blocks.join('\n').split('\n')) {
+      const cmdLine = line.replace(/\s+#.*$/, '').trim();
+      if (!cmdLine.startsWith('node bench/runner/bench.js ')) continue;
+      seen++;
+      const tokens = cmdLine.split(/\s+/).slice(2);
+      const [cmd, ...rest] = tokens;
+      assert.ok(COMMANDS.includes(cmd), `${page}: unknown command in: ${cmdLine}`);
+      const opts = { _: [] };
+      for (let i = 0; i < rest.length; i++) {
+        const t = rest[i];
+        if (!t.startsWith('--')) { opts._.push(t); continue; }
+        const name = t.slice(2);
+        if (BOOLEAN_FLAGS.has(name) || i + 1 >= rest.length || rest[i + 1].startsWith('--')) opts[name] = true;
+        else opts[name] = rest[++i];
+      }
+      if (SUBCOMMANDS[cmd]) assert.ok(SUBCOMMANDS[cmd].includes(opts._[0]), `${page}: unknown ${cmd} subcommand in: ${cmdLine}`);
+      assert.equal(checkArgs(cmd, opts), null, `${page}: ${cmdLine}`);
+    }
+  }
+  assert.ok(seen >= 20, `found only ${seen} commands`);
 });

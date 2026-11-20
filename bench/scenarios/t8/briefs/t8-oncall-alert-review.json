@@ -3,8 +3,8 @@
   "kind": "doc",
   "phase": "release-ops",
   "role": "sre",
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "ops",
   "size": "15 to 30",
   "loglines": 2000,
@@ -17,5 +17,6 @@
   "outFile": "oncall/alert-review.md",
   "blockFields": "`alerts` (list of `{ \"name\" (the alert name as in the rules file), \"problem\" (what is wrong with it today), \"change\" (the concrete new rule: expression, threshold, duration or routing), \"severity\" (\"page\", \"ticket\" or \"remove\") }`), `keep` (list of alert names that are fine as they are).",
   "kindExtra": "Seed 14 to 20 alert rules in a rules file; 6 or 7 of them are flawed in ways the 30-day firing history and the metrics show (a page on a cause such as CPU that never matched user impact; a threshold below normal daily peak so it fires every evening; no duration so it flaps; a rule on a metric name that no longer exists; a duplicate of another rule; a page that should be a ticket; a symptom with no runbook link that was acked and ignored 40 times). The rest are sound decoys, including one noisy-looking rule that caught every real outage. Key shape: per flawed alert a `some` item on `alerts` matching its `name` by `field` and the right problem keywords (two patterns), plus `none` items so a sound alert listed for removal fails, and an `every` item that each listed change names a metric that exists (`inSet` on a metrics catalogue file where it applies). 14 to 18 items.",
-  "brief": "Phase: release, ops and on-call. Role: SRE. Folder: the monitoring repo of a mid-size web product: alert rules (YAML), the metrics catalogue, 30 days of alert firing history (CSV: alert, start, end, acked by, linked incident), the incident list for the month, the on-call handoff notes and the runbook index. On-call people are burning out from pages. The request from the on-call lead: review the alerts, say which ones to change or remove and how, and which to keep."
+  "brief": "Phase: release, ops and on-call. Role: SRE. Folder: the monitoring repo of a mid-size web product: alert rules (YAML), the metrics catalogue, 30 days of alert firing history (CSV: alert, start, end, acked by, linked incident), the incident list for the month, the on-call handoff notes and the runbook index. On-call people are burning out from pages. The request from the on-call lead: review the alerts, say which ones to change or remove and how, and which to keep.",
+  "authorSwitchedFrom": "deepseek-3.2"
 }

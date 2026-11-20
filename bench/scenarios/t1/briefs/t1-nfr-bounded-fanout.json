@@ -2,8 +2,8 @@
   "id": "t1-nfr-bounded-fanout",
   "phase": "nfr",
   "role": "developer",
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "minimax-m2.5",
+  "reviewer": "gpt-5.6-luna",
   "stack": "node",
   "size": "25 to 35",
   "source": {

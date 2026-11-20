@@ -6,6 +6,8 @@
 //   map <id>       a third model family tags the finished task from skill descriptions (catalog.json) only
 //   review <id>    a model of another family reviews the finished task
 //   fix <id>       one fix round: the author repairs its files from the review's findings
+//   answers <id>   a model of a third family writes a lazy and an alternative answer (answers/<id>/lazy, answers/<id>/alt)
+//   record <id> <dry.json>  writes the dry-run scores into task.pilot (pilot.dryRun: reference, stub, lazy, alt)
 //   log-author <id>  appends the author call's credits to the log
 //   assemble <id>  writes the task into bench/scenarios/t1/ (task file, fixtures/, hidden/, solutions/)
 // Needs T1_AUTH: a directory with run.sh (usage: run.sh <model> <cwd> <promptfile> <outprefix>; it runs kiro-cli in a scratch
@@ -94,7 +96,12 @@ function fix(id) {
   const b = brief(id);
   const rev = readJson(path.join(AUTH, 'work', `${id}.review.json`));
   const fails = rev.verdicts.filter((v) => v.verdict === 'fail').map((v) => `- ${v.check}: ${v.note}`);
-  const problems = [...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
+  // The free dry run's findings, when it ran: which checks failed on the reference and how the hidden suite ended.
+  const dryFile = path.join(AUTH, 'work', `${id}.dry.json`);
+  const dry = fs.existsSync(dryFile) && fs.statSync(dryFile).size ? readJson(dryFile) : null;
+  const dryLines = dry ? dry.reference.checks_.filter((c) => !c.passed).map((c) => `- dry run, reference: ${c.type} check failed (${c.detail})`) : [];
+  if (dry && dry.stub.score > 20) dryLines.push(`- dry run: the untouched fixture scores ${dry.stub.score.toFixed(1)} (must be 20 or less)`);
+  const problems = [...dryLines, ...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
   const w = path.join(AUTH, 'work', id);
   fs.rmSync(`${w}.v1`, { recursive: true, force: true });
   fs.cpSync(w, `${w}.v1`, { recursive: true });
@@ -107,6 +114,40 @@ function fix(id) {
 
 // An author guesses its own time; a developer task gets at least 600 s soft and twice that hard (limits are re-set after the pilot).
 const limitsOf = (l) => { const softSec = Math.max(l.softSec, 600); return { softSec, hardSec: Math.max(l.hardSec, softSec * 2) }; };
+
+// The answer writer is never the author's family: a gpt-written task gets qwen3-coder-next, any other gets gpt-5.6-luna.
+const answerModel = (author) => (author === 'gpt-5.6-luna' ? 'qwen3-coder-next' : 'gpt-5.6-luna');
+
+function answers(id) {
+  const task = readJson(path.join(DIR, `${id}.json`));
+  const model = answerModel(task.authorship.model);
+  const cwd = path.join(AUTH, 'work', `${id}-answers`);
+  fs.rmSync(cwd, { recursive: true, force: true });
+  fs.mkdirSync(cwd, { recursive: true });
+  fs.cpSync(path.join(DIR, 'fixtures', task.fixture || id), path.join(cwd, 'repo'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, 'request.md'), `${task.prompt}\n`);
+  const { credits } = call(model, cwd, fs.readFileSync(path.join(DIR, 'prompts', 'answers.md'), 'utf8'), `${id}.answers`);
+  logCall(id, 'lazy+alt answers', model, credits);
+  for (const kind of ['lazy', 'alt']) {
+    const from = path.join(cwd, kind);
+    const to = path.join(DIR, 'answers', id, kind);
+    fs.rmSync(to, { recursive: true, force: true });
+    if (fs.existsSync(from)) fs.cpSync(from, to, { recursive: true });
+  }
+  return { model, credits };
+}
+
+function record(id, dryFile) {
+  const d = readJson(dryFile);
+  const file = path.join(DIR, `${id}.json`);
+  const task = readJson(file);
+  const r = (m) => Math.round(m.score * 10) / 10;
+  const date = today();
+  // pilot.decision stays "fix" until the paid pilot decides; the dry run alone never keeps a task.
+  task.pilot = { scores: {}, reference: r(d.reference), stub: r(d.stub), decision: 'fix', date, dryRun: { reference: r(d.reference), stub: r(d.stub), lazy: r(d.lazy), alt: r(d.alt), date } };
+  fs.writeFileSync(file, `${JSON.stringify(task, null, 2)}\n`);
+  return task.pilot;
+}
 
 const sourceNote = (s) => (s === 'original' ? 'original (author-written; idea only)' : `${s.url} (${s.licence}; idea only, paraphrased)`);
 
@@ -126,12 +167,12 @@ function assemble(id) {
     role: b.role,
     questions: 'allowed',
     prompt: draft.prompt,
-    fixture: b.id,
+    fixture: b.onFixture || b.id,
     hidden: b.id,
     timeoutSec: limitsOf(draft.limits).hardSec,
     limits: limitsOf(draft.limits),
     checks: draft.checks,
-    rubric: draft.rubric,
+    rubric: draft.rubric.map((r) => ({ weight: 1, ...r })),
     targetSkills: mapping.targetSkills,
     targetSop: mapping.targetSop,
     targetAgent: mapping.targetAgent,
@@ -145,19 +186,19 @@ function assemble(id) {
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   const put = (from, to) => { fs.rmSync(to, { recursive: true, force: true }); fs.cpSync(from, to, { recursive: true }); };
-  put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
+  if (!b.onFixture) put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
   fs.mkdirSync(path.join(DIR, 'hidden', id), { recursive: true });
   put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id, 'hidden'));
   put(path.join(w, 'solution'), path.join(DIR, 'solutions', id));
 }
 
 if (require.main === module) {
-  const [cmd, id] = process.argv.slice(2);
+  const [cmd, id, extra] = process.argv.slice(2);
   if (!AUTH) { console.error('set T1_AUTH'); process.exit(2); }
-  const fn = { map, review, assemble, fix, 'log-author': logAuthor }[cmd];
+  const fn = { map, review, assemble, fix, answers, record, 'log-author': logAuthor }[cmd];
   if (!fn || !id) { console.error('usage: stage.js map|review|assemble|log-author <id>'); process.exit(2); }
-  const r = fn(id);
+  const r = fn(id, extra);
   if (r) console.log(JSON.stringify(r, null, 1));
 }
 
-module.exports = { map, review, assemble, fix, streamInfo };
+module.exports = { map, review, assemble, fix, answers, record, streamInfo };

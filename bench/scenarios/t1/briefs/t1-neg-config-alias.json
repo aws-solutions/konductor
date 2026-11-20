@@ -1,0 +1,13 @@
+{
+  "id": "t1-neg-config-alias",
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "controlKind": "negative",
+  "onFixture": "t1-impl-job-retry",
+  "source": "original",
+  "brief": "A negative control: a small, clear task on an existing repository (the background worker in fixture/) that needs no special method. Pick one existing setting in the worker's config file and ask to rename it to a clearer name you choose, across code, config and docs, while the old name still works as an alias for one release and logs a single deprecation warning when used. State both names in the request. Hidden tests load the config with the new name, the old name and both (the new one wins).",
+  "size": "existing"
+}

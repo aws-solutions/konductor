@@ -38,6 +38,8 @@ test('text, some, none, every, order, number and maxLen items', () => {
   assert.ok(ok({ type: 'some', path: 'timeline', match: { all: ['503'], timeNear: { time: '2026-03-02T14:10:00Z', tolMin: 2 } } }));
   assert.ok(!ok({ type: 'some', path: 'timeline', match: { all: ['503'], timeNear: { time: '2026-03-02T14:20:00Z', tolMin: 2 } } }));
   assert.ok(ok({ type: 'none', path: 'timeline', match: { all: ['rollback'] } }));
+  assert.ok(ok({ type: 'some', path: 'timeline', match: { field: 'event', all: ['deploy'], timeField: 'time', timeIn: ['2026-03-02T14:00:00Z', '2026-03-02T14:05:00Z'] } }));
+  assert.ok(!ok({ type: 'some', path: 'timeline', match: { field: 'event', all: ['503'], timeField: 'time', timeIn: ['2026-03-02T14:00:00Z', '2026-03-02T14:05:00Z'] } }));
   assert.ok(ok({ type: 'every', path: 'steps', match: { field: 'percent', num: { gt: 0, lte: 100 } } }));
   assert.ok(ok({ type: 'order', path: 'steps', first: { field: 'percent', num: { lte: 10 } }, then: { field: 'percent', num: { gte: 100 } } }));
   assert.ok(!ok({ type: 'order', path: 'steps', first: { field: 'percent', num: { gte: 100 } }, then: { field: 'percent', num: { lte: 10 } } }));

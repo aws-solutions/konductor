@@ -1,0 +1,159 @@
+{
+  "id": "t3-adr-cache-sizing-twin",
+  "class": "design",
+  "target": null,
+  "prompt": "Calculate the usable memory and price efficiency for each cache node type in the price sheet. The cache engine reserves 25 percent of advertised memory for indexes, runtime state, and compaction.\n\nFirst, compute the usable memory for each node after applying the 25 percent engine overhead. Then calculate the monthly price per usable gigabyte for each node type. Present the results in a clear table at docs/memory-table.md.\n\nUse the price-sheet.json file for the raw node data and the operating-model.md for the engine reservation percentage. The table should include columns for node ID, advertised memory, usable memory after overhead, monthly price, and price per usable GB. Round monetary values to two decimal places and memory values to one decimal place.\n\nThis is a straightforward calculation task that requires no design decisions or recommendations.",
+  "fixture": "t3-adr-cache-sizing-twin",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-cache-sizing-twin",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 9
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/memory-table.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "calculation-accuracy",
+      "criterion": "All calculated values (usable memory, price per GB) are mathematically correct within 1% tolerance, derived from the fixture data. (not code-checkable: The test suite already verifies numerical accuracy, so this rubric item ensures the agent didn't hardcode answers but performed the calculations correctly from source data.)",
+      "weight": 1
+    },
+    {
+      "id": "presentation-clarity",
+      "criterion": "The table is clearly formatted with appropriate column headers, consistent rounding (memory to 1 decimal, prices to 2 decimals), and includes explanatory notes about the calculations. (not code-checkable: While tests check basic formatting, human judgment is needed to assess whether the presentation is clear, well-organized, and includes helpful explanatory context beyond the raw numbers.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "twin",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-19",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 11,
+      "alt": 100,
+      "date": "2026-11-19"
+    }
+  },
+  "version": 1,
+  "twinOf": "t3-adr-cache-sizing",
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": [
+      "decision-writing",
+      "trade-off-evaluator"
+    ]
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the calculation method (25% overhead) but does not name frameworks, libraries, or hint at specific answers beyond the arithmetic itself."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The 25% reservation is stated clearly in both the prompt and operating-model.md; rounding rules are explicit (memory 1 decimal, prices 2 decimals); file locations are unambiguous."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files provide raw data and parameters but do not contain pre-calculated answers or the final table."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires parsing JSON, extracting a percentage from markdown, applying the formula, and formatting a table with correct rounding - substantive work beyond picking the cheapest option."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required inputs are present: price-sheet.json has node data, operating-model.md has the 25% reservation; the prompt specifies output location and rounding rules."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that usable memory is 75% of advertised memory (or equivalently, advertised memory minus 25% reservation), and cites the operating-model.md as the source for the 25% engine overhead figure.",
+        "source": "original"
+      },
+      {
+        "id": "e2",
+        "text": "calculates price per usable GB correctly by dividing monthly price by usable memory (not advertised memory), and reports cache-105 as the most price-efficient node at approximately 8.25 USD/GB.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "ignores the candidate-configs.json file entirely, recognizing it describes architecture topologies (shards, replicas) which are irrelevant to a pure memory-and-price calculation task.",
+        "source": "original"
+      },
+      {
+        "id": "e4",
+        "text": "ignores the traffic-profile.md working set values (90 GB ordinary, 118 GB peak) and the superseded 600 requests/second figure, recognizing these demand measures are not needed for the requested price-per-GB calculation.",
+        "source": "original"
+      },
+      {
+        "id": "e5",
+        "text": "does not recommend any node as 'best' or make architecture decisions, correctly interpreting the prompt's explicit statement that 'This is a straightforward calculation task that requires no design decisions or recommendations.'",
+        "source": "original"
+      },
+      {
+        "id": "e6",
+        "text": "uses price-sheet.json (not price-sheet.md) as the data source for node prices, as instructed by the markdown file itself which states 'Use the JSON export for arithmetic.'",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "rounds memory values to one decimal place and monetary values to two decimal places as specified, and does not introduce false precision from the calculation.",
+        "source": "original"
+      },
+      {
+        "id": "e8",
+        "text": "does not output to docs/adr/0001-cache.md despite the README.md mentioning that path, recognizing the task explicitly specifies docs/memory-table.md as the output location.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "picks cache-105 as the 'best' node because it has the lowest price per usable GB, treating the calculation task as an architecture recommendation.",
+      "uses the 118 GB peak working set to declare that only cache-209 has enough usable memory (156.8 GB) and recommends it, conflating calculation with sizing.",
+      "includes the superseded 600 requests/second or the 90 GB ordinary working set in the analysis, missing the instruction to ignore superseded pilot data.",
+      "calculates price per advertised GB instead of price per usable GB, ignoring the 25% engine overhead that defines usable capacity.",
+      "creates docs/adr/0001-cache.md instead of docs/memory-table.md, following the README's architecture framing rather than the explicit prompt instruction."
+    ]
+  }
+}

@@ -2,8 +2,8 @@
   "id": "t1-ref-dataclasses",
   "phase": "refactor",
   "role": "developer",
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "minimax-m2.5",
+  "reviewer": "gpt-5.6-luna",
   "stack": "python",
   "size": "25 to 35",
   "source": {

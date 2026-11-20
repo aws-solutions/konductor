@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Scores the references-read runs from stream.jsonl (bench/REFERENCES-READ.md). A skill that keeps detail in
+// Scores the references-read runs from stream.jsonl (bench/docs/studies/REFERENCES-READ.md). A skill that keeps detail in
 // references/*.md is loaded through get_skill, which returns only the SKILL.md body and its path. The agent then has
 // to read the reference file itself, from the skills root outside its workspace. For each run this records whether the
 // skill loaded, whether the agent tried to read a reference file, what happened to the read (succeeded, refused, error)
@@ -432,7 +432,7 @@ function renderReport({ rows, table, decision, control, readable, manifest, T = 
   for (const r of ex) L.push(`- ${r.arm} / ${r.task} #${r.rep}: ${r.excludedReason}${r.errnoHits?.length ? ` (${r.errnoHits.map((h) => `${h.source}: ${h.match}`).join('; ')})` : ''}.${r.errnoHits?.length ? ' Sandbox errno 38 runs are listed here and counted in no rate.' : ''}`);
   L.push('', '## Runs', '', '| arm | task | rep | outcome | skill | attempts | ok | refused | error | fact | credits |', '|---|---|---:|---|---|---:|---:|---:|---:|---|---:|');
   for (const r of rows.filter((x) => x.usable)) L.push(`| ${r.arm} | ${r.task} | ${r.rep} | ${r.outcome} | ${r.skill?.loaded ? r.skill.forms.join('+') : 'no'} | ${r.readAttempts} | ${r.readSucceeded} | ${r.readRefused} | ${r.readErrored} | ${r.usedReference ? 'yes' : 'no'} | ${r.credits == null ? 'n/a' : f1(r.credits)} |`);
-  L.push('', `Manifest: ${manifest.suiteFile}. Thresholds are in bench/report/refs.js and bench/REFERENCES-READ.md.`, '');
+  L.push('', `Manifest: ${manifest.suiteFile}. Thresholds are in bench/report/refs.js and bench/docs/studies/REFERENCES-READ.md.`, '');
   return L.join('\n');
 }
 

@@ -1,0 +1,127 @@
+{
+  "id": "t1-ref-schema-migrate",
+  "class": "hard",
+  "version": 1,
+  "phase": "refactor",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please split customer addresses out of this service's `customers` table. Add `migrations/013-split-customer-address.js`, exporting `up(db)` and `down(db)`, and leave migrations 001 through 012 byte-for-byte unchanged. The new `addresses` table must have `id`, `customer_id`, `line1`, `line2`, `city`, `region`, `postal_code`, and `country`; keep one row per customer with any nonblank address (a value that is NULL, empty or only whitespace counts as blank), keep identical address values for different customers, and create no row for a customer with no address. `up` must remove the six legacy address columns from `customers`. `down` must restore those columns and their values, then remove `addresses`. Calling either direction twice must be harmless, and the migration history must not record version 013 twice. Update `src/customer-repository.js` so create, read, list, and update operations use the split table while keeping its existing `address` object interface. The commands `node src/migrate.js up|down --db PATH` must keep printing JSON with `direction` and `applied`. Update the schema documentation and changelog, add focused regression coverage, add no dependencies, and keep the current suite passing.",
+  "fixture": "t1-ref-schema-migrate",
+  "hidden": "t1-ref-schema-migrate",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f test/address-migration.test.js && test \"$(grep -c '^test(' test/address-migration.test.js)\" -ge 2",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const p=require('./package.json'); process.exit(p.dependencies || p.devDependencies ? 1 : 0)\"",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "migrations/013-split-customer-address.js",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/schema.md",
+      "pattern": "addresses",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "honest-verification",
+      "criterion": "The final report accurately distinguishes checks that were run from checks that were not run (code cannot check this because it cannot assess an agent's final report)."
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "verification",
+    "code-review"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "verification",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/knex/knex",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names the migration file (013-split-customer-address.js) and table columns, but does not reveal implementation details like idempotence strategies, SQL queries, or the repository's dual-mode logic."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "The prompt says 'nonblank address' but does not define whether whitespace-only strings count as blank. Hidden tests (backfill-empty.test.js) check that whitespace-only addresses are treated as empty, but the prompt does not state this. An agent could reasonably interpret 'nonblank' as non-NULL or non-empty-string differently. Fixed by the worker: the request now says that NULL, empty and whitespace-only values count as blank."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's utils.js has isPresent() which defines nonblank as non-null and non-whitespace, and customer-repository.js has mapAddress showing empty-check logic. These hint at expected behavior but do not reveal the full solution implementation."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Shortcuts are well-covered: address deduplication is caught by backfill-duplicates.test.js, missing idempotence by direct-idempotence.test.js and runner-repeat.test.js, whitespace handling by backfill-empty.test.js, and repository integration by multiple repository-*.test.js tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is substantial but fair: the fixture provides working migrations 001-012, a migration runner, repository patterns, and test examples. No contradictory requirements, no timing-dependent tests, and all necessary context is discoverable."
+      }
+    ]
+  }
+}

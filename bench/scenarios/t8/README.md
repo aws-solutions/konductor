@@ -29,7 +29,17 @@ herring.
 | Twin, negative control | Plain hidden tests (`hidden-twin.test.js`, `hidden-check.test.js`). |
 
 Rollout, runbook, SLO and decision tasks also carry an `expertKey` for the judges (rubric share only, at most 30%).
+Their items ask only what the hidden key cannot check (for example why a schema step is safe, not whether it comes first).
 The block key lives only in the hidden dir, not in the task file (the task schema is closed).
+Negative controls have no target; the units the mapper proposed for them are their `mustNotLoad` list.
+
+## Authorship
+
+All 15 tasks were finally written by gpt-5.6-luna and reviewed by qwen3-coder-next. Four deepseek-3.2 drafts were
+discarded (the request named the decoy or listed every constraint and its file, key matchers used fields the grader
+does not read, the author's answer or key files sat in the fixture) and re-authored; the last three deepseek briefs
+were moved to gpt-5.6-luna before authoring for the same reason. The discarded drafts and the worker's hand fixes
+are listed in `AUTHORING-LOG.md`.
 
 ## Tools
 

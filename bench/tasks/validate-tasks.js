@@ -382,7 +382,7 @@ function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTU
 }
 
 function scanHygiene() {
-  const roots = [TASKS_DIR, FIXTURES_DIR, SUITES_DIR, path.join(BENCH, 'real'), path.join(BENCH, 'README-tasks.md')];
+  const roots = [TASKS_DIR, FIXTURES_DIR, SUITES_DIR, path.join(BENCH, 'real'), path.join(BENCH, 'docs', 'tasks.md')];
   const self = path.resolve(__filename);
   // Upstream test files and licenses are copied unchanged from other projects; they are not ours to restyle.
   const vendored = (p) => /[\\/]tasks[\\/]hidden[\\/][^\\/]+[\\/](overlay[\\/]|LICENSE$)/.test(p);

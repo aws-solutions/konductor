@@ -10,8 +10,9 @@
 // wanted is read as a one-item list.
 //
 // A matcher (`match`, `first`, `then`) tests one list element:
-//   { field?, all?: [regex], none?: [regex], num?: {gt, gte, lt, lte}, timeNear?: {time, tolMin}, timeIn?: [from, to] }
+//   { field?, all?: [regex], none?: [regex], num?: {gt, gte, lt, lte}, timeNear?: {time, tolMin}, timeIn?: [from, to], timeField? }
 //   `field` picks a dotted field of the element (default: the whole element as JSON text); regexes are case-insensitive.
+//   Times are read from `timeField` when given, else from `field`, else from the element's `time`.
 //
 // Item types:
 //   text      {path, all?, none?}                       the value at path, as text, matches every `all` and no `none`
@@ -69,7 +70,7 @@ function matches(el, m) {
     if ((gt !== undefined && !(n > gt)) || (gte !== undefined && !(n >= gte)) || (lt !== undefined && !(n < lt)) || (lte !== undefined && !(n <= lte))) return false;
   }
   if (m.timeNear || m.timeIn) {
-    const t = toTime(m.field ? v : el && el.time);
+    const t = toTime(m.timeField ? get(el, m.timeField) : m.field ? v : el && el.time);
     if (Number.isNaN(t)) return false;
     if (m.timeNear && Math.abs(t - Date.parse(m.timeNear.time)) > m.timeNear.tolMin * 60000) return false;
     if (m.timeIn && !(t >= Date.parse(m.timeIn[0]) && t <= Date.parse(m.timeIn[1]))) return false;

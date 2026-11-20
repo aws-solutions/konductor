@@ -1,0 +1,5 @@
+{
+  "percentiles": [0.50, 0.95],
+  "server_error_floor": 500,
+  "report_directory": "reports"
+}

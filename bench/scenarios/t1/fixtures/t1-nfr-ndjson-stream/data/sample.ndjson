@@ -1,0 +1,9 @@
+{"endpoint":"/api/items","latency_ms":10,"status":200}
+{"endpoint":"/api/items","latency_ms":20,"status":500}
+{"endpoint":"/api/items","latency_ms":30,"status":200}
+not-json
+{"endpoint":"/api/search","latency_ms":5,"status":200}
+{"endpoint":"/api/search","latency_ms":15,"status":404}
+{"endpoint":"/api/search","latency_ms":50,"status":200}
+{"endpoint":"/api/search","latency_ms":100,"status":503}
+

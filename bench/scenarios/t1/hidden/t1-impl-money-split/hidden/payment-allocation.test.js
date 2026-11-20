@@ -1,0 +1,14 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { Money, allocatePayment } = require("../src");
+const usd = n => Money.fromMinor(n, "USD");
+test("payment follows invoice due ratios", () => { const result = allocatePayment(usd(200), [{ id: "one", due: usd(100) }, { id: "two", due: usd(300) }]); assert.deepEqual(result.map(x => [x.id, x.amount.minor]), [["one", 50], ["two", 150]]); });
+test("payment result is sorted and stable when input order changes", () => { const first = allocatePayment(usd(1), [{ id: "b", due: usd(1) }, { id: "a", due: usd(1) }]); const second = allocatePayment(usd(1), [{ id: "a", due: usd(1) }, { id: "b", due: usd(1) }]); assert.deepEqual(first.map(x => [x.id, x.amount.minor]), second.map(x => [x.id, x.amount.minor])); assert.deepEqual(first.map(x => x.id), ["a", "b"]); });
+test("payment tie gives residual to ascending invoice id", () => { const result = allocatePayment(usd(1), [{ id: "z", due: usd(1) }, { id: "a", due: usd(1) }]); assert.deepEqual(result.map(x => x.amount.minor), [1, 0]); });
+test("payment can include a zero due record", () => { const result = allocatePayment(usd(2), [{ id: "empty", due: usd(0) }, { id: "open", due: usd(2) }]); assert.deepEqual(result.map(x => x.amount.minor), [0, 2]); });
+test("mixed invoice currencies are rejected", () => assert.throws(() => allocatePayment(usd(3), [{ id: "usd", due: usd(2) }, { id: "eur", due: Money.fromMinor(2, "EUR") }]), /currency/i));
+test("overpayment is rejected", () => assert.throws(() => allocatePayment(usd(4), [{ id: "a", due: usd(3) }]), /exceed|larger|outstanding/i));
+test("negative payment is rejected", () => assert.throws(() => allocatePayment(usd(-1), [{ id: "a", due: usd(3) }]), /negative|non-negative/i));
+test("duplicate invoice identifiers are rejected", () => assert.throws(() => allocatePayment(usd(1), [{ id: "a", due: usd(2) }, { id: "a", due: usd(2) }]), /duplicate|unique/i));
+test("allocation does not mutate input records", () => { const invoices = [{ id: "b", due: usd(3) }, { id: "a", due: usd(2) }]; const before = invoices.map(x => [x.id, x.due.minor]); allocatePayment(usd(3), invoices); assert.deepEqual(invoices.map(x => [x.id, x.due.minor]), before); });

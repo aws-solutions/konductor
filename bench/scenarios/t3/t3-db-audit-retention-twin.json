@@ -1,0 +1,154 @@
+{
+  "id": "t3-db-audit-retention-twin",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the files under `fixture/` and create `docs/retention-figures.md`. List every figure expressed in days that describes audit-log retention, a superseded retention policy, or an age threshold for archiving. Put one figure on each line, include the source file path for that figure, and label each policy as current or superseded while identifying an archival threshold separately when it is not a replacement policy. Use only the supplied documents and provide a simple factual inventory, with no architecture recommendation or design.",
+  "fixture": "t3-db-audit-retention-twin",
+  "timeoutSec": 900,
+  "hidden": "t3-db-audit-retention-twin",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 13
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/retention-figures.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "retention-status",
+      "criterion": "The inventory correctly distinguishes the current retention policy from superseded policy figures and clearly identifies the archival age threshold without treating it as a replacement policy. (not code-checkable: The distinction depends on interpreting the surrounding compliance and budget context, not merely matching numeric tokens or file paths.)",
+      "weight": 1
+    },
+    {
+      "id": "clear-inventory",
+      "criterion": "The deliverable is a concise, readable one-line-per-figure inventory with source paths and no architecture recommendation or design material. (not code-checkable: A parser can check presence and rough layout, but human readability, contextual clarity, and irrelevant design content require semantic judgment.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "twin",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-19",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 38,
+      "alt": 100,
+      "date": "2026-11-19"
+    }
+  },
+  "version": 1,
+  "twinOf": "t3-db-audit-retention",
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": [
+      "system-design-patterns",
+      "decision-writing"
+    ]
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "prompt does not name a method, framework, or the answer; it only asks for factual extraction from supplied documents."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fail",
+        "note": "'superseded' vs 'archival threshold' require interpreting surrounding compliance and budget context to distinguish, not merely matching numeric tokens."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "fixture files contain retention values and context but no explicit answer key; all figures must be inferred from document text."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "not too easy; distinguishing current/superseded policies and identifying archival threshold as separate from replacement policies requires contextual reading."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "all figures are present in fixture, tests validate extraction correctly; no unstated format requirements or missing numbers."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that 400 days is the current retention policy, citing fixture/requirements/compliance.md and/or fixture/finance/budget-constraints.md as the source.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e2",
+        "text": "states that 90 days is the superseded (legacy) retention policy, explicitly noting it has been replaced by the 400-day requirement.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e3",
+        "text": "states that 180 days is an archival age threshold for cost optimization (data tiering), and clearly distinguishes it as NOT being a replacement or supersession policy.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+      },
+      {
+        "id": "e4",
+        "text": "includes both source files for the 90-day superseded figure: fixture/requirements/compliance.md (legacy policy statement) and fixture/finance/budget-constraints.md (note referencing legacy compliance manual).",
+        "source": "original"
+      },
+      {
+        "id": "e5",
+        "text": "provides a one-line-per-figure inventory format with source paths, without adding architecture recommendations, design proposals, or schema definitions beyond the requested factual extraction.",
+        "source": "original"
+      },
+      {
+        "id": "e6",
+        "text": "does NOT conflate the 180-day archival threshold with a retention policy change; correctly identifies it as a cost optimization threshold separate from compliance-driven retention periods.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e7",
+        "text": "does NOT omit the 90-day figure from either source file; recognizes that the same numeric value appears in multiple documents with consistent superseded status.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "lists only the 400-day retention figure and ignores the 90-day legacy policy entirely",
+      "treats the 180-day archival threshold as a superseded or replacement retention policy",
+      "omits the budget-constraints.md source for the 90-day legacy policy reference",
+      "adds architecture recommendations or database schema proposals beyond the requested inventory",
+      "conflates current policy with archival thresholds by labeling 180 days as 'current policy'"
+    ]
+  }
+}

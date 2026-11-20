@@ -4,7 +4,7 @@
 
 // Builds a skill-evaluation scenario set: extract rules, vote on them, write scenarios and rubrics, freeze, emit bench tasks.
 //   node bench/skilleval/skilleval.js extract|vote|scenarios|freeze|verify|emit --skill NAME [options]
-// See bench/README.md, section "Skill evaluation scenarios".
+// See bench/docs/reference.md, section "Skill evaluation scenarios".
 
 const fs = require('node:fs');
 const path = require('node:path');

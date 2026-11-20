@@ -18,8 +18,9 @@ const round = (n) => Math.round(n * 10) / 10;
 /** The pilot block for a dry-run result (pure). */
 function pilotOf(res, date) {
   const dry = { repeats: res.repeat, deterministic: res.deterministic, reference: round(res.reference.score), stub: round(res.stub.score) };
-  for (const [k, a] of Object.entries(res.answers || {})) dry[k] = round(a.score);
-  return { scores: { dryRun: dry }, reference: dry.reference, stub: dry.stub, decision: res.pass ? 'keep' : 'fix', date };
+  for (const k of ['lazy', 'alt']) if (res[k]) dry[k] = round(res[k].score);
+  const pass = res.pass && res.answersPass !== false;
+  return { scores: { dryRun: dry }, reference: dry.reference, stub: dry.stub, decision: pass ? 'keep' : 'fix', date };
 }
 
 if (require.main === module) {
@@ -31,8 +32,8 @@ if (require.main === module) {
   const task = JSON.parse(fs.readFileSync(file, 'utf8'));
   task.pilot = pilotOf(res, new Date().toISOString().slice(0, 10));
   fs.writeFileSync(file, `${JSON.stringify(task, null, 2)}\n`);
-  console.log(JSON.stringify({ id, ...task.pilot.scores.dryRun, pass: res.pass }));
-  if (!res.pass) process.exitCode = 1;
+  console.log(JSON.stringify({ id, ...task.pilot.scores.dryRun, decision: task.pilot.decision }));
+  if (task.pilot.decision !== 'keep') process.exitCode = 1;
 }
 
 module.exports = { pilotOf };

@@ -1,0 +1,5 @@
+incident_id,opened,closed,service,severity,summary,cause,owner
+INC-250204,2025-02-04T19:12:00Z,2025-02-04T19:39:00Z,web-api,SEV-3,Elevated cache misses increased response latency,A cache shard restarted during scheduled maintenance,Mira
+INC-250211,2025-02-11T06:28:00Z,2025-02-11T07:16:00Z,job-runner,SEV-2,Aging background work delayed exports,A provider retry storm filled the worker queue,Jon
+INC-250218,2025-02-18T14:11:00Z,2025-02-18T14:35:00Z,web-api,SEV-1,Checkout and project pages returned errors,API database connection pool waiters timed out after the afternoon release,Priya
+INC-250226,2025-02-26T17:51:00Z,2025-02-26T18:22:00Z,billing-worker,SEV-3,Some invoices waited on a slow provider,The payment provider exceeded its normal response budget,Mira

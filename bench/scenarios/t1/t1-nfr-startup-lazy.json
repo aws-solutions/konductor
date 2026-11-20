@@ -1,0 +1,189 @@
+{
+  "id": "t1-nfr-startup-lazy",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I own Atlas and need its command-line startup to feel instant. Keep the current commands, output text, exit statuses, and config behavior unchanged. When `--help` or `--version` runs, the loader-hook measurement must see no more than 4 project modules from `bin/` and `src/`. Selecting one command must load only that command's module and its own dependencies, not the modules for the other commands (`check`, `format`, `inspect`, `stats`, `report`, or `list`).\n\nThere are a few details to preserve. `--config path` must validate the file before any command runs, including for `--help` and `--version`, and an invalid mode must still print an `atlas: Invalid config:` error and exit 1. The format command relies on the load-time registration in `src/support/format-registration.js`; that registration must happen before formatting, but metadata commands must not trigger it. For diagnostics, preserve its `ATLAS_FORMAT_MARKER` behavior, which writes `format-registration` plus a newline to the supplied path. Callers read `REPORT_HEADER` from `src/constants.js`, and report output must continue to start with `Atlas report`. Continue accepting the existing `data/sample.json` and `data/notes.txt` examples. Keep the project dependency-free and add focused regression coverage plus a brief README or changelog note about the startup change.",
+  "fixture": "t1-nfr-startup-lazy",
+  "hidden": "t1-nfr-startup-lazy",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test tests/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "tests/lazy-loading.test.js",
+      "pattern": "test\\(",
+      "min": 2,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "startup|command-specific",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "src/lazy-command.js",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/cli.js",
+      "pattern": "lazy-command",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\"dependencies\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "startup|loaded when",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "tests/lazy-loading.test.js",
+      "pattern": "metadata output|selected command",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code (code cannot check this because it cannot assess the engineer\u2019s explanation)",
+      "weight": 1
+    },
+    {
+      "id": "r2",
+      "criterion": "The final message states what was measured and calls out the deliberate choice to keep config validation eager and load-time registration intact (code cannot check this because it cannot assess the final explanation of trade-offs)",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "verification",
+    "code-review",
+    "external-research"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "expertKey": {
+    "items": [
+      {
+        "id": "cause",
+        "text": "I traced the startup cost to the CLI\u2019s top-level imports of every command and their local engines.",
+        "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "measurement",
+        "text": "I measured fresh-process module counts through the loader hook and separated project modules from built-in runtime modules.",
+        "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "tradeoff",
+        "text": "I kept supplied-config validation on the initial path while deferring command-specific code until dispatch.",
+        "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "side-effect",
+        "text": "I verified that the formatter registration remains a load-time action and did not move it behind a later formatting step.",
+        "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "scope",
+        "text": "I left command implementations, output strings, and the dependency-free package structure outside the startup change.",
+        "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Made help faster by adding a special case for the help flag.",
+      "Rewrote the commands and removed the slow modules.",
+      "All tests pass and startup should now be faster.",
+      "Added a lazy import without checking configuration or load-time registration."
+    ]
+  },
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "code-review",
+      "external-research"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/sindresorhus/import-lazy",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the desired behavior (lazy loading, config validation ordering, format registration) without naming implementation mechanisms like 'lazy-command.js', 'memoization', or specific refactoring patterns."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The requirements are well-specified: 4 modules max for metadata paths, command-specific loading, eager config validation with specific error format preserved, ATLAS_FORMAT_MARKER behavior, REPORT_HEADER usage, and explicit command list to avoid loading."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture contains no comments, stubs, or documentation mentioning lazy loading, startup optimization, or the module-count constraint. The hidden tests introduce the loader-hook measurement mechanism."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow special-case for --help/--version alone would fail the 'bad config blocks version' test and the per-command isolation tests. The format-registration side-effect test catches naive command skipping. Config validation ordering tests prevent deferring all initialization."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required behaviors are achievable: lazy loading via dynamic require or wrapper functions, config validation remains possible before dispatch, format-registration runs at format.js load time as-is. No timing-dependent or flaky tests observed."
+      }
+    ]
+  }
+}

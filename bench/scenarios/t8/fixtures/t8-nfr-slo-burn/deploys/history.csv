@@ -1,0 +1,9 @@
+time,service,release,summary,labels
+2025-04-02T09:20:00Z,payments-api,release-2025.04.02.1,routine dependency client refresh,owner=checkout
+2025-04-07T16:10:00Z,payments-api,release-2025.04.07.2,add card authorization retry telemetry,owner=checkout
+2025-04-12T11:05:00Z,payments-worker,release-2025.04.12.1,batch reconciliation tuning,owner=ledger
+2025-04-14T14:54:00Z,payments-api,release-2025.04.14.3,pool_max 64 to 24; client timeout settings,owner=checkout
+2025-04-14T16:02:00Z,payments-api,release-2025.04.14.4,restore prior client settings,owner=checkout
+2025-04-18T10:30:00Z,payments-api,release-2025.04.18.1,structured request logging,owner=checkout
+2025-04-23T13:40:00Z,payments-worker,release-2025.04.23.2,settlement retry backoff,owner=ledger
+2025-04-27T08:15:00Z,payments-api,release-2025.04.27.1,dependency client patch update,owner=checkout

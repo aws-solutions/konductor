@@ -1,0 +1,5 @@
+{
+  "database": "data/harbor.db",
+  "port": 4310,
+  "logLevel": "info"
+}

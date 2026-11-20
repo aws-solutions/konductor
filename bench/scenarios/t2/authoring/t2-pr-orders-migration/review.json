@@ -1,0 +1,31 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt describes the PR scope but doesn't name review methods, checklists, or hint at specific planted problems or their count."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR #77, write findings to REVIEW.md, JSON format with location/severity/issue/fix."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Task requires careful cross-file analysis (migration code + deployment.md + architecture.md). Some issues visible in code (SQLi, N+1), others require understanding rolling deployment constraints and table scale."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 7 key items verified in fixture: k1 (line 8 NOT NULL DEFAULT), k2 (line 14 single UPDATE), k3 (line 29 down migration drops data), k4 (line 23 SQL injection f-string), k5 (lines 48-63 N+1 loop), k6 (line 74 missing composite index), k7 (line 24-27 standard CREATE INDEX). Severities appropriate. Grader can match by file:line within 3-line tolerance."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, doc files, or naming in fixture point at planted problems. deployment.md and architecture.md provide general guidance only."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

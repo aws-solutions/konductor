@@ -1,0 +1,152 @@
+{
+  "id": "t8-nfr-slo-burn",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "sre",
+  "phases2": [
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "Please take the payments API ops folder and turn the 28-day traffic and incident material into a usable reliability decision. Set customer-facing availability and latency objectives from the measured data, then replace the current noisy pages with alerts tied to those objectives. Base the indicators on metrics we actually have. Write the result to `slo/payments-api-slo.md` as a senior-facing Markdown document with a final fenced `json` block. The JSON object must contain `slis` (a list of objects with string `name`, and string `good` and `valid` values naming the metric or query that counts good and valid events), `measured` (numeric `availability28d` as a percentage with two decimals (requests without a 5xx status over all requests, for the traffic the objective covers) and numeric `latencyP99Ms` in milliseconds), `slos` (objects with string `sli`, numeric `target` as a percentage, and integer `windowDays` in days), and `alerts` (objects with string `name` and `sli`, numeric `burnRate` as an error-budget multiple, integer `longWindowMin` and `shortWindowMin` in minutes, and string `action`, where action is `page` or `ticket`). Use ISO 8601 UTC for times. Keep the source files unchanged.",
+  "fixture": "t8-nfr-slo-burn",
+  "hidden": "t8-nfr-slo-burn",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "slo/payments-api-slo.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/request-minute.csv",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decision-explanation",
+      "criterion": "The document explains the difference between an observed customer measurement, a service objective, and an alert action without treating a product aspiration as evidence (code cannot check this because it cannot judge the quality of the operational explanation).",
+      "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "user-sli",
+        "text": "Says which traffic is left out and why, and how the indicator is computed from the raw counts so someone else can reproduce the number.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "target-from-data",
+        "text": "Explains to the product team, in budget minutes and the dependency's own promise, why the wished-for target cannot be met.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "multiwindow",
+        "text": "Explains how the chosen burn rates and windows trade time to detect against false pages, with the budget spent before each alert fires.",
+        "source": "Google SRE workbook, Alerting on SLOs, https://sre.google/workbook/alerting-on-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "budget-policy",
+        "text": "States what the team does when the error budget is spent (for example slow feature releases) and who agrees to it.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "latency-good",
+        "text": "Expresses latency as the share of requests under a threshold, not an average.",
+        "source": "Google SRE workbook, Implementing SLOs, https://sre.google/workbook/implementing-slos/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "low-traffic",
+        "text": "Notes how quiet hours or low traffic affect the alerts and what is done about it.",
+        "source": "Google SRE workbook, Alerting on SLOs, https://sre.google/workbook/alerting-on-slos/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Set the target to 99.999% because the product team asked.",
+      "Alert when the error rate is over 1% for five minutes.",
+      "Average latency under 200 ms.",
+      "Keep the CPU over 80% page."
+    ]
+  },
+  "targetSkills": [
+    "non-functional-requirements"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "non-functional-requirements"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/workbook/alerting-on-slos/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks the agent to derive objectives from data, set alerts, and write documentation—it does not name a specific method, process, or tool the agent should use, nor does it list constraints or causes to find."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The key items specify exact numeric values (availability 99.97762185371705, p99 1200ms) and tolerances (tol: 0.05, tolPct: 5), metric names from catalogue.csv, and window days (28). These are unambiguous and derivable from the fixture."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fail",
+        "note": "The note 'April 14 contains the sustained event' and the deploy timeline reveal the root cause: pool size reduced to 24 on April 14, immediately before the incident. The connection-pool sequence is 'exposed' by the deployment history, giving away the investigation finding."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer (e.g., blaming the newest deploy, the loudest error, or listing every action) would fail tests: availability target must be ≤ measured (99.9776%), targets must respect the dependency cap (99.95%), and the incident on April 14 is explicitly tied to connection-pool contention, not CPU/memory."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable: availability is calculated from real_user rows in request-minute.csv (99.97762185371705%), p99 is the bucket-edge at 1,200ms, the 28-day window is explicit, and the metric names come from catalogue.csv."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

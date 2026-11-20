@@ -1,0 +1,214 @@
+{
+  "description": "Legacy per-batch copies of scenario tools and test helpers, frozen 2026-11-19 by owner rule. No new file with these names may appear under bench/scenarios outside bench/scenarios/lib; extend the shared module instead. Each entry names the DEBT row that plans its removal. The list may only shrink.",
+  "names": [
+    "dry-run.js",
+    "dryrun.js",
+    "stage.js",
+    "render-prompt.js",
+    "py_bridge.test.js",
+    "findings.test.cjs",
+    "plan-grade.cjs"
+  ],
+  "legacy": [
+    {
+      "path": "probe/dry-run.js",
+      "debt": "D-66"
+    },
+    {
+      "path": "t1/dry-run.js",
+      "debt": "D-60"
+    },
+    {
+      "path": "t1/hidden/t1-nfr-ndjson-stream/hidden/py_bridge.test.js",
+      "debt": "D-58"
+    },
+    {
+      "path": "t1/hidden/t1-nfr-report-queries/hidden/py_bridge.test.js",
+      "debt": "D-58"
+    },
+    {
+      "path": "t1/render-prompt.js",
+      "debt": "D-60"
+    },
+    {
+      "path": "t1/stage.js",
+      "debt": "D-60"
+    },
+    {
+      "path": "t2/dry-run.js",
+      "debt": "D-63"
+    },
+    {
+      "path": "t2/hidden/t2-arch-dr-event-store/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-arch-dr-split-checkout/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-arch-dr-two-regions/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-dr-data-erasure/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-dr-notify-fanout/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-dr-rate-limits/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-dr-search-reindex/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-gaps-jwt-middleware/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-pr-avatar-upload/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-pr-cursor-pages/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-pr-orders-migration/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-pr-price-cache/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-pr-refund-flow/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/hidden/t2-sec-pr-webhook-relay/hidden/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/lib/findings.test.cjs",
+      "debt": "D-61"
+    },
+    {
+      "path": "t2/render-prompt.js",
+      "debt": "D-63"
+    },
+    {
+      "path": "t4/dry-run.js",
+      "debt": "D-84"
+    },
+    {
+      "path": "t4/hidden/t4-dev-sql-report-filters/hidden/py_bridge.test.js",
+      "debt": "D-84"
+    },
+    {
+      "path": "t4/render-prompt.js",
+      "debt": "D-84"
+    },
+    {
+      "path": "t5/dry-run.js",
+      "debt": "D-70"
+    },
+    {
+      "path": "t5/render-prompt.js",
+      "debt": "D-70"
+    },
+    {
+      "path": "t5/stage.js",
+      "debt": "D-70"
+    },
+    {
+      "path": "t6/prompts/render-prompt.js",
+      "debt": "D-68"
+    },
+    {
+      "path": "t6/tools/dryrun.js",
+      "debt": "D-68"
+    },
+    {
+      "path": "t6/tools/stage.js",
+      "debt": "D-68"
+    },
+    {
+      "path": "t7/hidden/t7-dep-conflicts/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-dev-breakdown/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-freeze-forecast/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-pm-launch-cut/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-program-brief/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-program-rollup/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-release-gate/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-risk-owners/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-scope-cut/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-ship-train/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-sprint-capacity/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-status-slip-twin/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/hidden/t7-status-slip/hidden/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/lib/plan-grade.cjs",
+      "debt": "D-73"
+    },
+    {
+      "path": "t7/stage.js",
+      "debt": "D-73"
+    },
+    {
+      "path": "t8/dry-run.js",
+      "debt": "D-71"
+    },
+    {
+      "path": "t8/render-prompt.js",
+      "debt": "D-71"
+    },
+    {
+      "path": "t8/stage.js",
+      "debt": "D-71"
+    }
+  ]
+}

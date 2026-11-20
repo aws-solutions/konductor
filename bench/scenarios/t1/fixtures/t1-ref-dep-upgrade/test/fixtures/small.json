@@ -1,0 +1,5 @@
+{
+  "title": "Small",
+  "columns": [{ "key": "name", "label": "Name" }],
+  "rows": [{ "name": "one" }]
+}
