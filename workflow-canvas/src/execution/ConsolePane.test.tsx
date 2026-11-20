@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ConsolePane } from './ConsolePane';
 import {
@@ -189,5 +189,49 @@ describe('ConsolePane', () => {
       expect(screen.getByText('No live output is available.')).toBeTruthy();
       expect(screen.queryByText(NOT_SHOWN)).toBeNull();
     });
+  });
+});
+
+describe('ConsolePane switched to another stage', () => {
+  const LINE_PX = 20;
+  const BOX_PX = 100;
+  const linesUpTo = (count: number): ConsoleLine[] =>
+    Array.from({ length: count }, (_, i) => ({
+      n: i + 1,
+      text: `line ${i + 1}`,
+    }));
+  const paneOf = (name: string, count: number) => (
+    <ConsolePane
+      stage={stageWith({ name, console: linesUpTo(count) })}
+      runFinished={false}
+    />
+  );
+  // jsdom lays nothing out, so each box gets the measures of a real one.
+  function measured(name: string): HTMLElement {
+    const box = screen.getByRole('region', {
+      name: `Console lines of ${name}`,
+    });
+    if (!Object.hasOwn(box, 'clientHeight')) {
+      Object.defineProperty(box, 'clientHeight', { value: BOX_PX });
+      Object.defineProperty(box, 'scrollHeight', {
+        get: () => box.querySelectorAll('li').length * LINE_PX,
+      });
+    }
+    return box;
+  }
+
+  it('follows the newest line of the new stage after a scroll up in the old one', () => {
+    const view = render(paneOf('draft', 5));
+    measured('draft');
+    view.rerender(paneOf('draft', 10));
+    const draft = measured('draft');
+    draft.scrollTop = 20;
+    fireEvent.scroll(draft);
+
+    view.rerender(paneOf('review', 5));
+    const review = measured('review');
+    expect(review).not.toBe(draft);
+    view.rerender(paneOf('review', 12));
+    expect(review.scrollTop).toBe(12 * LINE_PX - BOX_PX);
   });
 });
