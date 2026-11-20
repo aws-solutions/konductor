@@ -1,0 +1,8 @@
+{
+  "name": "harborview-library-services",
+  "private": true,
+  "version": "0.8.2",
+  "scripts": {
+    "test": "node --test"
+  }
+}

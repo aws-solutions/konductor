@@ -52,3 +52,7 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-guide-contributing | fix | gpt-5.6-luna | 0.53 |  |
 | t11-guide-contributing | map | glm-5 | 0.15 |  |
 | t11-guide-contributing | review | qwen3-coder-next | 0.33 |  |
+| t11-docx-room-booking-reqs | author | gpt-5.6-luna | 4.19 |  |
+| t11-docx-room-booking-reqs | map | glm-5 | 0.15 |  |
+| t11-docx-room-booking-reqs | review | glm-5 | 3.56 |  |
+| t11-docx-room-booking-reqs | fix | gpt-5.6-luna | 1.99 |  |

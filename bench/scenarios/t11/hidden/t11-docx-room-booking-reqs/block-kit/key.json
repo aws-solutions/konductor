@@ -1,0 +1,284 @@
+{
+  "outputFile": "docs/requirements/room-booking.md",
+  "items": [
+    {
+      "id": "active-member",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "card",
+          "verif"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "advance-window",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "\\b(30|thirty)\\b[^.]{0,20}days?"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "shortest-booking",
+      "weight": 1,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "\\b(30|thirty)\\b[^.]{0,20}minutes?|\\bhalf\\s+an?\\s+hour\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "maximum-duration",
+      "weight": 3,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "\\b(3|three)\\b[^.]{0,20}hours?"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "old-duration-absent",
+      "weight": 2,
+      "type": "none",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "\\b(4|four)\\b[^.]{0,20}hours?"
+        ]
+      }
+    },
+    {
+      "id": "willow-capacity",
+      "weight": 1,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "Willow",
+          "\\b(4|four)\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "cedar-capacity",
+      "weight": 1,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "Cedar",
+          "\\b(8|eight)\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "lantern-capacity",
+      "weight": 1,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "Lantern",
+          "\\b(12|twelve)\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "cancellation-window",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "cancel",
+          "\\b(2|two)\\s*(hours?|h)\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "no-show-note",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "no.?show",
+          "\\b(15|fifteen)\\s*(minutes?|min|m)\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "suspension-rule",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "no.?show",
+          "\\b(60|sixty)\\b",
+          "\\b(7|seven)\\b"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "staff-override",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "staff",
+          "override",
+          "reason"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "accessibility-request",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "accessib",
+          "request|need"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "reminder",
+      "weight": 1,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "\\b24\\b",
+          "remind"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "youth-conflict",
+      "weight": 3,
+      "type": "some",
+      "path": "openQuestions",
+      "match": {
+        "all": [
+          "\\b(under|below|younger\\s+than)\\s*(16|sixteen)\\b",
+          "\\b(16|sixteen)\\b",
+          "account\\s*safety|youth\\s*access"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "confirmation-email",
+      "weight": 2,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "confirm",
+          "email"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "attendance-count",
+      "weight": 1,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "attend",
+          "count|number"
+        ]
+      },
+      "min": 1
+    },
+    {
+      "id": "no-waitlist-must",
+      "weight": 1,
+      "type": "none",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "wait.?list",
+          "\"priority\"\\s*:\\s*\"must\""
+        ]
+      }
+    },
+    {
+      "id": "no-calendar-must",
+      "weight": 1,
+      "type": "none",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "personal\\s+calendar",
+          "\"priority\"\\s*:\\s*\"must\""
+        ]
+      }
+    },
+    {
+      "id": "no-sms-must",
+      "weight": 1,
+      "type": "none",
+      "path": "requirements",
+      "match": {
+        "all": [
+          "sms",
+          "\"priority\"\\s*:\\s*\"must\""
+        ]
+      }
+    },
+    {
+      "id": "no-padding",
+      "weight": 2,
+      "type": "maxLen",
+      "path": "requirements",
+      "max": 20,
+      "min": 12
+    }
+  ]
+}
