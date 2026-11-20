@@ -45,3 +45,9 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-arch-outbox | review | glm-5 | 3.21 |  |
 | t10-arch-outbox | audit | - | 0.00 | author, fix, map, review streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
 | t10-arch-outbox | free dry run | - | 0.00 | after the one fix round (rename of the method names the request had leaked): reference 100, stub 3.6, lazy 34, alt 100, deterministic, per-test timeouts hold; the map and review calls above were run again on the fixed task |
+| t10-dev-quiet-hours-digest | author step A (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 150 tool calls); batch spend before: 37.56 of 500 |
+| t10-dev-quiet-hours-digest | author step A (stopped) | qwen3-coder-next | 13.20 | stopped at the 150 tool-call cap after 18 minutes; the stream reports no credits when stopped, so this is an estimate at 0.012 credits/s; a 61-file fixture whose `node --test test/` fails (Node 24 takes the directory as a module), no PLANTED.md, no task-draft.json |
+| t10-dev-quiet-hours-digest | fix of step A (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 150 tool calls); batch spend before: 50.76 of 500; the one fix attempt: write PLANTED.md and task-draft.json, repair the fixture's test command |
+| t10-dev-quiet-hours-digest | fix | qwen3-coder-next | 9.58 |  |
+| t10-dev-quiet-hours-digest | audit | - | 0.00 | step A and fix streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
+| t10-dev-quiet-hours-digest | step A dropped | qwen3-coder-next | 0.00 | after the one fix attempt the request still restated the traps and listed the design topics, with no interface contract; dropped, not hand-fixed. The brief goes to gpt-5.6-luna (single step) |

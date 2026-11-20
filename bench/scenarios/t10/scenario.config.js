@@ -18,9 +18,9 @@ const path = require('node:path');
 const { buildHidden, helper } = require('./lib/selfcheck.js');
 
 const STACKS = {
-  cjs: 'Plain JavaScript (CommonJS), Node 24, no dependencies, no install step, no bundler. Tests use node:test and node:assert, live in `test/` and run with `node --test test/`.',
-  esm: 'Plain JavaScript ES modules (`"type": "module"` in package.json), Node 24, no dependencies, no install step, no bundler. Tests use node:test and node:assert, live in `test/` and run with `node --test test/`.',
-  ts: 'TypeScript source written with erasable syntax only (no enums, namespaces or parameter properties), run directly by Node 24 type stripping: import paths end in `.ts`. No compiler, no dependencies, no install step. Tests use node:test and node:assert, live in `test/` as `*.test.ts`, and run with `node --test test/`.',
+  cjs: 'Plain JavaScript (CommonJS), Node 24, no dependencies, no install step, no bundler. Tests use node:test and node:assert, live in `test/` and run with `node --test` (no path argument: Node finds the `*.test.js` files).',
+  esm: 'Plain JavaScript ES modules (`"type": "module"` in package.json), Node 24, no dependencies, no install step, no bundler. Tests use node:test and node:assert, live in `test/` and run with `node --test` (no path argument: Node finds the `*.test.js` files).',
+  ts: 'TypeScript source written with erasable syntax only (no enums, namespaces or parameter properties), run directly by Node 24 type stripping: import paths end in `.ts`. No compiler, no dependencies, no install step. Tests use node:test and node:assert, live in `test/` as `*.test.ts`, and run with `node --test` (no path argument: Node finds the `*.test.js` files).',
 };
 
 const stepOf = (b, step) => step || (b.twoStep ? 'fixture' : 'all');
