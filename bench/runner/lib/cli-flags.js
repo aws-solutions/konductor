@@ -71,6 +71,9 @@ const FLAGS = {
   'scenarios lint': ['base', 'repo-root', 'json'],
   'scenarios prereg': ['date'],
   'scenarios coverage': ['base', 'repo-root', 'selection-only', 'out', 'fail-on-hole'],
+  'scenarios pilot-table': ['pack', 'json'],
+  'scenarios ready': ['batch', 'ids', 'late', 'json'],
+  'scenarios spot-review': ['seed', 'out'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
@@ -78,16 +81,16 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'] };
+const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'fail-on-hole', 'stats', 'apply', 'remove-originals', 'rejudge', 'introspect',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'fail-on-hole', 'stats', 'apply', 'remove-originals', 'rejudge', 'introspect', 'ids', 'late',
 ]);
 
 // Positional arguments a command takes after its name (and subcommand): the directory of `scenarios lint DIR`.
-const POSITIONALS = { 'scenarios lint': 1, 'scenarios coverage': 1, 'scenarios prereg': 2 };
+const POSITIONALS = { 'scenarios lint': 1, 'scenarios coverage': 1, 'scenarios prereg': 2, 'scenarios pilot-table': Infinity, 'scenarios ready': 1, 'scenarios spot-review': 1 };
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];
 
