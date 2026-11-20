@@ -275,8 +275,9 @@ const USAGE = `Usage:
        over 40 or pilot.decision fix or drop is listed as fix and is not ready. Hand-edited tasks with no review.recheck are listed apart as lock blocked;
        they may still run in the pilot. DIR defaults to bench/scenarios. No credits)
   node bench/runner/bench.js scenarios spot-review [DIR] [--seed N] [--out FILE]
-       (the owner's spot-review sample: per batch a seeded shuffle of the task ids, the first 10% rounded up and at least one, as markdown with links;
-       default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
+       (the owner's spot-review sample: per batch a shuffle of the task ids with its own seed (base seed plus the batch number), dropped tasks
+       left out, the first 10% rounded up and at least one, as markdown with links; DIR/spot-review.json pins samples already read and marks
+       batches pending until final. Default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger
