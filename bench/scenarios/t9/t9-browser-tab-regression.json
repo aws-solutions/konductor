@@ -1,7 +1,7 @@
 {
   "id": "t9-browser-tab-regression",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "bugfix",
   "role": "frontend",
   "questions": "allowed",
@@ -99,7 +99,34 @@
         "verdict": "pass",
         "note": "All hidden tests verify behaviors explicitly stated in the request: Back/Forward restoration of visibility/selection/title/focus, title format, one history entry per activation, Enter key activation, and focus on restored headings. No test relies on undocumented classes, IDs, or timing dependencies."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes bug without prescribing method; no misleading hints pointing away from real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows current implementation but doesn't reveal solution; no comments/docs describe finished behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests match fixture structure and request; after edit fixes, tests properly exercise popstate/hashchange behavior."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can add popstate/hashchange listeners; multiple correct approaches exist as confirmed in edits.md."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
@@ -108,15 +135,12 @@
     "dryRun": {
       "reference": 100,
       "stub": 16.8,
-      "lazy": 37.8,
+      "lazy": 16.8,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
-    "date": "2026-11-20",
-    "blockers": [
-      "D-131: the DOM-free hidden tests restore history through a fake window that fires only popstate, so a correct fix that listens for hashchange (all 6 browser tests pass with it) fails 6 of 17 hidden tests and its own regression test. The writer family fixes it; kept out of pilot waves until then."
-    ]
+    "decision": "keep",
+    "date": "2026-11-20"
   },
   "lockedAt": null
 }

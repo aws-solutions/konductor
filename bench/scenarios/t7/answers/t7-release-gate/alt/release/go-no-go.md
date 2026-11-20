@@ -6,7 +6,9 @@ The figures below come from the files in this folder; the reasoning follows the 
 {
  "earliest_release_date": "2027-05-13",
  "notes_corrections": [
-  "REL-127"
+  "REL-104",
+  "REL-127",
+  "REL-112"
  ],
  "late_cherry_picks": [
   "REL-118"

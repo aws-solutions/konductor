@@ -1,0 +1,219 @@
+{
+  "id": "t6-architect-idea-spike",
+  "class": "design",
+  "version": 2,
+  "phase": "ideation",
+  "role": "architect",
+  "questions": "allowed",
+  "prompt": "Marguerite's pitch about moving invoice PDF generation to an edge function is in the pitch folder, and the rest of the folder is what we have on it. I want to turn it into something we can actually try before the quarter freeze, not a build. Please write me a spike plan at docs/spike-plan.md: a short readable plan, then, as the last thing in the file, one ```json block with these fields: question (string), hypothesis (string), metric (string), baseline (object with value as a number in milliseconds, sample as a string saying what rows it covers, source as a string naming the file), pass_threshold (string), kill_threshold (string), timebox_days (number), engineer_days (number), steps (list of objects with name and days), scope_in (list of strings), scope_out (list of strings), decision_rule (string). The result has to be one we can clearly call a pass or a fail, using numbers from our own data. Keep it to what the team can really fit in.",
+  "fixture": "t6-architect-idea-spike",
+  "hidden": "t6-architect-idea-spike",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 21,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/spike-plan.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/spike-plan.md",
+      "pattern": "```json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const t=require('fs').readFileSync('docs/spike-plan.md','utf8');const m=[...t.matchAll(/\\x60\\x60\\x60json[^\\n]*\\n([\\s\\S]*?)\\n\\s*\\x60\\x60\\x60/gi)];const j=JSON.parse(m[m.length-1][1]);const k=['question','hypothesis','metric','baseline','pass_threshold','kill_threshold','timebox_days','engineer_days','steps','scope_in','scope_out','decision_rule'];if(!k.every(x=>x in j)||!(j.baseline.value>0)||!j.baseline.sample||!j.baseline.source)process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/spike-plan.md",
+      "pattern": "(over|above|more than|>)\\s*20\\s*pages|20\\s*pages",
+      "min": 2,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/spike-plan.md",
+      "pattern": "\"engineer_days\"\\s*:\\s*(9|1\\d)\\b",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decoy-explained",
+      "criterion": "The prose of the plan says plainly that the roughly 1.1 s average is not what customers complain about, because it is dominated by short invoices, and that the complaints and the support target concern invoices over 20 pages (code cannot check this because judging whether the explanation is clear and correct needs reading the argument, not matching words).",
+      "weight": 2
+    },
+    {
+      "id": "spike-is-honest",
+      "criterion": "The plan is honest that the spike cannot answer anything for the longest invoices because of the vendor's memory limit, says what happens to them, and does not promise real-time for all invoices (code cannot check this because it depends on whether the stated limits and fallbacks are coherent with each other).",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "learning-goal",
+        "text": "States what the team will learn from the spike, and that the result may be that the idea should not go ahead.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "riskiest-assumption",
+        "text": "Picks the riskiest assumption to test first rather than building a piece of the final system.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "throwaway",
+        "text": "Says the spike's code is throwaway and what happens to it after the decision.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "who-decides",
+        "text": "Names who makes the go or no-go call from the result and when, so the spike ends in a decision.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Describes a migration plan for the whole feature under the name of a spike.",
+      "Sets the pass line at the average latency or at no figure, so any result passes.",
+      "Gives steps with no days or owners, or more days than the team has free.",
+      "Leaves out what is not being tested."
+    ]
+  },
+  "targetSkills": [
+    "system-design-patterns",
+    "decision-research"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-architect",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:system-design-patterns",
+      "skill:decision-research",
+      "agent:k-architect"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "claude",
+    "model": "claude-sonnet-5.5",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works",
+      "licence": "OGL-3.0 (GOV.UK Service Manual, Open Government Licence v3.0 stated in the page footer)",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies WHAT to deliver (a spike plan with specific JSON fields), not HOW to compute the values or which files to read."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All names, paths, and fields are clearly specified. Tests allow reasonable variation in phrasing while checking for correct numerical values derived from the fixture data."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires computing p95 for a specific subset (invoices over 20 pages) from CSV data, navigating decoy averages, cross-referencing multiple files for limits and calendar constraints, and synthesizing scope boundaries. A quick answer using headline numbers would fail."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required facts are derivable from the fixture: the p95 for large invoices from pdf-latency.csv, the 6s target from support-targets.md, the 128 MB limit and 54-page ceiling from vendor and incident files, and the 8 engineer-days from team-calendar.csv."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains all raw data needed to derive the correct answer. The prompt does not reveal which subset matters or what the correct thresholds are. The reference solution shows one valid synthesis of the data, not an answer key in the fixture."
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "fail",
+          "note": "Prompt mentions 'roughly 1.1 s average' which misleads to focus on average latency rather than p95 of large invoices required by hidden tests. (disposition: false finding. The request does not mention the 1.1 s average; it is in the judge-only rubric item decoy-explained and in fixture/pitch/pitch-note.md, which is the seeded trap the task tests, not a hint in the request. CV-D2 changed neither the request nor that fixture file; no recount call was left under the 30-credit stop)"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains raw data and context but doesn't pre-compute answers or describe finished behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check values from fixture data (p95 of >20 page invoices, 128MB limit, team calendar constraints) and rubric matches request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can analyze data to find p95 of large invoices, understand team constraints, and create valid spike plan."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 38.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-D2 t6 fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
+}

@@ -133,7 +133,7 @@
       "desc": "Preserves the fixed launch date",
       "op": "date",
       "path": "date",
-      "value": "2027-06-18",
+      "value": "2027-07-16",
       "tolDays": 0
     },
     {

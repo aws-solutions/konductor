@@ -21,7 +21,7 @@ const path = require('node:path');
 const { loadRuns } = require('../report/load.js');
 const { checksScore, qualityOfRun, DEFAULT_WEIGHTS } = require('../report/scores.js');
 const { familyOf } = require('../judge/family.js');
-const { toolNameOf, mcpToolNameOf, mcpInputOf } = require('../runner/lib/stream.js');
+const { toolNameOf, mcpToolNameOf, mcpInputOf, parseStream, runErrorOf } = require('../runner/lib/stream.js');
 const { aggregateHidden } = require('../runner/lib/check-matcher.js');
 const { lockBlockers, fixReasons } = require('./ready.js');
 
@@ -34,6 +34,7 @@ const SECOND_FAMILY_SHARE = 1 / 3;
 // shortcut: a name match on the call input, so a fixture folder that is itself called hidden/ would also flag; read the
 // call before acting on it, and move to the sandbox's denied-read log when the runner records one.
 const LEAK_PATH = /bench\/scenarios\/|(^|[\s/'"])(hidden|solutions|answers|authoring|briefs)\/|\.bench-answer-key/;
+const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
 const SHINGLE = 12;          // words per shingle when an output is compared with the reference
 const COPY_SHARE = 0.6;      // share of the reference's own shingles (not in the fixture) found in one output file
 const COPY_MIN_SHINGLES = 20;
@@ -93,9 +94,17 @@ function codeScore(r) {
   return q ? q.score : null;
 }
 
-function brokenReasons(r) {
+// True when the service refused the run: the harness flag, or, for runs saved before the flag, the stream's runError.
+function throttled(r, runDir) {
+  if ((r.flags || []).includes('throttled')) return true;
+  if (r.status === 'success') return false;
+  try { return THROTTLE.test(runErrorOf(parseStream(fs.readFileSync(path.join(runDir, 'stream.jsonl'), 'utf8')).events) ?? ''); } catch { return false; }
+}
+
+function brokenReasons(r, runDir) {
   const out = [];
   if (r.status === 'timeout') out.push('timeout');
+  else if (throttled(r, runDir)) out.push(`${r.status}: throttled by the service, rerun it`);
   else if (r.status && r.status !== 'success') out.push(r.status);
   if (r.infraError) out.push('infra error');
   if (hiddenOf(r)?.unparsed) out.push('hidden suite did not parse');
@@ -198,13 +207,18 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       const batch = batchOf(e.taskId);
       const score = codeScore(r);
       const flags = {};
-      const broken = brokenReasons(r);
+      const broken = brokenReasons(r, e.dir);
       if (broken.length) flags.broken = broken.join(', ');
-      if (finite(score) && score >= EASY) flags['too-easy'] = `score ${score.toFixed(0)}`;
+      // A throttled run never reached the task, so its score raises no too-easy or too-hard flag.
+      const refused = throttled(r, e.dir);
+      if (!refused && finite(score) && score >= EASY) flags['too-easy'] = `score ${score.toFixed(0)}`;
       const ref = entry?.task.pilot?.dryRun?.reference;
-      if (finite(score) && score <= HARD) flags['too-hard'] = `score ${score.toFixed(0)}`;
+      if (!refused && finite(score) && score <= HARD) flags['too-hard'] = `score ${score.toFixed(0)}`;
       else if (finite(ref) && ref < REF_MIN) flags['too-hard'] = `reference ${ref} in the dry run`;
-      const leak = [...leakedReads(e.dir), ...copiedReference(e.dir, entry)];
+      // A negative control's right answer is to change (almost) nothing, so its output matching the reference is
+      // expected; only reads of hidden or answer paths count as a leak there.
+      const negative = entry?.task.controlKind === 'negative';
+      const leak = [...leakedReads(e.dir), ...(negative ? [] : copiedReference(e.dir, entry))];
       if (leak.length) flags['answer-leak'] = leak.join('; ');
       const share = pack.families.get(batch);
       // A batch the owner keeps single-family (authorship.singleFamily) reports it in its own column instead of the flag.

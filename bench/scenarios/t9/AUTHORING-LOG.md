@@ -70,3 +70,25 @@ Coverage-review wave (2026-11-20), batch CV-B: estimate 225 credits, stop 450. T
 | t9-e2e-no-approval-control | review (stopped at its tool-call cap, 61 calls, no verdict) | qwen3-coder-next | 15.00 | the cut stream reports no credits, so the abort limit is counted; re-run with glm-5 |
 | t9-e2e-no-approval-control | review | glm-5 | 3.75 |  |
 | t9-browser-tab-regression | review | glm-5 | 4.21 |  |
+
+CV-FIX (2026-11-20, owner-approved CV-B2 fix of D-131; stop 60 credits counted for the CV-FIX worker, 15 per call minimum):
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t9-browser-tab-regression | fix (one more round, approved) | gpt-5.6-luna | 1.57 | 15 counted; hidden-behaviour.test.js fake window and answers/lazy rewritten |
+| t9-browser-tab-regression | recheck | deepseek-3.2 | 2.72 | 15 counted; 4 of 4 pass |
+
+- The writer family made the unit restore tests check behaviour: a restore fires `popstate` then `hashchange` (as a
+  browser does on a same-page Back or Forward with another hash), every listener and the `on*` properties run, and
+  the fake is reachable as `root.defaultView` and as the globals `window`, `history` and `location` per test.
+  `browser.test.js`, the regress kit, the fixture and the checks are unchanged. No Claude edit to the prompt,
+  fixture, key, checks or rubric, so `handEdited` stays unset.
+- Claude (CV-FIX) added two further correct answers, `answers/t9-browser-tab-regression/alt-hashchange` (the reference
+  listening for `hashchange` on the page's window) and `alt-window` (the fixture plus `window.onhashchange` on the
+  global window), and a `variants` hook plus an 80 gate for any `answers/<id>/alt-*` in `scenario.config.js`.
+- Free gates (`dry-run.js --record`, browser tests under the heavy lock): before the fix reference 100, stub 16.8,
+  lazy 37.8, alt 100, alt-hashchange 74.8, a global-window popstate fix 62.2; after it reference 100, stub 16.8, lazy
+  16.8, alt 100, alt-hashchange 100, alt-window 100. A global-window `popstate` fix without a deferred redraw scores 87.4:
+  it fails 3 real-browser tests on focus, which is the answer's fault, not the key's.
+- Blindness audit of both streams: 0 reads of a konductor skills/, agent-sops/, agents/ or context/ path.
+- `pilot.decision` keep, blocker cleared, D-131 closed.

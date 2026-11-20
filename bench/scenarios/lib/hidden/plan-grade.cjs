@@ -2,11 +2,13 @@
 'use strict';
 
 // Grades a planning or status document against a T7 key, with no model in the loop.
-// The agent's document holds one fenced JSON block whose info string is the key's `block` (for example ```status).
+// The agent's document holds one fenced JSON block whose info string is the key's `block` (for example ```status, or
+// ```json status with a language tag first).
 // The key lists assertions; each one is graded on its own, so a hidden test file can turn each into one test and the
 // pass share is the score. Assertion ops:
 //   cites      some element of the list at `path` names at least `min` (default 1) of `ids` in `field` (or anywhere in it);
-//              with `where: {field: value}` that element must also have those values (strings ignore case), so a
+//              with `where: {field: value}` that element must also have those values (strings ignore case; a list of
+//              values accepts any one of them, for a fact the sources support two ways), so a
 //              risk's kind or owner is checked on the risk that names the ticket, wherever it sits in the list
 //   absent     no element of the list at `path` names any of `ids` (a decoy: a ticket that looks risky and is not)
 //   includes   the list at `path` holds every one of `ids` (`any: true`: at least one)
@@ -26,11 +28,15 @@ const path = require('node:path');
 const norm = (s) => String(s ?? '').toLowerCase();
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** The first fenced block with info string `name` (case-insensitive) whose body parses as JSON, else null. */
+/**
+ * The first fenced block whose info string is `name` (case-insensitive), or `json name` (a language tag before it),
+ * and whose body parses as JSON, else null.
+ */
 function readBlock(text, name) {
   const want = norm(name);
-  for (const m of String(text).matchAll(/^[ \t]*```[ \t]*([A-Za-z0-9_-]*)[^\n]*\n([\s\S]*?)^[ \t]*```[ \t]*$/gm)) {
-    if (norm(m[1]) !== want) continue;
+  for (const m of String(text).matchAll(/^[ \t]*```[ \t]*([^\n]*)\n([\s\S]*?)^[ \t]*```[ \t]*$/gm)) {
+    const words = norm(m[1]).split(/[^a-z0-9_-]+/).filter(Boolean);
+    if (!(words[0] === want || (words[0] === 'json' && words[1] === want))) continue;
     try { return JSON.parse(m[2]); } catch { /* try the next block */ }
   }
   return null;
@@ -66,7 +72,7 @@ const toNum = (v) => (typeof v === 'number' ? v : typeof v === 'string' && v.tri
 const OPS = {
   cites(doc, a) {
     const els = list(getPath(doc, a.path));
-    const fits = (el) => Object.entries(a.where || {}).every(([f, v]) => same(getPath(el, f), v));
+    const fits = (el) => Object.entries(a.where || {}).every(([f, v]) => (Array.isArray(v) ? v : [v]).some((w) => same(getPath(el, f), w)));
     const ok = els.some((el) => hitsIn(el, a.field, a.ids).length >= (a.min ?? 1) && fits(el));
     const what = a.where ? ` with ${JSON.stringify(a.where)}` : '';
     return { ok, detail: ok ? 'cited' : `no element of ${a.path} names ${a.ids.join(', ')}${what}` };

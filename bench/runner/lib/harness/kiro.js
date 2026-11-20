@@ -7,7 +7,9 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, sessionModels } = require('../stream.js');
+const { parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, sessionModels, runErrorOf } = require('../stream.js');
+
+const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
 const { turnStreamTexts } = require('../autonomy.js');
 const { crossCheckCredits } = require('../result.js');
 const { buildChildEnv } = require('../env.js');
@@ -291,6 +293,12 @@ function parseResult(outDir, { home, acc, arm, ctx, freshSessions = false }) {
   acc.meta.creditsSessionTotal = cross.total;
   if (cross.mismatch) acc.meta.flags.push('creditsMismatch');
   if (!arm.vanilla && acc.agg.skillsMcpOk === false) acc.meta.flags.push('skillsMcpFailed');
+  // A turn the service refused (pilot wave 3: two runs ended after 11 s on ClientThrottleError) is not the task's fault.
+  const runError = turnStreamTexts(outDir).map((t) => runErrorOf(parseStream(t).events)).find(Boolean);
+  if (runError) {
+    acc.meta.runError = runError.slice(0, 300);
+    if (THROTTLE.test(runError)) acc.meta.flags.push('throttled');
+  }
   return acc;
 }
 

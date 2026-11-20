@@ -18,8 +18,8 @@ const { converse, unmatchedFacts } = require('./tools/fake-user.js');
 
 const DIR = __dirname;
 const GENERIC_ASK = 'Is there anything else I should know before I start?';
-const FAMILY = { 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'qwen', 'minimax-m2.5': 'minimax' };
-const DATE = '2026-11-19';
+const FAMILY = { 'claude-sonnet-5.5': 'claude', 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'qwen', 'minimax-m2.5': 'minimax' };
+const DATE = '2026-11-20';
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 const SCRIPTED = `2. The scripted user (\`scriptedUser\` in task-draft.json). The colleague knows 4 to 8 facts that are NOT in the fixture or the request, that a careful practitioner would think to ask about after reading the folder (the folder shows the gap, for example data with two time zones but no rule for them), and that change the requirements. For each fact write:
@@ -57,7 +57,7 @@ const TAIL = `
    - \`limits\`: { "softSec", "hardSec" }: the time a competent agent needs, hardSec twice softSec.
    - \`notes\`: 3 to 6 sentences for the reviewer: the traps, where the fixture shows each one, and what a quick answer misses.`;
 
-function render(id, lib) {
+function render(id, lib, step = null) {
   const brief = lib.brief(id);
   const tpl = lib.read('prompts/author.md');
   const scripted = brief.kind === 'scripted';
@@ -70,6 +70,8 @@ function render(id, lib) {
     fixtureSize: brief.kind === 'twin' ? 'it is already in `fixture/`; do not change it' : negative ? '15 to 25 files' : '20 to 40 files, code files only where the brief says so (Node.js 24, no dependencies, tests with node --test that pass)',
     questionRule: 'Do not mention questions at all: neither invite them nor forbid them.',
   };
+  // Second-family authors write in two calls: `data` (fixture and request) and `key` (hidden tests, reference, checks).
+  if (step === 'data' || step === 'key') return fill(lib.read(`prompts/author-${step}.md`), v);
   v.kindSection = fill(scripted ? SCRIPTED : DOC, v) + fill(TAIL, v);
   return fill(tpl, v);
 }
@@ -158,10 +160,23 @@ function writeAnswers(s, id) {
   return out;
 }
 
+// Further correct answers (answers/<id>/alt-*), for example a plan that books less than all the free time.
+const extraAnswers = (id) => {
+  const d = path.join(DIR, 'answers', id);
+  return fs.existsSync(d) ? fs.readdirSync(d).filter((n) => n.startsWith('alt-')).sort() : [];
+};
+
 module.exports = {
   dir: DIR,
   conversation,
   taskErrors,
+  variants: (task) => extraAnswers(task.id).map((name) => ({ name, overlay: path.join(DIR, 'answers', task.id, name) })),
+  // Each further correct answer must score 80 or more, like the alternative.
+  gates: (out, defaults) => {
+    const g = { ...defaults };
+    for (const name of extraAnswers(out.id)) g[name] = out.scores[name] != null && out.scores[name] >= 80;
+    return g;
+  },
   prompt: { render },
   stage: {
     authEnv: 'T6_AUTH',
