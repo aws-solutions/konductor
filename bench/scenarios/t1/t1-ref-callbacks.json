@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-callbacks",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 18,
+      "min": 15,
       "weight": 3,
       "kind": "substance"
     },
@@ -26,35 +26,35 @@
       "cmd": "node --test",
       "expectExit": 0,
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
       "cmd": "test \"$(cat test/*.test.js | grep -c 'test(')\" -ge 8",
       "expectExit": 0,
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "not_contains",
       "path": "package.json",
       "pattern": "\\\"dependencies\\\"\\s*:",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "contains",
       "path": "CHANGELOG.md",
       "pattern": "async functions|promise",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
       "cmd": "grep -rqiE 'promise' README.md docs",
       "expectExit": 0,
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
@@ -135,13 +135,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 11.6,
-    "decision": "fix",
+    "stub": 0,
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 11.1,
-      "lazy": 49.6,
+      "stub": 0,
+      "lazy": 33.3,
       "alt": 100,
       "date": "2026-11-20"
     }

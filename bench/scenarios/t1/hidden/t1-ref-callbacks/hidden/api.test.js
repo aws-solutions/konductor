@@ -128,7 +128,7 @@ test('processFile returns the output descriptor as a promise', async () => {
   } finally { await cleanup(env.root); }
 });
 
-test('pipeline never exceeds the configured concurrency', async () => {
+async function preservation1() { // was: test('pipeline never exceeds the configured concurrency')
   const env = await setup(['a.txt', 'b.txt', 'c.txt', 'd.txt']);
   const releases = [];
   let active = 0; let maximum = 0;
@@ -147,9 +147,9 @@ test('pipeline never exceeds the configured concurrency', async () => {
     await running;
     assert.equal(maximum, 2);
   } finally { while (releases.length) releases.shift()(); await cleanup(env.root); }
-});
+}
 
-test('pipeline keeps its sorted result order when hooks finish out of order', async () => {
+async function preservation2() { // was: test('pipeline keeps its sorted result order when hooks finish out of order')
   const env = await setup(['c.txt', 'a.txt', 'b.txt']);
   const waiting = new Map();
   try {
@@ -159,15 +159,15 @@ test('pipeline keeps its sorted result order when hooks finish out of order', as
     const result = await running;
     assert.deepEqual(result.files.map((item) => item.source), ['a.txt', 'b.txt', 'c.txt']);
   } finally { for (const resolve of waiting.values()) resolve(); await cleanup(env.root); }
-});
+}
 
-test('an empty input still returns an ordered empty summary', async () => {
+async function preservation3() { // was: test('an empty input still returns an ordered empty summary')
   const env = await setup([]);
   try { assert.deepEqual(await runPipeline(env.input, env.output, {}), { processed: 0, files: [] }); }
   finally { await cleanup(env.root); }
-});
+}
 
-test('CLI success keeps its exit code and output wording', async () => {
+async function preservation4() { // was: test('CLI success keeps its exit code and output wording')
   const env = await setup(['cli.txt']);
   try {
     const result = spawnSync(process.execPath, [path.join(__dirname, '../bin/sieve.js'), '--input', env.input, '--output', env.output], { encoding: 'utf8' });
@@ -175,7 +175,7 @@ test('CLI success keeps its exit code and output wording', async () => {
     assert.match(result.stdout, /^Processed 1 file\(s\) into /);
     assert.equal(result.stderr, '');
   } finally { await cleanup(env.root); }
-});
+}
 
 test('CLI usage errors retain exit code 2', () => {
   const result = spawnSync(process.execPath, [path.join(__dirname, '../bin/sieve.js'), '--input'], { encoding: 'utf8' });
@@ -196,4 +196,13 @@ test('CLI processing errors exit with code 1 and report on stderr', async () => 
 test('CLI rejects a bad concurrency value as a usage error', () => {
   const result = spawnSync(process.execPath, [path.join(__dirname, '../bin/sieve.js'), '--input', 'in', '--output', 'out', '--concurrency', '0'], { encoding: 'utf8' });
   assert.equal(result.status, 2);
+});
+
+// The four behaviours the refactor must keep pass on the untouched code too, so they count as one test: a half-done
+// change that keeps them earns one point here, not four (owner ruling D-118).
+test('the refactor keeps concurrency, result order, the empty summary and CLI success output', async () => {
+  await preservation1(); // pipeline never exceeds the configured concurrency
+  await preservation2(); // pipeline keeps its sorted result order when hooks finish out of order
+  await preservation3(); // an empty input still returns an ordered empty summary
+  await preservation4(); // CLI success keeps its exit code and output wording
 });
