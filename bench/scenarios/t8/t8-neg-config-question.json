@@ -89,6 +89,19 @@
       }
     ]
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 17.3,
+    "dryRun": {
+      "reference": 100,
+      "stub": 17.3,
+      "lazy": 79.6,
+      "alt": 79.6,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
   "lockedAt": null
 }
