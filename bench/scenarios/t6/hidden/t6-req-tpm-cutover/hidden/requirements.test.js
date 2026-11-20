@@ -22,7 +22,7 @@ scriptedSuite(test, assert, {
     },
     {
       id: 'F4',
-      all: [/sarah.*johnson|vp.*engineering/i, /alex.*rodriguez.*lisa.*wong|platform.*lead.*payment.*lead/i],
+      all: [/sarah.*johnson|vp.*engineering/i, /alex.*rodriguez|platform lead/i, /lisa.*wong|payments? lead/i],
       wrong: []
     },
     {

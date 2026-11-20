@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-ci-deploy-role-twin",
-  "version": 3,
+  "version": 4,
   "class": "complex",
   "phase": "implementation",
   "phases2": [],
@@ -27,7 +27,7 @@
       "cmd": "node --test test/*.test.js",
       "expectExit": 0,
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
@@ -128,22 +128,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The CLI examples and API signature in task.json define the requested interface and behavior, not a method for solving it; the IAM no-change instruction is a scope guard, not a misleading hint."
+          "note": "The prompt specifies the deploy.js behavior and interface but does not prescribe a work method or framework. It contains no misleading instruction that redirects attention from dry runs, manifests, retries, and preserving IAM/configuration/tests."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture has the baseline deploy implementation, visible tests, and a generic release-manifest changelog entry, but it does not state the requested hash-skipping, dry-run JSON, or four-attempt retry behavior as finished behavior."
+          "note": "The fixture establishes the existing deployment surface and baseline CDN/API behavior, but its code, visible tests, and docs do not give the requested manifest format, hash-based skipping, dry-run JSON, or retry semantics as a finished implementation."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden tests use the public files, stage configs, fake cloud client, deploy API, and manifest path named by task.json; the requested output fields and retry timings match hidden/deploy.test.js, and rubric change-explained covers the same behavior."
+          "note": "The hidden tests use the existing public files, config-derived ARNs, cloud-client methods, and deploy API, while the prompt states manifestPath, sleep, dry-run, manifest, and retry requirements. The rubric's change-explained criterion asks for those same behaviors and does not depend on reference-only names."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "fixture/scripts/deploy.js, scripts/lib/manifest.js, the visible deploy tests, and the explicit task interface provide enough context to implement the change without hidden tests, while the hidden suite accepts behavior through API and CLI assertions rather than reference structure."
+          "note": "The current deploy implementation, config/client helpers, public tree, and the fully specified prompt provide enough information to implement the change without hidden tests or the solution. The tests allow the requested behavior rather than requiring the reference's internal structure."
         }
       ]
     }
@@ -156,13 +156,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 19.7,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 19.7,
-      "lazy": 19.7,
+      "stub": 0,
+      "lazy": 0,
       "alt": 100,
       "date": "2026-11-20"
     }

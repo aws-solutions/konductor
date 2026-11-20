@@ -1,7 +1,7 @@
 {
   "id": "t6-req-data-export",
   "class": "design",
-  "version": 3,
+  "version": 5,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -181,7 +181,7 @@
       "type": "fixture_unchanged",
       "path": "data",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -287,22 +287,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for 'clear product requirements document' - no specific method or framework, no misleading hints."
+          "note": "Prompt asks to read material and create implementable requirements, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has raw materials (data files, docs) but not the finished requirements document."
+          "note": "Fixture contains admin roles, data schemas, policy notes but not synthesized requirements."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Tests check scripted facts F1-F8 from prompt; rubric references these facts; all match fixture content and prompt."
+          "note": "Hidden tests check patterns matching scripted facts; rubric matches prompt and fixture scope."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM could create requirements from docs/data files; edits.md shows tests accept variant wording ('Pro or Enterprise', '72h/3 days', etc.)."
+          "note": "Competent PM could extract requirements from fixture; alternative wording/structure would pass."
         }
       ]
     }
@@ -315,13 +315,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 9.9,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 9.9,
-      "lazy": 24.1,
+      "stub": 0,
+      "lazy": 17.1,
       "alt": 100,
       "date": "2026-11-20"
     }

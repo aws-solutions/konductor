@@ -300,3 +300,7 @@ Who: claude (mate spot-review fix worker session), from the Fable spot-review pr
 ## Delegated-read fix (2026-11-20, mate spot-review fix worker)
 
 - `t4-iam-ci-deploy-role-twin` (version 4): the request now says a missing or unreadable manifest (any read error) means nothing is skipped, which is what the weight-2 check's `--manifest-path /dev/null/none.json` (ENOTDIR) needs. The reference ignores a manifest written for the other stage, so a production deploy after a staging one uploads everything; no test checks the stage, so a shared manifest is still accepted (the old reference scores 100). Free gates: reference 100, lazy 19.7, alt 100; the stub is 19.7 (unchanged: the fixture's own tests and format checks pass on it).
+
+## Stub band (2026-11-20, mate spot-review fix worker)
+
+- `t4-iam-ci-deploy-role-twin` (version 5): the empty answer scored 19.7. The fixture's own test suite check (`node --test test/*.test.js`) passes untouched, so it is now `kind: format`; two hidden regression tests ("a failed deploy does not write the manifest", "production deploy still invalidates the CDN") passed on a deploy with no manifest at all, so each also checks that a successful deploy writes its manifest, as the request asks. Gates: reference 100, empty 0, lazy 0, old reference (shared manifest) 100.

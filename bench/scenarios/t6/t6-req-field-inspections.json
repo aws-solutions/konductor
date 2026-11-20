@@ -1,7 +1,7 @@
 {
   "id": "t6-req-field-inspections",
   "class": "design",
-  "version": 2,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -100,7 +100,7 @@
       "type": "fixture_unchanged",
       "path": "data",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -194,48 +194,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates requirement practicality and separation of confirmed vs open decisions without demanding a method. Earlier glm-5 check of the request, fixture and key: pass (The prompt specifies the goal, topics, and output format without naming a method, technique, checklist, or tool, and without pointing at traps or decoys.)."
+          "note": "Prompt asks to read material and create concrete requirements, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (8 hours offline, 12 shared tablets, 4 photos max, dual-edit conflict, 2-day approval, safety stop) are from scripted user; synthesis required. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain interview notes, policies, and data for reasoning; they do not list the six scripted user facts (F1-F6) that answers.json expects.)."
+          "note": "Fixture contains paper process, asset catalog, operating notes but not synthesized requirements."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: 8 hours offline, 12 tablets by asset tag, 4 photos per item at original resolution, both versions kept on conflict, safety-stop for chlorine/electrical/ground. Earlier glm-5 check of the request, fixture and key: pass (Grounded tests check 7 years (records-policy.md line 5), Android 13/8-inch (it-standards.md line 5), and not-applicable semantics (records-policy.md line 10, paper-form.md line 24). Scripted facts (F1-F6) come from user answers.)."
+          "note": "Hidden tests check patterns matching scripted facts; rubric aligns with prompt and fixture."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement organization can still Pass if all confirmed rules appear with testable wording and open decisions have owners. Earlier glm-5 check of the request, fixture and key: pass (Fixture provides operating context (interviews, policies, data) enabling the engineer to ask about connectivity, tablets, photos, conflicts, approval, and safety, receiving scripted facts F1-F6 in return.)."
+          "note": "Competent PM could create requirements from fixture; different implementation would pass if captures essentials."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 11.7,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 11.7,
-      "lazy": 23.1,
+      "stub": 0,
+      "lazy": 14.3,
       "alt": 100,
       "date": "2026-11-20"
     }

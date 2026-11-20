@@ -25,6 +25,14 @@ test('requirementTexts joins string fields except id, and keeps plain strings', 
   assert.deepEqual(texts, ['Send at 9 local time', 'Plain one']);
 });
 
+test('contradicts ignores a wrong claim the requirement denies, and keeps a pattern that states a negation', () => {
+  assert.equal(key.contradicts('Starter accounts are included.', /Starter[^.]{0,40}included/i), true);
+  assert.equal(key.contradicts('Starter accounts are not included.', /Starter[^.]{0,40}included/i), false);
+  assert.equal(key.contradicts('The export must not include payment card numbers.', /include payment card/i), false);
+  assert.equal(key.contradicts('Holds get no renewal.', /\bno\s+renewal/i), true);
+  assert.equal(key.contradicts('Cards are not shown. Include payment card data.', /include payment card/i), true);
+});
+
 test('numbersIn normalises thousands and skips 0 and 1', () => {
   assert.deepEqual(key.numbersIn('2,000 orders, 1 site, 0 errors, 3.5 hours, R12'), ['2000', '3.5']);
 });

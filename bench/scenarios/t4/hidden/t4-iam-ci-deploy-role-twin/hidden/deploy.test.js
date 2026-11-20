@@ -166,6 +166,9 @@ test('a failed deploy does not write the manifest, so the next run uploads again
   const { sleep } = sleeper();
   await assert.rejects(deployModule().deploy({ stage: 'staging', client, releaseId: 'r', sleep, manifestPath: m }));
   assert.equal(fs.existsSync(m), false);
+  // The next, successful run writes it (so the test does not pass on a deploy that never writes a manifest).
+  await deployModule().deploy({ stage: 'staging', client: createFakeClient([]), releaseId: 'r2', sleep, manifestPath: m });
+  assert.equal(fs.existsSync(m), true);
 }));
 
 test('production deploy still invalidates the CDN and staging does not', () => withTemp(async (dir) => {
@@ -176,4 +179,5 @@ test('production deploy still invalidates the CDN and staging does not', () => w
   const stg = [];
   await deployModule().deploy({ stage: 'staging', client: createFakeClient(stg), releaseId: 'r', sleep, manifestPath: path.join(dir, 's.json') });
   assert.ok(!stg.some((c) => c.action === 'cloudfront:CreateInvalidation'));
+  assert.ok(fs.existsSync(path.join(dir, 'p.json')) && fs.existsSync(path.join(dir, 's.json')), 'each successful deploy writes its manifest');
 }));

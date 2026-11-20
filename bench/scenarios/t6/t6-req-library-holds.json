@@ -300,13 +300,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 4.5,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 4.5,
-      "lazy": 14,
+      "stub": 0,
+      "lazy": 9.5,
       "alt": 100,
       "date": "2026-11-20"
     }
