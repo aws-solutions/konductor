@@ -2,12 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
 import type { StageFieldRule } from '../designer-view/field-rules';
-import {
-  parseWorkflowExtras,
-  stageExtrasOf,
-  stageFieldsOf,
-  type StageFieldInfo,
-} from './workflow-extras';
+import { parseWorkflowExtras, type StageFieldInfo } from './workflow-extras';
 
 const FIELDS = {
   agent: [
@@ -41,12 +36,6 @@ const body = (over: Record<string, unknown> = {}) => ({
         agent: 'k-developer',
         range: { line: 10, end_line: 12 },
       },
-      {
-        name: 'review',
-        kind: 'agent',
-        agent: 'k-quality-assurance',
-        range: { line: 13, end_line: 13 },
-      },
     ],
   },
   diagnostics: [],
@@ -59,19 +48,16 @@ const asRules: readonly StageFieldRule[] =
   FIELDS.agent satisfies readonly StageFieldInfo[];
 
 describe('parseWorkflowExtras', () => {
-  it('reads the kind and the lines of each stage, in run order', () => {
-    expect(parseWorkflowExtras(body()).stages).toEqual([
-      { name: 'draft', kind: 'agent', range: { line: 10, endLine: 12 } },
-      { name: 'review', kind: 'agent', range: { line: 13, endLine: 13 } },
-    ]);
-  });
-
   it('reads the editable keys of a stage by kind', () => {
-    expect(parseWorkflowExtras(body()).stageFields.agent).toEqual(FIELDS.agent);
+    expect(parseWorkflowExtras(body()).stageFields.agent).toEqual(asRules);
   });
 
   it('reads the default goal the workflow declares', () => {
     expect(parseWorkflowExtras(body()).goalDefault).toBe('Say hello');
+  });
+
+  it('leaves the stages of the view to the check the Design view makes', () => {
+    expect(parseWorkflowExtras(body())).not.toHaveProperty('stages');
   });
 
   it('leaves out the default goal when the workflow declares none', () => {
@@ -94,18 +80,6 @@ describe('parseWorkflowExtras', () => {
     expect(parseWorkflowExtras(body({ view })).goalDefault).toBe('');
   });
 
-  it('keeps a kind this page does not know', () => {
-    const view = {
-      ...body().view,
-      stages: [
-        { name: 'ask', kind: 'human_input', range: { line: 1, end_line: 2 } },
-      ],
-    };
-    expect(parseWorkflowExtras(body({ view })).stages[0]?.kind).toBe(
-      'human_input',
-    );
-  });
-
   it('keeps the keys of a kind this page does not know', () => {
     const fields = {
       ...FIELDS,
@@ -116,10 +90,15 @@ describe('parseWorkflowExtras', () => {
     ).toHaveLength(1);
   });
 
-  it('reads the keys of a stage with no view', () => {
+  it('reads the keys of a stage for a document with no file', () => {
     const extras = parseWorkflowExtras(body({ view: null }));
-    expect(extras.stages).toEqual([]);
     expect(extras.stageFields.agent).toHaveLength(3);
+    expect(extras).not.toHaveProperty('goalDefault');
+  });
+
+  it('ignores a stage of the view that it does not read', () => {
+    const view = { ...body().view, stages: [{ name: 'draft' }] };
+    expect(parseWorkflowExtras(body({ view })).goalDefault).toBe('Say hello');
   });
 
   it('ignores a field the page does not read', () => {
@@ -162,37 +141,10 @@ describe('parseWorkflowExtras', () => {
     );
   });
 
-  it.each([
-    [
-      'a stage with no kind',
-      { name: 'draft', range: { line: 1, end_line: 2 } },
-    ],
-    ['a stage with no range', { name: 'draft', kind: 'agent' }],
-    [
-      'a range that starts at 0',
-      { name: 'd', kind: 'agent', range: { line: 0, end_line: 2 } },
-    ],
-    [
-      'a range that ends before it starts',
-      { name: 'd', kind: 'agent', range: { line: 9, end_line: 8 } },
-    ],
-    [
-      'a range line that is not whole',
-      { name: 'd', kind: 'agent', range: { line: 1.5, end_line: 2 } },
-    ],
-  ])('refuses %s', (_, stage) => {
-    const view = { ...body().view, stages: [stage] };
-    expect(() => parseWorkflowExtras(body({ view }))).toThrow(ApiError);
-  });
-
-  it('refuses two stages with one name', () => {
-    const stage = {
-      name: 'draft',
-      kind: 'agent',
-      range: { line: 1, end_line: 2 },
-    };
-    const view = { ...body().view, stages: [stage, { ...stage }] };
-    expect(() => parseWorkflowExtras(body({ view }))).toThrow(ApiError);
+  it('refuses a view that is not a mapping', () => {
+    expect(() => parseWorkflowExtras(body({ view: 'hello' }))).toThrow(
+      ApiError,
+    );
   });
 
   it('refuses params written as a list', () => {
@@ -203,31 +155,5 @@ describe('parseWorkflowExtras', () => {
   it('refuses a default goal that is not a string', () => {
     const view = { ...body().view, params: { goal: { default: 7 } } };
     expect(() => parseWorkflowExtras(body({ view }))).toThrow(ApiError);
-  });
-});
-
-describe('stageExtrasOf', () => {
-  it('finds a stage by name', () => {
-    expect(stageExtrasOf(parseWorkflowExtras(body()), 'review')?.range).toEqual(
-      { line: 13, endLine: 13 },
-    );
-  });
-
-  it('finds no stage that the view does not have', () => {
-    expect(
-      stageExtrasOf(parseWorkflowExtras(body()), 'wrap-up'),
-    ).toBeUndefined();
-  });
-});
-
-describe('stageFieldsOf', () => {
-  it('gives the keys of a kind the server described', () => {
-    expect(stageFieldsOf(parseWorkflowExtras(body()), 'agent')).toEqual(
-      asRules,
-    );
-  });
-
-  it('gives no key for a kind the server did not describe', () => {
-    expect(stageFieldsOf(parseWorkflowExtras(body()), 'uses')).toEqual([]);
   });
 });

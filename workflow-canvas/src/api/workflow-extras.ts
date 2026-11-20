@@ -2,11 +2,15 @@
 import { ApiError } from './api';
 
 /*
- * The fields of `GET /api/workflow` that `parse.ts` leaves out: the `kind`
- * and `range` of each stage, the `stage_fields` of the document, and the
- * default goal of the workflow. It reads the same answer and rejects a shape
- * the contract does not allow, as `parse.ts` does, so a view built on it
- * never shows a field the server did not send.
+ * The fields of `GET /api/workflow` that `parse.ts` leaves out and the views
+ * read when the workflow is loaded: the `stage_fields` of the document and
+ * the default goal of the workflow. It reads the same answer and rejects a
+ * shape the contract does not allow, as `parse.ts` does, so a view built on
+ * it never shows a field the server did not send.
+ *
+ * The `kind` and the `range` of a stage are not here: they change with every
+ * edit, so the Design view reads them from the answer of the check it just
+ * made, and one reader of them is enough.
  */
 
 const BAD_REPLY = 'The server sent a reply that this page does not understand.';
@@ -37,12 +41,6 @@ function arrayOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : fail();
 }
 
-function lineOf(value: unknown): number {
-  return Number.isInteger(value) && (value as number) >= 1
-    ? (value as number)
-    : fail();
-}
-
 function countOf(value: unknown, least: number): number {
   return Number.isInteger(value) && (value as number) >= least
     ? (value as number)
@@ -61,25 +59,6 @@ function optional<T>(
   read: (value: unknown) => T,
 ): { readonly [k: string]: T } {
   return Object.hasOwn(holder, key) ? { [key]: read(holder[key]) } : {};
-}
-
-/** The lines of the workflow text that a stage takes up, counted from 1. */
-export interface StageRange {
-  /** The line of the stage's first key. */
-  readonly line: number;
-  /** The line where its last value ends, included. */
-  readonly endLine: number;
-}
-
-/** The `kind` and `range` of one stage of the view. */
-export interface StageExtras {
-  readonly name: string;
-  /**
-   * The key of the file that names the kind of the stage. A kind this page
-   * does not know is kept as it came, so a caller can draw the stage plainly.
-   */
-  readonly kind: string;
-  readonly range: StageRange;
 }
 
 /**
@@ -104,36 +83,10 @@ export interface StageFieldInfo {
 
 /** The fields of the answer that the parsed document leaves out. */
 export interface WorkflowExtras {
-  /** One entry per stage of the view, in run order; empty when there is no view. */
-  readonly stages: readonly StageExtras[];
   /** The editable keys of a stage, by kind. It is there even with no view. */
   readonly stageFields: Readonly<Record<string, readonly StageFieldInfo[]>>;
   /** The default goal the workflow declares, when it declares one. */
   readonly goalDefault?: string;
-}
-
-function parseRange(value: unknown): StageRange {
-  const range = objectOf(value);
-  const line = lineOf(range.line);
-  const endLine = lineOf(range.end_line);
-  // A stage ends where it starts or later; the other way round is a bad reply.
-  return endLine >= line ? { line, endLine } : fail();
-}
-
-function parseStage(value: unknown): StageExtras {
-  const stage = objectOf(value);
-  return {
-    name: stringOf(stage.name),
-    kind: stringOf(stage.kind),
-    range: parseRange(stage.range),
-  };
-}
-
-// The graph names its nodes by stage name, so a name that repeats would hide
-// a stage, as it would in `parse.ts`.
-function uniqueByName(stages: readonly StageExtras[]): readonly StageExtras[] {
-  const names = new Set(stages.map((stage) => stage.name));
-  return names.size === stages.length ? stages : fail();
 }
 
 function parseField(value: unknown): StageFieldInfo {
@@ -182,42 +135,14 @@ function parseGoalDefault(view: Json): { readonly goalDefault?: string } {
 }
 
 /**
- * Reads the `kind` and `range` of each stage, the `stage_fields` and the
- * default goal out of a `WorkflowDocument` body. A `view` of `null` has no
- * stages and no default goal; `stage_fields` is there either way. Unknown
- * fields are ignored, and a field the contract shapes differently throws an
- * `ApiError`, as reading the rest of the answer does.
+ * Reads the `stage_fields` and the default goal out of a `WorkflowDocument`
+ * body. A `view` of `null` has no default goal; `stage_fields` is there
+ * either way. Unknown fields are ignored, and a field the contract shapes
+ * differently throws an `ApiError`, as reading the rest of the answer does.
  */
 export function parseWorkflowExtras(body: unknown): WorkflowExtras {
   const document = objectOf(body);
   const stageFields = parseStageFields(document.stage_fields);
-  if (document.view === null) return { stages: [], stageFields };
-  const view = objectOf(document.view);
-  return {
-    stages: uniqueByName(arrayOf(view.stages).map(parseStage)),
-    stageFields,
-    ...parseGoalDefault(view),
-  };
-}
-
-/** The `kind` and `range` of the stage called `name`, when the view has it. */
-export function stageExtrasOf(
-  extras: WorkflowExtras,
-  name: string,
-): StageExtras | undefined {
-  return extras.stages.find((stage) => stage.name === name);
-}
-
-/**
- * The editable keys of a stage of `kind`, or none for a kind the server did
- * not describe, so a caller shows such a stage without a form.
- */
-export function stageFieldsOf(
-  extras: WorkflowExtras,
-  kind: string,
-): readonly StageFieldInfo[] {
-  const fields = Object.hasOwn(extras.stageFields, kind)
-    ? extras.stageFields[kind]
-    : undefined;
-  return fields ?? [];
+  if (document.view === null) return { stageFields };
+  return { stageFields, ...parseGoalDefault(objectOf(document.view)) };
 }

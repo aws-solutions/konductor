@@ -27,13 +27,6 @@ function stubDocument(text: string) {
 describe('the extra fields of the document the stub serves', () => {
   const extras = parseWorkflowExtras(stubDocument(TEXT));
 
-  it('names every stage with its kind and its lines', () => {
-    expect(extras.stages).toEqual([
-      { name: 'draft', kind: 'agent', range: { line: 14, endLine: 15 } },
-      { name: 'review', kind: 'agent', range: { line: 16, endLine: 17 } },
-    ]);
-  });
-
   it('reads the keys the stub says a stage may have', () => {
     expect(extras.stageFields).toEqual(STAGE_FIELDS);
   });
@@ -44,6 +37,6 @@ describe('the extra fields of the document the stub serves', () => {
 
   it('reads a document with no file', () => {
     const empty = { ...stubDocument(''), text: null, hash: null, view: null };
-    expect(parseWorkflowExtras(empty).stages).toEqual([]);
+    expect(parseWorkflowExtras(empty).stageFields).toEqual(STAGE_FIELDS);
   });
 });
