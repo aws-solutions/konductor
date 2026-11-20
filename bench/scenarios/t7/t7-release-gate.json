@@ -1,7 +1,7 @@
 {
   "id": "t7-release-gate",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "release-ops",
   "role": "tpm",
   "questions": "allowed",
@@ -56,7 +56,7 @@
     },
     {
       "id": "director-reasoning",
-      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs. Fail: blocker labels are listed with no evidence or owner. Partial: blockers have owners but do not separate main from the release branch, or the two failing signals are merged. Pass: the prose covers REL-112 (closed on main, a7d4e1c missing from release/27.05, owner Mira Sol), REL-118 (approved 2027-04-29 09:15 after the 2027-04-28 17:00 deadline, owner Jon Bell), REL-131 (linux-integration failing from c9f1e2a, owner Asha Nair), separates that from the intermittent windows-smoke signal (85% pass), removes the REL-127 note promise because it was reverted, excludes REL-145 on the triage record, and requires fresh branch CI evidence. (code cannot check this because it cannot assess the explanation).",
+      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs. Fail: blocker labels are listed with no evidence or owner. Partial: blockers have owners but do not separate main from the release branch, or the two failing signals are merged. Pass: the prose covers REL-112 (closed on main, a7d4e1c missing from release/27.05, its cherry-pick only proposed, owner Mira Sol), REL-118 (approved 2027-04-29 09:15 after the 2027-04-28 17:00 deadline, owner Jon Bell), REL-131 (linux-integration failing from c9f1e2a, owner Asha Nair), separates that from the intermittent windows-smoke signal (85% pass), removes the REL-127 note promise because it was reverted (flagging REL-112 and REL-104 as notes not on the branch also counts), excludes REL-145 on the triage record, and requires fresh branch CI evidence. (code cannot check this because it cannot assess the explanation).",
       "weight": 2
     }
   ],
@@ -64,33 +64,43 @@
     "items": [
       {
         "id": "branch-evidence",
-        "text": "Distinguish what is closed on main from what is actually present on the release branch, and require branch-level evidence before calling the release ready.",
-        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "States that REL-112 is closed on main but its commit a7d4e1c is not on release/27.05 (release_branch_present=no), so closed does not mean shipped. Also counts: 'needs a cherry-pick onto the branch'. Weak: 'REL-112 is closed, fine'. Do not require the commit hash."
+      },
+      {
+        "id": "proposed-not-approved",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "States that REL-112's cherry-pick is only 'proposed' in the queue, so it still needs approval (before the 2027-05-05 17:00 deadline for the next slot), not just verification. Weak: 'verify the cherry-pick'. Do not require the deadline."
+      },
+      {
+        "id": "late-pick",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "States that REL-118 was approved 2027-04-29 09:15, after the 2027-04-28 17:00 cherry-pick deadline, and is not on the branch, so shipping it Thursday needs an explicit exception. Also counts: 'about 16 hours late', or that it is on time for the 2027-05-05 deadline of the next slot. Weak: 'REL-118 pending'. Do not require the exact timestamp."
       },
       {
         "id": "signal-separation",
-        "text": "Separate a consistently failing required signal from an intermittent one, and give each the evidence and owner needed for a release decision.",
-        "source": "Kubernetes release-blocking jobs, https://github.com/kubernetes/sig-release/blob/master/release-blocking-jobs.md (Apache-2.0)"
+        "source": "Kubernetes release-blocking jobs, https://github.com/kubernetes/sig-release/blob/master/release-blocking-jobs.md (Apache-2.0)",
+        "text": "Separates linux-integration (fails every run since c9f1e2a, REL-131's commit, 50%) from windows-smoke (intermittent, 17 of 20, 85%), the first a blocker tied to REL-131 and the second a different class. Also counts: 'consistent vs intermittent'. Weak: 'CI is red' as one item. Do not require an owner for windows-smoke (the folder names none) or a mention of docs-linkcheck."
       },
       {
-        "id": "freeze-discipline",
-        "text": "Treat the freeze and cherry-pick deadlines as real constraints, call out the late approval, and make any exception explicit rather than silently accepting it.",
-        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
-      },
-      {
-        "id": "repeatable-validation",
-        "text": "Require a repeatable validation result on the candidate branch after changes, not just an issue status or an approval record.",
-        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+        "id": "decoys",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "Leaves out REL-145 because triage demoted it despite its release-blocker label (and REL-153, cancelled). Weak: lists every release-blocker label as a blocker. Do not require naming REL-153 or REL-105; not listing REL-145 as a blocker is the test."
       },
       {
         "id": "truthful-notes",
-        "text": "Keep release notes aligned with behavior that will ship, and remove a feature promise whose change was backed out.",
-        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
+        "text": "Corrects the notes draft against the branch: REL-127 was reverted and its promise comes out; REL-112 (Fixes) and REL-104 (Highlights) are claimed but their commits are not on release/27.05. Any two of the three pass; REL-127 alone is Partial. Weak: 'update the notes'."
       },
       {
         "id": "conditional-date",
-        "text": "Give the next calendar slot as a conditional date with the checks and deadline that must be met, rather than presenting schedule recovery as certain.",
-        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+        "text": "Gives 2027-05-13 (the 27.06 slot) as the earliest date, conditional on the fixes being on the branch by the 2027-05-05 17:00 UTC deadline and a clean validation window of 2027-05-10 to 2027-05-12. Weak: 'next Thursday'. Do not require the 2027-05-20 fallback or the validation dates when the deadline is named."
+      },
+      {
+        "id": "repeatable-validation",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
+        "text": "Requires fresh, repeatable CI on the release branch after the fixes land (linux-integration green on release/27.05), not an issue status or an approval record. Weak: 'once the tickets are closed we can ship'."
       }
     ],
     "weakAnswers": [
@@ -181,7 +191,16 @@
           "note": "rubric check: Different reasoning prose and blocker presentations can Pass if grounded in fixture evidence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar.)."
         }
       ]
-    }
+    },
+    "adjudication": [
+      "notes_corrections with REL-127 plus REL-112 and REL-104 (both claimed in the draft, neither commit on release/27.05) is fully correct; the hidden key accepts up to three.",
+      "windows-smoke listed as a blocker or as a risk needing an exception both pass signal-separation if it is kept apart from linux-integration; it must not sit in failing_jobs.",
+      "docs-linkcheck in flaky_jobs is no penalty (an optional job with one transient timeout).",
+      "REL-105 listed as a blocker is wrong (no blocker label; triage 'active' only keeps it in review): Partial on decoys, never a Fail of the call.",
+      "Earliest date 2027-05-20 with a reason is Partial on conditional-date: the calendar makes 2027-05-13 feasible. 2027-05-06 is a Fail.",
+      "Deadlines are UTC per the README; a deadline given only in an owner's local time is Partial on conditional-date.",
+      "Mentioning a decoy and dismissing it is correct; only listing it as a blocker, late pick or notes correction is wrong."
+    ]
   },
   "pilot": {
     "scores": {
@@ -206,7 +225,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

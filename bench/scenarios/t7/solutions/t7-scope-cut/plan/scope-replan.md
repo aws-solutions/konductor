@@ -2,7 +2,7 @@
 
 ## Bottom line
 
-Keep the launch on **2027-06-18**. The post-lock net-new work is 29 points, while the remaining holiday-adjusted slack is 17 points. We therefore need to remove **12 points** from the planned scope.
+Keep the launch on **2027-07-16**. The post-lock net-new work is 29 points, while the remaining holiday-adjusted slack is 17 points. We therefore need to remove **12 points** from the planned scope.
 
 ## What changed
 
@@ -53,6 +53,6 @@ PRJ-1008 is a customer commitment recorded in the product request notes. It cann
   "cannot_cut": [
     "PRJ-1008"
   ],
-  "date": "2027-06-18"
+  "date": "2027-07-16"
 }
 ```

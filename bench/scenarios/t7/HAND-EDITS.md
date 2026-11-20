@@ -114,3 +114,25 @@ Who: claude (mate spot-review fix worker session), from the Fable spot-review pr
   - Fixture `backlog.csv`: F-044 "Executive vanity wallboard" is now "Executive lobby wallboard"; "vanity" labelled the decoy. `interviews/interview-06.md:6` no longer says the release is "not an executive display"; it says the regional teams would run on it every day.
   - Rubric `director-bottom-line` Pass asked for exactly eight features and 58 points while the key accepts 58 to 63 planned points. It now asks for a named feature set with planned points between 58 and 63 and the buffer that leaves, and says the reference (eight features, 58 points) is one such plan.
   - Free gates unchanged: reference 100, stub 2.9, lazy 36.3; a second correct plan with nine features and 63 points scores 100.
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
+(reports/key-improve/reconciled.md in the mate workspace). Each task gets single-point expert items with their figures,
+`review.adjudication`, and a hand-written `answers/<id>/other` answer.
+
+- `t7-release-gate` (version 5): `hidden/.../key.json`: `third-blocker-summary` (one of six exact sentences) is gone;
+  `only-reverted-note` (maxCount 1) becomes `notes-match-branch` (ids REL-127, REL-112, REL-104, maxCount 3), because
+  the draft also claims REL-112 and REL-104 whose commits are not on release/27.05; new `notes-branch-claims` needs one
+  of REL-112 or REL-104. The reference and alt answers now correct all three notes. Tests min stays 15. Assertions
+  for owner-112, REL-145 absent from blockers and the CI lists were tried and left out: the shallow answer already
+  meets them (lazy 48 to 60), so they are judge items (`decoys`, `signal-separation`). expertKey: 8 items (adds
+  REL-112's pick is only proposed, REL-104 in the notes, repeatable branch CI). Free gates: reference 100, stub 4.8,
+  lazy 38.1, alt 100, other 100.
+- `t7-scope-cut` (version 4): the as-of date (2027-06-04) fell after S12 and S13, so their slack was spent. The three
+  sprints move to 2027-06-07 to 2027-07-16 (`capacity.csv`, `sprint-calendar.csv`) and the launch to 2027-07-16
+  (`roadmap.md`, key `launch-date`, reference, alt, pad, rubric); `README.md` says `committed_points` is the work
+  committed at the 2027-05-07 lock and excludes later additions, and that all three sprints are ahead; the same edits
+  in `authoring/t7-scope-cut/generate.py`. Points, slack and cut are unchanged (29, 17, 12). expertKey: 8 items with
+  figures (adds the unlabelled adds, the bug splits, cut arithmetic, no buffer). Free gates: reference 100, stub 4.8,
+  lazy 23.8, alt 100, other 100.

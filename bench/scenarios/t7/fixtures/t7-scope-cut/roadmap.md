@@ -3,7 +3,7 @@
 ## Milestones
 
 - Scope lock: **2027-05-07**
-- Launch date: **2027-06-18**
+- Launch date: **2027-07-16**
 
 The launch date is a fixed customer-facing date for this planning exercise. The release horizon uses the three sprints in `sprint-calendar.csv`. Work already closed or cancelled is historical record rather than remaining launch work.
 

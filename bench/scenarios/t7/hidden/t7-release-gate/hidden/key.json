@@ -77,20 +77,33 @@
       "maxCount": 1
     },
     {
-      "id": "only-reverted-note",
-      "desc": "the notes correction list contains only the reverted release-note promise",
+      "id": "notes-match-branch",
+      "desc": "every notes correction names a claim that is not on the release branch (reverted REL-127, or REL-112 and REL-104 whose commits are not on release/27.05)",
       "op": "precision",
       "path": "notes_corrections",
       "field": null,
       "ids": [
-        "REL-127"
+        "REL-127",
+        "REL-112",
+        "REL-104"
       ],
       "min": 1,
-      "maxCount": 1
+      "maxCount": 3
+    },
+    {
+      "id": "notes-branch-claims",
+      "desc": "the notes corrections also catch a claim whose commit is not on the release branch (REL-112 or REL-104)",
+      "op": "includes",
+      "path": "notes_corrections",
+      "ids": [
+        "REL-112",
+        "REL-104"
+      ],
+      "any": true
     },
     {
       "id": "third-blocker-present",
-      "desc": "the blocker list retains its third actionable entry",
+      "desc": "the blocker list keeps a third actionable entry",
       "op": "equals",
       "path": "blockers.2.owner",
       "oneOf": [
@@ -108,20 +121,6 @@
         "REL-112",
         "REL-118",
         "REL-131"
-      ]
-    },
-    {
-      "id": "third-blocker-summary",
-      "desc": "the third blocker entry includes its release-impact explanation",
-      "op": "equals",
-      "path": "blockers.2.summary",
-      "oneOf": [
-        "Fix is closed on main but the release branch does not contain its commit.",
-        "Approved cherry-pick is after the deadline and the commit is not on the release branch.",
-        "Required linux-integration has repeated failures beginning at this issue's main commit.",
-        "In short: Fix is closed on main but the release branch does not contain its commit.",
-        "In short: Approved cherry-pick is after the deadline and the commit is not on the release branch.",
-        "In short: Required linux-integration has repeated failures beginning at this issue's main commit."
       ]
     },
     {

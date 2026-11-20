@@ -174,14 +174,14 @@ Files in this folder:
 
 Ticket conventions: `Open`, `In Progress`, and `Review` are active statuses; `Closed` and `Cancelled` are not active work. A blank points cell means zero remaining points for aggregate planning. Labels are free text and may be blank. `created` is the calendar date on which the ticket entered the export's system. A dependency in `depends_on` names work that must be available first. For a split bug, the parent comment records the earlier estimate and the points moved into the split; the parent row shows its current reduced estimate.
 
-Capacity conventions: `capacity_points` is the sprint's point capacity before the listed organization holiday loss. `holiday_points_lost` is already expressed in points, and `committed_points` is current committed launch work. Only the listed holiday loss is deducted from capacity; there is no separate weekend deduction in these rows. The sprint calendar defines the weekday boundaries used by the sheet.
+Capacity conventions: `capacity_points` is the sprint's point capacity before the listed organization holiday loss. `holiday_points_lost` is already expressed in points, and `committed_points` is the launch work committed at the 2027-05-07 scope lock; it does not include work added after the lock. All three sprints are still ahead of the as-of date. Only the listed holiday loss is deducted from capacity; there is no separate weekend deduction in these rows. The sprint calendar defines the weekday boundaries used by the sheet.
 """)
     write_text(FIXTURE / "roadmap.md", """# North-window release roadmap
 
 ## Milestones
 
 - Scope lock: **2027-05-07**
-- Launch date: **2027-06-18**
+- Launch date: **2027-07-16**
 
 The launch date is a fixed customer-facing date for this planning exercise. The release horizon uses the three sprints in `sprint-calendar.csv`. Work already closed or cancelled is historical record rather than remaining launch work.
 
@@ -190,14 +190,14 @@ The ticket export is the working inventory for estimates. A `stretch` label iden
 The capacity sheet records the team's remaining point capacity and its current commitments. Product requests are recorded separately because they were submitted through the product review notes rather than this roadmap page.
 """)
     write_text(FIXTURE / "capacity.csv", """sprint,start,end,capacity_points,holiday_points_lost,committed_points,notes
-S12,2027-05-10,2027-05-21,44,0,37,regular two-week sprint
-S13,2027-05-24,2027-06-04,48,4,41,one organization holiday
-S14,2027-06-07,2027-06-18,45,2,36,one organization holiday
+S12,2027-06-07,2027-06-18,44,0,37,regular two-week sprint
+S13,2027-06-21,2027-07-02,48,4,41,one organization holiday
+S14,2027-07-05,2027-07-16,45,2,36,one organization holiday
 """)
     write_text(FIXTURE / "sprint-calendar.csv", """sprint,start_weekday,start,end,end_weekday,working_day_note
-S12,Monday,2027-05-10,2027-05-21,Friday,ten weekdays before local holiday adjustments
-S13,Monday,2027-05-24,2027-06-04,Friday,ten weekdays with one organization holiday
-S14,Monday,2027-06-07,2027-06-18,Friday,ten weekdays with one organization holiday
+S12,Monday,2027-06-07,2027-06-18,Friday,ten weekdays before local holiday adjustments
+S13,Monday,2027-06-21,2027-07-02,Friday,ten weekdays with one organization holiday
+S14,Monday,2027-07-05,2027-07-16,Friday,ten weekdays with one organization holiday
 """)
     write_text(FIXTURE / "product-requests.md", """# Product requests recorded after the scope review
 
