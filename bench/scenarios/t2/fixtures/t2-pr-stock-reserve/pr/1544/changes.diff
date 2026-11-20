@@ -1,0 +1,258 @@
+diff --git a/src/events/sync-emitter.js b/src/events/sync-emitter.js
+index f262caf..7a9a962 100644
+--- a/src/events/sync-emitter.js
++++ b/src/events/sync-emitter.js
+@@ -1,9 +1,9 @@
+ export class SyncEmitter {
+   constructor() { this.messages = []; }
+ 
+-  publish(topic, payload) {
++  async publish(topic, payload) {
++    await new Promise((resolve) => setImmediate(resolve));
+     this.messages.push({ topic, payload: structuredClone(payload) });
+-    return Promise.resolve();
+   }
+ 
+   all() { return this.messages.map((message) => ({ ...message })); }
+diff --git a/src/http/router.js b/src/http/router.js
+index 4241b96..0f1ab3d 100644
+--- a/src/http/router.js
++++ b/src/http/router.js
+@@ -1,6 +1,11 @@
+ import { errorResponse, json } from './response.js';
+ import { requestId } from './request-id.js';
+ 
++function bodyJson(body) {
++  if (!body) return {};
++  return typeof body === 'string' ? JSON.parse(body) : body;
++}
++
+ export function makeRouter({ inventory, warehouses, logger }) {
+   return async function route(request) {
+     const id = requestId(request.headers);
+@@ -11,6 +16,19 @@ export function makeRouter({ inventory, warehouses, logger }) {
+         return value ? json(200, value) : json(404, { code: 'not_found', message: 'stock not found' });
+       }
+       if (request.method === 'GET' && request.path === '/warehouses') return json(200, warehouses.active());
++      if (request.method === 'POST' && request.path === '/reservations') {
++        const input = bodyJson(request.body);
++        const value = await inventory.reserve(input.warehouseId, input.sku, input.quantity, id);
++        return json(201, value);
++      }
++      if (request.method === 'DELETE' && request.path.startsWith('/reservations/')) {
++        const idToRelease = request.path.split('/')[2];
++        const value = await inventory.release(idToRelease, id);
++        return value ? json(200, value) : json(404, { code: 'not_found', message: 'reservation not found' });
++      }
++      if (request.method === 'POST' && request.path === '/reservations/sweep') {
++        return json(200, { released: await inventory.sweepExpired() });
++      }
+       return json(404, { code: 'not_found', message: 'route not found' });
+     } catch (error) {
+       logger.error('request failed', { requestId: id, error: error.message });
+diff --git a/src/services/inventory-service.js b/src/services/inventory-service.js
+index 0751b57..40e0c54 100644
+--- a/src/services/inventory-service.js
++++ b/src/services/inventory-service.js
+@@ -1,6 +1,9 @@
+-import { nowUtc } from '../util/clock.js';
++import { addMinutes, nowUtc } from '../util/clock.js';
+ import { positiveInteger, requiredString } from '../util/validation.js';
+ 
++let nextReservation = 1;
++const reservationId = () => `hold-${nextReservation++}`;
++
+ export class InventoryService {
+   constructor({ store, catalog, events, audit, config, logger }) {
+     this.store = store;
+@@ -31,4 +34,59 @@ export class InventoryService {
+     this.audit.record('stock.set', { warehouseId, sku, quantity: value, requestId, at: nowUtc() });
+     return { warehouseId, sku, quantity: value };
+   }
++
++  async reserve(warehouseId, sku, quantity, requestId = undefined) {
++    requiredString(warehouseId, 'warehouseId');
++    requiredString(sku, 'sku');
++    positiveInteger(quantity, 'quantity');
++    const product = await this.catalog.get(sku);
++    if (!product || !product.sellable) throw new Error('sku is not sellable');
++    const available = await this.store.getStock(warehouseId, sku);
++    if (available < quantity) throw new Error('insufficient stock');
++
++    const reservation = {
++      id: reservationId(),
++      warehouseId,
++      sku,
++      quantity,
++      createdAt: nowUtc(),
++      expiresAt: addMinutes(nowUtc(), this.config.limits.reservation.holdMinutes),
++      requestId,
++    };
++    await this.store.saveReservation(reservation);
++    await this.store.setStock(warehouseId, sku, available - quantity);
++    this.events.publish('reservation.held', reservation);
++    this.audit.record('reservation.held', { ...reservation, at: nowUtc() });
++    return reservation;
++  }
++
++  async release(id, requestId = undefined) {
++    requiredString(id, 'reservationId');
++    const reservation = await this.store.getReservation(id);
++    if (!reservation) return null;
++
++    await this.events.publish('reservation.released', { ...reservation, requestId });
++
++    try {
++      await this.store.deleteReservation(id);
++      const current = await this.store.getStock(reservation.warehouseId, reservation.sku);
++      await this.store.setStock(reservation.warehouseId, reservation.sku, current + reservation.quantity);
++    } catch (error) {
++      this.logger.warn('reservation release failed', { id, error: error.message });
++      return { released: true, id };
++    }
++
++    this.audit.record('reservation.released', { id, requestId, at: nowUtc() });
++    return { released: true, id };
++  }
++
++  async sweepExpired() {
++    const now = new Date().toString();
++    const reservations = await this.store.listReservations();
++    const expired = reservations.filter((reservation) => reservation.expiresAt <= now);
++    for (const reservation of expired) {
++      await this.release(reservation.id, 'expiry-sweeper');
++    }
++    return expired.length;
++  }
+ }
+diff --git a/src/store/inventory-store.js b/src/store/inventory-store.js
+index ea9edd0..73b2e18 100644
+--- a/src/store/inventory-store.js
++++ b/src/store/inventory-store.js
+@@ -2,4 +2,8 @@ export class InventoryStore {
+   async getStock(_warehouseId, _sku) { throw new Error('getStock is not implemented'); }
+   async setStock(_warehouseId, _sku, _quantity) { throw new Error('setStock is not implemented'); }
+   async listStock(_warehouseId) { throw new Error('listStock is not implemented'); }
++  async saveReservation(_reservation) { throw new Error('saveReservation is not implemented'); }
++  async getReservation(_id) { throw new Error('getReservation is not implemented'); }
++  async listReservations() { throw new Error('listReservations is not implemented'); }
++  async deleteReservation(_id) { throw new Error('deleteReservation is not implemented'); }
+ }
+diff --git a/src/store/memory-store.js b/src/store/memory-store.js
+index 46e56d2..09100f5 100644
+--- a/src/store/memory-store.js
++++ b/src/store/memory-store.js
+@@ -7,6 +7,7 @@ export class MemoryStore extends InventoryStore {
+   constructor(seed = []) {
+     super();
+     this.stock = new Map(seed.map((row) => [key(row.warehouseId, row.sku), row.quantity]));
++    this.reservations = new Map();
+   }
+ 
+   async getStock(warehouseId, sku) {
+@@ -26,4 +27,26 @@ export class MemoryStore extends InventoryStore {
+       .filter(([stockKey]) => stockKey.startsWith(`${warehouseId}:`))
+       .map(([stockKey, quantity]) => ({ sku: stockKey.slice(warehouseId.length + 1), warehouseId, quantity }));
+   }
++
++  async saveReservation(reservation) {
++    await pause();
++    this.reservations.set(reservation.id, structuredClone(reservation));
++    return structuredClone(reservation);
++  }
++
++  async getReservation(id) {
++    await pause();
++    const reservation = this.reservations.get(id);
++    return reservation ? structuredClone(reservation) : null;
++  }
++
++  async listReservations() {
++    await pause();
++    return [...this.reservations.values()].map((reservation) => structuredClone(reservation));
++  }
++
++  async deleteReservation(id) {
++    await pause();
++    return this.reservations.delete(id);
++  }
+ }
+diff --git a/tests/reservation.test.js b/tests/reservation.test.js
+new file mode 100644
+index 0000000..eb581a1
+--- /dev/null
++++ b/tests/reservation.test.js
+@@ -0,0 +1,73 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { makeApp } from '../src/app.js';
++import { MemoryStore } from '../src/store/memory-store.js';
++import { CatalogStore } from '../src/store/catalog-store.js';
++import { AuditLog } from '../src/events/audit-log.js';
++import { SyncEmitter } from '../src/events/sync-emitter.js';
++import { loadConfig } from '../src/config.js';
++
++function appWithStock(quantity = 5, holdMinutes = 15) {
++  const config = loadConfig();
++  config.limits.reservation.holdMinutes = holdMinutes;
++  return makeApp({
++    config,
++    store: new MemoryStore([{ warehouseId: 'north', sku: 'BEANS-1KG', quantity }]),
++    catalog: new CatalogStore([{ sku: 'BEANS-1KG', sellable: true }]),
++    events: new SyncEmitter(),
++    audit: new AuditLog(),
++    logger: { warn() {}, error() {} },
++  });
++}
++
++const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
++
++test('reservation reduces available stock and records a hold', async () => {
++  const app = appWithStock(5);
++  const hold = await app.inventory.reserve('north', 'BEANS-1KG', 2, 'checkout-1');
++  assert.equal(hold.quantity, 2);
++  assert.equal(await app.store.getStock('north', 'BEANS-1KG'), 3);
++  assert.equal((await app.store.getReservation(hold.id)).sku, 'BEANS-1KG');
++});
++
++test('reservation rejects more units than are available', async () => {
++  const app = appWithStock(2);
++  await assert.rejects(() => app.inventory.reserve('north', 'BEANS-1KG', 3), /insufficient/);
++});
++
++test('release restores the held units', async () => {
++  const app = appWithStock(5);
++  const hold = await app.inventory.reserve('north', 'BEANS-1KG', 2);
++  const result = await app.inventory.release(hold.id, 'checkout-1');
++  assert.deepEqual(result, { released: true, id: hold.id });
++  assert.equal(await app.store.getStock('north', 'BEANS-1KG'), 5);
++  assert.equal(await app.store.getReservation(hold.id), null);
++});
++
++test('router accepts a reservation request', async () => {
++  const app = appWithStock(4);
++  const response = await app.router({
++    method: 'POST',
++    path: '/reservations',
++    headers: { 'x-request-id': 'checkout-9' },
++    body: JSON.stringify({ warehouseId: 'north', sku: 'BEANS-1KG', quantity: 1 }),
++  });
++  assert.equal(response.status, 201);
++  assert.equal(response.body.requestId, 'checkout-9');
++});
++
++test('expired holds are released by the sweep', async () => {
++  const app = appWithStock(5, 0.0001);
++  const hold = await app.inventory.reserve('north', 'BEANS-1KG', 2);
++  await sleep(15);
++  assert.equal(await app.inventory.sweepExpired(), 1);
++  assert.equal(await app.store.getReservation(hold.id), null);
++  assert.equal(await app.store.getStock('north', 'BEANS-1KG'), 5);
++});
++
++test('sweep leaves a current hold alone', async () => {
++  const app = appWithStock(5, 15);
++  await app.inventory.reserve('north', 'BEANS-1KG', 1);
++  assert.equal((await app.store.listReservations()).length, 1);
++  assert.match((await app.store.listReservations())[0].expiresAt, /Z$/);
++});

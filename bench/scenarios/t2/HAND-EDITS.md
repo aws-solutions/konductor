@@ -22,3 +22,4 @@ Changes that touch every task the same way, recorded once:
 | --- | --- | --- |
 | 2026-11-19 | `build-task.js` rewrites every `expertKey` item's source to "name, URL (licence)" from a fixed list of six checked sources | the owner asked for each source by name and URL |
 | 2026-11-19 | `bench/runner/lib/findings-key.js` (and every T2 copy): of the findings at a location, the grader takes the one whose severity and fix fit the key item best | listing two nearby findings in another order swapped them and cost a correct review up to 24 points |
+| 2026-11-20 | T2 moves onto the shared scenario tools: hidden dirs name `findings.test.cjs` and `findings-key.cjs` in `.bench-lib.json` (byte-identical to the deleted copies); `dry-run.js` and `render-prompt.js` deleted; the T2 lazy, alternative and dump answers move into `scenario.config.js`; `pilot.dryRun` re-recorded on all 16 tasks with the same scores | owner rule: one shared tool set, no per-batch copies |

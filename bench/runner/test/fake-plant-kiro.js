@@ -111,10 +111,18 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
     return;
   }
   let i = 0;
+  // window > 1 keeps that many gateway calls in flight instead of one at a time, for tests that need many calls.
+  const inFlight = new Set();
   for (const call of cfg.calls || []) {
     if (call.inStream !== false) streamCall(call, i++);
-    if (call.inGateway !== false) await request('tools/call', { name: call.tool, arguments: call.args });
+    if (call.inGateway === false) continue;
+    const reply = request('tools/call', { name: call.tool, arguments: call.args });
+    if (!(cfg.window > 1)) { await reply; continue; }
+    inFlight.add(reply);
+    reply.then(() => inFlight.delete(reply));
+    if (inFlight.size >= cfg.window) await Promise.race(inFlight);
   }
+  await Promise.all(inFlight);
   if (cfg.overLongLine) shim.stdin.write('x'.repeat(65 * 1024) + '\n');
   if (cfg.hold) { probe('held.json', { at: Date.now() }); setTimeout(() => {}, 60000); return; }
   ev('metadata', { sessionId: 's1', turnDurationMs: 100, meteringUsage: [{ value: 0.5, unit: 'credit' }] });
@@ -124,7 +132,7 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
 })();
 `;
 
-/** Writes the fake `kiro-cli` into `binDir` with `config`: `dir` (probe dir), `calls` ([{tool, args, inStream, inGateway, deferred, unreadable}]; the last two shape a v3 stream line), `finalText`, `exit3`, `stopGateway`, `dump`, `overLongLine` (sends a line over the gateway's line limit after the calls) and `hold` (never finishes after the calls). Returns its path. */
+/** Writes the fake `kiro-cli` into `binDir` with `config`: `dir` (probe dir), `calls` ([{tool, args, inStream, inGateway, deferred, unreadable}]; the last two shape a v3 stream line), `finalText`, `exit3`, `stopGateway`, `dump`, `overLongLine` (sends a line over the gateway's line limit after the calls), `window` (gateway calls kept in flight at once, default 1) and `hold` (never finishes after the calls). Returns its path. */
 function makeFakePlantKiro(binDir, config) {
   fs.mkdirSync(binDir, { recursive: true });
   const file = path.join(binDir, 'kiro-cli');

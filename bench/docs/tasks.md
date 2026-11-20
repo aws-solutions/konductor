@@ -10,6 +10,7 @@ This document covers the task suite: tasks, fixtures, checks, rubrics, answer ke
 - `tasks/solutions/<id>/`: a reference solution, as files overlaid on the fixture. Only the validator and unit tests use it.
 - `tasks/stubs/<id>/`: a keyword-only imitation of the report, overlaid on the solution (see Mutation proof).
 - `tasks/validate-tasks.js`: offline validator. Run `node bench/tasks/validate-tasks.js`.
+- `scenarios/t*/`: the scenario pack, one folder per batch. Every batch uses the shared tools in `scenarios/lib/` (dry run, mechanical lazy and alternative answers, prompt renderer, authoring stage, hidden test helpers) through its own `scenario.config.js`; see `scenarios/lib/README.md`.
 
 The same prompt goes to every arm, so it must make sense without any add-on. Prompts never name a procedure, skill or agent. The `target` field says what the task exercises and is informational only.
 

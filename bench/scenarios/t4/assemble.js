@@ -4,12 +4,15 @@
 
 // Turns one author's output (<work>/fixture, hidden, solution, task-draft.json) plus briefs/<id>.json and an optional
 // <work>/../<id>.meta.json (mapping and review results) into the schema v3 task under this directory:
-// <id>.json, fixtures/<id>/, hidden/<id>/hidden/, solutions/<id>/. Re-running replaces those paths.
+// <id>.json, fixtures/<id>/, hidden/<id>/hidden/, solutions/<id>/. Re-running replaces those paths. Copies of the
+// shared hidden helpers (bench/scenarios/lib/hidden) are folded into hidden/<id>/.bench-lib.json.
 // The meta file lives in edits/<id>.json (committed, so every post-review change is on record).
 // Usage: node assemble.js <id> <work-dir>
 
 const fs = require('node:fs');
 const path = require('node:path');
+
+const { foldHelpers } = require('../lib/stage.js');
 
 const DIR = __dirname;
 
@@ -27,6 +30,8 @@ function assemble(id, work) {
   const fixtureName = brief.twinOf || id;
   if (!brief.twinOf) replaceDir(path.join(work, 'fixture'), path.join(DIR, 'fixtures', id));
   replaceDir(path.join(work, 'hidden'), path.join(DIR, 'hidden', id, 'hidden'));
+  // The author's seeded helper copies become .bench-lib.json entries (the tests check copies them back in).
+  foldHelpers(path.join(DIR, 'hidden', id));
   replaceDir(path.join(work, 'solution'), path.join(DIR, 'solutions', id));
   // meta may override the draft after review: prompt, checks, rubric, limits (each change is noted in meta.edits).
   for (const k of ['prompt', 'checks', 'rubric', 'limits']) if (meta[k] !== undefined) draft[k] = meta[k];

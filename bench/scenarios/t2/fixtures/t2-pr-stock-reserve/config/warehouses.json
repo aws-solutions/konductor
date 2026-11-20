@@ -1,0 +1,7 @@
+{
+  "warehouses": [
+    { "id": "north", "name": "North Street", "timezone": "America/Chicago", "active": true },
+    { "id": "harbor", "name": "Harbor Road", "timezone": "America/New_York", "active": true },
+    { "id": "old-town", "name": "Old Town", "timezone": "America/Denver", "active": false }
+  ]
+}

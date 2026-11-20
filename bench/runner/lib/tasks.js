@@ -105,9 +105,10 @@ function loadTasks(benchDir = BENCH_DIR, { extraDirs = [] } = {}) {
 // Everything under the bench directory that the agent must never read: fixtures (answer keys),
 // reference and partial solutions, keyword stubs, the hidden acceptance tests and the real-repository
 // manifest with its fetch tooling.
-// An extra tasks directory holds fixtures and hidden tests too, so it is hidden whole.
+// An extra tasks directory holds fixtures and hidden tests too, so it is hidden whole, and so are the shared hidden test
+// helpers of the scenario pack (scenarios/lib/hidden, see hidden-lib.js).
 function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
-  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), ...extraDirs.map(realDir)];
+  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), path.join(benchDir, 'scenarios', 'lib', 'hidden'), ...extraDirs.map(realDir)];
 }
 
 // Throws naming every task id a run uses that no loaded task definition covers, so a missing --extra-tasks cannot pass silently.

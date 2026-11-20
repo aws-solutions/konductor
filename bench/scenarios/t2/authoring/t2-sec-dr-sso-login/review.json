@@ -1,0 +1,11 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "Prompt does not name review method, hint at planted problems, or give the number of issues." },
+    { "check": "ambiguity", "verdict": "pass", "note": "Clear what to review (design doc + context), where to write (REVIEW.md), and output format (JSON with location, severity, issue, fix)." },
+    { "check": "ceiling", "verdict": "pass", "note": "Most issues explicitly stated and easy to find, but k1 (nonce) requires OIDC expertise and k5 (back-channel revocation) requires cross-referencing security policy. Differentiation between shallow and deep review is reasonable." },
+    { "check": "floor", "verdict": "pass", "note": "All 8 key items are verifiable in the fixture at the specified sections. Fix words align with solution content. Grader can match by section number." },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No comments, test names, or file names point at planted problems. Fixture contains legitimate context files." }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

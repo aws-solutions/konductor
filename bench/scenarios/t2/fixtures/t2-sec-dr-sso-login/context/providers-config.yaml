@@ -1,0 +1,70 @@
+# Identity Provider Configuration Template
+# This file is used by the deployment pipeline to generate provider configurations
+# DO NOT edit manually - changes should be made through the admin UI
+
+configuration_template:
+  required_fields:
+    - client_id
+    - issuer
+    - authorization_endpoint
+    - token_endpoint
+    - jwks_uri
+    
+  optional_fields:
+    - userinfo_endpoint
+    - revocation_endpoint
+    - end_session_endpoint
+    - scopes_supported
+    - claims_supported
+    
+  validation_rules:
+    issuer:
+      pattern: "^https://[a-zA-Z0-9.-]+(/.*)?$"
+      required: true
+      
+    redirect_uris:
+      max_count: 5
+      pattern: "^https://[a-zA-Z0-9.-]+/auth/callback$"
+      disallowed_patterns:
+        - ".*\\.\\.\\..*"  # No consecutive dots
+        - "^http://"       # No HTTP
+        - ".*/callback/.*" # No paths after callback
+      
+    jwks_refresh:
+      default_interval: 86400  # 24 hours in seconds
+      min_interval: 3600       # 1 hour minimum
+      max_retries: 3
+      retry_delay: 300
+
+  security_constraints:
+    token_validation:
+      max_clock_skew: 300
+      require_email_verified: true
+      require_audience_match: true
+      
+    session_management:
+      max_session_age_without_revalidation: 604800  # 7 days
+      require_backchannel_logout: false  # Optional per provider support
+      
+    secrets:
+      client_secret_rotation_days: 90
+      jwks_cache_max_age: 86400
+
+# Example provider entries (commented out)
+# google:
+#   client_id: "${GOOGLE_CLIENT_ID}"
+#   client_secret: "${GOOGLE_CLIENT_SECRET}"
+#   issuer: "https://accounts.google.com"
+#   authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth"
+#   token_endpoint: "https://oauth2.googleapis.com/token"
+#   jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+#   scopes: ["openid", "email", "profile"]
+#   
+# microsoft:
+#   client_id: "${MICROSOFT_CLIENT_ID}"
+#   client_secret: "${MICROSOFT_CLIENT_SECRET}"
+#   issuer: "https://login.microsoftonline.com/${TENANT_ID}/v2.0"
+#   authorization_endpoint: "https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize"
+#   token_endpoint: "https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token"
+#   jwks_uri: "https://login.microsoftonline.com/${TENANT_ID}/discovery/v2.0/keys"
+#   scopes: ["openid", "email", "profile"]

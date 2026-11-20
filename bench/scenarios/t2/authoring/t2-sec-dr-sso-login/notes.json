@@ -1,0 +1,11 @@
+{
+  "notes": [
+    "The state parameter omission in 3.2 is subtle—a quick review might miss that OpenID Connect requires both state and nonce.",
+    "Account linking without email verification (3.3) creates account takeover risk but requires reading the incident report to understand the severity.",
+    "Session token storage in localStorage (3.4) violates the security policy's prohibition—need to cross-reference security-policy.yaml.",
+    "90-day session duration (3.4) contradicts the 30-day maximum in security policy.",
+    "JWKS refresh issue (3.5.1) requires checking providers-config.yaml to see the 24-hour refresh requirement.",
+    "Wildcard redirect URI (3.5.2) is a security anti-pattern but might be overlooked as 'convenient'.",
+    "Some items like the state parameter byte size (3.5.2) are lower severity but show attention to detail."
+  ]
+}
