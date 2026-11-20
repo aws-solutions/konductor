@@ -1,0 +1,2 @@
+The sample shop serves Harbor, Ridge, and Meadow addresses. The data team
+keeps the authoritative rates in the pricing configuration rather than here.

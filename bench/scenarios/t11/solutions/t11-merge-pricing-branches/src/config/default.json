@@ -1,0 +1,15 @@
+{
+  "shipping": {
+    "standard": 4.99,
+    "express": 12.5
+  },
+  "promos": {
+    "WELCOME10": { "kind": "percent", "value": 10, "minimum": 0 },
+    "BASKET5": { "kind": "fixed", "value": 5, "minimum": 25 }
+  },
+  "regions": {
+    "harbor": { "rate": 0.0825, "taxShipping": false },
+    "ridge": { "rate": 0.05, "taxShipping": true },
+    "meadow": { "rate": 0.03, "taxShipping": false }
+  }
+}

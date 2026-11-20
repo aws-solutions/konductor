@@ -1,0 +1,10 @@
+{
+  "labels": {
+    "standard": "Ground parcel",
+    "express": "Two-day parcel"
+  },
+  "dispatchDays": {
+    "standard": 3,
+    "express": 1
+  }
+}
