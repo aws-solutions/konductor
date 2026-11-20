@@ -2303,6 +2303,45 @@ mod tests {
         );
     }
 
+    /// Kiro CLI runs every `allowedTools` entry with no prompt, and synth
+    /// copies that list as is (nothing filters it the way install filters
+    /// the Claude Code allow list). So the specs themselves may pre-approve
+    /// only read-only aws-mcp tools, and no catch-all that would cover the rest.
+    #[test]
+    fn real_agent_specs_pre_approve_only_read_only_aws_mcp_tools_on_kiro() {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let model = crate::cli::synth::parse_canonical::parse_canonical(&repo_root)
+            .expect("the repo's own specs must parse");
+        let kiro_prefix = format!("@{AWS_MCP_SERVER_NAME}/");
+
+        let mut checked = 0;
+        for agent in &model.agents {
+            let Some(kiro) = agent.client_config.kiro_cli.as_ref() else {
+                continue;
+            };
+            let names_aws_mcp = kiro.tools.iter().any(|t| t.starts_with(&kiro_prefix));
+            for entry in &kiro.allowed_tools {
+                if let Some(tool) = entry.strip_prefix(&kiro_prefix) {
+                    assert!(
+                        AWS_MCP_READ_ONLY_TOOLS.contains(&tool),
+                        "agent '{}' pre-approves {entry} in kiroCli.allowedTools, \
+                         which is not in AWS_MCP_READ_ONLY_TOOLS",
+                        agent.name
+                    );
+                    checked += 1;
+                }
+                if names_aws_mcp {
+                    assert!(
+                        entry != "*" && entry != "@mcp",
+                        "agent '{}' pre-approves every aws-mcp tool with {entry} in kiroCli.allowedTools",
+                        agent.name
+                    );
+                }
+            }
+        }
+        assert!(checked > 0, "no spec pre-approves an aws-mcp tool; the check ran on nothing");
+    }
+
     fn aws_allow_rules() -> Vec<serde_json::Value> {
         aws_rules()
             .allow
