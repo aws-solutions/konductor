@@ -1,0 +1,27 @@
+{
+  "name": "whistleline",
+  "version": "2.7.0",
+  "description": "A small command-line reader and formatter for stage cue files",
+  "type": "commonjs",
+  "bin": {
+    "whistleline": "bin/whistleline.js"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/unit-*.test.js",
+    "test:integration": "INTEGRATION=1 node --test test/integration-*.test.js",
+    "test:all": "npm test && npm run test:integration",
+    "lint": "node scripts/lint-check.cjs",
+    "commit": "node scripts/check-commit.cjs",
+    "generate": "node scripts/generate-manifest.cjs",
+    "release": "node scripts/release.cjs",
+    "package:check": "node scripts/package-size.cjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "config"
+  ]
+}

@@ -36,3 +36,6 @@ from the fixture and step 1's `design.md` only, the hidden checks and the answer
 A task where a second, fresh session must use what a first session learned needs the runner to start a new session
 in the same workspace and HOME. The runner's multi-turn mode resumes the same conversation (`--resume`), and only
 when the agent asked a question, so it cannot test memory across sessions. That task waits for runner support.
+
+`t11-wide-settings-migration` (a change across 60 or more files) was dropped after three second-family tries; its brief
+stays in `briefs/` and the reasons are in `HAND-EDITS.md` under Dropped.

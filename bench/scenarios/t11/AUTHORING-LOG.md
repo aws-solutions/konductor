@@ -42,3 +42,13 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-wide-settings-migration | step2 | qwen3-coder-next | 0.00 |  |
 | t11-wide-settings-migration | step2 cut at the tool cap (152 tools); the stream reported no credits, so it is counted at its abort limit | qwen3-coder-next | 15.00 |  |
 | t11-wide-settings-migration | step1 | minimax-m2.5 | 0.22 |  |
+| t11-wide-settings-migration | step1 | qwen3-coder-next | 4.05 |  |
+| t11-wide-settings-migration | fix | qwen3-coder-next | 5.37 |  |
+| t11-wide-settings-migration | step2 | qwen3-coder-next | 0.00 |  |
+| t11-wide-settings-migration | step2 (second try) cut at the tool cap (151 tools); no credits reported, counted at its abort limit | qwen3-coder-next | 15.00 | dropped |
+| t11-docx-room-booking-reqs | step1 | qwen3-coder-next | 3.18 |  |
+| t11-docx-room-booking-reqs | fix | qwen3-coder-next | 2.44 |  |
+| t11-guide-contributing | author | gpt-5.6-luna | 3.84 |  |
+| t11-guide-contributing | fix | gpt-5.6-luna | 0.53 |  |
+| t11-guide-contributing | map | glm-5 | 0.15 |  |
+| t11-guide-contributing | review | qwen3-coder-next | 0.33 |  |
