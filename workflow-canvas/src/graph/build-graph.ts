@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { NODE_HEIGHT, stackDown } from './layout';
+import { withStopMarks } from './stop-marks';
 import {
   SEQUENCE_IN,
   SEQUENCE_OUT,
@@ -107,16 +108,35 @@ function chain(nodes: readonly GraphNode[]): GraphEdge[] {
 }
 
 /**
- * Turns a workflow into what the canvas draws: the intent, the stages in list
- * order, and the end, in one column, joined by run-order edges.
+ * How to draw the workflow. The defaults are what the page drew before the
+ * option was there.
  */
-export function buildGraph(spec: WorkflowSpec, harness: string): CanvasGraph {
+export interface GraphOptions {
+  /**
+   * Ends each leaf stage with a stop mark instead of drawing one end node.
+   * Off by default, so a caller that has not moved over keeps the end node.
+   */
+  readonly stopMarks?: boolean;
+}
+
+/**
+ * Turns a workflow into what the canvas draws: the intent, the stages in list
+ * order, and the end, in one column, joined by run-order edges. With
+ * `stopMarks` the end node gives way to a stop mark on each stage that no
+ * other stage follows.
+ */
+export function buildGraph(
+  spec: WorkflowSpec,
+  harness: string,
+  options: GraphOptions = {},
+): CanvasGraph {
   const nodes = stackDown<UnplacedNode>([
     intentNode(spec),
     ...spec.stages.map((stage, index) =>
       stageNode(stage, harness, placeOf(spec.stages, index)),
     ),
-    endNode(),
+    ...(options.stopMarks ? [] : [endNode()]),
   ]);
-  return { nodes, edges: chain(nodes) };
+  const graph = { nodes, edges: chain(nodes) };
+  return options.stopMarks ? withStopMarks(graph) : graph;
 }
