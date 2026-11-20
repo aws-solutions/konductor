@@ -16,7 +16,7 @@ const { loadConfig } = require('../../scenarios/lib/config.js');
 const { dryRun, pilotWith, record } = require('../../scenarios/lib/dry-run.js');
 const { shallow, vary, follow, textAnswer, writeAnswer, DEFAULTS } = require('../../scenarios/lib/answers.js');
 const { fill, render } = require('../../scenarios/lib/prompt.js');
-const { stageOf, COMMANDS, auditStream, reviewed, withExpertRubric } = require('../../scenarios/lib/stage.js');
+const { stageOf, COMMANDS, foldHelpers, auditStream, reviewed, withExpertRubric } = require('../../scenarios/lib/stage.js');
 
 const T = (name, body) => `const { test } = require('node:test');\ntest(${JSON.stringify(name)}, () => { ${body} });\n`;
 
@@ -170,6 +170,22 @@ test('the prompt renderer fills slots from the batch brief', () => {
     write(path.join(root, 'b', 'prompts', 'author.md'), '{{BRIEF}}\n');
     const cfg = loadConfig({ dir: path.join(root, 'b'), prompt: { render: (id, lib) => lib.fill(lib.read('prompts/author.md'), { BRIEF: `${lib.brief(id).brief}. ${lib.sourceLine(lib.brief(id).source)}` }) } });
     assert.equal(render(cfg, 'b-1'), 'Do it. Public inspiration: https://e.org (licence MIT). Use the idea only.\n');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('fold-helpers turns committed byte copies of shared helpers into .bench-lib.json entries', () => {
+  const root = tmp();
+  try {
+    const lib = path.join(root, 'lib');
+    write(path.join(lib, 'grade.cjs'), 'g\n');
+    const hid = path.join(root, 'hidden');
+    write(path.join(hid, 'hidden', 'grade.cjs'), 'g\n');
+    write(path.join(hid, 'kit', 'grade.cjs'), 'changed\n');
+    assert.deepEqual(foldHelpers(hid, lib), { 'hidden/grade.cjs': 'grade.cjs' });
+    assert.ok(!fs.existsSync(path.join(hid, 'hidden', 'grade.cjs')));
+    assert.ok(fs.existsSync(path.join(hid, 'kit', 'grade.cjs')), 'a changed file is the task\'s own');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(hid, MANIFEST), 'utf8')), { 'hidden/grade.cjs': 'grade.cjs' });
+    assert.deepEqual(foldHelpers(hid, lib), {}, 'a second fold changes nothing');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
