@@ -51,6 +51,8 @@ Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an 
 
 Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-nfr-bounded-fanout) wrote checks with `kind` in the place of `type`. The key prompt had named `kind` but not `type`, so part of that failure is the prompt's; it now states the full check shape with an example. Both tasks had already used their one fix attempt and stay dropped.
 
+`t1-ref-package-split` (qwen3-coder-next, key step): the call wrote a scratch copy one folder above its working folder (still inside T1's own scratch area; no konductor or other-batch path was read, by `audit.js`), then stopped at its 150-tool-call cap without a key draft. The copy was removed; the task gets its one fix attempt by its own family.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -219,3 +221,6 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-twin-booking-export | fix | minimax-m2.5 | 5.12 |
 | t1-twin-booking-export | review | gpt-5.6-luna | 0.97 |
 | t1-twin-booking-export | lazy+alt answers | gpt-5.6-luna | 1.24 |
+| t1-ref-package-split | author-data | qwen3-coder-next | 2.93 |
+| t1-ref-package-split | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-ref-package-split | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
