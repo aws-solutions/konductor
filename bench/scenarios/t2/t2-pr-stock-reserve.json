@@ -116,7 +116,7 @@
   },
   "review": {
     "family": "qwen",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -144,5 +144,24 @@
         "note": "No comments, test names, or file names point at problems; notes.txt explicitly labels decoys as intentional."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 31.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

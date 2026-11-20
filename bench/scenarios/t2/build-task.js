@@ -72,14 +72,17 @@ function build(id, work) {
     : reviewChecks({ kind: brief.kind === 'design' ? 'design' : 'code', doc: brief.doc, unchangedPath: brief.kind === 'design' ? brief.doc : codeRoot(key), testsMin });
   const map = fs.existsSync(path.join(work, 'map.json')) ? readJson(path.join(work, 'map.json')) : null;
   const rawReview = fs.existsSync(path.join(work, 'review.json')) ? readJson(path.join(work, 'review.json')) : null;
+  // The last free dry run (authoring/<id>/dry-run.json) goes into pilot.dryRun; `lazy` is the shallow fake answer.
+  const dryFile = path.join(DIR, 'authoring', id, 'dry-run.json');
+  const dry = !twin && fs.existsSync(dryFile) ? { ...readJson(dryFile), date: fs.statSync(dryFile).mtime.toISOString().slice(0, 10) } : null;
   const recheckFile = path.join(work, 'recheck.json');
   const recheck = fs.existsSync(recheckFile) ? readJson(recheckFile) : null;
   const review = rawReview && {
     family: FAMILY[brief.reviewer], date: new Date().toISOString().slice(0, 10), verdicts: rawReview.verdicts,
-    ...(recheck ? { recheck: { family: FAMILY[recheck.model], model: recheck.model, date: recheck.date, items: recheck.items } } : {}),
+    ...(recheck ? { recheck: { family: FAMILY[recheck.model], model: recheck.model, date: recheck.date, items: recheck.items.map(({ check, verdict, note }) => ({ check, verdict, ...(note ? { note } : {}) })) } } : {}),
   };
   // A task named in HAND-EDITS.md was changed by someone other than its author.
-  const handEdited = fs.readFileSync(path.join(DIR, 'HAND-EDITS.md'), 'utf8').includes(`| ${id} |`)
+  const handEdited = new RegExp(`\\b${id}\\b`).test(fs.readFileSync(path.join(DIR, 'HAND-EDITS.md'), 'utf8'))
     ? { family: 'claude', editor: 'T2 batch worker session', log: 'HAND-EDITS.md' } : null;
   // The full mapper and reviewer answers and the author's notes are kept beside the task for the human check.
   const rec = path.join(DIR, 'authoring', id);
@@ -90,7 +93,8 @@ function build(id, work) {
 
   const task = {
     id,
-    version: 1,
+    // A change to a task's scoring after it was first landed bumps its version (briefs/<id>.json `version`).
+    version: brief.version ?? 1,
     class: brief.kind === 'design' || (twin && brief.phase === 'design-review') ? 'design' : 'review',
     phase: brief.phase,
     phases2: [],
@@ -116,6 +120,7 @@ function build(id, work) {
     authorship: { family: FAMILY[brief.author], model: brief.author, date: brief.source.licenceCheckedAt, source },
     ...(review ? { review } : {}),
     ...(handEdited ? { handEdited } : {}),
+    ...(dry ? { pilot: { scores: {}, reference: dry.reference.score, stub: dry.stub.score, decision: Object.values(dry.gates).every(Boolean) ? 'keep' : 'fix', date: dry.date, dryRun: { reference: dry.reference.score, stub: dry.stub.score, lazy: dry.shallow.score, alt: dry.alt.score, date: dry.date } } } : {}),
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   return task;

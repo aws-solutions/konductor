@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js public REST API for a project tracker (issues, comments, users, a storage layer, an API doc in docs/, tests). The PR replaces offset pagination with cursor pagination on list endpoints. Plant: the next cursor is taken from the last item but the query uses greater-or-equal, so one item repeats; sorting is by created time only, which is not unique, so items with equal times are skipped or repeated; the cursor is plain base64 of an internal row offset, so clients can craft it; the page size has no upper bound though the API doc states 100; the response shape changes (data moved under a new key) without the versioning rule the API doc requires; the old offset parameter is silently ignored instead of supported for the stated deprecation window. Add one decoy.",
   "stack": "node",
-  "pr": 933
+  "pr": 933,
+  "version": 2
 }
