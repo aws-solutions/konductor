@@ -23,8 +23,9 @@
 // SOPs ARE in scope, via `install_sop_skills`: each staged `<name>.sop.md`
 // is converted into a `sop-<name>/SKILL.md` under `.claude/skills/`, not
 // copied verbatim -- Claude Code has no MCP-prompt equivalent to serve
-// `.sop.md` files directly, so each SOP becomes its own slash-invokable,
-// non-model-triggered skill instead (`disable-model-invocation: true`).
+// `.sop.md` files directly, so each SOP becomes its own skill instead,
+// invocable by the user (`/sop-<name>`) and by the model (`Skill` tool),
+// the same reach Kiro CLI gives its `.kiro/skills/sop-<name>` copy.
 //
 // `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
 // lives on a separate, unmerged branch and is not imported here.
@@ -635,8 +636,8 @@ pub(super) fn install_sop_skills(
 /// `<name>.sop.md` file under `<harness_dir>/sops/` into a
 /// `sop-<name>/SKILL.md` file under `<target_dir>/<destination_root>/skills/`,
 /// parameterized over the destination root and whether the rendered
-/// frontmatter carries Claude Code's `disable-model-invocation: true`
-/// key (see `render_sop_skill_md`'s own doc comment for why
+/// frontmatter carries Claude Code-only keys (`arguments`; see
+/// `render_sop_skill_md_with_options`'s own doc comment for why
 /// Kiro-targeted callers pass `false`).
 ///
 /// `pub(super)`: `kiro_cli` reuses this directly for its own
@@ -647,7 +648,7 @@ pub(super) fn install_sop_skills_into(
     harness_dir: &Path,
     target_dir: &Path,
     destination_root: &str,
-    disable_model_invocation: bool,
+    claude_frontmatter: bool,
 ) -> Result<Vec<ManifestFile>, String> {
     let source_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
@@ -659,20 +660,27 @@ pub(super) fn install_sop_skills_into(
         .join(destination_root)
         .join(SKILLS_CONTENT_TYPE_DIR);
 
-    let mut files = Vec::with_capacity(entries.len());
-    for file_name in entries {
+    // Read and check every SOP before writing any, so a malformed
+    // `Invocation:` line fails the install without a partial write.
+    let mut sops = Vec::with_capacity(entries.len());
+    for file_name in &entries {
         let Some(sop_name) = file_name.strip_suffix(".sop.md") else {
             // Not shaped like a SOP file -- skip rather than error.
             continue;
         };
         reject_unsafe_sop_name(sop_name)?;
-        let skill_dir_name = format!("sop-{sop_name}");
-        reject_unsafe_skill_name(&skill_dir_name)?;
-
-        let src = source_dir.join(&file_name);
+        reject_unsafe_skill_name(&format!("sop-{sop_name}"))?;
+        let src = source_dir.join(file_name);
         let body = std::fs::read_to_string(&src)
             .map_err(|e| format!("failed to read {}: {e}", src.display()))?;
-        let rendered = render_sop_skill_md_with_options(sop_name, &body, disable_model_invocation);
+        reject_malformed_invocation_line(sop_name, &body)?;
+        sops.push((sop_name, body));
+    }
+
+    let mut files = Vec::with_capacity(sops.len());
+    for (sop_name, body) in sops {
+        let skill_dir_name = format!("sop-{sop_name}");
+        let rendered = render_sop_skill_md_with_options(sop_name, &body, claude_frontmatter);
 
         let skill_dir = destination_root_path.join(&skill_dir_name);
         std::fs::create_dir_all(&skill_dir)
@@ -708,9 +716,13 @@ pub(super) fn install_sop_skills_into(
 ///   break frontmatter parsing
 /// - an optional frontmatter `arguments: [...]` array, scraped from a
 ///   `## Parameters` section (see `scrape_sop_parameters`), emitted only
-///   when `disable_model_invocation` is `true` (Claude Code's own
+///   when `claude_frontmatter` is `true` (Claude Code's own
 ///   schema, not Kiro's)
-/// - frontmatter `disable-model-invocation: true`
+/// - no `disable-model-invocation` key, so both the user (`/sop-<name>`)
+///   and the model (`Skill` tool) can invoke it, as on Kiro CLI, unless
+///   the SOP carries the `Invocation: user-only` marker line (see
+///   `is_user_only_sop`); then the key is emitted and the model cannot
+///   load it through `Skill`
 /// - a body wrapping the original SOP text in
 ///   `<agent-sop name="...">`/`<content>`/`<user-input>` tags, with
 ///   `sop_name` XML-attribute-escaped and the body guarded against a
@@ -734,32 +746,31 @@ fn render_sop_skill_md(sop_name: &str, body: &str) -> String {
 const MAX_DESCRIPTION_CHARS: usize = 400;
 
 /// Generalized form of `render_sop_skill_md`: identical frontmatter/body
-/// wrapping, but `disable_model_invocation` controls whether the
-/// `disable-model-invocation: true` frontmatter key, and the `arguments`
-/// array, are emitted at all.
+/// wrapping, but `claude_frontmatter` controls whether the Claude
+/// Code-only `arguments` array is emitted at all.
 ///
-/// Claude Code's own callers always pass `true` -- these SOP-derived
-/// skills are meant to be explicitly `/`-selectable, not autonomously
-/// invoked by the model.
+/// Claude Code's own callers always pass `true`. A SOP-derived skill is
+/// reachable by the model on Claude Code (`Skill` tool) as it already is
+/// on Kiro CLI (native discovery of `.kiro/skills/sop-<name>`), and by
+/// the user on both. The exception is a SOP marked `Invocation:
+/// user-only` (it commits and pushes, opens pull requests, or acts on a
+/// live app): on Claude Code it gets `disable-model-invocation: true`,
+/// which the harness enforces on the `Skill` tool, so the model cannot
+/// load it on its own, from the main thread or from a subagent that has
+/// no one to ask. The user starts it, directly or through a parent SOP's
+/// scope question (`k-full-sdlc` Step 9). Kiro has no per-skill key to
+/// emit, so the Kiro path never writes it.
 ///
-/// Kiro has no `disable-model-invocation`-equivalent frontmatter key:
-/// its skill frontmatter schema is limited to `name`, `description`,
+/// Kiro's skill frontmatter schema is limited to `name`, `description`,
 /// `license`, `compatibility`, `metadata`, and the unrelated
-/// `allowed-tools`, and none of them gate autonomous invocation.
-/// `kiro_cli::install_kiro_sop_skills` therefore passes `false` here,
-/// and no such key is emitted -- inventing an unrecognized key could
-/// cause Kiro to ignore it or skip the skill entirely. The `arguments`
-/// array is gated the same way, for the same "not part of Kiro's
-/// schema" reason.
-///
-/// A Kiro-rendered SOP skill carries no advisory guard text discouraging
-/// self-invocation: there is no enforcement mechanism on Kiro that
-/// could gate this, and prose asking a model not to self-invoke has
-/// proven unreliable in practice.
+/// `allowed-tools`. `kiro_cli::install_kiro_sop_skills` therefore
+/// passes `false` here, so no `arguments` array is emitted --
+/// inventing an unrecognized key could cause Kiro to ignore it or skip
+/// the skill entirely.
 fn render_sop_skill_md_with_options(
     sop_name: &str,
     body: &str,
-    disable_model_invocation: bool,
+    claude_frontmatter: bool,
 ) -> String {
     let base_description = extract_overview_description(body)
         .unwrap_or_else(|| format!("Standard operating procedure: {sop_name}."));
@@ -770,13 +781,15 @@ fn render_sop_skill_md_with_options(
         yaml_double_quote(&format!("sop-{sop_name}")),
         yaml_double_quote(&description)
     );
-    // `arguments` is gated on `disable_model_invocation`: it is not
+    // `arguments` is gated on `claude_frontmatter`: it is not
     // part of Kiro's schema, see this function's own doc comment.
-    if disable_model_invocation {
+    if claude_frontmatter {
         if let Some(arguments) = scrape_sop_parameters(body) {
             frontmatter.push_str(&format!("arguments: [{}]\n", arguments.join(", ")));
         }
-        frontmatter.push_str("disable-model-invocation: true\n");
+        if is_user_only_sop(body) {
+            frontmatter.push_str("disable-model-invocation: true\n");
+        }
     }
     frontmatter.push_str("---\n\n");
 
@@ -785,6 +798,56 @@ fn render_sop_skill_md_with_options(
     format!(
         "{frontmatter}<agent-sop name=\"{escaped_name}\"><content>\n{guarded_body}\n</content><user-input>$ARGUMENTS</user-input></agent-sop>\n"
     )
+}
+
+/// Marker a SOP carries, at the start of a line, when the model must not
+/// start it: `Invocation: user-only (<what it does>)`. The opening
+/// parenthesis is part of the marker, so `user-only-ish` or `user only`
+/// is not one. `tests/test_skill_listing_budget.py` and
+/// `tests/test_sop_user_only_marker.py` mirror this text.
+const USER_ONLY_MARKER: &str = "Invocation: user-only (";
+
+/// The lines of `body` outside fenced code blocks, so a marker quoted in
+/// an example is neither honoured nor flagged.
+fn lines_outside_fences(body: &str) -> impl Iterator<Item = &str> {
+    let mut in_fence = false;
+    body.lines().filter(move |line| {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            in_fence = !in_fence;
+            return false;
+        }
+        !in_fence
+    })
+}
+
+/// True when `body` has a line starting with `USER_ONLY_MARKER`.
+fn is_user_only_sop(body: &str) -> bool {
+    lines_outside_fences(body).any(|line| line.starts_with(USER_ONLY_MARKER))
+}
+
+/// True for a line that reads as an `Invocation:` marker (any case,
+/// indented or quoted) but is not the exact `USER_ONLY_MARKER`.
+fn is_malformed_invocation_line(line: &str) -> bool {
+    let text = line.trim_start().trim_start_matches('>').trim_start();
+    let lower = text.to_ascii_lowercase();
+    let is_invocation_label = lower
+        .strip_prefix("invocation")
+        .is_some_and(|rest| rest.trim_start().starts_with(':'));
+    is_invocation_label && !line.starts_with(USER_ONLY_MARKER)
+}
+
+/// Fails the install of a SOP whose `Invocation:` line is not the exact
+/// marker. A typo there would otherwise make the SOP model-invocable
+/// without a word, which is the failure the marker exists to prevent.
+fn reject_malformed_invocation_line(sop_name: &str, body: &str) -> Result<(), String> {
+    match lines_outside_fences(body).find(|line| is_malformed_invocation_line(line)) {
+        Some(line) => Err(format!(
+            "SOP {sop_name} has an Invocation line that is not the exact marker \
+             `{USER_ONLY_MARKER}<what it does>)`: {line:?}"
+        )),
+        None => Ok(()),
+    }
 }
 
 /// Extracts the generated skill's `description:` from `body`'s own
@@ -1765,7 +1828,10 @@ mod tests {
         assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("name: \"sop-ticket-sync\"\n"));
         assert!(rendered.contains("description: \"Syncs tickets.\"\n"));
-        assert!(rendered.contains("disable-model-invocation: true\n"));
+        assert!(
+            !rendered.contains("disable-model-invocation"),
+            "a SOP skill must stay model-invocable on Claude Code, got: {rendered}"
+        );
         assert!(
             !rendered.contains("arguments:"),
             "no Parameters section -> no arguments key at all"
@@ -1775,9 +1841,10 @@ mod tests {
         assert!(rendered.contains("</content><user-input>$ARGUMENTS</user-input></agent-sop>"));
     }
 
-    /// Kiro has no `disable-model-invocation`-equivalent frontmatter key
-    /// and carries no advisory guard text either: the Kiro path renders
-    /// the same plain description and body with no advisory prose.
+    /// Without the user-only marker, neither path emits
+    /// `disable-model-invocation`, and neither
+    /// carries advisory guard text: the Kiro path renders the same
+    /// plain description and body as the Claude path.
     #[test]
     fn render_sop_skill_md_with_options_kiro_path_carries_no_advisory_guard() {
         let body = "# Ticket Sync\n\n## Overview\n\nSyncs tickets.\n\nBody text.\n";
@@ -1805,7 +1872,127 @@ mod tests {
             !claude_rendered.contains("Run only when explicitly invoked"),
             "the Claude path must never have carried this text either, got: {claude_rendered}"
         );
-        assert!(claude_rendered.contains("disable-model-invocation: true\n"));
+        assert!(!claude_rendered.contains("disable-model-invocation"));
+    }
+
+    /// A SOP marked `Invocation: user-only` gets the key on Claude Code,
+    /// where the harness enforces it, and never on Kiro, which has no such key.
+    #[test]
+    fn render_sop_skill_md_with_options_marks_user_only_sops_for_claude_only() {
+        let body = "# Pusher\n\nInvocation: user-only (pushes)\n\n## Overview\n\nPushes.\n";
+
+        let claude = render_sop_skill_md_with_options("pusher", body, true);
+        assert!(
+            claude.contains("disable-model-invocation: true\n---\n"),
+            "the key must be inside the frontmatter, got: {claude}"
+        );
+
+        let kiro = render_sop_skill_md_with_options("pusher", body, false);
+        assert!(!kiro.contains("disable-model-invocation"), "got: {kiro}");
+    }
+
+    /// The marker is exact: a near miss must not read as user-only, and an
+    /// `Invocation:` line that is not the marker fails the install, so a
+    /// typo cannot turn a user-only SOP into a model-invocable one.
+    #[test]
+    fn invocation_marker_is_exact_and_a_near_miss_is_an_error() {
+        let valid = "# S\n\nInvocation: user-only (pushes)\n\n## Overview\n\nX.\n";
+        assert!(is_user_only_sop(valid));
+        assert!(reject_malformed_invocation_line("s", valid).is_ok());
+
+        let fenced = "# S\n\n```\nInvocation: user-only (pushes)\n```\n";
+        assert!(
+            !is_user_only_sop(fenced),
+            "a fenced example is not a marker"
+        );
+        assert!(reject_malformed_invocation_line("s", fenced).is_ok());
+
+        for bad in [
+            "Invocation: user only (pushes)",
+            "Invocation: user-only",
+            "invocation: user-only (pushes)",
+            "  Invocation: user-only (pushes)",
+            "> Invocation: user-only (pushes)",
+            "Invocation : user-only (pushes)",
+            "Invocation: user-onlyish (pushes)",
+        ] {
+            let body = format!("# S\n\n{bad}\n\n## Overview\n\nX.\n");
+            assert!(
+                !is_user_only_sop(&body),
+                "{bad:?} must not read as user-only"
+            );
+            assert!(
+                reject_malformed_invocation_line("s", &body).is_err(),
+                "{bad:?} must fail the install"
+            );
+        }
+
+        let prose = "# S\n\nInvocation of the tool happens in Step 2.\n";
+        assert!(reject_malformed_invocation_line("s", prose).is_ok());
+    }
+
+    /// A malformed marker stops the whole install before any skill is
+    /// written, on the Claude path and the Kiro path alike.
+    #[test]
+    fn install_sop_skills_rejects_a_malformed_marker_before_writing_anything() {
+        let dir = scratch_dir("install-sop-skills-bad-marker");
+        let harness_dir = dir.join("harness");
+        let sops_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
+        fs::create_dir_all(&sops_dir).unwrap();
+        fs::write(
+            sops_dir.join("a-fine.sop.md"),
+            b"# A\n\n## Overview\n\nFine.\n",
+        )
+        .unwrap();
+        fs::write(
+            sops_dir.join("z-typo.sop.md"),
+            b"# Z\n\nInvocation: user only (pushes)\n\n## Overview\n\nZ.\n",
+        )
+        .unwrap();
+
+        for (root, claude_frontmatter) in [(".claude", true), (".kiro", false)] {
+            let target_dir = dir.join(format!("target{root}"));
+            let result =
+                install_sop_skills_into(&harness_dir, &target_dir, root, claude_frontmatter);
+            let err = result.expect_err("a malformed Invocation line must fail the install");
+            assert!(err.contains("z-typo"), "the error names the SOP: {err}");
+            assert!(
+                !target_dir.join(root).join("skills").exists(),
+                "nothing is written for {root} once one SOP is rejected"
+            );
+        }
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A marked SOP gets the key in the Claude skills and never in the
+    /// Kiro ones, through the real install functions (Kiro has no such key).
+    #[test]
+    fn a_marked_sop_installs_with_the_key_for_claude_and_without_it_for_kiro() {
+        let dir = scratch_dir("install-sop-skills-marked-both");
+        let harness_dir = dir.join("harness");
+        let sops_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
+        fs::create_dir_all(&sops_dir).unwrap();
+        fs::write(
+            sops_dir.join("pusher.sop.md"),
+            b"# P\n\nInvocation: user-only (pushes)\n\n## Overview\n\nPushes.\n",
+        )
+        .unwrap();
+        let target_dir = dir.join("target");
+
+        install_sop_skills(&harness_dir, &target_dir).unwrap();
+        super::super::kiro_cli::install_kiro_sop_skills(&harness_dir, &target_dir).unwrap();
+
+        let claude =
+            fs::read_to_string(target_dir.join(".claude/skills/sop-pusher/SKILL.md")).unwrap();
+        let kiro = fs::read_to_string(target_dir.join(".kiro/skills/sop-pusher/SKILL.md")).unwrap();
+        assert!(
+            claude.contains("disable-model-invocation: true\n---\n"),
+            "{claude}"
+        );
+        assert!(!kiro.contains("disable-model-invocation"), "{kiro}");
+
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
@@ -2303,6 +2490,44 @@ mod tests {
         assert!(code_review.contains("name: \"sop-code-review\""));
 
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Every SOP this repo ships renders as a skill both the user and the
+    /// model can invoke on Claude Code, matching Kiro CLI, except the SOPs
+    /// with external side effects, which are user-only. Pinning the list
+    /// makes adding or dropping a user-only SOP a deliberate change.
+    #[test]
+    fn every_shipped_sop_is_model_invocable_unless_user_only() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let sops_dir = manifest_dir.join("../../agent-sops");
+        let mut count = 0;
+        let mut user_only = Vec::new();
+        for entry in fs::read_dir(&sops_dir).unwrap() {
+            let path = entry.unwrap().path();
+            let file_name = path.to_string_lossy().into_owned();
+            let Some(stem) = file_name.strip_suffix(".sop.md") else {
+                continue;
+            };
+            let sop_name = stem.rsplit('/').next().unwrap_or(stem);
+            let body = fs::read_to_string(&path).unwrap();
+            let rendered = render_sop_skill_md(sop_name, &body);
+            assert_eq!(
+                rendered.contains("disable-model-invocation: true\n"),
+                is_user_only_sop(&body),
+                "{sop_name}: the key must be present exactly when the SOP is marked user-only"
+            );
+            if is_user_only_sop(&body) {
+                user_only.push(sop_name.to_string());
+            }
+            count += 1;
+        }
+        assert!(count >= 19, "expected every shipped SOP, found {count}");
+        user_only.sort();
+        assert_eq!(
+            user_only,
+            ["k-e2e-test-generation", "k-full-sdlc", "k-light-ui-testing"],
+            "the SOPs that commit, push, open pull requests or act on a live app"
+        );
     }
 
     #[test]

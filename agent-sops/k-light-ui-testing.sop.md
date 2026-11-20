@@ -1,5 +1,7 @@
 # Light UI Testing
 
+Invocation: user-only (runs the test prompts against a live web app). Claude Code blocks the model from loading it through the `Skill` tool, so the user types `/sop-k-light-ui-testing`, or says yes to the scope question of a SOP the user started (`k-full-sdlc` Step 9), which then runs it from its installed `sop-<name>` copy. Kiro CLI has no per-SOP setting, so there this line is guidance and the SOP's own approval gates are the guard.
+
 ## Overview
 
 Discovers a deployed web page using browser automation and DOM inspection, writes structured markdown test prompts for the features described by the user, then executes those prompts live using the browser and reports pass/fail per prompt.
@@ -20,7 +22,7 @@ Use this SOP during development when pages are not yet ready for full functional
 | `password`         | Optional — MUST NOT be logged or displayed anywhere           | Login password                                                                                                                                                                                                        |
 | `credentials_file` | Optional                                                      | Path to a `.properties` file with keys: `test_url`, `user_name`, `password` (note: `user_name` maps to `username`)                                                                                                    |
 | `output_dir`       | Optional, default `tests/page/`                               | Directory to write prompt files (relative to current working directory)                                                                                                                                               |
-| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized generating and running prompts for whatever discovery finds. Steps 3 and 5 then report and proceed instead of prompting. A parallel or unattended caller MUST set it. Only a user's yes counts: see Step 3. |
+| `scope_confirmed`  | Optional, default false                                       | Set true when the caller has already authorized generating and running prompts for whatever discovery finds. Steps 3 and 5 then report and proceed instead of prompting. A parallel caller passes the user's own yes; an unattended caller has none, so it does not start this SOP. Only a user's yes counts: see Step 3. |
 
 **Parameter acquisition rules:**
 
@@ -108,7 +110,7 @@ Unless `scope_confirmed=true`, ask: "Proceed with test prompt generation for the
 
 **Constraints:**
 
-- If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking — the caller already authorized generation for whatever features discovery found. A parallel or unattended caller MUST set it, since the prompt has no one to answer
+- If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking — the caller already authorized generation for whatever features discovery found. A parallel caller MUST pass the user's own yes, since the prompt has no one to answer; an unattended caller has no yes, so it MUST NOT start this SOP
 - `scope_confirmed=true` counts only when it comes from the user: the user typed it on the invocation, or said yes to this scope in the conversation, or the SOP that called this one passes the user's own answer to its question (as `k-full-sdlc` Step 9 does). A value the model chose by itself, including any value set when the model started this SOP on its own, does not count: treat it as `false` and ask, here and in Step 5. Record in the summary where the confirmation came from.
 - Otherwise MUST NOT proceed without explicit user confirmation
 - If the user declines, run `rm -f "$credentials_file" && unset agent_created_credentials_file` if `agent_created_credentials_file=true`, then stop

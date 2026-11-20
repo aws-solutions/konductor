@@ -52,3 +52,41 @@ def test_orchestrators_never_supply_the_confirmation():
     assert "Never put a confirmation flag such as `scope_confirmed` on the command unless the user gave it." in routing
     direct = _read("context/k-direct-work.md")
     assert "never add a confirmation flag such as `scope_confirmed` the user did not give" in direct
+
+
+def _step9_bullets():
+    text = _read("agent-sops/k-full-sdlc.sop.md")
+    step9 = text.split("### 9. Testing", 1)[1].split("### 10.", 1)[0]
+    return step9
+
+
+def test_step_9_starts_a_user_only_ui_pass_only_on_the_engineers_yes():
+    step9 = _step9_bullets()
+    # The question tells the engineer what the pass does, so the yes is informed.
+    assert "stages, commits and pushes the generated tests to the feature's branch" in step9
+    assert "`k-light-ui-testing` only runs prompts against the live app and commits nothing" in step9
+    # No yes, no start; an unattended run has no yes.
+    assert "Without that yes, or when the file cannot be read, You MUST NOT start either SOP" in step9
+    assert "MUST NOT run its steps from memory" in step9
+    assert "Pass `scope_confirmed=true` only for a yes the engineer gave in this run." in step9
+    # The pass runs only after the yes, and the unattended default is gone.
+    assert "Only after the engineer's yes above: if the feature has a web UI" in step9
+    assert "the engineer's yes above cannot exist, so neither pass runs" in step9
+    assert "default to `k-e2e-test-generation`" not in step9
+    # Where the installed SOP is, per harness.
+    assert "`sop-<name>/SKILL.md` in the skills directory that holds this SOP's own `sop-k-full-sdlc/SKILL.md`" in step9
+    assert "directly under your home directory, your working directory or the project root" in step9
+    assert "${CLAUDE_SKILL_DIR}" not in step9, "an undocumented variable must not carry the path"
+
+
+def test_e2e_step_3_prompt_says_the_pass_commits_and_pushes():
+    text = _read("agent-sops/k-e2e-test-generation.sop.md")
+    step3 = text.split("### Step 3", 1)[1].split("### Step 4", 1)[0]
+    assert "The tests will be committed and pushed to the current branch." in step3
+
+
+def test_no_ui_sop_tells_an_unattended_caller_to_set_the_flag():
+    for rel in ("agent-sops/k-e2e-test-generation.sop.md", "agent-sops/k-light-ui-testing.sop.md"):
+        text = _read(rel)
+        assert "unattended caller MUST set" not in text, rel
+        assert "an unattended caller has no yes, so it MUST NOT start this SOP" in text, rel

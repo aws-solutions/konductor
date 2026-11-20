@@ -76,6 +76,20 @@ not per individual commit.
   trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
   short first Overview paragraph, which is the one the installer lists; the old paragraph
   stays below it. Skill patch versions are bumped.
+- On Claude Code, the `sop-<name>` skills the installer builds from SOPs no longer carry
+  `disable-model-invocation: true`, so Claude can load a SOP through its `Skill` tool, as Kiro
+  CLI already could through its `.kiro/skills/sop-<name>` copy. `/sop-<name>` still works.
+  The three SOPs that commit and push, open pull requests, or act on a live app
+  (`k-e2e-test-generation`, `k-full-sdlc`, `k-light-ui-testing`) are marked
+  `Invocation: user-only` and keep the key, so Claude's `Skill` tool refuses them. The user starts
+  one with `/sop-<name>`, or by saying yes to `k-full-sdlc` Step 9's scope question, which then
+  reads its installed `sop-<name>/SKILL.md` (Claude Code) or `sop-<name>` skill (Kiro CLI) and runs
+  it. Step 9 starts neither SOP without that yes, and an unattended run never gets one.
+  Step 9's UI test question now says the pass commits and pushes, and the two SOPs no longer
+  tell an unattended caller to set `scope_confirmed`. The install fails on an `Invocation:` line that is
+  not the exact marker, so a typo cannot open a user-only SOP to the model. The user guide now
+  says which files each harness installs: a Claude Code install has no `.sop.md` copy.
+  The skill listing budget test now counts the 16 other SOP descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into

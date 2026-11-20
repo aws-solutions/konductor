@@ -61,9 +61,19 @@ Two caveats apply to the remote path regardless: GitHub API rate limiting, and S
 integrity only — there is no GPG or sigstore provenance check.
 
 **SOPs are installed.** `install`'s phase list (`cli/konductor-rs/src/cli/install/phases.rs`) runs
-`SopInstallPhase`, which copies every `.sop.md` verbatim into `<target>/.konductor/sops/`. On
-Claude Code each one is additionally converted into `<target>/.claude/skills/sop-<name>/SKILL.md`,
-a slash-invokable skill with `disable-model-invocation: true` — so `/sop-<name>` reaches it.
+`SopInstallPhase`. On Kiro CLI it copies every `.sop.md` verbatim into `<target>/.konductor/sops/`
+and converts each into `<target>/.kiro/skills/sop-<name>/SKILL.md`. On Claude Code (`--harness
+claude`, and the plugin's `skills/` directory) it writes only the converted
+`<target>/.claude/skills/sop-<name>/SKILL.md`; there is no `.sop.md` copy. A Kiro install into a
+target that already has `.claude/` also writes the Claude skills. The Claude Code skill is one that
+both you (`/sop-<name>`) and Claude (its `Skill` tool) can invoke, the same reach the
+`.kiro/skills/sop-<name>/SKILL.md` copy has on Kiro CLI. The three SOPs that commit and
+push, open pull requests, or act on a live app (`k-e2e-test-generation`, `k-full-sdlc`,
+`k-light-ui-testing`) carry `disable-model-invocation: true`, so Claude cannot start them through its
+`Skill` tool. You start them with `/sop-<name>`. `k-full-sdlc`, which you start yourself, also
+runs the other two when you say yes to its UI test question in Step 9.
+Kiro CLI has no per-SOP setting for this, so there the model can load those three too; their
+behavior differs by runtime on purpose.
 Context files install too, into `<target>/.kiro/context/`.
 
 `konductor help [COMMAND]` prints help for a command, and `--help` works at every level.
