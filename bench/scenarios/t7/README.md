@@ -39,4 +39,9 @@ with no steering, rules, MCP or skills) and `catalog.json` (unit names and descr
 untouched fixture three times with the runner's check code, and checks that a hung test fails alone. Gates: reference at
 least 95, stub at most 20, identical repeats.
 
+`node record-dry.js <id>` runs that dry run and records its scores in the task's `pilot.scores.dryRun`. It also
+scores `answers/<id>/lazy/` (gate: 40 or less) and `answers/<id>/alt/` (gate: 80 or more) when present.
+`node alt-answer.js <id>` writes a mechanical alternative from the reference (other order, ids, wording);
+`node pad-answer.js <id>` writes `answers/<id>/pad/`, a padding probe that is reported, not gated.
+
 Tests: `node --test bench/scenarios/t7/test/*.test.js`.

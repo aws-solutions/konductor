@@ -53,12 +53,18 @@
       "weight": 2
     }
   ],
-  "targetSkills": [],
-  "targetSop": null,
+  "targetSkills": [
+    "program-planning",
+    "progress-tracking"
+  ],
+  "targetSop": "k-codebase-analysis",
   "targetAgent": null,
   "controlKind": "none",
   "loadCheck": {
-    "mustLoad": [],
+    "mustLoad": [
+      "program-planning",
+      "progress-tracking"
+    ],
     "mustNotLoad": []
   },
   "effectSubset": false,
@@ -106,5 +112,20 @@
         "note": "All key values derive from the fixture data: ATL-007 due 2027-07-20, needed by 2027-07-15 → 5 days late (verified). CND-009 due 2027-08-05, needed by 2027-07-30 → 6 days late (verified). CND-017 due 2027-08-18, needed by 2027-08-10 → 8 days late (verified). BCN-020→CND-020 and CND-020→BCN-020 form a cycle (verified). CND-017→DLT-011→DLT-025→CND-030→DLT-039→DLT-041→DLT-043→DLT-045 is the longest chain (7 edges, chain_score 6) making it the launch driver. Atlas ingestion contract is marked Done but ATL-007 is Open (verified)."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRun": {
+        "repeats": 3,
+        "deterministic": true,
+        "reference": 100,
+        "stub": 7.1,
+        "alt": 100
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20"
   }
 }
