@@ -88,3 +88,11 @@ Who: claude (mate spot-review fix worker session), from the Fable spot-review pr
   - k2 was inverted. `Date.now() <= payload.exp` compares milliseconds with seconds, so every token that carries `exp` (every token login issues) is rejected, not kept valid. Text corrected, severity high to critical, `Math.floor` added to the fix words; the reference review says the same.
   - k1 also matches `src/security/token.js:37` (the header-chosen algorithm default) and `src/routes/session-routes.js:30`; k5 also matches `src/middleware/bearer-auth.js:32` (the `invalidAuthorization(rawToken)` call).
   - The request said "under fixture/pr/87"; the runner copies the fixture to the workspace root, so it now says "under pr/87".
+
+## D-134 scan fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the free scan in reports/spot-review-fixes-2026-11-20.md (bench/DEBT.md D-134).
+
+- `t2-arch-dr-event-store` (version 4) and `t2-dr-search-reindex` (version 4): the request named the document under `fixture/` (`fixture/docs/adr/0007-event-sourced-orders.md`, `fixture/docs/design/zero-downtime-reindex.md`). The runner copies the fixture to the workspace root, so that path does not exist; the request now says `docs/...`. Free gates unchanged: reference 100, stub 7.1, lazy 28.6, alt 100.
+- `t2-sec-dr-sso-login` (version 3): key item k8 (section 3.5.2, "state parameter described as 32 bytes ... though not strictly a violation") is removed from `hidden/key.json`, `findingsKey` and the reference review. A 32-byte random state is more than the 128 bits RFC 6749 asks for, so k8 rewarded flagging a non-defect and cost a correct review 1 of 8 items (the reference without it scored 87.5 % of the findings score on the old key, 100 % now). The key has 7 items. Free gates: reference 100, stub 7.1, lazy 28.6, alt 100.
+  - Found by the gpt-5.6-luna recheck: expert key item e1 said "PKCE is not mentioned", but `docs/design/sso-sign-in.md:13` says the flow uses Authorization Code with PKCE, so e1 rewarded a false finding. e1 now asks how the PKCE code verifier is generated, kept and bound to the browser session, which the design never says (no fixture file names a verifier or challenge). Judge-only, so the code dry run does not move.
