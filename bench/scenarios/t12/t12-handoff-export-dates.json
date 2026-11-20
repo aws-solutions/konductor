@@ -131,34 +131,5 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null,
-  "review": {
-    "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
-      "date": "2026-11-20",
-      "items": [
-        {
-          "check": "no-method-or-decoy",
-          "verdict": "pass",
-          "note": "The prompt specifies the hand-off and second work step but names no external method, framework, or tool and contains no decoy."
-        },
-        {
-          "check": "fixture-lists-no-answer",
-          "verdict": "pass",
-          "note": "Sam's diagnosis in fixture/docs/notes/sam-diagnosis.md:5-11 is explicitly qualified and, with the bug report and existing tests, supplies source facts the hand-off must preserve rather than a hidden-only reference artifact."
-        },
-        {
-          "check": "key-matches-fixture",
-          "verdict": "pass",
-          "note": "The hidden paths and behaviors exist in the fixture: the date formatter, export test, frozen legacy exporter, contributing rules, and hand-off/result schema requested by the prompt all align with the key and rubric."
-        },
-        {
-          "check": "solvable-from-fixture",
-          "verdict": "pass",
-          "note": "A competent developer can derive the UTC-date fix and the hand-off/result evidence from the fixture and prompt; the checks permit alternate prose and implementation structure."
-        }
-      ]
-    }
-  }
+  "lockedAt": null
 }

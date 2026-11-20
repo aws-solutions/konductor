@@ -77,3 +77,9 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t12-parallel-backlog | gpt-5.6-luna (s1, full) | fix needed | gpt-5.6-luna (c06) found the login-only key match too narrow; fixed in this job, and its second pass (s1) passes the key and solvable items; the second pass fails no-method-or-decoy because the request lays out the plan, package and merge steps: owner call, that process is the T12 deliverable |
 | t12-sdlc-contact-import | gpt-5.6-luna (s1, full) | fix needed | gpt-5.6-luna (c06) found the blank-line rule unstated; fixed in this job, and its second pass (s1) passes the key and solvable items; the second pass fails no-method-or-decoy because the request lists the SDLC steps: owner call, that process is the T12 deliverable |
 | t12-spec-rate-limits | gpt-5.6-luna (c06, full) | confirmed |  |
+
+The four tasks above have no author review, and the task schema keeps a recheck only inside a review, so their
+gpt-5.6-luna verdicts are recorded here and not in the task files. c06 (all four): t12-handoff-export-dates and
+t12-spec-rate-limits pass all four items; t12-parallel-backlog and t12-sdlc-contact-import fail key-matches-fixture and
+solvable-from-fixture (fixed above). s1 (the two fixed tasks): key-matches-fixture, fixture-lists-no-answer and
+solvable-from-fixture pass; no-method-or-decoy fails because the request lays out the process (D-127).

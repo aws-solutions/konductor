@@ -144,34 +144,5 @@
       "recheck-failed: no-method-or-decoy (gpt-5.6-luna second pass: the request prescribes the requirements, design, build, test steps); owner call, since that process is the T12 deliverable (D-127)"
     ]
   },
-  "lockedAt": null,
-  "review": {
-    "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
-      "date": "2026-11-20",
-      "items": [
-        {
-          "check": "no-method-or-decoy",
-          "verdict": "fail",
-          "note": "task.json:14 explicitly prescribes the SDLC process: pin down requirements, decide design, build, test, and write the help page, and it names node --test. That is a specified method/tool rather than a method-free request."
-        },
-        {
-          "check": "fixture-lists-no-answer",
-          "verdict": "pass",
-          "note": "The fixture has the source request in docs/requests/contact-import.md:7-18 and the existing address-book API in src/contacts.js, but it has no src/import.js, import tests, feature note, or importing help page. The request states requirements, while the finished implementation and answer artifacts are absent."
-        },
-        {
-          "check": "key-matches-fixture",
-          "verdict": "pass",
-          "note": "The requested API, output paths, JSON fields, and test command are in task.json:14 and the CSV rules are in docs/requests/contact-import.md:7-16; hidden-import.test.js:14-61 checks those rules. edits.md:6 and :14 document that parser choices, Error wording, and blank-line handling were generalized to avoid relying on the reference."
-        },
-        {
-          "check": "solvable-from-fixture",
-          "verdict": "pass",
-          "note": "The fixture request gives the column, BOM, quoting, duplicate, invalid-row, line-number, result, and row-limit requirements, while src/contacts.js:3-26 exposes the validation and book API. A competent developer can implement and test the public function and documents without the hidden tests or reference structure."
-        }
-      ]
-    }
-  }
+  "lockedAt": null
 }

@@ -135,34 +135,5 @@
       "recheck-failed: no-method-or-decoy (gpt-5.6-luna second pass: the request prescribes the plan, package and merge process); owner call, since that process is the T12 deliverable (D-127)"
     ]
   },
-  "lockedAt": null,
-  "review": {
-    "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
-      "date": "2026-11-20",
-      "items": [
-        {
-          "check": "no-method-or-decoy",
-          "verdict": "fail",
-          "note": "task.json:12 prescribes a working process: plan waves, isolate packages, merge them in order, and run tests after each merge. It also names the node test command, so the request does not satisfy the no-method/tool condition."
-        },
-        {
-          "check": "fixture-lists-no-answer",
-          "verdict": "pass",
-          "note": "The fixture contains the backlog/team requirements and pre-change source/tests, such as docs/backlog.md:5-14 and src/export/csv.js:3-8, but no release plan, work packages, merged code, or final merge log. The existing files expose the starting code and dependencies rather than listing the completed answer."
-        },
-        {
-          "check": "key-matches-fixture",
-          "verdict": "pass",
-          "note": "The paths and behaviours in hidden/block-kit/key.json:2-24 and hidden/work.test.js:85-161 are stated by task.json:12 and docs/backlog.md:5-14, and the shared-file traps are visible in src/models/invoice.js:3-8 and src/config.js:6-19. The edits.md changes also remove the reference-shaped CI and setting-name restrictions."
-        },
-        {
-          "check": "solvable-from-fixture",
-          "verdict": "pass",
-          "note": "A developer can derive the scheduling and merge constraints from docs/backlog.md:5-14, docs/team.md:3-9, and the baseline source, including FIELDS sharing in src/export/csv.js and the configuration loader in src/config.js. The request supplies all output paths and package/report requirements, so the implementation need not copy the reference package names or layout."
-        }
-      ]
-    }
-  }
+  "lockedAt": null
 }
