@@ -113,7 +113,9 @@ function buildTask(s, id) {
   return {
     id, class: 'hard', version: 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
     questions: b.questions || 'allowed', prompt, fixture: b.twinOf || id, hidden: id,
-    timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: draft.rubric || [],
+    timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: s.withExpertRubric(draft.rubric || [], draft.expertKey),
+    // Owner rule: NFR, design and planning tasks carry the author's expert key for the judges (sources as in T1).
+    ...(draft.expertKey ? { expertKey: { items: draft.expertKey.items.map((i) => ({ id: i.id, text: i.text, source: i.source || `${b.source.url} (${b.source.licence}; idea only, paraphrased)` })), weakAnswers: draft.expertKey.weakAnswers } } : {}),
     ...(draft.findingsKey ? { findingsKey: draft.findingsKey } : {}),
     targetSkills: mapping.targetSkills, targetSop: mapping.targetSop, targetAgent: mapping.targetAgent,
     controlKind: b.controlKind || 'none', ...(b.twinOf ? { twinOf: b.twinOf } : {}),

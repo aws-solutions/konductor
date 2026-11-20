@@ -1,0 +1,175 @@
+{
+  "id": "t9-accessibility-performance-nfr",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "The order-history page works on my laptop, but support ticket 4417 and the accessibility audit (docs/audit-notes.md) want three fixes.\n\n1. Keyboard and screen reader. The status filter (All, Processing, Shipped, Delivered) must work with the keyboard alone: Tab reaches it, arrow keys change the choice, and each label is read out. After any filter change, a polite announcement says `N orders shown`, where N is every order that matches, not the rows on screen.\n\n2. Date errors. If To is before From, or a date does not exist (2025-02-30), show a specific message next to the field it belongs to (To, for a backwards range). Assistive technology must tie the message to that field, and the field must be marked invalid. Fixing the input removes the message.\n\n3. Typing in the search box must not filter and redraw the list on every key. Wait for a 200 ms pause; Enter filters at once. Put the search in `src/search.js` as `createSearch({ orders, delayMs, schedule, onResults })`, with no DOM access. `schedule(fn, ms)` runs fn later and returns a function that cancels it. It returns `{ setQuery(text), submit() }`, and `onResults` gets the full list of matches. The page shows at most 50 rows, with a `Show more` button for the next 50.\n\nSearch, dates and statuses must behave as they do today, and data/orders.js stays as it is. Update the audit notes and the Unreleased changelog, and add tests. Then tell me what you did and what you left out.",
+  "fixture": "t9-accessibility-performance-nfr",
+  "hidden": "t9-accessibility-performance-nfr",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js browser.test.js",
+      "min": 12,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js >/dev/null 2>&1 && node -e \"const fs=require('fs');const n=fs.readdirSync('test').filter(f=>f.endsWith('.js')).map(f=>(fs.readFileSync('test/'+f,'utf8').match(/^\\s*(test|it)\\(/gm)||[]).length).reduce((a,b)=>a+b,0);process.exit(n>=35?0:1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --input-type=module -e \"import {orders} from './data/orders.js'; import {createSearch} from './src/search.js'; import {filterOrders} from './src/filter.js'; const tasks=[]; const calls=[]; const s=createSearch({orders,delayMs:200,schedule:(fn,ms)=>{const t={fn,ms,on:true};tasks.push(t);return ()=>{t.on=false;};},onResults:(r)=>calls.push(r)}); for (const q of ['s','so','sor','soren']) s.setQuery(q); if(tasks.filter(t=>t.on).length!==1) process.exit(2); s.submit(); if(calls.length!==1||tasks.some(t=>t.on)) process.exit(3); const want=filterOrders(orders,{query:'soren'}); if(!want.length||calls[0].length!==want.length||calls[0].some((o,i)=>o!==want[i])) process.exit(4); s.setQuery('\\u0141ukasz  gdansk'); s.submit(); const w2=filterOrders(orders,{query:'lukasz gdansk'}); if(calls.length!==2||calls[1].length!==w2.length) process.exit(5); s.setQuery(''); s.submit(); if(calls[2].length!==orders.length) process.exit(6);\"",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const t=require('fs').readFileSync('docs/audit-notes.md','utf8').split('\\n');const rows=t.filter(l=>/^\\| (1|2|3|8) \\|/.test(l));process.exit(rows.length===4&&rows.every(l=>!/\\bopen\\b/i.test(l))?0:1)\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const t=require('fs').readFileSync('CHANGELOG.md','utf8');const m=/## Unreleased\\n([\\s\\S]*?)(\\n## |$)/.exec(t);process.exit(m&&(m[1].match(/^- /gm)||[]).length>=2?0:1)\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/orders.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "measure",
+        "text": "Says how responsiveness was measured: that typing, not filtering, was the cost, e.g. timing a filter plus full table rebuild of 1,500 rows before and after, or counting rebuilds during a typing burst, with the numbers (or says plainly that no timing was done and the claim rests on the burst running once and 50 rows being drawn).",
+        "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
+      },
+      {
+        "id": "left-out",
+        "text": "Names the audit items not done and why: delivered-badge contrast (4), skip link (5), table caption (6) and the removed button focus outline (7) are separate from the three support complaints and were left open in the notes, with item 7 flagged as an easy follow-up.",
+        "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
+      },
+      {
+        "id": "cap-tradeoff",
+        "text": "States the trade-offs of the 50-row cap: browser find (Ctrl+F) and select-all only see rendered rows, a screen reader user must activate Show more to reach later rows, the count in the live region stays the full total, and focus stays on the button while new rows append after it; a virtual list or a proper pager were the alternatives.",
+        "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
+      },
+      {
+        "id": "reuse",
+        "text": "Says the search reuses the existing match helper (accent and special-letter folding, every word required) and the existing date parser, so day-first dates like 14/03/2025 stay valid and the page and tests agree on what a match is.",
+        "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
+      },
+      {
+        "id": "limits",
+        "text": "Mentions what was not verified or is still open: the 200 ms delay is a fixed choice with no real-device test on a mid-range phone, the live region wording for a single order reads '1 orders shown' as specified, and Enter on the search box now flushes the wait instead of submitting a form.",
+        "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Says the page is now accessible and fast, with no numbers and no list of what was left out.",
+      "Reports that tests pass without saying that the fake timer tests do not exercise a real browser or a slow device.",
+      "Claims the 50-row cap fixes the search lag and never mentions the debounce or the trade-offs of hiding rows.",
+      "Counts the rows on screen for the live region text, so the number stops at 50.",
+      "Says 'all audit items fixed' although the contrast, skip link, caption and focus outline items were not touched."
+    ]
+  },
+  "targetSkills": [
+    "frontend-development",
+    "ui-text-validation",
+    "test-coverage-analysis"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "frontend-development",
+      "ui-text-validation",
+      "test-coverage-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-sonnet-5.5",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://www.w3.org/WAI/WCAG22/quickref/",
+      "licence": "W3C Document License (checked on the W3C site); idea only, no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes the required outcomes (keyboard accessibility, date validation, debounce) without naming specific methods, libraries, or implementation patterns. The notes section mentions traps and hurried answers but these guide evaluation, not the agent's approach."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request specifies exact behaviors: 200ms debounce delay, 50-row pagination, 'N orders shown' announcement format, aria-describedby/aria-invalid for date errors. Hidden tests rely only on behaviors explicitly stated (e.g., full match count vs rows on screen, reuse of existing match helper)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture's tests and docs reveal existing helpers (dates.js, match.js) and their behaviors, which the agent should reuse. The audit-notes.md lists 8 issues but the request names the 3 to fix, so the remaining items don't give away answers. No comments or docs reveal the debounce or pagination implementation."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A hurried answer that counts rows on screen, uses plain toLowerCase, ignores the cancel function, validates with Date.parse, or leaves Show more state across filters would all be caught by hidden tests. The lazy solution (21.4% score) demonstrates this - it fails on matching, debounce, pagination, and date validation."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests derive from stated requirements: radio group navigation (request says 'Tab reaches it, arrow keys change the choice'), live region count ('N orders shown, where N is every order that matches, not the rows on screen'), debounce (200ms, Enter at once, cancel pending), date validation tied to field. The request explicitly tells agent to reuse existing match helper and date parser, so day-first dates and accent folding are not hidden constraints."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 3.6,
+    "dryRun": {
+      "reference": 100,
+      "stub": 3.6,
+      "lazy": 21.4,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

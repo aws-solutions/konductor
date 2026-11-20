@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order history · Tidewell Supply</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/orders.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Order history</h1>
+    <p class="lede">Every order placed through the Tidewell Supply shop, newest first.</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <div class="field">
+        <label for="search">Search orders</label>
+        <input id="search" type="search" placeholder="Name, order number, city or item" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <span class="field-title">Status</span>
+        <div class="chips" id="status-chips">
+          <div class="chip is-active" data-status="all">All</div>
+          <div class="chip" data-status="processing">Processing</div>
+          <div class="chip" data-status="shipped">Shipped</div>
+          <div class="chip" data-status="delivered">Delivered</div>
+        </div>
+      </div>
+
+      <form id="date-form" class="dates" novalidate>
+        <div class="field">
+          <label for="date-from">From</label>
+          <input id="date-from" name="from" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="date-to">To</label>
+          <input id="date-to" name="to" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" autocomplete="off">
+        </div>
+        <button type="submit">Apply</button>
+      </form>
+    </section>
+
+    <p id="summary" class="summary"></p>
+
+    <table class="orders">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Placed</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th class="num">Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="order-rows"></tbody>
+    </table>
+  </main>
+
+  <footer class="foot">Tidewell Supply · orders are kept for three years.</footer>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

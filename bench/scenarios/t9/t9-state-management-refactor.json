@@ -1,0 +1,139 @@
+{
+  "id": "t9-state-management-refactor",
+  "class": "hard",
+  "version": 1,
+  "phase": "refactor",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "Could you split the board's state handling out of `src/board.js`? I want a small CommonJS store at `src/store/createStore.js` exporting `createStore(initialState)`, returning `{ getState, setState, subscribe }`. `setState` should accept either a partial object or an updater function and notify subscribers once for each call. Put the board mutations and commands in `src/store/boardActions.js`, exported as `boardActions(store)`. Keep `src/board.js` as the public entry point and preserve every function name and its current behavior, including `columnView` and `cardBadge`; it should delegate through the new actions and store. Please include the documented `_useStore(store)` hook on `src/board.js` so an embedding can provide a store. Keep the existing CommonJS format and change nothing outside `src/board.js` and the new files under `src/store/`. The goal is to make board state independently usable without making the keyboard, drag, persistence, or view-model callers change.",
+  "fixture": "t9-state-management-refactor",
+  "hidden": "t9-state-management-refactor",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js && node -e \"const {createStore}=require('./src/store/createStore'); const {boardActions}=require('./src/store/boardActions'); const s=createStore({columns:[{id:'inbox',title:'Inbox',cardIds:[]}],cards:{},filter:'',selectedCardId:null,draft:null,undoStack:[]}); const c=boardActions(s).addCard({title:'x',description:'details',assignee:'A',labels:['review'],createdAt:'created',updatedAt:'updated'}); if(c.description!=='details'||c.assignee!=='A'||c.createdAt!=='created'||c.updatedAt!=='updated') process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const {createStore}=require('./src/store/createStore'); const {boardActions}=require('./src/store/boardActions'); const s=createStore({columns:[{id:'inbox',title:'Inbox',cardIds:[]}],cards:{},filter:'',selectedCardId:null,draft:null,undoStack:[]}); const a=boardActions(s); let n=0; s.subscribe(()=>n++); a.setFilter(''); if(n!==0) process.exit(1); a.setFilter('x'); if(n!==1) process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/board.js",
+      "pattern": "require\\(['\"]\\.\\/store\\/boardActions",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const {createStore}=require('./src/store/createStore'); const s=createStore({count:0,keep:true}); let calls=0; s.subscribe(()=>calls++); s.setState({count:1}); s.setState(state=>({count:state.count+2})); if(s.getState().count!==3||s.getState().keep!==true||calls!==2) process.exit(1)\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/keyboard.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [
+    "frontend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "frontend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/pmndrs/zustand",
+      "licence": "MIT (checked on GitHub)",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies the required exports and file paths but does not reveal implementation details or hidden test expectations. It asks for a store pattern and board actions, which is appropriate guidance for the task."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request unambiguously specifies the API surface (createStore, boardActions, _useStore), file locations, and CommonJS format. The hidden tests confirm these expectations without relying on unstated assumptions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture/ directory contains implementation but no test hints. Comments, docs, and CHANGELOG describe functionality, not hidden test requirements. The tests can only be inferred from the public API requested."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Not a defect: the reviewer's own evidence is that a hidden test catches the shallow answer (two action instances must not share state), which is the ceiling working; the lazy answer scores under 40. (reviewer: A shallow solution could hard-code card IDs starting from 1 (as in fixture's nextNumber) without proper isolation between action instances. Test 'two board action instances do not share state through the module' catches this. The lazy/ implementation fails this by using Object.keys(state.cards).length+1 instead of per-instance counters.)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests are deducible from the request. The pattern of store, actions, and hook is standard. Tests check store semantics, action isolation, injected stores, and legacy preservation—all specified in the request."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Not a defect: the seed columns and cards are the fixture's existing behaviour, which the characterization tests are meant to pin; they reveal nothing about the new modules. (reviewer: The fixture's board.js contains hard-coded column definitions and seed cards that exactly match the hidden tests' expectations. A careful reader can extract the exact data structure (COLUMN_DEFINITIONS, SEED_CARDS) and the seed board state from fixture alone.)"
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.4,
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.4,
+      "lazy": 33.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}
