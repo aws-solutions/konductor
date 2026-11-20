@@ -141,3 +141,29 @@ A deepseek author is stopped after 85 tool calls (about 25 credits at T5's rate;
 | t8-bug-retry-storm (v2, try 2) | failed | minimax-m2.5 | 0.00 | reference 92 and stub 36.5 before the lazy and alternative answers; dropped; version 1 stays |
 | t8-nfr-slo-burn (v2, try 2), t8-twin-latency-tier-report (v2), t8-dec-deploy-strategy (v2) | stopped | qwen3-coder-next, minimax-m2.5 | 0.00 | stopped at the combined T7 and T8 rewrite spend stop; the cut streams report no credits; version 1 stays |
 | (rewrite total) | note | | 0.00 | 190.90 credits: sum of the reported rewrite calls above, from the first rewrite row on; four cut streams (two qwen3-coder-next authors stopped at about 120 tool calls, and the two authors stopped at the spend stop) report no credits, so the real total is higher, about 200 to 215 |
+
+## FX fix round (2026-11-20)
+
+Paid calls of the FX job (owner-approved, hard cap 90 credits for all batches, abort limit 10 credits per call, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t8-tpm-rollout-regions fix by gpt-5.6-luna, abort limit 10 credits, spend so far 69.2 of 90
+- result: t8-tpm-rollout-regions fix gpt-5.6-luna credits=1.962 secs=100
+- plan: t8-tpm-rollout-regions fix by gpt-5.6-luna, abort limit 10 credits, spend so far 71.2 of 90
+- result: t8-tpm-rollout-regions fix gpt-5.6-luna credits=1.506 secs=60
+- plan: t8-tpm-rollout-regions recheck by glm-5, abort limit 10 credits, spend so far 72.7 of 90
+- result: t8-tpm-rollout-regions recheck glm-5 credits=2.738 secs=100
+- plan: t8-runbook-db-failover fix by gpt-5.6-luna, abort limit 10 credits, spend so far 75.4 of 90
+- result: t8-runbook-db-failover fix gpt-5.6-luna credits=0.819 secs=50
+- plan: t8-runbook-db-failover recheck by glm-5, abort limit 10 credits, spend so far 76.2 of 90
+- result: t8-runbook-db-failover recheck glm-5 credits=1.875 secs=70
+- plan: t8-rollout-ledger-migration fix by gpt-5.6-luna, abort limit 10 credits, spend so far 78.1 of 90
+- result: t8-rollout-ledger-migration fix gpt-5.6-luna credits=2.166 secs=100
+- plan: t8-rollout-ledger-migration recheck by glm-5, abort limit 10 credits, spend so far 80.3 of 90
+- result: REFUSED spend 80.27
+
+Outcomes (the first tpm-rollout-regions fix, 2.0 credits, was made before the key helper existed; it moved the lazy score only from 100 to 55, so it was reverted and the one fix was made again with the helper):
+
+- t8-tpm-rollout-regions: gpt-5.6-luna tightened the key. Recheck by glm-5 (zhipu, not the writer's family): pass on all four items. Version 2; reference 100, empty 5.7, lazy 37.5, alternative 100.
+- t8-runbook-db-failover: gpt-5.6-luna tightened the key. Recheck by glm-5: pass. Version 2; reference 100, empty 7.1, lazy 38.1, alternative 100.
+- t8-rollout-ledger-migration: the fix passed the free gates (lazy 38.1) but its recheck was refused by the spend check (80.3 credits spent, abort limit 10 would pass 90), so the fix was reverted and the task stays at fix. The draft key is in the scratch folder of the FX job, not in the tree.
+- Not reached (spend cap): t8-inc-checkout-latency, t8-pm-cert-expiry-region, t8-inc-memory-leak, t8-dec-deploy-strategy, t8-oncall-alert-review, t8-inc-queue-backlog, t8-pm-cache-stampede, t8-twin-latency-tier-report, t8-neg-config-question, t8-bug-retry-storm.

@@ -50,7 +50,7 @@
       "type": "maxLen",
       "path": "steps",
       "max": 14,
-      "min": 1
+      "min": 14
     },
     {
       "id": "traffic-steps-have-gates",
@@ -115,7 +115,7 @@
       "id": "no-bank-traffic-before-certification",
       "type": "none",
       "path": "steps",
-      "weight": 2,
+      "weight": 1,
       "match": {
         "field": "action",
         "all": [
@@ -127,6 +127,68 @@
           "2026-06-10T08:59:59Z"
         ]
       }
+    },
+    {
+      "id": "owner-list-is-complete",
+      "type": "maxLen",
+      "path": "ownerList",
+      "min": 14,
+      "max": 14
+    },
+    {
+      "id": "go-no-go-list-is-complete",
+      "type": "maxLen",
+      "path": "goNoGo",
+      "min": 4,
+      "max": 4
+    },
+    {
+      "id": "canary-share",
+      "type": "number",
+      "path": "capacity.canaryPercent",
+      "value": 5,
+      "tol": 0,
+      "weight": 10
+    },
+    {
+      "id": "noria-full-share",
+      "type": "number",
+      "path": "steps.4.percent",
+      "value": 100,
+      "tol": 0,
+      "weight": 10
+    },
+    {
+      "id": "solmere-full-share",
+      "type": "number",
+      "path": "steps.7.percent",
+      "value": 100,
+      "tol": 0,
+      "weight": 10
+    },
+    {
+      "id": "kestrel-full-share",
+      "type": "number",
+      "path": "steps.10.percent",
+      "value": 100,
+      "tol": 0,
+      "weight": 10
+    },
+    {
+      "id": "veyra-full-share",
+      "type": "number",
+      "path": "steps.12.percent",
+      "value": 100,
+      "tol": 0,
+      "weight": 10
+    },
+    {
+      "id": "rollback-bake-window",
+      "type": "number",
+      "path": "rollback.trigger.windowMin",
+      "value": 10,
+      "tol": 0,
+      "weight": 10
     }
   ]
 }

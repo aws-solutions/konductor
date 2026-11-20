@@ -18,7 +18,8 @@
     "mutation.test.js",
     "findings.test.js",
     "findings-key.js",
-    "doc-key.js"
+    "doc-key.js",
+    "plan.test.cjs"
   ],
   "legacy": [
     {
@@ -48,66 +49,6 @@
     {
       "path": "t1/stage.js",
       "debt": "D-60"
-    },
-    {
-      "path": "t7/hidden/t7-dep-conflicts/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-dev-breakdown/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-freeze-forecast/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-pm-launch-cut/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-program-brief/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-program-rollup/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-release-gate/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-risk-owners/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-scope-cut/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-ship-train/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-sprint-capacity/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-status-slip-twin/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/hidden/t7-status-slip/hidden/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/lib/plan-grade.cjs",
-      "debt": "D-73"
-    },
-    {
-      "path": "t7/stage.js",
-      "debt": "D-73"
     }
   ]
 }

@@ -54,3 +54,7 @@ t8-dec-deploy-strategy 51.6, t8-oncall-alert-review 50.4, t8-inc-queue-backlog 4
 t8-twin-latency-tier-report 42.9 or more), or their lazy and alternative answers score the same
 (t8-neg-config-question, 79.6 each), or no alternative is recorded (t8-bug-retry-storm, lazy 72.1). Each keeps
 `pilot.decision` fix with the reason in `pilot.scores.fixReason`, for a paid single fix by the original writer.
+
+## Fix round by the FX job (2026-11-20)
+
+t8-tpm-rollout-regions and t8-runbook-db-failover: the key was tightened by the original writer (gpt-5.6-luna), not by Claude, so no hand edit is added and `handEdited` is unchanged. Recheck by glm-5; calls and credits in AUTHORING-LOG.md.
