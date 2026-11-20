@@ -4,9 +4,9 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 
 | | Calls | Credits captured | Estimate | Stop at |
 | --- | --- | --- | --- | --- |
-| Wave 1 | 31 | 89.76 | 80 | 160 |
-| Rest | 71 | 219.93 | 270 | 540 |
-| **T2 total** | 102 | **309.69** | 350 | 700 |
+| Wave 1 | 37 | 97.53 | 80 | 160 |
+| Rest | 82 | 227.90 | 270 | 540 |
+| **T2 total** | 119 | **325.44** | 350 | 700 |
 
 6 calls were stopped before their metering event and are not in these totals; at 2 to 15 credits each they add an estimated 12 to 90.
 
@@ -114,3 +114,20 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-20T02:01:07.612Z | t2-twin-refund-notes | fix | deepseek-3.2 | 795 | 13.38 | ok |
 | 2026-11-20T02:02:51Z | t2-twin-fanout-brief | author | gpt-5.6-luna | 94 | 1.74 | ok |
 | 2026-11-20T02:04:30.049Z | t2-twin-fanout-brief | fix | gpt-5.6-luna | 85 | 1.90 | ok |
+| 2026-11-20T02:20:38Z | t2-arch-dr-event-store | recheck | glm-5 | 47 | 1.04 | ok |
+| 2026-11-20T02:22:00Z | t2-arch-dr-split-checkout | recheck | glm-5 | 82 | 1.23 | ok |
+| 2026-11-20T02:24:38Z | t2-arch-dr-two-regions | recheck | minimax-m2.5 | 157 | 1.12 | ok |
+| 2026-11-20T02:25:18Z | t2-dr-data-erasure | recheck | qwen3-coder-next | 40 | 0.17 | ok |
+| 2026-11-20T02:27:19Z | t2-dr-notify-fanout | recheck | minimax-m2.5 | 120 | 0.85 | ok |
+| 2026-11-20T02:29:07Z | t2-dr-rate-limits | recheck | minimax-m2.5 | 107 | 0.59 | ok |
+| 2026-11-20T02:29:51Z | t2-dr-search-reindex | recheck | glm-5 | 43 | 1.08 | ok |
+| 2026-11-20T02:30:39Z | t2-gaps-jwt-middleware | recheck | qwen3-coder-next | 48 | 0.12 | ok |
+| 2026-11-20T02:32:05Z | t2-pr-avatar-upload | recheck | minimax-m2.5 | 85 | 0.63 | ok |
+| 2026-11-20T02:33:55Z | t2-pr-cursor-pages | recheck | glm-5 | 109 | 1.90 | ok |
+| 2026-11-20T02:35:04Z | t2-pr-orders-migration | recheck | minimax-m2.5 | 68 | 0.44 | ok |
+| 2026-11-20T02:35:42Z | t2-pr-price-cache | recheck | qwen3-coder-next | 38 | 0.25 | ok |
+| 2026-11-20T02:37:33Z | t2-pr-refund-flow | recheck | glm-5 | 111 | 2.80 | ok |
+| 2026-11-20T02:38:01Z | t2-pr-stock-reserve | recheck | qwen3-coder-next | 27 | 0.13 | ok |
+| 2026-11-20T02:39:39Z | t2-sec-dr-sso-login | recheck | minimax-m2.5 | 97 | 0.45 | ok |
+| 2026-11-20T02:40:30Z | t2-sec-pr-webhook-relay | recheck | qwen3-coder-next | 50 | 0.24 | ok |
+| 2026-11-20T02:43:01Z | t2-pr-refund-flow | recheck | glm-5 | 103 | 2.72 | ok |
