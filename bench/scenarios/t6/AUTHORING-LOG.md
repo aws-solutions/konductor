@@ -119,3 +119,36 @@ Cross-family reviewers passed every leak check. The lead's own read found more, 
 All 72 call streams were scanned for paths outside each call's own scratch folder and HOME. None touched a skill, SOP
 or agent file or the konductor tree; the only outside paths were `/var/tmp` (the kiro-cli binary) and the call's own
 HOME `tmp/`. No prompt or fixture names an internal tool, host path or the owner.
+
+## FX fix round (2026-11-20)
+
+Paid calls of the FX job (owner-approved, hard cap 90 credits for all batches, abort limit 10 credits per call, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t6-idea-arch-search fix by deepseek-3.2, abort limit 10 credits, spend so far 29.0 of 90
+- result: t6-idea-arch-search fix deepseek-3.2 credits=5.103 secs=401
+- plan: t6-idea-arch-search recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 34.1 of 90
+- result: t6-idea-arch-search recheck gpt-5.6-luna credits=0.596 secs=30
+- plan: t6-idea-feature-bets fix by deepseek-3.2, abort limit 10 credits, spend so far 34.7 of 90
+- result: t6-idea-feature-bets fix deepseek-3.2 credits=10.000 secs=551
+- plan: t6-idea-feature-bets recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 44.7 of 90
+- result: t6-idea-feature-bets recheck gpt-5.6-luna credits=0.556 secs=30
+- plan: t6-plan-mvp-cut fix by deepseek-3.2, abort limit 10 credits, spend so far 45.3 of 90
+- plan: t6-neg-glossary-rename recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 45.3 of 90
+- result: t6-neg-glossary-rename recheck gpt-5.6-luna credits=0.253 secs=20
+- plan: t6-neg-release-notes-csv recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 45.5 of 90
+- result: t6-neg-release-notes-csv recheck gpt-5.6-luna credits=0.254 secs=20
+- result: t6-plan-mvp-cut fix deepseek-3.2 credits=7.508 secs=521
+- plan: t6-plan-mvp-cut recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 55.5 of 90
+- result: t6-plan-mvp-cut recheck gpt-5.6-luna credits=0.997 secs=60
+- plan: t6-req-volunteer-shifts fix by deepseek-3.2, abort limit 10 credits, spend so far 56.5 of 90
+- result: t6-req-volunteer-shifts fix deepseek-3.2 credits=5.893 secs=471
+- plan: t6-req-volunteer-shifts recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 62.4 of 90
+- result: t6-req-volunteer-shifts recheck gpt-5.6-luna credits=0.600 secs=50
+
+Outcomes:
+
+- t6-idea-feature-bets: deepseek-3.2 changed the export to 15 unique customers and $6,785, matching the hidden tests. Recheck pass. Version 3; reference 100, empty 10.2, lazy 13.6, alternative 100.
+- t6-req-volunteer-shifts: deepseek-3.2 changed the hidden grounded test (no site cap numbers, which the fixture does not give) and the reference R9. Recheck pass. Version 2; reference 100, empty 5.5, lazy 5.5, alternative 100.
+- t6-idea-arch-search: DROPPED. deepseek-3.2 rewrote four fixture files and one key item; the recheck still failed fixture-lists-no-answer because docs/quick_notes_random.md and docs/slack_chat_search_discussion.md state the decision. Task files are not kept in the tree.
+- t6-plan-mvp-cut: DROPPED. deepseek-3.2 turned the answers in the email thread into hints and blanked the TEN-123 estimate; the recheck failed key-matches-fixture (the reference totalPoints, 209, is not the sum of the chosen items plus the open estimate). Task files are not kept in the tree.
+- t6-neg-glossary-rename, t6-neg-release-notes-csv: first non-Claude recheck of the scorer fixes, both pass; no change to the tasks.

@@ -1,7 +1,7 @@
 {
   "id": "t7-ship-train",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -23,9 +23,9 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/storage-engine-forecast.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"forecast\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"work-1063\"];process.exit(items.filter(named).length>=1?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/storage-engine-forecast.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"forecast\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"110\",\"2027-05-07\",\"2027-07-30\",\"2027.06\",\"2027.07\",\"work-1063\"];process.exit(items.every(named)?0:1)'",
       "expectExit": 0,
-      "weight": 4,
+      "weight": 8,
       "kind": "substance"
     },
     {
@@ -168,19 +168,18 @@
         "repeats": 3,
         "deterministic": true,
         "sameTwice": true
-      },
-      "fixReason": "lazy 52.4: the key is mostly scalar values (release ids, dates) and one decoy; the scripted fake keeps the reference release ids, so 3 of 9 items pass and the evidence check (one item) passes"
+      }
     },
     "reference": 100,
-    "stub": 4.8,
+    "stub": 2.9,
     "dryRun": {
       "reference": 100,
-      "stub": 4.8,
-      "lazy": 52.4,
+      "stub": 2.9,
+      "lazy": 29.5,
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20"
   },
   "handEdited": {

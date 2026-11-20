@@ -149,7 +149,34 @@
         "verdict": "pass",
         "note": "No comments, tests, or file names point at the planted problems; decoy is documented."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "qwen",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt names a review method (read repo, check behavior) and specific files (pr/508/description.md, changes.diff); no planted problem/decoy/count is indicated"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain no comments, tests, docs or filenames that state any planted problem; test/price-cache.test.mjs:70-73 is a decoy test that verifies falsy values are preserved"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 6 key items (k1-k6) have correct file/line locations: k1=price-service.mjs:11-12 (tenant-scoped cache key), k2=price-service.mjs:24-25 (replace missing invalidation), k3=app.mjs:22-24 (ttlSeconds/ttlMs mismatch), k4=price-service.mjs:28-29 (#load no dedup), k5=price-cache.mjs:26 (direct reference return), k6=price-cache.mjs:29-31 (maxEntries never enforced)"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "All 6 issues are visible in fixture: tenant key omission (price-service.mjs:11), replace invalidation gap (price-service.mjs:24-25), TTL unit mismatch (app.mjs:22), no in-flight dedup (price-service.mjs:28), direct reference return (price-cache.mjs:26), no eviction (price-cache.mjs set method)"
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

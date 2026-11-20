@@ -137,22 +137,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt names the source/output paths and requested columns, but does not prescribe a method or identify any trap or expected answer."
+          "note": "The task.json prompt asks for a CSV conversion, names the output columns, and defines the type field, but does not prescribe a method or point to hidden traps."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/docs/release-notes.md lines 3-136 provide the release data, while the only CSV and date guidance in the fixture is general source evidence in lines 75 and fixture/docs/style-guide.md line 26; no fixture file lists the expected output."
+          "note": "fixture/docs/release-notes.md contains the source release notes and their ordinary bullet content, including the comma-containing phrase and alternate date; it does not state a solution or hidden-test answer key."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The source release blocks in fixture/docs/release-notes.md lines 3-136 contain the expected versions, 67 categorized bullets, the Jan 28 date, and the quoted comma-containing summary; fixture/docs/style-guide.md lines 26 and 46 support ISO date normalization and wrapped-line handling."
+          "note": "The expected versions, dates, headings, 67 bullet rows, wrapped content, and quoted comma-containing summary all appear in fixture/docs/release-notes.md (release sections begin at lines 3-123)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "task.json field prompt plus fixture/docs/release-notes.md and fixture/docs/style-guide.md specify the source structure, categories, date conventions, and edge-case content needed to produce the checked CSV; the separate Changelog Policy section begins at release-notes.md line 138 and is distinguishable from versioned release entries."
+          "note": "task.json provides the destination path, four columns, row and type rules, while fixture/docs/release-notes.md provides all values needed to produce the reference CSV; no hidden information is required."
         }
       ]
     }

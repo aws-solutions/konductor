@@ -199,7 +199,34 @@
         "verdict": "pass",
         "note": "No comments, tests, or file names point at planted problems. The incident document mentions stale reads but as a past operational issue, not as a hint about the ADR's design flaw."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for open-ended review without naming a method, checklist, decoy, or number of problems."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comments, tests, docs, or file names in the fixture state the planted problems."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All 7 key items correctly identify issues at their stated sections with defensible severities (math error in 6.2, stale reads vs read-your-writes in 3.3, GDPR gap in 7.2, etc.)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Each key item is discoverable by comparing ADR claims against product-requirements.md, recovery-targets.md, and reporting-contract.md, or by verifying stated numbers (e.g., 174.7M/2.5M = ~70 min not 10 min)."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

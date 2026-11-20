@@ -15,8 +15,8 @@ resource "aws_cloudtrail" "audit" {
   s3_bucket_name                = var.log_bucket_name
   s3_key_prefix                 = "cloudtrail"
   include_global_service_events = true
-  is_multi_region_trail         = true  # Enabled multi-region
-  enable_log_file_validation    = true  # Enabled validation
+  is_multi_region_trail         = false
+  enable_log_file_validation    = false
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-audit-trail"

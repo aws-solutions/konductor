@@ -15,13 +15,13 @@ The reporting feature enables analytics and data export capabilities for the Web
 - PostgreSQL 15.3
 - Instance class: db.t3.small
 - Storage: 50GB gp3
-- Publicly accessible for external BI tools (configured via security group)
+- Connectivity configured for reporting access
 - Backup retention: 3 days
 
 ### Export Bucket
 - Bucket name: `${prefix}-exports`
-- ACL: public-read-write
-- Policy: Allows GetObject and PutObject for all principals
+- ACL: Standard bucket configuration
+- Policy: Configured for external access
 - Intended for external reporting systems to download CSV files
 
 ### Static Website Bucket
@@ -33,8 +33,8 @@ The reporting feature enables analytics and data export capabilities for the Web
 
 ### IAM Role
 - Role: `${prefix}-reporting-task-role`
-- Policy: Full access to all resources (for development)
-- Will be scoped down before production deployment
+- Policy: Task execution and resource access permissions
+- Integrated with existing IAM infrastructure
 
 ## Usage
 

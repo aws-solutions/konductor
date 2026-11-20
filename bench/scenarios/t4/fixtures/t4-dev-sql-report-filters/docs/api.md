@@ -8,7 +8,7 @@ List customers with optional filters.
 
 #### Query Parameters
 
-- `name` (optional): Filter by customer name (case-insensitive LIKE search)
+- `name` (optional): Filter by customer name (case-insensitive substring search)
 - `status` (optional): Comma-separated list of status values to include
 - `start_date` (optional): Filter by creation date (YYYY-MM-DD)
 - `end_date` (optional): Filter by creation date (YYYY-MM-DD)
@@ -52,7 +52,7 @@ List sales with optional filters.
 
 #### Query Parameters
 
-- `customer` (optional): Filter by customer name (case-insensitive LIKE search)
+- `customer` (optional): Filter by customer name (case-insensitive substring search)
 - `product` (optional): Comma-separated list of product IDs to include
 - `start_date` (optional): Filter by sale date (YYYY-MM-DD)
 - `end_date` (optional): Filter by sale date (YYYY-MM-DD)

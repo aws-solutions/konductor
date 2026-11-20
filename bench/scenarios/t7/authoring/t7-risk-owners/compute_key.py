@@ -105,9 +105,7 @@ def main() -> None:
     ids_union = bridge_ids + [vendor_ticket, scope_ticket]
     assertions = [
         {"id": "key-person-cites-chain", "desc": "names several Session Bridge tickets", "op": "cites", "path": "risks", "field": "tickets", "ids": bridge_ids, "min": 3, "where": {"kind": "key-person"}},
-        {"id": "vendor-date-cites-ticket", "desc": "ties provider timing to the compatibility ticket", "op": "cites", "path": "risks", "field": "tickets", "ids": [vendor_ticket], "where": {"kind": "vendor", "trigger_date": vendor_date}},
-        {"id": "vendor-owner", "desc": "assigns the provider risk to the vendor manager", "op": "cites", "path": "risks", "field": "tickets", "ids": [vendor_ticket], "where": {"kind": "vendor", "owner": "Sana Patel"}},
-        {"id": "unowned-cites-chain", "desc": "names the blank-owner chain ticket", "op": "cites", "path": "risks", "field": "tickets", "ids": [unowned["id"]], "where": {"kind": "unowned"}},
+        {"id": "vendor-date-cites-ticket", "desc": "ties provider timing and its owner to the compatibility ticket", "op": "cites", "path": "risks", "field": "tickets", "ids": [vendor_ticket], "where": {"kind": "vendor", "trigger_date": vendor_date, "owner": "Sana Patel"}},
         {"id": "unowned-trigger", "desc": "uses the unowned ticket due date as a trigger", "op": "cites", "path": "risks", "field": "tickets", "ids": [unowned["id"]], "where": {"kind": "unowned", "trigger_date": unowned["due_date"]}},
         {"id": "freeze-cites-terminal", "desc": "ties the schedule risk to the end of the dependency chain", "op": "cites", "path": "risks", "field": "tickets", "ids": [terminal], "where": {"kind": "schedule", "trigger_date": freeze_date}},
         {"id": "freeze-owner", "desc": "assigns the freeze risk to the release lead", "op": "cites", "path": "risks", "field": "tickets", "ids": [terminal], "where": {"kind": "schedule", "owner": "Owen Wright"}},

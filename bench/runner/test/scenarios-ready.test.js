@@ -57,6 +57,24 @@ test('a task is ready only with a passing dry run in a folder the runner loads',
   assert.match(rows['t2-ok'].reasons[0], /batch folder fails the run loader \(1 file\(s\), first t2-bad\.json\)/);
 });
 
+test('fixReasons reads a lazy score kept in pilot.scores.dryRun, like dryRunReasons', () => {
+  assert.deepEqual(fixReasons({ pilot: { scores: { dryRun: { lazy: 55 } }, decision: 'keep' } }), ['lazy 55 over 40']);
+  assert.deepEqual(fixReasons({ pilot: { dryRun: { lazy: 30 }, decision: 'keep' } }), []);
+});
+
+test('the ready table counts each batch and the whole pack, and ready plus not ready is every task', () => {
+  const { render } = require('../../scenarios/ready.js');
+  const rows = [
+    { batch: 't1', id: 't1-a', ready: true, fix: [], reasons: [], lockBlockers: [] },
+    { batch: 't1', id: 't1-b', ready: false, fix: ['lazy 50 over 40'], reasons: ['fix: lazy 50 over 40'], lockBlockers: [] },
+    { batch: 't2', id: 't2-a', ready: false, fix: [], reasons: ['no pilot.dryRun recorded'], lockBlockers: [] },
+  ];
+  const text = render(rows);
+  assert.match(text, /^\| t1 \| 2 \| 1 \| 1 \| 1 \|$/m);
+  assert.match(text, /^\| t2 \| 1 \| 0 \| 0 \| 1 \|$/m);
+  assert.match(text, /^\| all \| 3 \| 1 \| 1 \| 2 \|$/m);
+});
+
 test('bench.js scenarios ready --ids prints the ready ids of a batch, --late the others', () => {
   const dir = pack();
   const run = (...a) => spawnSync(process.execPath, [BENCH_JS, 'scenarios', 'ready', dir, ...a], { encoding: 'utf8' });
