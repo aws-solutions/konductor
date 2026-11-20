@@ -118,7 +118,34 @@
         "verdict": "pass",
         "note": "All requirements are stated in the prompt. The connection parameter requirement is explicit ('ReportDatabase must also accept an optional sqlite3 connection'). The 3-statement limit, 8 MiB limit, and byte-for-byte output requirements are all clearly specified."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt specifies performance requirements and constraints (3 SQL statements, 8 MiB memory, byte-for-byte output) without prescribing any specific method, framework, or tool, and contains no misleading hints pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture code shows N+1 query patterns in database.py (per-customer queries) and materializes results in memory (report.py, formatters.py), but does not explicitly describe the solution or mention joined queries, streaming, or keyed lookups as the answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "The prompt states ReportDatabase must accept an optional sqlite3 connection parameter, but the fixture's ReportDatabase.__init__ only accepts a path and has no connection parameter; the hidden tests use ReportDatabase(path, connection=conn), which will fail on the unmodified fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can identify the N+1 query problem and quadratic list scan from the fixture code, understand the memory issue from materialized results, and devise solutions (joined queries, dictionary lookups, streaming) from the stated constraints without seeing hidden tests."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -160,5 +187,19 @@
     "family": "claude",
     "editor": "t1-worker",
     "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 29.3,
+      "alt": 81,
+      "date": "2026-11-20"
+    }
   }
 }

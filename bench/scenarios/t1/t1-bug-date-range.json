@@ -145,5 +145,19 @@
         "note": "The prompt fully specifies the expected behavior and constraints, the fixture compiles and runs, and hidden tests check stated requirements without contradicting the prompt or relying on timing."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 52.4,
+      "alt": 81,
+      "date": "2026-11-20"
+    }
   }
 }

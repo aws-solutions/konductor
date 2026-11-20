@@ -117,5 +117,19 @@
         "note": "The task is achievable. All requirements are stated in the prompt, the existing code provides clear patterns to follow, and the reference implementation passes all tests. The task-draft notes correctly identify pitfalls (JSON parsing before signing, checking only one secret) that competent implementations should avoid."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 17.3,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 17.3,
+      "lazy": 32.7,
+      "alt": 32.7,
+      "date": "2026-11-20"
+    }
   }
 }

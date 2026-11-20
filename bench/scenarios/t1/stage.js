@@ -124,8 +124,8 @@ function fix(id) {
 // An author guesses its own time; a developer task gets at least 600 s soft and twice that hard (limits are re-set after the pilot).
 const limitsOf = (l) => { const softSec = Math.max(l.softSec, 600); return { softSec, hardSec: Math.max(l.hardSec, softSec * 2) }; };
 
-// The answer writer is never the author's family: a gpt-written task gets qwen3-coder-next, any other gets gpt-5.6-luna.
-const answerModel = (author) => (author === 'gpt-5.6-luna' ? 'qwen3-coder-next' : 'gpt-5.6-luna');
+// The answer writer is never the author's family: a gpt-written task gets glm-5 (qwen3-coder-next wrote lazy answers as complete as its alternatives), any other gets gpt-5.6-luna.
+const answerModel = (author) => (author === 'gpt-5.6-luna' ? 'glm-5' : 'gpt-5.6-luna');
 
 function answers(id) {
   const task = readJson(path.join(DIR, `${id}.json`));

@@ -131,5 +131,19 @@
         "note": "The task is achievable with information in the fixture. The v2 README and MIGRATION.md explain the API changes, and the CHANGELOG documents the CSV newline/escaping behavior. No external knowledge is required."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19,
+      "lazy": 81,
+      "alt": 90.5,
+      "date": "2026-11-20"
+    }
   }
 }
