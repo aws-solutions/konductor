@@ -6,11 +6,12 @@
 // photo-like whiteboard sketch). The authoring kit copies it; the generated PNG is committed in the fixture and the
 // HTML/SVG source under authoring/<id>/gen, so the image can be made again.
 //   node render-png.cjs <in.html|in.svg> <out.png> [width] [height]
-// Needs Playwright with its Chromium (PLAYWRIGHT_DIR, default /var/tmp/pw).
+// Needs Playwright (PLAYWRIGHT_DIR, default /var/tmp/pw) and its Chromium (PLAYWRIGHT_BROWSERS_PATH, default /var/tmp/pw-browsers).
 
 const path = require('node:path');
 
 async function render(input, output, width = 1280, height = 800) {
+  process.env.PLAYWRIGHT_BROWSERS_PATH ||= '/var/tmp/pw-browsers';
   const { chromium } = require(path.join(process.env.PLAYWRIGHT_DIR || '/var/tmp/pw', 'node_modules', 'playwright'));
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   try {

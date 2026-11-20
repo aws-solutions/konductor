@@ -1,0 +1,114 @@
+{
+  "id": "t11-twin-pricing-validation",
+  "class": "hard",
+  "version": 1,
+  "phase": "bugfix",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please tighten cart validation on the checked-out main branch. In `src/validators.js`, update `assertOrder` so every line has a quantity that is a positive integer, a finite nonnegative `unitPrice`, and the existing valid fields. Reject zero, negative, fractional, null, string, or NaN quantities and any negative unit price before pricing runs. Every rejected line must throw a `TypeError`; its message must include the zero-based text `line <index>` and the invalid field name. Keep all valid cart totals exactly as they are today. Add at least two focused cases to `test/validators.test.js` using the existing `node:test` and `node:assert/strict` style, and keep the current malformed-line coverage working. Leave `src/pricing.js` unchanged and do not touch the feature branches. The checked-in tests must continue to pass.",
+  "fixture": "t11-merge-pricing-branches",
+  "hidden": "t11-twin-pricing-validation",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden-behaviour.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js && test \"$(grep -Rho 'test(' test --include='*.js' | wc -l)\" -ge 10",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/pricing.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [
+    "verification",
+    "test-coverage-analysis",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "twin",
+  "twinOf": "t11-merge-pricing-branches",
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "test-coverage-analysis",
+      "code-review"
+    ],
+    "mustNotLoad": [
+      "git-merge",
+      "k-verify"
+    ]
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": "original"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies what to validate (positive integer quantity, nonnegative unitPrice) and the error format without naming specific methods, tools, or revealing hidden tests."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements are clear: reject specific invalid values, throw TypeError with 'line <index>' and field name. The phrase 'zero-based text line <index>' clearly specifies the format."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No leakage found. CHANGELOG, docs, git history, and existing tests do not reveal the hidden test cases. Existing validator.test.js only tests one case (accepts zero quantity) which contradicts the new requirement."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Quick wrong answer: reject only quantity=0 without line index format. Hidden tests catch missing line index, missing quantity types (negative/fractional/string/null/NaN), negative unitPrice, and wrong index on later lines."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests are fair and derivable from the request. Solution and alt both achieve 100%. Lazy achieves 35.7% (correctly penalized for incomplete implementation). No timing dependencies or unfair tests."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 35.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

@@ -1,10 +1,10 @@
 [
   {
     "replicas": 3,
-    "service": "inventory"
+    "service": "catalog"
   },
   {
     "replicas": 3,
-    "service": "catalog"
+    "service": "inventory"
   }
 ]

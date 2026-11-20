@@ -12,53 +12,84 @@
   "mutants": [
     {
       "id": "m01",
-      "files": ["ledger/interest.py"],
+      "files": [
+        "ledger/interest.py"
+      ],
       "note": "Uses half-even instead of documented half-up interest rounding; a tie at the half-cent must be checked."
     },
     {
       "id": "m02",
-      "files": ["ledger/interest.py"],
+      "files": [
+        "ledger/interest.py"
+      ],
       "note": "Uses a 360-day year instead of 365; a full-year or fractional-year calculation must check the denominator."
     },
     {
       "id": "m03",
-      "files": ["ledger/interest.py"],
+      "files": [
+        "ledger/interest.py"
+      ],
       "note": "Quantizes interest to one decimal place rather than cents; the returned Decimal scale must be checked."
     },
     {
       "id": "m04",
-      "files": ["ledger/fees.py"],
+      "files": [
+        "ledger/fees.py"
+      ],
       "note": "Turns a negative fee into a positive charge; invalid fee signs must be rejected without posting."
     },
     {
       "id": "m05",
-      "files": ["ledger/ledger.py"],
+      "files": [
+        "ledger/ledger.py"
+      ],
       "note": "Treats a transaction at the statement start as opening balance rather than period movement."
     },
     {
       "id": "m06",
-      "files": ["ledger/ledger.py"],
+      "files": [
+        "ledger/ledger.py"
+      ],
       "note": "Excludes a transaction at the statement end; the final instant must be included."
     },
     {
       "id": "m07",
-      "files": ["ledger/ledger.py"],
+      "files": [
+        "ledger/ledger.py"
+      ],
       "note": "Rejects a debit that lands exactly on the configured overdraft limit."
     },
     {
       "id": "m08",
-      "files": ["ledger/ledger.py"],
+      "files": [
+        "ledger/ledger.py"
+      ],
       "note": "Raises on a repeated transaction id instead of returning the original posting and leaving one row."
     },
     {
       "id": "m09",
-      "files": ["ledger/ledger.py"],
+      "files": [
+        "ledger/ledger.py"
+      ],
       "note": "Drops the guard against reversing an already reversed transaction."
     },
     {
       "id": "m10",
-      "files": ["ledger/export.py"],
+      "files": [
+        "ledger/export.py"
+      ],
       "note": "Swaps debit and credit columns in CSV output."
     }
-  ]
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "ledger/interest.py"
+      ],
+      "note": "same behaviour, new internals: constants renamed, rounding and system-account helpers extracted"
+    }
+  ],
+  "maxTests": 54,
+  "baseTests": 14
 }
