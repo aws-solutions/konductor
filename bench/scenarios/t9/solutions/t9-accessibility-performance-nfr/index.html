@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order history · Tidewell Supply</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/orders.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Order history</h1>
+    <p class="lede">Every order placed through the Tidewell Supply shop, newest first.</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <div class="field">
+        <label for="search">Search orders</label>
+        <input id="search" type="search" placeholder="Name, order number, city or item" autocomplete="off">
+      </div>
+
+      <fieldset class="field status-group">
+        <legend class="field-title">Status</legend>
+        <div class="chips" id="status-chips">
+          <label class="chip"><input type="radio" name="status" value="all" checked><span>All</span></label>
+          <label class="chip"><input type="radio" name="status" value="processing"><span>Processing</span></label>
+          <label class="chip"><input type="radio" name="status" value="shipped"><span>Shipped</span></label>
+          <label class="chip"><input type="radio" name="status" value="delivered"><span>Delivered</span></label>
+        </div>
+      </fieldset>
+
+      <form id="date-form" class="dates" novalidate>
+        <div class="field">
+          <label for="date-from">From</label>
+          <input id="date-from" name="from" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" autocomplete="off" aria-describedby="date-from-error">
+          <p id="date-from-error" class="error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="date-to">To</label>
+          <input id="date-to" name="to" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" autocomplete="off" aria-describedby="date-to-error">
+          <p id="date-to-error" class="error" hidden></p>
+        </div>
+        <button type="submit">Apply</button>
+      </form>
+    </section>
+
+    <p id="summary" class="summary" role="status"></p>
+
+    <table class="orders">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Placed</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th class="num">Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="order-rows"></tbody>
+    </table>
+    <p class="more-wrap"><button type="button" id="show-more" class="more" hidden>Show more</button></p>
+  </main>
+
+  <footer class="foot">Tidewell Supply · orders are kept for three years.</footer>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

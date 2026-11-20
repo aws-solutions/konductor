@@ -1,0 +1,44 @@
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.field { display: flex; flex-direction: column; gap: .25rem; }
+.field label, .field-title { font-size: .85rem; font-weight: 600; }
+#search { min-width: 18rem; }
+
+.dates { display: flex; gap: .75rem; align-items: flex-end; }
+.dates input { width: 9.5rem; }
+
+.chips { display: flex; gap: .4rem; }
+.chip {
+  padding: .35rem .8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+.chip.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.summary { margin: .75rem 0; color: var(--muted); }
+
+.orders { width: 100%; border-collapse: collapse; background: #fff; }
+.orders th, .orders td { padding: .5rem .6rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.orders th { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.orders .num { text-align: right; font-variant-numeric: tabular-nums; }
+.city { display: block; font-size: .8rem; color: var(--muted); }
+
+.badge { display: inline-block; padding: .1rem .5rem; border-radius: 3px; font-size: .8rem; }
+.badge--processing { background: #fdf0c9; color: #6a5200; }
+.badge--shipped { background: #d9ecf3; color: #0b4b5d; }
+.badge--delivered { background: #e3efe2; color: #8aa08a; }
+
+@media (max-width: 40rem) {
+  #search { min-width: 0; width: 100%; }
+  .orders th:nth-child(4), .orders td:nth-child(4) { display: none; }
+}

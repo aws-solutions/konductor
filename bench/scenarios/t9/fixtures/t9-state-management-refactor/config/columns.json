@@ -1,0 +1,5 @@
+[
+  { "id": "inbox", "title": "Inbox" },
+  { "id": "active", "title": "In progress" },
+  { "id": "done", "title": "Done" }
+]
