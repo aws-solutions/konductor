@@ -263,6 +263,56 @@
         "verdict": "fixed",
         "note": "Second review (gpt-5.6-luna) failed it; the lead removed the remaining answers from the fixture (coordinator data list, MT in templates), relaxed the F1 and F6 patterns and fixed the JSON check quoting. First review (minimax-m2.5) had failed ambiguity, ceiling and hidden-answer; fix round 1 removed most fixture answers. Note: The fixture directly lists the coordinator privacy restrictions in operations/site-coordinator-checklist.md, and communication templates expose the Mo"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json field prompt states the goal, source-document categories, output path, and June timing, but does not prescribe a method or reveal a specific hidden answer."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/meetings/2024-03-05-followup.md lines 13-26 explicitly leave time zone, group minimum, and emergency cancellation decisions open; the policies provide evidence and constraints rather than a list of hidden answers."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "hidden/hidden/grounded.test.js lines 5-17 requires site caps of Downtown 4, Westside 3, Northgate 2, Eastside 3, South Park 3, or Riverside 4, but fixture/code/shift-cap-test.js lines 4-5 and 19-21 say actual caps still need to be defined; fixture/data/sites.csv only gives site capacities."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "A careful engineer can derive the policy and scripted-user facts, but cannot determine the hidden site-cap numbers: fixture/meetings/coordinator-notes.txt says Riverside capacity is still being figured out, and fixture/code/shift-cap-test.js explicitly provides no actual caps."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.5,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: key-matches-fixture: hidden/hidden/grounded.test.js lines 5-17 requires site caps of Downtown 4, Westside 3, Northgate 2, Eastside 3, South Park 3, or Riverside 4, but fixture/code/shift-cap-test.js lines 4-5 and 19-21 say actual caps still need to be defined; ",
+      "recheck-failed: solvable-from-fixture: A careful engineer can derive the policy and scripted-user facts, but cannot determine the hidden site-cap numbers: fixture/meetings/coordinator-notes.txt says Riverside capacity is still being figured out, and fixture/code/shift-cap-test.j"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.5,
+      "lazy": 5.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

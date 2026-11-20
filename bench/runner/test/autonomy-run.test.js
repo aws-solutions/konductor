@@ -198,15 +198,21 @@ test('a non end_turn stop reason is treated as an ask and answered with the defa
 });
 
 test('the task timeout covers all turns together and a timeout in a later turn ends the run as a timeout', async () => {
-  const s = setup({ turns: [{ finalText: ASK_UNIT, delayMs: 1200 }, { sleepSec: 30 }] }, { timeoutSec: 2 });
+  // Turn 1 takes 1.2 s of a 4 s budget, so it ends well inside the budget even when a loaded host is slow to start
+  // the fake agent (a 2 s budget failed there). Turn 2 starts at a measured time; a per-turn budget would run it a
+  // full 4 s from there, the shared budget stops it at the 4 s mark of the whole run.
+  const s = setup({ turns: [{ finalText: ASK_UNIT, delayMs: 1200 }, { sleepSec: 30 }] }, { timeoutSec: 4 });
   const groups = recordGroups();
   try {
+    const t0 = Date.now();
     const r = await run(s);
     assert.equal(r.status, 'timeout');
     assert.equal(r.turns, 2);
     assert.equal(r.creditsCensored, true);
-    assert.ok(r.wallClockMs < 2800, `wall clock ${r.wallClockMs} ms shows one 2 s budget, not 2 s per turn`);
-    assert.ok(r.wallClockMs >= 1900);
+    const turn2At = fs.statSync(path.join(s.probe, 'started-2.json')).mtimeMs - t0;
+    assert.ok(turn2At >= 1200, `turn 2 started ${turn2At} ms in, after turn 1's delay`);
+    assert.ok(r.wallClockMs < turn2At + 4000, `wall clock ${r.wallClockMs} ms is less than turn 2's start (${turn2At} ms) plus 4 s: one budget, not 4 s per turn`);
+    assert.ok(r.wallClockMs >= 3900);
     assert.equal(groups.pids.length, 2, 'one agent group per turn');
     assert.ok(groups.pids.every(groupGone), 'the killed turn left no process behind');
     assert.deepEqual(fs.readdirSync(s.scratchDir), []);

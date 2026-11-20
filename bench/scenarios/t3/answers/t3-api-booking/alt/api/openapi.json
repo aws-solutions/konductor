@@ -1,0 +1,335 @@
+{
+    "components": {
+        "responses": {
+            "Conflict": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                },
+                "description": "The booking conflicts with an existing booking or idempotency record."
+            },
+            "NotFound": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                },
+                "description": "The requested resource was not found."
+            },
+            "BadRequest": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                },
+                "description": "The request is invalid."
+            }
+        },
+        "schemas": {
+            "Error": {
+                "additionalProperties": false,
+                "properties": {
+                    "requestId": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "message"
+                ],
+                "type": "object"
+            },
+            "BookingPage": {
+                "additionalProperties": false,
+                "properties": {
+                    "nextCursor": {
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/Booking"
+                        },
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "items",
+                    "nextCursor"
+                ],
+                "type": "object"
+            },
+            "BookingCreate": {
+                "additionalProperties": false,
+                "properties": {
+                    "endsAt": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "startsAt": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "memberId": {
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "roomId": {
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "roomId",
+                    "memberId",
+                    "startsAt",
+                    "endsAt"
+                ],
+                "type": "object"
+            },
+            "Booking": {
+                "additionalProperties": false,
+                "properties": {
+                    "status": {
+                        "enum": [
+                            "confirmed",
+                            "cancelled"
+                        ],
+                        "type": "string"
+                    },
+                    "endsAt": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "startsAt": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "memberId": {
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "roomId": {
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "id": {
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "roomId",
+                    "memberId",
+                    "startsAt",
+                    "endsAt",
+                    "status"
+                ],
+                "type": "object"
+            }
+        },
+        "parameters": {
+            "IdempotencyKey": {
+                "schema": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "description": "Stable client-generated key reused when retrying the same create request.",
+                "required": true,
+                "in": "header",
+                "name": "Idempotency-Key"
+            },
+            "PageSize": {
+                "schema": {
+                    "default": 40,
+                    "maximum": 160,
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                "required": false,
+                "in": "query",
+                "name": "pageSize"
+            },
+            "Cursor": {
+                "schema": {
+                    "type": "string"
+                },
+                "required": false,
+                "in": "query",
+                "name": "cursor"
+            },
+            "To": {
+                "schema": {
+                    "format": "date-time",
+                    "type": "string"
+                },
+                "description": "Exclusive end of the search interval.",
+                "required": true,
+                "in": "query",
+                "name": "to"
+            },
+            "From": {
+                "schema": {
+                    "format": "date-time",
+                    "type": "string"
+                },
+                "description": "Inclusive start of the search interval.",
+                "required": true,
+                "in": "query",
+                "name": "from"
+            },
+            "BookingId": {
+                "schema": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "required": true,
+                "in": "path",
+                "name": "bookingId"
+            },
+            "RoomId": {
+                "schema": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "required": true,
+                "in": "path",
+                "name": "roomId"
+            }
+        }
+    },
+    "paths": {
+        "/bookings": {
+            "post": {
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": "Booking created"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                },
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "summary": "Create a booking",
+                "operationId": "createBooking"
+            }
+        },
+        "/bookings/{bookingId}": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Booking"
+                                }
+                            }
+                        },
+                        "description": "The requested booking"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/BookingId"
+                    }
+                ],
+                "summary": "Get one booking",
+                "operationId": "getBooking"
+            }
+        },
+        "/rooms/{roomId}/bookings": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BookingPage"
+                                }
+                            }
+                        },
+                        "description": "Bookings in the requested interval"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/RoomId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/From"
+                    },
+                    {
+                        "$ref": "#/components/parameters/To"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PageSize"
+                    }
+                ],
+                "summary": "List bookings for a room in a time range",
+                "operationId": "listRoomBookings"
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "https://api.example.invalid/v1"
+        }
+    ],
+    "info": {
+        "description": "Public API for searching, reading, and creating coworking-room bookings.",
+        "version": "1.0.0",
+        "title": "Room Booking API"
+    },
+    "openapi": "3.0.3"
+}

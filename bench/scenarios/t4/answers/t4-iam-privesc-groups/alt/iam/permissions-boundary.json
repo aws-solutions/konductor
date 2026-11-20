@@ -1,0 +1,72 @@
+{
+    "Statement": [
+        {
+            "Resource": "*",
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration",
+                "lambda:InvokeFunction",
+                "iam:PassRole",
+                "iam:CreateAccessKey",
+                "iam:DeleteAccessKey",
+                "iam:ListAccessKeys",
+                "iam:UpdateAccessKey",
+                "logs:DescribeLogStreams",
+                "logs:GetLogEvents",
+                "logs:FilterLogEvents",
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:ListBucket",
+                "athena:StartQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:GetTable",
+                "glue:GetTables",
+                "ecs:UpdateService",
+                "ecs:DescribeServices",
+                "cloudwatch:GetMetricData",
+                "cloudwatch:GetMetricStatistics",
+                "cloudwatch:ListMetrics"
+            ],
+            "Effect": "Allow",
+            "Sid": "DocumentedGroupWork"
+        },
+        {
+            "Resource": "*",
+            "Action": [
+                "iam:CreatePolicyVersion",
+                "iam:SetDefaultPolicyVersion",
+                "iam:AttachUserPolicy",
+                "iam:PutUserPolicy",
+                "iam:UpdateAssumeRolePolicy",
+                "iam:CreateLoginProfile",
+                "iam:UpdateLoginProfile",
+                "organizations:*",
+                "sts:*"
+            ],
+            "Effect": "Deny",
+            "Sid": "RejectAdministrativeActions"
+        },
+        {
+            "NotResource": "arn:aws:iam::111122223333:role/team-function-execution",
+            "Action": "iam:PassRole",
+            "Effect": "Deny",
+            "Sid": "RejectOtherRoles"
+        },
+        {
+            "NotResource": "arn:aws:iam::111122223333:user/${aws:username}",
+            "Action": [
+                "iam:CreateAccessKey",
+                "iam:DeleteAccessKey",
+                "iam:ListAccessKeys",
+                "iam:UpdateAccessKey"
+            ],
+            "Effect": "Deny",
+            "Sid": "RejectOtherUsers"
+        }
+    ],
+    "Version": "2012-10-17"
+}

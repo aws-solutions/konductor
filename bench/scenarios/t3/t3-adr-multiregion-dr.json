@@ -56,7 +56,23 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "gate-failed: lazy answer scores 68 (> 40); meta.json acceptableOptions lists every option, so the T3 choice gate cannot separate a shallow answer"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 68,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "decision-writing",
@@ -155,5 +171,6 @@
       "calculates restore time incorrectly by ignoring the 2-stream, 1.2 GB/s each throughput limits stated in technical-constraints.md and requirements.md",
       "uses the superseded $0.72 database instance hour price instead of the current $0.68 rate from pricing-data.json"
     ]
-  }
+  },
+  "handEdited": null
 }

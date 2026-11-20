@@ -1,0 +1,22 @@
+{
+    "Statement": [
+        {
+            "Condition": {
+                "StringEquals": {
+                    "aws:PrincipalOrgID": "o-exampleorgid"
+                }
+            },
+            "Resource": "*",
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ],
+            "Principal": {
+                "AWS": "arn:aws:iam::555566667777:role/DeploymentAutomation"
+            },
+            "Effect": "Allow",
+            "Sid": "DeploymentAutomationAssumeRole"
+        }
+    ],
+    "Version": "2012-10-17"
+}

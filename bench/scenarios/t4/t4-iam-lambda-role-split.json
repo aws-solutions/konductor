@@ -145,6 +145,52 @@
         "verdict": "pass",
         "note": "All hidden tests verify reasonable requirements stated in the prompt: allow actual calls, deny legacy resources, deny cross-function access. A careful engineer reading handlers and stages.js can derive correct policies without guessing."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (least-privilege policies), the files to create, constraints, and points to handlers for action discovery without naming any specific method, tool, or checklist."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file lists the expected policy contents; the agent must derive permissions by reading handlers, logging.js, and stages.js to reason about required actions."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All hidden test expectations (action calls, resources like tables/queues/buckets/secrets, legacy denial checks) are defined in fixture files stages.js and handler/*.js."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can trace each handler's client.request calls, find resources in stages.js, understand logging via logging.js, and construct valid least-privilege IAM policies."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T4 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 19.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

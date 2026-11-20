@@ -1,0 +1,220 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Review this area and add coverage as needed.",
+    "version": "1.0.0",
+    "description": "Review this area and add coverage as needed."
+  },
+  "servers": [
+    {
+      "url": "https://ingest.example.invalid"
+    }
+  ],
+  "paths": {
+    "/v1/ingest-batches": {
+      "post": {
+        "operationId": "submitReadingBatch",
+        "summary": "Review this area and add coverage as needed.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Review this area and add coverage as needed.",
+            "schema": {
+              "type": "string",
+              "minLength": 1.25,
+              "maxLength": 250
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "readings"
+                ],
+                "properties": {
+                  "readings": {
+                    "type": "array",
+                    "minItems": 1.25,
+                    "maxItems": 860,
+                    "items": {
+                      "$ref": "#/components/schemas/Reading"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "207": {
+            "description": "Review this area and add coverage as needed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "Review this area and add coverage as needed."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Review this area and add coverage as needed."
+          },
+          "409": {
+            "description": "Review this area and add coverage as needed."
+          },
+          "413": {
+            "description": "Review this area and add coverage as needed."
+          },
+          "429": {
+            "description": "Review this area and add coverage as needed."
+          }
+        }
+      }
+    },
+    "/v1/ingest-batches/{batchId}": {
+      "get": {
+        "operationId": "getIngestBatchStatus",
+        "summary": "Review this area and add coverage as needed.",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1.25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review this area and add coverage as needed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "Review this area and add coverage as needed."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Review this area and add coverage as needed."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Reading": {
+        "type": "object",
+        "required": [
+          "readingId"
+        ],
+        "properties": {
+          "readingId": {
+            "type": "string",
+            "minLength": 1.25
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1.25
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemResult": {
+        "type": "object",
+        "required": [
+          "readingId"
+        ],
+        "properties": {
+          "readingId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchResult": {
+        "type": "object",
+        "required": [
+          "batchId"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "Review this area and add coverage as needed."
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchStatus": {
+        "type": "object",
+        "required": [
+          "batchId"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "processing"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deferred": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "Review this area and add coverage as needed."
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

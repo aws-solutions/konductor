@@ -8,13 +8,18 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 const bin = path.join(__dirname, '..', 'bin', 'migrate.js');
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const rec = (o = {}) => ({ id: 'o-1', customer: 'Ann Lee', total: 19.99, placed: '03/14/2024', status: 'SHIPPED', address: '12 Main St, Springfield, IL 62704', ...o });
 const lines = (...rs) => rs.map((r) => (typeof r === 'string' ? r : JSON.stringify(r))).join('\n') + '\n';
 
 function setup(content) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mig-'));
+  const dir = tempDir('mig-');
   if (content !== undefined) fs.writeFileSync(path.join(dir, 'orders.jsonl'), content);
   return dir;
 }

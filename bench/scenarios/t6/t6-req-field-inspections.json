@@ -192,6 +192,52 @@
         "verdict": "pass",
         "note": "Fixture contains no scripted facts, only context that points to gaps. Prompt mentions topic areas but does not reveal specific values. ASKS.json is in solution/, not visible to agent."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt specifies the goal, topics, and output format without naming a method, technique, checklist, or tool, and without pointing at traps or decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain interview notes, policies, and data for reasoning; they do not list the six scripted user facts (F1-F6) that answers.json expects."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Grounded tests check 7 years (records-policy.md line 5), Android 13/8-inch (it-standards.md line 5), and not-applicable semantics (records-policy.md line 10, paper-form.md line 24). Scripted facts (F1-F6) come from user answers."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Fixture provides operating context (interviews, policies, data) enabling the engineer to ask about connectivity, tablets, photos, conflicts, approval, and safety, receiving scripted facts F1-F6 in return."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T6 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 11.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 11.7,
+      "lazy": 23.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }

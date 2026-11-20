@@ -102,8 +102,53 @@
         "verdict": "pass",
         "note": "The task is solvable from the given information. The prompt clearly states the problem domain (CI flakiness, 'roughly one run in five', 'failing test changes from run to run', 'green on my machine'). The docs/rules.md documents the hour range 0-23, implying boundary behavior. The source code function signatures accept explicit parameters (timeZone, instant, now, random) that reveal the intended injection points for deterministic testing."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the goal (fix flaky CI), constraints, and commands without naming a method, technique, or pointing at specific traps or decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file lists the bugs or hidden findings outright. The code (shared limiter in helpers.js, Date.now() in ids.js, timezone defaults in calendar.js) provides evidence the agent must reason from."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden stability tests (clock, state, random, timers, timezone) and mutants all target behaviors visible in fixture code: calendar.js TZ default (line 23), ids.js Date.now() (line 2), helpers.js sharedLimiter (line 6), scheduler timing, rate-limiter window boundary, outbox error handling."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can identify the flaky sources: calendar.test.js line 4-7 uses Date.now() without minute boundary control, scheduler.test.js has timing-sensitive assertions, helpers.js exports sharedLimiter, and calendar.js defaults to TZ from environment. All fixable from fixture evidence."
+        }
+      ]
+    }
   },
-  "pilot": null,
-  "lockedAt": null
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 13.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 13.1,
+      "lazy": 13.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "T5 batch worker session",
+    "log": "HAND-EDITS.md"
+  }
 }
