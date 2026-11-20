@@ -13,8 +13,9 @@ only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
 draw. The Run view draws the saved workflow and runs it: a Run button
 starts a run, and each node shows its live state until the run ends. A blocked
-stage shows its reason. The contract, the stub that serves it and the tests
-around both are in this folder.
+stage shows its reason, and a Run of a workflow that is not trusted opens a
+dialog with the command that trusts it. The contract, the stub that serves it
+and the tests around both are in this folder.
 
 ## Layout
 
@@ -607,6 +608,18 @@ because the API needs one (1 to 2048 characters) to start a run.
   reason, as the contract has a client treat a reason it does not know like any
   other blocked stage. A `reason` that is not a string makes the reply a bad
   reply.
+- A Run that the server answers with 409 `trust_required` opens a dialog. It
+  shows the `fix` of the answer and its command, such as
+  `konductor flow trust hello`, with **Copy**, which copies the command, and
+  **Run again**, which asks for the same run with the same goal. The command
+  and **Copy** show only when the command is `konductor flow trust` and the
+  name of the workflow on the page, since the text comes from the server and is
+  meant for a terminal; for any other `fix` the dialog shows the sentence alone,
+  as plain text. The page
+  never grants trust: the person runs the command in a terminal. A save that
+  changes the file ends its trust, so the next Run asks again. **Close** leaves
+  the error under the Run button, and a Run again that meets another error
+  shows it as any error is shown.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
   done."). A screen reader hears each change from a polite live region that
   `App` keeps outside the tabs, so it is announced while the Design view is
@@ -639,8 +652,8 @@ The code follows the ports-and-adapters split of the graph:
 
 - `src/execution/core/` is the core and does no IO: the state of the tab and
   its reducer, the loop that starts a run and reads it (`startAndFollow`), the
-  node states, the status sentences and the sentences of the reasons of a blocked
-  stage. Its ports are `RunPort` (start and
+  node states, the status sentences, the sentences of the reasons of a blocked
+  stage and the command of a `trust_required` answer. Its ports are `RunPort` (start and
   read a run) and `Scheduler` (wait for some milliseconds), so a test moves
   time by hand and nothing sleeps. A test (`test-support/execution-purity.test.ts`)
   fails if the core imports anything but its own modules, the graph core and the
@@ -749,20 +762,23 @@ cannot be read (the file holds the text, or does not), and a conflict whose
 draft can be copied, and a graph that grows by added stages and is fitted again.
 They edit the `hello-plan` example of the workflow engine
 (`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
-stub) and check that no other byte changes, and keep Save off for a file whose
-stages are in brackets.
+stub) and check that no other byte changes, keep Save off for a file whose
+stages are in brackets, and run after a save, which the stub answers with
+`trust_required`, so the dialog opens.
 A test that says a save "writes nothing" counts the `PUT` requests that the page
 sent; the file is checked only where a request reaches the stub. The HTML report
 is written to `playwright-report/`; open it with `npx playwright show-report`.
 Accessibility is checked with axe-core on each tab, on the error state, on the
 Run view with a stage running, a failed stage, a passed run, the error of
-the API and a goal that cannot be run, on the Design view while editing, with
-problems shown and with a conflict shown, and in both theme modes.
+the API, a goal that cannot be run and the trust dialog, on the Design view
+while editing, with problems shown and with a conflict shown, and in both theme
+modes.
 
-The stub runs one run at a time and never fails a stage. So the one test that
-starts a real run on it (`execution.spec.ts`, the first run test) waits for the
-end of the run, and the tests of a failed stage, a refused run, a joined run
-and a dropped read answer the run calls themselves (`e2e/support/run-routes.ts`).
+The stub runs one run at a time and never fails a stage. So the tests that
+start a real run on it (the first run test of `execution.spec.ts`, and the run
+of the sample in `editing.spec.ts`) wait for the end of the run, and the tests
+of a failed stage, a refused run, a joined run and a dropped read answer the
+run calls themselves (`e2e/support/run-routes.ts`).
 A test that starts another run on the stub must also wait for its end, or the
 next test gets a 409. For the same reason, if that one test fails and Playwright
 retries it, the retry gets a 409 and follows the run still going.
@@ -790,7 +806,8 @@ also saved with unsaved edits (`designer-editing.png`, and
 (`designer-problems.png`), when the file changed on disk
 (`designer-conflict.png`) and with a change it cannot write in place
 (`designer-not-in-place.png`). The Run view is also saved after a stage was
-blocked (`execution-tab-blocked.png`). Pull request
+blocked (`execution-tab-blocked.png`) and with the trust dialog open
+(`execution-trust-required.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.
 
@@ -803,6 +820,12 @@ and turns off text hinting and LCD smoothing, so the PNGs come out
 byte-identical on different machines and in CI. CI regenerates them, uploads
 that set as the `screenshots` artifact, and fails when it differs from the
 committed files.
+
+`execution-trust-required.png` is the one exception. With the dialog open, an
+arm64 host draws the dimmed page in the tiles next to the dialog one level of
+colour off from CI, which runs on x86-64. The committed file is the one CI
+draws, so on an arm64 host take it from the `screenshots` artifact of a CI run
+instead of committing your own.
 
 The comparison is byte-exact, so CI fails if a committed screenshot differs by
 even one byte. After a toolchain bump (Playwright, Chromium, fonts or Node), run

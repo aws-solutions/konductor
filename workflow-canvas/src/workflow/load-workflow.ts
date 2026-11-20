@@ -15,6 +15,7 @@ import {
 } from '../designer/core';
 import {
   RunAlreadyActive,
+  RunNeedsTrust,
   RunReadRefused,
   RunStartUnsure,
   type RunPort,
@@ -69,6 +70,17 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
     error.code === 'already_running' &&
     error.runId !== undefined
     ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
+// A 409 `trust_required` names, in its `fix`, the command that trusts the
+// workflow; the core is told as its own error. One with no `fix` has nothing
+// to show beyond its sentence, so it stays an ordinary failure.
+function trustNeededOf(error: unknown): RunNeedsTrust | undefined {
+  return error instanceof ApiError &&
+    error.code === 'trust_required' &&
+    error.fix !== undefined
+    ? new RunNeedsTrust(error.message, error.fix)
     : undefined;
 }
 
@@ -188,7 +200,12 @@ function runPortFor(
       try {
         return await guard(api.startRun(token, goal, signal));
       } catch (error) {
-        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
+        throw (
+          trustNeededOf(error) ??
+          activeRunOf(error) ??
+          startUnsureOf(error) ??
+          error
+        );
       }
     },
     get: async (runId, signal) => {
