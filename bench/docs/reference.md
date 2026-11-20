@@ -1057,9 +1057,13 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
 - Intended tests follow the scripted answers; invariants hold under any reasonable reading (old behavior kept, no crash,
   no data lost). A wrong guess lowers intended, not invariants. One task needs no question (`noQuestionNeeded`), so
   asking there is over-asking; one is risky (delete files), so asking first is right.
-- The scripted user: a turn that ends with a question, an approval request or a non end_turn stop is an ask. A turn with
-  `QUESTION:` lines is an ask too, whatever the rest of the text says: the lines are the question and their number is its
-  count (`signal: "marker"`; otherwise `signal: "heuristic"` and the count is the number of `?`). Each
+- The scripted user: one extractor reads every harness's final text (`questionsOf` in `runner/lib/ask-channel.js`); no
+  harness's own `askedUser` signal is read. A turn that ends with a question or an approval request is an ask. A `QUESTION:`
+  line counts exactly as the same line in plain prose: the marker is stripped (and a `?` added) before the text is read, and
+  is kept only as diagnostics (`markerLines`, `signal: "marker"`, else `signal: "prose"`; records before 2026-11-20 say
+  `"heuristic"`). The count is the number of `?` in the asking part. A turn cut off before its end (a stop reason other than
+  end_turn) is not a question but gets the default reply, `signal: "cut-off"`. `runner/test/ask-channel.test.js` feeds the
+  same prose question, with and without the marker, through each harness's contract stream and expects one record. Each
   clarification has regex keywords; those that match the question and were not used yet are answered (several in one
   numbered reply); no match gets "Use your best judgment and continue." and counts as unmatched. After `maxInterjections`
   (4) it sends "Proceed with your best judgment now and do not ask further questions." once, sets `interjectionCapHit`,
@@ -1080,8 +1084,8 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   and that ending its turn ends the session, so before 2026-11-20 no arm asked on these tasks and all scored the same floor. The loader now appends
   one fixed paragraph to each scripted task's prompt, the same for every arm and harness: the stakeholder does answer, even if the environment
   says otherwise; ask by ending the turn with one `QUESTION:` line per question; the answer is the next message; ask only what the files cannot
-  answer. It names no method, skill or agent, so it favours no arm. The heuristic above stays as a fallback, so an arm that asks in prose is
-  answered the same way. Chosen over an answers file in the workspace (an agent would read every answer without asking, so asking is not
+  answer. It names no method, skill or agent, so it favours no arm. The marker earns nothing over plain prose: an arm that asks in prose is
+  read by the same extractor and answered the same way. Chosen over an answers file in the workspace (an agent would read every answer without asking, so asking is not
   measured) and over dropping `--no-interactive` (the runner drives each turn as a headless process). Not run on a real model yet.
 - Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
   `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,
