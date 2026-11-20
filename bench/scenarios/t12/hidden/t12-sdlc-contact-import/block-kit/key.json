@@ -10,7 +10,7 @@
     { "id": "req-limit-whole-file", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["5,?000", "whole|entire|nothing|before|refus|reject"] } },
     { "id": "requirements-bounded", "section": "requirements", "type": "maxLen", "path": "requirements", "min": 5, "max": 15 },
     { "id": "dec-line-numbering", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["line", "header|line 1|first line|span|multi-?line"] } },
-    { "id": "dec-parser", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["pars", "dependenc|standard library|own|hand-written|rfc ?4180"] } },
+    { "id": "dec-parser", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["pars|reader|tokeni[sz]|lexer", "dependenc|standard library|own|hand-written|rfc ?4180"] } },
     { "id": "dec-limit-behaviour", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["5,?000|limit", "throw|error|refus|reject"] } },
     { "id": "decisions-bounded", "section": "decisions", "type": "maxLen", "path": "decisions", "min": 2, "max": 10 },
     { "id": "test-bom", "section": "verification", "type": "some", "path": "testPlan", "match": { "all": ["byte[- ]order|BOM"] } },

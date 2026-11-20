@@ -1,48 +1,49 @@
-# Requirements: API rate limits
+# API rate limits: what we must deliver
 
-Source: `docs/product/rate-limits-request.md` (agreed 2026-10-30). The June 2025 per-IP note in `docs/notes/` is
-superseded and is not a requirement.
+Everything below comes from Dana's request (`docs/product/rate-limits-request.md`, agreed 2026-10-30) and from
+`config/plans.json`. The 2025 note about throttling by IP at the load balancer was replaced by that request and plays
+no part here.
 
-## R6. One allowance across instances
+The requirements are grouped by who is calling.
 
-1. WHILE two or more instances serve traffic, the service SHALL count a key's requests in the shared key-value
-   store (`src/kv.js`), so the allowance holds for the whole service and not per instance.
-2. IF the key-value store cannot be reached THEN the service SHALL let the request through and log the failure
-   (fail open), so an outage of the store does not take the API down. (Open question Q2 asks product to confirm.)
+## Customers' API keys
 
-## R5. Exempt callers
+**LIM-1 Each key has its own allowance.** A customer with two keys can use the full allowance on both; one script
+cannot eat the allowance of the customer's other keys.
 
-1. WHEN a request carries a key with `admin: true` THEN the service SHALL NOT limit or count it.
-2. WHEN a request is `GET /health` THEN the service SHALL NOT limit it and SHALL NOT require a key.
+- Check: send the starter allowance from key A, then one request from key B of the same account; B is served.
 
-## R4. Remaining allowance header
+**LIM-2 The allowance is the plan's per-minute figure in `config/plans.json`.** Starter is 90 and studio 720 today,
+but sales changes them in that file, so nothing in the code repeats the numbers.
 
-1. WHEN the service answers a request from a limited key (any status, including 429) THEN it SHALL set
-   `X-RateLimit-Remaining` to the requests left in the current window (0 or more).
+- Check: with `starter.requestsPerMinute` set to 3 in a test copy of the file, the fourth request in a minute is refused.
+- Check: a studio key is allowed `studio.requestsPerMinute` requests a minute.
 
-## R3. Over the limit
+**LIM-3 Going over gives a clear refusal.** The answer is status 429, a `Retry-After` header with the whole seconds
+(at least 1) until the key may call again, and the body `{"error": "rate_limited"}`. The route itself does not run.
 
-1. WHEN a key has used its allowance in the current window THEN the service SHALL answer 429 with the body
-   `{"error": "rate_limited"}` and a `Retry-After` header holding the whole seconds until the window ends (at least 1).
-2. WHEN a request is refused with 429 THEN the service SHALL NOT run the route.
+- Check: the first request over the allowance gets 429, `Retry-After` between 1 and 60, the `rate_limited` body, and
+  creates no note.
 
-## R2. Plan figures come from configuration
+**LIM-4 Callers can pace themselves.** Every response to a limited key, refused or not, carries
+`X-RateLimit-Remaining`: how many requests the key has left in the current minute.
 
-1. WHEN a key on the `starter` plan is counted THEN its allowance SHALL be the `starter.requestsPerMinute` value of
-   `config/plans.json` (90 today).
-2. WHEN a key on the `studio` plan is counted THEN its allowance SHALL be the `studio.requestsPerMinute` value (720 today).
-3. The service SHALL read the figures from `config/plans.json`; no figure is copied into code.
+- Check: after 2 of 90 requests the header says 88; on a 429 it says 0.
 
-## R1. Limit belongs to the key
+## Our own callers
 
-As an account owner, I want each of my keys to have its own allowance, so that one script does not block my other keys.
+**LIM-5 Ops keys are exempt.** A key with `admin: true` in `data/keys.json` is never refused and never counted
+(the status page and the nightly export use them).
 
-1. WHEN a request carries a valid key THEN the service SHALL count it against that key's allowance only.
-2. WHEN two keys of the same account send requests THEN the service SHALL count each key separately.
-3. The service SHALL NOT limit by client IP address (the June 2025 proposal is superseded).
+- Check: 1,000 requests in a minute from `qb_ops_0001` all succeed.
 
-## Glossary
+**LIM-6 The load balancer's health check is exempt.** `GET /health` is never refused and still needs no key.
 
-- **Key**: an API key from `data/keys.json`, sent in `X-Api-Key`.
-- **Allowance**: the number of requests a key may make in one minute, from `config/plans.json` (`requestsPerMinute`).
-- **Window**: one fixed minute, counted for the whole service (both instances together).
+- Check: `/health` answers 200 with no key while a starter key is being refused.
+
+## The service as a whole
+
+**LIM-7 One allowance across all instances.** Two instances run behind the load balancer; a key gets its allowance
+once for the whole service, not once per server.
+
+- Check: the starter allowance spread over two server instances that share one store is refused at request 91 in total.

@@ -1,10 +1,17 @@
-# Importing contacts from a spreadsheet
+# Bring your contacts in from a spreadsheet
 
-1. Save your spreadsheet as CSV (UTF-8). The first row must name the columns `name`, `email` and, if you have it,
-   `phone`, in any order.
-2. Choose **Import** in the address book menu and pick the file.
-3. The import tells you how many contacts were added and lists every row it skipped, with the line number and why:
-   a missing name, an email that is not valid, or an email you already have.
+**Before you start:** export the sheet as a CSV file. Keep a header row with a `name` column and an `email` column
+(a `phone` column is optional). The columns can be in any order. One file can hold up to 5,000 contacts; split a
+bigger sheet into several files, because a file with more is turned away whole and nothing from it is added.
 
-Fix the listed lines and import the file again: contacts already imported are skipped, not doubled.
-Files can hold up to 5,000 contacts. Split bigger files.
+**Import:** open the address book, choose **Import**, and select the file.
+
+**Read the summary:** you see how many contacts were added and a list of the rows that were left out. Each entry
+gives the row's line number as your spreadsheet shows it (the header is line 1) and the reason:
+
+- the name is empty,
+- the email address is not valid,
+- the email address is already in your address book, or appears twice in the file.
+
+**Fix and retry:** correct those lines in the sheet and import the same file again. Contacts that already made it
+in are recognised and left out, so nothing is doubled.

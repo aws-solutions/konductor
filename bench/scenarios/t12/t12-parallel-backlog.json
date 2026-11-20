@@ -1,38 +1,39 @@
 {
   "id": "t12-parallel-backlog",
   "class": "orchestration",
-  "version": 1,
-  "phase": "planning",
+  "version": 2,
+  "phase": "multi-phase",
   "phases2": [
+    "planning",
     "implementation"
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "We have three people (or agents) free until Wednesday's freeze and the backlog in docs/backlog.md (docs/team.md says who). Before anyone starts, plan the work so as much as possible runs at the same time without people stepping on each other, and every merge leaves the tests green. Write the plan to docs/plan/release-plan.md and do not change any other file. End it with one fenced json block holding an object with: waves (list of waves in time order; each wave is a list of the backlog ids that start in it; an item that must wait for another goes in a later wave, even if the same person does both), packages (list of {id, items: backlog ids, owner, files: repository paths it changes or adds, doneWhen: string}), dependencies (list of {before, after, reason}), conflicts (list of {items, reason}: items that must not be worked on at the same time), notScheduled (list of {item, reason}) and mergeOrder (list of package ids).",
+  "prompt": "We have three people (or agents) free until Wednesday's freeze and the backlog in docs/backlog.md (docs/team.md says who). Plan the work so as much as possible runs at the same time without people stepping on each other, then carry the plan out. Write the plan to docs/plan/release-plan.md and end it with one fenced json block holding an object with: waves (list of waves in time order; each wave is a list of the backlog ids that start in it; an item that must wait for another goes in a later wave, even if the same person does both), packages (list of {id, items: backlog ids, owner, files: repository paths it changes or adds, doneWhen: string}), dependencies (list of {before, after, reason}), conflicts (list of {items, reason}: items that must not be worked on at the same time), notScheduled (list of {item, reason}) and mergeOrder (list of package ids). Then do each package as its own separate piece of work, kept apart from the others until it is merged: put the files package P changes or adds in work/P/ at their repository paths, as they are once P is done (a package builds on what the packages before it in mergeOrder merged, and nothing else), with no file outside P's files list, and add work/P/REPORT.md saying what was done, the test command it ran and the pass and fail counts it printed. Finally merge the packages into the repository one at a time in mergeOrder; after each merge run node --test test/*.test.js and add a line to docs/plan/merge-log.md with the package id and the pass and fail counts. The tests must pass after every merge. Do not change docs/backlog.md or docs/team.md.",
   "fixture": "t12-parallel-backlog",
   "hidden": "t12-parallel-backlog",
-  "timeoutSec": 1200,
+  "timeoutSec": 2400,
   "limits": {
-    "softSec": 600,
-    "hardSec": 1200
+    "softSec": 1200,
+    "hardSec": 2400
   },
   "checks": [
     {
       "type": "tests",
-      "cmd": "node --test --test-timeout=15000 block.test.js",
-      "min": 6,
+      "cmd": "node --test --test-timeout=15000 block.test.js work.test.js",
+      "min": 30,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "fixture_unchanged",
-      "path": "src",
+      "path": "docs/backlog.md",
       "weight": 1,
       "kind": "format"
     },
     {
       "type": "fixture_unchanged",
-      "path": "docs/backlog.md",
+      "path": "docs/team.md",
       "weight": 1,
       "kind": "format"
     }
@@ -47,6 +48,11 @@
       "id": "handoff-ready-packages",
       "weight": 1,
       "criterion": "Each package could be handed to its owner as is. Fail: packages list only item ids. Partial: files and done criteria are given, but a package's done criterion is not checkable or misses a setting or test it must add. Pass: each package names its files, a checkable done criterion and what it waits for. (code cannot check this because checkability of a done criterion is a judgement)"
+    },
+    {
+      "id": "packages-done-apart",
+      "weight": 1,
+      "criterion": "Each package's work and report stand on their own and match the plan. Fail: the package folders are copies of one combined change, or a report claims a result its files cannot give (for example A4's limit with no setting in config/app.json). Partial: the packages are separate and merge cleanly, but a report gives only a pass count with no word on what was checked, or one package changes a file the plan gave to another without saying why. Pass: each of the packages changes only its own files, its REPORT.md says what was done and what the test run showed, a package that comes later in mergeOrder (A4 after A5, A2 after or with A1) visibly builds on the earlier one, and the merge log gives one green line per package in the planned order. (code cannot check this because whether a report is honest and enough to review is a judgement)"
     }
   ],
   "expertKey": {
@@ -109,7 +115,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -119,7 +125,7 @@
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 16.7,
+      "lazy": 20,
       "alt": 100,
       "date": "2026-11-20"
     },
