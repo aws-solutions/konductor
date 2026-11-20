@@ -11,6 +11,7 @@ export {
   canAddStage,
   canRemoveStage,
   DEFAULT_AGENT,
+  MAX_PROMPT_CHARS,
   MAX_STAGES,
   nextStageName,
   type Draft,
@@ -34,11 +35,13 @@ export {
   fileBlocker,
   isDirty,
   problemsOfDraft,
+  promptFieldOf,
   READ_ONLY_REASON,
   saveBlocker,
   saveStatus,
   textOf,
   writeBlocker,
+  type PromptField,
   type SaveStatusKind,
 } from './edit-view';
 export {

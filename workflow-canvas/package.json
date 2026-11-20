@@ -26,7 +26,8 @@
     "@cloudscape-design/global-styles": "1.0.71",
     "@xyflow/react": "12.12.0",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
@@ -49,7 +50,6 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0",
     "vite": "8.3.5",
-    "vitest": "5.0.5",
-    "yaml": "2.9.1"
+    "vitest": "5.0.5"
   }
 }

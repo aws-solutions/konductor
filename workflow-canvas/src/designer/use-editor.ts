@@ -27,6 +27,7 @@ export interface Editor {
   add(): void;
   rename(id: string, name: string): void;
   setAgent(id: string, agent: string): void;
+  setPrompt(id: string, prompt: string): void;
   remove(id: string): void;
   /** Writes the draft; does nothing when it cannot be saved. */
   save(): void;
@@ -110,6 +111,7 @@ export function useEditor(
         add: () => dispatch({ type: 'add' }),
         rename: (id, name) => dispatch({ type: 'rename', id, name }),
         setAgent: (id, agent) => dispatch({ type: 'set-agent', id, agent }),
+        setPrompt: (id, prompt) => dispatch({ type: 'set-prompt', id, prompt }),
         remove: (id) => dispatch({ type: 'remove', id }),
         save,
         reload,

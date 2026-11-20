@@ -13,6 +13,7 @@ import {
   canSave,
   isDirty,
   problemsOfDraft,
+  promptFieldOf,
   saveBlocker,
   saveStatus,
   textOf,
@@ -431,5 +432,85 @@ describe('saveStatus', () => {
     expect(saveStatus(reduce(saved, { type: 'add' })!).text).toBe(
       'Unsaved changes',
     );
+  });
+});
+
+describe('the prompt of a stage', () => {
+  const PROMPT = 'Write the greeting to README.md.';
+  const type = (prompt: string, id = 's1'): EditEvent => ({
+    type: 'set-prompt',
+    id,
+    prompt,
+  });
+
+  it('is dirty once typed over, and clean again when typed back', () => {
+    expect(isDirty(run(type('Hi.')))).toBe(true);
+    expect(isDirty(run(type('Hi.'), type(PROMPT)))).toBe(false);
+  });
+
+  it('is written into the text a save sends, and nothing else changes', () => {
+    expect(textOf(run(type('Hi.')))).toBe(HELLO_TEXT.replace(PROMPT, 'Hi.'));
+  });
+
+  it('writes the text of the saved file for a draft with no change', () => {
+    expect(textOf(run())).toBe(HELLO_TEXT);
+    expect(textOf(run(type('Hi.'), type(PROMPT)))).toBe(HELLO_TEXT);
+  });
+
+  it('turns Save off, with the reason, for a prompt that cannot be written in place', () => {
+    const flow = {
+      ...HELLO_DOCUMENT,
+      text: HELLO_TEXT.replace(
+        `  - name: draft\n    agent: k-developer\n    prompt: ${PROMPT}\n`,
+        '  - {name: draft, agent: k-developer, prompt: Hi}\n',
+      ),
+    };
+    let state = openDocument(flow);
+    state = reduce(state, type(''));
+
+    expect(canSave(state!)).toBe(false);
+    expect(saveBlocker(state!)).toContain('flow form');
+  });
+
+  it.each([
+    ['a prompt', 's1', { kind: 'text' }],
+    [
+      'a stage with no prompt of its own, such as a new one',
+      's9',
+      { kind: 'text' },
+    ],
+    ['a prompt_file', 's2', { kind: 'file', path: 'review.md' }],
+  ] as const)('is offered as text or a file for %s', (_, id, field) => {
+    const state = run();
+    const stage = { id, name: 'x', agent: 'y', prompt: '' };
+
+    expect(promptFieldOf(state, stage)).toEqual(field);
+  });
+
+  it('is blocked, with the reason, when the file cannot be read', () => {
+    const state = openDocument({
+      ...HELLO_DOCUMENT,
+      text: HELLO_TEXT.replace('format: konductor/1', 'format: [konductor/1'),
+    })!;
+
+    expect(promptFieldOf(state, state.draft.stages[0]!)).toMatchObject({
+      kind: 'blocked',
+    });
+  });
+
+  it('tells a stage with both keys from one with a file', () => {
+    const both = openDocument({
+      ...HELLO_DOCUMENT,
+      text: HELLO_TEXT.replace(
+        '    prompt_file: review.md',
+        '    prompt: x\n    prompt_file: review.md',
+      ),
+    })!;
+
+    expect(promptFieldOf(both, both.draft.stages[1]!)).toEqual({
+      kind: 'both',
+      path: 'review.md',
+    });
+    expect(both.draft.stages[1]?.prompt).toBe('x');
   });
 });

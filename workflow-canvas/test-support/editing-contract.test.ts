@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { KNOWN_AGENTS } from '../src/designer/core/agents.ts';
-import { MAX_STAGES } from '../src/designer/core/draft.ts';
+import { MAX_PROMPT_CHARS, MAX_STAGES } from '../src/designer/core/draft.ts';
 
 interface Spec {
   paths: Record<string, Record<string, { operationId: string }>>;
@@ -33,6 +33,28 @@ describe('the Designer and api/openapi.yaml', () => {
     ).stages;
 
     expect(MAX_STAGES).toBe(stages?.maxItems);
+  });
+
+  it('allow the same most number of characters in a prompt', () => {
+    const stage = spec.components.schemas.Stage?.properties as Record<
+      string,
+      { minLength: number; maxLength: number }
+    >;
+
+    expect(MAX_PROMPT_CHARS).toBe(stage.prompt?.maxLength);
+  });
+
+  it('count a prompt against the limit that the specification gives for stages[].prompt', () => {
+    const table = readFileSync(
+      fileURLToPath(
+        new URL('../../docs/design/workflows-spec.md', import.meta.url),
+      ),
+      'utf8',
+    );
+    const row =
+      /^\| `stages\[\]\.prompt` +\| string, 1 to (\d+) characters/m.exec(table);
+
+    expect(Number(row?.[1])).toBe(MAX_PROMPT_CHARS);
   });
 
   it('offer only agent ids that the contract accepts', () => {
