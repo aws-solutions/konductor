@@ -116,3 +116,11 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | --- | --- | --- | --- |
 | t1-nfr-stream-backpressure | 2026-11-20 | checks: the own-tests check `min_matches test/export-backpressure.test.js ^test\( >= 2` became `cmd` `test "$(cat test/*.test.js \| grep -c "^test(")" -ge 10` (the fixture has 8 test cases, so two new ones, the author's own minimum, anywhere under test/); the visible-suite, no-dependency, changelog and `src/export-route.js` contains checks became `kind: format` | the request never names `test/export-backpressure.test.js`, so a correct answer that adds its tests to an existing file failed the check (alt 79.5); the four cheap checks pass on the lazy answer, and the CV brief makes such checks `format`. After the edit: reference 100, stub 8.9, lazy 17.9, shallow 37.5, alt 86.6 |
 | t1-nfr-memory-bound | 2026-11-20 | checks: the own-tests count `cmd` check (13 or more `test(` lines under test/) now starts with `node --test >/dev/null 2>&1 &&`, so it passes only when the visible suite also passes | the free shallow answer (the reference's tests and changelog with none of its code) passed the count check and scored 42.9 (gate 40); after the edit: reference 100, stub 14.3, lazy 23.8, shallow 14.3, alt 81 |
+
+## Non-Claude recheck of the D-118 versions (2026-11-20, mate hand-edit recheck worker)
+
+deepseek-3.2 (v6, a family other than the gpt writer) rechecked t1-ref-callbacks and t1-ref-schema-migrate at version 4.
+t1-ref-schema-migrate passes all four items. t1-ref-callbacks passes three. It fails key-matches-fixture with the claim
+that the hidden tests check only FileStore and runPipeline. That is a misread: `hidden/api.test.js` also tests retry
+(lines 70 to 89) and processFile (line 123), so the item is disposed and nothing changed. Verdicts are in each task's
+`review.recheck`.
