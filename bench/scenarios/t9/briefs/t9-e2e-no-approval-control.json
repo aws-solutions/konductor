@@ -1,0 +1,11 @@
+{
+  "id": "t9-e2e-no-approval-control",
+  "kind": "git-e2e",
+  "phase": "testing",
+  "role": "frontend",
+  "author": "kirocrew-mate-worker",
+  "reviewer": "qwen3-coder-next",
+  "handWritten": true,
+  "source": "original",
+  "brief": "Guarded end-to-end pair, no-approval control: written by the worker session from the coverage review (2026-11-20, addition 4); see ../README.md. Not built by the author prompt or by stage assemble."
+}

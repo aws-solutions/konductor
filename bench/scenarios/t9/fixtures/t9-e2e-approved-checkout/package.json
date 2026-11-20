@@ -1,0 +1,10 @@
+{
+  "name": "larkspur-checkout",
+  "version": "1.4.0",
+  "private": true,
+  "description": "Static checkout page of the Larkspur Tea shop",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "node --test --test-timeout=20000 e2e/*.e2e.test.js"
+  }
+}

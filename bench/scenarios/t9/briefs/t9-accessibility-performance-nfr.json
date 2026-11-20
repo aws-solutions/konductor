@@ -1,0 +1,21 @@
+{
+  "id": "t9-accessibility-performance-nfr",
+  "kind": "impl",
+  "phase": "nfr",
+  "role": "frontend",
+  "phases2": [],
+  "author": "claude-sonnet-5.5",
+  "reviewer": "glm-5",
+  "stack": "browser",
+  "size": "25 to 40",
+  "browser": 4,
+  "ntests": "10 to 12",
+  "ntrap": 3,
+  "source": {
+    "url": "https://www.w3.org/WAI/WCAG22/quickref/",
+    "licence": "W3C Document License (checked on the W3C site); idea only, no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: non-functional requirements. Role: frontend developer. Repo: a static web app, the order-history page of a small online shop: `index.html` lists about 1,500 past orders from `data/orders.js` (generated, realistic) with a search box, a status filter (three or four radio buttons built as clickable divs today) and a date range form (two date text inputs, From and To). The page works for a mouse user on a fast laptop. A support ticket and an accessibility audit ask for three properties, which the request states as what users see, never as a method: (1) keyboard and screen reader: the status filter is a real radio group a keyboard user can operate (labels visible in the request), and after any filter change a polite live region says how many orders match, as `N orders shown` (with the total match count, not the number of rows on screen); (2) error text: an invalid date range (To before From, or a date that does not exist such as 2025-02-30) shows a specific message next to the field it belongs to, tied to that field for assistive technology and marking it invalid, instead of silently showing an empty list; fixing the input clears the message; (3) responsiveness: typing in the search box must not filter and rebuild the list on every keystroke. The request names a DOM-free module the hidden unit tests import, `src/search.js`, exporting `createSearch({ orders, delayMs, schedule, onResults })` where `schedule(fn, ms)` returns a cancel function (an injectable timer), so a burst of keystrokes inside `delayMs` (the request says 200) runs the filter once, and Enter runs it at once; and the list shows at most 50 rows with a `Show more` button that adds the next 50. Existing code has a match helper and a date parser that the new code must reuse (one has an accent-folding rule tests check); the current filter re-renders the whole list. Hidden tests: unit tests of createSearch with a fake scheduler (one run per burst, Enter flushes, a stale pending run is cancelled when the query changes back, results for an empty query) and of the date-range validation messages; browser tests: arrow keys move the status selection, the live region text after filtering, the error message and aria-invalid on To before From, and that only 50 rows render until Show more is pressed. Also write an `expertKey` in task-draft.json: { \"items\": [ { \"id\", \"text\" } ], \"weakAnswers\": [ ... ] } with 4 to 5 items a careful engineer would also say in the final message beyond what the hidden tests check (how responsiveness was measured, which audit items were left out and why, trade-offs of the row cap) and 3 to 5 weak answers."
+}

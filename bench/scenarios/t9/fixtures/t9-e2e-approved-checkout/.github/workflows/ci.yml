@@ -1,0 +1,10 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: larkspur/node24-playwright:2026.10
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test test/*.test.mjs
+      - run: node --test --test-timeout=20000 e2e/*.e2e.test.js
