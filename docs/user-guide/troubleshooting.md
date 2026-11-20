@@ -370,7 +370,7 @@ konductor doctor
   `.konductor/config.yml` value is ignored; `doctor` reports it.
 - Installed as the Claude Code plugin? The plugin does not wire the hook, so coordinator mode is not available there. `konductor doctor` and `konductor update` apply to CLI installs only.
 - A missing hook or rules file: run `konductor update`.
-- `Orchestration: auto (fallback: the install at <path> owns the konductor session but its session-start hook
+- `Orchestration: auto (fallback: the install at <path> owns the agent of this session but its session-start hook
   is not wired ...)`: a nearer Konductor install owns the session and its own hook is missing for this
   harness. Run `konductor update` in the path the line names. `konductor doctor` under `coordinator` runs the
   same persona load as the hook, so it reports an over-budget digest as `failed` and an install root

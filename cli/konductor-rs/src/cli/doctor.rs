@@ -1869,17 +1869,16 @@ fn orchestration_install_findings(
 
     let mut findings = Vec::new();
     for slot in &manifest.strategies {
-        let Some(wiring) =
-            crate::cli::install::resource_rewrite::orchestration_hook_wiring(destination, slot)
-        else {
-            continue;
-        };
-        findings.extend(wiring_findings(
-            &slot.strategy,
-            wiring,
-            destination,
-            missing_status,
-        ));
+        for wiring in
+            crate::cli::install::resource_rewrite::orchestration_hook_wirings(destination, slot)
+        {
+            findings.extend(wiring_findings(
+                &slot.strategy,
+                wiring,
+                destination,
+                missing_status,
+            ));
+        }
     }
     if coordinator {
         findings.extend(persona_findings(&manifest, destination, home_dir));
@@ -6127,6 +6126,56 @@ mod tests {
             &coordinator_home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// Every Kiro CLI v2 mode agent carries its own hook, so one renamed
+    /// orchestrator without it is reported even when another has it.
+    #[test]
+    fn check_orchestration_checks_the_hook_of_every_kiro_v2_mode_agent() {
+        let exe = fake_konductor_binary("orch-v2-agents-exe");
+        let home = home_with_mode("orch-v2-agents-home", COORDINATOR);
+        let destination = scratch_dir("orch-v2-agents-dest");
+        let agent = |name: &str, command: Option<&str>| {
+            let entries: Vec<serde_json::Value> = command
+                .map(|command| serde_json::json!({"command": command}))
+                .into_iter()
+                .collect();
+            serde_json::json!({
+                "name": name,
+                "resources": ["file://context/k-direct-work.md"],
+                "hooks": {"agentSpawn": entries}
+            })
+            .to_string()
+        };
+        let command = orchestration_command(&exe, &destination);
+        let mut files = vec![
+            (".kiro/agents/acme.json", agent("acme", Some(&command))),
+            (".kiro/agents/globex.json", agent("globex", None)),
+        ];
+        files.extend(persona_files());
+        seed_orchestration_install(&destination, "kiro-cli-v2", &files);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Failed, "{}", result.summary);
+        assert_eq!(
+            result.summary,
+            format!(
+                "the orchestration hook is not wired for kiro-cli-v2: {} has no \
+                 __orchestration-hook session-start entry",
+                destination.join(".kiro/agents/globex.json").display()
+            )
+        );
+        assert!(
+            result
+                .detail
+                .iter()
+                .any(|line| line.starts_with("kiro-cli-v2: hook wired in")
+                    && line.contains("acme.json")),
+            "{:?}",
+            result.detail
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
             fs::remove_dir_all(dir).ok();
         }
     }
