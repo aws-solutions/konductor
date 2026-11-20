@@ -27,17 +27,17 @@
   "rubric": [
     {
       "id": "reasoning-quality",
-      "criterion": "The decision explains why the selected design meets the deep-traversal latency target and connects each material input to the recommendation. (not code-checkable: A script can recompute measurements but cannot reliably judge whether the explanation is technically coherent or uses the evidence well.)",
+      "criterion": "The decision explains why the selected design meets the deep-traversal latency target and connects each material input to the recommendation. Fail: offset-sql is chosen because it is cheaper, or the 120 ms staging figure is used. Partial: cursor-index is chosen but the latency numbers are not shown. Pass: shows offset-sql deep-page p99 of 4,200 ms against the 250 ms limit, uses the production 60-million-item measurement rather than the 120 ms staging value, and computes cursor-index cost at 1,800 req/s over 30 days (about $7,975.81). (not code-checkable: A script can recompute measurements but cannot reliably judge whether the explanation is technically coherent or uses the evidence well.)",
       "weight": 1
     },
     {
       "id": "tradeoff-explanation",
-      "criterion": "The decision fairly compares cost, operational capacity, recovery characteristics, client behavior, and migration implications rather than presenting only the winning numbers. (not code-checkable: The tests can check numeric fields but cannot assess whether the prose presents meaningful tradeoffs or acknowledges the rejected option's strengths.)",
+      "criterion": "The decision fairly compares cost, operational capacity, recovery characteristics, client behavior, and migration implications rather than presenting only the winning numbers. Fail: only the winner's numbers are shown. Partial: compares cost or latency but not recovery or throughput. Pass: concedes offset-sql is cheaper with enough throughput (2,400 req/s) and capacity, and meets RPO and RTO (45 s and 12 min), so latency is decisive, while cursor-index meets RPO 30 s against 60 s and RTO 10 min against 15 min. (not code-checkable: The tests can check numeric fields but cannot assess whether the prose presents meaningful tradeoffs or acknowledges the rejected option's strengths.)",
       "weight": 1
     },
     {
       "id": "api-clarity",
-      "criterion": "The API explanation makes the continuation contract understandable to client authors, including replay behavior, final-page behavior, and the reason the value is opaque. (not code-checkable: Schema checks can find fields and constraints, but they cannot determine whether the accompanying explanation is clear and useful to a human reader.)",
+      "criterion": "The API explanation makes the continuation contract understandable to client authors, including replay behavior, final-page behavior, and the reason the value is opaque. Fail: the continuation value is not explained. Partial: says it is a cursor but omits end of results or bounds. Pass: explains the cursor is opaque so storage keys stay hidden and the index layout can change, limit is bounded 1 to 100, the final page has a null or absent next cursor, and replay of a cursor resumes from a known position. (not code-checkable: Schema checks can find fields and constraints, but they cannot determine whether the accompanying explanation is clear and useful to a human reader.)",
       "weight": 1
     },
     {
@@ -80,7 +80,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "system-design-patterns"
   ],
@@ -178,7 +178,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

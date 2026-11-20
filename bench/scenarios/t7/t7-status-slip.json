@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose leads with an honest bottom line and explains the forecast assumptions in terms a director can act on (code cannot check this because it only reads the structured block)",
+      "criterion": "The prose leads with an honest bottom line and explains the forecast assumptions in terms a director can act on. Fail: green or amber status, or no revised date. Partial: red is stated but the date is unqualified or the reason is not given. Pass: the first lines say red, the 2027-06-25 launch is not reachable, and give the range 2027-07-18 to 2027-08-01 with 2027-07-25 (2.5 sprints) as the midpoint, explaining the first date completes the controlling chain and the second covers all open launch-epic work. (code cannot check this because it only reads the structured block)",
       "weight": 2
     },
     {
       "id": "actionable-context",
-      "criterion": "The prose gives clear actions and distinguishes active risks from resolved workflow noise (code cannot check this because it cannot judge prose meaning)",
+      "criterion": "The prose gives clear actions and distinguishes active risks from resolved workflow noise. Fail: actions are generic, or resolved items (CHK-040 with its prerequisite CHK-041 done) are listed as risks. Partial: some real risks with actions, but noise included or a risk without an action. Pass: the prose asks leadership to assign an owner to PLT-014 and confirm the vendor certificate handoff (chain PAY-021, CHK-017, CHK-026), fix the PAY-028 (2027-06-26) against PAY-021 (2027-06-28) date conflict, move Jon Bell's 13 points of PAY-031 against 0.9 adjusted capacity, and defer or accept the 10 points added after the 2027-05-28 lock, and excludes CHK-040. (code cannot check this because it cannot judge prose meaning)",
       "weight": 1
     }
   ],
@@ -146,7 +146,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

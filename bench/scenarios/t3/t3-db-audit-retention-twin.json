@@ -23,12 +23,12 @@
   "rubric": [
     {
       "id": "retention-status",
-      "criterion": "The inventory correctly distinguishes the current retention policy from superseded policy figures and clearly identifies the archival age threshold without treating it as a replacement policy. (not code-checkable: The distinction depends on interpreting the surrounding compliance and budget context, not merely matching numeric tokens or file paths.)",
+      "criterion": "The inventory correctly distinguishes the current retention policy from superseded policy figures and clearly identifies the archival age threshold without treating it as a replacement policy. Fail: calls 90 days current, drops the 90-day figure, or treats 180 days as a retention policy. Partial: gets 400 and 90 right but the 180-day archive threshold is mislabeled or lacks a source. Pass: labels 400 days current (compliance.md and budget-constraints.md), 90 days superseded (replaced by 400, in both files), and 180 days as the archival age threshold for cost tiering, not a replacement policy. (not code-checkable: The distinction depends on interpreting the surrounding compliance and budget context, not merely matching numeric tokens or file paths.)",
       "weight": 1
     },
     {
       "id": "clear-inventory",
-      "criterion": "The deliverable is a concise, readable one-line-per-figure inventory with source paths and no architecture recommendation or design material. (not code-checkable: A parser can check presence and rough layout, but human readability, contextual clarity, and irrelevant design content require semantic judgment.)",
+      "criterion": "The deliverable is a concise, readable one-line-per-figure inventory with source paths and no architecture recommendation or design material. Fail: prose or design advice instead of an inventory, or no source paths. Partial: one line per figure but some source paths are missing or the 90-day figure is listed from only one file. Pass: one line per figure, each with its fixture path, both sources for 90 days, labeled current or superseded, and no schema, architecture or recommendation. (not code-checkable: A parser can check presence and rough layout, but human readability, contextual clarity, and irrelevant design content require semantic judgment.)",
       "weight": 1
     }
   ],
@@ -61,7 +61,7 @@
       "date": "2026-11-19"
     }
   },
-  "version": 1,
+  "version": 2,
   "twinOf": "t3-db-audit-retention",
   "targetSkills": [],
   "targetSop": null,
@@ -180,7 +180,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T3 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

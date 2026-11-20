@@ -1,0 +1,46 @@
+{
+  "model": "qwen3-coder-next",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "The request does not name a specific method, process or tool the agent should use, nor does it tell it how to work or list the traps/causes/constraints to find. It asks for design notes, a ring rollout library, go/no-go evaluation, CLI script, rollout plan, and changelog, leaving implementation details to the agent."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "All tests and key items are precise about expected values: rings order (staff→pilot→regional→general), freeze dates (2025-12-20 to 2026-01-03 for regional), metric names (receipt_error_rate), percentages (integers 0-100), and specific error codes. The fixture files (ops/rings.json, ops/freeze-calendar.csv, ops/budget-policy.json) provide unambiguous reference data."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "fail",
+      "note": "The fixture file 'ops/snapshots/staff-good.csv' contains the exact header 'RECEIPT_ERROR_RATE_PERCENT' that appears in the test (hidden-behaviour.test.js line 17) and the design key (line 3 pattern 'staff.{0,100}pilot' suggests the staff ring is mentioned), revealing the expected metric name. Similarly, the test file naming and structure hints at the expected implementation structure."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "fail",
+      "note": "The task is too easy for a competent agent: a quick implementation building the obvious ring library with serial promotions, using documented freeze dates from ops/freeze-calendar.csv, normalizing 'RECEIPT_ERROR_RATE_PERCENT'→'receipt_error_rate', treating gaps as HOLD, and writing generic design/rollout notes would pass most tests. The hidden tests (18 tests, weight 3) and design/rollout block keys (34 total weighted items, weight 6 each) are easily met by a generic correct implementation without deep understanding of the subtle operational requirements (e.g., 'minimumCompleteMinutes: 10' requiring gaps to trigger HOLD)."
+    },
+    {
+      "check": "floor",
+      "verdict": "fail",
+      "note": "The task is unfair/impossible in places. The hidden tests require the CLI (scripts/receipt-go-no-go.js) to 'print only the decision' and exit 2 when required args are absent, but the request only says 'accepts --ring, --snapshot, and optional --now' and does not state it must exit 2. The design key's evidence checks (calendar-evidence, policy-evidence) require line numbers referencing files like 'ops/freeze-calendar' and 'ops/budget-policy' (without extension), but the actual files are 'freeze-calendar.csv' and 'budget-policy.json'—the key expects '.csv' and '.json' suffixes to be omitted, making it impossible to derive correct line numbers without guessing."
+    }
+  ],
+  "reference": {
+    "estimatedScores": {
+      "reference": 100,
+      "stub": 5.7
+    },
+    "failingChecks": [
+      "hidden-answer",
+      "ceiling",
+      "floor"
+    ]
+  },
+  "fixes": [
+    "Fix hidden-answer: Remove or rename ops/snapshots/staff-good.csv to avoid revealing 'RECEIPT_ERROR_RATE_PERCENT' in the fixture, or use a generic name like 'snapshots/staff.csv' and mask the metric name in the fixture content.",
+    "Fix ceiling: Add tests or key items that distinguish a generic correct implementation from a deep operational understanding (e.g., requiring the design note to cite the specific 'minimumCompleteMinutes: 10' requirement and explain why gaps trigger HOLD rather than averaging).",
+    "Fix floor: Either update the CLI test to state the exit 2 requirement explicitly, or change the key to accept both 'freeze-calendar.csv' and 'freeze-calendar' as evidence paths, or add a tolerance for extensions in the evidence path matching logic."
+  ]
+}

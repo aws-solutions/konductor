@@ -31,17 +31,17 @@
   "rubric": [
     {
       "id": "reasoned-choice",
-      "criterion": "The decision explains why the selected design balances bounded request size, partial outcomes, latency, recovery objectives, throughput, and cost for the fleet. (not code-checkable: A structural test can verify numbers and fields but cannot judge whether the tradeoff explanation is technically persuasive or grounded in the scenario.)",
+      "criterion": "The decision explains why the selected design balances bounded request size, partial outcomes, latency, recovery objectives, throughput, and cost for the fleet. Fail: picks direct-large-batch for cost or gives no size arithmetic. Partial: picks buffered-batch or replicated-stream but without the size and cost figures. Pass: shows 512 + 1000 x 380 = 380,512 bytes exceeds the 256 KiB (262,144-byte) gateway limit, so the large batch fails, and justifies the chosen option against the cost ceiling of 1,500 USD (buffered-batch about 1,217, 688 items per batch; replicated-stream about 1,459, 64 items) and the RTO 15 min and RPO 60 s targets. (not code-checkable: A structural test can verify numbers and fields but cannot judge whether the tradeoff explanation is technically persuasive or grounded in the scenario.)",
       "weight": 1
     },
     {
       "id": "option-comparison",
-      "criterion": "The decision compares the rejected alternatives accurately, including the operational consequence of the low-cost large-batch design and the cost of the more redundant design. (not code-checkable: Tests can identify an option id and a failing metric, but they cannot assess completeness, accuracy, or usefulness of the written comparison.)",
+      "criterion": "The decision compares the rejected alternatives accurately, including the operational consequence of the low-cost large-batch design and the cost of the more redundant design. Fail: alternatives are dismissed in a line. Partial: one alternative is analyzed accurately. Pass: says the large batch is cheap but its oversized requests would be rejected and stop ingest, and that replicated-stream costs about 242 USD more per month for better RPO and RTO while still under budget, with buffered-batch's 10-minute RTO and 30-second RPO meeting the production guardrails. (not code-checkable: Tests can identify an option id and a failing metric, but they cannot assess completeness, accuracy, or usefulness of the written comparison.)",
       "weight": 1
     },
     {
       "id": "contract-clarity",
-      "criterion": "The API and decision record use clear, implementable semantics for idempotency, per-item results, deferred work, and status polling. (not code-checkable: Schema checks can find required shapes and paths but cannot reliably evaluate whether the contract is understandable and operationally unambiguous.)",
+      "criterion": "The API and decision record use clear, implementable semantics for idempotency, per-item results, deferred work, and status polling. Fail: no per-item results or idempotency rule. Partial: some of idempotency, per-item results, deferred work and status polling are defined. Pass: the contract states per-item outcomes so a client can match each reading to a result, an idempotency key rule so retries do not duplicate batches, how deferred work is reported, and how to poll for status. (not code-checkable: Schema checks can find required shapes and paths but cannot reliably evaluate whether the contract is understandable and operationally unambiguous.)",
       "weight": 1
     },
     {
@@ -84,7 +84,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "smithy-modeling"
@@ -184,7 +184,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

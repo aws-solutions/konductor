@@ -1,7 +1,7 @@
 {
   "id": "t1-nfr-startup-lazy",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
@@ -29,11 +29,17 @@
       "kind": "substance"
     },
     {
-      "type": "min_matches",
-      "path": "tests/lazy-loading.test.js",
-      "pattern": "test\\(",
-      "min": 2,
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');let n=0;for(const f of fs.readdirSync('tests')){if(/\\.test\\.js$/.test(f))n+=(fs.readFileSync('tests/'+f,'utf8').match(/\\btest\\(/g)||[]).length}process.exit(n>=8?0:1)\"",
+      "expectExit": 0,
       "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const M=require('module');const load=M._load;const seen=new Set();M._load=function(r,p,i){const f=M._resolveFilename(r,p,i);if(f.startsWith(process.cwd()))seen.add(f);return load.apply(this,arguments)};process.argv=['node','bin/atlas.js','--help'];require('./bin/atlas.js');process.exit(seen.size<=4?0:1)\" >/dev/null",
+      "expectExit": 0,
+      "weight": 3,
       "kind": "substance"
     },
     {
@@ -44,17 +50,11 @@
       "kind": "substance"
     },
     {
-      "type": "file_exists",
-      "path": "src/lazy-command.js",
+      "type": "cmd",
+      "cmd": "grep -qiE 'startup|loaded when|lazy' README.md CHANGELOG.md",
+      "expectExit": 0,
       "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "src/cli.js",
-      "pattern": "lazy-command",
-      "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "not_contains",
@@ -62,31 +62,17 @@
       "pattern": "\"dependencies\"",
       "weight": 1,
       "kind": "format"
-    },
-    {
-      "type": "contains",
-      "path": "README.md",
-      "pattern": "startup|loaded when",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "tests/lazy-loading.test.js",
-      "pattern": "metadata output|selected command",
-      "weight": 1,
-      "kind": "substance"
     }
   ],
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code (code cannot check this because it cannot assess the engineer’s explanation)",
+      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code. Fail: names no cause of the slow start. Partial: says commands are now loaded lazily without naming the eager path. Pass: names the eager `require` of all six command modules (and their engines and support files) when `src/cli.js` loads, and says each command module is now required only when that command is selected. (code cannot check this because it cannot assess the engineer\u2019s explanation)",
       "weight": 1
     },
     {
       "id": "r2",
-      "criterion": "The final message states what was measured and calls out the deliberate choice to keep config validation eager and load-time registration intact (code cannot check this because it cannot assess the final explanation of trade-offs)",
+      "criterion": "The final message states what was measured and calls out the deliberate choice to keep config validation eager and load-time registration intact. Fail: reports no measurement. Partial: gives a module count but does not say what was kept as it was. Pass: states the measured number of project modules loaded by `--help` and by one command (the `--help` count is 4 or fewer), and says that `--config` validation still runs before any command and that `format-registration` still loads only for `format`. (code cannot check this because it cannot assess the final explanation of trade-offs)",
       "weight": 1
     },
     {
@@ -107,7 +93,7 @@
     "items": [
       {
         "id": "cause",
-        "text": "I traced the startup cost to the CLI’s top-level imports of every command and their local engines.",
+        "text": "I traced the startup cost to the CLI\u2019s top-level imports of every command and their local engines.",
         "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
       },
       {
@@ -203,7 +189,7 @@
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains CLI implementation with eager imports, but nothing in comments, docs, or tests describes lazy loading, the 4-module limit, or command-specific loading patterns—the hidden tests verify these behaviors not listed anywhere."
+          "note": "The fixture contains CLI implementation with eager imports, but nothing in comments, docs, or tests describes lazy loading, the 4-module limit, or command-specific loading patterns\u2014the hidden tests verify these behaviors not listed anywhere."
         },
         {
           "check": "key-matches-fixture",
@@ -213,27 +199,27 @@
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture shows cli.js imports all commands at startup (the problem), the prompt describes the desired lazy behavior, and a developer can implement lazy loading using Node.js require() patterns—the task is solvable from the fixture and request alone."
+          "note": "The fixture shows cli.js imports all commands at startup (the problem), the prompt describes the desired lazy behavior, and a developer can implement lazy loading using Node.js require() patterns\u2014the task is solvable from the fixture and request alone."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 18.4,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 18.4,
-      "lazy": 34.7,
-      "alt": 65.3,
+      "stub": 19,
+      "lazy": 23.8,
+      "alt": 100,
       "date": "2026-11-20"
     }
   }

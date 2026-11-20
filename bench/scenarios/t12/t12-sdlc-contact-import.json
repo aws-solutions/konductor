@@ -1,7 +1,7 @@
 {
   "id": "t12-sdlc-contact-import",
   "class": "orchestration",
-  "version": 1,
+  "version": 2,
   "phase": "multi-phase",
   "phases2": [
     "requirements",
@@ -11,7 +11,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Please take the contact import in docs/requests/contact-import.md from request to done, the way you would before handing it to review: pin down the requirements, decide the design, build it, test it and write the customer help page. Put the code in src/import.js exporting importContacts(csvText, book), where book comes from createBook() in src/contacts.js; it returns { imported: number, skipped: list of { line, reason } } with line the file line (the header is line 1), and throws an Error when the file is over the row limit. Add your tests under test/ (node --test test/ must pass), the help page as docs/help/importing.md, and a feature note docs/features/contact-import.md that ends with one fenced json block holding an object with requirements (list of strings), decisions (list of strings: each design decision and why) and testPlan (list of strings: the cases you test). Do not change src/contacts.js. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "Please take the contact import in docs/requests/contact-import.md from request to done, the way you would before handing it to review: pin down the requirements, decide the design, build it, test it and write the customer help page. Put the code in src/import.js exporting importContacts(csvText, book), where book comes from createBook() in src/contacts.js; it returns { imported: number, skipped: list of { line, reason } } with line the file line (the header is line 1), and throws an Error when the file is over the row limit. Add your tests under test/ (node --test test/*.test.js must pass), the help page as docs/help/importing.md, and a feature note docs/features/contact-import.md that ends with one fenced json block holding an object with requirements (list of strings), decisions (list of strings: each design decision and why) and testPlan (list of strings: the cases you test). Do not change src/contacts.js. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
   "fixture": "t12-sdlc-contact-import",
   "hidden": "t12-sdlc-contact-import",
   "timeoutSec": 2400,
@@ -29,7 +29,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node --test test/",
+      "cmd": "node --test test/*.test.js",
       "expectExit": 0,
       "weight": 1,
       "kind": "format"
@@ -124,7 +124,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

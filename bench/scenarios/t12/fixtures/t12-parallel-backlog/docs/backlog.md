@@ -10,5 +10,5 @@
 | A6 | Run the tests twice in CI, once with `TZ=UTC` and once with `TZ=Europe/Berlin` | CI file only. |
 | A7 | Switch the payment gateway to the new vendor API | On hold: the vendor has not issued sandbox keys. Do not start. |
 
-Every item must be mergeable on its own (one pull request per item or per package of items), and `node --test test/`
+Every item must be mergeable on its own (one pull request per item or per package of items), and `node --test test/*.test.js`
 must pass after each merge.

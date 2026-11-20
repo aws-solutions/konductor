@@ -152,7 +152,7 @@ test('the judge command runs on an opencode run with a fake judge and the report
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
-    const run = makeOcRun(path.join(root, 'run'), bench, ['oc-vanilla', 'oc-k'].flatMap((arm) => reps(arm, () => ({ usd: 0.05 }))));
+    const run = makeOcRun(path.join(root, 'run'), bench, ['oc-vanilla', 'oc-k'].flatMap((arm) => reps(arm, () => ({ usd: 0.05, files: { 'a.txt': 'alpha fixed\n' } }))));
     const j = spawnSync('node', [BENCH_JS, 'judge', '--run', run, '--bench-dir', bench, '--judges', 'gpt-test', '--allow-small-panel', '--judge-cmd', FAKE_JUDGE], { encoding: 'utf8' });
     assert.equal(j.status, 0, j.stderr);
     const judgments = JSON.parse(fs.readFileSync(path.join(run, 'judgments.json'), 'utf8'));

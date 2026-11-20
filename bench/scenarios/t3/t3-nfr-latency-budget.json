@@ -27,12 +27,12 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning about tradeoffs between latency improvement and cost (not code-checkable: Tests can verify numerical correctness and limit compliance, but cannot assess whether the agent provided clear, logical reasoning about why certain options were rejected and why the chosen option represents the best balance of performance improvement versus cost.)",
+      "criterion": "Quality of reasoning about tradeoffs between latency improvement and cost. Fail: keeps the base flow (720 ms against 600) or picks cache on speed alone. Partial: picks parallel but does not show the latency arithmetic. Pass: shows the base totals 720 ms against 600 ms, parallel latency uses max(pricing, inventory) not their sum to reach 570 ms (40 + 60 + 190 + 280), and cache is rejected on cost. (not code-checkable: Tests can verify numerical correctness and limit compliance, but cannot assess whether the agent provided clear, logical reasoning about why certain options were rejected and why the chosen option represents the best balance of performance improvement versus cost.)",
       "weight": 1
     },
     {
       "id": "budget_analysis",
-      "criterion": "Comprehensive budget analysis showing total cost calculation (not code-checkable: Tests can verify the final monthly cost and budget compliance, but cannot assess whether the agent explicitly calculated and explained the total cost (baseline + optimization) and showed how it fits within the budget ceiling, including recognition that the $1,000 is a total ceiling, not additional budget.)",
+      "criterion": "Comprehensive budget analysis showing total cost calculation. Fail: only the optimization cost is checked, or the baseline is ignored. Partial: totals are given but the ceiling is misread. Pass: treats the $1,000 as a total ceiling including the $900 baseline, so $100 remains; shows parallel at $50 maintenance gives $950, and the cache option at $900 gives $1,800 and breaks the ceiling; notes risks such as partial failure and timeouts and that parallel can be switched off by a feature flag. (not code-checkable: Tests can verify the final monthly cost and budget compliance, but cannot assess whether the agent explicitly calculated and explained the total cost (baseline + optimization) and showed how it fits within the budget ceiling, including recognition that the $1,000 is a total ceiling, not additional budget.)",
       "weight": 1
     },
     {
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -196,7 +196,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,11 +1,11 @@
 {
   "id": "t1-neg-config-alias",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Please rename the worker setting `pollIntervalMs` to the clearer `pollingIntervalMs`. Update the JSON settings in `config/default.json` and `config/test.json`, the config loader in `src/config.js`, worker startup in `src/index.js`, and the relevant documentation in `README.md` and `docs/operations.md`. JSON configs using only `pollingIntervalMs` must load normally. Keep `pollIntervalMs` as an alias for one release: configs using only the old key must still work and emit one deprecation warning containing both names. If both keys are present, `pollingIntervalMs` wins and the warning is still emitted once. Keep the existing test suite passing.",
+  "prompt": "Please rename the worker setting `pollIntervalMs` to the clearer `pollingIntervalMs`. Update the JSON settings in `config/default.json` and `config/test.json`, the config loader in `src/config.js`, worker startup in `src/index.js`, and the relevant documentation in `README.md` and `docs/operations.md`. JSON configs using only `pollingIntervalMs` must load normally. Keep `pollIntervalMs` as an alias for one release: configs using only the old key must still work and emit one deprecation warning containing both names. If both keys are present, `pollingIntervalMs` wins and the warning is still emitted once. The loaded config object must carry the value under both names, and every call to the loader that reads a config with the old key emits the warning once. Keep the existing test suite passing.",
   "fixture": "t1-impl-job-retry",
   "hidden": "t1-neg-config-alias",
   "timeoutSec": 1200,
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 8,
+      "min": 11,
       "weight": 3,
       "kind": "substance"
     },
@@ -73,7 +73,7 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The request describes required changes (rename pollIntervalMs to pollingIntervalMs) but does not prescribe a specific method, algorithm, or implementation pattern—only the expected behavior and files to update."
+        "note": "The request describes required changes (rename pollIntervalMs to pollingIntervalMs) but does not prescribe a specific method, algorithm, or implementation pattern\u2014only the expected behavior and files to update."
       },
       {
         "check": "ambiguity",
@@ -83,7 +83,7 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture contains no hints about the solution implementation—the config.js stub simply loads JSON without alias handling, and no comments or docs reveal the deprecation strategy."
+        "note": "The fixture contains no hints about the solution implementation\u2014the config.js stub simply loads JSON without alias handling, and no comments or docs reveal the deprecation strategy."
       },
       {
         "check": "ceiling",
@@ -101,14 +101,19 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 43.9,
-      "alt": 49.6,
+      "lazy": 24.4,
+      "alt": 100,
       "date": "2026-11-20"
     }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

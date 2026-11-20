@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-acceptance-criteria",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "qa",
   "phases2": [
@@ -68,7 +68,7 @@
   "rubric": [
     {
       "id": "decision-quality",
-      "criterion": "The document reads like a settled product contract and separates confirmed behavior from unsupported implementation assumptions (code cannot check this because it cannot judge the meaning or appropriateness of the written decisions)",
+      "criterion": "The document reads like a settled product contract and separates confirmed behavior from unsupported implementation assumptions. Fail: the criteria invent time limits, amounts or eligibility rules that neither docs/FEATURE-NOTE.md nor the product owner gave, or give only vague text (\"handled appropriately\"). Partial: criteria are concrete, but confirmed answers and guesses are mixed, or the product owner was not asked about the gaps in the thin note. Pass: the author asks the product owner about what the note leaves open, writes each confirmed answer as an observable condition, action, outcome and boundary a tester can pass or fail, covers customer, support and operational cases, and lists every unconfirmed point as an open question or marked assumption.",
       "weight": 2
     }
   ],
@@ -216,5 +216,9 @@
     }
   },
   "lockedAt": null,
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

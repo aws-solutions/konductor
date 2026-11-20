@@ -1,0 +1,5 @@
+{
+  "receiptDays": 400,
+  "diagnosticDays": 30,
+  "deletionBatchSize": 250
+}

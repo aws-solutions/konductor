@@ -1,0 +1,8 @@
+body { margin: 0; background: #f5f7fa; color: #1d2939; font: 16px/1.5 system-ui, sans-serif; }
+.site-header { display:flex; justify-content:space-between; padding: 1rem 6vw; background:#14213d; color:white; }
+.brand { color:inherit; font-weight:700; text-decoration:none; }
+.checkout-shell { display:grid; gap:1rem; max-width:58rem; margin:2rem auto; padding:0 1rem; }
+section { background:white; border:1px solid #d9e1ec; border-radius:.5rem; padding:1.25rem; }
+.field { display:grid; gap:.3rem; margin:.8rem 0; } input, button, select { font:inherit; padding:.55rem; } button { cursor:pointer; }
+.cart-row { display:flex; justify-content:space-between; gap:1rem; padding:.7rem 0; border-bottom:1px solid #edf0f4; }
+.notice { padding:.6rem; border-radius:.3rem; background:#eef6ff; }

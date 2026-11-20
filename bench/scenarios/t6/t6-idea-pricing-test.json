@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-pricing-test",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -65,17 +65,17 @@
   "rubric": [
     {
       "id": "clear-framing",
-      "criterion": "The prose clearly separates what the test establishes from what it cannot establish, and makes the recommendation easy for a product decision-maker to use (code cannot check this because it cannot judge explanatory clarity).",
+      "criterion": "The prose clearly separates what the test establishes from what it cannot establish, and makes the recommendation easy for a product decision-maker to use. Fail: the note repeats that Variant B won, or approves rollout, or never says what the test cannot show. Partial: it says the result is not clean, but does not separate the gross result from the adjusted range, or does not name the three data problems. Pass: it keeps the raw result, the assignment count and share mismatch, the 15 to 18 April campaign overlap and the asymmetric refunds as separate issues, gives the adjusted result as a range, says rollout is not approved, and chooses a clean repeat test. (code cannot check this because it cannot judge explanatory clarity)",
       "weight": 1
     },
     {
       "id": "evidence-discipline",
-      "criterion": "The framing uses focused, traceable evidence rather than padding the answer with unrelated observations (code cannot check this because it cannot assess relevance and judgement across the source documents).",
+      "criterion": "The framing uses focused, traceable evidence rather than padding the answer with unrelated observations. Fail: the note adds figures with no source file or calculation, or repeats observations unrelated to whether Variant B can roll out. Partial: the key counts are present, but some figures cannot be traced to a daily export, the assignment summary or the refund data, or unrelated observations take up space. Pass: every figure in the issues list and results names its source file and calculation (paid and assigned counts, the campaign-day comparison with the overlapping days removed, the refund difference), and nothing is included that does not bear on the rollout decision. (code cannot check this because it cannot assess relevance and judgement across the source documents)",
       "weight": 1
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the confounded campaign days, the assignment mismatch and the repeat test that must run before any rollout stay unmentioned, or it does not say that docs/framing.md was written. Partial: it names docs/framing.md and what it holds, but lists no assumptions, or leaves out the confounded campaign days, the assignment mismatch and the repeat test that must run before any rollout. Pass: it names docs/framing.md and its closing JSON block, lists the assumptions made, says the confounded campaign days, the assignment mismatch and the repeat test that must run before any rollout still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -199,7 +199,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

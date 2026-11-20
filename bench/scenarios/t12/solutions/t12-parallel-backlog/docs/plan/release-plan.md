@@ -20,13 +20,19 @@ Three people from Monday to the Wednesday freeze, six items (A7 is on hold). The
 - Wave 1 (Monday): A1 currency field (Ana, package P1), A5 config move (Cy, P3), A3 help text and A6 CI (Bo, P4).
 - Wave 2 (Tuesday): A2 currency column (Ana, finishes P1), A4 login limit (Cy, P2, after P3 is merged).
 
-Merge order: P4, P3, P1, P2. Each merge leaves `node --test test/` green.
+Merge order: P4, P3, P1, P2. Each merge leaves `node --test test/*.test.js` green.
+
+## How the work is done
+
+Each package is built on its own in `work/<package>/`, on top of the code as it is after the packages before it in
+the merge order, and its `REPORT.md` records the check it ran. The packages are then merged one at a time in the
+merge order; `docs/plan/merge-log.md` has one line per merge with the test result.
 
 ```json
 {
   "waves": [["A1", "A5", "A3", "A6"], ["A2", "A4"]],
   "packages": [
-    { "id": "P1", "items": ["A1", "A2"], "owner": "Ana", "files": ["src/models/invoice.js", "src/export/csv.js", "test/export.test.js"], "doneWhen": "Invoices validate currency (default EUR for old records), the CSV ends with a currency column, and node --test test/ passes." },
+    { "id": "P1", "items": ["A1", "A2"], "owner": "Ana", "files": ["src/models/invoice.js", "src/export/csv.js", "test/export.test.js"], "doneWhen": "Invoices validate currency (default EUR for old records), the CSV ends with a currency column, and node --test test/*.test.js passes." },
     { "id": "P3", "items": ["A5"], "owner": "Cy", "files": ["src/config.js", "config/app.json", "config/app.ini", "test/config.test.js"], "doneWhen": "src/config.js reads config/app.json, falls back to app.ini when it is missing, and a test covers both." },
     { "id": "P4", "items": ["A3", "A6"], "owner": "Bo", "files": ["src/cli.js", ".ci/pipeline.yml"], "doneWhen": "The help text prints --since, and CI runs the suite with TZ=UTC and TZ=Europe/Berlin." },
     { "id": "P2", "items": ["A4"], "owner": "Cy", "files": ["src/auth/login.js", "config/app.json", "test/login.test.js"], "doneWhen": "The sixth failed login in a minute is refused by default, the limit comes from login.maxFailedPerMinute, and a test covers it." }

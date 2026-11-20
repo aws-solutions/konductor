@@ -132,11 +132,15 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   }
   if (meta.omittedFiles.length) fileParts.push(`[omitted: bundle limit reached, ${meta.omittedFiles.length} more changed file(s): ${meta.omittedFiles.join(', ')}]`);
   parts.push(`## Files created or changed (${changed.length})\n${fileParts.length ? fileParts.join('\n\n') : '(none)'}`);
+  const deletedPart = deleted.length ? `## Files deleted\n${deleted.map((d) => `- ${d}`).join('\n')}` : null;
+  // The deliverables: the final text and the changed files. An expert: criterion may quote only these (expertText), so a
+  // fixture read in a tool result cannot prove a point the delivered work never makes (independent review, fix 2).
+  const deliverables = [parts[0], parts[parts.length - 1], ...(deletedPart ? [deletedPart] : [])];
   // The tool calls come after the deliverables and share their limit: they get what the files left, at most one file's worth.
   const tools = toolBlock(toolSessions(runDir, result), Math.max(0, Math.min(maxFileChars, maxBundleChars - used)));
   if (tools) parts.push(tools.text);
   meta.toolCalls = tools ? { calls: tools.calls, shown: tools.shown } : null;
-  if (deleted.length) parts.push(`## Files deleted\n${deleted.map((d) => `- ${d}`).join('\n')}`);
+  if (deletedPart) parts.push(deletedPart);
   // The deterministic check results are not shown: the rubric share is meant to judge the outcome on its own, and a
   // judge that reads "PASS tests: 90 of 90" anchors on it (task review F4). `recheck` therefore cannot change a bundle.
 
@@ -144,6 +148,7 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   const { fired } = redacted;
   const scrubbedText = scrubStringCounted(redacted.text, literals);
   const text = scrubbedText.text;
+  const expertText = scrubStringCounted(redact(deliverables.join('\n\n'), redactions).text, literals).text;
   let fileReplacements = 0;
   const files = changed.map((f) => {
     const scrubbed = f.binary ? null : scrubStringCounted(f.text, literals);
@@ -153,7 +158,7 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   meta.credsScrubbed = { text: scrubbedText.count, files: fileReplacements };
   // changed and deleted name the workspace files the bundle was built from, so a reader can tell later whether they moved.
   // `files` carries the file texts, credential-scrubbed but not redacted, for local analysis (the quality pack's gating and diff); it is never sent to a judge as is.
-  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
+  return { text, expertText, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
 }
 
 module.exports = { buildBundle, finalTextOf, walk };

@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-security-tests",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "phases2": [
@@ -47,12 +47,12 @@
   "rubric": [
     {
       "id": "clarity",
-      "criterion": "The cases explain the security behavior they protect in readable test names and assertions (code cannot check this because wording and intent require human review).",
+      "criterion": "The cases explain the security behavior they protect in readable test names and assertions. Fail: names like \"test auth\" or \"security 1\", or assertions that only check a response exists. Partial: names say the area (token, download, export), but not the attack or rule, or assertions check a status code only and not what must not be returned. Pass: each name states the rule in the sessions, roles, document access, download handler, input validation, HTML export or login limiter code (for example a user cannot read another user's document, a path with .. is refused, HTML in a title is escaped), and the assertion checks the refusal or the escaped output exactly.",
       "weight": 1
     },
     {
       "id": "cleanup",
-      "criterion": "Temporary files and directories are cleaned up even when a storage assertion fails (code cannot check this because cleanup quality is a review concern beyond the command result).",
+      "criterion": "Temporary files and directories are cleaned up even when a storage assertion fails. Fail: tests create files or directories and leave them, or do not remove them when an assertion fails before the cleanup line. Partial: tests remove their files at the end of the test, so a failing assertion skips the cleanup, or some tests clean up and others do not. Pass: every test that creates temporary files or directories removes them in an after hook or a finally block that runs on failure too, and a run leaves no new files in the repository or the system temp directory.",
       "weight": 1
     },
     {
@@ -167,7 +167,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

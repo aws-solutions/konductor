@@ -31,17 +31,17 @@
   "rubric": [
     {
       "id": "reasoning-quality",
-      "criterion": "The decision.md shows clear reasoning about tradeoffs between storage, performance, and cost. (not code-checkable: Code cannot evaluate the quality of architectural reasoning or whether tradeoffs were properly considered.)",
+      "criterion": "The decision.md shows clear reasoning about tradeoffs between storage, performance, and cost. Fail: indexes every column, or exceeds 2.5 TB. Partial: picks an option and states cost but the storage arithmetic is missing. Pass: shows seven or more single-column indexes reach about 3.1 TB, over the 2.5 TB Standard volume, so composite indexes are needed, and costs the Standard volume at $50 per month base (not Premium $150) plus usage within $300, using $0.10 per GB-month, not the superseded $0.12. (not code-checkable: Code cannot evaluate the quality of architectural reasoning or whether tradeoffs were properly considered.)",
       "weight": 1
     },
     {
       "id": "explanation-clarity",
-      "criterion": "The design rationale explains why the chosen option works within constraints and what tradeoffs were accepted. (not code-checkable: Code cannot assess whether explanations are clear, logical, or helpful for stakeholders.)",
+      "criterion": "The design rationale explains why the chosen option works within constraints and what tradeoffs were accepted. Fail: the choice is stated with no accepted tradeoffs. Partial: gives rationale but not the risks. Pass: states the tight storage margin of the composite-optimized option (about 2.5 TB, no headroom against 3 million new lines per day), the join cost of the two-table option, and what would change the decision (an approved Premium volume would let the simpler indexing be reconsidered). (not code-checkable: Code cannot assess whether explanations are clear, logical, or helpful for stakeholders.)",
       "weight": 1
     },
     {
       "id": "query-pattern-coverage",
-      "criterion": "The schema design discussion shows understanding of which query patterns are optimized vs. which are acceptable to leave suboptimal. (not code-checkable: While code can test index usage, it cannot evaluate whether the reasoning about query pattern prioritization is sound.)",
+      "criterion": "The schema design discussion shows understanding of which query patterns are optimized vs. which are acceptable to leave suboptimal. Fail: no link between indexes and queries. Partial: names the indexes but not which queries stay slow. Pass: maps each query pattern to a composite index such as (customer_id, order_date DESC) and (warehouse_id, status, order_date), says why composites serve several patterns in less space than single-column indexes, and names which patterns are left unoptimized and accepted. (not code-checkable: While code can test index usage, it cannot evaluate whether the reasoning about query pattern prioritization is sound.)",
       "weight": 1
     },
     {
@@ -87,7 +87,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -213,7 +213,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-churn-signal",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -58,17 +58,17 @@
   "rubric": [
     {
       "id": "clear-framing",
-      "criterion": "The note makes a focused, decision-useful distinction between involuntary payment loss and voluntary cancellation, rather than treating every retention idea as equivalent (code cannot check this because it cannot judge the quality of the problem framing).",
+      "criterion": "The note makes a focused, decision-useful distinction between involuntary payment loss and voluntary cancellation, rather than treating every retention idea as equivalent. Fail: it treats the cancellation save offer as the problem, or lumps failed-payment losses and voluntary cancellations into one retention figure. Partial: it separates the two kinds of loss with their June counts, but still builds the framing around the save offer, or does not say the save offer addresses only the voluntary 156. Pass: it names failed-payment loss without recovery as the main problem (402 of the 612 June losses, about two thirds), shows voluntary cancellation separately (156), says what the save offer can and cannot touch, and recommends fixing payment recovery before a blanket discount. (code cannot check this because it cannot judge the quality of the problem framing)",
       "weight": 2
     },
     {
       "id": "evidence-discipline",
-      "criterion": "The note uses the folder's evidence cautiously, separates counts from shares and events from subscribers, and makes the recommendation proportionate to the evidence (code cannot check this because it cannot assess analytical judgment and readable explanation).",
+      "criterion": "The note uses the folder's evidence cautiously, separates counts from shares and events from subscribers, and makes the recommendation proportionate to the evidence. Fail: it mixes the 517 failed card-payment events with the 402 subscribers lost, or quotes the cancellation survey as if it covered all churn, or gives no caveats. Partial: counts and shares are right, but it does not separate events from subscribers, or lists the survey limit without tying the recommendation to it. Pass: it states 612 total losses, 402 failed-payment losses (65.7 percent) and 156 voluntary losses, keeps the 517 failed-payment events apart from the 402 subscribers, calls the survey a sample of the voluntary flow only, and sizes the recommended test to that evidence. (code cannot check this because it cannot assess analytical judgment and readable explanation)",
       "weight": 2
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the survey covering only the voluntary-cancellation flow and the untested recovery fix stay unmentioned, or it does not say that docs/framing.md was written. Partial: it names docs/framing.md and what it holds, but lists no assumptions, or leaves out the survey covering only the voluntary-cancellation flow and the untested recovery fix. Pass: it names docs/framing.md and its closing JSON block, lists the assumptions made, says the survey covering only the voluntary-cancellation flow and the untested recovery fix still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -205,7 +205,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

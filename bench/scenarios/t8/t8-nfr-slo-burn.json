@@ -1,7 +1,7 @@
 {
   "id": "t8-nfr-slo-burn",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "nfr",
   "role": "sre",
   "phases2": [
@@ -47,7 +47,7 @@
   "rubric": [
     {
       "id": "decision-explanation",
-      "criterion": "The document explains the difference between an observed customer measurement, a service objective, and an alert action without treating a product aspiration as evidence (code cannot check this because it cannot judge the quality of the operational explanation).",
+      "criterion": "The document explains the difference between an observed customer measurement, a service objective, and an alert action without treating a product aspiration as evidence. Fail: the target is taken from the product wish (for example 99.999%), or the 28-day figure, the objective and the alert action are used as if they were the same thing. Partial: it separates the measured availability (about 99.98% for customer traffic, p99 near 1,200 ms) from the target, but does not say why the target sits at or below the dependency's own promise (99.9 to 99.95%) or leaves the page-versus-ticket choice unexplained. Pass: three things are kept apart in the prose: the measured 28-day value with its excluded traffic, the objective chosen at or below what was measured and within the dependency cap, with the error budget in minutes, and each alert action (page or ticket) tied to a burn rate; the product wish is named as a wish and not used as evidence. (code cannot check this because it cannot judge the quality of the operational explanation).",
       "weight": 2
     },
     {
@@ -132,7 +132,7 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The request asks the agent to derive objectives from data, set alerts, and write documentation\u2014it does not name a specific method, process, or tool the agent should use, nor does it list constraints or causes to find."
+        "note": "The request asks the agent to derive objectives from data, set alerts, and write documentation—it does not name a specific method, process, or tool the agent should use, nor does it list constraints or causes to find."
       },
       {
         "check": "ambiguity",
@@ -147,7 +147,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A quick wrong answer (e.g., blaming the newest deploy, the loudest error, or listing every action) would fail tests: availability target must be \u2264 measured (99.9776%), targets must respect the dependency cap (99.95%), and the incident on April 14 is explicitly tied to connection-pool contention, not CPU/memory."
+        "note": "A quick wrong answer (e.g., blaming the newest deploy, the loudest error, or listing every action) would fail tests: availability target must be ≤ measured (99.9776%), targets must respect the dependency cap (99.95%), and the incident on April 14 is explicitly tied to connection-pool contention, not CPU/memory."
       },
       {
         "check": "floor",
@@ -158,7 +158,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -99,7 +99,8 @@ test('other classes keep their layout: no regression column, no contamination se
   } finally { r.cleanup(); }
 });
 
-test('the judge bundle adds the regression count for a real tests check and still shows no test names', () => {
+// Task review F4: the bundle shows no check result, so a judge cannot anchor on a pass count.
+test('the judge bundle shows no check result for a real tests check, neither counts nor test names', () => {
   const { buildBundle } = require('../../judge/bundle.js');
   const root = tmp();
   try {
@@ -110,6 +111,6 @@ test('the judge bundle adds the regression count for a real tests check and stil
     }]);
     const result = JSON.parse(fs.readFileSync(path.join(runDir, 'vanilla/t1/1/result.json'), 'utf8'));
     const { text } = buildBundle({ runDir: path.join(runDir, 'vanilla/t1/1'), result, fixtureDir: path.join(bench, 'fixtures/fx'), limits: { maxFileChars: 4000, maxBundleChars: 20000 }, redactions: [] });
-    assert.match(text, /FAIL tests: 1 of 2 hidden tests passed; 98 of 100 existing tests still pass/);
+    assert.doesNotMatch(text, /hidden tests passed|existing tests still pass|FAIL_TO_PASS|PASS_TO_PASS/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

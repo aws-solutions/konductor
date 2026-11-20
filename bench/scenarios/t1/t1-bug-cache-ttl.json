@@ -1,11 +1,11 @@
 {
   "id": "t1-bug-cache-ttl",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "bugfix",
   "role": "developer",
   "questions": "allowed",
-  "prompt": "The profile service has started giving support a few worrying reports. After a profile is edited, callers can still see old fields, and the old value may show up again later. Memory use also grows past the configured cache limit, while hit and miss totals do not match the lookup traffic. Please fix the cache behavior behind these symptoms without changing response shapes or the existing profile and permission APIs.\n\nThe cache implementation is `src/cache/ttl-cache.js` and exports `TTLCache`. Its constructor accepts `ttlMs`, `maxSize`, `sweepIntervalMs`, `now`, and `sizeCalculation`; `now` and `sizeCalculation` are injectable for callers. Keep `set(key, value, optionalTtlMs)`, `get`, `has`, `delete`, `clear`, `sweep`, `stats`, `close`, `size`, and `weight` usable. `stats()` returns `{ hits, misses }`, and `weight` is the sum of calculated entry weights. `DataStore` in `src/data/store.js` accepts `{ profiles, permissions }`; `ProfileService` and `PermissionService` accept `{ store, cache }` and keep their `getProfile`/`updateProfile` and `getPermissions`/`updatePermissions` APIs. Keep Node.js 24, the dependency-free setup, the handler response formats, and the existing configuration files. Update the project record of the change and add focused coverage for the corrected behavior.",
+  "prompt": "The profile service has started giving support a few worrying reports. After a profile is edited, callers can still see old fields, and the old value may show up again later. Memory use also grows past the configured cache limit, while hit and miss totals do not match the lookup traffic. Please fix the cache behavior behind these symptoms without changing response shapes or the existing profile and permission APIs.\n\nThe cache implementation is `src/cache/ttl-cache.js` and exports `TTLCache`. Its constructor accepts `ttlMs`, `maxSize`, `sweepIntervalMs`, `now`, and `sizeCalculation`; `now` and `sizeCalculation` are injectable for callers. Keep `set(key, value, optionalTtlMs)`, `get`, `has`, `delete`, `clear`, `sweep`, `stats`, `close`, `size`, and `weight` usable. `stats()` returns `{ hits, misses }`, and `weight` is the sum of calculated entry weights. `DataStore` in `src/data/store.js` accepts `{ profiles, permissions }`; `ProfileService` and `PermissionService` accept `{ store, cache }` and keep their `getProfile`/`updateProfile` and `getPermissions`/`updatePermissions` APIs. Keep Node.js 24, the dependency-free setup, the handler response formats, and the existing configuration files. Update the project record of the change and add focused coverage for the corrected behavior in `test/cache-regressions.test.js`, at least one test per symptom.",
   "fixture": "t1-bug-cache-ttl",
   "hidden": "t1-bug-cache-ttl",
   "timeoutSec": 1200,
@@ -60,7 +60,7 @@
   "rubric": [
     {
       "id": "honest-verification",
-      "criterion": "The final report accurately states which test and project checks were run and whether they passed (code cannot check this because it cannot evaluate a developer's report).",
+      "criterion": "The final report accurately states which test and project checks were run and whether they passed (code cannot check this because it cannot evaluate a developer's report). Fail: claims tests pass that were not run, or says nothing about running `node --test`. Partial: names `node --test` and its result but leaves out a failing or skipped check, or claims all three symptoms (overwrite expiry, entry weight, sweep counters) are fixed without naming a test for each. Pass: names the commands run (`node --test` and the new `test/cache-regressions.test.js`), gives their real pass or fail counts, and says which of the three symptoms each new test covers.",
       "weight": 1
     },
     {
@@ -159,19 +159,19 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 19,
-    "decision": "fix",
+    "stub": 9.5,
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 19,
-      "lazy": 71.4,
+      "stub": 9.5,
+      "lazy": 33.3,
       "alt": 85.7,
       "date": "2026-11-20"
     }

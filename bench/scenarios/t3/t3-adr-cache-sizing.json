@@ -27,12 +27,12 @@
   "rubric": [
     {
       "id": "reasoning",
-      "criterion": "The ADR explains the sizing arithmetic, including the engine reservation, primary versus replica capacity, and why the selected topology meets the peak working set and availability objectives. (not code-checkable: Tests can recompute reported figures but cannot judge whether the explanation connects the figures into a sound architectural argument.)",
+      "criterion": "The ADR explains the sizing arithmetic, including the engine reservation, primary versus replica capacity, and why the selected topology meets the peak working set and availability objectives. Fail: sizes nodes by advertised memory, or assumes the replica adds capacity. Partial: applies the 25% reservation but misses that replicas give failover, not primary capacity, or compares to the wrong working set. Pass: shows minimal-105 gives 105 x 0.75 = 78.75 GB primary (about 66.7% of the 118 GB peak, failing the 95% in-memory floor) while balanced-105 gives 157.5 GB across two primaries, explains replicas add no capacity but give 0-minute RPO and about 3-minute RTO against the 5-minute limit, and uses the 800 requests/s production target, not the superseded 600. (not code-checkable: Tests can recompute reported figures but cannot judge whether the explanation connects the figures into a sound architectural argument.)",
       "weight": 1
     },
     {
       "id": "tradeoffs",
-      "criterion": "The ADR compares the selected option with a viable alternative and makes a clear cost, capacity, performance, and operational tradeoff rather than asserting a choice. (not code-checkable: Tests can verify option ids and numeric limits but cannot assess whether the comparison is meaningful or the preference is well justified.)",
+      "criterion": "The ADR compares the selected option with a viable alternative and makes a clear cost, capacity, performance, and operational tradeoff rather than asserting a choice. Fail: lists options with no comparison, or picks on price only. Partial: compares balanced-105 and wide-209 on cost only. Pass: compares balanced-105 (4 x 650 = 2,600 USD, two primary shards) with wide-209 (2 x 1,400 = 2,800 USD, one shard, lower p95, fewer nodes) on at least two of cost, shard layout, latency and operations, states the 200 USD per month difference, and says what would change the decision (118 GB peak growing past 157.5 GB, or spend nearing the 3,000 USD budget). (not code-checkable: Tests can verify option ids and numeric limits but cannot assess whether the comparison is meaningful or the preference is well justified.)",
       "weight": 1
     },
     {
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -191,7 +191,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

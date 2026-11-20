@@ -1,61 +1,46 @@
-# Contact import: requirements, design and test plan
+# Feature note: CSV contact import
 
-Source: `docs/requests/contact-import.md` (Priya, 2026-11-17).
-
-## Test plan
-
-See `test/import.test.js`.
-
-```json
-{
- "testPlan": [
-  "5,001 rows refused with nothing imported; exactly 5,000 rows import.",
-  "Line numbers after a quoted field that spans two lines.",
-  "Missing name and invalid email reported with lines 3 and 4, the rest imported.",
-  "Duplicate within the same file.",
-  "Duplicate of an existing contact, different case.",
-  "CRLF line endings.",
-  "Quoted commas and doubled quotes.",
-  "A byte-order mark at the start.",
-  "Columns in another order, phone absent.",
-  "Valid rows import and are counted."
- ],
- "decisions": [
-  "Duplicates are skipped with a reason, not treated as errors.",
-  "Over the 5,000-row limit importContacts throws before adding anything, so no partial import.",
-  "Line numbers are file lines with the header as line 1; a quoted field spanning lines shifts later rows.",
-  "Own small RFC 4180 parser in src/import.js: no dependencies in this package."
- ],
- "requirements": [
-  "The result gives the imported count and every skipped row with line and reason.",
-  "More than 5,000 data rows: the whole file is refused before anything is imported.",
-  "A row with no name or an invalid email is skipped with its file line and reason; the rest still imports.",
-  "A duplicate email, compared without case, already in the book or earlier in the same file, is skipped.",
-  "Quoted fields may hold commas and doubled quotes.",
-  "A leading byte-order mark (BOM) is accepted.",
-  "Header row names name, email and optional phone in any order."
- ]
-}
-```
+Request: `docs/requests/contact-import.md` (Priya, 2026-11-17). Code: `src/import.js` and `src/csv-records.js`.
+Tests: `test/csv-records.test.js` (the reader) and `test/import-rules.test.js` (one test per agreed rule).
 
 ## Design
 
-`src/import.js` exports `importContacts(csvText, book)`. It parses the whole text first (so the row limit is checked
-before any `book.add`), then adds rows one by one through the existing `createBook()` API, reusing its email rule.
+The import runs in two passes. The first reads every record of the file through a small state-machine reader
+(`records()` in `src/csv-records.js`), so the row count is known before anything changes. The second offers each row
+to `book.add()` from `src/contacts.js`, which already owns the name and email rules; when it refuses a row, its own
+message becomes the skip reason, so the import and the address book can never disagree on what a valid contact is.
 
-- **Parser.** A small RFC 4180 parser in the module: the package has no dependencies and the format needs only
-  quotes, doubled quotes, CRLF and newlines inside quotes. Blank lines are ignored.
-- **Line numbers** are file lines as a spreadsheet shows them: the header is line 1, and a row reports the line it
-  starts on, so a quoted field spanning two lines moves the following rows down by one.
-- **Over the limit** the function throws an Error naming the limit; nothing is imported. Partial imports of big files
-  would leave customers unsure what got in.
-- **Duplicates** are not errors: they are skipped with the reason `duplicate`.
+Duplicates are checked before `book.add()`: against `book.has()` and against a set of the lower-cased emails added
+earlier from the same file. Line numbers are those a spreadsheet shows: the header is line 1, and a record reports
+the line it starts on, so a quoted name with a line break pushes the next rows down.
 
-## Requirements
+A file with more than 5,000 data rows throws a `RowLimitError` whose message gives the count and the limit.
 
-1. Import a UTF-8 CSV with a header row naming `name`, `email` and optionally `phone`, in any column order.
-2. Accept a leading byte-order mark and quoted fields holding commas or doubled quotes (RFC 4180).
-3. Skip a row whose email (compared without case) is already in the address book or appeared earlier in the same file.
-4. Skip a row with no name or an invalid email, report its file line and the reason, and keep importing the rest.
-5. Refuse a file with more than 5,000 data rows as a whole, before importing anything.
-6. Return the number imported and every skipped row with its line and reason.
+```json
+{
+  "requirements": [
+    "Read a UTF-8 CSV whose header row names name and email (phone optional), with the columns in any order.",
+    "Ignore a leading byte-order mark (BOM) from spreadsheet exports.",
+    "Read quoted fields holding commas, doubled quotes or line breaks.",
+    "Skip a row whose email, compared without case, is already in the address book or came earlier in the same file.",
+    "Skip a row with an empty name or an invalid email, and report its file line and the reason; keep importing the rest.",
+    "Refuse a file with more than 5,000 data rows as a whole, before importing anything.",
+    "Return how many contacts were imported and every skipped row with its line and reason."
+  ],
+  "decisions": [
+    "A hand-written state-machine CSV reader instead of a dependency: the package has none, and the rules needed are small (RFC 4180 quoting).",
+    "Read all records before adding any, so the 5,000-row limit is checked first and an over-limit file throws a RowLimitError with nothing imported.",
+    "Reuse book.add() for name and email validation and pass its message on as the reason, so there is one definition of a valid contact.",
+    "Line numbers are file lines with the header as line 1, and a record that spans several lines reports the line it starts on."
+  ],
+  "testPlan": [
+    "Header in another order, missing phone, a BOM and CRLF line ends import cleanly.",
+    "Quoted commas, doubled quotes and a quoted line break are read; the record after it reports the right file line.",
+    "Blank lines are dropped but counted.",
+    "Duplicate of a contact already in the book, in a different case, is skipped.",
+    "Duplicate within the same file is skipped at its own line.",
+    "Empty name and invalid email are skipped with lines and reasons; the other rows import.",
+    "Exactly 5,000 rows import; 5,001 rows are refused and the book stays empty."
+  ]
+}
+```

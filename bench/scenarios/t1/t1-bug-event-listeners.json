@@ -1,7 +1,7 @@
 {
   "id": "t1-bug-event-listeners",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "bugfix",
   "role": "developer",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
-      "min": 14,
+      "min": 17,
       "weight": 5,
       "kind": "substance"
     },
@@ -29,10 +29,9 @@
       "kind": "substance"
     },
     {
-      "type": "min_matches",
-      "path": "test/regressions.test.js",
-      "pattern": "\\btest\\s*\\(",
-      "min": 4,
+      "type": "cmd",
+      "cmd": "test \"$(cat test/*.test.js | grep -Ec '^[[:space:]]*(test|it)[(]')\" -ge 11",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
@@ -44,17 +43,10 @@
       "kind": "substance"
     },
     {
-      "type": "contains",
-      "path": "CHANGELOG.md",
-      "pattern": "connection lifecycle|handler errors|unreferenced",
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "docs/operations.md",
-      "pattern": "unreferenced.*heartbeat|handler errors|connection.*listener",
-      "weight": 2,
+      "type": "cmd",
+      "cmd": "n=$(cat CHANGELOG.md docs/operations.md 2>/dev/null); printf '%s' \"$n\" | grep -qiE 'listener|reconnect|duplicate' && printf '%s' \"$n\" | grep -qiE 'callback|handler|subscriber' && printf '%s' \"$n\" | grep -qiE '(heartbeat|timer)[^.]*(unref|event loop|stop|clear|alive)|(unref|event loop|alive)[^.]*(heartbeat|timer)'",
+      "expectExit": 0,
+      "weight": 4,
       "kind": "substance"
     },
     {
@@ -74,7 +66,7 @@
     {
       "weight": 1,
       "id": "verification-report",
-      "criterion": "The final report states which relevant test commands were actually run and does not claim unverified results (code cannot check this because it cannot inspect the agent's communication)."
+      "criterion": "The final report states which relevant test commands were actually run and does not claim unverified results (code cannot check this because it cannot inspect the agent's communication). Fail: claims the four symptoms (listener growth, duplicate delivery, a failed callback blocking others, heartbeats keeping the process alive) are fixed without any test run, or reports a passing run that did not happen. Partial: reports `node --test` truthfully but claims a symptom fixed that no new test covers (for example the event-loop or socket-close case), or omits a failing or skipped check. Pass: names each command run with its real result and maps each of the four symptoms to the regression test that covers it, saying plainly if any symptom was not tested."
     },
     {
       "id": "root-cause-minimal",
@@ -146,20 +138,20 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 12.2,
-    "decision": "fix",
+    "stub": 11.3,
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 12.2,
-      "lazy": 42.9,
-      "alt": 68.4,
+      "stub": 11.3,
+      "lazy": 36.6,
+      "alt": 100,
       "date": "2026-11-20"
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

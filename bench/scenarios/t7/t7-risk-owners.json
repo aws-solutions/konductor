@@ -1,7 +1,7 @@
 {
   "id": "t7-risk-owners",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line-first",
-      "criterion": "The prose gives the director a clear September shipping bottom line first and separates confirmed facts from assumptions or decisions still needed (code cannot check this because it cannot judge narrative priority or epistemic clarity).",
+      "criterion": "The prose gives the director a clear September shipping bottom line first and separates confirmed facts from assumptions or decisions still needed. Fail: says September is fine because the roadmap says so, or lists risks first. Partial: doubts the date but gives no reason, or mixes facts and assumptions. Pass: the opening says 2027-09-24 should not be treated as committed, because the 37-point Session Bridge chain ends at MOB-158 due 2027-09-10, after the 2027-09-06 freeze that is also a public holiday, and the provider's v1 retires 2027-08-20; it then marks what is confirmed and which steering decisions are still open. (code cannot check this because it cannot judge narrative priority or epistemic clarity).",
       "weight": 2
     },
     {
       "id": "actionable-steering",
-      "criterion": "The prose turns the risks into concrete steering decisions, escalation points, or next actions rather than merely restating ticket titles (code cannot check this because it cannot evaluate the usefulness of the written explanation).",
+      "criterion": "The prose turns the risks into concrete steering decisions, escalation points, or next actions rather than merely restating ticket titles. Fail: risks restate ticket titles with no owner or action. Partial: owners are named but actions are generic (for example monitor closely). Pass: each risk has a named owner and a concrete step: Owen Wright pairs Priya Nair with Jon Bell and assigns the blank MOB-089, Sana Patel gets a sandbox and device pass for the v2 envelope before 2027-08-20 with a bounded fallback, Lena Brooks records acceptance for the untracked diagnostic export and schedules or removes it, and Owen brings a freeze exception or reduced scope to steering. (code cannot check this because it cannot evaluate the usefulness of the written explanation).",
       "weight": 2
     }
   ],
@@ -185,7 +185,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

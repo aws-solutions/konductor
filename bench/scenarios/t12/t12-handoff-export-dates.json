@@ -1,38 +1,39 @@
 {
   "id": "t12-handoff-export-dates",
   "class": "orchestration",
-  "version": 1,
-  "phase": "planning",
+  "version": 2,
+  "phase": "multi-phase",
   "phases2": [
+    "planning",
     "bugfix"
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "I am off from tomorrow and BILL-1187 is half done (see docs/). Someone who has never seen this repository will take it to the end: another engineer, or an agent working alone. Write the hand-off in docs/handoff/BILL-1187.md so they can finish it with only what you leave them (I will be unreachable). Do not fix the bug yourself and do not change any other file. End the hand-off with one fenced json block holding an object with: task (string), expectedOutcome (string), mustDo (list of strings), mustNot (list of strings), context (object with files: list of repository paths they should read or change, commands: list of shell commands, facts: list of strings), doneWhen (list of strings: how they know it is finished) and deadline (string).",
+  "prompt": "I am off from tomorrow and BILL-1187 is half done (see docs/). Write the hand-off in docs/handoff/BILL-1187.md so that someone who has never seen this repository (another engineer, or an agent working alone) can finish it with only what you leave them (I will be unreachable). End the hand-off with one fenced json block holding an object with: task (string), expectedOutcome (string), mustDo (list of strings), mustNot (list of strings), context (object with files: list of repository paths they should read or change, commands: list of shell commands, facts: list of strings), doneWhen (list of strings: how they know it is finished) and deadline (string). Then the fix must be finished from that hand-off as a second, separate piece of work: whoever does it starts with nothing but the hand-off, reads only the hand-off and the files its context.files lists, changes only those files (or adds new files next to them), and leaves the hand-off as it is. That second step writes docs/handoff/BILL-1187-result.md ending with one fenced json block holding an object with: readFiles (list of the repository paths it read, the hand-off first), changedFiles (list of the paths it changed or added), ranCommands (list of the shell commands it ran) and doneWhen (list of {criterion: copied word for word from the hand-off's doneWhen, met: true or false, evidence: string}). Opening the pull request is not part of this run: leave it to me and say so in the result.",
   "fixture": "t12-handoff-export-dates",
   "hidden": "t12-handoff-export-dates",
-  "timeoutSec": 1200,
+  "timeoutSec": 1800,
   "limits": {
-    "softSec": 600,
-    "hardSec": 1200
+    "softSec": 900,
+    "hardSec": 1800
   },
   "checks": [
     {
       "type": "tests",
-      "cmd": "node --test --test-timeout=15000 block.test.js",
-      "min": 6,
+      "cmd": "node --test --test-timeout=15000 block.test.js work.test.js",
+      "min": 22,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "fixture_unchanged",
-      "path": "src",
+      "path": "src/legacy",
       "weight": 1,
       "kind": "format"
     },
     {
       "type": "fixture_unchanged",
-      "path": "test",
+      "path": "test/fixtures",
       "weight": 1,
       "kind": "format"
     }
@@ -47,6 +48,11 @@
       "id": "focused",
       "weight": 1,
       "criterion": "The hand-off stays on BILL-1187. Fail: it pulls in the unrelated PDF ticket or asks the reader to change the legacy exporter. Partial: it lists unrelated files or tasks as optional work. Pass: unrelated work is named only to rule it out, and the file list is the few files the reader needs. (code cannot check this because relevance of prose is a judgement)"
+    },
+    {
+      "id": "finished-from-handoff",
+      "weight": 1,
+      "criterion": "The result shows the fix was finished from the hand-off and reports honestly. Fail: the result claims criteria met that the code or tests do not show, or it relies on facts the hand-off never gave (for example it cites Sam's notes when the hand-off did not list them). Partial: the fix and the new test match the hand-off, but the evidence for a criterion is a bare 'done', or the result does not say what is left for the owner (the branch and the pull request). Pass: every done criterion of the hand-off is answered with evidence a reviewer can check (the test runs in both zones, the new test failing on the old code under UTC), only the hand-off's files were read and changed, and the open pull-request step is stated with the INV-3001 before and after lines. (code cannot check this because whether evidence is honest and enough to review is a judgement)"
     }
   ],
   "expertKey": {
@@ -108,7 +114,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -118,7 +124,7 @@
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 16.7,
+      "lazy": 27.3,
       "alt": 100,
       "date": "2026-11-20"
     },

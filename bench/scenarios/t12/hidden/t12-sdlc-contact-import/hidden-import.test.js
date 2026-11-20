@@ -54,7 +54,8 @@ test('rule 4: bad rows are skipped with their file line and reason, and the rest
 test('rule 5: more than 5,000 data rows are refused before anything is imported; 5,000 import', () => {
   const rows = (n) => Array.from({ length: n }, (_, i) => `P${i},p${i}@example.test`).join('\n');
   const book = createBook();
-  assert.throws(() => load()(`name,email\n${rows(5001)}\n`, book), /5,?000|limit/i);
+  // The prompt asks for an Error over the limit and leaves its wording free.
+  assert.throws(() => load()(`name,email\n${rows(5001)}\n`, book), Error);
   assert.equal(book.list().length, 0);
   assert.equal(run(`name,email\n${rows(5000)}\n`).result.imported, 5000);
 });

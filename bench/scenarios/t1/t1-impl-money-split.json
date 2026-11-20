@@ -1,7 +1,7 @@
 {
   "id": "t1-impl-money-split",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -29,23 +29,23 @@
       "kind": "substance"
     },
     {
-      "type": "file_exists",
-      "path": "src/allocation.js",
+      "type": "cmd",
+      "cmd": "node -e \"const a=require('./src');process.exit(typeof a.splitByWeights==='function'&&typeof a.allocatePayment==='function'?0:1)\"",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
     {
-      "type": "min_matches",
-      "path": "test/allocation.test.js",
-      "pattern": "\\btest\\s*\\(",
-      "min": 3,
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');let n=0;for(const f of fs.readdirSync('test')){if(!/\\.test\\.js$/.test(f))continue;const s=fs.readFileSync('test/'+f,'utf8');if(/splitByWeights|allocatePayment/.test(s))n+=(s.match(/\\b(test|it)\\s*\\(/g)||[]).length}process.exit(n>=3?0:1)\"",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
     {
-      "type": "contains",
-      "path": "docs/allocation.md",
-      "pattern": "largest[- ]remainder|tie|currency",
+      "type": "cmd",
+      "cmd": "grep -rqiE 'largest[- ]remainder|\\btie' README.md docs",
+      "expectExit": 0,
       "weight": 1,
       "kind": "format"
     },
@@ -68,7 +68,7 @@
     {
       "weight": 1,
       "id": "verification-report",
-      "criterion": "The final report accurately states which existing, hidden, and reference-overlay checks were run and whether they passed (code cannot check this because it cannot assess the agent's final report)."
+      "criterion": "The final report accurately states which existing, hidden, and reference-overlay checks were run and whether they passed (code cannot check this because it cannot assess the agent's final report). Fail: says every check passed without naming one, or claims hidden or reference-overlay checks passed when it could not run them. Partial: names `node --test test/*.test.js` but not its result, or lumps the hidden and reference-overlay checks in with it. Pass: names each command it ran (the existing suite, its own allocation tests, and a `split` and an `allocate` run of `node bin/billing.js`) with the result of each, and says plainly which checks (hidden, reference overlay) it did not run."
     },
     {
       "id": "design-fit",
@@ -141,19 +141,19 @@
     "scores": {},
     "reference": 100,
     "stub": 9.5,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 9.5,
-      "lazy": 24.5,
-      "alt": 20.8,
+      "lazy": 35.9,
+      "alt": 100,
       "date": "2026-11-20"
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

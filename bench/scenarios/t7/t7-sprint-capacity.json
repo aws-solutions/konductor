@@ -1,7 +1,7 @@
 {
   "id": "t7-sprint-capacity",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose gives the requester a clear bottom line about beta scope, unresolved work, and any conditional commitment before the JSON block (code cannot check this because it only reads the structured block).",
+      "criterion": "The prose gives the requester a clear bottom line about beta scope, unresolved work, and any conditional commitment before the JSON block. Fail: a single round total, or every Must item placed in the first sprint, or the blank estimate treated as zero. Partial: a plan with some items not fitting but no conditional commitment on payment checkout or the dashboard. Pass: the opening says most estimated must-have work fits across the three sprints, payment sandbox checkout cannot be committed (Gale Park is the only payments specialist), and the service dashboard has no estimate and needs a decision before the beta date. (code cannot check this because it only reads the structured block).",
       "weight": 3
     },
     {
       "id": "reasoning",
-      "criterion": "The prose explains how the capacity numbers, sequencing, dependency treatment, and specialist constraint were obtained without silently treating uncertainty as zero (code cannot check this because it cannot evaluate narrative reasoning).",
+      "criterion": "The prose explains how the capacity numbers, sequencing, dependency treatment, and specialist constraint were obtained without silently treating uncertainty as zero. Fail: capacity numbers are bare or unexplained. Partial: the method is stated but the specialist limit or a prerequisite is missing. Pass: the prose explains capacity from Monday to Friday dates less holidays, each person's focus factor and halved on-call days (35.23, 22.49 and 34.785 points), keeps T-037 ahead of T-083 and T-023 ahead of T-108 visible, shows the 11-point payment bundle against Gale's 3.6 points as an explicit exception, and says T-096 is held out because a blank estimate is not zero. (code cannot check this because it cannot evaluate narrative reasoning).",
       "weight": 2
     }
   ],
@@ -182,7 +182,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

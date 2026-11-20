@@ -1,7 +1,7 @@
 {
   "id": "t1-nfr-ndjson-stream",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
@@ -17,7 +17,7 @@
     {
       "type": "tests",
       "cmd": "python3 -c \"import sys; assert sys.version_info[:2] == (3, 12)\" && node --test --test-timeout=15000 hidden/py_bridge.test.js",
-      "min": 14,
+      "min": 22,
       "weight": 3,
       "kind": "substance"
     },
@@ -29,10 +29,9 @@
       "kind": "substance"
     },
     {
-      "type": "min_matches",
-      "path": "tests/test_streaming.py",
-      "pattern": "def test_",
-      "min": 2,
+      "type": "cmd",
+      "cmd": "test \"$(cat tests/test_*.py | grep -c 'def test_')\" -ge 7",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
@@ -41,13 +40,13 @@
       "path": "CHANGELOG.md",
       "pattern": "stream|gzip|percentile",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
-      "type": "contains",
-      "path": "logjob/aggregation.py",
-      "pattern": "array\\(\\\"Q\\\"",
-      "weight": 2,
+      "type": "cmd",
+      "cmd": "python3 -c \"import json,tempfile,tracemalloc,os;from logjob import analyze;d=tempfile.mkdtemp();p=os.path.join(d,'x.ndjson');open(p,'w').write(''.join(json.dumps({'endpoint':'/e%d'%(i%4),'latency_ms':i%60001,'status':200})+chr(10) for i in range(100000)));tracemalloc.start();analyze(p);m=tracemalloc.get_traced_memory()[1];os.remove(p);os.rmdir(d);raise SystemExit(0 if m<8*1024*1024 else 1)\"",
+      "expectExit": 0,
+      "weight": 3,
       "kind": "substance"
     },
     {
@@ -62,12 +61,12 @@
     {
       "weight": 2,
       "id": "measurement-report",
-      "criterion": "The final message gives the generated workload and an observed peak-memory measurement instead of only claiming that the limit was met (code cannot check this because it cannot assess statements in the final message)."
+      "criterion": "The final message gives the generated workload and an observed peak-memory measurement instead of only claiming that the limit was met (code cannot check this because it cannot assess statements in the final message). Fail: says the memory limit is met with no figure. Partial: gives a peak-memory figure but not the workload, or the figure is not a tracemalloc peak. Pass: states the workload it generated (100,000 valid lines across four endpoints) and the observed tracemalloc peak in MiB, and that it is below 8 MiB."
     },
     {
       "weight": 1,
       "id": "tradeoff-report",
-      "criterion": "The final message names the bounded-latency trade-off and states what unusual input cardinality or percentile case was left outside the change (code cannot check this because the implementation cannot show what the engineer chose not to address)."
+      "criterion": "The final message names the bounded-latency trade-off and states what unusual input cardinality or percentile case was left outside the change (code cannot check this because the implementation cannot show what the engineer chose not to address). Fail: names no trade-off. Partial: says it uses less memory but not what that costs. Pass: names the bounded-latency trade-off (one fixed-size count table per endpoint for latencies 0 to 60000, so memory grows with the number of endpoints, not records) and states one case it left out, such as a very large number of distinct endpoints."
     },
     {
       "id": "design-fit",
@@ -176,19 +175,19 @@
     "scores": {},
     "reference": 100,
     "stub": 14.3,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 14.3,
-      "lazy": 58.2,
-      "alt": 83.7,
+      "stub": 11.3,
+      "lazy": 37.2,
+      "alt": 100,
       "date": "2026-11-20"
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

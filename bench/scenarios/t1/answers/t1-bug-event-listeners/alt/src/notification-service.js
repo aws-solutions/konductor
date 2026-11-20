@@ -20,9 +20,7 @@ class NotificationService {
       return existing;
     }
     if (existing) {
-      existing.heartbeat.stop();
-      this.bus.off(topicFor(userId), existing.listener);
-      this.sessions.delete(userId);
+      this.disconnect(userId, existing.connection);
     }
     const topic = topicFor(userId);
     const listener = (payload) => {
@@ -32,7 +30,9 @@ class NotificationService {
     };
     this.bus.on(topic, listener);
     const heartbeat = new Heartbeat(connection, this.heartbeatIntervalMs).start();
-    const session = { userId, connection, listener, heartbeat };
+    const onSocketClose = () => this.disconnect(userId, connection);
+    connection.once('close', onSocketClose);
+    const session = { userId, connection, listener, heartbeat, onSocketClose };
     this.sessions.set(userId, session);
     return session;
   }
@@ -45,6 +45,7 @@ class NotificationService {
     this.sessions.delete(userId);
     session.heartbeat.stop();
     this.bus.off(topicFor(userId), session.listener);
+    connection.off('close', session.onSocketClose);
     return true;
   }
 
@@ -65,11 +66,9 @@ class NotificationService {
   }
 
   close() {
-    for (const [userId, session] of this.sessions) {
-      session.heartbeat.stop();
-      this.bus.off(topicFor(userId), session.listener);
+    for (const [userId, session] of [...this.sessions]) {
+      this.disconnect(userId, session.connection);
     }
-    this.sessions.clear();
   }
 }
 

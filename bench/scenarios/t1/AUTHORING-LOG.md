@@ -51,6 +51,8 @@ Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an 
 
 Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-nfr-bounded-fanout) wrote checks with `kind` in the place of `type`. The key prompt had named `kind` but not `type`, so part of that failure is the prompt's; it now states the full check shape with an example. Both tasks had already used their one fix attempt and stay dropped.
 
+`t1-ref-package-split` (qwen3-coder-next, key step): the call wrote a scratch copy one folder above its working folder (still inside T1's own scratch area; no konductor or other-batch path was read, by `audit.js`), then stopped at its 150-tool-call cap without a key draft. The copy was removed; the task gets its one fix attempt by its own family.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -68,6 +70,7 @@ Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-
 | t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
 | t1-ref-dataclasses | deepseek-3.2, then minimax-m2.5 | second-family (two-step) task: the key call stopped at its 60-tool-call cap twice (first try and its one fix attempt) without a key-draft.json; dropped, not hand-fixed | see the calls table for credits |
 | t1-nfr-bounded-fanout | qwen3-coder-next | second-family task: the single-step author stopped at its cap; in its one fix attempt (two-step) the key's checks used `kind` and the check name as the type, so no check could run; dropped, not hand-fixed | see the calls table for credits |
+| t1-nfr-cache-bound | qwen3-coder-next | second-family (two-step) task: the first key call stopped at its cap; after its one fix attempt by its own family the untouched fixture scores 75 (stub gate 20 or less) and the alternative 78.6; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -208,3 +211,21 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-nfr-bounded-fanout | map | glm-5 | 0.16 |
 | t1-nfr-bounded-fanout | review | gpt-5.6-luna | 1.19 |
 | t1-nfr-bounded-fanout | lazy+alt answers | gpt-5.6-luna | 3.10 |
+| t1-twin-booking-export | author-data | minimax-m2.5 | 1.27 |
+| t1-twin-booking-export | author-key | minimax-m2.5 | 6.88 |
+| t1-twin-booking-export | map | glm-5 | 0.16 |
+| t1-twin-booking-export | review | gpt-5.6-luna | 1.02 |
+| t1-twin-booking-export | lazy+alt answers | gpt-5.6-luna | 1.13 |
+| t1-nfr-cache-bound | author-data | qwen3-coder-next | 1.11 |
+| t1-nfr-cache-bound | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-ref-package-split | author-data | qwen3-coder-next | 0.12 |
+| t1-twin-booking-export | fix | minimax-m2.5 | 5.12 |
+| t1-twin-booking-export | review | gpt-5.6-luna | 0.97 |
+| t1-twin-booking-export | lazy+alt answers | gpt-5.6-luna | 1.24 |
+| t1-ref-package-split | author-data | qwen3-coder-next | 2.93 |
+| t1-ref-package-split | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-ref-package-split | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-nfr-cache-bound | author-key | qwen3-coder-next | 6.88 |
+| t1-nfr-cache-bound | map | glm-5 | 0.17 |
+| t1-nfr-cache-bound | review | gpt-5.6-luna | 2.28 |
+| t1-nfr-cache-bound | lazy+alt answers | gpt-5.6-luna | 3.67 |

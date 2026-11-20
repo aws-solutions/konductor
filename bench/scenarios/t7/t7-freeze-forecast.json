@@ -1,7 +1,7 @@
 {
   "id": "t7-freeze-forecast",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose gives the requester the March 31 yes-or-no answer and the earliest date near the start, rather than making the director infer the conclusion (code cannot check this because it only reads the fenced JSON block).",
+      "criterion": "The prose gives the requester the March 31 yes-or-no answer and the earliest date near the start, rather than making the director infer the conclusion. Fail: answers yes, or gives no answer, or hides the answer under the JSON. Partial: says no but gives no earliest date, or gives a date that is not April 30, 2027, or does not link it to the April 12 freeze. Pass: the opening says no, March 31, 2027 cannot be hit, the earliest realistic date is 2027-04-30, that is after the April 12 feature freeze and leaves almost no margin to the May 3 final, so a freeze exception or reset of the release conversation is needed. (code cannot check this because it only reads the fenced JSON block).",
       "weight": 2
     },
     {
       "id": "reasoning",
-      "criterion": "The prose connects the forecast to the calendar, capacity, leave, handoffs, dependency date, and release timing in a way a director can act on (code cannot check this because it checks identifiers and values, not the quality of the explanation).",
+      "criterion": "The prose connects the forecast to the calendar, capacity, leave, handoffs, dependency date, and release timing in a way a director can act on. Fail: the answer rests on ticket count or the large 55-point MIG-142 epic. Partial: the prose names the gated chain (MIG-014, MIG-032, MIG-057, MIG-071, MIG-088, MIG-109, MIG-126) but leaves out leave, holidays or handoff days. Pass: the prose ties the date to the chain, the March 31 holiday and the two planned leaves (Dae Okafor March 29 to April 2, Hana Reed April 12 to 14) with the reduced sprint capacity, the Tuesday and Wednesday handoff limit on Runtime Migration and the Monday and Thursday limit on Release Operations, and says MIG-142 can slip without moving the date. (code cannot check this because it checks identifiers and values, not the quality of the explanation).",
       "weight": 2
     }
   ],
@@ -186,7 +186,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

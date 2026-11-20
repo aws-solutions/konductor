@@ -1,7 +1,7 @@
 {
   "id": "t8-dec-deploy-strategy",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "decisions",
   "role": "sre",
   "phases2": [
@@ -40,7 +40,7 @@
   "rubric": [
     {
       "id": "operational-clarity",
-      "criterion": "The prose gives an on-call engineer a clear, service-specific explanation of the trade-offs and the chosen rollout behavior (code cannot check this because the automated key only inspects structured values and selected evidence patterns).",
+      "criterion": "The prose gives an on-call engineer a clear, service-specific explanation of the trade-offs and the chosen rollout behavior. Fail: the record is a generic pros-and-cons list, or names canary without numbers from this folder, so an on-call engineer could not act on it. Partial: it picks one option and gives some rollout or rollback rules, but the first-stage size, the watch time, or the handling of long-lived websocket sessions is missing or has no unit. Pass: it chooses canary and rejects blue/green (second fleet cost against the dollar and host figures in the capacity report) and rolling (whole-fleet exposure and the 40-minute drain against the revert limit) with those numbers, gives a first-stage host count and percent, the signal and minutes to watch before widening, a stop rule, and what happens to sessions on the new version at rollback, each with units. (code cannot check this because the automated key only inspects structured values and selected evidence patterns).",
       "weight": 1
     },
     {
@@ -160,7 +160,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

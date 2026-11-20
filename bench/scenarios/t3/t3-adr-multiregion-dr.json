@@ -27,12 +27,12 @@
   "rubric": [
     {
       "id": "reasoning-quality",
-      "criterion": "The ADR demonstrates clear, logical reasoning that connects requirements to the chosen option, explaining why alternatives were rejected. (not code-checkable: Automated tests can verify numerical calculations and limit compliance, but cannot evaluate the quality of explanatory prose, logical flow, or persuasiveness of arguments.)",
+      "criterion": "The ADR demonstrates clear, logical reasoning that connects requirements to the chosen option, explaining why alternatives were rejected. Fail: chooses on price or does not test each option against the limits. Partial: finds warm-standby is the choice but checks only RPO or only cost. Pass: shows nightly-backup fails RPO (up to 24 hours against 5 minutes) and RTO (about 57 minutes restore plus 23 minutes start, about 80 minutes against 45), pilot-light meets RPO but needs about 65 minutes against the 45-minute RTO, and warm-standby (about $11,904 under $12,000, RPO under 2 minutes, RTO about 15 minutes) is the only option that meets all three. (not code-checkable: Automated tests can verify numerical calculations and limit compliance, but cannot evaluate the quality of explanatory prose, logical flow, or persuasiveness of arguments.)",
       "weight": 1
     },
     {
       "id": "tradeoff-explanation",
-      "criterion": "The decision record explains tradeoffs between options beyond just cost, including complexity, operational overhead, risk factors, and implementation considerations. (not code-checkable: While tests can verify that all options were considered, they cannot assess whether the analysis discusses meaningful tradeoffs or merely lists pros/cons without substantive comparison.)",
+      "criterion": "The decision record explains tradeoffs between options beyond just cost, including complexity, operational overhead, risk factors, and implementation considerations. Fail: only cost is discussed. Partial: mentions complexity of warm standby but no figures or traps. Pass: covers the operational complexity of warm-standby justified by the RTO, the thin headroom (about $96 per month) against 200 GB per month data growth, the superseded $0.72 database rate (use $0.68), and why the 15 to 20% annual-commitment note does not change the result for the two failing options. (not code-checkable: While tests can verify that all options were considered, they cannot assess whether the analysis discusses meaningful tradeoffs or merely lists pros/cons without substantive comparison.)",
       "weight": 1
     },
     {
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator",
@@ -198,7 +198,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

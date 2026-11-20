@@ -23,12 +23,12 @@
   "rubric": [
     {
       "id": "calculation-accuracy",
-      "criterion": "All calculated values (usable memory, price per GB) are mathematically correct within 1% tolerance, derived from the fixture data. (not code-checkable: The test suite already verifies numerical accuracy, so this rubric item ensures the agent didn't hardcode answers but performed the calculations correctly from source data.)",
+      "criterion": "All calculated values (usable memory, price per GB) are mathematically correct within 1% tolerance, derived from the fixture data. Fail: usable memory is not 75% of advertised, or price per GB divides by advertised memory, or the values are copied rather than computed. Partial: most rows are right within 1% but one or two nodes are wrong, or the 25% overhead is applied inconsistently. Pass: every node in price-sheet.json (taken from the JSON, not the markdown sheet) shows usable = 0.75 x advertised, price per usable GB = monthly price / usable memory, within 1%, and cache-105 comes out as the cheapest at about 8.25 USD per usable GB. (not code-checkable: The test suite already verifies numerical accuracy, so this rubric item ensures the agent didn't hardcode answers but performed the calculations correctly from source data.)",
       "weight": 1
     },
     {
       "id": "presentation-clarity",
-      "criterion": "The table is clearly formatted with appropriate column headers, consistent rounding (memory to 1 decimal, prices to 2 decimals), and includes explanatory notes about the calculations. (not code-checkable: While tests check basic formatting, human judgment is needed to assess whether the presentation is clear, well-organized, and includes helpful explanatory context beyond the raw numbers.)",
+      "criterion": "The table is clearly formatted with appropriate column headers, consistent rounding (memory to 1 decimal, prices to 2 decimals), and includes explanatory notes about the calculations. Fail: no table, or it lacks the five requested columns (node ID, advertised memory, usable memory, monthly price, price per usable GB). Partial: all five columns exist but rounding is inconsistent (memory to one decimal, money to two) or there is no note on the method. Pass: a clean table with the five columns and the requested rounding, a short note citing operating-model.md for the 25% reservation, written to docs/memory-table.md, with no recommendation, no use of candidate-configs.json or the 118 GB working set, and no ADR file. (not code-checkable: While tests check basic formatting, human judgment is needed to assess whether the presentation is clear, well-organized, and includes helpful explanatory context beyond the raw numbers.)",
       "weight": 1
     }
   ],
@@ -61,7 +61,7 @@
       "date": "2026-11-19"
     }
   },
-  "version": 1,
+  "version": 2,
   "twinOf": "t3-adr-cache-sizing",
   "targetSkills": [],
   "targetSop": null,
@@ -185,7 +185,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T3 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

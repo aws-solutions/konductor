@@ -1,8 +1,12 @@
 'use strict';
 
 const { VERSION, COMMANDS, REPORT_HEADER } = require('./constants');
-const { loadConfig } = require('./config');
-const output = require('./output');
+
+// config.js and output.js stay unloaded until a path needs them, so --help and --version
+// start with only bin/, cli.js and constants.js.
+const loadConfig = (file) => require('./config').loadConfig(file);
+const out = (text) => process.stdout.write(`${text}\n`);
+const err = (text) => process.stderr.write(`${text}\n`);
 
 const HELP = `Atlas ${VERSION}
 Usage: atlas <command> [file] [options]
@@ -33,24 +37,25 @@ function parseArgs(args) {
 function run(args) {
   const { rest, configFile } = parseArgs(args);
   const first = rest[0];
-  if (first === '--version' || first === '-v') {
-    output.line(VERSION);
-    return 0;
-  }
   try {
-    const config = loadConfig(configFile);
+    // A config given on the command line is validated before anything else runs.
+    const config = configFile ? loadConfig(configFile) : null;
+    if (first === '--version' || first === '-v') {
+      out(VERSION);
+      return 0;
+    }
     if (!first || first === '--help' || first === '-h') {
-      output.line(HELP);
+      out(HELP);
       return 0;
     }
     if (!COMMANDS.includes(first)) {
-      output.error(`Unknown command: ${first}`);
+      err(`Unknown command: ${first}`);
       return 2;
     }
     const command = require(`./commands/${first}`);
-    return command(rest.slice(1), config, { reportHeader: REPORT_HEADER });
+    return command(rest.slice(1), config || loadConfig(), { reportHeader: REPORT_HEADER });
   } catch (error) {
-    output.error(`atlas: ${error.message}`);
+    err(`atlas: ${error.message}`);
     return 1;
   }
 }

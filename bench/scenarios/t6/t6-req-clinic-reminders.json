@@ -1,7 +1,7 @@
 {
   "id": "t6-req-clinic-reminders",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -133,17 +133,17 @@
   "rubric": [
     {
       "id": "Q1",
-      "criterion": "The requirements distinguish confirmed behavior from unresolved decisions and make each operational rule implementable (code cannot check this because it cannot judge the quality of the boundary or wording).",
+      "criterion": "The requirements distinguish confirmed behavior from unresolved decisions and make each operational rule implementable. Fail: confirmed rules and open questions sit together in one list with no marker, or rules are vague ('send reminders at suitable times'). Partial: most rules are testable, but the list misses several confirmed rules (two reminders at 72 and 24 hours with one immediate send for late bookings, quiet hours 20:00 to 08:00 in each clinic's local time, explicit consent before sending, cancelled appointments excluded, STOP, END and UNSUBSCRIBE suppression recorded in the patient record). Pass: these rules appear as separate testable requirements, the English and Spanish templates with an English fallback and the 60-minute front-desk task for replies are included, and anything not settled is listed as an open decision with an owner. (code cannot check this because it cannot judge the quality of the boundary or wording)",
       "weight": 2
     },
     {
       "id": "Q2",
-      "criterion": "The document is clear enough for operations and engineering to act without hiding privacy, consent, ownership, or rollout risks (code cannot check this because it cannot assess human usability and completeness of context).",
+      "criterion": "The document is clear enough for operations and engineering to act without hiding privacy, consent, ownership, or rollout risks. Fail: the document leaves out the consent rule, the message content limit or the rollout order. Partial: privacy and consent are covered, but ownership (who handles replies and opt-outs) or the rollout (Cedar Grove and Harbor Point on March 3, 2025, Northgate on March 17 after a two-week check) is missing or unclear. Pass: it limits the message to first name and clinic name with no provider, treatment or diagnosis, names who owns reply handling and opt-out records, gives the staged rollout dates with the condition for adding Northgate, and lists open decisions with an owner. (code cannot check this because it cannot assess human usability and completeness of context)",
       "weight": 2
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the decisions it lists as open, such as the owner of reply handling stay unmentioned, or it does not say that docs/requirements.md was written. Partial: it names docs/requirements.md and what it holds, but lists no assumptions, or leaves out the decisions it lists as open, such as the owner of reply handling. Pass: it names docs/requirements.md and its closing JSON block, lists the assumptions made, says the decisions it lists as open, such as the owner of reply handling still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -239,7 +239,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

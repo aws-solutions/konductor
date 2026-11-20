@@ -1,0 +1,5 @@
+name,unit,meaning
+receipt_error_rate,percent,share of receipt jobs that fail
+render_latency,milliseconds,p95 render duration
+legacy_format_rate,percent,share of requests using the legacy envelope
+delivery_success_rate,percent,share of deliveries accepted

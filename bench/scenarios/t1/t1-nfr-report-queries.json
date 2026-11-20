@@ -1,7 +1,7 @@
 {
   "id": "t1-nfr-report-queries",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
@@ -57,7 +57,7 @@
   "rubric": [
     {
       "id": "verification-report",
-      "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response).",
+      "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response). Fail: says the report is faster without naming a test command, or claims a result that was not run. Partial: names `python3 -m unittest discover -s tests` but gives no result, or does not say how it checked the 3-statement limit or the 8 MiB limit. Pass: names each command it ran with its result, and states the SQL statement count and the peak tracemalloc figure it observed, or says plainly that one was not measured.",
       "weight": 1
     },
     {
@@ -190,7 +190,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

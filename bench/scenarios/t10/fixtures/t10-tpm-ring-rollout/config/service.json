@@ -1,0 +1,7 @@
+{
+  "serviceName": "harbor-receipts",
+  "port": 8042,
+  "timezone": "UTC",
+  "maxReceiptBytes": 524288,
+  "deliveryAttempts": 4
+}
