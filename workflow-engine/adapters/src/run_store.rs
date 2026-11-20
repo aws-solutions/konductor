@@ -257,7 +257,7 @@ fn write_replacing_with(
 
 /// A name next to `path` for a new file: the file name, this process's PID and five random characters. The PID alone
 /// is not enough: a writer that died can leave its file behind for a later process with the same PID.
-fn temp_path(path: &Path) -> PathBuf {
+pub(crate) fn temp_path(path: &Path) -> PathBuf {
     let name = path
         .file_name()
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned());

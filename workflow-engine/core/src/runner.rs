@@ -343,6 +343,69 @@ pub fn execute(
     store.write_state(&run.run_id, &run.to_text())
 }
 
+/// A harness that starts a session only while `unchanged` holds, so every harness gets the same check. The runner puts
+/// it in front of the harness port for a trusted run: `unchanged` reads the repo tool configuration files again and
+/// compares them with the ones the user confirmed (spec: "Checked again before each session"). It gives `Ok` while
+/// they match, and otherwise `Err` with the first path that differs or cannot be read, and why.
+///
+/// A session that is refused does not start. It ends as [`SessionEnd::NotStarted`], so its stage is `blocked` with
+/// `SESSION_FAILED` and the run halts, and every session after it is refused too without a second check. The workflow
+/// and prompt files need no second read, because the run uses the bytes that were hashed.
+pub struct GuardedHarness<'a> {
+    inner: &'a mut dyn Harness,
+    unchanged: &'a dyn Fn() -> Result<(), String>,
+    refused: Option<Refusal>,
+}
+
+/// The first refused session: its stage, and what the check found.
+struct Refusal {
+    stage: String,
+    cause: String,
+}
+
+impl<'a> GuardedHarness<'a> {
+    pub fn new(
+        inner: &'a mut dyn Harness,
+        unchanged: &'a dyn Fn() -> Result<(), String>,
+    ) -> GuardedHarness<'a> {
+        GuardedHarness {
+            inner,
+            unchanged,
+            refused: None,
+        }
+    }
+
+    /// The stage whose session was the first to be refused, if any.
+    pub fn refused_stage(&self) -> Option<&str> {
+        self.refused.as_ref().map(|r| r.stage.as_str())
+    }
+
+    /// What the check found when it refused the first session: the path and the reason.
+    pub fn refused_cause(&self) -> Option<&str> {
+        self.refused.as_ref().map(|r| r.cause.as_str())
+    }
+}
+
+impl Harness for GuardedHarness<'_> {
+    fn run_session(&mut self, session: &Session) -> SessionOutcome {
+        if self.refused.is_none() {
+            if let Err(cause) = (self.unchanged)() {
+                self.refused = Some(Refusal {
+                    stage: session.stage.to_string(),
+                    cause,
+                });
+            }
+        }
+        if self.refused.is_some() {
+            return SessionOutcome {
+                end: SessionEnd::NotStarted,
+                final_message: String::new(),
+            };
+        }
+        self.inner.run_session(session)
+    }
+}
+
 /// Whether a session passes its stage. A time-out comes first, then the exit status, then the result line, which is
 /// read from the last [`MAX_SESSION_OUTPUT_BYTES`] of the final message. Only the harness says a session timed out. The
 /// runner does not compare readings of its own clock with the limit, because a clock that jumps would block a stage

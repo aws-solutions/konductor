@@ -396,7 +396,8 @@ pub enum Commands {
     /// then in `~/.konductor/workflows/`. Exit codes: 0 with no errors (or a
     /// run that passed), 1 for a run that halted, 64 for a usage error
     /// (including a name that matches no file), 65 when the workflow has
-    /// errors, 75 when another run is active in the workspace.
+    /// errors, 75 when another run is active in the workspace, 77 when the
+    /// workflow is not trusted and the user did not confirm it.
     Flow {
         #[command(subcommand)]
         action: FlowAction,
@@ -492,6 +493,27 @@ pub enum FlowAction {
         /// is for tests.
         #[arg(long = "fake-script", hide = true)]
         fake_script: Option<std::path::PathBuf>,
+        /// The trust hash of the workflow, to run it once without being
+        /// asked. It must equal the current hash, which `flow check --json`
+        /// prints as `trust_hash`. `KONDUCTOR_TRUST` sets it too; this flag
+        /// wins. Nothing is recorded.
+        #[arg(long)]
+        trust: Option<String>,
+    },
+    /// Show what a workflow will run and record that you trust it, or remove
+    /// that record. A project workflow, and any workflow in a repository
+    /// that has tool configuration files, runs only after this. Exit 77
+    /// when you answer no or there is no terminal.
+    Trust {
+        /// The workflow name, which is its file name without `.yml`.
+        #[arg(required_unless_present = "revoke")]
+        name: Option<String>,
+        /// Record trust without showing the summary or asking.
+        #[arg(long, conflicts_with = "revoke")]
+        yes: bool,
+        /// Remove the trust record of this workflow.
+        #[arg(long, value_name = "NAME", conflicts_with = "name")]
+        revoke: Option<String>,
     },
 }
 
@@ -902,7 +924,16 @@ mod tests {
             vec!["konductor", Commands::FLOW, "check"],
             vec!["konductor", Commands::FLOW, "show"],
             vec!["konductor", Commands::FLOW, "run", "hello-plan"],
-            vec!["konductor", Commands::FLOW, "trust", "hello-plan"],
+            vec!["konductor", Commands::FLOW, "trust"],
+            vec!["konductor", Commands::FLOW, "trust", "a", "--revoke", "b"],
+            vec![
+                "konductor",
+                Commands::FLOW,
+                "trust",
+                "--revoke",
+                "b",
+                "--yes",
+            ],
             vec!["konductor", Commands::FLOW, "check", "a", "b"],
         ] {
             assert!(Cli::try_parse_from(&argv).is_err(), "{argv:?}");
@@ -910,13 +941,13 @@ mod tests {
     }
 
     #[test]
-    fn flow_names_only_the_check_show_and_run_actions() {
+    fn flow_names_only_the_check_show_run_and_trust_actions() {
         let command = Cli::command();
         let flow = command
             .find_subcommand(Commands::FLOW)
             .expect("flow command");
         let names: Vec<&str> = flow.get_subcommands().map(|c| c.get_name()).collect();
-        assert_eq!(names, ["check", "show", "run"]);
+        assert_eq!(names, ["check", "show", "run", "trust"]);
     }
 
     #[test]
@@ -942,8 +973,10 @@ mod tests {
                         goal,
                         harness,
                         fake_script,
+                        trust,
                     },
             }) => {
+                assert_eq!(trust, None);
                 assert_eq!(name, "hello-plan");
                 assert_eq!(goal.as_deref(), Some("Do it."));
                 assert_eq!(harness, "fake");
@@ -951,6 +984,23 @@ mod tests {
             }
             other => panic!("expected Flow run, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_flow_trust_in_its_three_forms() {
+        let parse = |args: &[&str]| {
+            let mut argv = vec!["konductor", Commands::FLOW, "trust"];
+            argv.extend_from_slice(args);
+            match Cli::try_parse_from(argv).unwrap().command {
+                Some(Commands::Flow {
+                    action: FlowAction::Trust { name, yes, revoke },
+                }) => (name, yes, revoke),
+                other => panic!("expected Flow trust, got {other:?}"),
+            }
+        };
+        assert_eq!(parse(&["a"]), (Some("a".into()), false, None));
+        assert_eq!(parse(&["a", "--yes"]), (Some("a".into()), true, None));
+        assert_eq!(parse(&["--revoke", "a"]), (None, false, Some("a".into())));
     }
 
     #[test]
