@@ -8,6 +8,7 @@
 //   fix <id>       one fix round: the author repairs its files from the review's findings
 //   answers <id>   a model of a third family writes a lazy and an alternative answer (answers/<id>/lazy, answers/<id>/alt)
 //   record <id> <dry.json>  writes the dry-run scores into task.pilot (pilot.dryRun: reference, stub, lazy, alt)
+//   recheck <id>   a non-Claude checklist re-review of a hand-edited task, into review.recheck
 //   log-author <id>  appends the author call's credits to the log
 //   assemble <id>  writes the task into bench/scenarios/t1/ (task file, fixtures/, hidden/, solutions/)
 // Needs T1_AUTH: a directory with run.sh (usage: run.sh <model> <cwd> <promptfile> <outprefix>; it runs kiro-cli in a scratch
@@ -137,6 +138,28 @@ function answers(id) {
   return { model, credits };
 }
 
+function recheck(id) {
+  const file = path.join(DIR, `${id}.json`);
+  const task = readJson(file);
+  const model = 'glm-5';
+  const cwd = path.join(AUTH, 'work', `${id}-recheck`);
+  fs.rmSync(cwd, { recursive: true, force: true });
+  fs.mkdirSync(cwd, { recursive: true });
+  fs.cpSync(path.join(DIR, 'fixtures', task.fixture || id), path.join(cwd, 'fixture'), { recursive: true });
+  fs.cpSync(path.join(DIR, 'hidden', id, 'hidden'), path.join(cwd, 'hidden'), { recursive: true });
+  fs.cpSync(path.join(DIR, 'solutions', id), path.join(cwd, 'solution'), { recursive: true });
+  const { review, pilot, handEdited, ...shown } = task;
+  fs.writeFileSync(path.join(cwd, 'task.json'), `${JSON.stringify(shown, null, 2)}\n`);
+  const rows = fs.readFileSync(path.join(DIR, 'HAND-EDITS.md'), 'utf8').split('\n').filter((l) => l.startsWith(`| ${id} |`));
+  fs.writeFileSync(path.join(cwd, 'edits.md'), `${rows.join('\n')}\n`);
+  const { credits } = call(model, cwd, fs.readFileSync(path.join(DIR, 'prompts', 'recheck.md'), 'utf8'), `${id}.recheck`);
+  logCall(id, 'recheck', model, credits);
+  const out = readJson(path.join(cwd, 'recheck.json'));
+  task.review.recheck = { family: FAMILY[model], model, date: today(), items: out.items.map((i) => ({ check: i.check, verdict: i.verdict, note: i.note })) };
+  fs.writeFileSync(file, `${JSON.stringify(task, null, 2)}\n`);
+  return task.review.recheck;
+}
+
 function record(id, dryFile) {
   const d = readJson(dryFile);
   const file = path.join(DIR, `${id}.json`);
@@ -195,10 +218,10 @@ function assemble(id) {
 if (require.main === module) {
   const [cmd, id, extra] = process.argv.slice(2);
   if (!AUTH) { console.error('set T1_AUTH'); process.exit(2); }
-  const fn = { map, review, assemble, fix, answers, record, 'log-author': logAuthor }[cmd];
+  const fn = { map, review, assemble, fix, answers, record, recheck, 'log-author': logAuthor }[cmd];
   if (!fn || !id) { console.error('usage: stage.js map|review|assemble|log-author <id>'); process.exit(2); }
   const r = fn(id, extra);
   if (r) console.log(JSON.stringify(r, null, 1));
 }
 
-module.exports = { map, review, assemble, fix, answers, record, streamInfo };
+module.exports = { map, review, assemble, fix, answers, record, recheck, streamInfo };

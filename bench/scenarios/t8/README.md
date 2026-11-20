@@ -33,9 +33,18 @@ Their items ask only what the hidden key cannot check (for example why a schema 
 The block key lives only in the hidden dir, not in the task file (the task schema is closed).
 Negative controls have no target; the units the mapper proposed for them are their `mustNotLoad` list.
 
+## Lazy and alternative answers
+
+`stage.js variants <id>` has a model of a third family (glm-5) answer the task's request on a copy of the fixture
+twice: once normally (`variants/<id>/alt/`, an answer shaped unlike the reference) and once told to skim the README
+and two small files only (`variants/<id>/lazy/`, a plausible shallow answer). Each overlay holds only the files the
+answer added or changed. `dry-run.js` scores both when present: the lazy answer must score 40 or less and the
+alternative 80 or more. When the alternative misses for a reason the key should accept, the key is fixed; when the
+alternative is wrong on substance, that is recorded in `AUTHORING-LOG.md`.
+
 ## Authorship
 
-All 15 tasks were finally written by gpt-5.6-luna and reviewed by qwen3-coder-next. Four deepseek-3.2 drafts were
+Version 1 of all 15 tasks was written by gpt-5.6-luna and reviewed by qwen3-coder-next. A second-family rewrite (qwen3-coder-next or minimax-m2.5 as author, the other as reviewer) was tried on seven tasks on 2026-11-19 and 20. No draft passed the gates (several were caught by the lazy-answer check), and the combined T7 and T8 rewrite spend stop was reached, so every task is still version 1 and the batch has one author family; each brief records its tries in `secondFamilyRewrite`. Claude hand edits are listed in `HAND-EDITS.md`. Four deepseek-3.2 drafts were
 discarded (the request named the decoy or listed every constraint and its file, key matchers used fields the grader
 does not read, the author's answer or key files sat in the fixture) and re-authored; the last three deepseek briefs
 were moved to gpt-5.6-luna before authoring for the same reason. The discarded drafts and the worker's hand fixes
