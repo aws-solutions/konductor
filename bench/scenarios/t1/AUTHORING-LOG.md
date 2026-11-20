@@ -49,6 +49,8 @@ Paid calls paused by the lead on 2026-11-20 (the owner's pilot wave 1 shares the
 
 Abort limit (owner rule, 2026-11-19): every paid call from 2026-11-20 on has an abort limit of 15 credits, set before it starts. `run-capped.sh` stops a call at a tool-call count that stands for about 15 credits for its model, refuses a call when the logged spend plus 15 could pass the T1 stop of 880 credits, waits while the host's 1-minute load is 6 or more (the owner's pilot waves share it), and runs one call at a time. A call stopped before it reports is logged at 15.
 
+Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-nfr-bounded-fanout) wrote checks with `kind` in the place of `type`. The key prompt had named `kind` but not `type`, so part of that failure is the prompt's; it now states the full check shape with an example. Both tasks had already used their one fix attempt and stay dropped.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
