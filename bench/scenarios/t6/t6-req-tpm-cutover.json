@@ -1,7 +1,7 @@
 {
   "id": "t6-req-tpm-cutover",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "tpm",
   "questions": "scripted",
@@ -130,17 +130,17 @@
   "rubric": [
     {
       "id": "R1",
-      "criterion": "Requirements document is clear and actionable for the sponsor (code cannot check this because it's about readability and business appropriateness)",
+      "criterion": "The requirements document is clear and actionable for the sponsor. Fail: it describes the migration but gives Sarah no decision to make, or hides the go or no-go rule. Partial: it lists decisions, but without who decides, the date or the effect of each choice. Pass: it gives Sarah Johnson's go/no-go with the readiness confirmations from Alex Rodriguez and Lisa Wong first, the window choice (April 25 to 26 or after May 1, because of the tax filing freeze from April 15), the rollback rule (decision at T+15, execute by T+20), the degradation limits, and a list of decisions with owner and date. (code cannot check this because it is about readability and business appropriateness)",
       "weight": 1
     },
     {
       "id": "R2",
-      "criterion": "Document shows understanding of both technical and business constraints from the folder (code cannot check this because it's about synthesis of scattered information)",
+      "criterion": "Document shows understanding of both technical and business constraints from the folder. Fail: it states only technical steps or only business dates. Partial: it carries the business limits (15 minutes maximum degradation, payments no more than 10 minutes down) but not the technical ones, or the other way round. Pass: it joins them: strict FIFO ordering for payment messages with a single Kafka partition and the 2,000 messages per second limit, a 21-day parallel run with the 30-day alternative explained, communication deadlines, and the effect of each on the cutover window and rollback. (code cannot check this because it is about synthesis of scattered information)",
       "weight": 2
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the choice between the two cutover windows and the decisions left for Sarah stay unmentioned, or it does not say that docs/requirements.md was written. Partial: it names docs/requirements.md and what it holds, but lists no assumptions, or leaves out the choice between the two cutover windows and the decisions left for Sarah. Pass: it names docs/requirements.md and its closing JSON block, lists the assumptions made, says the choice between the two cutover windows and the decisions left for Sarah still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -238,7 +238,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -11,3 +11,12 @@ or rubric is logged here, and the task carries `handEdited`. Each edited task is
 
 | task | why |
 | --- | --- |
+
+## Rubric anchors, review fix 2 (2026-11-20, mate review-fix2 worker)
+
+Who: claude (mate review-fix2 worker session). The three unanchored items now carry Fail, Partial and Pass anchors, and `t11-twin-pricing-validation` (empty rubric, a twin that other batches judge too) gets two anchored items, rule-coverage and error-message, weight 1 each. Rubric text does not move code-only dry-run scores, so pilot.dryRun stands. Versions bumped; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t11-media-returns-whiteboard`: image-legibility.
+- `t11-merge-pricing-branches`: release-record.
+- `t11-resume-csv-export`: focused-change.
+- `t11-twin-pricing-validation`: rule-coverage and error-message added.

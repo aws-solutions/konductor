@@ -251,3 +251,14 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
 - `t4-iam-vendor-trust`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): trust-design-explained.
 - `t4-policy-fix-accessdenied`: cause given Fail/Partial/Pass anchors.
 - `t4-threat-model-webhooks`: review-quality replaced by anchored attacker-path-fix (weight 2).
+
+## Rubric anchors, review fix 2 (2026-11-20, mate review-fix2 worker)
+
+Who: claude (mate review-fix2 worker session). Each unanchored rubric item now carries Fail, Partial and Pass anchors written against the task's fixture and answer key, because the schema has no anchor field and the judge reads the criterion as written. Rubric text does not move code-only dry-run scores, so pilot.dryRun stands. Versions bumped; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t4-arch-tenant-abac`: R1 anchored (tag source, statement mapping, support denies).
+- `t4-iac-review-terraform`: clarity anchored (file, line, concrete fix, merge blockers).
+- `t4-iam-bucket-policy-oac`: no_wildcard_sourcearn anchored (exact distribution ARN per stage).
+- `t4-iam-ci-deploy-role`: reviewable-policy anchored (Sid per deploy or rollback call).
+- `t4-iam-privesc-groups`: reviewable-scope anchored (grants traced to the guides, routes closed).
+- `t4-secrets-in-repo`: rotation anchored (four credentials, history warning).

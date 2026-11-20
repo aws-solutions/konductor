@@ -1,6 +1,6 @@
 {
   "id": "t4-iac-review-terraform",
-  "version": 3,
+  "version": 4,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -53,7 +53,7 @@
   "rubric": [
     {
       "id": "clarity",
-      "criterion": "Findings are clearly explained with specific file references and actionable fixes (code cannot check this because it requires judgment of explanation quality)",
+      "criterion": "Findings are clearly explained with specific file references and actionable fixes. Fail: findings are one-line labels such as 'enable encryption' with no file or line, or fixes that only say 'follow best practice' or 'use least privilege'. Partial: most findings name a file and a problem, but at least three of them have a vague fix, or the review text and the closing json list disagree on a file or severity. Pass: every finding in REVIEW.md and in the json list names its Terraform file and a line near the real one, says what is wrong in this PR (for example the exposed reporting database, the wildcard in the reporting role policy, the default password in variables.tf, the missing CI security scan), and gives a concrete change the author can make (a setting, a scoped resource, a secret store reference), and the review separates what blocks the merge from what can follow. (code cannot check this because it requires judgment of explanation quality)",
       "weight": 2
     },
     {
@@ -194,7 +194,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

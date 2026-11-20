@@ -147,3 +147,20 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
 - `t5-qa-parser-gaps`: prompt states the suite-size budget (64 = fixture 24 + 4 per mutant) and that tests must survive a behaviour-preserving rewrite; test-count condition removed from the visible-suite check (now the plain suite run, format, weight 1); anchored suite-economy rubric item added (weight 2); hidden kit: safe refactor r1 (one numeric pattern, range check inlined); a mutant kill counts only when the suite also passes r1; suite-size test (max 64); guard checks made format (they pass on the untouched fixture, so they gave free points): fixture_unchanged src/parser.js.
 - `t5-qa-scheduler-gaps`: prompt states the suite-size budget (65 = fixture 25 + 4 per mutant) and that tests must survive a behaviour-preserving rewrite; test-count condition removed from the visible-suite check (now the plain suite run, format, weight 1); anchored suite-economy rubric item added (weight 2); hidden kit: safe refactor r1 (queue kept as a sorted list, retry loop restructured); a mutant kill counts only when the suite also passes r1; suite-size test (max 65); guard checks made format (they pass on the untouched fixture, so they gave free points): fixture_unchanged schedulerlib/scheduler.py.
 - `t5-qa-security-tests`: prompt states the suite-size budget (44 = fixture 4 + 4 per mutant) and that tests must survive a behaviour-preserving rewrite; min_matches check removed (test\(): it counted or matched words, not test quality; anchored suite-economy rubric item added (weight 2); hidden kit: safe refactor r1 (field limits table, documents kept in a map); a mutant kill counts only when the suite also passes r1; suite-size test (max 44); guard checks made format (they pass on the untouched fixture, so they gave free points): file_exists test/security.test.js, fixture_unchanged src/handlers/documents.js.
+
+## Rubric anchors, review fix 2 (2026-11-20, mate review-fix2 worker)
+
+Who: claude (mate review-fix2 worker session). Each unanchored rubric item now carries Fail, Partial and Pass anchors written for its task, because the schema has no anchor field and the judge reads the criterion as written. Rubric text does not move code-only dry-run scores, so pilot.dryRun stands. Versions bumped; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t5-dev-legacy-characterize`: meaningful-assertions.
+- `t5-fe-widget-logic-tests`: readable-coverage.
+- `t5-qa-acceptance-criteria`: decision-quality.
+- `t5-qa-cart-weak-tests`: clear-case-names.
+- `t5-qa-checkout-strategy`: prioritization.
+- `t5-qa-flaky-fix`: r1.
+- `t5-qa-ledger-gaps`: clarity.
+- `t5-qa-parser-gaps`: r1.
+- `t5-qa-scheduler-gaps`: r1.
+- `t5-qa-security-tests`: clarity and cleanup.
+- `t5-qa-suite-audit`: explanation.
+- `t5-qa-sync-strategy`: decision-quality.

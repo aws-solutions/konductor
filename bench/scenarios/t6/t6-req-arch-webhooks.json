@@ -1,7 +1,7 @@
 {
   "id": "t6-req-arch-webhooks",
   "class": "design",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "architect",
   "questions": "scripted",
@@ -132,17 +132,17 @@
   "rubric": [
     {
       "id": "RUBRIC-QUALITY",
-      "criterion": "Requirements are specific enough to guide an implementation, separate customer-visible guarantees from implementation choices, and preserve the important constraints and gaps in the source material (code cannot check this because it requires judging technical precision and usefulness).",
+      "criterion": "Requirements are specific enough to guide an implementation, separate customer-visible guarantees from implementation choices, and preserve the important constraints and gaps in the source material. Fail: the requirements are generic ('webhooks must be reliable'), or drop the existing event vocabulary or the rule that payment card data stays out of payloads and logs. Partial: most are concrete, but several of these numbers or rules are missing: 2,400 events per minute per account with bursts to 4,000, at-least-once delivery with a stable event ID kept 30 days, retries for 48 hours with exponential backoff, HMAC-SHA256 signing with a 7-day key overlap, ordering per account and endpoint only, EU payloads only to EU endpoints, HTTPS endpoint verification by signed challenge. Pass: all of them appear as separate testable requirements, each marked as a customer-visible guarantee or an implementation choice, and the open decisions are kept as open and not made up. (code cannot check this because it requires judging technical precision and usefulness)",
       "weight": 2
     },
     {
       "id": "RUBRIC-COHERENCE",
-      "criterion": "The document is coherent for an architect: related delivery, security, lifecycle, ordering, and residency rules do not contradict one another, and assumptions or unresolved decisions are clearly bounded (code cannot check this because it requires reading the document as a whole).",
+      "criterion": "The document is coherent for an architect: related delivery, security, lifecycle, ordering, and residency rules do not contradict one another, and assumptions or unresolved decisions are clearly bounded. Fail: two requirements conflict (for example global ordering promised alongside per-stream ordering, or a retry rule that creates a new event ID), or the current event module is not reconciled with the other material. Partial: no direct conflict, but the rules for retry, deduplication, ordering and EU residency are stated separately with no link, or open decisions are mixed into the requirement list. Pass: the retry, event ID, ordering and residency rules agree (retries keep the event ID, ordering is per account and endpoint, EU payloads are not retried to non-EU endpoints), the differences between the event module and the project material are named, and each assumption says what it covers. (code cannot check this because it requires reading the document as a whole)",
       "weight": 2
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while the places where the existing event module and the project material disagree stay unmentioned, or it does not say that docs/requirements.md was written. Partial: it names docs/requirements.md and what it holds, but lists no assumptions, or leaves out the places where the existing event module and the project material disagree. Pass: it names docs/requirements.md and its closing JSON block, lists the assumptions made, says the places where the existing event module and the project material disagree still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     }
   ],
@@ -238,7 +238,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

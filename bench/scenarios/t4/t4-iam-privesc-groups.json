@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-privesc-groups",
-  "version": 2,
+  "version": 3,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -59,7 +59,7 @@
   "rubric": [
     {
       "id": "reviewable-scope",
-      "criterion": "The policy statements make the allowed resources and identity boundary easy for a reviewer to trace to the job descriptions (code cannot check this because it cannot judge whether the policy intent is clear to a human reviewer).",
+      "criterion": "The policy statements make the allowed resources and identity boundary easy for a reviewer to trace to the job descriptions. Fail: a group policy keeps wildcard resources or generic Sids, so a reviewer cannot tell which sentence of the group's guide in docs/ a statement serves, or the final message does not say which routes to raising rights were closed. Partial: resources are the ARNs from config/account.json and the allows are traceable, but the deny or boundary statements do not say which privilege-raising route they close, or one group (for example on-call) is explained and the others are not. Pass: for developers, analysts and on-call, each allow statement has a Sid tied to a duty in its guide and lists the ARNs from config/account.json, own-key actions are limited by aws:username, and the denies in the permissions boundary name the routes they close (policy versions, attaching or putting policies, creating roles or users, passing a more powerful role, editing groups), with the final message listing them. (code cannot check this because it cannot judge whether the policy intent is clear to a human reviewer)",
       "weight": 1
     }
   ],
@@ -190,7 +190,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

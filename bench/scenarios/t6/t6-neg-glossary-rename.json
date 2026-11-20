@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-glossary-rename",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -64,17 +64,17 @@
   "rubric": [
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show. Fail: the message says the work is complete or settled while any section it left unchanged on purpose, such as the PRD context and requirements stay unmentioned, or it does not say that docs/glossary.md and the metrics table in docs/product-prd.md was written. Partial: it names docs/glossary.md and the metrics table in docs/product-prd.md and what it holds, but lists no assumptions, or leaves out any section it left unchanged on purpose, such as the PRD context and requirements. Pass: it names docs/glossary.md and the metrics table in docs/product-prd.md and its closing JSON block, lists the assumptions made, says any section it left unchanged on purpose, such as the PRD context and requirements still need an answer or a check, and claims nothing the files do not show. (code cannot check this because the message is free text about the work)",
       "weight": 1
     },
     {
       "id": "reader-fit",
-      "criterion": "The document is usable by the people the request names: it is clear which items need a decision and from whom (code cannot check this because usefulness to a reader is a judgement).",
+      "criterion": "The document is usable by the people the request names: it is clear which items need a decision and from whom. Fail: the message or files leave doubtful wording (for example a place where Workspace may or may not become Project) with no note of who should decide. Partial: it names an open item but not who decides it, or it hides one inside edited prose. Pass: the edits are limited to the glossary entry and the PRD metrics table, the previous term is kept in the structured record, and any leftover uncertainty (or the statement that there is none) is given to the person who owns the wording. (code cannot check this because usefulness to a reader is a judgement)",
       "weight": 1
     },
     {
       "id": "no-padding",
-      "criterion": "Content that does not follow from the folder or the colleague's answers is absent or marked as an assumption; do not reward length or formatting (code cannot check this because it needs a reading of the whole document).",
+      "criterion": "Content that does not follow from the folder or the colleague's answers is absent or marked as an assumption; do not reward length or formatting. Fail: it adds new sections, new definitions or metric facts that are not in the files, or rewrites the PRD context or product-requirements sections. Partial: no new facts, but it adds commentary or reformats text outside the glossary entry and the metrics table. Pass: the only changes are the glossary entry and definition prose and the metrics table in docs/product-prd.md, metric facts are unchanged, and any addition outside that is marked as an assumption. (code cannot check this because it needs a reading of the whole document)",
       "weight": 1
     }
   ],
@@ -159,7 +159,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T6 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

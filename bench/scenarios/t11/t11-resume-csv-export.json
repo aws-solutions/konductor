@@ -1,7 +1,7 @@
 {
   "id": "t11-resume-csv-export",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -59,7 +59,7 @@
   "rubric": [
     {
       "id": "focused-change",
-      "criterion": "The implementation stays focused on the requested export behavior and preserves the surrounding tool's existing contract (code cannot check this because scope and maintainability require human review)",
+      "criterion": "The implementation stays focused on the requested export behavior and preserves the surrounding tool's existing contract. Fail: the existing JSON export output or CLI behavior changes, or the diff rewrites unrelated modules, or work lands on another branch than feature/csv-export. Partial: JSON export is unchanged and CSV works, but the diff also touches unrelated files (renames, formatting sweeps, new options not asked for) or ignores part of NOTES-csv-export.md. Pass: the diff on feature/csv-export touches only the CSV export path (src/export.js, bin/timesheet.js, tests and docs for it), the eight columns come in the requested order with the repository's timestamp policy, the JSON export and its CLI behavior are byte-for-byte unchanged, and the plan in the notes is followed. (code cannot check this because scope and maintainability require human review)",
       "weight": 1
     }
   ],
@@ -139,5 +139,10 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

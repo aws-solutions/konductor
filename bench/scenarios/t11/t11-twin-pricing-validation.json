@@ -1,7 +1,7 @@
 {
   "id": "t11-twin-pricing-validation",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "bugfix",
   "role": "developer",
   "questions": "allowed",
@@ -34,7 +34,18 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "rule-coverage",
+      "criterion": "The validation and its tests cover every rejected quantity and unit price named in the request. Fail: only zero quantity is rejected, or a quantity check allows fractions, null, strings, NaN or a negative number, or unit price is not checked for negative values. Partial: every quantity case is rejected, but the unit-price check is missing negative values or NaN, or the new tests cover fewer than two distinct bad inputs. Pass: assertOrder rejects zero, negative, fractional, null, string and NaN quantities and any negative unit price, each with a TypeError, and the new cases in test/validators.test.js exercise at least two different bad inputs plus the valid cart still passing.",
+      "weight": 1
+    },
+    {
+      "id": "error-message",
+      "criterion": "Each rejection message names the line position and the invalid field. Fail: the message is generic ('invalid order') or has no line number. Partial: the message has 'line <index>' but not the field name, or the index is one-based, or only some rejections include both. Pass: every rejected line throws a TypeError whose message contains the zero-based text 'line <index>' for the offending line and the name of the invalid field (quantity or unitPrice), and a line past the first reports its own index, not 0.",
+      "weight": 1
+    }
+  ],
   "targetSkills": [
     "verification",
     "test-coverage-analysis",
@@ -110,5 +121,10 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }
