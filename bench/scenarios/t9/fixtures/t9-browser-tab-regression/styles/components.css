@@ -1,0 +1,10 @@
+.tip { margin-top: 34px; padding: 18px 20px; border: 1px solid #ded6c8; border-radius: 4px; background: #faf8f2; color: #596368; }
+.tip strong { color: #24313b; }
+.text-link { display: inline-block; margin-top: 12px; color: #ad5d2f; font-weight: 700; }
+.account-status { display: inline-block; margin-top: 22px !important; padding: 5px 11px; border-radius: 99px; background: #ebe7de; color: #5f686b; font: .82rem/1.4 Arial, sans-serif !important; }
+.details { margin: 30px 0 0; border-top: 1px solid #d7d3ca; }
+.details div { display: flex; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 1px solid #d7d3ca; }
+.details dt { color: #7a8284; font: .78rem/1.4 Arial, sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+.details dd { margin: 0; }
+.check-row { display: block; padding: 12px 0; color: #596368; }
+.check-row input { margin-right: 10px; accent-color: #ad5d2f; }

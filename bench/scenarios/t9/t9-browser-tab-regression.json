@@ -1,0 +1,120 @@
+{
+  "id": "t9-browser-tab-regression",
+  "class": "hard",
+  "version": 1,
+  "phase": "bugfix",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "On the Articles and Account pages, section navigation becomes stale after using the browser Back or Forward button. To reproduce it, open either page, choose another section with the mouse, then use Back or Forward: the URL changes but the visible section, selected link, title, or focus can remain from the old section. The same problem must not occur when a person chooses a section by pressing Enter on its link. Fix the shared navigation behavior so both pages stay in sync with the URL. Keep the existing labels: Getting started, Billing, Security, Contact us on the articles page, and Profile, Security, Notifications on the account page. Titles should use the form `<section label> | Northstar Help Centre`, and focus should move to the active section heading after a restored navigation. An existing URL hash must still select its section on load. Each section choice must add only one navigation entry, so one Back press returns to the previous section. Keep the URL format, static pages, copy, account-page behavior, and all existing exports of the shared navigation module, including parseSectionHash, working for the existing tests.",
+  "fixture": "t9-browser-tab-regression",
+  "hidden": "t9-browser-tab-regression",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp regress.test.js regress.test.cjs && node --test --test-timeout=30000 hidden-behaviour.test.js browser.test.js regress.test.cjs",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js && node -e \"const fs=require('fs'); const s=fs.readFileSync('test/router.test.js','utf8'); if ((s.match(/^test\\(/gm)||[]).length < 4) process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/router.test.js",
+      "pattern": "setupRouter",
+      "min": 2,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "index.html",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [
+    "frontend-review"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-browser",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "frontend-review"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/whatwg/html",
+      "licence": "CC BY 4.0 (checked in the repository LICENSE); idea only, no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes the bug symptoms (URL changes but visible section stays stale on Back/Forward) without naming implementation methods like popstate or revealing the fix. It specifies constraints (preserve parseSectionHash export, keep labels, one history entry per section change) but not the solution approach."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly states both pages (Articles with labels 'Getting started, Billing, Security, Contact us' and Account with labels 'Profile, Security, Notifications'), the title format, focus behavior, and the one-entry history requirement. Hidden tests verify these behaviors without relying on undocumented paths or names."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no hints about the missing popstate listener. The router.js comments describe function purposes generically. The CHANGELOG mentions 'router clean-up' without explaining the bug. The HTML shows structure but not the fix."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A shallow hashchange-only fix (lazy solution, 9/17 tests passing) misses popstate handling. The hidden tests catch this via browser.test.js Back/Forward tests and hidden-behaviour.test.js restoration tests. The task appropriately requires understanding the difference between hashchange and popstate events."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests verify behaviors explicitly stated in the request: Back/Forward restoration of visibility/selection/title/focus, title format, one history entry per activation, Enter key activation, and focus on restored headings. No test relies on undocumented classes, IDs, or timing dependencies."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 16.8,
+    "dryRun": {
+      "reference": 100,
+      "stub": 16.8,
+      "lazy": 37.8,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20",
+    "fixReason": "D-129: the DOM-free hidden tests restore history through a fake window that fires only popstate, so a correct fix that listens for hashchange (all 6 browser tests pass with it) fails 6 of 17 hidden tests and its own regression test. The writer family fixes it; kept out of pilot waves until then."
+  },
+  "lockedAt": null
+}

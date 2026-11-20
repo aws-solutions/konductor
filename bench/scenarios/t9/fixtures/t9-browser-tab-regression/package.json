@@ -1,0 +1,13 @@
+{
+  "name": "northstar-help-centre",
+  "version": "1.4.0",
+  "private": true,
+  "type": "module",
+  "description": "A small static help centre for Northstar customers",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

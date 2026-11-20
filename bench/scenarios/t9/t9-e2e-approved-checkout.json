@@ -93,6 +93,37 @@
     "date": "2026-11-20",
     "source": "original"
   },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to test (changing quantities, removing lines, empty basket, delivery choice, promo codes, details form validation, confirmation) without naming methods, tools, or revealing the specific mutants. The docs/checkout.md rules are available to guide test design, which is appropriate context."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt is clear: test the checkout journey using Playwright with labels/roles/text (not ids/classes), put tests in e2e/*.e2e.test.js, use the existing browser.js setup, and run with a specific command. The requirement to pass on the current page and the warning about markup changes guides toward accessible selectors."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture docs/checkout.md fully describes the expected behavior that the mutants test against. No hidden test details or mutant-specific information is exposed. The CHANGELOG mentions features but not bugs or test cases. The existing tests are unit tests for pricing/validation, not e2e."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy single happy-path test (like lazy/e2e/checkout.e2e.test.js) only kills 3/10 mutants (m01 partial, m07, m09) and misses critical cases like empty basket, invalid promo, wrong remove target. The hidden tests properly catch insufficient coverage with min thresholds per kills-*.test.js file."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All mutants are realistic browser-visible regressions derived directly from the documented behavior in docs/checkout.md. No equivalent mutants, no duplicates. The request gives enough context (docs, existing setup, accessible selectors) without being prescriptive. The refactors/r01 ensures tests use accessible selectors, not hardcoded ids."
+      }
+    ]
+  },
   "pilot": {
     "scores": {},
     "reference": 100,

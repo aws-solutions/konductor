@@ -1,0 +1,7 @@
+{
+  "siteName": "Northstar Help Centre",
+  "supportEmail": "care@northstar.example",
+  "defaultSection": "getting-started",
+  "lastReviewed": "2025-02-14",
+  "navigation": ["getting-started", "billing", "security", "contact"]
+}
