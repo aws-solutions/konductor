@@ -45,3 +45,6 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t9-review-checkout-ui | map | glm-5 | 0.16 |  |
 | t9-review-checkout-ui | review | qwen3-coder-next | 0.28 |  |
 | t9-impl-combobox | recheck | qwen3-coder-next | 0.23 |  |
+| t9-test-form-validator | author | qwen3-coder-next | 15.00 | stopped at its tool-call cap (152 calls); the cut stream reports no credits, so the abort limit is counted |
+| t9-test-form-validator | fix | qwen3-coder-next | 15.00 | cut by the worker's 10-minute shell limit after 90 tool calls; the abort limit is counted |
+| t9-test-form-validator | dropped | qwen3-coder-next | 0.00 | after the re-author and its fix round the reference killed 0 of 10 mutants |

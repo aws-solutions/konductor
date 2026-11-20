@@ -12,3 +12,4 @@ Owner rule (2026-11-19): every change to a task's prompt, fixture, key, checks o
 
 - t9-twin-country-data (minimax-m2.5, second family): after one hand fix (the ESM hidden test renamed to .mjs so it could load) and the author's one fix round, the stub scored 32 and the lazy answer 80.5 (gates 20 and 40). Dropped, not hand-fixed further, per the owner rule.
 - t9-impl-url-state (qwen3-coder-next, second family after a deepseek-3.2 draft): after the author's one fix round the reference scored 91.8, the stub 58.3 and the lazy answer 41.8 (gates 95, 20, 40). Dropped.
+- t9-test-form-validator (qwen3-coder-next): the first draft asked for an ES-module repository that the shared CommonJS mutant runner cannot load (a T9 prompt bug, fixed: CommonJS stack); the CommonJS re-author scored reference 28.6, and after its fix round (cut at 90 tool calls) the reference killed 0 of 10 mutants. Dropped.
