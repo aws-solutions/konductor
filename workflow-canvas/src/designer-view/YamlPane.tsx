@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import Button, { type ButtonProps } from '@cloudscape-design/components/button';
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CodeLines, type LineRange } from '../code-pane/CodeLines';
 import {
   lineWindow,
@@ -64,7 +64,9 @@ export function YamlPane({
   stage?: MarkedStage;
 }) {
   const noteId = useId();
-  const lines = textLines(text);
+  // A file may hold up to 262,144 lines, so split it once per text, not on
+  // each move of the window.
+  const lines = useMemo(() => textLines(text), [text]);
   const total = lines.length;
   const start = lineWindow(total, stage?.range);
   const from = JSON.stringify([

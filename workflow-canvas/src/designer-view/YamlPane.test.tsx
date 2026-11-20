@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as textLinesModule from './text-lines';
 import { YAML_WINDOW_LINES } from './line-window';
 import { BLOCK, FLOW, STAGES_FIRST, type SampleText } from './sample-texts';
 import { YamlPane, type MarkedStage } from './YamlPane';
@@ -391,6 +392,29 @@ describe('YamlPane', () => {
         expect(numberOf(document.activeElement as HTMLElement)).toBe(1001);
         expect(box().scrollTop).toBe(300 * ROW_PX);
       });
+    });
+
+    it('splits the text once, not on each move of the window', () => {
+      const split = vi.spyOn(textLinesModule, 'textLines');
+      const text = numbered(3000);
+      const view = render(<YamlPane file="hello.yml" text={text} />);
+      const calls = split.mock.calls.length;
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 1,001 to 1,500' }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      view.rerender(<YamlPane file="hello.yml" text={text} />);
+      expect(split.mock.calls.length).toBe(calls);
+
+      view.rerender(<YamlPane file="hello.yml" text={numbered(2999)} />);
+      expect(split.mock.calls.length).toBe(calls + 1);
+      split.mockRestore();
     });
 
     it('keeps the focus on the button while it remains', () => {
