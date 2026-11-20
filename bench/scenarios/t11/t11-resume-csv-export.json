@@ -78,7 +78,9 @@
       "licence": "CC BY-NC-SA 3.0 (checked on https://git-scm.com/book/en/v2, 2026-11-20); idea only: work on a branch is interrupted and picked up later; no text used",
       "licenceCheckedAt": "2026-11-20",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
@@ -140,7 +142,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T11 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -157,10 +159,5 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null,
-  "handEdited": {
-    "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
-  }
+  "lockedAt": null
 }

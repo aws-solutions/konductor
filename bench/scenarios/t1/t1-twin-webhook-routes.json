@@ -69,7 +69,9 @@
     "family": "openai",
     "model": "gpt-5.6-luna",
     "date": "2026-11-20",
-    "source": "original"
+    "source": "original",
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "alibaba",

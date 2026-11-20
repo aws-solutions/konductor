@@ -69,7 +69,9 @@
       "licence": "CC BY 4.0 (github/docs LICENSE, https://github.com/github/docs/blob/main/LICENSE, checked 2026-11-20); idea only: a contributor guide in the repository root; no text used",
       "licenceCheckedAt": "2026-11-20",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "alibaba",
