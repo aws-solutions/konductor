@@ -134,8 +134,7 @@
       "licence": "OGL-3.0 (GOV.UK Service Manual, Open Government Licence v3.0 stated in the page footer)",
       "licenceCheckedAt": "2026-11-20",
       "use": "idea"
-    },
-    "singleFamily": true
+    }
   },
   "review": {
     "family": "openai",
