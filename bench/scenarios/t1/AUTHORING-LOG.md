@@ -43,6 +43,8 @@ Lazy and alternative answers, first full pass (2026-11-20): qwen3-coder-next wro
 
 Recheck of the 4 hand-edited tasks (glm-5): three pass all four items. t1-nfr-report-queries got a fail on key-matches-fixture: the reviewer notes the hidden tests pass a `connection` argument that the fixture's `ReportDatabase` lacks. The request asks the agent to add exactly that argument, so the worker reads this as a false finding; it is left as recorded for the owner.
 
+Scorer check for the lazy gate (free, 2026-11-20): for every task whose lazy answer scores over 40, the lazy answer's hidden-test share is 0.43 or more, and hidden tests carry 0.5 of 0.7 of the code score, so lowering or retying the non-test checks cannot bring it to 40 or less. The one case where checks lift the lazy score (t1-impl-job-retry, hidden 0.29, checks 0.73) also fails the alternative gate (20.8). No scorer was changed; these tasks stay `fix` and need harder hidden tests in a fix round.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -161,3 +163,5 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-ref-schema-migrate | recheck | glm-5 | 1.57 |
 | t1-impl-settings-expand | author | gpt-5.6-luna | 3.31 |
 | t1-impl-settings-expand | map | glm-5 | 0.16 |
+| t1-impl-settings-expand | review | qwen3-coder-next | 1.08 |
+| t1-impl-settings-expand | lazy+alt answers | glm-5 | 5.24 |
