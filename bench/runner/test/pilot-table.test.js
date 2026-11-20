@@ -17,13 +17,13 @@ const REF = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
 // Batch t9: four tasks, one from a second family (25%, under 1 in 3). Batch t8: two tasks, one from each family.
 function fakePack(root) {
   const task = (id, model, o = {}) => ({ id, prompt: 'Do it.', fixture: id, hidden: id, authorship: { model }, ...o });
-  write(path.join(root, 't9', 't9-easy.json'), json(task('t9-easy', 'gpt-5.6-luna')));
+  write(path.join(root, 't9', 't9-easy.json'), json(task('t9-easy', 'gpt-5.6-luna', { handEdited: { family: 'claude', editor: 'lead', log: 'HAND-EDITS.md' } })));
   write(path.join(root, 't9', 't9-hard.json'), json(task('t9-hard', 'gpt-5.6-luna', { pilot: { scores: {}, decision: 'fix', date: '2026-11-19', dryRun: { reference: 80, stub: 0, lazy: 10, alt: 90, date: '2026-11-19' } } })));
   write(path.join(root, 't9', 't9-leak.json'), json(task('t9-leak', 'gpt-5.6-luna')));
   write(path.join(root, 't9', 't9-copy.json'), json(task('t9-copy', 'deepseek-3.2')));
   write(path.join(root, 't9', 'solutions', 't9-copy', 'docs', 'answer.md'), `${REF}\n`);
   write(path.join(root, 't9', 'fixtures', 't9-copy', 'README.md'), 'start\n');
-  write(path.join(root, 't8', 't8-a.json'), json(task('t8-a', 'gpt-5.6-luna')));
+  write(path.join(root, 't8', 't8-a.json'), json(task('t8-a', 'gpt-5.6-luna', { handEdited: { family: 'claude' }, review: { recheck: { family: 'glm', date: '2026-11-20' } } })));
   write(path.join(root, 't8', 't8-b.json'), json(task('t8-b', 'deepseek-3.2')));
   // A per-check dry run where reference and stub both passed check 2 (insensitive): a fail there is a flip.
   write(path.join(root, 't8', 'authoring', 't8-a', 'dry-run.json'), json({ reference: { checks: ['pass tests 3/3', 'pass fixture_unchanged'] }, stub: { checks: ['FAIL tests 0/3', 'pass fixture_unchanged'] } }));
@@ -66,7 +66,12 @@ const byTask = (rows) => Object.fromEntries(rows.map((r) => [`${r.task}#${r.rep}
 test('each flag fires on the run that earns it and on no other', () => {
   const { pack, w1, w2 } = setup();
   const rows = byTask(pilotRows([w1, w2], { packDir: pack }));
-  assert.deepEqual(Object.keys(rows['t9-easy#1'].flags).sort(), ['second-family', 'too-easy']);
+  assert.deepEqual(Object.keys(rows['t9-easy#1'].flags).sort(), ['hand-edited, recheck missing', 'second-family', 'too-easy']);
+  assert.equal(rows['t9-easy#1'].handEdited, 'claude');
+  assert.equal(rows['t9-hard#1'].handEdited, 'no');
+  // A hand-edited task with its re-check recorded is not flagged.
+  assert.equal(rows['t8-a#1'].flags['hand-edited, recheck missing'], undefined);
+  assert.equal(rows['t8-a#1'].handEdited, 'claude');
   assert.deepEqual(rows['t9-easy#1'].loads, ['code-review']);
   assert.match(rows['t9-hard#1'].flags['too-hard'], /reference 80/);
   assert.equal(rows['t9-hard#1'].flags['too-easy'], undefined);
@@ -94,7 +99,8 @@ test('the score is the code-scored part: hidden tests 0.5 and substance checks 0
 test('the table lists every run, the totals and the tasks that need a second run', () => {
   const { pack, w1, w2 } = setup();
   const text = renderTable(pilotRows([w1, w2], { packDir: pack }));
-  assert.match(text, /^\| task \| arm \| rep \| score/);
+  assert.match(text, /^\| task \| arm \| rep \| handEdited \| score/);
+  assert.match(text, /hand-edited with no re-check 1\./);
   assert.match(text, /7 run\(s\), 14\.00 credits/);
   assert.match(text, /Second run for noisy tasks: t8-a,t8-b/);
 });

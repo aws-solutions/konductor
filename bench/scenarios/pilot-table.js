@@ -11,6 +11,7 @@
 //   too-hard      code score 15 or less, or the task's recorded dry run has a reference under 95
 //   answer-leak   a tool call named a hidden or answer path, or an output file repeats most of the reference's own text
 //   second-family fewer than 1 in 3 tasks of the batch come from a second author family
+//   hand-edited, recheck missing   the task has `handEdited` set and no `review.recheck` (blocks a lock, plan section 4)
 //   noisy         a check gave different results in two replicates of the task, or flipped against a per-check dry run
 //                 in which the reference and the stub agreed on it
 
@@ -21,6 +22,7 @@ const { checksScore, qualityOfRun, DEFAULT_WEIGHTS } = require('../report/scores
 const { familyOf } = require('../judge/family.js');
 const { toolNameOf, mcpToolNameOf, mcpInputOf } = require('../runner/lib/stream.js');
 const { aggregateHidden } = require('../runner/lib/check-matcher.js');
+const { lockBlockers } = require('./ready.js');
 
 const PACK_DIR = __dirname;
 const EASY = 90;
@@ -203,10 +205,14 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       const noisy = [...flips].map((i) => `check ${i + 1} differs between replicates`);
       if (entry) for (const [i, want] of insensitiveChecks(entry)) { const c = (r.checks || [])[i]; if (c && c.passed !== want) noisy.push(`check ${i + 1} flipped against the dry run`); }
       if (noisy.length) flags.noisy = noisy.join('; ');
+      for (const b of entry ? lockBlockers(entry.task) : []) flags[b] = 'no non-Claude re-check in review.recheck';
+      // The hand-edit split of plan section 7: the editor's family, or no.
+      const he = entry?.task.handEdited;
+      const handEdited = he ? String(he.family ?? 'yes') : entry ? 'no' : 'n/a';
       rows.push({
         task: e.taskId, batch, arm: e.armId, rep: e.replicate, status: r.status ?? null, score,
         sec: finite(r.wallClockMs) ? r.wallClockMs / 1000 : null, credits: finite(r.creditsCharged) ? r.creditsCharged : finite(r.credits) ? r.credits : null,
-        loads: loadsOf(r), flags, knownTask: Boolean(entry),
+        loads: loadsOf(r), flags, handEdited, knownTask: Boolean(entry),
       });
     }
   }
@@ -216,16 +222,16 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
 const fmt = (v, d = 0) => (finite(v) ? v.toFixed(d) : 'n/a');
 
 function renderTable(rows) {
-  const L = ['| task | arm | rep | score | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- |'];
+  const L = ['| task | arm | rep | handEdited | score | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
   for (const r of rows) {
     const flags = Object.entries(r.flags).map(([k, v]) => `**${k}** (${v})`).join('<br>') || '-';
-    L.push(`| ${r.task}${r.knownTask ? '' : ' (not in the pack)'} | ${r.arm} | ${r.rep} | ${fmt(r.score)} | ${fmt(r.sec)} | ${fmt(r.credits, 2)} | ${flags.replace(/\|/g, '\\|')} | ${r.loads.join(', ') || '-'} |`);
+    L.push(`| ${r.task}${r.knownTask ? '' : ' (not in the pack)'} | ${r.arm} | ${r.rep} | ${r.handEdited} | ${fmt(r.score)} | ${fmt(r.sec)} | ${fmt(r.credits, 2)} | ${flags.replace(/\|/g, '\\|')} | ${r.loads.join(', ') || '-'} |`);
   }
   const total = rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0);
   const count = (k) => rows.filter((r) => r.flags[k]).length;
   const rerun = [...new Set(rows.filter((r) => r.flags.noisy).map((r) => r.task))];
   L.push('', `${rows.length} run(s), ${total.toFixed(2)} credits. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
-  L.push(`Flagged runs: broken ${count('broken')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}.`);
+  L.push(`Flagged runs: broken ${count('broken')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
   L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
   return `${L.join('\n')}\n`;
 }

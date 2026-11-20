@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write } = require('./helpers.js');
-const { readiness, dryRunReasons } = require('../../scenarios/ready.js');
+const { readiness, dryRunReasons, lockBlockers } = require('../../scenarios/ready.js');
 const { spotSample } = require('../../scenarios/spot-review.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -31,6 +31,14 @@ test('dryRunReasons names each failed gate and a missing record', () => {
   assert.deepEqual(dryRunReasons({ pilot: dry({}) }), []);
   assert.deepEqual(dryRunReasons({ pilot: dry({ reference: 90, stub: 25, lazy: 41, alt: 79 }) }), [
     'dry run reference 90, needs >= 95', 'dry run stub 25, needs <= 20', 'dry run lazy 41, needs <= 40', 'dry run alt 79, needs >= 80']);
+});
+
+test('a hand-edited task with no review.recheck is blocked from lock; a dry run kept elsewhere is named', () => {
+  assert.deepEqual(lockBlockers({ handEdited: { family: 'claude' } }), ['hand-edited, recheck missing']);
+  assert.deepEqual(lockBlockers({ handEdited: { family: 'claude' }, review: { recheck: { family: 'glm' } } }), []);
+  assert.deepEqual(lockBlockers({ handEdited: null }), []);
+  assert.deepEqual(dryRunReasons({ pilot: { scores: { dryRun: { reference: 100, stub: 7, alt: 100 } } } }),
+    ['dry run kept in pilot.scores.dryRun, not pilot.dryRun', 'dry run has no lazy score']);
 });
 
 test('a task is ready only with a passing dry run in a folder the runner loads', () => {
