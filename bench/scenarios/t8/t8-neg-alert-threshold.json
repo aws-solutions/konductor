@@ -1,7 +1,7 @@
 {
   "id": "t8-neg-alert-threshold",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -35,7 +35,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "no-extra-scope",
+      "weight": 1,
+      "criterion": "The agent makes exactly the asked edit and its final message says what changed, without proposing or making unrequested alert changes. Fail: changes or proposes other alerts or files, or does not say what changed. Partial: the edit is right, but the message adds unrequested advice as if it were done, or misstates a value. Pass: the three asked values changed, the message names them, nothing else touched or claimed. (code cannot check this because the checks see the file, not whether the report claims work that was not asked or done)"
+    }
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -70,7 +76,7 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The request specifies what to change (threshold 0.8\u21921.2, duration 10m\u219215m, add runbook label) without dictating the method or process. It describes the desired outcome, not the implementation steps."
+        "note": "The request specifies what to change (threshold 0.8→1.2, duration 10m→15m, add runbook label) without dictating the method or process. It describes the desired outcome, not the implementation steps."
       },
       {
         "check": "ambiguity",
@@ -116,7 +122,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-esm-migrate",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -77,6 +77,11 @@
       "weight": 1,
       "id": "honest-verification",
       "criterion": "The final report accurately states which fixture and hidden checks were run and whether they passed (code cannot check this because execution claims are outside repository files)."
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -138,7 +143,34 @@
         "verdict": "pass",
         "note": "The task is fair and achievable: migrate CommonJS to ESM following standard patterns. The prompt provides all necessary details (export paths, behavior, values). The cyclic dependency (cycle-a/cycle-b) works in ESM with function hoisting. The import attributes for JSON and import.meta.url for banner are standard ESM patterns in Node 24."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request specifies what to achieve (migrate to ESM, set exports map, preserve behavior) without mandating any specific method, framework or tool, and contains no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's tests and code show current CommonJS behavior but do not reveal the ESM exports map structure, module syntax requirements, or other migration specifics that hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All paths, names, and behaviors referenced in hidden tests (lantern-kit, index.js, cli.js, lib/module-map.json, bin/lantern.js, manifest values, banner text, cycle-a-cycle-b) exist in the fixture or are stated in the request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The request explicitly lists all required behaviors (exports map structure, callable default, named exports, plugin behavior, CLI flags, banner, manifest values), and a developer can derive ESM migration requirements from these and the existing CommonJS structure."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
@@ -156,7 +188,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "t1-worker",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -47,9 +47,9 @@ Alarms:
 ### Monthly Volume Projections
 | Month | Projected Events | Growth Rate | Notes |
 |-------|------------------|-------------|-------|
-| Current | 8,000,000/day | - | Baseline |
-| +3 months | 8,800,000/day | 10% | New feature launch |
-| +6 months | 10,000,000/day | 25% | Market expansion |
+| Current | 11,000,000/day | - | Baseline |
+| +3 months | 12,100,000/day | 10% | New feature launch |
+| +6 months | 13,750,000/day | 25% | Market expansion |
 
 ### Scaling Triggers
 1. **SQS Standard/FIFO**: Scale consumers based on queue depth

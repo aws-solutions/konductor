@@ -126,7 +126,10 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
     const out = { id, repeat, reference: null, stub: null, shallow: null, lazy: null, alt: null, deterministic: true, canary: null };
     // The lazy and alternative answers (answers/<id>/lazy and answers/<id>/alt) are scored once each when present.
     const answerDir = (k) => path.join(dir, 'answers', id, k);
-    const modes = [['reference', path.join(dir, 'solutions', id)], ['stub', null], ['shallow', shallowOverlay(root, path.join(dir, 'solutions', id))]];
+    // The shallow answer only means something when the reference changes code; a docs-only task has none.
+    const solution = path.join(dir, 'solutions', id);
+    const changesCode = (function walk(rel) { return fs.readdirSync(path.join(solution, rel), { withFileTypes: true }).some((e) => (e.isDirectory() ? walk(path.join(rel, e.name)) : isCode(path.join(rel, e.name)))); })('');
+    const modes = [['reference', solution], ['stub', null], ...(changesCode ? [['shallow', shallowOverlay(root, solution)]] : [])];
     for (const k of ['lazy', 'alt']) if (fs.existsSync(answerDir(k))) modes.push([k, answerDir(k)]);
     for (const [mode, overlay] of modes) {
       const ref = mode === 'reference';
@@ -142,7 +145,7 @@ function dryRun(id, { repeat = 3, dir = DIR } = {}) {
     }
     out.pass = out.reference.score >= 95 && out.stub.score <= 20 && out.deterministic && out.canary.ok;
     // Gates added 2026-11-19: a lazy answer scores 40 or less, an alternative correct answer 80 or more (each only when present).
-    out.answersPass = out.shallow.score <= 40 && (!out.lazy || out.lazy.score <= 40) && (!out.alt || out.alt.score >= 80);
+    out.answersPass = (!out.shallow || out.shallow.score <= 40) && (!out.lazy || out.lazy.score <= 40) && (!out.alt || out.alt.score >= 80);
     out.answersPresent = Boolean(out.lazy && out.alt);
     return out;
   } finally {

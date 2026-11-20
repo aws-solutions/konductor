@@ -1,0 +1,108 @@
+{
+  "id": "t1-twin-webhook-routes",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please add `docs/ROUTES.md` to document the HTTP surface of the payment service. Include a Markdown table with the columns Method, Path, Handler file, and Purpose, with one row for every current route: `GET /health` handled by `src/handlers/health.js`, `GET /ledger` handled by `src/handlers/ledger.js`, and `POST /webhooks/payment` handled by `src/handlers/webhook.js`. Keep each purpose to one line. Also add a sentence stating which route receives provider webhooks. This is documentation only; do not change application code or the existing route behavior.",
+  "fixture": "t1-impl-webhook-verify",
+  "hidden": "t1-twin-webhook-routes",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/ROUTES.md",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/ROUTES.md",
+      "pattern": "POST /webhooks/payment",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/router.js",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "twin",
+  "twinOf": "t1-impl-webhook-verify",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": "original"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request only specifies documentation output (docs/ROUTES.md) and does not name any methods, processes, or tools the agent should use. It doesn't tell the agent how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the required columns (Method, Path, Handler file, Purpose), lists all three routes explicitly, and asks for one sentence about the provider webhook route. The hidden tests derive the expected routes from src/router.js, which is unambiguous."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture does not reveal the answer. There is no docs/ROUTES.md file, no route documentation in comments, and the README.md only mentions the routes in passing without the table format required. The hidden tests derive expected values from src/router.js, not from fixture hints."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive approach (just creating any file with the required name) would fail test 'ROUTES.md exists and has the required route table'. A minimal valid table that doesn't match the actual routes in src/router.js would fail 'the table lists exactly the routes registered by the service'. The tests require matching the actual handler names derived from router.js imports, so shortcuts like hardcoding wrong paths would be caught."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is fair and achievable. All information needed (route methods and paths from src/router.js, handler imports from the same file, existence of handler files in src/handlers/) is available in the fixture. Tests are deterministic and do not depend on timing or external state."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 76.8,
+      "alt": 91.1,
+      "date": "2026-11-20"
+    }
+  }
+}

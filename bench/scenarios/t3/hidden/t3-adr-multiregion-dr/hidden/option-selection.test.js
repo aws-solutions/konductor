@@ -1,10 +1,13 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 const { readDecision } = require('./decision-lib.js');
 const { CORRECT_CHOICE, TEMPTING_CHOICE, OPTIONS } = require('./expected-values.js');
 
 const R = __dirname + '/..';
 const ADR_PATH = R + '/solution/docs/adr/0001-dr.md';
+const META_PATH = path.join(R, 'meta.json');
 
 describe('Option selection', () => {
   it('should not choose the tempting option (nightly-backup)', () => {
@@ -18,7 +21,8 @@ describe('Option selection', () => {
 
   it('should choose an acceptable option', () => {
     const decision = readDecision(ADR_PATH);
-    const acceptableOptions = Object.keys(OPTIONS);
+    const meta = JSON.parse(fs.readFileSync(META_PATH, 'utf8'));
+    const acceptableOptions = meta.acceptableOptions;
     assert(
       acceptableOptions.includes(decision.chosen),
       `Chosen option "${decision.chosen}" must be one of: ${acceptableOptions.join(', ')}`

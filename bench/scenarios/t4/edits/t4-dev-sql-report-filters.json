@@ -5,7 +5,8 @@
     "source-text regex checks replaced by a behavioural injection check and the visible suite",
     "limits 1200/2400 s",
     "lead: removed 10 hidden tests that pass on the vulnerable code too (sqlite3 rejects their payloads anyway), and merged the 5 normal-use regression tests into one test with subtests, so the suite (19 tests) measures the fix: 1 of 19 passes on the fixture",
-    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)"
+    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)",
+    "2026-11-20 (mate task-fix worker): task review: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): parameterised-design"
   ],
   "prompt": "Our internal reporting service just came back from a pen test with one line about it: \"the reports API is injectable\". No other detail. Please make it safe without breaking anything people use today. The service lists and exports customers and sales: src/server.py handles the HTTP side and src/database.py has the Database class (Database(db_path)) with get_customers, get_sales, get_customers_csv and get_sales_csv, each taking the filters, sorting and paging arguments they have now. Keep those names and arguments, and keep every filter, sort and page option working as it does for normal input. For an unknown sort column or sort direction, fall back to the default order instead of failing. Bad paging values may raise ValueError. Error messages that reach a caller must not show SQL or table names. Do not add dependencies, and keep the existing tests in tests/ passing (python3 -m unittest discover -s tests). Do not change data/seed.py.",
   "checks": [
@@ -43,7 +44,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "parameterised-design",
+      "weight": 2,
+      "criterion": "Values reach SQL only as bound parameters, and the names that cannot be bound (sort column, sort direction) come from a fixed allowlist mapped in code; the final message names each injectable input it found. Fail: escapes or strips quotes, or builds SQL from user text anywhere, or names no injectable input. Partial: values are bound, but sort or column names are checked by a pattern or a denylist, or the message misses an injectable input. Pass: every value bound, every identifier from a fixed mapping, each injectable input (filters, sort, paging, CSV export) named, normal filters unchanged. (code cannot check this because an injection probe shows one input is safe, not that the design leaves no string-built SQL)"
+    }
+  ],
   "limits": {
     "softSec": 1200,
     "hardSec": 2400

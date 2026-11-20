@@ -43,6 +43,11 @@
       "id": "query-pattern-coverage",
       "criterion": "The schema design discussion shows understanding of which query patterns are optimized vs. which are acceptable to leave suboptimal. (not code-checkable: While code can test index usage, it cannot evaluate whether the reasoning about query pattern prioritization is sound.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -72,7 +77,7 @@
     "decision": "fix",
     "date": "2026-11-20",
     "blockers": [
-      "recheck-failed: fixture-lists-no-answer: fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ single-column-index option, its 3.1 TB result, the Premium upgrade, and the budget failure. fixture/prototype-results.md lines 97-114 also directly labels Option 2 as the primary recommendation and Option 1 as rejected."
+      "recheck-failed: fixture-lists-no-answer: fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ index approach, its approximately 3.1 TB size, the storage violation, and the Premium-cost consequence. fixture/prototype-results.md lines 17-20 and 97-114 also name Option 2 as the primary recommendation and explicitly reject Option 1 with the expected storage and cost."
     ],
     "dryRun": {
       "reference": 100,
@@ -82,7 +87,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -135,22 +140,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt states the design goal, required output files, JSON format, and constraints, but does not name a method, tool, checklist, or specific option/trap."
+          "note": "The task.json prompt specifies deliverables, SQLite, required JSON fields, and constraints, but does not prescribe a method or name a trap or answer."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "fail",
-          "note": "fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ single-column-index option, its 3.1 TB result, the Premium upgrade, and the budget failure. fixture/prototype-results.md lines 97-114 also directly labels Option 2 as the primary recommendation and Option 1 as rejected."
+          "note": "fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ index approach, its approximately 3.1 TB size, the storage violation, and the Premium-cost consequence. fixture/prototype-results.md lines 17-20 and 97-114 also name Option 2 as the primary recommendation and explicitly reject Option 1 with the expected storage and cost."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expected storage, growth, index, option-performance, and pricing facts are stated or derivable from fixture/constraints.txt lines 3-13, fixture/prototype-results.md lines 17-26 and 66-114, fixture/traffic-analysis.md lines 42-57, and fixture/pricing-guide.md lines 5-46."
+          "note": "The expected findings are grounded in the fixture: storage, growth, query/index tradeoffs, option projections, and current pricing appear in fixture/requirements.md, fixture/traffic-analysis.md, fixture/prototype-results.md, and fixture/pricing-guide.md. The option IDs used by the checks are direct descriptive slugs of the documented composite, normalized, and comprehensive-index options."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "task.json gives the deliverables and required decision JSON, while fixture/query-patterns.sql, fixture/constraints.txt, fixture/prototype-results.md, and fixture/pricing-guide.md provide the schema access patterns, constraints, tested indexes, sizing, and pricing needed to produce a passing design."
+          "note": "A careful engineer can derive the required schema indexes and constraints from fixture/query-patterns.sql, fixture/constraints.txt, and fixture/prototype-results.md, and can calculate the decision JSON from fixture/pricing.csv. The fixture even provides the tested index designs and the recommended composite option, so no hidden-overlay information is needed to produce a passing answer."
         }
       ]
     }
@@ -208,7 +213,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "HE hand-edit backfill session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

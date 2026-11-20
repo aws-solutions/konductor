@@ -1,7 +1,7 @@
 {
   "id": "t8-pm-cert-expiry-region",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -37,7 +37,7 @@
   "rubric": [
     {
       "id": "clear-review-narrative",
-      "criterion": "The document gives a clear, internally consistent explanation of what customers experienced and why the unaffected region stayed healthy (code cannot check this because it cannot judge narrative coherence)",
+      "criterion": "The document gives a clear, internally consistent explanation of what customers experienced and why the unaffected region stayed healthy. Fail: wrong cause, or blames the decoy, or no causal link between events. Partial: right cause, but no mechanism from cause to symptom, or the decoy is not ruled out. Pass: cause, then mechanism, then symptom, each with a cited log line; why the decoy is not the cause; and why detection lagged. (code cannot check this because it cannot judge narrative coherence)",
       "weight": 2
     }
   ],
@@ -99,7 +99,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

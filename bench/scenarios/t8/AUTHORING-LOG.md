@@ -167,3 +167,20 @@ Outcomes (the first tpm-rollout-regions fix, 2.0 credits, was made before the ke
 - t8-runbook-db-failover: gpt-5.6-luna tightened the key. Recheck by glm-5: pass. Version 2; reference 100, empty 7.1, lazy 38.1, alternative 100.
 - t8-rollout-ledger-migration: the fix passed the free gates (lazy 38.1) but its recheck was refused by the spend check (80.3 credits spent, abort limit 10 would pass 90), so the fix was reverted and the task stays at fix. The draft key is in the scratch folder of the FX job, not in the tree.
 - Not reached (spend cap): t8-inc-checkout-latency, t8-pm-cert-expiry-region, t8-inc-memory-leak, t8-dec-deploy-strategy, t8-oncall-alert-review, t8-inc-queue-backlog, t8-pm-cache-stampede, t8-twin-latency-tier-report, t8-neg-config-question, t8-bug-retry-storm.
+
+## FX2 fix round (2026-11-20)
+
+Paid calls of the FX2 job (owner-approved, hard cap 60 credits for all batches, abort limit per call as written in its plan line, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t8-rollout-ledger-migration recheck by glm-5, abort limit 3 credits, spend so far 49.9 of 60
+- result: t8-rollout-ledger-migration recheck glm-5 credits=3.843 secs=80
+- plan: t8-inc-checkout-latency fix by gpt-5.6-luna, abort limit 4 credits, spend so far 53.8 of 60
+- result: t8-inc-checkout-latency fix gpt-5.6-luna credits=1.150 secs=71
+- plan: t8-inc-checkout-latency recheck by glm-5, abort limit 3 credits, spend so far 54.9 of 60
+- result: t8-inc-checkout-latency recheck glm-5 credits=10.593 secs=160
+
+FX2 outcomes (2026-11-20):
+
+- t8-rollout-ledger-migration: the gpt-5.6-luna key fix made in FX (kept in scratch, not rechecked then) was applied and rechecked by glm-5: pass on all four items. Version 2; reference 100, empty 7.1, lazy 38.1, alternative 100. Kept. No Claude edit.
+- t8-inc-checkout-latency: one key fix by gpt-5.6-luna (abort limit 4 credits, real 1.15), recheck by glm-5: pass. Version 2; 100, 7.1, 39.3, 100. Kept. The glm-5 recheck cost 10.6 credits under heavy host load (160 s), which took FX2 over its 60 credit cap (see the job report).
+- Not reached (cap): t8-pm-cert-expiry-region, t8-inc-memory-leak, t8-dec-deploy-strategy, t8-oncall-alert-review, t8-inc-queue-backlog, t8-pm-cache-stampede, t8-twin-latency-tier-report, t8-neg-config-question, t8-bug-retry-storm.

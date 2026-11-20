@@ -68,7 +68,7 @@ This section covers compliance. We reviewed the relevant files and this follows 
 
 ```decision
 {
-  "chosen": "kinesis_streams",
+  "chosen": "sqs_fifo",
   "options": [
     "sqs_standard",
     "sqs_fifo",
@@ -77,7 +77,7 @@ This section covers compliance. We reviewed the relevant files and this follows 
   "limits": {
     "monthly_budget_usd": {
       "limit": 1125,
-      "value": 603.79
+      "value": 803.2
     },
     "peak_throughput_per_second": {
       "limit": 500,
@@ -88,6 +88,6 @@ This section covers compliance. We reviewed the relevant files and this follows 
       "value": 0
     }
   },
-  "monthly_cost_usd": 603.79
+  "monthly_cost_usd": 803.2
 }
 ```

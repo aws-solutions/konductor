@@ -1,7 +1,7 @@
 {
   "id": "t8-neg-config-question",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -34,7 +34,13 @@
       "kind": "substance"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "answer-sourced",
+      "weight": 1,
+      "criterion": "The final message says the answer came from the renderer's production output, not from base records, and names any service whose base record differs from the rendered one. Fail: reads base records only, or gives no source. Partial: names the renderer as the source, but not the services where base and rendered values differ. Pass: renderer named as the source, and each base-versus-rendered difference that changes the answer is named. (code cannot check this because the file check sees the list, not how it was derived)"
+    }
+  ],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": null,
@@ -107,5 +113,10 @@
     "decision": "fix",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

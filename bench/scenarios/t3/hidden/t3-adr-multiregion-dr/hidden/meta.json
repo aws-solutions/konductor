@@ -1,6 +1,6 @@
 {
   "deliverables": ["docs/adr/0001-dr.md"],
-  "acceptableOptions": ["nightly-backup", "pilot-light", "warm-standby"],
+  "acceptableOptions": ["warm-standby"],
   "temptingOption": "nightly-backup",
-  "notes": "The trap is that nightly-backup looks cheapest ($2,524) but fails both RPO (24h vs 5m) and RTO (80m vs 45m); RTO failure comes from combining restore throughput (2×1.2 GB/s) with 8 TB size in technical-constraints.md and traffic-analysis.md."
+  "notes": "The trap is that nightly-backup looks cheapest ($2,524) but fails both RPO (24h vs 5m) and RTO (80m vs 45m); RTO failure comes from combining restore throughput (2×1.2 GB/s) with 8 TB size in technical-constraints.md and traffic-analysis.md. Pilot-light fails RTO (60m vs 45m). Only warm-standby meets all limits."
 }

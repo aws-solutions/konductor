@@ -40,8 +40,8 @@ Purple boxes call a model and spend. The rest is local work.
    answer.
 4. **Check.** After the agent exits, the task's checks run on the project it left: file tests, commands and, for
    many tasks, hidden tests the agent never saw.
-5. **Judge.** Three or more judge models score the parts code cannot check. They see the final answer, the changed
-   files and the check results, never the arm's name. A judge never comes from the agent's own model family. With
+5. **Judge.** Three or more judge models score the parts code cannot check. They see the final answer and the changed
+   files, never the check results or the arm's name. A judge never comes from the agent's own model family. With
    fewer than three eligible judges the score is NO DATA.
 6. **Report.** bench combines checks and judges into a score per run, then compares arms with intervals.
 
@@ -252,7 +252,8 @@ install Konductor also needs a new arm source and a `prepareArm` that builds not
 harness folder still switch on the runtime name; the contract lists each one.
 
 The full contract, with every member, argument and field, is
-[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md).
+[runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). What works today for an agent bench does not run
+yet, on the plant and on code tasks, is in [benchmark your own agent](benchmark-your-own-agent.md).
 
 > [!IMPORTANT]
 > **Common mistakes.** bench cannot run any agent you point it at: it runs the four runtimes above. Strands runs the

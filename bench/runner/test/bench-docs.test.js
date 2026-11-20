@@ -132,7 +132,7 @@ test('the generated parts of the bench docs match the code (fix: node bench/scri
 // Every `node bench/runner/bench.js` line in a fenced block of the guide pages names a real command and only flags it accepts.
 test('every bench.js command in the README and guide pages uses a known command and flags the CLI accepts', () => {
   const { COMMANDS, SUBCOMMANDS, BOOLEAN_FLAGS } = require('../lib/cli-flags.js');
-  const pages = ['README.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/konductor-bench.md', 'docs/repeat-it-yourself.md'];
+  const pages = ['README.md', 'docs/agents.md', 'docs/skills.md', 'docs/physical-ai.md', 'docs/konductor-bench.md', 'docs/repeat-it-yourself.md', 'docs/benchmark-your-own-agent.md'];
   let seen = 0;
   for (const page of pages) {
     const blocks = [];

@@ -13,7 +13,7 @@ Acme Analytics is building a new event processing pipeline to handle user activi
 ## Non-Functional Requirements
 
 ### Capacity Requirements
-- **Average Daily Volume**: 8 million events
+- **Average Daily Volume**: 11 million events
 - **Peak Throughput**: Must sustain 400 events per second during marketing campaigns
 - **Event Size**: Average 90KB per event (JSON payload with metadata)
 - **Retention**: Events can be deleted after successful processing (no archival requirement)

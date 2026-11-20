@@ -3,7 +3,8 @@
     "prompt rewritten (traps and the hidden evaluator name removed)",
     "statement-id checks replaced by checks on broad grants",
     "rubric item for the explanation the prompt asks for",
-    "limits raised from 180/360 to 900/1800 s"
+    "limits raised from 180/360 to 900/1800 s",
+    "2026-11-20 (mate task-fix worker): task review: cause given Fail/Partial/Pass anchors"
   ],
   "prompt": "The nightly export has failed since the destination bucket moved to SSE-KMS with our own customer managed key and the LedgerRecords table got its new by_day index. The last run log is logs/nightly-2025-02-03.log. Please get the job working again, and give it only the access it actually needs: no blanket service-wide grants, nothing on other buckets, prefixes, tables or keys, nothing administrative. The access lives in infra/iam/export-job-policy.json (the job role), infra/iam/exports-bucket-policy.json and infra/iam/exports-key-policy.json; fix code under src/ too if the job itself sends something wrong. Keep the policy files valid IAM policy JSON. The ARNs and the key id are in config/export.json (read by src/config.js). Keep the interfaces as they are: runExport(client, options) in src/export-job.js, and FakeCloudClient in src/fake-cloud-client.js, which records each call in calls with action, resource, context and request. Keep the output format, the existing tests and the package free of dependencies. In your final message, explain why the upload and the index query were denied.",
   "checks": [
@@ -53,7 +54,7 @@
   "rubric": [
     {
       "id": "cause",
-      "criterion": "The final message gives the real causes: the upload needs the customer key (data key generation, and decrypt for multipart) and the expected key id header that one upload path omitted, and the query needs the index ARN, not only the table (code cannot check this because the explanation is free prose in the final message).",
+      "criterion": "The final message gives the real causes: the upload needs the customer key (data key generation, and decrypt for multipart) and the expected key id header that one upload path omitted, and the query needs the index ARN, not only the table. Fail: no cause, or a cause that is not the denied action. Partial: names the denied action but not the missing statement or why it is needed. Pass: names each missing statement (the key use and the header path) and why the request needs it. (code cannot check this because the explanation is free prose in the final message).",
       "weight": 2
     }
   ],
