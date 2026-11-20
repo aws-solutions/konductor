@@ -211,7 +211,9 @@
       "licence": "CC BY-SA 4.0 (checked in the OWASP CheatSheetSeries repository); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T9, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "alibaba",

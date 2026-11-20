@@ -88,7 +88,9 @@
       "licence": "BSD-3-Clause",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "alibaba",
@@ -125,7 +127,7 @@
     "scores": {},
     "reference": 100,
     "stub": 14.3,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,

@@ -14,6 +14,9 @@ or rubric is logged here, and the task carries `handEdited`. Each edited task is
 
 | task | why |
 | --- | --- |
+| t11-wide-settings-migration | Second family, three tries. qwen3-coder-next try 1: step 1 needed its fix round (no runnable visible suite, 22 of 60 caller files, a request that listed the traps), then step 2 stopped at the 150 tool-call cap with no checks written. minimax-m2.5: step 1 ended its turn with no tool call. qwen3-coder-next try 2, smaller scope (one generator, 60 to 64 callers): step 1 passed after its fix round, step 2 again stopped at the cap with no checks. Dropped, not hand-fixed. About 51 credits spent. |
+| t11-docx-room-booking-reqs | Second family (qwen3-coder-next, two steps). Step 1 left the answer in the fixture (existing RB-001 to RB-016 files restate the spec's rules), made the superseded value no trap (the table already said 3 hours, with a note saying 4 became 3), and wrote literal HTML tags into the .docx text. Its one fix round repaired only the request. Dropped before step 2, not hand-fixed. About 5.6 credits. The id was then written again from the same brief by gpt-5.6-luna in one call (the id had not landed). |
+| t11-two-session-memory (planned, not written) | Needs a second, fresh session in the same workspace and HOME. The runner's multi-turn mode only resumes the same conversation after the agent asks a question (bench/runner/lib/run-one.js runTurns), so it cannot test what a new session remembers. Waits for runner support. |
 
 ## Rubric anchors, review fix 2 (2026-11-20, mate review-fix2 worker)
 

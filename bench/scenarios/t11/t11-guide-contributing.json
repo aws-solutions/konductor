@@ -1,0 +1,122 @@
+{
+  "id": "t11-guide-contributing",
+  "class": "hard",
+  "version": 1,
+  "phase": "implementation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please add a contributor guide at the repository root as `CONTRIBUTING.md`. New contributors keep asking how to get started, which checks to run, how to format commits, where pull requests go, and who reviews releases, so make the guide practical and specific. Cover the repository's current setup, each kind of test and its required environment, the full test run, linting, generated output, commit checker rules including allowed types, required scope, and subject limit, branches and pull requests, release restrictions and tag conventions, review expectations, and ownership. Check the repository's current sources and configuration for exact details rather than relying on stale overview text. Change only `CONTRIBUTING.md`; leave the source, tests, scripts, configuration, and existing documentation untouched.",
+  "fixture": "t11-guide-contributing",
+  "hidden": "t11-guide-contributing",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-guide.test.js",
+      "min": 18,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('node:fs'); const n=fs.readFileSync('CONTRIBUTING.md','utf8').split(/\\r?\\n/).filter(x=>x.trim()).length; if(n<40) process.exit(1)\" && node --test test/unit-*.test.js",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CONTRIBUTING.md",
+      "pattern": "npm run test:all",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "review-guidance",
+      "criterion": "The guide gives contributors clear, respectful review and ownership expectations (code cannot check this because it requires judging the quality of human-facing guidance).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors",
+      "licence": "CC BY 4.0 (github/docs LICENSE, https://github.com/github/docs/blob/main/LICENSE, checked 2026-11-20); idea only: a contributor guide in the repository root; no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T11, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks to derive details from the repository configuration rather than naming specific methods or tools to use. It does not list traps or tell the agent how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request and hidden tests align on required details (Node version, CI jobs, commit rules, release process). All testable facts are explicitly derivable from fixture files."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files contain the authoritative configuration (package.json, commit-checker.cjs, ci.yml, CODEOWNERS, release.cjs) but do not reveal the expected CONTRIBUTING.md content—these are the sources the agent should read."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires synthesizing information from multiple files. A shallow approach (lazy/CONTRIBUTING.md) fails 15 of 18 tests, so the task isn't trivially easy."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests use reasonable timeouts (30s), derive facts from fixture files, and do not require images or external documents. Each testable fact exists in the repository."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 4.8,
+    "dryRun": {
+      "reference": 100,
+      "stub": 4.8,
+      "lazy": 16.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

@@ -5,7 +5,7 @@
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Can you add per-job-type retries to this worker? Keep the current queue format, handlers, logging shape, and successful-job behaviour intact. In src/runner.js, WorkerRunner must accept retryPolicies keyed by job type. Each policy has maxAttempts (including the first attempt), baseDelayMs, maxDelayMs, jitter, and an optional async shouldRetry(error, job) hook. Use exponential backoff, cap it, and use the injected random function for deterministic jitter. jitter is a fraction of the delay: a random value of 0 gives delay × (1 − jitter), 1 gives delay × (1 + jitter), and the result never exceeds maxDelayMs. WorkerRunner must also accept an injected clock with now() and sleep(milliseconds, signal), plus random(). Export retryDelay(policy, attempts, randomValue) from src/runner.js for the delay calculation.\n\nPersist the incremented attempts count in each job record before processing. A retry must remain in pending with availableAt, so stopping the runner while it is waiting cannot lose the job. JobQueue should expose listDeadLetters() and nextAvailableAt() while retaining its existing queue methods. PermanentJobError from src/errors.js and errors with retryable === false must never retry. When the policy is exhausted or shouldRetry returns false, move the record to deadLetter and keep the error message in its reason field. Keep the existing runOnce(), run(), and stop() interfaces; run({ signal }) should respect shutdown. Add focused tests and update the README or operations notes and changelog. Do not add dependencies or require real-time sleeps in tests.",
+  "prompt": "Can you add per-job-type retries to this worker? Keep the current queue format, handlers, logging shape, and successful-job behaviour intact. In src/runner.js, WorkerRunner must accept retryPolicies keyed by job type. Each policy has maxAttempts (including the first attempt), baseDelayMs, maxDelayMs, jitter, and an optional async shouldRetry(error, job) hook. Use exponential backoff, cap it, and use the injected random function for deterministic jitter. jitter is a fraction of the delay: a random value of 0 gives delay \u00d7 (1 \u2212 jitter), 1 gives delay \u00d7 (1 + jitter), and the result never exceeds maxDelayMs. WorkerRunner must also accept an injected clock with now() and sleep(milliseconds, signal), plus random(). Export retryDelay(policy, attempts, randomValue) from src/runner.js for the delay calculation.\n\nPersist the incremented attempts count in each job record before processing. A retry must remain in pending with availableAt, so stopping the runner while it is waiting cannot lose the job. JobQueue should expose listDeadLetters() and nextAvailableAt() while retaining its existing queue methods. PermanentJobError from src/errors.js and errors with retryable === false must never retry. When the policy is exhausted or shouldRetry returns false, move the record to deadLetter and keep the error message in its reason field. Keep the existing runOnce(), run(), and stop() interfaces; run({ signal }) should respect shutdown. Add focused tests and update the README or operations notes and changelog. Do not add dependencies or require real-time sleeps in tests.",
   "fixture": "t1-impl-job-retry",
   "hidden": "t1-impl-job-retry",
   "timeoutSec": 1200,
@@ -104,7 +104,9 @@
       "licence": "MIT",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
   },
   "review": {
     "family": "zhipu",
@@ -141,7 +143,7 @@
     "scores": {},
     "reference": 100,
     "stub": 5.2,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,

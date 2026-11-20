@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "required": [
+    "at",
+    "text"
+  ],
+  "properties": {
+    "at": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "timezone": "Harborview/Local",
+  "weekday": {"open": "09:00", "close": "20:00"},
+  "sunday": {"open": "11:00", "close": "16:00"}
+}
