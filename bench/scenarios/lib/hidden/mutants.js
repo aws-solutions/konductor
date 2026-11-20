@@ -62,8 +62,10 @@ function runTests(cwd, cfg, timeoutMs) {
 }
 
 // Copies the workspace to a scratch dir, restores the real source and runs the tests once.
-function prepare(workspace, hiddenDir, { suiteTimeoutMs = 8000 } = {}) {
+// The kit's "suiteSec" sets the suite limit for slow suites (a browser suite); the default is 8 s.
+function prepare(workspace, hiddenDir, opts = {}) {
   const cfg = JSON.parse(fs.readFileSync(path.join(hiddenDir, 'mutants.json'), 'utf8'));
+  const suiteTimeoutMs = opts.suiteTimeoutMs ?? (cfg.suiteSec ? cfg.suiteSec * 1000 : 8000);
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't5mut-'));
   const work = path.join(tmp, 'w');
   fs.cpSync(workspace, work, { recursive: true, filter: skipCopy });

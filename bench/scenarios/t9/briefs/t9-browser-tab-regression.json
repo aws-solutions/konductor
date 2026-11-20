@@ -1,0 +1,22 @@
+{
+  "id": "t9-browser-tab-regression",
+  "kind": "bugfix",
+  "phase": "bugfix",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "twoStep": true,
+  "stack": "browser",
+  "size": "25 to 40",
+  "browser": 5,
+  "ntests": "10 to 12",
+  "ntrap": 3,
+  "source": {
+    "url": "https://github.com/whatwg/html",
+    "licence": "CC BY 4.0 (checked in the repository LICENSE); idea only, no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: bug fix. Role: frontend developer. Repo: a static web app, a help centre with two pages (`index.html` for articles and `account.html` for account settings), both built on a shared `src/router.js` module that turns the page into a set of tabbed sections addressed by the URL hash (#billing, #security, #profile and so on): clicking a section link or pressing Enter on it shows that section, updates the hash and the document title, and moves focus to the section heading. One release ago a change (named in the CHANGELOG as a router clean-up, without saying what broke) introduced ONE real regression that only a browser shows: after a user switches sections and then uses the browser Back or Forward button, the URL changes but the visible section, the selected tab state (aria-selected), the title and the focus stay on the old section, because the shared module no longer reacts to history navigation and reads the hash only once at start; a direct load of a URL with a hash still works, which hides the bug in a quick check. A decoy: a deferred focus call (a requestAnimationFrame or zero-delay timer) in the account page code that looks like a race but is correct. The fix must be in the shared module because both pages use it, and must not add a second history entry per click (the request says Back must go to the previous section in one press). Hidden browser tests open each page, switch sections with the mouse and the keyboard, press Back and Forward, and check the visible section, aria-selected, document.title, the focused heading and history length; unit tests cover the DOM-free hash parsing helper; plus a regression check that the agent's own test fails on the old module."
+}

@@ -1,0 +1,21 @@
+{
+  "id": "t9-state-management-refactor",
+  "kind": "refactor",
+  "phase": "refactor",
+  "role": "frontend",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "twoStep": true,
+  "stack": "cjs",
+  "size": "25 to 35",
+  "ntests": "12 to 15",
+  "ntrap": 4,
+  "source": {
+    "url": "https://github.com/pmndrs/zustand",
+    "licence": "MIT (checked on GitHub)",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor. Role: frontend developer. Repo: the DOM-free front-end logic of a team task board (a kanban web app): `src/board.js` (about 300 lines) is one object that mixes UI state and domain state: columns and cards, a card filter, the selected card, an undo stack, a draft of the card being edited, and change listeners, all in module-level variables, with view-model helpers (`columnView`, `cardBadge`) reading them directly. Several files (`src/keyboard.js`, `src/drag.js`, `src/persist.js`) call into it. The request: extract the state into a small store module `src/store/createStore.js` exporting `createStore(initialState)` that returns `{ getState, setState, subscribe }` (setState takes a partial object or an updater function and notifies listeners once per call), and move the board actions into `src/store/boardActions.js` exporting `boardActions(store)`; `src/board.js` keeps its public functions, names and behaviour and becomes a thin layer over them; nothing outside src/board.js and the new files changes. Quirks callers depend on and a careless refactor breaks: listeners are notified after the state is updated and in subscription order, a listener that unsubscribes during a notification does not stop the others; undo restores the filter and the selection too, but not the draft; selecting a card that is filtered out clears the selection; moving a card to its own column at the same index notifies nobody. Hidden tests: characterization tests through src/board.js (at most one third), plus structure tests that use createStore alone (partial and updater setState, one notification per call, unsubscribe), use boardActions with a store built by the test (proving board logic no longer lives in module state: two independent stores do not share cards), and check that src/board.js runs on the new store (an injected fake store sees the calls through a documented `_useStore(store)` hook the request names)."
+}
