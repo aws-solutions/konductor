@@ -112,22 +112,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt specifies goal (list retention figures), format (one per line with source), and classification (current/superseded/archival) without naming methods, tools, or pointing to traps."
+          "note": "rubric check: Rubric asks for factual inventory of retention figures; no design or architecture process required (twin explicitly disables those skills). Earlier glm-5 check of the request, fixture and key: pass (Prompt specifies goal (list retention figures), format (one per line with source), and classification (current/superseded/archival) without naming methods, tools, or pointing to traps.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain retention policies as evidence (compliance.md and budget-constraints.md) without explicitly stating 'these are the answers.'"
+          "note": "rubric check: Fixture contains policy documents; the inventory task requires extracting figures, not discovering a hidden answer. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain retention policies as evidence (compliance.md and budget-constraints.md) without explicitly stating 'these are the answers.')."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Test expects 400, 90, and 180 day figures from compliance.md and budget-constraints.md, all present in fixture with retention context per RETENTION_CONTEXT pattern."
+          "note": "rubric check: Rubric anchors (400 days current, 90 days superseded, 180 days archival threshold) match fixture context; expertKey confirms source files. Earlier glm-5 check of the request, fixture and key: pass (Test expects 400, 90, and 180 day figures from compliance.md and budget-constraints.md, all present in fixture with retention context per RETENTION_CONTEXT pattern.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Solution correctly extracts all retention figures (400, 90, 180 days) from the two source files with appropriate status labels derivable from context."
+          "note": "rubric check: Different valid inventory formats with source paths can Pass; prose style can vary. Earlier glm-5 check of the request, fixture and key: pass (Solution correctly extracts all retention figures (400, 90, 180 days) from the two source files with appropriate status labels derivable from context.)."
         }
       ]
     }

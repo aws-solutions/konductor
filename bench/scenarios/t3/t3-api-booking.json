@@ -82,7 +82,10 @@
       "lazy": 28,
       "alt": 100,
       "date": "2026-11-20"
-    }
+    },
+    "blockers": [
+      "key-names: limit name response_body_bytes is not in the fixture or prompt; the contract-boundary-reasoning Pass anchor lists the reference field names (free key scan 2026-11-20, D-127)"
+    ]
   },
   "version": 3,
   "targetSkills": [
@@ -128,7 +131,34 @@
         "verdict": "pass",
         "note": "All necessary numbers are present in fixture files; the cost formula, limits, and computation method are derivable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to design an API with pagination choice, naming no framework or tool; fixture partner-migration.md's superseded page-size-500 warning is a legitimate trap the task tests for (offset with 500 exceeds gateway limit), not a decoy pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides traffic.json (pagination options with page sizes, capacities, latencies), prices.json (cost rates), gateway.json (1 MiB limit), requirements.md (constraints) - the agent must compute 160 x 6,144 = 983,040 bytes vs 500 x 6,144 = 3,072,000 bytes and monthly cost to choose correctly."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden test booking.test.js reads fixture files and verifies decision.chosen = 'cursor', computed response body, latency, capacity, and monthly cost against derived values; rubric's Pass anchor specifies comparing cursor (~$311.38) vs offset (~$266.98) with offset's consistency failure mode, matching fixture data."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can compute page-size limits from traffic.json booking_item_serialized_bytes (6,144) x page_size against gateway.json response_body_limit_bytes (1,048,576), derive monthly cost from prices.json rates and traffic.json volumes, and choose cursor for consistency; alternative valid API structures with correct pagination would pass."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [

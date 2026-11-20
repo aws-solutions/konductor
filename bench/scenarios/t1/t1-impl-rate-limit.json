@@ -137,7 +137,34 @@
         "verdict": "pass",
         "note": "The task is achievable: the reference solution passes all tests. The clock injection pattern is explicitly stated. All required behaviors (error codes, headers, exempt routes) are specified. No timing-dependent or flaky tests - the clock is injected. The task is complex but not impossible."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt specifies rate limiting requirements clearly without prescribing implementation method."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has booking service but no rate limiting implementation or configuration."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check API key headers, rate limit responses, config settings - matching prompt requirements."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can implement rate limiting based on detailed specifications for headers, quotas, windows, and eviction."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

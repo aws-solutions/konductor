@@ -182,29 +182,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a threat model without prescribing any specific methodology, checklist, or tool. It describes the goal, files, output format, and constraints but does not name STRIDE, OWASP checklists, or other frameworks. The decoy tests (EdgeGateway TLS, PublicRateLimiter, QueryLayer parameterized queries) are not hinted at in the prompt."
+          "note": "rubric check: Rubric item attacker-path-fix asks for attacker, path, and fix for each finding plus residual-risk section, which matches the request to write what can go wrong and what to change. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a threat model without prescribing any specific methodology, checklist, or tool. It describes the goal, files, output format, and constraints but does not name STRIDE, OWASP checklists, or other frameworks. The decoy tests (EdgeGateway TLS, PublicRateLimiter, QueryLayer parameterized queries) are not hinted at in the prompt.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture file lists the bugs, findings, or hidden facts. The design.md, api.md, ADRs, and prototype code describe the system behavior but do not state security issues. The expertKey is invisible to the agent and describes concepts like 'sign-metadata' and 'dns-rebinding' without revealing the specific test expectations."
+          "note": "rubric check: The anchors (attacker, path, fix, residual-risk section) are judge-only; the fixture has design docs but not the threat model. Earlier glm-5 check of the request, fixture and key: pass (No fixture file lists the bugs, findings, or hidden facts. The design.md, api.md, ADRs, and prototype code describe the system behavior but do not state security issues. The expertKey is invisible to the agent and describes concepts like 'sign-metadata' and 'dns-rebinding' without revealing the specific test expectations.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All test expectations match the fixture. SignatureVerifier uses string comparison (line 8 in verify.js: `sign(secret, body) === supplied`), design.md states the receiver uses tenantId from the body (line 25), callbacks can be updated by owners (line 43), AuditLogger logs full payloads (line 62), RetryScheduler uses one shared queue (line 54), AdminApi has one shared key (line 70), and EventStore lacks encryption and deletion (lines 30-35). The timing-unsafe comparison in verify.js confirms the t"
+          "note": "rubric check: The rubric references named components from the design; the fixture has docs/design.md, docs/api.md with component names like receiver, forwarder, admin API. Earlier glm-5 check of the request, fixture and key: pass (All test expectations match the fixture. SignatureVerifier uses string comparison (line 8 in verify.js: `sign(secret, body) === supplied`), design.md states the receiver uses tenantId from the body (line 25), callbacks can be updated by owners (line 43), AuditLogger logs full payloads (line 62), RetryScheduler uses one shared queue (line 54), AdminApi has one shared key (line 70), and EventStore l)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can identify all required findings from the fixture. The string comparison in verify.js reveals timing vulnerability. Design.md line 25 states the receiver uses body tenantId for storage and subscription selection, enabling cross-tenant placement. Line 43 allows customer-controlled callback URLs with redirects. Line 62 logs full payloads and startup config. Lines 54-56 describe one shared queue without per-tenant limits. Line 70 uses one shared admin key. Lines 32-35 store ful"
+          "note": "rubric check: Different correct threat models with different findings can reach Pass as long as each finding has attacker, path, fix, and there is a residual-risk section. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify all required findings from the fixture. The string comparison in verify.js reveals timing vulnerability. Design.md line 25 states the receiver uses body tenantId for storage and subscription selection, enabling cross-tenant placement. Line 43 allows customer-controlled callback URLs with redirects. Line 62 logs full payloads and startup config. Lines 54-56 describe )."
         }
       ]
     }

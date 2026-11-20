@@ -153,29 +153,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal (least-privilege policies), the files to create, constraints, and points to handlers for action discovery without naming any specific method, tool, or checklist."
+          "note": "rubric check: Rubric item traceable-least-privilege asks for grants traced to handler calls and stage names from config, which matches the request to give each function its own least-privilege policy. Earlier glm-5 check of the request, fixture and key: pass (The prompt states the goal (least-privilege policies), the files to create, constraints, and points to handlers for action discovery without naming any specific method, tool, or checklist.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture file lists the expected policy contents; the agent must derive permissions by reading handlers, logging.js, and stages.js to reason about required actions."
+          "note": "rubric check: The anchors (grants traced to calls, stage names named, logging scoped) are judge-only; the fixture has handlers and FakeCloudClient but not the policy structure. Earlier glm-5 check of the request, fixture and key: pass (No fixture file lists the expected policy contents; the agent must derive permissions by reading handlers, logging.js, and stages.js to reason about required actions.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All hidden test expectations (action calls, resources like tables/queues/buckets/secrets, legacy denial checks) are defined in fixture files stages.js and handler/*.js."
+          "note": "rubric check: The rubric references config/stages.js for stage names, which exists in the fixture and exports staging and prod resources. Earlier glm-5 check of the request, fixture and key: pass (All hidden test expectations (action calls, resources like tables/queues/buckets/secrets, legacy denial checks) are defined in fixture files stages.js and handler/*.js.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can trace each handler's client.request calls, find resources in stages.js, understand logging via logging.js, and construct valid least-privilege IAM policies."
+          "note": "rubric check: Different correct policy organizations (different Sid naming, different statement grouping) can reach Pass as long as grants are traceable and stages are named. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can trace each handler's client.request calls, find resources in stages.js, understand logging via logging.js, and construct valid least-privilege IAM policies.)."
         }
       ]
     }

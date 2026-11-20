@@ -225,7 +225,12 @@ function removeAuthCopy(home, platform = process.platform) {
 function copyFixture(src, dest) {
   fs.cpSync(src, dest, { recursive: true, filter: (p) => path.basename(p) !== ANSWER_KEY });
   const dotgit = path.join(dest, 'dotgit');
-  if (fs.existsSync(dotgit)) fs.renameSync(dotgit, path.join(dest, '.git'));
+  if (fs.existsSync(dotgit)) {
+    fs.renameSync(dotgit, path.join(dest, '.git'));
+    // git stores no empty directory, so a fresh checkout of the bench has a dotgit/ with no refs/, and git then says
+    // "not a git repository" (t11-merge-pricing-branches); git needs refs/heads and refs/tags to exist.
+    for (const d of ['refs/heads', 'refs/tags']) fs.mkdirSync(path.join(dest, '.git', d), { recursive: true });
+  }
 }
 
 function findAnswerKey(dir) {

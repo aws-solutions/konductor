@@ -307,22 +307,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a focused QA plan without naming methods, techniques, tools, or specific risks to find."
+          "note": "rubric check: Rubric items prioritization and expert-key ask for risk ranking with customer/operational consequences and scoring expertKey items, which match the request for a focused QA plan. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a focused QA plan without naming methods, techniques, tools, or specific risks to find.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture file lists bugs, findings, or risks; all must be discovered by analyzing source code."
+          "note": "rubric check: The anchors (risks ordered by likelihood/impact, customer harm stated, low-value areas skipped) are judge-only; the fixture has source files but not the test plan. Earlier glm-5 check of the request, fixture and key: pass (No fixture file lists bugs, findings, or risks; all must be discovered by analyzing source code.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 8 findingsKey items reference source files (price.js, webhook.js, reservation.js, retry.js, email.js, settlement.js, refunds.js, checkout.js) where the risks exist and are discoverable through code analysis."
+          "note": "rubric check: The example risks in the Pass anchor (money moved, duplicate/lost charges, stock reservation, payment retries, webhooks) are areas the fixture's checkout code handles. Earlier glm-5 check of the request, fixture and key: pass (All 8 findingsKey items reference source files (price.js, webhook.js, reservation.js, retry.js, email.js, settlement.js, refunds.js, checkout.js) where the risks exist and are discoverable through code analysis.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can identify each risk by reading source files: floating-point math in price.js, missing idempotency in webhook.js, race condition in reservation.js, blind retries in retry.js, swallowed errors in email.js, local time in settlement.js, rounding in refunds.js, and disabled guard in checkout.js with feature-flags.json."
+          "note": "rubric check: Different correct plans can reach Pass as long as risks are prioritized with consequences and expertKey items are addressed; specific tests can vary. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify each risk by reading source files: floating-point math in price.js, missing idempotency in webhook.js, race condition in reservation.js, blind retries in retry.js, swallowed errors in email.js, local time in settlement.js, rounding in refunds.js, and disabled guard in checkout.js with feature-flags.json.)."
         }
       ]
     }

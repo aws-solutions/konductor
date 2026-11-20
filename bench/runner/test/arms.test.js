@@ -121,3 +121,17 @@ test('findAnswerKey finds a key at any depth and ignores node_modules', () => {
     fs.rmSync(d, { recursive: true, force: true });
   }
 });
+
+test('copyFixture renames dotgit/ to .git/ and adds the refs/ folders a fresh checkout lacks', () => {
+  const d = tmp();
+  try {
+    const src = path.join(d, 'src');
+    fs.mkdirSync(path.join(src, 'dotgit'), { recursive: true });
+    fs.writeFileSync(path.join(src, 'dotgit/HEAD'), 'ref: refs/heads/main\n');
+    sandbox.copyFixture(src, path.join(d, 'out'));
+    assert.ok(!fs.existsSync(path.join(d, 'out/dotgit')));
+    for (const r of ['refs/heads', 'refs/tags']) assert.ok(fs.statSync(path.join(d, 'out/.git', r)).isDirectory());
+  } finally {
+    fs.rmSync(d, { recursive: true, force: true });
+  }
+});

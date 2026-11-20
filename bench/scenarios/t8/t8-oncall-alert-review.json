@@ -95,7 +95,34 @@
         "verdict": "pass",
         "note": "All key items are derivable from the fixture: metrics.csv lists the correct pool metric name, alert-firings.csv shows no incident linked to ApiNoTraffic (44 firings), the deployment history shows the Feb 18 rollback, and logs/api-gateway.log:1800-1804 shows db_pool_in_use_ratio=1.00 and the CPU value of 0.41 during the incident."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a practical review but does not prescribe a method or tool; edits.md confirms 'request no longer lists every source'."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains alert rules, firing history, incidents, and logs but does not state which alerts to keep/change/remove; the developer must infer recommendations from the evidence."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key checks specific alert names from alert-rules.yml (ApiLatencyP95, ApiCpuSaturation, DbConnectionPoolExhaustion, Api5xxBurst, etc.), dispositions based on the firing history (e.g., ApiNoTraffic fires repeatedly with no incident), and the rubric rewards keeping alerts that caught real incidents."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can analyze alert-firings.csv to find noisy alerts (ApiNoTraffic fires 30+ times with no incident), duplicate alerts (Api5xxBurst same expr as ApiHigh5xxRate), and alerts that caught real incidents (ApiHigh5xxRate, HealthCheckDown, etc. in INC-250218)."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

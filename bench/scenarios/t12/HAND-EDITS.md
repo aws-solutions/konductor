@@ -30,3 +30,30 @@ From the independent review of 2026-11-20 (fixes 7 and 8). No model call. Every 
 | t12-sdlc-contact-import | 2026-11-20 | alt answer rewritten by hand (state-machine record reader in `src/csv-records.js`, `book.add()` gives the skip reasons, `RowLimitError`, two test files); hidden rule 5 accepts any Error; key `dec-parser` also accepts reader, tokenizer or lexer; prompt, `cmd` check and fixture use `node --test test/*.test.js` | old alt was reworded; the prompt asks only for an Error and does not name a parser, so the key was tied to the reference's wording; `node --test test/` fails on Node 22+ |
 | t12-handoff-export-dates | 2026-11-20 | prompt: the fix must be finished from the hand-off alone as a second step that writes `docs/handoff/BILL-1187-result.md` (readFiles, changedFiles, ranCommands, doneWhen); new hidden `work.test.js` (8 checks, each counted twice) with `.bench-base/`; checks now `fixture_unchanged` on `src/legacy` and `test/fixtures` instead of all of `src` and `test`; rubric item `finished-from-handoff` (anchored); reference gains the fix, the regression test and the result; lazy is now the full hand-off with no second step; alt rewritten by hand (numbered walk-through, `toISOString()` fix, new `test/format-date.test.js` setting the zone in-process); timeout 1800 s | review fix 8: the task planned a hand-off but never required anyone to finish from it; review fix 7: the old alt was reworded |
 | t12-parallel-backlog | 2026-11-20 | prompt: carry the plan out, each package in `work/<P>/` with only its files and a `REPORT.md`, merged in mergeOrder with `docs/plan/merge-log.md`; new hidden `work.test.js` (12 checks, each counted twice: isolation, reports, merge replay from `.bench-base/`, final files, merge log order, A5 before A4, and the release outcome); `fixture_unchanged` on `src` replaced by `docs/team.md`; rubric item `packages-done-apart` (anchored); reference gains four packages, the merged code and the log; lazy is now the full plan with no work; alt gains six packages built independently (nested `config/app.json` with a flattening loader, first-failure login window, explicit CSV `COLUMNS`, CI matrix); CI check accepts any form naming both zones; timeout 2400 s | review fix 8: the task planned parallel work but never required it to be done and merged; the CI regex was tied to the reference's form |
+
+## Fixes from the non-Claude recheck (2026-11-20, mate hand-edit recheck worker, claude)
+
+D-108 recheck: gpt-5.6-luna (openai) checked all four tasks with the four-item checklist. It passed
+t12-handoff-export-dates and t12-spec-rate-limits and found one defect each in the other two. Both fixes are in the
+hidden tests only; versions 2 to 3. Free gates after the fix: unchanged (t12-parallel-backlog 100 / 0 / 20 / 100,
+t12-sdlc-contact-import 100 / 0 / 36.4 / 100).
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-parallel-backlog | 2026-11-20 | `work.test.js` "the limit is a setting": the setting's key path may name login, auth, attempt or fail (was login only) | backlog A4 asks for a configurable limit and names no key, so `auth.maxFailedPerMinute` was failed (recheck: key-matches-fixture, solvable-from-fixture) |
+| t12-sdlc-contact-import | 2026-11-20 | `hidden-import.test.js` rule 1: blank lines may be ignored or skipped; only blank lines may appear in `skipped` | the request says nothing about blank lines, and "a row with no name is skipped with its line" is a fair reading of one (recheck: key-matches-fixture, solvable-from-fixture) |
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t12-handoff-export-dates | gpt-5.6-luna (c06, full) | confirmed |  |
+| t12-parallel-backlog | gpt-5.6-luna (s1, full) | fix needed | gpt-5.6-luna (c06) found the login-only key match too narrow; fixed in this job, and its second pass (s1) passes the key and solvable items; the second pass fails no-method-or-decoy because the request lays out the plan, package and merge steps: owner call, that process is the T12 deliverable |
+| t12-sdlc-contact-import | gpt-5.6-luna (s1, full) | fix needed | gpt-5.6-luna (c06) found the blank-line rule unstated; fixed in this job, and its second pass (s1) passes the key and solvable items; the second pass fails no-method-or-decoy because the request lists the SDLC steps: owner call, that process is the T12 deliverable |
+| t12-spec-rate-limits | gpt-5.6-luna (c06, full) | confirmed |  |

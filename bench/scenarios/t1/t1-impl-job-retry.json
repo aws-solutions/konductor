@@ -137,7 +137,34 @@
         "verdict": "pass",
         "note": "The task is fair and implementable. All required behavior is specified in the request, the solution demonstrates a working implementation without external dependencies or flaky timing, and the hidden tests verify the stated requirements."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt specifies retry semantics (policies by job type, exponential backoff with cap, jitter formula, shouldRetry hook) without mandating implementation method."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture's src/runner.js has WorkerRunner with runOnce/run/stop but no retry logic; JobQueue has takeNext/deadLetter but no availableAt or listDeadLetters."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check behaviors from prompt: jitter formula (delay \u00d7 (1-jitter) to delay \u00d7 (1+jitter)), maxAttempts includes first try, PermanentJobError bypasses retry, retryable=false bypasses, availableAt persists, dead-letter retains reason."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can implement retry from prompt spec; fixture provides the runner, queue, and errors.js (needs PermanentJobError added) to extend."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

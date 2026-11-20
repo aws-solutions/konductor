@@ -189,11 +189,12 @@ work('A4: by default the sixth login after five failures in a minute is refused;
   assert.equal(JSON.parse(evalIn(root, attempts(5))), false, 'five failures do not block the next attempt');
 });
 
-// The setting that holds 5 under a key that names login, at any depth of config/app.json: [object, key] or null.
+// The setting that holds 5 under a key that names login, auth, attempts or failures, at any depth of config/app.json:
+// [object, key] or null. The backlog fixes no key name (a gpt-5.6-luna recheck found `login` alone too narrow).
 function loginSetting(obj, trail = '') {
   for (const [k, v] of Object.entries(obj || {})) {
     const t = `${trail}.${k}`;
-    if (v && typeof v === 'object') { const hit = loginSetting(v, t); if (hit) return hit; } else if (/login/i.test(t) && Number(v) === 5) return [obj, k];
+    if (v && typeof v === 'object') { const hit = loginSetting(v, t); if (hit) return hit; } else if (/login|auth|attempt|fail/i.test(t) && Number(v) === 5) return [obj, k];
   }
   return null;
 }

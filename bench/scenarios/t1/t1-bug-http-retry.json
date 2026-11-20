@@ -124,7 +124,34 @@
         "verdict": "pass",
         "note": "All requirements are specified in the prompt or discoverable from the code. The hidden tests do not rely on unstated behaviors. No timing-dependent or flaky tests observed. All 14 hidden tests pass with the reference solution."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes three symptoms and expected behaviors (body replay, timeout clearing, Retry-After parsing) without prescribing a specific method or framework."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows buggy client.js (line 92 clears body on retry, timeout timer not cleared after response); docs do not reveal the fix."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check retry counts, body replay for string/Buffer, timeout clearing, Retry-After seconds and HTTP-date; all names and paths match fixture, rubric anchors match task."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can identify the bugs from fixture code (body conditional on attempt, timer not cleared) and implement fixes that meet the prompt's behavioral requirements."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

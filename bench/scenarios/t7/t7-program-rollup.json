@@ -122,7 +122,34 @@
         "verdict": "pass",
         "note": "Verified three key values from fixture: ARC points=88 (open Relay rows), BEAM-224 is Blocked with depends_on ARC-117, COVE-354 is Harbor initiative, and S-15 ends 2027-11-26 per capacity.csv; all derivable without authoring scripts."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for executive status without prescribing a method; COVE-354 Harbor ticket is correctly excluded (absent assertions), not a decoy—it is blocked work outside the Relay scope."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains team exports and status updates; it does not state the overall red status, the critical path chain, or that reported colors differ from actual."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The key's assertions (ARC-117, BEAM-224, COVE-331, COVE-342 critical path; amber/red actuals; 88/83/83 remaining points; ARC-143 duplicate) follow from the CSV exports and status docs."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A TPM can reconcile team status claims against export data, count remaining Relay points, identify the cross-team dependency chain, and derive the red status from blockers and capacity."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

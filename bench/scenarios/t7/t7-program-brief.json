@@ -171,22 +171,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal, source files, and output format without naming methods, tools, or revealing the traps like REQ-068 decoy or Atlas/Beacon ownership conflict."
+          "note": "rubric check: Rubric evaluates bottom-line clarity and handling of uncertainty within the program brief scope requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt states the goal, source files, and output format without naming methods, tools, or revealing the traps like REQ-068 decoy or Atlas/Beacon ownership conflict.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain raw evidence (memo, roadmaps, inventories, requests, headcount) with no explicit answer keys or findings lists."
+          "note": "rubric check: Fixture provides memo, roadmaps, and capacity data; no pre-written brief visible. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain raw evidence (memo, roadmaps, inventories, requests, headcount) with no explicit answer keys or findings lists.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All key expectations are derivable from fixture: REQ-012 in open-requests.csv line 12, Atlas/Beacon conflict in their roadmaps, 3-engineer gap from headcount.csv (7 requested - 4 available), milestone dates and constraints in leadership-memo.md."
+          "note": "rubric check: Rubric anchors (2027-08-27 date, 3-engineer gap, Atlas/Beacon/Cedar teams, REQ-012, OIDC) reference fixture entities; no mismatched figures. Earlier glm-5 check of the request, fixture and key: pass (All key expectations are derivable from fixture: REQ-012 in open-requests.csv line 12, Atlas/Beacon conflict in their roadmaps, 3-engineer gap from headcount.csv (7 requested - 4 available), milestone dates and constraints in leadership-memo.md.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can synthesize all required elements from the fixture: calculate the gap, identify conflicts, find dependencies, extract constraints and dates, and recognize the out-of-scope REQ-068 feature flag request."
+          "note": "rubric check: Different brief structures and milestone organizations can Pass if grounded in fixture data. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can synthesize all required elements from the fixture: calculate the gap, identify conflicts, find dependencies, extract constraints and dates, and recognize the out-of-scope REQ-068 feature flag request.)."
         }
       ]
     }

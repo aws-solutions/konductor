@@ -120,7 +120,34 @@
         "verdict": "pass",
         "note": "All key values derive from the fixture data: ATL-007 due 2027-07-20, needed by 2027-07-15 → 5 days late (verified). CND-009 due 2027-08-05, needed by 2027-07-30 → 6 days late (verified). CND-017 due 2027-08-18, needed by 2027-08-10 → 8 days late (verified). BCN-020→CND-020 and CND-020→BCN-020 form a cycle (verified). CND-017→DLT-011→DLT-025→CND-030→DLT-039→DLT-041→DLT-043→DLT-045 is the longest chain (7 edges, chain_score 6) making it the launch driver. Atlas ingestion contract is marked Done but ATL-007 is Open (verified)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to reconcile data and identify conflicts without naming a method; the cancelled ATL-018 ticket is excluded by the key (absent assertion), not presented as a misleading hint."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains raw ticket, dependency, and roadmap data; it does not describe the three late dependencies, the cycle, the launch driver, or the stale milestone."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The key's assertions (ATL-007, CND-009, CND-017, BCN-020/CND-020 cycle, CND-017→DLT-011 launch driver, Atlas ingestion contract milestone) match ticket IDs and dates in fixture files."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can compare dependency-register needed_by dates against ticket due_dates to find late dependencies, check roadmap milestone status against ticket status, and derive the launch slip from the longest chain."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

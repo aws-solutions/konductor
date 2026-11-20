@@ -156,7 +156,34 @@
         "verdict": "pass",
         "note": "The incident mechanism the reviewer found in incident-list.md is no longer graded: the cause and log-citation items were removed from the key and the request after review; the key checks the choice, the rejections and the six constraints with their numbers and sources. (reviewer: The incident-list.md RR-221 incident explicitly describes the failure mechanism as 'upstream connection-pool waiting followed by retries' and identifies the 240→120 pool setting change, directly revealing the cause the key item 'cause-is-pool-reduction-and-retries' requires.)"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt names the three options (rolling, blue/green, canary) but does not prescribe a method for choosing; edits.md confirms 'constraint and option patterns reduced to number, topic and source file (exact phrases such as \"health signal\" removed)'."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains capacity data, cost limits, drain times, and deployment goals but does not state which strategy to choose or describe the finished decision record."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key matches fixture figures (40 hosts, 72% utilization, $2,800/$7,200 costs, 40min drain, 12min revert window, 3 deploys/week) and the rubric's Fail/Partial/Pass anchors tie to those numbers."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer could compare the three strategies against the capacity, cost, and SLO constraints and choose canary with appropriate rollout rules; the expertKey items (blast-radius, draining, rollback-speed) ask for engineering judgment that follows from the fixture evidence."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

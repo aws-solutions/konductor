@@ -135,7 +135,34 @@
         "verdict": "pass",
         "note": "All bugs are solvable with the information provided. The prompt gives clear symptoms and expected behaviors. The tests are deterministic with no timing dependencies (using long 60-second heartbeat intervals in tests). The checks are fair and achievable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes four symptoms (memory, duplicates, callbacks, processes) without prescribing specific fixes."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has EventBus, NotificationService, Heartbeat implementations but doesn't reveal specific bug fixes."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden test files target each symptom: disconnect-cleanup, handler-errors, heartbeat-lifecycle, reconnect."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can examine implementations for listener tracking, error handling, timer cleanup, and connection management."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

@@ -130,29 +130,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json prompt names the requested files, terms, JSON shapes, and preservation constraints but does not prescribe a method or identify hidden traps."
+          "note": "rubric check: Rubric evaluates honest summary, reader fit, and no-padding without requiring a methodology. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json prompt names the requested files, terms, JSON shapes, and preservation constraints but does not prescribe a method or identify hidden traps.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/docs/glossary.md and fixture/docs/product-prd.md show the current Workspace wording and metric facts, not the requested Project answers; no fixture file lists hidden findings or expected outputs."
+          "note": "rubric check: Rubric anchors reference the rename task (Workspace to Project, metrics table only, PRD context unchanged) which is in the request; not a giveaway. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/docs/glossary.md and fixture/docs/product-prd.md show the current Workspace wording and metric facts, not the requested Project answers; no fixture file lists hidden findings or expected outputs.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "fixture/docs/glossary.md lines 5-17 contain the current term, definition, and previous_term field, while fixture/docs/product-prd.md lines 21-49 contain all three metric names, definitions, baselines, targets, and term_change values that the rename updates without changing facts."
+          "note": "rubric check: Anchors correctly reference request scope: glossary entry and PRD metrics table only, previous_term kept in JSON, other sections unchanged. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/docs/glossary.md lines 5-17 contain the current term, definition, and previous_term field, while fixture/docs/product-prd.md lines 21-49 contain all three metric names, definitions, baselines, targets, and term_change values that the rename updates without changing facts.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "task.json gives precise file-scope and JSON-shape constraints, and fixture/docs/glossary.md plus fixture/docs/product-prd.md provide the complete source wording and metric values needed to perform the rename while preserving the PRD context and requirements sections."
+          "note": "rubric check: Different prose in glossary definition can still Pass if the term change is correct, previous_term is kept, and metrics table uses Project. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json gives precise file-scope and JSON-shape constraints, and fixture/docs/glossary.md plus fixture/docs/product-prd.md provide the complete source wording and metric values needed to perform the rename while preserving the PRD context and requirements sections.)."
         }
       ]
     }

@@ -105,29 +105,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The task.json prompt field specifies only the inputs, arithmetic outputs, destination, rounding, and no-recommendation constraint; it names no method, checklist, tool, trap, or expected answer."
+          "note": "rubric check: Rubric asks for calculation accuracy and clear presentation; no ADR, decision-writing, or architecture process required (twin explicitly disables those skills). Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt field specifies only the inputs, arithmetic outputs, destination, rounding, and no-recommendation constraint; it names no method, checklist, tool, trap, or expected answer.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/price-sheet.json supplies raw node inputs and fixture/operating-model.md supplies the 25% reservation, while the other fixture files provide context or decoys without stating computed results."
+          "note": "rubric check: Fixture contains price-sheet.json and operating-model.md with raw data; no pre-computed answer table visible. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/price-sheet.json supplies raw node inputs and fixture/operating-model.md supplies the 25% reservation, while the other fixture files provide context or decoys without stating computed results.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expertKey items in task.json are supported by fixture/operating-model.md, price-sheet.json, price-sheet.md, README.md, traffic-profile.md, candidate-configs.json, and the prompt; cache-105 computes to about 8.25 USD/usable GB."
+          "note": "rubric check: 25% reservation in operating-model.md, node prices in price-sheet.json; cache-105 cheapest at ~$8.25/GB matches fixture arithmetic (650/(105*0.75)=8.25). Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expertKey items in task.json are supported by fixture/operating-model.md, price-sheet.json, price-sheet.md, README.md, traffic-profile.md, candidate-configs.json, and the prompt; cache-105 computes to about 8.25 USD/usable GB.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The task.json prompt identifies the source files, formula inputs, rounding, and output path, and the three node records in fixture/price-sheet.json are sufficient to calculate every requested table value without hidden information."
+          "note": "rubric check: Any correctly computed table with proper rounding and sources earns Pass; wording and structure can vary. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt identifies the source files, formula inputs, rounding, and output path, and the three node records in fixture/price-sheet.json are sufficient to calculate every requested table value without hidden information.)."
         }
       ]
     }

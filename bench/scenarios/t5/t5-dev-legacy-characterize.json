@@ -117,22 +117,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal (write tests to pin behavior), the files (rates.py, tests/), the constraints (do not change existing code, keep unittest discover passing), and does not name a testing method, checklist, or point to specific mutants or edge cases the hidden tests target."
+          "note": "The prompt asks for characterization tests without naming a specific framework, method, or process. No decoy hints are present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture files contain pricing logic, constants, and existing smoke tests, but no document lists the boundary values, edge cases, or mutant-killing assertions the hidden tests look for. The agent must reason from the code's behavior to discover these."
+          "note": "The fixture tests (test_rates.py, test_labels.py) contain only basic smoke tests that do not reveal the edge cases mutants check (weight band boundaries, zone fallback, fuel rounding order, leap day, etc.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Each mutant targets specific code behavior that exists in the fixture: weight_band uses <= for boundary checks, UNKNOWN_ZONE is 5, fuel is added before final rounding, calendar_rules.py includes (2,29) in FIXED_HOLIDAYS, zero weight is valid, RateCalculator resets surcharge labels, next_business_day moves one day, labels.py checks for empty postal, cli.py returns 2 on error, formatters.py uses ROUND_HALF_UP. All follow from the fixture code."
+          "note": "Mutants target rates.py, calendar_rules.py, labels.py, cli.py, formatters.py which all exist in fixture. The rubric 'meaningful-assertions' and 'suite-economy' align with the prompt's request to pin observable values and keep the suite lean."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer reading rates.py, calendar_rules.py, labels.py, cli.py, and formatters.py can discover all 10 edge cases through code analysis: boundary conditions (weight 1.0 falls in 'letter'), unknown zone fallback, fuel calculation order, leap day holiday, zero weight validity, surcharge label reset, next business day increment, postal normalization emptiness check, CLI error status, and half-up rounding. No external knowledge or hidden information is required."
+          "note": "A developer can read the source files (rates.py, etc.) to discover edge cases and write tests that pin the current behavior. The prompt clearly states the goal: tests that survive a refactor."
         }
       ]
     }

@@ -236,29 +236,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json field prompt states the deliverable, source documents, and scope but does not prescribe a method or identify traps or expected answers."
+          "note": "rubric check: Rubric evaluates understanding of patron/staff needs and mandatory vs optional distinction without imposing a method. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the deliverable, source documents, and scope but does not prescribe a method or identify traps or expected answers.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture documents provide source evidence and one explicit vendor conflict, but none lists the final scripted facts or hidden expected findings outright; see fixture/policy, fixture/board, fixture/ebooks, fixture/accessibility, and fixture/meetings."
+          "note": "rubric check: Rubric anchors (12 regular holds, 15 student, 10 senior, 5 children, 20 institutional; 7-day pickup with 10-day North Hill; 24-hour e-book window) are from scripted user; synthesis required. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture documents provide source evidence and one explicit vendor conflict, but none lists the final scripted facts or hidden expected findings outright; see fixture/policy, fixture/board, fixture/ebooks, fixture/accessibility, and fixture/meetings.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden tests' required facts are supplied by task.json.scriptedUser.facts F1-F8, while the grounded requirements are supported by the corresponding fixture policy, data, board, vendor, accessibility, and meeting files. The vendor's 48-hour value is explicitly identified as superseded by scripted fact F4, so it is not a contradiction."
+          "note": "rubric check: Anchors correctly cite scripted facts: 12/15/10/5/20 hold limits by card type, 7-day pickup (10-day North Hill, lockers at Central), 24-hour e-book checkout (not 48), email-first notification. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The hidden tests' required facts are supplied by task.json.scriptedUser.facts F1-F8, while the grounded requirements are supported by the corresponding fixture policy, data, board, vendor, accessibility, and meeting files. The vendor's 48-hour value is explicitly identified as superseded by scripted fact F4, so it is not a contradiction.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "task.json.prompt tells the agent to review the collected documents and write requirements, and task.json.scriptedUser provides answers for the few policy decisions that the fixture leaves open or conflicts on. The fixture contains enough patron, staff, policy, technical, accessibility, and board context to satisfy the hidden checks without hidden or solution files."
+          "note": "rubric check: Different requirement organization can still Pass if limits are correct, board rules are mandatory, and staff workflow is addressed. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json.prompt tells the agent to review the collected documents and write requirements, and task.json.scriptedUser provides answers for the few policy decisions that the fixture leaves open or conflicts on. The fixture contains enough patron, staff, policy, technical, accessibility, and board context to satisfy the hidden checks without hidden or solution files.)."
         }
       ]
     }

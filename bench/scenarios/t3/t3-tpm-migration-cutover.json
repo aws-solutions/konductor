@@ -129,22 +129,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt describes goals, constraints, and output format without naming methods or revealing which option is correct or which is the tempting decoy."
+          "note": "rubric check: Rubric evaluates tradeoff quality, operability, and calculation clarity for the cutover decision requested. Earlier glm-5 check of the request, fixture and key: pass (Prompt describes goals, constraints, and output format without naming methods or revealing which option is correct or which is the tempting decoy.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture file states the correct answer; all files provide evidence (data sizes, costs, limits) that must be reasoned from to reach the decision."
+          "note": "rubric check: Fixture provides options and constraints; no pre-selected answer visible. Earlier glm-5 check of the request, fixture and key: pass (No fixture file states the correct answer; all files provide evidence (data sizes, costs, limits) that must be reasoned from to reach the decision.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All hidden test values (businessCap=150, latencyLimit=30, offHoursCap=450 from traffic-profile.csv; limits from acceptance.json; costs from price-sheet.json) exist in fixture and are consistent."
+          "note": "rubric check: Rubric anchors (1.8 TB not 2.4 TB staging, 450 MB/s off-hours, 150 MB/s business, $6,700 dual_write, $4,300 continuous_replication) match fixture. Earlier glm-5 check of the request, fixture and key: pass (All hidden test values (businessCap=150, latencyLimit=30, offHoursCap=450 from traffic-profile.csv; limits from acceptance.json; costs from price-sheet.json) exist in fixture and are consistent.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "An engineer can calculate each option's metrics from migration-model.json and price-sheet.json, compare against limits in acceptance.json and traffic-profile.csv, and identify continuous_replication as the only option meeting all five constraints."
+          "note": "rubric check: Different prose structure and handoff sequences can achieve Pass if calculations and rejections are grounded in fixture. Earlier glm-5 check of the request, fixture and key: pass (An engineer can calculate each option's metrics from migration-model.json and price-sheet.json, compare against limits in acceptance.json and traffic-profile.csv, and identify continuous_replication as the only option meeting all five constraints.)."
         }
       ]
     }

@@ -68,3 +68,33 @@ Hand-written lazy answers (the review-fix2 lead). Five model-written lazy answer
 ## Merge of origin/feat/bench-pilot-nk (2026-11-20, t1-worker)
 
 The merge with the other session's gate fixes (d4d31105) had no conflicts; all of its lazy, alternative and anchor changes are kept as they are. One follow-up, in the `pilot` field only (no prompt, fixture, key, check or rubric change): `pilot.decision` was still `fix` on tasks whose recorded `pilot.dryRun` now meets every free gate (reference 95+, stub 20-, lazy 40-, alternative 80+), so it was set to `keep` on: t1-bug-cache-ttl, t1-bug-date-range, t1-bug-event-listeners, t1-impl-cli-envprefix, t1-impl-job-retry, t1-impl-money-split, t1-impl-rate-limit, t1-impl-settings-expand, t1-impl-webhook-verify, t1-neg-config-alias, t1-nfr-ndjson-stream, t1-nfr-startup-lazy, t1-ref-dep-upgrade, t1-twin-webhook-routes. t1-ref-callbacks and t1-ref-schema-migrate were left unchanged (owner ruling pending, D-118).
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t1-bug-cache-ttl | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-bug-date-range | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-bug-event-listeners | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-bug-http-retry | glm-5 (c04, full) | confirmed |  |
+| t1-impl-cli-envprefix | glm-5 (c02, full) | confirmed |  |
+| t1-impl-job-retry | glm-5 (c02, full) | confirmed |  |
+| t1-impl-money-split | glm-5 (c03, full) | confirmed |  |
+| t1-impl-rate-limit | deepseek-3.2 (c01, full) | confirmed |  |
+| t1-impl-settings-expand | glm-5 (c02, full) | confirmed |  |
+| t1-impl-webhook-verify | glm-5 (c03, full) | confirmed |  |
+| t1-neg-config-alias | glm-5 (c03, full) | confirmed |  |
+| t1-nfr-ndjson-stream | glm-5 (c04, full) | confirmed |  |
+| t1-nfr-report-queries | glm-5 (c04, full) | confirmed |  |
+| t1-nfr-startup-lazy | glm-5 (c03, full) | confirmed |  |
+| t1-ref-callbacks | - | not checked | owned by chat-50 (D-118), left alone |
+| t1-ref-dep-upgrade | glm-5 (c04, full) | confirmed |  |
+| t1-ref-esm-migrate | glm-5 (r3, rubric) | confirmed |  |
+| t1-ref-schema-migrate | - | not checked | owned by chat-50 (D-118), left alone |
+| t1-twin-webhook-routes | glm-5 (c02, full) | confirmed |  |

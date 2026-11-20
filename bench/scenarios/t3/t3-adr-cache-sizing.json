@@ -68,7 +68,10 @@
       "lazy": 18,
       "alt": 100,
       "date": "2026-11-20"
-    }
+    },
+    "blockers": [
+      "key-names: limit names resident_hit_ratio_percent, monthly_budget_usd, rpo_minutes, rto_minutes are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
+    ]
   },
   "version": 4,
   "targetSkills": [
@@ -116,29 +119,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json:3 specifies the deliverable, input interfaces, and exact output schema, but does not prescribe a method, tool, checklist, or specific choice or trap."
+          "note": "rubric check: Rubric asks for reasoning about sizing, tradeoffs, and grounded rejections—all within ADR decision scope. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json:3 specifies the deliverable, input interfaces, and exact output schema, but does not prescribe a method, tool, checklist, or specific choice or trap.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/README.md:3-7 and the input files provide source facts and constraints, not a prewritten decision or list of findings; the candidate choice and computed values still require reasoning."
+          "note": "rubric check: Fixture provides raw inputs; no pre-selected answer visible. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/README.md:3-7 and the input files provide source facts and constraints, not a prewritten decision or list of findings; the candidate choice and computed values still require reasoning.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "fixture/candidate-configs.json:4-22, traffic-profile.md:8-11, operating-model.md:3-13, service-requirements.md:7-13, node-benchmarks.csv:2-4, and price-sheet.json:5-7 support the expected options, limits, arithmetic, availability, and tradeoffs."
+          "note": "rubric check: Rubric figures match fixture: 25% reservation, 118 GB peak, 800 r/s production (not 600 staging), node prices $650/$1400, RPO/RTO 0 min / 3 min. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/candidate-configs.json:4-22, traffic-profile.md:8-11, operating-model.md:3-13, service-requirements.md:7-13, node-benchmarks.csv:2-4, and price-sheet.json:5-7 support the expected options, limits, arithmetic, availability, and tradeoffs.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture contains all required topology, memory-reservation, peak-demand, benchmark, price, and service-objective inputs; the calculations and acceptable candidates follow directly from those files."
+          "note": "rubric check: Either balanced-105 or wide-209 can be chosen with valid reasoning; different prose and comparisons can Pass. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture contains all required topology, memory-reservation, peak-demand, benchmark, price, and service-objective inputs; the calculations and acceptable candidates follow directly from those files.)."
         }
       ]
     }

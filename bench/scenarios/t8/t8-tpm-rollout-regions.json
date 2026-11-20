@@ -173,22 +173,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the goal, output format, and constraints without naming methods or pointing at traps; it asks for a signable release plan from folder material."
+          "note": "rubric check: Rubric evaluates signoff quality and expert key coverage for the rollout plan requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal, output format, and constraints without naming methods or pointing at traps; it asks for a signable release plan from folder material.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain constraints and evidence the agent must reason from; stale-launch-notes.md is explicitly marked superseded, and no file lists the expected schedule."
+          "note": "rubric check: Fixture provides schedule, teams, and constraints; no pre-written plan visible. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain constraints and evidence the agent must reason from; stale-launch-notes.md is explicitly marked superseded, and no file lists the expected schedule.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All key values match fixture sources: teams from team-list.md, roles from raci.md, metrics from metrics-catalogue.md, freeze times from change-calendar.md, certification date from partner-certification.md, canary percent and bake window from capacity-note.md and rollout-runbook.md."
+          "note": "rubric check: Rubric references teams, dates, and decision criteria from fixture; expertKey items match rollout planning requirements. Earlier glm-5 check of the request, fixture and key: pass (All key values match fixture sources: teams from team-list.md, roles from raci.md, metrics from metrics-catalogue.md, freeze times from change-calendar.md, certification date from partner-certification.md, canary percent and bake window from capacity-note.md and rollout-runbook.md.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The schema ordering (schema-compatibility.md), API-before-client sequencing (dependency-note.md), region order with holidays and certification constraints (change-calendar.md, partner-certification.md, oncall-rota.md, region-readiness.md), and metric gates follow from the fixture."
+          "note": "rubric check: Different valid rollout structures and milestone organizations can Pass if grounded in fixture data. Earlier glm-5 check of the request, fixture and key: pass (The schema ordering (schema-compatibility.md), API-before-client sequencing (dependency-note.md), region order with holidays and certification constraints (change-calendar.md, partner-certification.md, oncall-rota.md, region-readiness.md), and metric gates follow from the fixture.)."
         }
       ]
     }

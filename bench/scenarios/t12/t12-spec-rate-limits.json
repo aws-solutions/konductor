@@ -134,5 +134,34 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "review": {
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt requests requirements, design, and ordered tasks without naming an external method or framework; the superseded IP note is in the fixture, not a misleading prompt hint."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The product document supplies the agreed requirements and the old IP proposal is explicitly marked superseded; no finished limiter design or implementation is present in the fixture."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The key's paths and behaviors are grounded in the product request, config/plans.json, data/keys.json, server/auth code, shared kv client, and the required JSON structure."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can produce the spec from the product rules and codebase; the open burst question and either store-failure policy are explicitly discoverable design decisions, not hidden facts."
+        }
+      ]
+    }
+  }
 }

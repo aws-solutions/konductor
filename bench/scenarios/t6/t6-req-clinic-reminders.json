@@ -217,22 +217,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal, deliverable location, and output format without naming methods, tools, or pointing at specific answers the tests look for."
+          "note": "rubric check: Rubric evaluates requirement implementability and completeness without demanding a methodology not requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt states the goal, deliverable location, and output format without naming methods, tools, or pointing at specific answers the tests look for.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture files contain source material (meeting notes, data exports, policies) but no document lists the hidden facts or test answers outright."
+          "note": "rubric check: Rubric anchors (72h and 24h reminders, 20:00-08:00 quiet hours, English/Spanish templates, STOP suppression, rollout dates) are from scripted user; not a giveaway. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source material (meeting notes, data exports, policies) but no document lists the hidden facts or test answers outright.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All scriptedUser facts are reasonable decisions a user could make; clinic names, timezones, consent fields, and appointment statuses exist in fixture files like clinic-directory.csv, appointment-export.csv, and data-dictionary.md."
+          "note": "rubric check: Anchors correctly cite scripted facts: two reminders at 72h/24h, quiet hours 20:00-08:00 local time, Cedar Grove and Harbor Point March 3, Northgate March 17. Earlier glm-5 check of the request, fixture and key: pass (All scriptedUser facts are reasonable decisions a user could make; clinic names, timezones, consent fields, and appointment statuses exist in fixture files like clinic-directory.csv, appointment-export.csv, and data-dictionary.md.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture provides clinic data, privacy constraints, booking process, open decisions, and enough context to write requirements that pass the hidden tests with scripted user answers."
+          "note": "rubric check: Different requirement structure can still Pass if rules are testable, confirmed vs open are separated, and rollout dates are correct. Earlier glm-5 check of the request, fixture and key: pass (The fixture provides clinic data, privacy constraints, booking process, open decisions, and enough context to write requirements that pass the hidden tests with scripted user answers.)."
         }
       ]
     }

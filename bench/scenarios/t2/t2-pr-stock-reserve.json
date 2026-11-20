@@ -145,29 +145,29 @@
       }
     ],
     "recheck": {
-      "family": "qwen",
-      "model": "qwen3-coder-next",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for a general code review without naming a specific method, checklist, process, or pointing at planted problems/decoys/counts."
+          "note": "rubric check: Rubric aligns with request to check that change 'preserves behavior callers and operators rely on'. Earlier qwen3-coder-next check of the request, fixture and key: pass (Prompt asks for a general code review without naming a specific method, checklist, process, or pointing at planted problems/decoys/counts.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains intentional safe practices (structuredClone in memory-store.js:39, bodyJson accepting both string/object in router.js:4-7) but no comment/test/doc/file name states a planted problem. Actual bugs are in inventory-service.js and tests."
+          "note": "rubric check: Judge-only rubric; no answer content in criterion. Earlier qwen3-coder-next check of the request, fixture and key: pass (Fixture contains intentional safe practices (structuredClone in memory-store.js:39, bodyJson accepting both string/object in router.js:4-7) but no comment/test/doc/file name states a planted problem. Actual bugs are in inventory-service.js and tests.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 6 key items correctly reference inventory-service.js:44-58, 68-74, 84 and tests/reservation.test.js:60. Severity levels (critical, high, medium, low) are defensible for the described concurrency and error-handling issues."
+          "note": "rubric check: findingsKey references inventory service elements (reserve, held event, expiry sweep, release) in fixture code. Earlier qwen3-coder-next check of the request, fixture and key: pass (All 6 key items correctly reference inventory-service.js:44-58, 68-74, 84 and tests/reservation.test.js:60. Severity levels (critical, high, medium, low) are defensible for the described concurrency and error-handling issues.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "All 6 issues are directly observable from reading the fixture: reserve() separate awaits (44-57), unpublished promise (58), publish-before-persist (68-73), catch returns success (74), timezone string comparison (84), flaky 15ms sleep test."
+          "note": "rubric check: Different valid findings can Pass; rubric judges consequence explanation. Earlier qwen3-coder-next check of the request, fixture and key: pass (All 6 issues are directly observable from reading the fixture: reserve() separate awaits (44-57), unpublished promise (58), publish-before-persist (68-73), catch returns success (74), timezone string comparison (84), flaky 15ms sleep test.)."
         }
       ]
     }

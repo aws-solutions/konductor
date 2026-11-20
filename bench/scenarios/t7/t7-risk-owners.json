@@ -161,7 +161,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from fixture data: (1) MOB-089 has blank assignee, due 2027-08-13, depends on MOB-063 - confirms unowned chain risk; (2) Vendor contract states v1 retirement on 2027-08-20, MOB-052 is the compatibility ticket - confirms vendor risk with correct trigger date; (3) Session Bridge chain MOB-014 through MOB-158 all assignee='Priya Nair' - confirms key-person risk. The 2027-09-06 freeze date is confirmed as a Monday public holiday in capacity.csv."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for risk identification without prescribing a method; MOB-144 resolved entitlement issue is correctly excluded (absent assertion), not a decoy—it is a closed risk per meeting notes."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains tickets, meeting notes, and vendor contract; it does not list the risk categories, owners, or trigger dates required by the key."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The key's assertions (MOB-052 vendor risk with 2027-08-20 trigger, MOB-089 unowned ticket due 2027-08-13, MOB-158 chain freeze date 2027-09-06) match fixture ticket and meeting-note data."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A TPM can identify key-person risk from single-owner chain, vendor risk from contract retirement date, unowned work from blank assignee, and schedule risk from freeze date vs chain completion."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

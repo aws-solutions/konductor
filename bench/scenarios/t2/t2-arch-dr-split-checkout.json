@@ -191,29 +191,29 @@
       }
     ],
     "recheck": {
-      "family": "glm",
+      "family": "zhipu",
       "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to review claims against supporting material without naming a specific method, checklist, planted problem, decoy, or problem count."
+          "note": "rubric check: Rubric asks for concrete consequences + actionable fixes matching request to check 'concrete risks that could change approval'. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks to review claims against supporting material without naming a specific method, checklist, planted problem, decoy, or problem count.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No comments, tests, docs, or file names in the fixture state any planted problem; findings derive from analysis of normal design documents."
+          "note": "rubric check: Judge-only rubric; Fail/Partial/Pass are quality thresholds. Earlier glm-5 check of the request, fixture and key: pass (No comments, tests, docs, or file names in the fixture state any planted problem; findings derive from analysis of normal design documents.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All seven key items correctly reference their sections in checkout-service-extraction.md, and severities (critical, high, medium) are defensible given the ownership conflicts, workflow gaps, and incident history in the fixture."
+          "note": "rubric check: findingsKey references checkout service extraction elements (shared tables, payment auth, latency, rollout) in fixture. Earlier glm-5 check of the request, fixture and key: pass (All seven key items correctly reference their sections in checkout-service-extraction.md, and severities (critical, high, medium) are defensible given the ownership conflicts, workflow gaps, and incident history in the fixture.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Each finding is discoverable by cross-referencing the design against data-ownership.md, service-targets.yaml, and incident-2024-11.md."
+          "note": "rubric check: Different valid findings can Pass; rubric judges explanation quality. Earlier glm-5 check of the request, fixture and key: pass (Each finding is discoverable by cross-referencing the design against data-ownership.md, service-targets.yaml, and incident-2024-11.md.)."
         }
       ]
     }

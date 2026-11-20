@@ -26,3 +26,18 @@ Who: claude (mate review-fix2 worker session). The three unanchored items now ca
 - `t11-merge-pricing-branches`: release-record.
 - `t11-resume-csv-export`: focused-change.
 - `t11-twin-pricing-validation`: rule-coverage and error-message added.
+
+## Non-Claude recheck (D-108, 2026-11-20, mate hand-edit recheck worker)
+
+Every Claude hand edit above was checked again. Free first: the free gates (reference, empty, lazy, alternative) and
+two scans (rubric anchors and hidden-test names found only in the reference, not in the request or fixture). Then a
+non-Claude model ran the four-item checklist ("full": request, fixture, hidden key and rubric; "rubric": the rubric
+edits, on top of the earlier non-Claude check of the request, fixture and key). Verdicts are in each task's
+`review.recheck`; calls and credits in reports/hand-edit-recheck-2026-11-20.md.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t11-media-returns-whiteboard | qwen3-coder-next (earlier, after the last edit) | confirmed |  |
+| t11-merge-pricing-branches | qwen3-coder-next (earlier, after the last edit) | confirmed | qwen3-coder-next (after the last edit) failed solvable-from-fixture on a missing test/feature-pricing.test.js; that file comes from the feature branch the task merges, so the T11 worker disposed it as a misread and this job agrees |
+| t11-resume-csv-export | qwen3-coder-next (earlier, after the last edit) | confirmed | qwen3-coder-next failed two items because the fixture lacks the CSV behaviour; that behaviour is the work the request asks for, so the T11 worker disposed it as a misread and this job agrees |
+| t11-twin-pricing-validation | qwen3-coder-next (earlier, after the last edit) | confirmed |  |

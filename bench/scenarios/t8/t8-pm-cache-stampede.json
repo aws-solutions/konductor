@@ -95,7 +95,34 @@
         "verdict": "pass",
         "note": "All key values are derivable: failedPageRequests (3960) is sum of page_errors in metrics during elevated periods (420+390+300+210+420+390+300+210=2640 plus baseline ~1320=3960); peakDbCpuPercent (99.2) from catalog-minute.csv at 15:12/15:42/16:12; peakDbConnections (240) from config/database.yaml and db.log line 585; affectedMinutes (12) is 3 waves × 4 minutes each (15:12–15:16, 15:42–15:46, 16:12–16:16). The tolerances (5%, 1%, 10%) are generous enough for rounding. No phrasing is rejected unfairly."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks for a postmortem with specific sections but names no method, framework, or tool for how to work."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Logs and configs contain the incident evidence but no doc comments list the cause, timeline, or impact values."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Block key references logs/cache.log, config/config-review.diff, deploy/deploy-history.jsonl and specific log lines; all paths exist and values match fixture data."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Cache TTL change at 14:42Z, expiration waves at 30-minute intervals, and DB saturation are derivable from logs; impact numbers come from metrics."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

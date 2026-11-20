@@ -114,22 +114,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the goal (strengthen tests for tokenizer, parser, validator, printer) and constraints without naming methods or pointing to the mutants."
+          "note": "Prompt asks to strengthen tests for tokenizer, parser, validator and printer with no prescribed method; no decoy hints present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No fixture file lists the bugs or expected findings; only the format spec, API docs, source code, and existing tests exist."
+          "note": "Fixture tests use short well-formed inputs; no comments or docs reveal the edge cases mutants test (end-of-string backslash, duplicate keys, nesting limit, etc.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Each mutant tests a behavior documented in format.md or observable from src/ files: escape handling, section depth, numeric range, duplicate keys, location tracking, quantity conversion, printer quoting, tokenizer reuse, and timeout validation."
+          "note": "Mutant files (src/tokenizer.js, src/parser.js, src/values.js, src/validator.js, src/printer.js) all exist in fixture; rubric anchors match stated outcomes."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "format.md documents the grammar and constraints (escape sequences, quantity range 0-1000000, eight levels of nesting, two decimal places); api.md documents error line/column; src/ files implement these, so gaps are discoverable through careful reading."
+          "note": "Developer can explore tokenizer, parser, validator and printer behavior from fixture code and write tests for boundary cases without seeing hidden tests."
         }
       ]
     }

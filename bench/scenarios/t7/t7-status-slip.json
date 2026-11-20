@@ -122,7 +122,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from fixture data: critical path (PLT-014→PAY-021→CHK-017→CHK-026) via depends_on column; 24 points sum; PAY-028/PAY-021 date conflict (2027-06-26 < 2027-06-28); Jon Bell's 13 points vs 0.9 adjusted capacity; 10 scope-creep points (PAY-034, CHK-037, RISK-023 created after 2027-05-28 lock). Tolerances are reasonable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a leadership update without prescribing a method. The edits.md confirms planted ticket IDs were moved into the ordinary sequence (not 9xx block), analysis conventions removed from README, and CHK-040 is a decoy (blocked but its prerequisite CHK-041 is done, so it should not be escalated). The key tests that CHK-040 is absent from risks."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains tickets.csv, roadmap.md, team-capacity.csv, holidays.csv, last-week-status.md, and README.md. The README explains reporting conventions but the edits.md confirms analysis conventions were removed. The agent must identify the critical path from dependencies, calculate remaining points, and identify risks from the ticket data."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All ticket IDs in key assertions (PLT-014, PAY-021, CHK-017, CHK-026, PAY-028, PAY-031, PAY-034, CHK-037, RISK-023, CHK-040, CHK-041) exist in tickets.csv. The critical path (PLT-014 -> PAY-021 -> CHK-017 -> CHK-026) is derivable from depends_on. Velocity 18, remaining 24 points, and revised date 2027-07-25 match fixture data. The request's JSON shape matches key paths. The rubric aligns with expected prose."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can identify the critical chain from depends_on relationships, calculate remaining points on that chain (PLT-014 + PAY-021 + CHK-017 + CHK-026 = 5+5+8+8 = 26 minus progress), compute sprints needed from velocity, and identify date conflicts (PAY-028 due 2027-06-26 before PAY-021 due 2027-06-28). Different valid risk categorizations would pass if they name the key issues."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

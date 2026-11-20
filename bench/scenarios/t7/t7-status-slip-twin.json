@@ -114,7 +114,34 @@
         "verdict": "pass",
         "note": "All key values are derivable from the fixture with documented conventions: open epic counts match direct counts of open-status tickets, Eve Grant closed = 3+5+8=16 from RISK-015/031/034, total open points = 597 sums non-blank estimates, Asha Iyer closed = 2 (PAY-018) excluding PAY-007 which is In Progress."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a finance reconciliation without prescribing a method. The key requires counting closed points by assignee for S29 and S30, open tickets by epic, and total open points. No decoys are present in this simpler counting task. The fixture is shared with t7-status-slip but the request differs (finance numbers vs status report)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains tickets.csv and roadmap.md with sprint labels. The agent must count closed points per assignee for S29/S30, count open tickets per epic, and sum open points (blanks as zero). The README conventions explain the counting rules but do not reveal the totals."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All names (Asha Iyer, Jules Ray, Eve Grant, Lana Price, Nia Cole, Dev Patel) appear as assignees in tickets.csv. All epics (Account Recovery, Checkout Experience, Merchant Console, Order History, Payments Core, Payments and Checkout Launch, Reliability Follow-ups) exist in tickets.csv. The expected counts (597 total open points, etc.) are derivable from the fixture. The request's JSON shape matches key paths."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can filter tickets by sprint label (S29, S30) and status (Done) to compute closed points per assignee, filter by open statuses to count tickets per epic and sum points (blanks as zero per README conventions). Different valid approaches (e.g., different name normalization) would pass if they produce correct counts."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {

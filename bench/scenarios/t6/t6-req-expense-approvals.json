@@ -232,29 +232,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The task.json prompt field states the goal, source-document categories, output path, and scope constraint, but names no method, tool, checklist, trap, or answer."
+          "note": "rubric check: Rubric evaluates vendor-actionable requirements and charity context understanding without imposing a method. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt field states the goal, source-document categories, output path, and scope constraint, but names no method, tool, checklist, trap, or answer.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains evidence, outdated policy context, and explicit open questions rather than a hidden-answer list; for example, draft-requirements-v1.md lines 85-90 leave self-approval and receipt standards unresolved."
+          "note": "rubric check: Rubric anchors (£1,000 second approver, £100 self-approval, 30-day submission, 7-year retention, payment run dates) are from scripted user; synthesis required. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture contains evidence, outdated policy context, and explicit open questions rather than a hidden-answer list; for example, draft-requirements-v1.md lines 85-90 leave self-approval and receipt standards unresolved.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The grounded hidden expectations are supported by fixture/handbook/finance-policy-excerpt.md lines 21, 28, and 61 and fixture/grants-list.md line 50; the remaining six facts are explicitly available as scriptedUser facts in task.json."
+          "note": "rubric check: Anchors correctly cite scripted facts: second Finance approver over £1,000, self-approval up to £100, 30-day submission deadline, 7-year retention, payment runs 10th and 25th. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The grounded hidden expectations are supported by fixture/handbook/finance-policy-excerpt.md lines 21, 28, and 61 and fixture/grants-list.md line 50; the remaining six facts are explicitly available as scriptedUser facts in task.json.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful engineer can derive the grounded requirements from the handbook, grants, org chart, audit/data notes, and meetings, then ask the six unresolved stakeholder questions represented by task.json scriptedUser; the required output format is explicit in task.json prompt."
+          "note": "rubric check: Different requirement organization can still Pass if all limits are testable and grant compliance is addressed. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can derive the grounded requirements from the handbook, grants, org chart, audit/data notes, and meetings, then ask the six unresolved stakeholder questions represented by task.json scriptedUser; the required output format is explicit in task.json prompt.)."
         }
       ]
     }

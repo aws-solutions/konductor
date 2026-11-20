@@ -130,29 +130,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The task.json prompt asks for a CSV conversion, names the output columns, and defines the type field, but does not prescribe a method or point to hidden traps."
+          "note": "rubric check: Rubric evaluates CSV formatting, edge-case handling, and honest summary without imposing a method. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt asks for a CSV conversion, names the output columns, and defines the type field, but does not prescribe a method or point to hidden traps.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/docs/release-notes.md contains the source release notes and their ordinary bullet content, including the comma-containing phrase and alternate date; it does not state a solution or hidden-test answer key."
+          "note": "rubric check: Rubric anchors (comma in quoted text, odd date format, wrapped lines) reference edge cases visible in fixture; the correct handling is not given. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/docs/release-notes.md contains the source release notes and their ordinary bullet content, including the comma-containing phrase and alternate date; it does not state a solution or hidden-test answer key.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The expected versions, dates, headings, 67 bullet rows, wrapped content, and quoted comma-containing summary all appear in fixture/docs/release-notes.md (release sections begin at lines 3-123)."
+          "note": "rubric check: Anchors correctly reference fixture: 'quotes, commas, and other punctuation' field, Jan 28 date format vs others, potential wrapped bullets. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expected versions, dates, headings, 67 bullet rows, wrapped content, and quoted comma-containing summary all appear in fixture/docs/release-notes.md (release sections begin at lines 3-123).)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "task.json provides the destination path, four columns, row and type rules, while fixture/docs/release-notes.md provides all values needed to produce the reference CSV; no hidden information is required."
+          "note": "rubric check: Different date format choices and quoting styles can still Pass if all edge cases are handled correctly and format is consistent. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json provides the destination path, four columns, row and type rules, while fixture/docs/release-notes.md provides all values needed to produce the reference CSV; no hidden information is required.)."
         }
       ]
     }

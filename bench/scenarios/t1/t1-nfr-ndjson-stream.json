@@ -171,7 +171,34 @@
         "verdict": "pass",
         "note": "All requirements are achievable with standard library only. The histogram approach (array('Q') with 60001 slots per endpoint) is a well-known bounded-memory quantile technique. Tests have reasonable timeouts (10s per test, 15s for node bridge). No timing-dependent or flaky tests observed."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes performance problem, memory ceiling, and exact percentile requirements without prescribing histogram or any specific algorithm."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows slow aggregation.py retaining latency lists; data/sample.ndjson matches prompt's expected values but does not reveal streaming solution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check 8 MiB ceiling, exact percentiles, malformed counting, gzip support; sample.ndjson values match prompt expectations, rubric anchors fit the task."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can see current implementation retains records and understand from prompt that single-pass bounded memory is required; alternate correct implementations possible."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

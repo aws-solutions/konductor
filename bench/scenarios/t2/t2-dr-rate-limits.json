@@ -213,29 +213,29 @@
       }
     ],
     "recheck": {
-      "family": "minimax",
-      "model": "minimax-m2.5",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for thorough review without specifying method, checklist, process, or pointing at planted problems/decoys/number of problems."
+          "note": "rubric check: Rubric matches request for 'gaps in failure handling, performance risks, contract compliance issues' - no added method. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks for thorough review without specifying method, checklist, process, or pointing at planted problems/decoys/number of problems.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Context files (incident-report, customer-contracts) provide background but do not explicitly state problems in specific sections. No comment, test, or file reveals the planted issues."
+          "note": "rubric check: Judge-only rubric; anchors describe quality levels, not finding content. Earlier minimax-m2.5 check of the request, fixture and key: pass (Context files (incident-report, customer-contracts) provide background but do not explicitly state problems in specific sections. No comment, test, or file reveals the planted issues.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All 8 key items correctly map to design document sections: k1 (3.4 - failure handling), k2 (3.1 - fixed window), k3 (3.5 - 2 round trips), k4 (3.1/3.12 - clock skew), k5 (3.3 - enterprise), k6 (3.10 - headers), k7 (3.2 - replication), k8 (3.6 - circuit breaker). Severities are defensible (critical for incident-related failure handling)."
+          "note": "rubric check: findingsKey references rate limiting concepts (fixed window, Redis, latency budget, tiers) present in fixture design. Earlier minimax-m2.5 check of the request, fixture and key: pass (All 8 key items correctly map to design document sections: k1 (3.4 - failure handling), k2 (3.1 - fixed window), k3 (3.5 - 2 round trips), k4 (3.1/3.12 - clock skew), k5 (3.3 - enterprise), k6 (3.10 - headers), k7 (3.2 - replication), k8 (3.6 - circuit breaker). Severities are defensible (critical for incident-related failure handling).)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Careful reviewer can find issues: design explicitly states fixed window algorithm, two Redis round trips, failure handling approach; customer-contracts.md shows enterprise requirements not addressed; incident report provides context for failure handling concerns."
+          "note": "rubric check: Alternative well-reasoned reviews can Pass; rubric judges grounding in packet. Earlier minimax-m2.5 check of the request, fixture and key: pass (Careful reviewer can find issues: design explicitly states fixed window algorithm, two Redis round trips, failure handling approach; customer-contracts.md shows enterprise requirements not addressed; incident report provides context for failure handling concerns.)."
         }
       ]
     }

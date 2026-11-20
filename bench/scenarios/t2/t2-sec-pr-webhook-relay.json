@@ -151,29 +151,29 @@
       }
     ],
     "recheck": {
-      "family": "qwen",
-      "model": "qwen3-coder-next",
+      "family": "zhipu",
+      "model": "glm-5",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "prompt.txt does not name a review method, checklist, or process, and does not point at a planted problem, decoy, or number of problems. It asks for concrete release blockers without guiding the reviewer toward specific issues."
+          "note": "rubric check: Rubric aligns with request for 'concrete consequences in this deployment rather than style commentary' for security sign-off. Earlier qwen3-coder-next check of the request, fixture and key: pass (prompt.txt does not name a review method, checklist, or process, and does not point at a planted problem, decoy, or number of problems. It asks for concrete release blockers without guiding the reviewer toward specific issues.)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "No comment, test, doc, or file name in the fixture states any of the six planted problems (k1-k6). The decoy at src/index.js:8 logs a non-secret publicKeyId which is not presented as a problem."
+          "note": "rubric check: Judge-only rubric; no answer hints in criterion. Earlier qwen3-coder-next check of the request, fixture and key: pass (No comment, test, doc, or file name in the fixture states any of the six planted problems (k1-k6). The decoy at src/index.js:8 logs a non-secret publicKeyId which is not presented as a problem.)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All key items match the fixture exactly: k1 at src/webhooks/receiver.js:24 (JSON.stringify), k2 at src/webhooks/signatures.js:14 (string equality), k3 at src/router.js:10-14 (no replay window/dedup), k4 at src/notify/callback.js:12-18 (follows redirects, no validation), k5 at src/config.js:9 (default test_key_123), k6 at src/webhooks/receiver.js:32-33 (logs header). Severity ratings are defensible."
+          "note": "rubric check: findingsKey references webhook security elements (signature verification, timing attack, replay, SSRF) in fixture code. Earlier qwen3-coder-next check of the request, fixture and key: pass (All key items match the fixture exactly: k1 at src/webhooks/receiver.js:24 (JSON.stringify), k2 at src/webhooks/signatures.js:14 (string equality), k3 at src/router.js:10-14 (no replay window/dedup), k4 at src/notify/callback.js:12-18 (follows redirects, no validation), k5 at src/config.js:9 (default test_key_123), k6 at src/webhooks/receiver.js:32-33 (logs header). Severity ratings are defensible)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A careful reviewer can find all six items directly in the fixture code: line numbers match, severity ratings are defensible based on the impact described, and no external context is needed beyond reading the changed files."
+          "note": "rubric check: Different correct security reviews can Pass; rubric judges grounding in packet. Earlier qwen3-coder-next check of the request, fixture and key: pass (A careful reviewer can find all six items directly in the fixture code: line numbers match, severity ratings are defensible based on the impact described, and no external context is needed beyond reading the changed files.)."
         }
       ]
     }

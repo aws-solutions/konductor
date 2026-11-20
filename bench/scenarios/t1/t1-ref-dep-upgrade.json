@@ -137,7 +137,34 @@
         "verdict": "pass",
         "note": "The task is achievable with information in the fixture. The v2 README and MIGRATION.md explain the API changes, and the CHANGELOG documents the CSV newline/escaping behavior. No external knowledge is required."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt names the Gridline v2 exports to use but does not prescribe a method or framework; no misleading hints point away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows v1 code using formatTable/quickTable and v2 exports renderTable/renderCsv; it does not list the completed migration or hidden test expectations."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check v2 require path, removed quickTable/formatTable names, compact tabs, and CSV behavior; all paths and function names exist in fixture, rubric anchors match the task outcome."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can see v1 code in src/report.js and v2 exports in vendor/gridline/v2; prompt explains what to change and what to preserve, allowing an alternate correct implementation."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},
