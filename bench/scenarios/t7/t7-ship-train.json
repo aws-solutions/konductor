@@ -1,7 +1,7 @@
 {
   "id": "t7-ship-train",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose gives the customer promise and the most likely release near the beginning and distinguishes those two decisions (code cannot check this because it cannot evaluate prose priority or meaning).",
+      "criterion": "The prose gives the customer promise and the most likely release near the beginning and distinguishes those two decisions. Fail: one release is given for both questions, or the promise equals the most likely train. Partial: both are named but the dates or the reason for the gap are missing. Pass: the opening gives the most likely train 2027.06 (released 2027-06-18) and the customer commitment 2027.07 (2027-07-30), and says they differ because the feature must spend one full train behind its flag. (code cannot check this because it cannot evaluate prose priority or meaning).",
       "weight": 2
     },
     {
       "id": "reasoning",
-      "criterion": "The prose connects the dates and numbers to the supplied records and states the important uncertainty without claiming a guarantee for the likely date (code cannot check this because it cannot judge explanatory reasoning in prose).",
+      "criterion": "The prose connects the dates and numbers to the supplied records and states the important uncertainty without claiming a guarantee for the likely date. Fail: no numbers, or the release date is used as the merge deadline. Partial: some numbers appear but the branch cut, the unestimated tickets or the slip risk is missing. Pass: the prose uses the 2027-05-07 branch date, the 110 points over 13 Storage Engine initiative tickets with the two blank estimates sized at 8 each, 30 points per ordinary sprint (hackathon excluded) giving four sprints to 2027-04-11, says a miss of the cut costs a whole train, notes dependencies could lengthen the chain, and leaves the archive-migration item out. (code cannot check this because it cannot judge explanatory reasoning in prose).",
       "weight": 2
     }
   ],
@@ -184,7 +184,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

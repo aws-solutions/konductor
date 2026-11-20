@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-suite-audit",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "phases2": [
@@ -55,7 +55,7 @@
   "rubric": [
     {
       "id": "explanation",
-      "criterion": "The audit explains why each identified test can pass while the behavior is wrong and names a concrete replacement assertion (code cannot check this because it depends on the clarity of the prose).",
+      "criterion": "The audit explains why each identified test can pass while the behavior is wrong and names a concrete replacement assertion. Fail: the report lists tests as weak with no reason, or its findings say only \"add more assertions\". Partial: it explains the weakness for some tests, but the fix field for several of them is generic, or a finding does not tie to the billing calculation bug. Pass: for each finding it names the test, shows how it can pass while the billing behavior is wrong (an assertion that is always true, a mock that returns the answer, a value never compared), and names the exact assertion or case to put in its place, with a severity that matches the risk, and the JSON list is the last content in docs/TEST-AUDIT.md.",
       "weight": 2
     }
   ],
@@ -279,7 +279,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

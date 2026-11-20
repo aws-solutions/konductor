@@ -27,6 +27,10 @@ function parseInvoices(str) {
   });
 }
 
+function print(rows) {
+  console.log(JSON.stringify(rows.map(r => ({ id: r.id, minor: r.amount.minor, currency: r.amount.currency.code }))));
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (command === "format") { 
@@ -42,18 +46,14 @@ function main(argv) {
   }
   if (command === "split") {
     const o = options(args);
-    const amount = Number(o.amount);
     const parts = parseWeights(o.weights);
-    const results = splitByWeights(amount, parts);
-    console.log(JSON.stringify(results.map(r => ({ id: r.id, minor: r.amount, currency: o.currency }))));
+    print(splitByWeights(Money.fromMinor(Number(o.amount), o.currency), parts));
     return;
   }
   if (command === "allocate") {
     const o = options(args);
-    const amount = Number(o.amount);
-    const invoices = parseInvoices(o.invoices);
-    const results = allocatePayment(amount, invoices);
-    console.log(JSON.stringify(results.map(r => ({ id: r.id, minor: r.amount, currency: o.currency }))));
+    const invoices = parseInvoices(o.invoices).map(i => ({ id: i.id, due: Money.fromMinor(i.due, o.currency) }));
+    print(allocatePayment(Money.fromMinor(Number(o.amount), o.currency), invoices));
     return;
   }
   console.log("usage: billing format --amount MINOR --currency CODE | list --file PATH | split --amount MINOR --currency CODE --weights id=weight,... | allocate --amount MINOR --currency CODE --invoices id=due,...");

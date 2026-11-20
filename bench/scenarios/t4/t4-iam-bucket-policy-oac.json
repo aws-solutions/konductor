@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-bucket-policy-oac",
-  "version": 3,
+  "version": 4,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -53,7 +53,7 @@
   "rubric": [
     {
       "id": "no_wildcard_sourcearn",
-      "criterion": "Does not use wildcard (*) in aws:SourceArn condition that would let staging distribution read prod bucket or vice versa (code cannot check this because the evaluator treats exact ARNs and wildcards differently)",
+      "criterion": "Does not use a wildcard (*) in the aws:SourceArn condition, so the staging distribution cannot read the production bucket or the other way round. Fail: any aws:SourceArn value in the three policies contains * or a pattern, or one statement lets both distributions read both stages. Partial: the CDN read statements use exact distribution ARNs, but another statement (for example the log delivery statement) uses a wildcard source or a missing SourceArn, or the pairing of stage to distribution is right for one bucket kind only. Pass: every read statement in assets, downloads and logs policies uses the exact distribution ARN from infra/cdn-config.json for its own stage (staging bucket with the staging distribution, production bucket with the production distribution), and no aws:SourceArn value contains a wildcard. (code cannot check this because the evaluator treats exact ARNs and wildcards differently)",
       "weight": 2
     },
     {
@@ -189,7 +189,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -1,0 +1,132 @@
+{
+  "outputFile": "review/REVIEW.md",
+  "findingsKey": [
+    {
+      "id": "summary-untrusted-markup",
+      "location": [
+        "src/ui/order-summary.js",
+        "renderOrderSummary"
+      ],
+      "severity": "high",
+      "fix": [
+        "escape",
+        "textContent",
+        "sanitize",
+        "encode"
+      ]
+    },
+    {
+      "id": "modal-message-markup",
+      "location": [
+        "src/ui/modal.js",
+        "openModal"
+      ],
+      "severity": "high",
+      "fix": [
+        "escape",
+        "textContent",
+        "sanitize",
+        "encode"
+      ]
+    },
+    {
+      "id": "order-status-race",
+      "location": [
+        "src/order/order-status.js",
+        "watchOrder"
+      ],
+      "severity": "high",
+      "fix": [
+        "stale",
+        "sequence",
+        "abort",
+        "latest"
+      ]
+    },
+    {
+      "id": "payment-double-submit",
+      "location": [
+        "src/forms/payment-form.js",
+        "bindPaymentForm"
+      ],
+      "severity": "high",
+      "fix": [
+        "in-flight",
+        "disable",
+        "duplicate",
+        "idempotent"
+      ]
+    },
+    {
+      "id": "delivery-notes-label",
+      "location": [
+        "src/forms/address-form.js",
+        "renderAddressFields"
+      ],
+      "severity": "low",
+      "fix": [
+        "label",
+        "aria-label",
+        "associate",
+        "for"
+      ]
+    },
+    {
+      "id": "cart-focus-reset",
+      "location": [
+        "src/ui/cart-panel.js",
+        "renderCartPanel"
+      ],
+      "severity": "medium",
+      "fix": [
+        "focus",
+        "restore",
+        "preserve"
+      ]
+    },
+    {
+      "id": "session-token-storage",
+      "location": [
+        "src/session.js",
+        "saveSession"
+      ],
+      "severity": "high",
+      "fix": [
+        "sessionStorage",
+        "memory",
+        "secret",
+        "avoid localStorage",
+        "httpOnly"
+      ]
+    },
+    {
+      "id": "toast-listener-lifetime",
+      "location": [
+        "src/ui/toast.js",
+        "mountToast"
+      ],
+      "severity": "low",
+      "fix": [
+        "removeEventListener",
+        "cleanup",
+        "unsubscribe",
+        "teardown"
+      ]
+    },
+    {
+      "id": "fractional-money",
+      "location": [
+        "src/cart/totals.js",
+        "calculateSubtotal"
+      ],
+      "severity": "medium",
+      "fix": [
+        "cents",
+        "integer",
+        "minor units",
+        "round",
+        "decimal"
+      ]
+    }
+  ]
+}

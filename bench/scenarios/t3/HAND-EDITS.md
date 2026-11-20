@@ -164,3 +164,9 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
   - checks: tests command loads hidden/gate.js with `node --require` (the shared gate.js)
   - hidden: .bench-lib.json names gate.js from bench/scenarios/lib/hidden (no per-task copy)
 - Why: after the fix by the original writer the shallow answer still scored over 40, because the hidden tests that do not depend on the chosen option still pass; the owner rule of 2026-11-19 is to gate the scorer, as done for five other T3 tasks
+
+## Rubric anchors (2026-11-20)
+
+- Who: claude (review-fix2 worker)
+- What: 47 rubric criteria across 19 tasks now carry Fail / Partial / Pass anchors written from each task's answer key and fixture figures (reasoning, trade-off, clarity and calculation items). Ids, weights and expert-key items are unchanged; task versions are up by 1.
+- Why: the independent review found these criteria had no anchors, so a judge could pass a shallow ADR on tone; each Pass now needs the key's figures and rejections.

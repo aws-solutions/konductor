@@ -275,6 +275,18 @@ test('withPerTestTimeout adds a per-test limit and the TAP reporter to node --te
   assert.equal(withPerTestTimeout('python3 -m pytest'), 'python3 -m pytest');
 });
 
+// Independent review 2026-11-20: `node --require ./x --test` got no per-test timeout, so the T3 queue-choice gate failed.
+test('withPerTestTimeout keeps Node options before --test, with their values', () => {
+  const { withPerTestTimeout, PER_TEST_TIMEOUT_MS } = require('../lib/check-matcher.js');
+  const flags = `--test-timeout=${PER_TEST_TIMEOUT_MS} --test-reporter=tap`;
+  assert.equal(withPerTestTimeout('node --require ./hidden/setup.js --test hidden/'), `node --require ./hidden/setup.js --test ${flags} hidden/`);
+  assert.equal(withPerTestTimeout('node -r ./s.js --no-warnings --test a.js'), `node -r ./s.js --no-warnings --test ${flags} a.js`);
+  assert.equal(withPerTestTimeout('node --import=./s.mjs --test'), `node --import=./s.mjs --test ${flags}`);
+  assert.equal(withPerTestTimeout('cd w && node --test-reporter spec --test x'), `cd w && node --test-reporter spec --test --test-timeout=${PER_TEST_TIMEOUT_MS} x`);
+  assert.equal(withPerTestTimeout('node --require ./s.js app.js'), 'node --require ./s.js app.js');
+  assert.equal(withPerTestTimeout('node --require ./s.js --test-only x'), 'node --require ./s.js --test-only x');
+});
+
 test('parseTapPartial counts finished leaf tests and skips suites', () => {
   const { parseTapPartial } = require('../lib/check-matcher.js');
   const tap = [

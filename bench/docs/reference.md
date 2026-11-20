@@ -858,15 +858,18 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   and `__pycache__` are skipped, see `judge/ephemeral.js`), and the tool calls and results of the run. It never sees the
   check results, so the rubric share judges the outcome on its own. A task's `expertKey` items are rubric criteria
   `expert:<id>` (sharing the weight of the `expert-key` item, else 3; `runner/lib/expert-rubric.js`), its weak answers are
-  listed in the prompt, and an expert criterion whose quote is not found in the output fails.
+  listed in the prompt, and an expert criterion whose quote is not found in the deliverables fails: its quote is matched
+  against the final text and the changed files only (`expertText`), never the work log, so a fixture read in a tool result
+  cannot prove a point the delivered work never makes.
   Rubric items such as "ran the tests and reports the result" judge work, and a coordinator reports its child's work
-  second-hand, so with the final text alone it failed for work that was done. Every arm gets the same block: the main
-  session's calls, then each child session's under "Helper session N". It never names the child agent, leaves out skill
+  second-hand, so with the final text alone it failed for work that was done. Every arm gets the same block, a work log:
+  one list of the main and child sessions' calls in stream order, with no session labels or counts, so its shape does not
+  show delegation. It never names the child agent, leaves out skill
   lookups, hand-off calls and reads of the arm's own tooling (`.kiro` other than `.kiro/specs`, `.konductor`, `.claude`,
   the scratch HOME), prints workspace paths relative, and shares the bundle limits: it gets the room the files left, at most
-  `--max-file-chars`, and keeps each session's first and last calls when it must cut. Kiro CLI and Claude Code runs have it
+  `--max-file-chars`, and keeps the first and last calls when it must cut. Kiro CLI and Claude Code runs have it
   (from the sub-task id and `parent_tool_use_id` in `stream.jsonl`); OpenCode and Strands runs do not. The prompts tell the
-  judge to count main and helper sessions alike as the agent's own work. Never the transcript's messages and thoughts, and
+  judge to count the work log as the agent's own work, and never to quote it for an expert criterion. Never the transcript's messages and thoughts, and
   never arm names. Arm-revealing phrases (agent and tool
   names, skill, SOP, steering, maker-checker, delegation, versions) are deleted, not replaced by a
   marker; deliverable paths stay. `--redact-file` adds rules; the rules that fired are recorded.
@@ -1054,9 +1057,13 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
 - Intended tests follow the scripted answers; invariants hold under any reasonable reading (old behavior kept, no crash,
   no data lost). A wrong guess lowers intended, not invariants. One task needs no question (`noQuestionNeeded`), so
   asking there is over-asking; one is risky (delete files), so asking first is right.
-- The scripted user: a turn that ends with a question, an approval request or a non end_turn stop is an ask. A turn with
-  `QUESTION:` lines is an ask too, whatever the rest of the text says: the lines are the question and their number is its
-  count (`signal: "marker"`; otherwise `signal: "heuristic"` and the count is the number of `?`). Each
+- The scripted user: one extractor reads every harness's final text (`questionsOf` in `runner/lib/ask-channel.js`); no
+  harness's own `askedUser` signal is read. A turn that ends with a question or an approval request is an ask. A `QUESTION:`
+  line counts exactly as the same line in plain prose: the marker is stripped (and a `?` added) before the text is read, and
+  is kept only as diagnostics (`markerLines`, `signal: "marker"`, else `signal: "prose"`; records before 2026-11-20 say
+  `"heuristic"`). The count is the number of `?` in the asking part. A turn cut off before its end (a stop reason other than
+  end_turn) is not a question but gets the default reply, `signal: "cut-off"`. `runner/test/ask-channel.test.js` feeds the
+  same prose question, with and without the marker, through each harness's contract stream and expects one record. Each
   clarification has regex keywords; those that match the question and were not used yet are answered (several in one
   numbered reply); no match gets "Use your best judgment and continue." and counts as unmatched. After `maxInterjections`
   (4) it sends "Proceed with your best judgment now and do not ask further questions." once, sets `interjectionCapHit`,
@@ -1077,8 +1084,8 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   and that ending its turn ends the session, so before 2026-11-20 no arm asked on these tasks and all scored the same floor. The loader now appends
   one fixed paragraph to each scripted task's prompt, the same for every arm and harness: the stakeholder does answer, even if the environment
   says otherwise; ask by ending the turn with one `QUESTION:` line per question; the answer is the next message; ask only what the files cannot
-  answer. It names no method, skill or agent, so it favours no arm. The heuristic above stays as a fallback, so an arm that asks in prose is
-  answered the same way. Chosen over an answers file in the workspace (an agent would read every answer without asking, so asking is not
+  answer. It names no method, skill or agent, so it favours no arm. The marker earns nothing over plain prose: an arm that asks in prose is
+  read by the same extractor and answered the same way. Chosen over an answers file in the workspace (an agent would read every answer without asking, so asking is not
   measured) and over dropping `--no-interactive` (the runner drives each turn as a headless process). Not run on a real model yet.
 - Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
   `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,

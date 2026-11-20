@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northstar Checkout</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="src/styles/theme.css">
+</head>
+<body>
+  <header class="site-header"><a href="/" class="brand">Northstar Supply</a><span>Secure checkout</span></header>
+  <main id="checkout" class="checkout-shell">
+    <section id="cart-panel" aria-labelledby="cart-heading"><h1 id="cart-heading">Your order</h1></section>
+    <section id="address-panel" aria-labelledby="address-heading"><h2 id="address-heading">Delivery address</h2><form id="address-form"></form></section>
+    <section id="payment-panel" aria-labelledby="payment-heading"><h2 id="payment-heading">Payment</h2><form id="payment-form"></form></section>
+  </main>
+  <div id="modal-root"></div>
+  <div id="toast-root" role="status" aria-live="polite"></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

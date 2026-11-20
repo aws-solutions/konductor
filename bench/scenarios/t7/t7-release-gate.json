@@ -1,7 +1,7 @@
 {
   "id": "t7-release-gate",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "bottom-line",
-      "criterion": "The prose gives the go or no-go call first and states the practical condition for changing it (code cannot check this because it only reads the structured block).",
+      "criterion": "The prose gives the go or no-go call first and states the practical condition for changing it. Fail: says go, or says no-go with no condition. Partial: says no-go but gives no next date or no condition for changing it. Pass: the first lines say no-go for Thursday 2027-05-06 and name the earliest defensible slot, Thursday 2027-05-13, conditional on the fixes landing before the 2027-05-05 17:00 cherry-pick deadline and a clean validation window of 2027-05-10 to 2027-05-12. (code cannot check this because it only reads the structured block).",
       "weight": 2
     },
     {
       "id": "director-reasoning",
-      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs (code cannot check this because it cannot assess the explanation).",
+      "criterion": "The prose connects evidence to owners, deadlines, validation, and uncertainty rather than merely repeating a list of IDs. Fail: blocker labels are listed with no evidence or owner. Partial: blockers have owners but do not separate main from the release branch, or the two failing signals are merged. Pass: the prose covers REL-112 (closed on main, a7d4e1c missing from release/27.05, owner Mira Sol), REL-118 (approved 2027-04-29 09:15 after the 2027-04-28 17:00 deadline, owner Jon Bell), REL-131 (linux-integration failing from c9f1e2a, owner Asha Nair), separates that from the intermittent windows-smoke signal (85% pass), removes the REL-127 note promise because it was reverted, excludes REL-145 on the triage record, and requires fresh branch CI evidence. (code cannot check this because it cannot assess the explanation).",
       "weight": 2
     }
   ],
@@ -206,7 +206,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "FX3 job",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

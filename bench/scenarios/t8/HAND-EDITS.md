@@ -85,3 +85,9 @@ Who: claude (mate task-fix worker session), owner-approved fixes from the task r
 - `t8-pm-cert-expiry-region`: block key scored by section (actions, cause, impact, timeline): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate root-cause-summary (a wrong cause or call fails every test); guard checks made format (file_exists postmortems/eu-login-outage.md, fixture_unchanged certs/certificate-inventory.csv) because they pass on any answer that writes the file.
 - `t8-neg-config-question`: hidden shape tests (list, sorted, fields, unique, replica counts) now count only when the answer names exactly the debug services the renderer gives, so a wrong answer in the right shape earns nothing; alt answer fixed (it was unsorted, which the prompt forbids) and is now the reference with each record's keys in another order; guard checks made format (file_exists answers/prod-debug.json, fixture_unchanged config/production/catalog.json).
 - `t8-twin-latency-tier-report`: hidden shape tests now count only when the totals match the /checkout records of the log, so a well-shaped report of wrong counts earns nothing; guard checks made format (file_exists reports/checkout-hourly.csv, file_exists reports/checkout-totals.json, fixture_unchanged logs/checkout-api.log).
+
+## Rubric anchors (2026-11-20)
+
+- Who: claude (review-fix2 worker)
+- What: the 5 unanchored prose criteria (t8-bug-retry-storm evidence-use, t8-dec-deploy-strategy operational-clarity, t8-nfr-slo-burn decision-explanation, t8-runbook-db-failover usable-at-3am, t8-tpm-rollout-regions signoff-quality) now carry Fail / Partial / Pass anchors tied to the block key and fixture figures. Ids, weights and expert-key items are unchanged; task versions are up by 1.
+- Why: the independent review found these criteria had no anchors.

@@ -117,7 +117,8 @@ test('the table uses HTTP methods and absolute paths', () => {
 });
 
 test('a sentence identifies the provider webhook route', () => {
-  const document = readDoc();
-  assert.match(document, /receives provider webhooks/i);
-  assert.match(document, /POST\s+\/webhooks\/payment/);
+  // The prompt asks for a sentence naming the route; it does not fix the wording.
+  const prose = readDoc().split(/\r?\n/).filter((line) => !/^\s*\|/.test(line));
+  assert.ok(prose.some((line) => /webhook/i.test(line) && /POST\W+\/webhooks\/payment/.test(line)),
+    'a line outside the table must name POST /webhooks/payment as the webhook route');
 });

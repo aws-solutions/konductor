@@ -1,7 +1,7 @@
 {
   "id": "t5-dev-legacy-characterize",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "developer",
   "phases2": [
@@ -41,7 +41,7 @@
   "rubric": [
     {
       "id": "meaningful-assertions",
-      "criterion": "The added tests pin observable values, returned state, and failure status instead of only exercising lines (code cannot check this because assertion intent is semantic).",
+      "criterion": "The added tests pin observable values, returned state, and failure status instead of only exercising lines. Fail: tests call rates.py, labels.py, formatters.py or the CLI and assert nothing, or only that a call did not raise. Partial: tests assert on results, but the odd behavior customers and the warehouse rely on (the quirks the code has today, not the documented ones) is pinned in fewer than a few places, or error cases check only that something was raised. Pass: tests assert the exact computed rate, label text and exit status or error message for normal inputs and for each odd case found in the code, taking the current behavior as the contract, so a changed number or a changed message fails a test.",
       "weight": 2
     },
     {
@@ -152,7 +152,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

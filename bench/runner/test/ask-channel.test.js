@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The question channel of scripted-user tasks: the loader states it in the prompt of every arm alike, and the
-// conversation counts QUESTION: lines as the asks. No model call.
+// The question channel of scripted-user tasks: the loader states it in the prompt of every arm alike, and one extractor
+// reads the asks of every harness, a QUESTION: line counting as the same question in prose. No model call.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
-const { ASK_CHANNEL, withAskChannel, markedQuestions } = require('../lib/ask-channel.js');
+const { ASK_CHANNEL, withAskChannel, markedQuestions, questionsOf, plainProse } = require('../lib/ask-channel.js');
+const { HARNESSES } = require('../lib/harness/index.js');
 const { scriptedToAutonomy, newConversation } = require('../lib/autonomy.js');
 const { loadTasks } = require('../lib/tasks.js');
 
@@ -50,28 +52,69 @@ test('every loaded scripted task carries the channel once, and no other task doe
   assert.ok(scripted >= 10, `scripted tasks loaded: ${scripted}`);
 });
 
-test('a QUESTION: turn is an ask even when the text heuristic says no; its lines are matched and counted', () => {
+test('a QUESTION: line counts as the same question in plain prose; the marker is diagnostics only', () => {
+  const marked = 'Draft started.\n\nQUESTION: What is the budget\nQUESTION: Is there a deadline\n\nI will continue after your answer.';
+  const prose = 'Draft started.\n\nWhat is the budget?\nIs there a deadline?\n\nI will continue after your answer.';
+  assert.equal(plainProse(marked), prose);
+  const { markerLines, ...m } = questionsOf(marked);
+  const { markerLines: none, ...p } = questionsOf(prose);
+  assert.deepEqual(m, p);
+  assert.deepEqual([markerLines, none], [2, 0]);
   const conv = newConversation(scriptedToAutonomy(SCRIPTED));
-  const r = conv.record(turn('Draft started.\n\nQUESTION: What is the budget\nQUESTION: Is there a deadline\n\nI will continue after your answer.', false));
+  const r = conv.record(turn(marked, false));
   assert.deepEqual(r.matched, ['budget', 'deadline']);
-  assert.deepEqual(conv.questions[0], { turn: 1, text: 'What is the budget Is there a deadline', count: 2, signal: 'marker', matched: ['budget', 'deadline'], answered: true, reply: '1. The budget is 12k a month.\n2. We launch on 3 March.' });
+  const q = conv.questions[0];
+  assert.deepEqual({ count: q.count, signal: q.signal, markerLines: q.markerLines, answered: q.answered }, { count: 2, signal: 'marker', markerLines: 2, answered: true });
   assert.equal(conv.askedFirstTurn, true);
 });
 
-test('a marked turn counts its lines, not the question marks in the rest of the text', () => {
-  const conv = newConversation(scriptedToAutonomy(SCRIPTED));
-  conv.record(turn('Why? How? What?\n\nQUESTION: What is the budget?', true));
-  assert.equal(conv.questions[0].count, 1);
-  assert.equal(conv.questions[0].text, 'What is the budget?');
+test('a marked turn and the same turn in prose count the same question marks', () => {
+  const a = questionsOf('Why? How? What?\n\nQUESTION: What is the budget?');
+  const b = questionsOf('Why? How? What?\n\nWhat is the budget?');
+  assert.equal(a.count, b.count);
+  assert.equal(a.text, b.text);
 });
 
-test('without markers the heuristic still decides, so an arm that asks in prose is answered the same way, and says so', () => {
+test('the harness\'s own askedUser signal is not read: the final text alone decides', () => {
   const conv = newConversation(scriptedToAutonomy(SCRIPTED));
-  const r = conv.record(turn('I read the brief.\n\nWhat is the budget? And the deadline?', true));
+  const r = conv.record(turn('I read the brief.\n\nWhat is the budget? And the deadline?', false));
   assert.deepEqual(r.matched, ['budget', 'deadline']);
-  assert.equal(conv.questions[0].signal, 'heuristic');
+  assert.equal(conv.questions[0].signal, 'prose');
   assert.equal(conv.questions[0].count, 2);
   const done = newConversation(scriptedToAutonomy(SCRIPTED));
-  assert.equal(done.record(turn('Done. I wrote the requirements.', false)), null);
+  assert.equal(done.record(turn('Done. I wrote the requirements.', true)), null);
   assert.equal(done.questions.length, 0);
+});
+
+// Cross-harness fixtures: each harness's contract stream with its final text replaced by the same plain-prose question
+// (and by the same question with the marker). Every harness must give the scripted user the same question record.
+const CONTRACT = path.join(__dirname, 'fixtures', 'harness-contract');
+const FILES = { 'kiro-cli': 'kiro-cli.jsonl', 'claude-code': 'claude-code.jsonl', opencode: 'opencode.jsonl', strands: 'strands.jsonl' };
+function withFinalText(id, text) {
+  const stream = fs.readFileSync(path.join(CONTRACT, FILES[id]), 'utf8');
+  const old = HARNESSES[id].turnSummary(stream).finalText;
+  const swap = (v) => (v === old ? text : Array.isArray(v) ? v.map(swap) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)])) : v);
+  return stream.split('\n').map((l) => (l.trim() ? JSON.stringify(swap(JSON.parse(l))) : l)).join('\n');
+}
+
+test('every harness gives the same question record for the same plain-prose question, with or without the marker', () => {
+  assert.deepEqual(Object.keys(FILES).sort(), Object.keys(HARNESSES).sort(), 'a new harness needs a cross-harness question fixture');
+  const PROSE = 'I read the brief and the current config.\n\nWhat is the budget for this, and is there a deadline?';
+  const MARKED = 'I read the brief and the current config.\n\nQUESTION: What is the budget for this, and is there a deadline?';
+  const records = {};
+  for (const id of Object.keys(FILES)) {
+    for (const [kind, text] of [['prose', PROSE], ['marked', MARKED]]) {
+      const summary = HARNESSES[id].turnSummary(withFinalText(id, text));
+      assert.equal(summary.finalText, text, `${id} ${kind}: fixture swap`);
+      const conv = newConversation(scriptedToAutonomy(SCRIPTED));
+      const r = conv.record(summary);
+      assert.ok(r, `${id} ${kind}: the scripted user answers`);
+      const { signal, markerLines, ...q } = conv.questions[0];
+      records[`${id} ${kind}`] = q;
+    }
+  }
+  const first = Object.values(records)[0];
+  assert.equal(Object.keys(records).length, 8);
+  for (const [k, q] of Object.entries(records)) assert.deepEqual(q, first, k);
+  assert.deepEqual(first.matched, ['budget', 'deadline']);
 });

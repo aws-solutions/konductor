@@ -1,0 +1,133 @@
+{
+  "id": "t9-bug-tabs-focus",
+  "class": "hard",
+  "version": 1,
+  "phase": "bugfix",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "The settings page has become awkward to use with a keyboard. Open index.html and try the Account settings sections: move with the arrow keys, focus a section's Close button, and press Enter. Also use Disable active section and Disable active tool in the Editor tools area. After a section is closed or made unavailable, keyboard focus should land on a usable remaining section, exactly one available section should have tabindex=0, and its aria-selected state should match what is visible. Tabbing into the sections must still work, and the same behavior must hold for the Format, History, Preview, and Publish buttons in the Editor tools toolbar. Keep the existing labels, panel contents, automatic save message, arrow-key behavior, and static no-build setup unchanged. Make the repair in the shared behavior so both the sections and the toolbar benefit from it. Add a small regression test alongside the existing tests for the behavior you repair.",
+  "fixture": "t9-bug-tabs-focus",
+  "hidden": "t9-bug-tabs-focus",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 hidden-behaviour.test.js browser.test.js regress.test.js",
+      "min": 16,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/ && count=$(grep -R -h -E '^[[:space:]]*(test|it)[[:space:]]*\\(' test --include='*.js' | wc -l); test \"$count\" -ge 10",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const { reconcileRoving } = require(\"./src/roving.js\"); const state = reconcileRoving([{ label: \"A\" }, { label: \"B\", disabled: true }, { label: \"C\" }], 1); if (state.activeIndex !== 2 || state.items[1].tabIndex !== -1 || state.items.filter((item) => item.selected).length !== 1) process.exit(1);'",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/keyboard.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/demo-workspaces.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [
+    "frontend-development",
+    "verification",
+    "test-coverage-analysis"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "frontend-development",
+      "verification",
+      "test-coverage-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/w3c/aria-practices",
+      "licence": "W3C Software and Document License (checked in the repository LICENSE); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes the problem (focus not landing on a usable section after close/disable) without naming methods or implementation details. It correctly asks for repair in the shared behavior without specifying the exact function name."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly states the expected behavior: focus should land on a usable remaining section, exactly one available section should have tabindex=0, and aria-selected should match visibility. The keyboard.md documentation confirms this is the intended roving tabindex pattern."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The docs/keyboard.md documents the roving tabindex pattern without revealing the bug. The existing tests in roving.test.js do not test the reconciliation of disabled/unavailable items. The bug is realistic and not leaked."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A hard-coded fix in app.js would miss the toolbar behavior. The lazy solution (identical to fixture) fails 12 of 16 tests. A fix that only updates tabindex without fixing reconciliation logic would fail the hidden-behaviour tests that verify reconcileRoving handles disabled items."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All hidden tests are derivable from the request and existing documentation. The request specifies the repair should be in 'shared behavior' and both sections and toolbar should benefit - this correctly guides to the roving.js module. Tests use the same API (reconcileRoving) exposed by the module."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 17.9,
+    "dryRun": {
+      "reference": 100,
+      "stub": 17.9,
+      "lazy": 17.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

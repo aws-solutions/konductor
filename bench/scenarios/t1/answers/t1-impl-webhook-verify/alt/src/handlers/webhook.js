@@ -53,8 +53,7 @@ async function webhookHandler({ req, res, ledger, readBody, secrets, toleranceSe
   }
   
   // Verify signature
-  const validSecrets = [secrets?.primary, secrets?.secondary];
-  if (!verifySignature(body, parsed.timestamp, parsed.signatures, validSecrets)) {
+  if (!verifySignature(body, parsed.timestamp, parsed.signatures, secrets || [])) {
     sendJson(res, 401, { error: 'unauthorized' });
     return;
   }

@@ -1,0 +1,7 @@
+{
+  "name": "harbor-days-registration",
+  "private": true,
+  "version": "1.4.0",
+  "type": "commonjs",
+  "scripts": {"test": "node --test test/", "check": "node --test test/"}
+}

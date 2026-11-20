@@ -1,0 +1,4 @@
+{
+  "session.ttlMinutes": 30,
+  "export.delimiter": ","
+}

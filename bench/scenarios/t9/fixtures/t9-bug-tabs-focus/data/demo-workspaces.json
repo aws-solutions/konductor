@@ -1,0 +1,5 @@
+[
+  { "name": "Signal workspace", "region": "eu-west", "members": 8, "digest": true },
+  { "name": "Harbor notes", "region": "us-east", "members": 3, "digest": false },
+  { "name": "Juniper studio", "region": "ap-south", "members": 12, "digest": true }
+]

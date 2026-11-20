@@ -1,177 +1,40 @@
-# Tasks: API rate limits
+# API rate limits: work order
 
-- [ ] 1. Counter on the shared store
-  - [ ] 1.1 Add `src/rate-limit.js` with `check(caller, plans, now)` counting in `src/kv.js` per key and minute window
-    - _Requirements: R1, R2, R6_
-  - [ ] 1.2 Load `config/plans.json` once at start-up and pass it to the limiter
-    - _Requirements: R2_
-- [ ] 2. Wire the limiter into the request path
-  - [ ] 2.1 In `src/server.js`, call the limiter after `authenticate()`, skip admin keys, answer 429 with `Retry-After` and `rate_limited`
-    - _Requirements: R3, R5_
-  - [ ] 2.2 Add `X-RateLimit-Remaining` to every response of a limited key through `send()`
-    - _Requirements: R4_
-- [ ] 3. Fail open when the store is down, with one log line per minute
-  - _Requirements: R6_
-- [ ] 4. Tests
-  - [ ] 4.1 Test a starter key going over the limit (429, Retry-After, body), two keys of one account counted apart, admin and /health never limited
-    - _Requirements: R1, R3, R5_
-  - [ ] 4.2 Test two server instances sharing one store hold one allowance between them
-    - _Requirements: R6_
+Tests come first, so each later step turns some of them green.
 
-## Task Dependency Graph
-
-- Wave 1: 1.1, 1.2
-- Wave 2: 2.1, 2.2, 3 (after 1.1)
-- Wave 3: 4.1, 4.2 (after wave 2)
+1. Write the behaviour tests in `test/rate-limit.test.js` against `createServer()`: going over the allowance gives
+   429 with `Retry-After` and `rate_limited`; two keys of one account are counted apart; ops keys and `/health` are
+   never refused; `X-RateLimit-Remaining` counts down. They fail until step 4.
+2. Build the sliding-window counter `src/limits/counter.js` on `kv.incr` in `src/kv.js`, with unit tests for the
+   minute boundary.
+3. Build `src/limits/policy.js`: allowances from `config/plans.json`, `null` for admin keys.
+4. Wire the limiter into `src/server.js` between `authenticate()` and routing; add the limit headers to `send()`.
+5. Store unreachable: fall back to the per-instance count at half the allowance and log once a minute.
+6. Two-instance test: two servers on one store share one allowance.
 
 ```json
 {
- "openQuestions": [
-  "Q2: when the shared store is down, should requests fail open (allowed) or closed (429)? The design fails open.",
-  "Q1: config/plans.json has a burst value per plan, but the request does not say what it means (extra requests above the minute figure, or a per-second cap?). Not used until product decides."
- ],
- "tasks": [
-  {
-   "dependsOn": [],
-   "files": [
-    "src/kv.js",
-    "src/rate-limit.js"
-   ],
-   "requirements": [
-    "item-13",
-    "item-9",
-    "item-8"
-   ],
-   "title": "In short: Add src/rate-limit.js counting per key and minute in src/kv.js",
-   "id": "item-1"
-  },
-  {
-   "dependsOn": [],
-   "files": [
-    "config/plans.json",
-    "src/rate-limit.js"
-   ],
-   "requirements": [
-    "item-9"
-   ],
-   "title": "In short: Load config/plans.json at start-up for the limiter",
-   "id": "item-2"
-  },
-  {
-   "dependsOn": [
-    "item-1"
-   ],
-   "files": [
-    "src/server.js"
-   ],
-   "requirements": [
-    "item-12",
-    "item-10"
-   ],
-   "title": "In short: Call the limiter after authenticate, skip admin keys, answer 429 with Retry-After",
-   "id": "item-3"
-  },
-  {
-   "dependsOn": [
-    "item-1"
-   ],
-   "files": [
-    "src/server.js"
-   ],
-   "requirements": [
-    "item-11"
-   ],
-   "title": "In short: Add X-RateLimit-Remaining to limited responses",
-   "id": "item-4"
-  },
-  {
-   "dependsOn": [
-    "item-1"
-   ],
-   "files": [
-    "src/rate-limit.js"
-   ],
-   "requirements": [
-    "item-13"
-   ],
-   "title": "In short: Fail open when the shared store is down",
-   "id": "item-5"
-  },
-  {
-   "dependsOn": [
-    "item-4",
-    "item-3"
-   ],
-   "files": [
-    "test/rate-limit.test.js"
-   ],
-   "requirements": [
-    "item-12",
-    "item-10",
-    "item-8"
-   ],
-   "title": "In short: Test over the limit (429, Retry-After), keys counted apart, admin and health never limited",
-   "id": "item-6"
-  },
-  {
-   "dependsOn": [
-    "item-3"
-   ],
-   "files": [
-    "test/rate-limit.test.js"
-   ],
-   "requirements": [
-    "item-13"
-   ],
-   "title": "In short: Test two instances sharing one store hold one allowance",
-   "id": "item-7"
-  }
- ],
- "requirements": [
-  {
-   "acceptance": [
-    "WHEN a key alternates between two instances THEN it gets one allowance in total"
-   ],
-   "text": "In short: Counting is shared across both instances through src/kv.js so the allowance holds for the whole service, not per instance; the store being down fails open.",
-   "id": "item-13"
-  },
-  {
-   "acceptance": [
-    "WHEN GET /health is called THEN it is never limited",
-    "WHEN an admin key sends any number of requests THEN none is refused"
-   ],
-   "text": "In short: Admin (ops) keys are never limited or counted, and /health is never limited and needs no key.",
-   "id": "item-12"
-  },
-  {
-   "acceptance": [
-    "WHEN a limited key is answered THEN X-RateLimit-Remaining is 0 or more"
-   ],
-   "text": "In short: Every response to a limited key carries X-RateLimit-Remaining with the requests left in the window.",
-   "id": "item-11"
-  },
-  {
-   "acceptance": [
-    "WHEN a key has used its allowance THEN the answer is 429 with Retry-After and rate_limited"
-   ],
-   "text": "In short: Over the limit the service answers 429 with a Retry-After header in whole seconds and the body {\"error\": \"rate_limited\"}; the route does not run.",
-   "id": "item-10"
-  },
-  {
-   "acceptance": [
-    "WHEN a studio key is counted THEN its allowance is studio.requestsPerMinute",
-    "WHEN a starter key is counted THEN its allowance is starter.requestsPerMinute"
-   ],
-   "text": "In short: Allowances come from config/plans.json requestsPerMinute: starter 90, studio 720 today.",
-   "id": "item-9"
-  },
-  {
-   "acceptance": [
-    "WHEN two keys of one account send requests THEN each key is counted separately"
-   ],
-   "text": "In short: The limit belongs to each API key: two keys of the same account are counted apart; the service does not limit by client IP (the 2025 per-IP note is superseded).",
-   "id": "item-8"
-  }
- ]
+  "openQuestions": [
+    "Q1 (product, Dana): what does burst in config/plans.json mean, extra requests on top of the minute figure or a per-second cap? It is ignored until decided.",
+    "Q2 (product and support): is failing open to a per-instance count at half the allowance acceptable while the shared store is down, or should the API refuse with 503?",
+    "Q3 (support): should 429 responses also be logged per account so support can see who is being limited?"
+  ],
+  "tasks": [
+    { "id": "T1", "title": "Behaviour tests first: over the limit gives 429 with Retry-After and rate_limited, keys counted apart, ops keys and /health never refused, X-RateLimit-Remaining counts down", "requirements": ["LIM-1", "LIM-3", "LIM-4", "LIM-5", "LIM-6"], "files": ["test/rate-limit.test.js"], "dependsOn": [] },
+    { "id": "T2", "title": "Sliding-window counter on the shared store's atomic incr", "requirements": ["LIM-7"], "files": ["src/limits/counter.js", "src/kv.js", "test/limits-counter.test.js"], "dependsOn": [] },
+    { "id": "T3", "title": "Policy: allowance per plan from config/plans.json, none for admin keys", "requirements": ["LIM-2", "LIM-5"], "files": ["src/limits/policy.js", "config/plans.json"], "dependsOn": [] },
+    { "id": "T4", "title": "Wire the limiter between authenticate() and routing; 429 refusal and X-RateLimit-Remaining on every limited response", "requirements": ["LIM-3", "LIM-4", "LIM-6"], "files": ["src/server.js"], "dependsOn": ["T2", "T3"] },
+    { "id": "T5", "title": "Store unreachable: per-instance fallback count at half the allowance, one log line a minute", "requirements": ["LIM-7"], "files": ["src/limits/counter.js"], "dependsOn": ["T2"] },
+    { "id": "T6", "title": "Two server instances on one store share one allowance", "requirements": ["LIM-7"], "files": ["test/two-instances.test.js"], "dependsOn": ["T4"] }
+  ],
+  "requirements": [
+    { "id": "LIM-1", "text": "Each API key has its own allowance; keys of the same account are counted separately.", "acceptance": ["After key A of an account uses its allowance, key B of the same account is still served."] },
+    { "id": "LIM-2", "text": "A key's allowance is its plan's requestsPerMinute in config/plans.json (starter 90, studio 720 today), never a figure in code.", "acceptance": ["With starter.requestsPerMinute set to 3, the fourth starter request in a minute is refused.", "A studio key gets studio.requestsPerMinute requests a minute."] },
+    { "id": "LIM-3", "text": "A key over its allowance gets 429 with a Retry-After header in whole seconds and the body {\"error\": \"rate_limited\"}; the route does not run.", "acceptance": ["The first request over the allowance gets 429, Retry-After between 1 and 60, the rate_limited body, and creates no note."] },
+    { "id": "LIM-4", "text": "Every response to a limited key carries X-RateLimit-Remaining, the requests left this minute.", "acceptance": ["After 2 of 90 requests the header is 88; on a 429 it is 0."] },
+    { "id": "LIM-5", "text": "Ops keys (admin: true in data/keys.json) are exempt: never refused and never counted.", "acceptance": ["1,000 requests in a minute from qb_ops_0001 all succeed."] },
+    { "id": "LIM-6", "text": "GET /health is never limited and needs no key.", "acceptance": ["/health answers 200 with no key while a starter key is being refused."] },
+    { "id": "LIM-7", "text": "The allowance holds for the whole service: both instances count in the shared store, so a key does not get double by switching server.", "acceptance": ["Spread over two instances sharing one store, a starter key is refused at request 91 in total."] }
+  ]
 }
 ```

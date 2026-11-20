@@ -1,7 +1,7 @@
 {
   "id": "t5-qa-sync-strategy",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "phases2": [
@@ -42,7 +42,7 @@
   "rubric": [
     {
       "id": "decision-quality",
-      "criterion": "The plan makes a defensible migration-weekend decision rule and ties skipped work to concrete customer or operator consequences (code cannot check this because code cannot judge the quality of the trade-off)",
+      "criterion": "The plan makes a defensible migration-weekend decision rule and ties skipped work to concrete customer or operator consequences. Fail: it lists tests by file with no go or no-go rule, or says the rest is low risk with no consequence. Partial: it has an order of work and some severities, but the decision rule for the weekend (what must pass, what blocks the cutover, how to roll back) is vague, or skipped work has no consequence. Pass: it sets the minimum set of tests that must pass before the weekend and the go, no-go and rollback conditions, orders the two weeks by risk and dependency, and for each area it skips says what a customer or the operator would see if it failed (duplicate or missing records, a half-copied run that cannot resume), with severities matching the closing JSON list.",
       "weight": 2
     },
     {
@@ -323,7 +323,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

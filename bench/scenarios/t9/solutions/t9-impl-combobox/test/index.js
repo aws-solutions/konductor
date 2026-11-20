@@ -1,0 +1,9 @@
+import './countries.test.js';
+import './data.test.js';
+import './date.test.js';
+import './filter.test.js';
+import './form.test.js';
+import './messages.test.js';
+import './smoke.test.js';
+import './validation.test.js';
+import './country-picker-contract.test.js';

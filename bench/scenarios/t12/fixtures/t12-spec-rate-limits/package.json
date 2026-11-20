@@ -4,6 +4,6 @@
   "private": true,
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   }
 }

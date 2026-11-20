@@ -1,7 +1,7 @@
 {
   "id": "t11-resume-csv-export",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -29,23 +29,9 @@
       "kind": "format"
     },
     {
-      "type": "file_exists",
-      "path": "test/csv-export.test.js",
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "src/export.js",
-      "pattern": "toISOString",
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
-      "type": "min_matches",
-      "path": "test/csv-export.test.js",
-      "pattern": "test\\(",
-      "min": 3,
+      "type": "cmd",
+      "cmd": "test \"$(grep -rhoE '(^|[^a-zA-Z_.])(test|it)\\(' test | wc -l)\" -ge 9",
+      "expectExit": 0,
       "weight": 2,
       "kind": "substance"
     },
@@ -53,13 +39,13 @@
       "type": "fixture_unchanged",
       "path": "README.md",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
     {
       "id": "focused-change",
-      "criterion": "The implementation stays focused on the requested export behavior and preserves the surrounding tool's existing contract (code cannot check this because scope and maintainability require human review)",
+      "criterion": "The implementation stays focused on the requested export behavior and preserves the surrounding tool's existing contract. Fail: the existing JSON export output or CLI behavior changes, or the diff rewrites unrelated modules, or work lands on another branch than feature/csv-export. Partial: JSON export is unchanged and CSV works, but the diff also touches unrelated files (renames, formatting sweeps, new options not asked for) or ignores part of NOTES-csv-export.md. Pass: the diff on feature/csv-export touches only the CSV export path (src/export.js, bin/timesheet.js, tests and docs for it), the eight columns come in the requested order with the repository's timestamp policy, the JSON export and its CLI behavior are byte-for-byte unchanged, and the plan in the notes is followed. (code cannot check this because scope and maintainability require human review)",
       "weight": 1
     }
   ],
@@ -123,21 +109,58 @@
         "verdict": "pass",
         "note": "Fixed in the author's fix round: the neutralisation the tests expect is stated in the handoff notes (an uncommitted edit of the notes file in the starting tree). (reviewer: Formula neutralization (prefixing =+−@ with apostrophe) is required by tests #9-10 but is not mentioned in the request, handoff notes, or any fixture document - it cannot be derived from the folder. The string format shorthand in test #15 is also not specified in the request.)"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt names specific methods (exportTimesheet, timesheet export --format csv) but no decoy methods that would mislead the agent."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture has 6 test files (cli.test.js, clock.test.js, export-json.test.js, index.js, labels.test.js, store.test.js, summary.test.js) that contain no CSV export implementation or tests."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "The hidden tests (hidden-behaviour.test.js) have 15 test cases covering complete CSV export with 8 columns, timestamp normalization, CSV quoting, and formula neutralization. The fixture tests cover only basic CLI and JSON export with no CSV functionality at all. (worker: the missing CSV behaviour is the work the request asks for, so its absence from the fixture is by design; the plan, the column list and the UTC decision are in the notes, the request and the branch history)"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The fixture's export.js only has 5 CSV columns (missing minutes, description, billable, tags), no timestamp normalization to UTC ISO 8601 with toISOString, no CSV escaping for commas/quotes, and no formula neutralization. The task requires CSV behavior not present in the fixture. (worker: the missing CSV behaviour is the work the request asks for, so its absence from the fixture is by design; the plan, the column list and the UTC decision are in the notes, the request and the branch history)"
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T11 worker session)",
+    "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 18.4,
+    "stub": 14.3,
     "dryRun": {
       "reference": 100,
-      "stub": 18.4,
-      "lazy": 27.9,
+      "stub": 14.3,
+      "lazy": 23.8,
       "alt": 100,
       "date": "2026-11-20"
     },
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }
