@@ -123,12 +123,22 @@ test('pad-answer fills id lists with every fixture id and keeps scalars', () => 
   assert.deepStrictEqual(v.notes, ['plain']);
 });
 
-test('pilotOf records the dry-run scores and the gate decision', () => {
+test('pilotOf records the dry run under pilot.dryRun and needs every gate and the same scores twice', () => {
   const { pilotOf } = require('../record-dry.js');
-  const res = { repeat: 3, deterministic: true, pass: true, answersPass: false, reference: { score: 100 }, stub: { score: 7.14 }, lazy: { score: 52.3 }, alt: { score: 90 } };
-  const p = pilotOf(res, '2026-11-19');
-  assert.deepStrictEqual(p.scores.dryRun, { repeats: 3, deterministic: true, reference: 100, stub: 7.1, lazy: 52.3, alt: 90 });
-  assert.strictEqual(p.decision, 'fix');
+  const res = { repeat: 3, deterministic: true, pass: true, answersPass: true, answersPresent: true, reference: { score: 100 }, stub: { score: 7.14 }, lazy: { score: 30 }, alt: { score: 90 } };
+  const p = pilotOf(res, res, '2026-11-19');
+  assert.deepStrictEqual(p.dryRun, { reference: 100, stub: 7.1, lazy: 30, alt: 90, date: '2026-11-19' });
+  assert.strictEqual(p.decision, 'keep');
+  assert.strictEqual(pilotOf(res, { ...res, lazy: { score: 31 } }, '2026-11-19').decision, 'fix');
+  assert.strictEqual(pilotOf({ ...res, answersPass: false }, res, '2026-11-19').decision, 'fix');
+});
+
+test('lazy-answer keeps half of each id list, adds the decoys, and shifts numbers and dates', () => {
+  const { shallow, decoysOf } = require('../lazy-answer.js');
+  const key = { assertions: [{ op: 'absent', ids: ['DE-9'] }, { op: 'cites', ids: ['AB-1'] }] };
+  assert.deepStrictEqual(decoysOf(key), ['DE-9']);
+  const v = shallow({ path: ['AB-1', 'AB-2', 'AB-3'], n: 10, d: '2027-03-22', word: 'red' }, decoysOf(key));
+  assert.deepStrictEqual(v, { path: ['AB-1', 'AB-2', 'DE-9'], n: 7, d: '2027-03-01', word: 'red' });
 });
 
 const tasks = fs.readdirSync(DIR).filter((f) => /^t7-.*\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')));

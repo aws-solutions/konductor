@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// bench/docs/RUNBOOK.md is checked against the scripts it describes: every script, flag, variable and path it names must exist.
+// bench/docs/runbook.md is checked against the scripts it describes: every script, flag, variable and path it names must exist.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,14 +10,14 @@ const path = require('node:path');
 
 const BENCH = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(BENCH, 'scripts');
-const doc = fs.readFileSync(path.join(BENCH, 'docs', 'RUNBOOK.md'), 'utf8');
+const doc = fs.readFileSync(path.join(BENCH, 'docs', 'runbook.md'), 'utf8');
 const sources = Object.fromEntries(fs.readdirSync(SCRIPTS).filter((f) => f.endsWith('.sh')).map((f) => [f, fs.readFileSync(path.join(SCRIPTS, f), 'utf8')]));
 const allSource = Object.values(sources).join('\n');
 
 test('every script the runbook names exists, and every pipeline script is named in it', () => {
   const named = new Set([...doc.matchAll(/\b([a-z][a-z-]*\.sh)\b/g)].map((m) => m[1]));
-  for (const n of named) assert.ok(sources[n], `${n} is named in RUNBOOK.md but is not in bench/scripts`);
-  for (const n of ['run-real-pilot.sh', 'run-after-capability.sh', 'run-skill-bench.sh', 'run-judging.sh', 'monitor.sh']) assert.ok(named.has(n), `${n} is not in RUNBOOK.md`);
+  for (const n of named) assert.ok(sources[n], `${n} is named in runbook.md but is not in bench/scripts`);
+  for (const n of ['run-real-pilot.sh', 'run-after-capability.sh', 'run-skill-bench.sh', 'run-judging.sh', 'monitor.sh']) assert.ok(named.has(n), `${n} is not in runbook.md`);
   assert.ok(fs.existsSync(path.join(SCRIPTS, 'real-pilot-tasks.txt')) && doc.includes('real-pilot-tasks.txt'));
 });
 
@@ -28,7 +28,7 @@ test('every flag shown after a script name in the runbook is handled by that scr
       const [, name, flags] = m;
       assert.ok(sources[name], `${name} in: ${line}`);
       for (const f of flags.match(/--?[a-zA-Z][\w-]*/g)) {
-        assert.ok(new RegExp(`${f.replace(/-/g, '\\-')}(?![\\w-])`).test(sources[name]), `${name} does not handle ${f} (RUNBOOK.md: ${line.trim()})`);
+        assert.ok(new RegExp(`${f.replace(/-/g, '\\-')}(?![\\w-])`).test(sources[name]), `${name} does not handle ${f} (runbook.md: ${line.trim()})`);
         checked++;
       }
     }
@@ -48,7 +48,7 @@ test('every upper-case variable the runbook names in code font appears in a scri
   for (const m of doc.matchAll(/`([A-Z][A-Z0-9_]+)(?:=[^`]*)?`/g)) if (!skip.has(m[1])) names.add(m[1]);
   for (const m of doc.matchAll(/\b([A-Z][A-Z0-9_]{3,})=/g)) names.add(m[1]);
   assert.ok(names.size >= 20, `only ${names.size} variables found`);
-  for (const n of names) assert.ok(new RegExp(`\\b${n}\\b`).test(allSource), `${n} is named in RUNBOOK.md but no script uses it`);
+  for (const n of names) assert.ok(new RegExp(`\\b${n}\\b`).test(allSource), `${n} is named in runbook.md but no script uses it`);
 });
 
 test('the phase table matches the chain\'s phase names', () => {
@@ -62,15 +62,15 @@ test('the phase table matches the chain\'s phase names', () => {
 test('the paths the runbook names exist', () => {
   const paths = new Set([...doc.matchAll(/`((?:bench\/)[\w./-]+)`/g)].map((m) => m[1]).filter((p) => !p.includes('*') && !/<|>/.test(p)));
   assert.ok(paths.size >= 5);
-  for (const p of paths) assert.ok(fs.existsSync(path.join(BENCH, '..', p)), `${p} is named in RUNBOOK.md but does not exist`);
+  for (const p of paths) assert.ok(fs.existsSync(path.join(BENCH, '..', p)), `${p} is named in runbook.md but does not exist`);
 });
 
 test('the README links the runbook and the runbook links back to the README and playbook', () => {
   const readme = fs.readFileSync(path.join(BENCH, 'docs', 'reference.md'), 'utf8');
-  assert.match(readme, /\(RUNBOOK\.md\)/);
+  assert.match(readme, /\(runbook\.md\)/);
   assert.match(readme, /run-after-capability\.sh/);
   assert.match(doc, /bench\/docs\/reference\.md/);
-  assert.match(doc, /bench\/docs\/CAP-PLAYBOOK\.md/);
+  assert.match(doc, /bench\/docs\/cap-playbook\.md/);
 });
 
 test('the runbook uses no em or en dashes and no first-person chat wording', () => {

@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: architect. Packet kind: a design for moving a ticket-booking service from one region to active-active in two regions. Context: current architecture, replication lag measurements CSV, recovery targets, a budget, DNS settings, product rules (no double booking of a seat). Plant: last-write-wins replication allows the same seat to be sold in both regions; the claimed recovery point is smaller than the measured replication lag; DNS TTL plus health-check timing exceeds the recovery time target; the budget omits the doubled database cost and cross-region transfer; the failback procedure is missing; a global seats-left counter is updated in both regions with no merge rule.",
-  "doc": "docs/design/active-active-regions.md"
+  "doc": "docs/design/active-active-regions.md",
+  "version": 2
 }

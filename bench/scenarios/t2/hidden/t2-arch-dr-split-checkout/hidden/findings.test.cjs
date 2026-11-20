@@ -34,7 +34,8 @@ function locations(item, slack) {
   return out;
 }
 
-const key = spec.items.map((it) => ({ id: it.id, location: locations(it, it.slack ?? LINE_SLACK), severity: it.severity, fix: it.fix, fixMin: it.fixMin }));
+// fixRequired: a finding must also say what to fix (a fix keyword), so naming a place with a generic remark scores nothing.
+const key = spec.items.map((it) => ({ id: it.id, location: locations(it, it.slack ?? LINE_SLACK), severity: it.severity, fix: it.fix, fixMin: it.fixMin, fixRequired: true }));
 let text = '';
 try { text = fs.readFileSync(path.resolve(spec.output), 'utf8'); } catch { /* no output: every test fails */ }
 const reported = readFindingsBlock(text);

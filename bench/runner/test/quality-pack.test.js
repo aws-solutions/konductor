@@ -297,7 +297,7 @@ const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8')
 test('the README has the pack section and the question-table row, and its commands use flags the CLI accepts', () => {
   const doc = read('docs/reference.md');
   assert.match(doc, /^## Quality dimensions pack$/m);
-  assert.match(doc, /\[QUALITY-PACK\.md\]\(QUALITY-PACK\.md\)/);
+  assert.match(doc, /\[quality-pack\.md\]\(quality-pack\.md\)/);
   assert.match(doc, /\| `judge --run \$RUNS --criteria-pack quality` \(add `--plan` first\)|`judge --run \$RUNS --criteria-pack quality` \(add `--plan` first\)/);
   const { checkArgs } = require('../lib/cli-flags.js');
   assert.equal(checkArgs('judge', { _: [], run: 'x', 'criteria-pack': 'quality', plan: true }), null);
@@ -305,7 +305,7 @@ test('the README has the pack section and the question-table row, and its comman
 });
 
 test('the pack document lists every criterion of the pack file once, with its dimension and weight', () => {
-  const doc = read('docs/QUALITY-PACK.md');
+  const doc = read('docs/quality-pack.md');
   for (const c of pack.criteria) {
     const rows = doc.split('\n').filter((l) => l.startsWith(`| ${c.id} |`));
     assert.equal(rows.length, 1, c.id);
@@ -317,7 +317,7 @@ test('the pack document lists every criterion of the pack file once, with its di
 test('the pack document and the README section follow the pack\'s own typography rule', () => {
   const readme = read('docs/reference.md');
   const section = readme.slice(readme.indexOf('## Quality dimensions pack'), readme.indexOf('## Calibration'));
-  for (const [name, text] of [['QUALITY-PACK.md', read('docs/QUALITY-PACK.md')], ['README section', section]]) {
+  for (const [name, text] of [['quality-pack.md', read('docs/quality-pack.md')], ['README section', section]]) {
     assert.deepEqual(P.DETECTORS.typography(P.proseOf(P.changeStats([file('d.md', text)]), ['d.md']), pack), [], name);
     assert.deepEqual(P.DETECTORS['long-sentences'](P.proseOf(P.changeStats([file('d.md', text)]), ['d.md']), pack), [], name);
   }

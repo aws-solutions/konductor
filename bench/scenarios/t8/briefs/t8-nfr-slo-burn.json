@@ -61,5 +61,21 @@
       "Keep the CPU over 80% page."
     ]
   },
-  "authorSwitchedFrom": "deepseek-3.2"
+  "authorSwitchedFrom": "deepseek-3.2",
+  "secondFamilyRewrite": {
+    "date": "2026-11-20",
+    "result": "dropped; version 1 kept",
+    "tries": [
+      {
+        "author": "minimax-m2.5",
+        "reviewer": "qwen3-coder-next",
+        "result": "failed: solution document inside the fixture (stub 100)"
+      },
+      {
+        "author": "qwen3-coder-next",
+        "reviewer": "minimax-m2.5",
+        "result": "stopped: spend stop reached during authoring"
+      }
+    ]
+  }
 }

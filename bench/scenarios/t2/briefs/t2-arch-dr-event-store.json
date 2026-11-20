@@ -14,5 +14,6 @@
     "use": "idea"
   },
   "brief": "Phase: design review. Role of the person asking: architect. Packet kind: an architecture decision record (with a longer appendix design) proposing to move an order service from CRUD tables to event sourcing with projections. Context files: current schema, product requirements (customers see their order right after placing it; support edits orders), recovery targets, data volume and growth CSV, team skills and on-call notes, the reporting team's needs. Plant: no plan for event schema changes over years of stored events; projections are async but the requirement says a customer sees the order immediately (read-your-writes not handled); full replay time at current volume (from the CSV) blows the recovery target; erasure of personal data is impossible on an immutable log with personal data in events and nothing addresses it; the considered-options section compares against a straw man and omits the simpler outbox plus audit table; snapshotting is mentioned but its trigger and storage are not designed; the reporting team's SQL access disappears with no replacement.",
-  "doc": "docs/adr/0007-event-sourced-orders.md"
+  "doc": "docs/adr/0007-event-sourced-orders.md",
+  "version": 2
 }

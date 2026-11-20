@@ -57,5 +57,21 @@
       "A list of steps with no check after each.",
       "No word on the old primary coming back."
     ]
+  },
+  "secondFamilyRewrite": {
+    "date": "2026-11-20",
+    "result": "dropped; version 1 kept",
+    "tries": [
+      {
+        "author": "qwen3-coder-next",
+        "reviewer": "minimax-m2.5",
+        "result": "failed: request listed the facts and the steps; key items malformed; reference 0"
+      },
+      {
+        "author": "minimax-m2.5",
+        "reviewer": "qwen3-coder-next",
+        "result": "failed: lazy answer 87 (alternative 87)"
+      }
+    ]
   }
 }

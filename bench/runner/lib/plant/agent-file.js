@@ -10,7 +10,7 @@ const { copyPlainFile } = require('../safe-copy.js');
 const AGENT_NAME = 'plant';
 const SERVER_NAME = 'plant';
 const AGENT_REL = path.join('.kiro', 'agents', `${AGENT_NAME}.json`);
-// Built-ins by their engine v2 names. `@builtin` would also bring `subagent`, a spawn tool (docs/history/STEP0-FINDINGS.md). Engine v3
+// Built-ins by their engine v2 names. `@builtin` would also bring `subagent`, a spawn tool (docs/history/step0-findings.md). Engine v3
 // loads the same file: it upgrades it in place to read, write, shell, glob and grep and adds its own `permissions`.
 const BUILTIN_TOOLS = Object.freeze(['fs_read', 'fs_write', 'execute_bash', 'glob', 'grep']);
 const PROMPTS = {

@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-orders-migration",
-  "version": 1,
+  "version": 2,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -128,7 +128,7 @@
   },
   "review": {
     "family": "minimax",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "verdicts": [
       {
         "check": "leak",
@@ -156,5 +156,24 @@
         "note": "No comments, tests, doc files, or naming in fixture point at planted problems. deployment.md and architecture.md provide general guidance only."
       }
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T2 batch worker session",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 35.1,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
   }
 }
