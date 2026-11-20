@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// bench/RUNBOOK.md is checked against the scripts it describes: every script, flag, variable and path it names must exist.
+// bench/docs/RUNBOOK.md is checked against the scripts it describes: every script, flag, variable and path it names must exist.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
