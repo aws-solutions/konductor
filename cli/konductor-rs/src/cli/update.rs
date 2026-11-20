@@ -40,7 +40,9 @@ use crate::cli::output::ColorMode;
 // uses it to guarantee its concurrent installer thread's write has
 // already committed before the fresh read runs -- without this, the
 // read's outcome depends on thread-scheduling speed, which made that
-// test flaky on a different build platform.
+// test flaky on a different build platform. It does not order the
+// installer against the initial manifest read, so that test pins
+// `--harness` to stay unambiguous if the installer lands first.
 #[cfg(test)]
 thread_local! {
     static MID_UPDATE_SYNC_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
@@ -2413,6 +2415,11 @@ mod tests {
     /// rather than left to thread-scheduling speed: this test asserts
     /// on what a third, synchronous call observes DURING the race,
     /// which needs an explicit ordering guarantee to be deterministic.
+    ///
+    /// The hook does not order the installer against `update`'s initial
+    /// manifest read. If the installer lands first, the target already
+    /// tracks two strategies, so `--harness kiro-cli-v2` is passed to keep
+    /// selection unambiguous; the finalize re-read does not depend on it.
     #[test]
     fn update_finalize_index_reflects_a_concurrently_installed_other_strategy() {
         const ITERATIONS: usize = 20;
@@ -2466,7 +2473,7 @@ mod tests {
             let code = update_one_target(
                 &target,
                 Some(repo_root.to_str().unwrap()),
-                None,
+                Some("kiro-cli-v2"),
                 false, /* use_github_token */
                 None,  /* release_version */
                 false, /* force */
