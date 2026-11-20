@@ -3,7 +3,7 @@
 
 // Hidden-test bridge for Python tasks. The bench scores hidden suites by reading `node --test` totals, so this file runs
 // the Python tests (hidden/py/test_*.py, unittest) once and registers one node test per Python test.
-// Copied into each Python task's hidden directory; bench/scenarios/t1/t1-lib.test.js fails if a copy drifts.
+// A task's hidden dir names it in .bench-lib.json and the tests check copies it in (bench/runner/lib/hidden-lib.js).
 
 const { test } = require('node:test');
 const assert = require('node:assert');

@@ -21,34 +21,5 @@
     "doc-key.js",
     "plan.test.cjs"
   ],
-  "legacy": [
-    {
-      "path": "t1/dry-run.js",
-      "debt": "D-60"
-    },
-    {
-      "path": "t1/hidden/t1-nfr-ndjson-stream/hidden/py_bridge.test.js",
-      "debt": "D-58"
-    },
-    {
-      "path": "t1/hidden/t1-nfr-ndjson-stream/hidden/py/timeouts.py",
-      "debt": "D-58"
-    },
-    {
-      "path": "t1/hidden/t1-nfr-report-queries/hidden/py_bridge.test.js",
-      "debt": "D-58"
-    },
-    {
-      "path": "t1/hidden/t1-nfr-report-queries/hidden/py/timeouts.py",
-      "debt": "D-58"
-    },
-    {
-      "path": "t1/render-prompt.js",
-      "debt": "D-60"
-    },
-    {
-      "path": "t1/stage.js",
-      "debt": "D-60"
-    }
-  ]
+  "legacy": []
 }

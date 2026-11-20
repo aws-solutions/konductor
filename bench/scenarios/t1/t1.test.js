@@ -5,7 +5,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { scoreOf } = require('./dry-run.js');
+const { codeScore: scoreOf } = require('../lib/score.js');
+const { sharedHelpers } = require('../../runner/lib/hidden-lib.js');
 
 const DIR = __dirname;
 const ids = fs.readdirSync(DIR).filter((f) => /^t1-.*\.json$/.test(f)).map((f) => f.replace(/\.json$/, ''));
@@ -38,14 +39,13 @@ test('every task has its fixture, hidden tests and reference, and its ids match'
   }
 });
 
-test('Python tasks carry byte-identical copies of the bridge and the timeout helper', () => {
-  const bridge = fs.readFileSync(path.join(DIR, 'lib', 'py-bridge.test.js'), 'utf8');
-  const timeouts = fs.readFileSync(path.join(DIR, 'lib', 'py-timeouts.py'), 'utf8');
+test('Python tasks name the shared bridge and timeout helper in .bench-lib.json and commit no copy', () => {
   for (const id of ids) {
-    const bridgeCopy = path.join(DIR, 'hidden', id, 'hidden', 'py_bridge.test.js');
-    if (!fs.existsSync(bridgeCopy)) continue;
-    assert.equal(fs.readFileSync(bridgeCopy, 'utf8'), bridge, `${id} bridge`);
-    assert.equal(fs.readFileSync(path.join(DIR, 'hidden', id, 'hidden', 'py', 'timeouts.py'), 'utf8'), timeouts, `${id} timeouts`);
+    const root = path.join(DIR, 'hidden', id);
+    const named = sharedHelpers(root).map(([rel]) => rel);
+    if (!named.includes('hidden/py_bridge.test.js')) continue;
+    assert.ok(named.includes('hidden/py/timeouts.py'), `${id} timeouts`);
+    for (const rel of named) assert.ok(!fs.existsSync(path.join(root, rel)), `${id} commits ${rel}`);
   }
 });
 
@@ -78,4 +78,22 @@ test('a task aimed at an SOP that waits for the user\'s yes says in its prompt t
     assert.match(task.prompt, /scope is confirmed|confirm(ed)? the scope/i, `${id} must confirm the scope`);
     assert.match(task.prompt, /commit/i, `${id} must allow committing on the feature branch`);
   }
+});
+
+test('every brief renders its author prompt and both two-step prompts with no slot left', () => {
+  const { loadConfig } = require('../lib/config.js');
+  const { render } = require('../lib/prompt.js');
+  const cfg = loadConfig(require('./scenario.config.js'));
+  for (const f of fs.readdirSync(path.join(DIR, 'briefs'))) {
+    for (const step of [null, 'data', 'key']) {
+      const text = render(cfg, path.basename(f, '.json'), step);
+      assert.doesNotMatch(text, /\{\{\w+\}\}|undefined/, `${f} ${step}`);
+    }
+  }
+});
+
+test('the log row marks a call counted at the abort limit as an estimate', () => {
+  const { stage } = require('./scenario.config.js');
+  assert.equal(stage.logRow('t1-x', 'fix', 'glm-5', { credits: 2.5 }), '| t1-x | fix | glm-5 | 2.50 |');
+  assert.match(stage.logRow('t1-x', 'fix', 'glm-5', { credits: 15, estimated: true }), /^\| t1-x \| fix \| glm-5 \| 15\.00 \(estimate: .*\) \|$/);
 });
