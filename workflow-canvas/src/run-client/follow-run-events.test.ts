@@ -13,7 +13,8 @@ import {
   RETRY_MAX_MS,
   type EventsReply,
   type FollowEnd,
-  type SendRequest,
+  runEventsPath,
+  type ReadEvents,
 } from './follow-run-events';
 
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -75,7 +76,6 @@ type Step =
 /** A server that answers each call with the next step of its script. */
 class FakeServer {
   readonly paths: string[] = [];
-  readonly headers: Record<string, string>[] = [];
   readonly signals: AbortSignal[] = [];
   inFlight = 0;
   mostInFlight = 0;
@@ -83,9 +83,8 @@ class FakeServer {
 
   constructor(private readonly steps: Step[]) {}
 
-  readonly send: SendRequest = (path, { headers, signal }) => {
-    this.paths.push(path);
-    this.headers.push(headers);
+  readonly readEvents: ReadEvents = (runId, after, wait, signal) => {
+    this.paths.push(runEventsPath(runId, after, wait));
     this.signals.push(signal);
     this.inFlight += 1;
     this.mostInFlight = Math.max(this.mostInFlight, this.inFlight);
@@ -177,8 +176,11 @@ function follow(
   const seen: FollowedRun[] = [];
   let end: FollowEnd | undefined;
   void followRunEvents({
-    ports: { send: server.send, scheduler: clock.scheduler, now: clock.now },
-    token: 'tok',
+    ports: {
+      readEvents: server.readEvents,
+      scheduler: clock.scheduler,
+      now: clock.now,
+    },
     runId: 'r1',
     from,
     onRun: (run) => seen.push(run),
@@ -207,7 +209,6 @@ describe('followRunEvents', () => {
       `/api/runs/r1/events?after=0&wait=${LONG_POLL_WAIT_S}`,
       `/api/runs/r1/events?after=2&wait=${LONG_POLL_WAIT_S}`,
     ]);
-    expect(server.headers[0]).toEqual({ Authorization: 'Bearer tok' });
     expect(followed.seen).toHaveLength(2);
     expect(followed.end()).toMatchObject({
       kind: 'finished',
@@ -503,13 +504,41 @@ describe('followRunEvents', () => {
     expect(second.end()?.kind).toBe('finished');
   });
 
-  it('puts the run id in the path as one segment', async () => {
+  it('ends with session_lost on a 401, without trying again', async () => {
+    const server = new FakeServer([
+      { status: 401, body: { error: 'The session is not known.' } },
+      ok(page([finishedEvent(1)], true)),
+    ]);
+    const clock = new FakeClock();
+    const followed = follow(server, clock);
+    await clock.advance(RETRY_MAX_MS);
+
+    expect(server.paths).toHaveLength(1);
+    expect(followed.end()).toMatchObject({
+      kind: 'session_lost',
+      message: 'The session is not known.',
+    });
+  });
+
+  it('gives the path of the events with the run id as one segment', () => {
+    expect(runEventsPath('r1', 4, 20)).toBe(
+      '/api/runs/r1/events?after=4&wait=20',
+    );
+    expect(runEventsPath('a/b?c', 0, 0)).toBe(
+      '/api/runs/a%2Fb%3Fc/events?after=0&wait=0',
+    );
+  });
+
+  it('reads the events of the run it was given', async () => {
     const server = new FakeServer([ok(page([finishedEvent(1)], true))]);
     const clock = new FakeClock();
     const controller = new AbortController();
     await followRunEvents({
-      ports: { send: server.send, scheduler: clock.scheduler, now: clock.now },
-      token: 'tok',
+      ports: {
+        readEvents: server.readEvents,
+        scheduler: clock.scheduler,
+        now: clock.now,
+      },
       runId: 'a/b?c',
       from: startFollowing([]),
       onRun: () => {},
