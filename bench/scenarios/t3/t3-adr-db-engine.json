@@ -118,22 +118,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to choose database approach and write ADR without prescribing specific method. No misleading hints."
+          "note": "Prompt specifies option IDs and limit keys as naming conventions, not a work method; no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture lists option properties in price-sheet.json but doesn't indicate which option is correct or provide calculations that reveal answer."
+          "note": "Fixture contains requirements, limits, pricing data but not the answer; developer must compute from inputs."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All seven limit keys exist in fixture: peak_write_wps (traffic-profile.json), read_p99_ms (requirements.json), monthly_budget_usd (requirements.json), item_size_bytes (traffic-profile.json), rpo_seconds (recovery.json), rto_seconds (recovery.json), partition_write_wcu (platform-limits.json)."
+          "note": "Prompt now states exact limit keys per edits.md fix; expertKey references specific calculations from fixture data; rubric anchors on hot-partition analysis."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can calculate hot writes (60% of 25,000 = 15,000 wps), check partition ceiling (1000 WCU), compute kv-on-demand would exceed limit, check relational cluster cost exceeds budget, choose kv-provisioned-autoscaling."
+          "note": "Developer can analyze traffic skew, partition limits, price sheet to choose option; calculations derive from provided data."
         }
       ]
     }

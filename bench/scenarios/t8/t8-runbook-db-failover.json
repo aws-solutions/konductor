@@ -161,29 +161,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates usability and expert key coverage for the runbook requested; no extra methods demanded. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal (create a failover runbook with prechecks, safe role change, client recovery, etc.), constraints (JSON structure, use source files), and deliverable location, but does not name a specific methodology, tool, or point to decoys/traps.)."
+          "note": "Request specifies runbook structure but not specific procedure. No misleading hints pointing away from correct failover steps."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides topology, tools, and rota; no pre-written runbook visible. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source materials (topology, quorumctl commands, RPO=120s, DNS TTL=30s, lag values in logs, role names in rota) that require synthesis and reasoning; no file directly lists the expected runbook or JSON output.)."
+          "note": "Fixture has topology.yaml, policy files, docs providing context but not giving away runbook steps. No file states the procedure."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric references QuorumCtl commands and rota roles from fixture; expertKey items match runbook requirements. Earlier glm-5 check of the request, fixture and key: pass (All key.json test values exist in fixture: abort threshold 120 (policy/data-policy.md RPO), metrics (metrics/catalog.csv), escalation roles (rota/paging.md), node names and commands (topology.yaml, vendor/quorumctl-help.txt), and ordering constraints follow from old-failover-notes.md and quorumctl help.)."
+          "note": "Hidden tests check runbook structure. Fixture has quorumctl tool, policy files. Request mentions QuorumCtl help, client settings, metric catalogue."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different valid runbook structures and step organizations can Pass if they cover the required operational sequence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can synthesize the runbook from topology.yaml (nodes, roles, zones), vendor/quorumctl-help.txt (commands), policy/data-policy.md (RPO=120s), config/clients.yaml (DNS TTL=30s), logs (incident pattern), docs/old-failover-notes.md (fencing lesson), and rota/paging.md (escalation roles).)."
+          "note": "SRE can create runbook from ops files. Different step orders/wordings possible as long as correct procedure (check lag, fence, promote, repoint clients, verify)."
         }
       ]
     }

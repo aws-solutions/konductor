@@ -1,12 +1,12 @@
 {
   "id": "t4-iam-ci-deploy-role-twin",
-  "version": 2,
+  "version": 3,
   "class": "complex",
   "phase": "implementation",
   "phases2": [],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Every deploy uploads every file again, even unchanged ones, and one failed upload stops the whole deploy. Please make scripts/deploy.js smarter. (1) Add a dry run: `node scripts/deploy.js <staging|production> --dry-run` calls no cloud client, changes nothing, and prints one JSON object: { \"stage\", \"plannedUploads\": [object keys], \"skippedFiles\": [paths], \"functionUpdate\": { \"functionArn\", \"source\" }, \"invalidation\": { \"distributionId\", \"paths\": [\"/*\"] } } (production only; staging has no invalidation). (2) Skip unchanged files: after a successful deploy, write a manifest, by default .lantern-deploy.json in the working directory, shaped { \"version\": \"1.0\", \"stage\": \"<stage>\", \"files\": { \"<path under public/>\": \"<sha256 hex of the file>\" } }; a file whose hash matches the manifest is not uploaded. The path can be changed with --manifest-path <file> on the command line or manifestPath in deploy({ stage, client, releaseId, sleep, manifestPath }). (3) Retry failed uploads: try each upload up to 4 times in all, waiting 100, 200 and 400 ms between tries through the injectable sleep option (default a real timer); if the last try fails, throw an Error whose message says \"failed to upload\" and names the file. Do not change the IAM policy files, the config or the existing tests.",
+  "prompt": "Every deploy uploads every file again, even unchanged ones, and one failed upload stops the whole deploy. Please make scripts/deploy.js smarter. (1) Add a dry run: `node scripts/deploy.js <staging|production> --dry-run` calls no cloud client, changes nothing, and prints one JSON object: { \"stage\", \"plannedUploads\": [object keys], \"skippedFiles\": [paths], \"functionUpdate\": { \"functionArn\", \"source\" }, \"invalidation\": { \"distributionId\", \"paths\": [\"/*\"] } } (production only; staging has no invalidation). (2) Skip unchanged files: after a successful deploy, write a manifest, by default .lantern-deploy.json in the working directory, shaped { \"version\": \"1.0\", \"stage\": \"<stage>\", \"files\": { \"<path under public/>\": \"<sha256 hex of the file>\" } }; a file whose hash matches the manifest is not uploaded, and a missing or unreadable manifest (any read error) means nothing is skipped. The path can be changed with --manifest-path <file> on the command line or manifestPath in deploy({ stage, client, releaseId, sleep, manifestPath }). (3) Retry failed uploads: try each upload up to 4 times in all, waiting 100, 200 and 400 ms between tries through the injectable sleep option (default a real timer); if the last try fails, throw an Error whose message says \"failed to upload\" and names the file. Do not change the IAM policy files, the config or the existing tests.",
   "fixture": "t4-iam-ci-deploy-role",
   "hidden": "t4-iam-ci-deploy-role-twin",
   "timeoutSec": 1800,
@@ -121,36 +121,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric item change-explained asks for an explanation of unchanged file detection and upload failure handling, which matches the request's requirements for dry-run, manifest, and retries. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the requested behavior, interfaces, values, and constraints but does not prescribe a named implementation method or identify hidden traps or decoys.)."
+          "note": "The CLI examples and API signature in task.json define the requested interface and behavior, not a method for solving it; the IAM no-change instruction is a scope guard, not a misleading hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: The anchors (both behaviors explained, manifest path named, dry-run output named) are judge-only; the request describes the interface but not the implementation. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture deployment code and docs, including fixture/scripts/deploy.js and fixture/CHANGELOG.md, describe the existing behavior without listing the requested findings or hidden expected answers.)."
+          "note": "The fixture has the baseline deploy implementation, visible tests, and a generic release-manifest changelog entry, but it does not state the requested hash-skipping, dry-run JSON, or four-attempt retry behavior as finished behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: The rubric references the manifest path and dry-run output which are specified in the prompt (default .lantern-deploy.json, --manifest-path, dry-run JSON shape). Earlier gpt-5.6-luna check of the request, fixture and key: pass (Cleared by hand (false alarm, see t4/AUTHORING-LOG.md): the staged folder for the reviewer put the overlay at hidden/hidden/, so the test looked one level too deep. Run by the bench loader, hidden/t4-iam-ci-deploy-role-twin/ is laid over the repository root, hidden/deploy.test.js finds scripts/ and public/ through path.join(__dirname, \"..\"), and the reference scores 100 with 14 of 14 tests.)."
+          "note": "The hidden tests use the public files, stage configs, fake cloud client, deploy API, and manifest path named by task.json; the requested output fields and retry timings match hidden/deploy.test.js, and rubric change-explained covers the same behavior."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different correct implementations (different hash algorithms, different retry timing, different manifest structures) can reach Pass as the rubric judges whether the explanation matches the code. Earlier gpt-5.6-luna check of the request, fixture and key: pass (Cleared by hand (false alarm, see t4/AUTHORING-LOG.md): the staged folder for the reviewer put the overlay at hidden/hidden/, so the test looked one level too deep. Run by the bench loader, hidden/t4-iam-ci-deploy-role-twin/ is laid over the repository root, hidden/deploy.test.js finds scripts/ and public/ through path.join(__dirname, \"..\"), and the reference scores 100 with 14 of 14 tests.)."
+          "note": "fixture/scripts/deploy.js, scripts/lib/manifest.js, the visible deploy tests, and the explicit task interface provide enough context to implement the change without hidden tests, while the hidden suite accepts behavior through API and CLI assertions rather than reference structure."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

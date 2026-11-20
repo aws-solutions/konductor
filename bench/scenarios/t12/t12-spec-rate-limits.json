@@ -9,7 +9,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide).",
+  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide). Keep the lists focused: 5 to 14 requirements, 3 to 14 tasks and 1 to 8 open questions.",
   "fixture": "t12-spec-rate-limits",
   "hidden": "t12-spec-rate-limits",
   "timeoutSec": 1800,
@@ -130,6 +130,65 @@
     "singleFamily": true,
     "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
   },
+  "review": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Request provides product request as input, doesn't hint at answer or name specific method"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Deliverables and format clear; unsettled points (burst, window type, store-down) intentionally open for openQuestions list"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Quick skim cannot score well; need comprehensive coverage of all agreed rules with testable criteria and design"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All needed information in fixture (product request, code structure, config, keys) or stated in request"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file contains the spec or traps; product request is input, not answer"
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks for a spec based on product request, names no specific method/framework/tool, contains no misleading hints"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Product request (rate-limits-request.md) is intentional input for spec task, not leaked answer; superseded per-IP note provides context"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check elements that exist in fixture (plans.json, keys.json, kv.js) or are stated in request; bounds (5-14, 3-14, 1-8) stated in prompt"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can write spec from product request and codebase; solution can differ in naming/structure/order and still pass"
+        }
+      ]
+    }
+  },
   "handEdited": {
     "family": "claude",
     "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
@@ -156,6 +215,6 @@
     "X-RateLimit-Remaining on every response or only on limited responses are both acceptable; raising the choice as an open question is a plus, not an invented rule.",
     "Fail open and fail closed both pass store-down when a reason is given or the choice is left to product; no reason is Partial.",
     "A per-account limit on top of the per-key one is an invented rule: Partial on settled-versus-open.",
-    "More than 14 requirements is never penalised by the judge."
+    "The request bounds the lists (5 to 14 requirements, 3 to 14 tasks, 1 to 8 open questions); within those bounds the judge never scores length."
   ]
 }

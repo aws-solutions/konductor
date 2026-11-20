@@ -17,7 +17,7 @@ test('requirements address multiple notification channels', () => {
 
 test('requirements consider branch capacities and constraints', () => {
   const texts = requirementTexts(blockOf('docs/requirements.md'));
-  const branchRelated = texts.filter(t => /branch.*capacity|storage.*limit|hours.*constraint/i.test(t));
+  const branchRelated = texts.filter(t => /capacit|storage|shelf space|limited hours|opening hours|staffing|locker/i.test(t) && /branch|north hill|eastside|central/i.test(t));
   assert.ok(branchRelated.length >= 1, 'Should address branch-specific constraints');
 });
 

@@ -1278,6 +1278,13 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   task added or changed since as smoke only. **standard**: every DEV task, controls and twins included. **full**: every task, and it needs `--prereg FILE`.
   `run-config.json` gets a `level` record (name, count, list hash, picks, smoke-only tasks, task file hashes) and `report-2x2` prints it in the header with what
   that level may and may not support. The arms, replicates and judging of a level are not enforced by the flag; they stay the run's own flags.
+- `bash bench/scripts/pilot-wave.sh WAVE [--prepare-only]` runs one pilot wave (plan 8a) from the owner's terminal: vanilla Kiro CLI, one replicate,
+  one run at a time, with each wave's soft cap, ceiling and per-run limit in its table (`--list`). Waves 1 to 8 are T4, T5, T6, T3, T1, T2, T7 and T8;
+  waves 9 to 12 are T9 to T12. Wave 9 (browser tasks) holds `/var/tmp/konductor-heavy.lock` for the whole run and has the lowest per-run limit,
+  because each Playwright run takes about 690 MB. Wave 11 includes the fresh-session task, which needs the Kiro CLI or Claude Code arm. Wave 12 leaves
+  out `t12-mux-parallel-merge` when tmux is not on PATH and `t12-cmux-parallel-merge` when cmux is not (DEBT D-126), with a message. After a paid wave,
+  `bench/scenarios/wave-retry.js` lists the runs the service throttled, and the script reruns them once into `OUT-retry` within what is left of the
+  ceiling (DEBT D-138).
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

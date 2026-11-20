@@ -210,7 +210,34 @@
         "verdict": "pass",
         "note": "worker check: the request does state that the script exits 2 when required arguments are absent, and the key's `file` fields are substring regexes (`ops/freeze-calendar` matches ops/freeze-calendar.csv) (reviewer: The task is unfair/impossible in places. The hidden tests require the CLI (scripts/receipt-go-no-go.js) to 'print only the decision' and exit 2 when required args are absent, but the request only says 'accepts --ring, --snapshot, and optional --now' and does not state it must exit 2. The design key's evidence checks (calendar-evidence, policy-evidence) require line numbers referencing files like 'ops/freeze-calendar' and 'ops/budget-policy' (without extension), but the actual files are 'freeze-calendar.csv' and 'budget-policy.json'—the key expects '.csv' and '.json' suffixes to be omitted, making it impossible to derive correct line numbers without guessing.)"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request specifies ring rollout functions but not algorithm. No misleading hints pointing away from real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture has ops/budget-policy.json with ring definitions and docs/error-budget-policy.md, but doesn't give implementation. No file reveals solution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests would check ring rollout functionality. Fixture has policy files defining rings, metrics. Rubric's plan-follows-policy checks ops/budget-policy.json alignment."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can implement ring rollout from policy files and request. Different percentage steps possible (adjudication notes)."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

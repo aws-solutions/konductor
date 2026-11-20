@@ -100,15 +100,6 @@
       ]
     },
     {
-      "id": "audit-filters-in",
-      "desc": "The target segment audit workflow is in scope",
-      "op": "includes",
-      "path": "in",
-      "ids": [
-        "F-021"
-      ]
-    },
-    {
       "id": "must-have-import",
       "desc": "The committed import is explicitly marked a must-have",
       "op": "includes",

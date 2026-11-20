@@ -175,29 +175,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates bottom-line call and director reasoning for the go/no-go decision requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal, files, interfaces and constraints without naming a method, technique, tool, or pointing at decoys or specific answers the checks look for.)."
+          "note": "Prompt asks to review files and produce a go/no-go decision. No method or framework is prescribed; no decoy points away from the real problem (release blockers, CI status, cherry-pick queue)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides blockers, CI status, and calendar; no explicit go/no-go answer stated. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain evidence the agent must reason from (issue export, cherry-pick queue, CI summary, calendar, notes, triage); no file explicitly lists the bugs, findings, or expected values.)."
+          "note": "Fixture files contain raw data (release_blockers.csv, cherry_pick_queue.csv, ci_signal_summary.json, etc.). Nothing in them states the final decision, blockers list, or release date."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (Thursday 2027-05-06, REL-112/118/131/127, linux-integration failing, windows-smoke 85%, 2027-05-13 alternative) reference fixture IDs. Earlier glm-5 check of the request, fixture and key: pass (All key assertions reference data present in fixture: REL-112/118/131 owners and statuses in release_blockers.csv, REL-118 late approval in cherry_pick_queue.csv, REL-127 reversion and notes mention, REL-145/153 triage demotion in triage_notes.csv, CI job states in ci_signal_summary.json, and 2027-05-13 next slot in release_calendar.json.)."
+          "note": "Hidden tests check things in fixture: REL-112/REL-118/REL-131 blockers, REL-112 commit not on branch, REL-118 late approval (2027-04-29 09:15 vs deadline 2027-04-28 17:00), failing linux-integration (50%), REL-127 reverted, release calendar dates (2027-05-06 and 2027-05-13). Rubric anchors match request goal."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different reasoning prose and blocker presentations can Pass if grounded in fixture evidence. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify blockers from release-blocker labels, exclude demoted issues via triage_notes, correlate CI failures to commits, detect late cherry-picks against calendar deadlines, find reverted issues in release notes, and determine the next release slot from the calendar.)."
+          "note": "A competent developer could derive the answer from fixture+prompt: read blockers and triage, cherry-pick queue for late approval, CI summary for failing job, calendar for next slot, and conclude no-go for 2027-05-06 with earliest 2027-05-13."
         }
       ]
     }

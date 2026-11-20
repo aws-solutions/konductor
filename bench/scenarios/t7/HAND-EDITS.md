@@ -145,3 +145,8 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   in `authoring/t7-scope-cut/generate.py`. Points, slack and cut are unchanged (29, 17, 12). expertKey: 8 items with
   figures (adds the unlabelled adds, the bug splits, cut arithmetic, no buffer). Free gates: reference 100, stub 4.8,
   lazy 23.8, alt 100, other 100.
+
+## Delegated-read fixes (2026-11-20, mate spot-review fix worker)
+
+- `t7-pm-launch-cut` (version 7): F-021 was required in scope, but `sales-commitments.md:17-21` says Greybridge's F-021 ask "is a follow-up discussion, not a launch promise". The `audit-filters-in` assertion is removed (13 assertions, `min` 13) and the weight-8 `cmd` check no longer needs f-021; F-021 in or out both pass. A plan without F-021 (F-004 and F-028 instead, 58 points) scores 100. Free gates: reference 100, stub 2.9, lazy 33.2, alt 100.
+- `t7-ship-train` (version 6): `targetSkills` and `loadCheck.mustLoad` are `sprint-planning` and `program-planning`, `targetAgent` `k-tpm`, as for t7-freeze-forecast (it measured no skill before). Free gates unchanged: 100 / 2.9 / 29.5 / 100.

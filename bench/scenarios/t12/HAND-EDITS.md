@@ -118,3 +118,14 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   `adjudication` added. New `answers/.../other`: the reference with the "Unlike the 2025 proposal" wording, the 429
   rule split in three, fail closed and other open questions. Free gates: reference 100, stub 0, lazy 0, alt 100,
   shallow 0, other 100.
+  - After the gpt-5.6-luna recheck (key-matches-fixture fail: the hidden `maxLen` caps of 14 requirements, 14 tasks and
+    8 open questions were never stated): the request now states those caps; after the second gpt-5.6-luna recheck (unstated minimums of 5 requirements and 3 tasks) it states the full bounds: 5 to 14 requirements, 3 to 14 tasks, 1 to 8 open questions. Gates unchanged.
+  - Third gpt-5.6-luna recheck: fails fixture-lists-no-answer, key-matches-fixture and solvable-from-fixture.
+    Fixed: `store-failure-task` now reads the whole block (a store-down choice in an open question or a requirement
+    counts, not only in a task), because the folder never asks for it. Disputed, not changed: the product request
+    listing the rules is the input a spec task works from, and burst and the window type are left open on purpose
+    (the request asks for open questions). `pilot.decision` is fix with a blocker until a fourth non-Claude recheck.
+    Gates unchanged: reference 100, stub 0, lazy 0, alt 100, shallow 0, other 100.
+  - Fourth recheck (owner-approved, deepseek-3.2, given the owner's rulings on the two disputed points: the product
+    request is the spec task's input, and unsettled points are meant for openQuestions): 4 of 4 recheck items and 5 of
+    5 review checks pass. `review` now holds this recheck; `pilot.decision` keep, blocker cleared.

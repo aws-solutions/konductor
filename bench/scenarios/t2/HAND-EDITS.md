@@ -116,3 +116,7 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
     new r2 (council decision). `adjudication` added.
   - New answer `answers/t2-arch-dr-event-store/other/REVIEW.md`: a different correct review (other wording, findings in
     neighbouring sections, new fix words). Free gates: reference 100, stub 7.1, lazy 28.6, alt 100, dump 28.6, other 100.
+
+## Delegated-read fix (2026-11-20, mate spot-review fix worker)
+
+- `t2-arch-dr-two-regions` (version 5): k1 (last-write-wins sells a seat twice) and k6 (the global counter has no merge rule) were one defect, so one strong finding earned k1 and lost k6. k6 is merged into k1 (sections 3.2 or 3.3, fix words of both); the key has 7 items; the reference review lists it once. A review with one merged finding scores 100 (about 87 before, per the delegated read). Free gates: reference 100, stub 7.1, lazy 28.6, alt 100.
