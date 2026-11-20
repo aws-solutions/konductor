@@ -1,0 +1,4 @@
+{
+  "standard": { "label": "Standard delivery", "flatMinor": 695, "freeOverMinor": 8500 },
+  "express": { "label": "Express delivery", "flatMinor": 1495, "freeOverMinor": null }
+}

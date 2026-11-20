@@ -1,0 +1,6 @@
+'use strict';
+const test=require('node:test'); const assert=require('node:assert'); const fs=require('node:fs'); const os=require('node:os'); const path=require('node:path'); const {createJsonStore}=require('../src/store/json-store'); const {accountRepository}=require('../src/repositories/accounts'); const {projectRepository}=require('../src/repositories/projects'); const {accountService}=require('../src/services/accounts'); const {projectService}=require('../src/services/projects');
+function all(){const s=createJsonStore(path.join(fs.mkdtempSync(path.join(os.tmpdir(),'sprig-')),'x.json'),{accounts:[],projects:[]}); const a=accountRepository(s),p=projectRepository(s); return {a,p,as:accountService(a),ps:projectService(p,a)};}
+test('rejects missing account name',()=>assert.strictEqual(all().as.create({}).error.code,'invalid_account'));
+test('creates and lists project',()=>{const x=all(); x.a.create({id:'a',name:'A'}); assert.ok(x.ps.create('a',{name:'Roadmap'}).ok); assert.strictEqual(x.ps.list('a').length,1);});
+test('rejects duplicate project names',()=>{const x=all(); x.a.create({id:'a',name:'A'}); x.ps.create('a',{name:'Roadmap'}); assert.strictEqual(x.ps.create('a',{name:' roadmap '}).error.code,'project_name_taken');});

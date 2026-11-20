@@ -1,0 +1,25 @@
+{
+  "id": "t10-dev-idempotency-keys",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "developer",
+  "phases2": [
+    "implementation",
+    "decisions",
+    "release-ops"
+  ],
+  "author": "qwen3-coder-next",
+  "keyAuthor": "minimax-m2.5",
+  "twoStep": true,
+  "reviewer": "glm-5",
+  "stack": "cjs",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/",
+    "licence": "IETF Trust (copyright notice on the document); idea only, no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a developer on the team who owns the payments API, writing to a teammate",
+  "brief": "Phase: long multi-phase, idea to ship. Role: developer. Repo: a Node.js payments-style API (transfers, refunds) on node:http with middleware, a small response cache module and a request-id middleware. The ask: clients can send an `Idempotency-Key` header on POST requests so a retry returns the first response instead of doing the work twice; the same key with a different body is rejected; two requests with the same key at the same moment do not both run. Traps to plant (adapt, five or more): (1) body comparison must ignore JSON key order and whitespace; (2) server errors (5xx) must not be stored as the replayed answer, but 4xx validation answers may be; (3) the existing cache module takes TTL in seconds in one function and milliseconds in another; (4) keys are scoped per account, and docs/partners.md says one partner shares one account across several client ids; (5) keys expire after 24 hours, a stated number in docs, and the store has no expiry sweep. Decisions the design note must settle: key scope, in-flight handling, what is stored, expiry, which routes accept the header, rollout. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note."
+}

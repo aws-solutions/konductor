@@ -1,0 +1,5 @@
+{
+  "en-US": { "currency": "USD", "taxRegion": "US-OR" },
+  "ja-JP": { "currency": "JPY", "taxRegion": "JP-13" },
+  "ar-KW": { "currency": "KWD", "taxRegion": "KW-HA" }
+}

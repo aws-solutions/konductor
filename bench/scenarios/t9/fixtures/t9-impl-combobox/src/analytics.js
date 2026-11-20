@@ -1,0 +1,1 @@
+const events = []; function record(event, detail = {}) { events.push({ event, detail, at: Date.now() }); } function recentEvents() { return events.slice(-10); } if (typeof module !== 'undefined') module.exports = { record, recentEvents };

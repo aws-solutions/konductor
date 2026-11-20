@@ -1,0 +1,4 @@
+{
+  "primary": {"timezone": "UTC", "label": "Primary"},
+  "backup": {"timezone": "UTC", "label": "Backup"}
+}

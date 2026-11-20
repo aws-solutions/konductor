@@ -1,0 +1,126 @@
+{
+  "outputFile": "docs/design/payment-status-events.md",
+  "items": [
+    {
+      "id": "atomic-transition",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "atomicWrite|atomic write"
+        ],
+        "none": [
+          "separate|later"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "claim-retry",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "claim|ownership"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "backoff",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "backoff|retry"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "per-order",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "per.order|each order",
+          "oldest|unsent"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "stable-header",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "stable|persist",
+          "x-event-id"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "dead-letter",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "dead.?letter|retain",
+          "attempt|unpublishable|failure"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "design-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "file": "docs/broker-contract\\.md",
+          "all": [
+            "at-least-once",
+            "2048"
+          ]
+        },
+        {
+          "file": "docs/consumers\\.md",
+          "all": [
+            "x-event-id",
+            "per order"
+          ]
+        },
+        {
+          "file": "src/scheduler\\.js",
+          "all": [
+            "runOnce",
+            "running"
+          ]
+        },
+        {
+          "file": "ops/metrics\\.csv",
+          "all": [
+            "broker\\.published"
+          ]
+        },
+        {
+          "file": "ops/instance-deploy\\.json",
+          "all": [
+            "orders-a",
+            "orders-b"
+          ]
+        }
+      ],
+      "min": 5,
+      "weight": 2
+    }
+  ]
+}

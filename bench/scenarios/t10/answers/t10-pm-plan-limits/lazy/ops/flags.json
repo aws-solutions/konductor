@@ -1,0 +1,9 @@
+{
+  "namingRule": "lowercase snake_case, ending in _enabled",
+  "flags": {
+    "member_invites_enabled": {"default": true},
+    "audit_events_enabled": {"default": true},
+    "project_limits_shadow_enabled": {"default": false},
+    "project_limits_enabled": {"default": false}
+  }
+}

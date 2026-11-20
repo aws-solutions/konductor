@@ -1,0 +1,5 @@
+{
+  "owner": { "label": "Owner", "canInvite": true },
+  "editor": { "label": "Editor", "canInvite": false },
+  "viewer": { "label": "Viewer", "canInvite": false }
+}

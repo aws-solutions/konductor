@@ -1,0 +1,7 @@
+{
+  "port": 4070,
+  "projectNameMaxLength": 80,
+  "batchMaxRows": 40,
+  "nearLimitRatio": 0.8,
+  "storeFile": "data/store.json"
+}

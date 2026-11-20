@@ -1,0 +1,10 @@
+{
+  "name": "harbor-and-pine-storefront",
+  "version": "2.4.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test ./test/*.test.js"
+  }
+}

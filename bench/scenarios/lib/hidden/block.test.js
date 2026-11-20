@@ -7,6 +7,8 @@
 // "scoring": "sections": every item names a `section`; each section gives two tests, "complete" (no item missed) and
 // "nearly complete" (at most one missed), so a section earns all, half or nothing and half a report earns little.
 // An item with `gate: true` (the root cause, the decision) fails every test when it fails: a wrong call earns nothing.
+// BLOCK_KIT names another kit folder for the key (default `block-kit`), so a task with two documents can grade each
+// with its own key: `BLOCK_KIT=rollout-kit node --test block.test.js` reads rollout-kit/key.json.
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -14,7 +16,7 @@ const path = require('node:path');
 const { readBlock, checkItem, sectionResults } = require('./block-kit/block-key.js');
 
 const root = __dirname;
-const key = JSON.parse(fs.readFileSync(path.join(root, 'block-kit/key.json'), 'utf8'));
+const key = JSON.parse(fs.readFileSync(path.join(root, process.env.BLOCK_KIT || 'block-kit', 'key.json'), 'utf8'));
 const { outputFile, items } = key;
 let text = '';
 try { text = fs.readFileSync(path.join(root, outputFile), 'utf8'); } catch { /* a missing file fails every test */ }

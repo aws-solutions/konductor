@@ -1,0 +1,8 @@
+{
+  "plans": {
+    "free": {"maxActiveProjects": 3, "displayName": "Free"},
+    "team": {"maxActiveProjects": 10, "displayName": "Team"},
+    "business": {"maxActiveProjects": 25, "displayName": "Business"},
+    "legacy": {"maxActiveProjects": null, "displayName": "Legacy"}
+  }
+}

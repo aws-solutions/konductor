@@ -1,0 +1,36 @@
+{
+  "id": "t10-dev-quiet-hours-digest",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "developer",
+  "phases2": [
+    "requirements",
+    "implementation",
+    "release-ops"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "esm",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://www.rfc-editor.org/rfc/rfc5545",
+    "licence": "IETF Trust (BCP 78 notice on the document); idea only, no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a developer on the team who owns the notification service, writing to a teammate",
+  "brief": "Phase: long multi-phase, idea to ship. Role: developer. Repo: a Node.js (ES modules) notification service that sends email and push messages right away through a small scheduler and provider adapters, with config/categories.json, a user-preferences store, docs on policies and provider limits, and ops/ files. The ask: users can set quiet hours in their own time zone (for example 22:00 to 07:00); messages that arrive during quiet hours are held and sent as one digest when quiet hours end; security notices always go out at once. Traps to plant (adapt, five or more): (1) stored time zones are IANA names, but some older users have offset strings such as `UTC+5:30`; (2) quiet hours that cross midnight, and days with a daylight-saving jump where a local time does not exist or happens twice; (3) config/categories.json marks `security` as urgent, while docs/policies.md says billing notices must also never be held; (4) the email provider caps a message at 50 items (docs/providers.md), so a digest of 120 held items needs a plan; (5) the scheduler dedupes jobs by key and silently drops a job scheduled in the past. Decisions the design note must settle: where held messages wait, how the digest time is computed, overflow, urgent categories, rollout by ring. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note.",
+  "firstAttempt": {
+    "tries": [
+      {
+        "author": "qwen3-coder-next",
+        "step": "A (two-step) and one fix",
+        "result": "dropped: the first call hit the 150 tool-call cap (about 13.2 credits, estimated) with no PLANTED.md and no task-draft.json; the fix call (9.58 credits) wrote both, but the request restates the traps (billing never held per docs/policies.md, the 50-recipient cap, the scheduler dropping past jobs), lists the design topics, and gives no interface contract the hidden tests could follow"
+      }
+    ]
+  },
+  "dropped": {
+    "date": "2026-11-20",
+    "reason": "free gates after the one fix round: reference 100, stub 3.2, alt 100, but the scripted lazy answer scored 54.8 (gate 40): the design and rollout keys pass 9 of 13 and 4 of 10 items with half of each list. The first dry run also failed (ES-module block tests). Not hand-fixed further."
+  }
+}

@@ -18,7 +18,7 @@ const { modesOf, GIT_ENV } = require('./lib/modes.js');
 const { buildHidden } = require('./lib/hidden.js');
 const { helpers } = require('../lib/prompt.js');
 
-const STACK = 'Node.js 24, CommonJS, no dependencies and no install step. Tests use node:test and node:assert, live in `test/` and run with `node --test test/`.';
+const STACK = 'Node.js 24, CommonJS, no dependencies and no install step. Tests use node:test and node:assert, live in `test/` as `*.test.js` and run with `node --test test/*.test.js`.';
 
 function render(id, lib, step = 'author') {
   const { read, fill } = lib;
