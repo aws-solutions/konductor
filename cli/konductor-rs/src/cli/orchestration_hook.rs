@@ -291,6 +291,18 @@ fn installed_agent_direct_work(
 /// install's trusted context directories. An undecidable agent is not a
 /// mode agent: it never gets the persona, only a fallback line under
 /// `coordinator`.
+///
+/// That line also reaches a session of an oversized agent that is not
+/// an orchestrator, an accepted rare edge: nothing short of the whole
+/// file says what an agent is. The manifest records no roles, the
+/// shipped orchestrator names miss a renamed one, a Claude agent file
+/// inlines its contexts after the prompt, and a cut JSON document does
+/// not parse. Guessing from part of the file would let its text pick the
+/// answer. The line costs such a session nothing: it says the session
+/// runs as `auto`, which changes nothing for an agent with no coordinator
+/// mode. On Kiro CLI v2 the hook is wired
+/// only into mode agents' own files, so there the line is limited
+/// already.
 fn mode_agent_check(owning_root: &Path, layout: Option<AgentLayout>, agent: &str) -> DirectWork {
     if agent == MODE_AGENT {
         return DirectWork::Loads;
@@ -701,15 +713,18 @@ pub(crate) fn dispatch_orchestration_hook(
     // earlier mode line for `AUTO_LINE` to correct.
     let restate_auto = undecidable.is_none() && is_resume_or_compact(&payload);
     let output = decide(&resolve_user_mode(home.as_deref()), restate_auto, || {
-        if let Some(relative) = &undecidable {
-            return Err(PersonaError::AgentFileTooLarge {
-                path: persona_root.join(relative),
-            });
-        }
+        // The owner's missing hook is reported first: `konductor update`
+        // in the owner fixes it, and the owner's own hook then reports an
+        // oversized agent file.
         if shadowed {
             return Err(PersonaError::OwnerHookNotWired {
                 install_root: persona_root.clone(),
                 harness: harness.map(str::to_string),
+            });
+        }
+        if let Some(relative) = &undecidable {
+            return Err(PersonaError::AgentFileTooLarge {
+                path: persona_root.join(relative),
             });
         }
         if !is_trusted_location(owning_root, home.as_deref(), cwd) {

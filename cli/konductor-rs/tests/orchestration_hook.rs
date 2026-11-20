@@ -1030,6 +1030,48 @@ fn an_agent_file_too_large_to_check_gets_a_fallback_line_under_coordinator() {
     std::fs::remove_dir_all(&home).ok();
 }
 
+/// A shadowed hook whose owner's hook is gone names the owner, the
+/// actionable reason, even when the owner's agent file is too large to
+/// check; once the owner's hook is back, it reports the file itself.
+#[test]
+fn a_shadowed_hook_names_the_missing_owner_hook_before_an_oversized_agent_file() {
+    let home = scratch_dir("shadowed-oversized-home");
+    let claude_flags = ["--harness", "claude", "--no-telemetry"];
+    install_specs(&home, &home, RENAMED, &claude_flags);
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    install_specs(&home, &project, RENAMED, &claude_flags);
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let agent_file = project.join(".claude/agents/acme.md");
+    let mut padded = vec![b'#'; 1024 * 1024 + 1];
+    padded.push(b'\n');
+    padded.extend_from_slice(&std::fs::read(&agent_file).unwrap());
+    std::fs::write(&agent_file, padded).unwrap();
+    let payload = claude_payload(Some("acme"), "startup");
+    let fire_from = |root: &Path| {
+        let root = root.display().to_string();
+        fire(
+            &home,
+            &project,
+            &["--install-root", &root, "--harness", "claude"],
+            &[],
+            &payload,
+        )
+    };
+
+    assert_eq!(fire_from(&home), "");
+    assert_eq!(
+        fire_from(&project),
+        "Orchestration: auto (fallback: the agent file at ~/workspace/project/.claude/agents/\
+         acme.md is larger than 1 MiB, so the hook could not check whether it loads \
+         k-direct-work.md)\n"
+    );
+
+    std::fs::remove_file(project.join(".claude/settings.local.json")).unwrap();
+    assert_shadowed_fallback(&fire_from(&home), "workspace/project");
+    std::fs::remove_dir_all(&home).ok();
+}
+
 #[test]
 fn kiro_v2_wires_the_hook_on_a_renamed_agent_that_loads_direct_work() {
     let home = scratch_dir("renamed-v2-home");
