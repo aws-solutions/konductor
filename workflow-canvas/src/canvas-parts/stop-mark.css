@@ -1,0 +1,72 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The stop mark of a leaf stage, for the light and the dark mode. A test
+ * (stop-mark-contrast.test.ts) checks that these colours are the theme's and
+ * reach 3:1 in both modes, and that forced-colors mode takes the system ones.
+ */
+.wf-stop {
+  --wf-stop-bg: #ffffff;
+  --wf-stop-edge: #7a7490;
+  --wf-stop-passed: #0b7a52;
+  --wf-stop-blocked: #b3261e;
+  --wf-stop-not-reached: #56516a;
+
+  display: inline-flex;
+  flex: none;
+  color: var(--wf-stop-edge);
+}
+
+:root[data-theme='dark'] .wf-stop {
+  --wf-stop-bg: #171331;
+  --wf-stop-edge: #8f86ad;
+  --wf-stop-passed: #3ddc97;
+  --wf-stop-blocked: #ff8b8b;
+  --wf-stop-not-reached: #9c93b8;
+}
+
+.wf-stop[data-state='passed'] {
+  color: var(--wf-stop-passed);
+}
+
+.wf-stop[data-state='blocked'] {
+  color: var(--wf-stop-blocked);
+}
+
+.wf-stop[data-state='not-reached'] {
+  color: var(--wf-stop-not-reached);
+}
+
+.wf-stop-frame {
+  fill: var(--wf-stop-bg);
+  stroke: currentcolor;
+  stroke-width: 1.5;
+}
+
+/* The run never got to the stage, so its frame is broken. */
+.wf-stop[data-state='not-reached'] .wf-stop-frame {
+  stroke-dasharray: 3 2;
+}
+
+.wf-stop-glyph {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wf-stop-core {
+  fill: currentcolor;
+}
+
+@media (forced-colors: active) {
+  .wf-stop,
+  .wf-stop[data-state] {
+    color: CanvasText;
+  }
+
+  .wf-stop-frame {
+    fill: Canvas;
+  }
+}
