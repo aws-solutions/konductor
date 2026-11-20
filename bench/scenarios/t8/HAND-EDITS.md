@@ -34,3 +34,23 @@ These drafts were hand-fixed before the owner rule that a second-family rewrite 
 | --- | --- | --- |
 | t8-inc-memory-leak (v2) | task file, fixture, solution | request named the decoy and listed every source, and left the impact fields undefined; rewritten with the three fields defined; the tests check counted 30 tests for 18; action matchers read the whole item (owner text matched); two keyword `contains` checks removed |
 | t8-pm-cert-expiry-region (v2, try 2) | task file, fixture, solution | fix round: the request said "not the deploy" and listed every source; the impact fields were undefined; the expired certificate's not-after date sat a month before the outage (moved to the outage start, by hand: this author wrote no generator); key patterns listed every word as required ("503" and "error" and "fail"); the reviewer's JSON was repaired by hand |
+
+## D-97 re-weighting (T7 worker session, family claude, 2026-11-20)
+
+No prompt, fixture or key changed. Only check weights and check commands in the task files.
+
+| Task | What changed | Why |
+| --- | --- | --- |
+| t8-nfr-slo-burn (v2) | a new substance `cmd` check of weight 8 passes only when the block's `measured.availability28d` and `measured.latencyP99Ms` hold the values the hidden key checks (same tolerances: 0.009 and 5%); output exists 3 to 1 | the output-exists and unchanged-input checks gave a shallow answer the whole checks share; the new check ties that share to the two measurements the hidden key verifies |
+| t8-neg-alert-threshold (v3) | the three `contains` checks (one per requested edit) became one `cmd` check that all three edits are in `rules/checkout-api.json`, weight 3 | an answer making two of the three edits earned two thirds of the checks share; the request asks for all three |
+
+Dry run after the change, twice with the same scores: t8-nfr-slo-burn reference 100, stub 2.9, lazy 37.5, alt 100;
+t8-neg-alert-threshold reference 100, stub 11.9, lazy 35.7, alt 88.1. Both now `pilot.decision` keep.
+
+The other 13 cannot pass by re-weighting: their mechanical lazy answer meets enough hidden items that even with every
+non-test check failing it would score over 40 (t8-tpm-rollout-regions 77.1, t8-runbook-db-failover 60.4,
+t8-rollout-ledger-migration 59.3, t8-inc-checkout-latency 55.7, t8-pm-cert-expiry-region 54.2, t8-inc-memory-leak 53.4,
+t8-dec-deploy-strategy 51.6, t8-oncall-alert-review 50.4, t8-inc-queue-backlog 46.5, t8-pm-cache-stampede 46.1,
+t8-twin-latency-tier-report 42.9 or more), or their lazy and alternative answers score the same
+(t8-neg-config-question, 79.6 each), or no alternative is recorded (t8-bug-retry-storm, lazy 72.1). Each keeps
+`pilot.decision` fix with the reason in `pilot.scores.fixReason`, for a paid single fix by the original writer.

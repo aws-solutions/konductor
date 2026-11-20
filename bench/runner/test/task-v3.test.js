@@ -57,6 +57,13 @@ test('expertKey holds judge-only items with a source and 3 to 5 weak answers', (
   assert.ok(v3Errors({ ...V3, expertKey: { ...key, weakAnswers: ['a', 'b', 'c', 'd', 'e', 'f'] } }).length);
 });
 
+test('authorship may mark a single-family batch, with a note', () => {
+  const schema = loadSchema('task');
+  assert.deepEqual(validate(schema, { ...V3, authorship: { ...V3.authorship, singleFamily: true, note: 'single-family-authored' } }), []);
+  assert.ok(validate(schema, { ...V3, authorship: { ...V3.authorship, singleFamily: 'yes' } }).length);
+  assert.ok(validate(schema, { ...V3, authorship: { ...V3.authorship, note: '' } }).length);
+});
+
 test('authorship.source is "original" or a licensed source object', () => {
   const schema = loadSchema('task');
   const withSource = (source) => validate(schema, { ...V3, authorship: { ...V3.authorship, source } });

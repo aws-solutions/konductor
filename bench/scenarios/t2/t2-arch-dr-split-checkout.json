@@ -189,7 +189,34 @@
         "verdict": "pass",
         "note": "No comments, tests, docs, or file names point at the planted problems. The incident summary describes a past failure that the proposal repeats, but it is legitimate supporting context, not a hidden answer."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "glm",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks to review claims against supporting material without naming a specific method, checklist, planted problem, decoy, or problem count."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comments, tests, docs, or file names in the fixture state any planted problem; findings derive from analysis of normal design documents."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All seven key items correctly reference their sections in checkout-service-extraction.md, and severities (critical, high, medium) are defensible given the ownership conflicts, workflow gaps, and incident history in the fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Each finding is discoverable by cross-referencing the design against data-ownership.md, service-targets.yaml, and incident-2024-11.md."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

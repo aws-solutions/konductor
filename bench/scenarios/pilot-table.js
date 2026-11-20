@@ -227,7 +227,31 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
 const fmt = (v, d = 0) => (finite(v) ? v.toFixed(d) : 'n/a');
 
 // The lazy and alternative scores in pilot.dryRun come from a script, so the table says what they can and cannot show.
-const NOTE_DRY_RUN = 'Dry-run note: the shallow (lazy) and alternative answers behind pilot.dryRun are script-made copies of the reference, not independent attempts. For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there (D-98).';
+const NOTE_DRY_RUN = 'Dry-run note: the shallow (lazy) and alternative answers behind pilot.dryRun are script-made copies of the reference, not independent attempts. For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there (D-102).';
+
+const FLAG_NAMES = ['broken', 'too-easy', 'too-hard', 'answer-leak', 'second-family', 'noisy', 'fix', 'hand-edited, recheck missing'];
+
+/** Per batch: runs, distinct tasks, and for each flag the number of distinct tasks with at least one flagged run. */
+function batchSummary(rows) {
+  const out = new Map();
+  for (const r of rows) {
+    const b = r.batch ?? 'none';
+    if (!out.has(b)) out.set(b, { batch: b, runs: 0, tasks: new Set(), flagged: Object.fromEntries(FLAG_NAMES.map((f) => [f, new Set()])) });
+    const s = out.get(b);
+    s.runs++;
+    s.tasks.add(r.task);
+    for (const f of FLAG_NAMES) if (r.flags[f]) s.flagged[f].add(r.task);
+  }
+  const num = (b) => (/^t(\d+)$/.exec(b) ? Number(b.slice(1)) : Infinity);
+  return [...out.values()].sort((a, b) => num(a.batch) - num(b.batch) || a.batch.localeCompare(b.batch))
+    .map((s) => ({ batch: s.batch, runs: s.runs, tasks: s.tasks.size, flagged: Object.fromEntries(FLAG_NAMES.map((f) => [f, s.flagged[f].size])) }));
+}
+
+function renderBatches(summary) {
+  const L = [`| batch | runs | tasks | ${FLAG_NAMES.map((f) => `${f} (tasks)`).join(' | ')} |`, `| --- | --- | --- | ${FLAG_NAMES.map(() => '---').join(' | ')} |`];
+  for (const s of summary) L.push(`| ${s.batch} | ${s.runs} | ${s.tasks} | ${FLAG_NAMES.map((f) => s.flagged[f]).join(' | ')} |`);
+  return L;
+}
 
 function renderTable(rows) {
   const L = ['| task | arm | rep | handEdited | singleFamily | score | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
@@ -239,6 +263,7 @@ function renderTable(rows) {
   const count = (k) => rows.filter((r) => r.flags[k]).length;
   const rerun = [...new Set(rows.filter((r) => r.flags.noisy).map((r) => r.task))];
   L.push('', `${rows.length} run(s), ${total.toFixed(2)} credits. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
+  L.push('', ...renderBatches(batchSummary(rows)));
   L.push(`Flagged runs: broken ${count('broken')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, fix ${count('fix')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
   L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
   L.push(NOTE_DRY_RUN);
@@ -253,4 +278,4 @@ function cmdPilotTable(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
 }
 
-module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore };
+module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, FLAG_NAMES };

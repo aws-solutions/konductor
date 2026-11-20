@@ -56,7 +56,9 @@
       "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    }
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (gpt-5.6-luna); second-family rewrites failed, see DEBT"
   },
   "review": {
     "family": "alibaba",
@@ -75,12 +77,12 @@
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "The fixture contains no hints about the correct recommendations; the notes are explicitly disclaimed as not source of truth, the runbooks reference only general procedures, and file names do not reveal the root causes—everything must be inferred from cross-referencing logs, alerts, incidents, and history."
+        "note": "The fixture contains no hints about the correct recommendations; the notes are explicitly disclaimed as not source of truth, the runbooks reference only general procedures, and file names do not reveal the root causes\u2014everything must be inferred from cross-referencing logs, alerts, incidents, and history."
       },
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A quick wrong answer would be to blame the Feb 14 deploy, keep all 18 rules, or remove the newest rule (DbConnectionPoolExhaustion with the typo); but the key requires identifying specific issues (wrong metric, duplicate rule, noisy symptom), proposing concrete replacements, and citing log lines—none of which a generic approach would achieve."
+        "note": "A quick wrong answer would be to blame the Feb 14 deploy, keep all 18 rules, or remove the newest rule (DbConnectionPoolExhaustion with the typo); but the key requires identifying specific issues (wrong metric, duplicate rule, noisy symptom), proposing concrete replacements, and citing log lines\u2014none of which a generic approach would achieve."
       },
       {
         "check": "floor",
@@ -95,7 +97,9 @@
     "log": "HAND-EDITS.md"
   },
   "pilot": {
-    "scores": {},
+    "scores": {
+      "fixReason": "cannot pass by re-weighting: the mechanical lazy answer (lib/answers.js) meets most hidden block-key items, so even with every non-test check failing it would score 50.4 (gate 40). The key needs items a half-copy misses. Paid fix list: one key fix by the original writer (gpt-5.6-luna)"
+    },
     "reference": 100,
     "stub": 7.1,
     "dryRun": {

@@ -149,7 +149,34 @@
         "verdict": "pass",
         "note": "no comments, test names, file names, or docs point to specific bug implementations; auth.md states contract requirements without revealing implementation flaws"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "qwen",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for concrete review with defects, consequences, and fixes but does not name a specific review method, checklist, process, planted problem, decoy, or problem count."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No comment, test, doc, or file name in the fixture explicitly states the planted problems (k1-k6) or decoy (d1)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Every key item's file and line numbers match the actual problems in the fixture code (k1-k6), and d1 is correctly identified as a decoy per edits.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful reviewer can find all key items (k1-k6) and decoy (d1) by inspecting the fixture files alone."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",

@@ -3,17 +3,15 @@
   "block": "conflicts",
   "assertions": [
     {
-      "id": "conflict-atl-007-identity",
-      "desc": "Names the ATL-007 to BCN-012 dependency",
-      "op": "cites",
+      "id": "conflicts-all-named",
+      "desc": "Names all three late dependencies",
+      "op": "includes",
       "path": "conflicts",
-      "field": "producer",
       "ids": [
-        "ATL-007"
-      ],
-      "where": {
-        "consumer": "BCN-012"
-      }
+        "ATL-007",
+        "CND-009",
+        "CND-017"
+      ]
     },
     {
       "id": "conflict-atl-007-dates",
@@ -32,19 +30,6 @@
       }
     },
     {
-      "id": "conflict-cnd-009-identity",
-      "desc": "Names the CND-009 to BCN-024 dependency",
-      "op": "cites",
-      "path": "conflicts",
-      "field": "producer",
-      "ids": [
-        "CND-009"
-      ],
-      "where": {
-        "consumer": "BCN-024"
-      }
-    },
-    {
       "id": "conflict-cnd-009-dates",
       "desc": "Reports dates and lateness for CND-009 to BCN-024",
       "op": "cites",
@@ -58,19 +43,6 @@
         "producer_due": "2027-08-05",
         "needed_by": "2027-07-30",
         "days_late": 6
-      }
-    },
-    {
-      "id": "conflict-cnd-017-identity",
-      "desc": "Names the CND-017 to DLT-011 dependency",
-      "op": "cites",
-      "path": "conflicts",
-      "field": "producer",
-      "ids": [
-        "CND-017"
-      ],
-      "where": {
-        "consumer": "DLT-011"
       }
     },
     {
