@@ -116,10 +116,10 @@ test('alt-answer varies order, own ids and wording but keeps ordered lists', () 
 
 test('pad-answer fills id lists with every fixture id and keeps scalars', () => {
   const { shotgun } = require('../pad-answer.js');
-  const v = shotgun({ n: 3, path: ['A-10'], risks: [{ tickets: ['A-10'], kind: 'x' }], notes: ['plain'] }, ['A-10', 'B-20']);
+  const v = shotgun({ n: 3, path: ['AB-10'], risks: [{ tickets: ['AB-10'], kind: 'x' }], notes: ['plain'] }, ['AB-10', 'CD-20']);
   assert.strictEqual(v.n, 3);
-  assert.deepStrictEqual(v.path, ['A-10', 'B-20']);
-  assert.deepStrictEqual(v.risks, [{ tickets: ['A-10'], kind: 'x' }, { tickets: ['B-20'], kind: 'x' }]);
+  assert.deepStrictEqual(v.path, ['AB-10', 'CD-20']);
+  assert.deepStrictEqual(v.risks, [{ tickets: ['AB-10'], kind: 'x' }, { tickets: ['CD-20'], kind: 'x' }]);
   assert.deepStrictEqual(v.notes, ['plain']);
 });
 
