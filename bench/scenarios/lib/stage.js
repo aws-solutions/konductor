@@ -76,21 +76,22 @@ function withExpertRubric(rubric, key, why = 'the items are engineering judgment
 }
 
 /**
- * Replaces every file under a task's hidden dir that is a byte copy of a shared helper (lib/hidden/<same name>) by an
- * entry of its .bench-lib.json, so the task commits no copy; the tests check copies the helper back in at run time.
- * Returns the entries added.
+ * Replaces every file under a task's hidden dir that is a byte copy of a shared helper (any file of lib/hidden, under
+ * any name) by an entry of its .bench-lib.json, so the task commits no copy; the tests check copies the helper back in
+ * at run time. Returns the entries added.
  */
 function foldHelpers(hiddenDir, libDir = LIB_DIR) {
   if (!fs.existsSync(hiddenDir)) return {};
+  const byBytes = new Map(fs.readdirSync(libDir).map((n) => [fs.readFileSync(path.join(libDir, n)).toString('base64'), n]));
   const file = path.join(hiddenDir, MANIFEST);
   const map = fs.existsSync(file) ? readJson(file) : {};
   const added = {};
   for (const rel of listTree(hiddenDir)) {
-    const lib = path.join(libDir, path.basename(rel));
-    if (rel === MANIFEST || !fs.existsSync(lib) || !fs.readFileSync(lib).equals(fs.readFileSync(path.join(hiddenDir, rel)))) continue;
+    const name = rel === MANIFEST ? null : byBytes.get(fs.readFileSync(path.join(hiddenDir, rel)).toString('base64'));
+    if (!name) continue;
     const key = rel.split(path.sep).join('/');
-    map[key] = path.basename(rel);
-    added[key] = path.basename(rel);
+    map[key] = name;
+    added[key] = name;
     fs.rmSync(path.join(hiddenDir, rel));
   }
   if (Object.keys(added).length) fs.writeFileSync(file, `${JSON.stringify(Object.fromEntries(Object.entries(map).sort()), null, 2)}\n`);

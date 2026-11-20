@@ -13,7 +13,11 @@
     "regress.test.js",
     "iam-eval.js",
     "findings.js",
-    "timeouts.py"
+    "timeouts.py",
+    "mutants.js",
+    "mutation.test.js",
+    "findings.test.js",
+    "findings-key.js"
   ],
   "legacy": [
     {
@@ -43,18 +47,6 @@
     {
       "path": "t1/stage.js",
       "debt": "D-60"
-    },
-    {
-      "path": "t5/dry-run.js",
-      "debt": "D-70"
-    },
-    {
-      "path": "t5/render-prompt.js",
-      "debt": "D-70"
-    },
-    {
-      "path": "t5/stage.js",
-      "debt": "D-70"
     },
     {
       "path": "t6/prompts/render-prompt.js",
