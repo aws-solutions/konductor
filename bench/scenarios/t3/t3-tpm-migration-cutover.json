@@ -129,22 +129,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for migration cutover decision without specifying method; no misleading hints."
+          "note": "Request asks to choose and document without prescribing method; no misleading hints"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides migration options, inventory, limits but not the answer; developer must compute downtime, cost, recovery."
+          "note": "Fixture provides data (requirements, prices, models) but doesn't state answer or describe final behavior"
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Prompt says 'every hard limit in the inputs' without requiring specific key names; expertKey references downtime, cost, recovery calculations from fixture; rubric anchors on five limits."
+          "note": "Tests, expert key and rubric reference fixture data; rubric rewards requested outcomes"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can analyze three migration options against downtime, RPO, throughput, latency, budget using provided data and schedules."
+          "note": "Alternative answer shows different structure passes; fixture provides all needed data for calculations"
         }
       ]
     }
