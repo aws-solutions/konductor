@@ -16,12 +16,13 @@ function hashContent(content) {
   return crypto.createHash('sha256').update(content).digest('hex');
 }
 
-function loadPreviousManifest(manifestPath) {
+// A manifest written for another stage is ignored, so a production deploy after a staging one uploads everything.
+function loadPreviousManifest(manifestPath, stage) {
   if (!fs.existsSync(manifestPath)) return { version: '1.0', files: {} };
   try {
     const content = fs.readFileSync(manifestPath, 'utf8');
     const parsed = JSON.parse(content);
-    return parsed.version === '1.0' ? parsed : { version: '1.0', files: {} };
+    return parsed.version === '1.0' && (stage === undefined || parsed.stage === stage) ? parsed : { version: '1.0', files: {} };
   } catch {
     return { version: '1.0', files: {} };
   }
@@ -68,7 +69,7 @@ async function deploy({
 }) {
   const config = loadConfig(stage);
   const manifest = buildManifest(publicDir);
-  const previousManifest = loadPreviousManifest(manifestPath);
+  const previousManifest = loadPreviousManifest(manifestPath, stage);
   const fileHashes = {};
   const plannedUploads = [];
   const skippedFiles = [];

@@ -1,7 +1,7 @@
 {
   "id": "t6-req-library-holds",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -15,7 +15,11 @@
           "hold limit",
           "maximum holds",
           "card type",
-          "how many items"
+          "how many items",
+          "how many holds",
+          "limits",
+          "card types",
+          "per card"
         ]
       },
       {
@@ -26,7 +30,12 @@
           "how many days",
           "pickup time",
           "collection period",
-          "when to pick up"
+          "when to pick up",
+          "pick up",
+          "pick-up",
+          "collect",
+          "hold shelf",
+          "how long"
         ]
       },
       {
@@ -52,7 +61,10 @@
           "checkout window",
           "one copy one user",
           "oco",
-          "ebook"
+          "ebook",
+          "e-books",
+          "ebooks",
+          "digital"
         ]
       },
       {
@@ -66,7 +78,15 @@
           "how notified",
           "notification channel",
           "how patrons are told",
-          "contacted"
+          "contacted",
+          "notifications",
+          "notify",
+          "channel",
+          "text message",
+          "tell patrons",
+          "hold is ready",
+          "let patrons know",
+          "inform patrons"
         ]
       },
       {
@@ -77,7 +97,9 @@
           "waiver",
           "March 1",
           "policy change",
-          "old fines"
+          "old fines",
+          "fine",
+          "march"
         ]
       },
       {
@@ -88,7 +110,9 @@
           "wcag",
           "compliance",
           "when required",
-          "deadline"
+          "deadline",
+          "accessible",
+          "a11y"
         ]
       },
       {
@@ -99,7 +123,12 @@
           "bookmobile",
           "excluded",
           "not included",
-          "school delivery"
+          "school delivery",
+          "phase",
+          "first release",
+          "launch",
+          "scope",
+          "school"
         ]
       }
     ],
@@ -163,7 +192,7 @@
   "rubric": [
     {
       "id": "R1",
-      "criterion": "Requirements show understanding of both patron needs and staff workflows, not just restating documents. Fail: the requirements repeat the vendor summary, including the 48-hour e-book window the board changed, or treat every branch the same. Partial: they use the final rules, but cover only patron actions or only staff actions. Pass: they use the final board limits (regular 12, student 15 in the school year, senior 10, children's 5, institutional 20 with manager approval over 10), the pickup window of 7 days with 10 days at North Hill and after-hours lockers at Central, the 24-hour e-book checkout window with one automatic renewal if no one waits, and set out the staff steps (manager approval, children's-card parent notices, fines waiver only for holds placed after March 1). (code cannot check this because it requires judgment of the document, not only a pattern)",
+      "criterion": "Requirements show understanding of both patron needs and staff workflows, not just restating documents. Fail: the requirements repeat the vendor summary, including the 48-hour e-book window the board changed, or treat every branch the same. Partial: they use the final rules, but cover only patron actions or only staff actions. Pass: they use the final board limits (regular 12, student 15 in the school year, senior 10, children's 5, institutional 20 with manager approval over 10), the pickup window of 7 days with 10 days at North Hill and after-hours lockers at Central, the 24-hour e-book checkout window with one automatic renewal if no one waits, and set out the staff steps (manager approval, children's-card parent notices, fines waiver only for holds placed after March 1). Where the folder disagrees with itself (the senior 10-day pickup and the teen limit in policy/circulation.md, waitlists listed for Phase 2 in the board memo, COPPA under 13 against children's cards under 12), either reading is acceptable when the requirement says which source it follows; do not mark a reasonable call down. (code cannot check this because it requires judgment of the document, not only a pattern)",
       "weight": 2
     },
     {
@@ -236,36 +265,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates understanding of patron/staff needs and mandatory vs optional distinction without imposing a method. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the deliverable, source documents, and scope but does not prescribe a method or identify traps or expected answers.)."
+          "note": "The prompt requests requirements for patrons and staff from the folder and defines only the output format; it supplies no prescribed elicitation method or misleading solution direction."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (12 regular holds, 15 student, 10 senior, 5 children, 20 institutional; 7-day pickup with 10-day North Hill; 24-hour e-book window) are from scripted user; synthesis required. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture documents provide source evidence and one explicit vendor conflict, but none lists the final scripted facts or hidden expected findings outright; see fixture/policy, fixture/board, fixture/ebooks, fixture/accessibility, and fixture/meetings.)."
+          "note": "fixture/policy, fixture/board, fixture/accessibility and fixture/ebooks provide source policies, including deliberate disagreements, but no final requirements document or completed behavior list."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: 12/15/10/5/20 hold limits by card type, 7-day pickup (10-day North Hill, lockers at Central), 24-hour e-book checkout (not 48), email-first notification. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The hidden tests' required facts are supplied by task.json.scriptedUser.facts F1-F8, while the grounded requirements are supported by the corresponding fixture policy, data, board, vendor, accessibility, and meeting files. The vendor's 48-hour value is explicitly identified as superseded by scripted fact F4, so it is not a contradiction.)."
+          "note": "Hidden grounded paths all exist in fixture, and the final card, pickup, notification, e-book, fines, accessibility and rollout decisions are stated in task.json scriptedUser; rubric R1 and R2 reward those outcomes and source-qualified conflict handling."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement organization can still Pass if limits are correct, board rules are mandatory, and staff workflow is addressed. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json.prompt tells the agent to review the collected documents and write requirements, and task.json.scriptedUser provides answers for the few policy decisions that the fixture leaves open or conflicts on. The fixture contains enough patron, staff, policy, technical, accessibility, and board context to satisfy the hidden checks without hidden or solution files.)."
+          "note": "A competent developer can use the policy and board documents plus the scripted clarifications to write the requirements, and hidden checks accept alternate wording, source choices, ordering and document structure."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

@@ -1,7 +1,7 @@
 {
   "id": "t6-req-tpm-cutover",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "tpm",
   "questions": "scripted",
@@ -209,36 +209,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates sponsor clarity and technical/business constraint synthesis without imposing a methodology. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The prompt in task.json asks for a sponsor-ready cutover requirements document and names the output path, but it does not prescribe a method or reveal hidden findings. Its requests for risks, commitments, and sponsor decisions are ordinary task scope, not pointers to specific answers.)."
+          "note": "The prompt asks for cutover requirements based on the folder and identifies the required output format, without prescribing a requirements or decision-writing method or planting a decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (April 25-26 or after May 1 window, 15-minute degradation, 10-minute payment, T+15/T+20 rollback, Sarah go/no-go) are from scripted user; synthesis required. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture provides scattered source evidence, including data/rabbitmq-contract.md and the meeting notes, plus explicitly stale drafts and open issues; no fixture file is an answer key or list of hidden findings. The conflicting older values are presented as dated drafts, proposals, or issues rather than a concealed answer list.)."
+          "note": "The fixture contains migration plans, policies, runbooks, metrics and drafts, including older or conflicting planning values, but no finished requirements document containing the scripted sponsor decisions."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: April 25-26 or after May 1 (tax freeze April 15), 15-minute max degradation (10-minute payment), T+15 decision/T+20 rollback, Sarah Johnson final approval with Alex Rodriguez and Lisa Wong confirmations. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The grounded expectations are supported by fixture/data/rabbitmq-contract.md (end date 2025-06-30), fixture/data/timezone-analysis.md (Saturday 02:00-06:00 UTC), fixture/policies/change-management.md and docs/communication-plan-draft.md (two-week notice), and the payment interview. The six remaining fact values are explicitly supplied through task.json scriptedUser, so the keys do not require unsu)."
+          "note": "The hidden ground list names existing fixture data, policy and documentation paths, and the scriptedUser supplies the six current decisions; rubric R1 and R2 match the requested sponsor decisions and technical/business synthesis."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement organization can still Pass if all constraints appear with owners and the cutover decision rule is clear. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful agent can extract the grounded requirements from the named fixture files, recognize stale proposals and unresolved decisions, and ask the six factual questions represented by solution/ASKS.json; task.json supplies each scripted answer. The output format and minimum requirement count are explicit in task.json, so the hidden checks are reachable without hidden/ or solution/.)."
+          "note": "The migration one-pager, communication plan, change policy, dependency list, roster and runbooks expose the required context, while task.json supplies unresolved decisions; the tests permit equivalent prose and requirement ordering."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

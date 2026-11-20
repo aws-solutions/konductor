@@ -7,7 +7,7 @@ scriptedSuite(test, assert, {
   facts: [
     { id: 'F1', all: [/20:00|8:00\s*p\.?m\.?/i, /08:00|8:00\s*a\.?m\.?/i, /local time/i], wrong: [/21:00/i, /07:00/i] },
     { id: 'F2', all: [/exactly\s+two|2\s+reminders/i, /72\s*(?:hours?|hrs?)/i, /24\s*(?:hours?|hrs?)/i], wrong: [/48\s*(?:hours?|hrs?)/i, /7\s*days?/i] },
-    { id: 'F3', all: [/first name/i, /clinic name/i, /(?:omit|exclude|must not include).*(?:diagnos|treatment)/i], wrong: [/include (?:the )?(?:diagnosis|treatment)/i] },
+    { id: 'F3', all: [/first name/i, /clinic name/i, /(?:omit|exclud|(?:must|do|does|shall|should) not include|never include|without).*(?:diagnos|treatment)/i], wrong: [/include (?:the )?(?:diagnosis|treatment)/i] },
     { id: 'F4', all: [/English/i, /Spanish/i, /other.*English|English.*other/i], wrong: [/Vietnamese.*template|template.*Vietnamese/i] },
     { id: 'F5', all: [/STOP/i, /END/i, /UNSUBSCRIBE/i], wrong: [/call.*front desk.*before|manual.*call/i] },
     { id: 'F6', all: [/(?:non[- ]opt[- ]out|ordinary) repl/i, /60\s*minutes?/i, /front[- ]desk task/i], wrong: [/ordinary repl.*24\s*hours?/i] },

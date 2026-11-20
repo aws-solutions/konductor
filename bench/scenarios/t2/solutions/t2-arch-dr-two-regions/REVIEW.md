@@ -23,8 +23,8 @@ The failback steps do not say how to check consistency or how to reconcile write
   {
     "location": "3.3",
     "severity": "critical",
-    "issue": "Last-write-wins conflict resolution lets both regions sell the same seat; Scenario 1 in 3.3 ends with two buyers for seat A-12 while the counter reads 0, which breaks the zero-tolerance double-booking rule.",
-    "fix": "Replace last-write-wins for seats with a single writer per event or a conditional reservation, so a seat is sold once; prevent double booking instead of alerting on it."
+    "issue": "Both regions update the seat inventory counter, and last-write-wins resolves the conflict, so the same seat can be sold in both regions: Scenario 1 in 3.3 ends with two buyers for seat A-12 while the counter reads 0. That breaks the zero-tolerance double-booking rule; the counter needs one writer, a conditional reservation or a merge rule.",
+    "fix": "Give the seat counter a single writer per event or a conditional reservation, so a seat is sold once; prevent double booking instead of alerting on it."
   },
   {
     "location": "6.3",
@@ -49,12 +49,6 @@ The failback steps do not say how to check consistency or how to reconcile write
     "severity": "medium",
     "issue": "The failback steps (3.7, 7.1) say only 'verify replication has caught up'; they give no check or pass criterion and no step to reconcile writes the surviving region accepted while the other was down, so returning traffic can reintroduce conflicting seat and payment rows.",
     "fix": "Add failback steps: compare row counts and checksums for seats and payments, reconcile writes taken during the outage, and set a pass criterion before shifting traffic."
-  },
-  {
-    "location": "3.3",
-    "severity": "high",
-    "issue": "A global seats-left counter updated in both regions with no merge rule will cause inventory discrepancies and potential overselling.",
-    "fix": "Give the counter a merge rule (a per-region allocation or a single owning region) or move inventory to one strongly consistent service."
   },
   {
     "location": "3.6",

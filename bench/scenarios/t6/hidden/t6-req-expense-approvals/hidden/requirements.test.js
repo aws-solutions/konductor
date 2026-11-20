@@ -12,13 +12,13 @@ scriptedSuite(test, assert, {
     },
     { 
       id: 'F2', 
-      all: [/\b100\b|\b£100\b/i, /\bself.*approv|\bown.*claim/i],
+      all: [/\b100\b|\b£100\b/i, /\bself.*approv|\bown\s+(?:expense|claim)|approv\w*\s+(?:their|his|her)\s+own/i],
       wrong: [/\b50\b.*self|\b£50\b.*self/i, /\b200\b.*self|\b£200\b.*self/i, /\bno self.*approv/i]
     },
     { 
       id: 'F3', 
       all: [/\bphoto.*receipt|\bdigital.*receipt|\belectronic.*receipt|\bscanned.*receipt/i, /\baccept|\ballow|\bvalid/i],
-      wrong: [/\bno.*photo|\bnot.*accept.*photo|\bpaper.*only/i]
+      wrong: [/\bno\s+(?:receipt\s+)?photos?\b|\bnot\s+accept\w*\s+(?:receipt\s+)?photos?|\bpaper(?:\s+receipts?)?\s+only/i]
     },
     { 
       id: 'F4', 
@@ -33,7 +33,7 @@ scriptedSuite(test, assert, {
     { 
       id: 'F6', 
       all: [/\bdelegat.*advance|\bset.*up.*advance|\bpre.*set.*delegat/i, /\baway|\babsent|\bholiday|\bcover/i],
-      wrong: [/\bautomatic.*delegat|\bauto.*assign/i, /\bno.*delegat/i]
+      wrong: [/\bautomatic.*delegat|\bauto.*assign/i, /\bno\s+(?:delegation|delegate)\b|delegation\s+is\s+not\s+(?:allowed|supported)/i]
     }
   ], 
   ground: [
@@ -44,6 +44,5 @@ scriptedSuite(test, assert, {
     'data/analysis-2023.md'
   ],
   minRequirements: 5,
-  maxQuestions: 6,
   minPrecision: 0.8
 });

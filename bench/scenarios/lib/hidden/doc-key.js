@@ -51,6 +51,25 @@ function requirementTexts(block) {
 /** True when one text matches every regex of `all`. */
 const matchesAll = (text, all) => all.every((re) => re.test(text));
 
+// A "wrong" pattern names a claim that contradicts a fact ("Starter ... included"). A requirement that denies the claim
+// ("Starter accounts are not included", "must not include payment card numbers") is correct, so a match counts only
+// when no negation sits in the matched text or in the 40 characters before it, within the same sentence. A pattern that
+// itself states a negation (/\bno\s+renewal/) is applied as it is.
+const NEGATION = /\b(?:not|never|no|without|nor|excluded?|excluding|isn't|aren't|doesn't|don't|won't|cannot|can't|instead of|rather than)\b/i;
+const statesNegation = (re) => /\b(?:no|not|never|without|cannot)\b/i.test(re.source.replace(/\\[a-zA-Z]/g, ' '));
+
+/** True when `text` makes the claim of the wrong pattern `re` (see NEGATION). */
+function contradicts(text, re) {
+  if (statesNegation(re)) return re.test(text);
+  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+  for (const m of String(text).matchAll(g)) {
+    const from = Math.max(0, m.index - 40, String(text).lastIndexOf('.', m.index - 1) + 1, String(text).lastIndexOf(';', m.index - 1) + 1);
+    if (!NEGATION.test(String(text).slice(from, m.index) + m[0])) return true;
+    if (m[0] === '') break;
+  }
+  return false;
+}
+
 /** Numbers in `text` as normalised strings ("2,000" -> "2000", "1.5" stays). 0 and 1 are ignored. */
 function numbersIn(text) {
   const out = [];
@@ -84,9 +103,11 @@ function scriptedAnswers() {
 /**
  * Registers the standard scripted-user suite.
  * doc: output path. facts: [{ id, all: [RegExp], wrong?: [RegExp] }]. ground: fixture paths whose numbers may be used.
- * answers: the scripted user's answer texts (default answers.json). extraNumbers: other allowed numbers. minRequirements (3), maxQuestions (6), minPrecision (0.8).
+ * answers: the scripted user's answer texts (default answers.json). extraNumbers: other allowed numbers. minRequirements (3),
+ * maxQuestions (default: one per fact and two more, the scripted user's own cap), minPrecision (0.8).
+ * A `wrong` pattern counts only where the requirement does not deny it (`contradicts`).
  */
-function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), ground = [], extraNumbers = [], minRequirements = 3, maxQuestions = 6, minPrecision = 0.8 }) {
+function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), ground = [], extraNumbers = [], minRequirements = 3, maxQuestions = facts.length + 2, minPrecision = 0.8 }) {
   const reqs = () => requirementTexts(blockOf(doc));
   for (const f of facts) {
     test(`states ${f.id}`, () => {
@@ -96,7 +117,7 @@ function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), 
   test('no requirement contradicts a fact the user holds', () => {
     const r = reqs();
     assert.ok(r.length >= minRequirements, `${r.length} requirements, need ${minRequirements}`);
-    const bad = facts.flatMap((f) => (f.wrong || []).filter((re) => r.some((t) => re.test(t))).map((re) => `${f.id} ${re}`));
+    const bad = facts.flatMap((f) => (f.wrong || []).filter((re) => r.some((t) => contradicts(t, re))).map((re) => `${f.id} ${re}`));
     assert.deepEqual(bad, []);
   });
   test(`at least ${Math.round(minPrecision * 100)}% of requirements use no invented number`, () => {
@@ -112,4 +133,4 @@ function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), 
   });
 }
 
-module.exports = { ROOT, readDoc, lastJsonBlock, blockOf, itemTexts, requirementTexts, matchesAll, numbersIn, conversation, questionCount, scriptedAnswers, scriptedSuite };
+module.exports = { ROOT, readDoc, lastJsonBlock, blockOf, itemTexts, requirementTexts, matchesAll, contradicts, numbersIn, conversation, questionCount, scriptedAnswers, scriptedSuite };

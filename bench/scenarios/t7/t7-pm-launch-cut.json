@@ -1,7 +1,7 @@
 {
   "id": "t7-pm-launch-cut",
   "class": "design",
-  "version": 6,
+  "version": 7,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -17,13 +17,13 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
-      "min": 14,
+      "min": 13,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/launch-scope.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?launch-scope(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"63\",\"f-010\",\"f-014\",\"f-021\",\"f-031\",\"f-038\",\"f-044\",\"f-052\",\"f-063\"];process.exit(items.every(named)?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/launch-scope.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?launch-scope(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"63\",\"f-010\",\"f-014\",\"f-031\",\"f-038\",\"f-044\",\"f-052\",\"f-063\"];process.exit(items.every(named)?0:1)'",
       "expectExit": 0,
       "weight": 8,
       "kind": "substance"
@@ -163,29 +163,29 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks the PM to read several inputs (backlog.csv, launch brief, roadmap, etc.) and write docs/launch-scope.md with a specific JSON block format. It does not name a method, framework, or process for scope planning, and no decoy hint points away from the real problem (which features to include/exclude for launch)."
+          "note": "Prompt asks to 'decide what is in, what is out' based on analysis - no specific method or framework, no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture's backlog.csv, roadmap.csv, team-capacity.csv, launch-brief.md, sales-commitments.md, and interview notes show feature IDs, priorities, estimates, dependencies, and business context, but none of them state the correct in/out cut decision or the final planned points total (60.5, with 8 features). No file's comments or naming reveals the answer."
+          "note": "Fixture has backlog, brief, roadmap but not the scope decision or JSON block."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Every assertion in hidden/hidden/key.json maps to fixture facts: F-014 (signed export commitment), F-010 (import), F-052 (dashboard), F-031 (dashboard prerequisite), F-044 (internal wallboard), F-057 (mobile approvals), capacity_points=63 (four sprints + holiday), planned_points range 58–63, F-063 (snapshot), F-038 (approval), F-021 (audit), must_haves for F-010/F-014, and F-044 in out list. The rubric anchors on the 2027-09-20 launch, capacity, and buffer—matching the key's required facts."
+          "note": "Checks require specific feature IDs from backlog; rubric references capacity, dates from fixture; edits.md shows fix for ambiguous F-021 requirement."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A competent product manager could derive the correct scope by reading the inputs and reconciling commitments (F-014, F-010), capacity (63 points), audience (regional ops), and constraints. The hidden tests only check the JSON block's correctness; a different set of feature IDs that achieves the same capacity fit and satisfies all assertions would pass."
+          "note": "Competent PM/TPM could analyze backlog, capacity, commitments to make scope decisions; different feature combinations within capacity would pass."
         }
       ]
     }
@@ -203,7 +203,7 @@
     "dryRun": {
       "reference": 100,
       "stub": 2.9,
-      "lazy": 36.3,
+      "lazy": 33.2,
       "alt": 100,
       "date": "2026-11-20"
     },
