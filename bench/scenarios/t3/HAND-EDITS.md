@@ -282,3 +282,7 @@ copies inside `solution/`, and bumped the version to 5. Free gates: reference 10
 the lint is clean and the name scan finds no missing name. The non-Claude recheck is still open: this call cost 22.6
 of the 30 credits approved, so the 15-credit gpt-5.6-luna recheck did not fit. `pilot.decision` stays fix with a
 recheck-pending blocker.
+
+Recheck of the f5 rewrite: gpt-5.6-luna (v5, 2026-11-20) passes all four items. Its recheck.json lacked one closing
+brace, which the worker added before reading it; the raw file is kept with the job's results. `pilot.decision` is
+keep and the recheck-pending blocker is cleared (D-127 closed).
