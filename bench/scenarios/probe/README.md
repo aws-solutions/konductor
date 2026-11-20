@@ -22,7 +22,7 @@ Each task lists its SOP in `targetSop` and `loadCheck.mustLoad`, so the run also
 
 ## Free checks
 
-`node bench/scenarios/probe/dry-run.js` plays a good and a bad scripted agent against every task and scores both with the bench's check code. `node --test bench/scenarios/probe/probe.test.js` runs it with the fixture checks.
+`node bench/scenarios/lib/dry-run.js --config bench/scenarios/probe/scenario.config.js` plays a good and a bad scripted agent (the plays are in `scenario.config.js`) against every task and scores both with the bench's check code. `node --test bench/scenarios/probe/probe.test.js` runs it with the fixture checks.
 
 ## Limits
 

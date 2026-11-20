@@ -64,6 +64,7 @@ function canary(task, ws, ctx, baseline, where) {
 function environment(root, cfg) {
   const env = { ...process.env, TMPDIR: path.join(root, 'tmp') };
   delete env.NODE_TEST_CONTEXT;
+  Object.assign(env, cfg.env || {});
   fs.mkdirSync(env.TMPDIR);
   if (cfg.python !== false) {
     // Python 3.12 first on PATH, as the bench pins it for a run whose checks name python.

@@ -13,6 +13,7 @@
 //   gates(result, defaults)       the gates object (default: dry-run.js defaultGates)
 //   canary          { node, python }: where to drop a hung test in a copy of the hidden dir, or false (default)
 //   python          false to skip pinning Python 3.12 on PATH
+//   env             extra environment variables for the checks (for example a fixed git identity)
 //   answers         options of the mechanical answer writers (answers.js): { idPattern, decoys(task), orderedKeys, ... }
 //   prompt          { render(id, lib) } for the author prompt (prompt.js)
 //   stage           options and extra subcommands of the authoring stage (stage.js)

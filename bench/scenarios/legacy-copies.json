@@ -14,10 +14,6 @@
   ],
   "legacy": [
     {
-      "path": "probe/dry-run.js",
-      "debt": "D-66"
-    },
-    {
       "path": "t1/dry-run.js",
       "debt": "D-60"
     },

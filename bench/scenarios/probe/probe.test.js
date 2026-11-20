@@ -7,7 +7,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { TASKS, MAIN, FEATURE, CHECKLIST, BRANCH } = require('./build-tasks.js');
-const { dryRun, PLAYS } = require('./dry-run.js');
+const { dryRun } = require('../lib/dry-run.js');
+const { loadConfig } = require('../lib/config.js');
+
+const CFG = loadConfig(require('./scenario.config.js'));
+const { PLAYS } = CFG;
 
 const DIR = __dirname;
 const git = (gitDir, ...args) => execFileSync('git', [`--git-dir=${gitDir}`, ...args], { encoding: 'utf8', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' } }).trim();
@@ -40,9 +44,9 @@ test('every remote holds exactly one ref and no network URL is configured', () =
 
 test('dry run: the good play scores 100 and the bad play less, twice the same', () => {
   for (const id of Object.keys(PLAYS)) {
-    const r = dryRun(id);
-    assert.equal(r.good, 100, id);
-    assert.ok(r.bad < 100, id);
+    const r = dryRun(id, CFG, { repeat: 2 });
+    assert.equal(r.scores.good, 100, id);
+    assert.ok(r.scores.bad < 100, id);
     assert.ok(r.deterministic, id);
   }
 });
