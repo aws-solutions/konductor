@@ -209,7 +209,34 @@
         "verdict": "pass",
         "note": "All test behaviors derive from the stated requirements: atomic persistence prevents loss (implied by 'do not disappear'), idempotent append handles retries (implied by 'do not create a second event'), claim-based coordination handles dual instances (documented in instance-deploy.json), per-order ordering matches consumers.md. No test requires behavior the request does not imply."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request describes outbox pattern requirements without prescribing specific method. Edits clarify requirements, not add decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides building blocks (store, orders, broker) but doesn't reveal outbox implementation. No file describes finished behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check for statusEvents collection, event fields, broker behavior matching request. Fixture has all required interfaces (store.js, orders.js, broker.js, http.js, config.js)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can implement outbox from fixture and request. Different implementations (names, structure) that meet requirements would pass tests."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

@@ -109,22 +109,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for postmortem with JSON block. Edits mention decoy (reporting job) designed to be rejected. No prescribed method."
+          "note": "Request asks to write postmortem from operational files without prescribing analysis method. Edits mention decoy (analytics_rollup) that shouldn't be blamed, clarifying not misleading."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains config diff showing jitter_seconds: 0, cache logs showing synchronized expiration waves. Answer requires analyzing cache stampede pattern."
+          "note": "Fixture has logs, config, metrics, notes containing evidence but not stating root cause analysis. config/cache-policy.yaml shows jitter:0 but doesn't explain causal chain."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "key.json expects evidence from config-review.diff, deploy-history.jsonl, cache.log - all exist. Rubric anchors reward causal clarity."
+          "note": "Hidden tests check postmortem structure and content. Fixture has all needed files (logs, config, metrics). Request defines impact fields calculable from metrics."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can analyze removed jitter, synchronized TTL expiration waves, DB connection spikes, and identify cache stampede."
+          "note": "Competent SRE can analyze logs/metrics to write postmortem identifying synchronized expiry due to jitter 0. Different analyses possible."
         }
       ]
     }

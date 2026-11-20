@@ -197,13 +197,11 @@
     {
       "id": "store-failure-task",
       "section": "tasks",
-      "type": "some",
-      "path": "tasks",
-      "match": {
-        "all": [
-          "fail(s|ing)? open|fail(s|ing)? closed|store (is )?(down|unavailable|unreachable)|cannot be reached"
-        ]
-      }
+      "type": "text",
+      "path": "",
+      "all": [
+        "fail(s|ing)? open|fail(s|ing)? closed|store (is )?(down|unavailable|unreachable)|cannot be reached"
+      ]
     },
     {
       "id": "tasks-trace-requirements",

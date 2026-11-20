@@ -9,7 +9,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide). Keep the lists focused: at most 14 requirements, 14 tasks and 8 open questions.",
+  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide). Keep the lists focused: 5 to 14 requirements, 3 to 14 tasks and 1 to 8 open questions.",
   "fixture": "t12-spec-rate-limits",
   "hidden": "t12-spec-rate-limits",
   "timeoutSec": 1800,
@@ -130,6 +130,65 @@
     "singleFamily": true,
     "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
   },
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request itself names no implementation method and does not state the old IP answer or a reference design; it only directs the agent to the product source and defines the output."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fail",
+        "note": "Important design choices remain unstated in the source: config/plans.json:2-3 exposes an unexplained burst value, and no fixture/product file specifies a window policy or store-down policy. The prompt asks the agent to record open questions, but that does not remove these unresolved inputs."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick skim cannot reliably satisfy the structured JSON shape, acceptance-criteria coverage, task ordering, source/config traceability, exemptions, shared counting, and open-question checks spread across hidden/block-kit/key.json:1-250."
+      },
+      {
+        "check": "floor",
+        "verdict": "fail",
+        "note": "The fixture contains the core API rules, but it does not contain the store-failure requirement later scored by hidden/block-kit/key.json:198-206 and task.json:72-79. Therefore everything needed for a hidden-test-passing answer is not in the fixture or request."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fail",
+        "note": "fixture/docs/product/rate-limits-request.md:8-21 states the behaviours the hidden tests reward, while fixture/docs/notes/2025-06-ip-throttle.md:1-6 supplies the explicit superseded-IP trap. The fixture therefore contains both the answer content and a trap."
+      }
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt in task.json:12 specifies the requested artifacts and format but names no method, framework, or tool. The old IP proposal is explicitly marked superseded in fixture/docs/notes/2025-06-ip-throttle.md:3-6, so it is not a misleading instruction in the request."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "fail",
+          "note": "fixture/docs/product/rate-limits-request.md:8-21 directly lists the per-key, configured-limit, 429, header, exemption, health, and shared-instance behaviours that the hidden key checks. fixture/config/plans.json:2-3 also supplies the exact starter and studio figures."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "The hidden key requires a store-failure task at hidden/block-kit/key.json:198-206, and task.json:72-79 makes store-down handling a scored expert requirement, but neither the product request nor the fixture states that the store can fail or what must be specified for it. This adds a scored requirement beyond the stated fixture/request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The main rate-limit rules and repository paths are discoverable, but a correct spec that follows only the fixture/request can omit the unmentioned store-failure requirement and still satisfy the user. Such a valid alternative is rejected by hidden item store-failure-task, so the hidden score depends on the unseen key."
+        }
+      ]
+    }
+  },
   "handEdited": {
     "family": "claude",
     "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
@@ -146,8 +205,11 @@
       "alt": 100,
       "date": "2026-11-20"
     },
-    "decision": "keep",
-    "date": "2026-11-20"
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: gpt-5.6-luna round 3 (2026-11-20) fails fixture-lists-no-answer, key-matches-fixture and solvable-from-fixture; the store-down point is now accepted anywhere in the block, the other two are disputed (a spec task must take its rules from the product request; burst and window are meant to be open questions); a fourth non-Claude recheck decides"
+    ]
   },
   "lockedAt": null,
   "adjudication": [
@@ -156,6 +218,6 @@
     "X-RateLimit-Remaining on every response or only on limited responses are both acceptable; raising the choice as an open question is a plus, not an invented rule.",
     "Fail open and fail closed both pass store-down when a reason is given or the choice is left to product; no reason is Partial.",
     "A per-account limit on top of the per-key one is an invented rule: Partial on settled-versus-open.",
-    "The request caps the lists (14 requirements, 14 tasks, 8 open questions); within those caps the judge never scores length."
+    "The request bounds the lists (5 to 14 requirements, 3 to 14 tasks, 1 to 8 open questions); within those bounds the judge never scores length."
   ]
 }

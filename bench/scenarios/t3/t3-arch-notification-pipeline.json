@@ -124,22 +124,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for architecture decision without prescribing specific method or framework, and contains no misleading hints."
+          "note": "Prompt specifies option IDs and limit keys as naming conventions; no misleading hints about approach."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides constraints and data but does not reveal the solution or describe finished behavior."
+          "note": "Fixture provides traffic schedule, quotas, objectives but not the decision; developer must evaluate tradeoffs."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Prompt specifies limit key 'throughput_msg_s' but edit note indicates it's not in fixture; key mismatch. (disposition: the request now states this limit key (D-127 fix), and the item passes a name the request states; the reviewer compared it with the fixture's own field name)"
+          "note": "Prompt states exact limit keys per edits.md fix; expertKey references throughput, latency, recovery calculations from fixture; rubric anchors on quota analysis."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "All necessary data exists in fixture files to compute decision, cost, and design architecture; competent developer could solve."
+          "note": "Developer can evaluate three options against throughput, latency, recovery, cost objectives using provided data."
         }
       ]
     }

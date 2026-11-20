@@ -231,22 +231,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks to review an ADR without prescribing a specific method or framework; no misleading hints."
+          "note": "Prompt asks for a design review without specifying a method/framework; contains no misleading hints pointing away from real problems."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains ADR and supporting documents but does not list findings or expert key items."
+          "note": "Fixture ADR and packet provide context but do not list gaps or solutions; edits.md notes gap-confessing sentences were deleted."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "FindingsKey items reference specific issues in the ADR document; rubric anchors reward grounded, actionable findings."
+          "note": "Hidden tests check findings against ADR sections; rubric anchors on read-your-writes and replay arithmetic; expertKey references specific sections and packet data."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can analyze ADR to identify issues; different wording or structure of findings could still pass."
+          "note": "Competent developer can review ADR and packet to identify gaps; reference solution shows valid review different from key wording."
         }
       ]
     }
