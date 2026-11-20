@@ -4,8 +4,8 @@
  *
  * The key case this file must prove: the regression gate is NOT vacuous
  * for scenario subsets that declare no required tools (every scenario in
- * tests/asdlc-developer/developer-scenarios.json and
- * tests/asdlc-quality-assurance/qa-scenarios.json). A toolUse-only gate
+ * tests/k-developer/developer-scenarios.json and
+ * tests/k-quality-assurance/qa-scenarios.json). A toolUse-only gate
  * would have `toolScore` be a constant 2 for such scenarios, so the
  * bootstrap CI would collapse to [0, 0] and could never flag a
  * regression: see `toolUse score is a constant, gate can never fire`

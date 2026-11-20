@@ -67,7 +67,7 @@ def test_bootstrap_leaves_directory_creation_to_the_validator():
 
 
 def test_developer_scenario_does_not_expect_the_agent_to_create_the_directory():
-    scenarios = (REPO_ROOT / "tests" / "asdlc-developer" / "developer-scenarios.json").read_text()
+    scenarios = (REPO_ROOT / "tests" / "k-developer" / "developer-scenarios.json").read_text()
     assert "creates the directory if first write" not in scenarios
 
 
