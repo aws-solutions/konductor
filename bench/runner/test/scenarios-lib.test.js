@@ -181,10 +181,11 @@ test('fold-helpers turns committed byte copies of shared helpers into .bench-lib
     const hid = path.join(root, 'hidden');
     write(path.join(hid, 'hidden', 'grade.cjs'), 'g\n');
     write(path.join(hid, 'kit', 'grade.cjs'), 'changed\n');
-    assert.deepEqual(foldHelpers(hid, lib), { 'hidden/grade.cjs': 'grade.cjs' });
+    write(path.join(hid, 'kit', 'grade.js'), 'g\n');
+    assert.deepEqual(foldHelpers(hid, lib), { 'hidden/grade.cjs': 'grade.cjs', 'kit/grade.js': 'grade.cjs' });
     assert.ok(!fs.existsSync(path.join(hid, 'hidden', 'grade.cjs')));
     assert.ok(fs.existsSync(path.join(hid, 'kit', 'grade.cjs')), 'a changed file is the task\'s own');
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(hid, MANIFEST), 'utf8')), { 'hidden/grade.cjs': 'grade.cjs' });
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(hid, MANIFEST), 'utf8')), { 'hidden/grade.cjs': 'grade.cjs', 'kit/grade.js': 'grade.cjs' });
     assert.deepEqual(foldHelpers(hid, lib), {}, 'a second fold changes nothing');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
