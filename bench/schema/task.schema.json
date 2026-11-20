@@ -932,6 +932,88 @@
               }
             }
           }
+        },
+        "recheck": {
+          "description": "Re-review of a hand-edited task by a family other than the editor's, from the four-item checklist.",
+          "type": "object",
+          "required": [
+            "family",
+            "model",
+            "date",
+            "verdicts"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "family": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+            },
+            "verdicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "check",
+                  "verdict"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "check": {
+                    "enum": [
+                      "no-method-or-decoy",
+                      "fixture-no-answers",
+                      "key-matches-fixture",
+                      "solvable-from-fixture"
+                    ]
+                  },
+                  "verdict": {
+                    "enum": [
+                      "pass",
+                      "fail"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "handEdited": {
+      "description": "Set when anyone other than the recorded author changed the prompt, fixture, key, checks or rubric; the log file in the batch folder says what and why. null: no such change.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "family",
+        "editor",
+        "log"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "editor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "log": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -959,6 +1041,14 @@
             "fix",
             "drop"
           ]
+        },
+        "blockers": {
+          "description": "Why the task cannot be locked yet, one string each (for example 'recheck-failed: ...' or 'gate-failed: ...').",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "date": {
           "type": "string",

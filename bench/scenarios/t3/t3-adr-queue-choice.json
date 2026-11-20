@@ -66,7 +66,23 @@
       "use": "structure"
     }
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "gate-failed: lazy answer scores 70 (> 40); meta.json acceptableOptions lists every option, so the T3 choice gate cannot separate a shallow answer"
+    ],
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 70,
+      "alt": 81,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "decision-research",
@@ -170,5 +186,6 @@
       "Uses the 500 events/second peak figure from historical notes instead of the current 400 events/second requirement stated in the technical design document.",
       "Dismisses Kinesis due to operational complexity without calculating its actual cost, missing that it is significantly cheaper than SQS options for this message volume."
     ]
-  }
+  },
+  "handEdited": null
 }

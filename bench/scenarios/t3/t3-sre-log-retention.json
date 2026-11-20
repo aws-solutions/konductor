@@ -60,8 +60,13 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "keep",
-    "date": "2026-11-19",
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "recheck-failed: no-method-or-decoy: task.json field prompt (line 3) explicitly names all-hot, all-cold, and mixed strategies, including the exact decoy options and the expected strategy family used by the checks.",
+      "recheck-failed: key-matches-fixture: task.json expertKey item e5 and hidden/hidden/decision.test.js lines 112-116 expect mixed_hot_warm_cold to use 30/90/245 days and cost $2,794, but fixture/data-flow.md lines 32-34 and 53-61 specify 30 hot, 31-180 warm, and 181-365 cold, imp",
+      "recheck-failed: solvable-from-fixture: The prompt in task.json line 3 does not define the option IDs or mixed-tier boundaries, while hidden/hidden/decision.test.js lines 112-116 requires exact IDs and the 30/90/245 configuration; following the fixture lifecycle produces about $2"
+    ],
     "dryRun": {
       "reference": 100,
       "stub": 0,
@@ -115,7 +120,34 @@
         "verdict": "pass",
         "note": "All required numbers provided in fixtures. Output format clearly specified. Hidden tests validate against known valid options (mixed_hot_warm_cold, hot_90_cold_rest)."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "verdicts": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "fail",
+          "note": "task.json field prompt (line 3) explicitly names all-hot, all-cold, and mixed strategies, including the exact decoy options and the expected strategy family used by the checks."
+        },
+        {
+          "check": "fixture-no-answers",
+          "verdict": "pass",
+          "note": "The fixture supplies requirements and tier characteristics but does not select a recommendation or state the hidden output; for example, data-flow.md lines 31-61 gives lifecycle inputs rather than a decision."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "task.json expertKey item e5 and hidden/hidden/decision.test.js lines 112-116 expect mixed_hot_warm_cold to use 30/90/245 days and cost $2,794, but fixture/data-flow.md lines 32-34 and 53-61 specify 30 hot, 31-180 warm, and 181-365 cold, implying 30/150/185 instead."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "fail",
+          "note": "The prompt in task.json line 3 does not define the option IDs or mixed-tier boundaries, while hidden/hidden/decision.test.js lines 112-116 requires exact IDs and the 30/90/245 configuration; following the fixture lifecycle produces about $2,950.90, not the hidden expected $2,793.51."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -167,5 +199,10 @@
       "Applies 8:1 compression to all tiers including hot, which contradicts the explicit requirement that hot tier must not use compression for performance reasons.",
       "Recommends hot_90_cold_rest as optimal without comparing its cost ($7,377) to mixed_hot_warm_cold ($2,794), missing that the 3-tier approach is 2.6x cheaper."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T3 batch worker session",
+    "log": "HAND-EDITS.md"
   }
 }

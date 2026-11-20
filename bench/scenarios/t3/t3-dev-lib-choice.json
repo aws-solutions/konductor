@@ -56,7 +56,23 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 94,
+    "stub": 0,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "blockers": [
+      "gate-failed: reference scores 94 (< 95)"
+    ],
+    "dryRun": {
+      "reference": 94,
+      "stub": 0,
+      "lazy": 22,
+      "alt": 94,
+      "date": "2026-11-20"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "trade-off-evaluator"
@@ -156,5 +172,6 @@
       "calculates core requirements but forgets to verify bandwidth, accepting MessagePack or CBOR despite their bandwidth exceeding 40 MB/s",
       "uses the distractor 8-core figure from cost-analysis.json instead of the current 6-core constraint when evaluating options"
     ]
-  }
+  },
+  "handEdited": null
 }

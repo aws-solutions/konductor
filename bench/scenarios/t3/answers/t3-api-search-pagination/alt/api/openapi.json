@@ -1,0 +1,156 @@
+{
+    "components": {
+        "schemas": {
+            "Error": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "message"
+                ],
+                "type": "object"
+            },
+            "Product": {
+                "properties": {
+                    "price_cents": {
+                        "minimum": 0,
+                        "format": "int64",
+                        "type": "integer"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "description": "Stable public product identifier.",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "SearchResponse": {
+                "properties": {
+                    "next_cursor": {
+                        "description": "Opaque continuation value for the next page. It has no client-readable structure and is absent or null on the final page.",
+                        "maxLength": 2048,
+                        "nullable": true,
+                        "type": "string"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/Product"
+                        },
+                        "maxItems": 100,
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "items",
+                    "next_cursor"
+                ],
+                "type": "object"
+            }
+        },
+        "parameters": {
+            "Cursor": {
+                "description": "Opaque continuation value returned as next_cursor by the preceding response. Clients must store and replay it without parsing or modifying it.",
+                "schema": {
+                    "maxLength": 2048,
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "required": false,
+                "in": "query",
+                "name": "cursor"
+            },
+            "PageSize": {
+                "description": "Number of results to return. Values above 100 are rejected.",
+                "schema": {
+                    "default": 25,
+                    "maximum": 100,
+                    "minimum": 1,
+                    "format": "int32",
+                    "type": "integer"
+                },
+                "required": false,
+                "in": "query",
+                "name": "limit"
+            },
+            "SearchQuery": {
+                "description": "Text to match against product name and searchable attributes.",
+                "schema": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "required": true,
+                "in": "query",
+                "name": "q"
+            }
+        }
+    },
+    "paths": {
+        "/v1/products/search": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchResponse"
+                                }
+                            }
+                        },
+                        "description": "A page of products in stable sort order"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "The query or continuation value is invalid"
+                    }
+                },
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/SearchQuery"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PageSize"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Cursor"
+                    }
+                ],
+                "summary": "Search products",
+                "operationId": "searchProducts"
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "https://catalog.example.invalid"
+        }
+    ],
+    "info": {
+        "description": "Search products in a stable order and continue a result stream safely.",
+        "version": "1.0.0",
+        "title": "Catalog Search API"
+    },
+    "openapi": "3.0.3"
+}
