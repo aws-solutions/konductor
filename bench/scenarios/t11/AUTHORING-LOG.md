@@ -31,3 +31,6 @@ or user agents (only the shipped example); old sessions, session indexes and log
 | t11-media-returns-whiteboard | review | glm-5 | 1.78 |  |
 | t11-media-returns-whiteboard | fix | gpt-5.6-luna | 2.30 |  |
 | t11-media-returns-whiteboard | recheck | qwen3-coder-next | 0.31 |  |
+| t11-twin-pricing-validation | author | gpt-5.6-luna | 2.71 |  |
+| t11-twin-pricing-validation | map | glm-5 | 0.15 |  |
+| t11-twin-pricing-validation | review | glm-5 | 6.22 |  |
