@@ -121,3 +121,13 @@ Paid calls of the FX job (owner-approved, hard cap 90 credits for all batches, a
 - result: t3-db-order-history recheck gpt-5.6-luna credits=0.508 secs=30
 - plan: t3-pm-feature-scope recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 47.4 of 90
 - result: t3-pm-feature-scope recheck gpt-5.6-luna credits=0.599 secs=30
+- plan: t3-dev-lib-choice fix by deepseek-3.2, abort limit 10 credits, spend so far 63.0 of 90
+- result: t3-dev-lib-choice fix deepseek-3.2 credits=5.860 secs=430
+- plan: t3-dev-lib-choice recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 68.8 of 90
+- result: t3-dev-lib-choice recheck gpt-5.6-luna credits=0.383 secs=30
+
+Outcomes:
+
+- t3-dev-lib-choice: DROPPED. deepseek-3.2 fixed the failing hidden test (a regex flag), the reference reached 100, but the gpt-5.6-luna recheck failed key-matches-fixture and solvable-from-fixture (the expert key's 45 JSON cores conflict with the 4.5 cores per 10,000 events in load-test-results.md). Task files are not kept in the tree.
+- First non-Claude recheck of the five scorer fixes: t3-adr-cache-sizing and t3-arch-notification-pipeline pass; t3-db-audit-retention, t3-db-order-history and t3-pm-feature-scope fail (the same model had passed them before the scorer fix, so these verdicts vary between runs). They are recorded as they came, pilot.decision fix with blockers, and not fixed (spend cap).
+- Not reached (spend cap): t3-adr-multiregion-dr, t3-adr-queue-choice, t3-nfr-capacity-autoscale, t3-nfr-latency-budget, t3-sre-log-retention, and the three tasks above.

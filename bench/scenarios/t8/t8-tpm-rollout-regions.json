@@ -1,7 +1,7 @@
 {
   "id": "t8-tpm-rollout-regions",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "tpm",
   "phases2": [
@@ -164,7 +164,34 @@
         "verdict": "pass",
         "note": "All key values can be derived from the fixture. The pool exhaustion cause is explicitly logged (wallet-session.log shows 'connection pool exhausted active=80 max=80'), the certificate warning is documented as a decoy in risk-register.md, the 5% canary limit is in capacity-note.md and the status thread, and the schedule constraints (freeze dates, certification time, holidays, coverage gaps) are all in docs/."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal, output format, and constraints without naming methods or pointing at traps; it asks for a signable release plan from folder material."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain constraints and evidence the agent must reason from; stale-launch-notes.md is explicitly marked superseded, and no file lists the expected schedule."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key values match fixture sources: teams from team-list.md, roles from raci.md, metrics from metrics-catalogue.md, freeze times from change-calendar.md, certification date from partner-certification.md, canary percent and bake window from capacity-note.md and rollout-runbook.md."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The schema ordering (schema-compatibility.md), API-before-client sequencing (dependency-note.md), region order with holidays and certification constraints (change-calendar.md, partner-certification.md, oncall-rota.md, region-readiness.md), and metric gates follow from the fixture."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
@@ -177,15 +204,15 @@
     },
     "reference": 100,
     "stub": 5.7,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 5.7,
-      "lazy": 100,
+      "lazy": 37.5,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "lockedAt": null
 }

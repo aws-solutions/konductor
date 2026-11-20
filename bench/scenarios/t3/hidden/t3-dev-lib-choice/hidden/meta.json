@@ -1,6 +1,0 @@
-{
-  "deliverables": ["docs/decision-record.md"],
-  "acceptableOptions": ["protobuf", "avro"],
-  "temptingOption": "json",
-  "notes": "The trap is that JSON seems simplest (no schema, team knows it) but requires 45 cores at 0.9ms/event, exceeding the 6-core limit. The numbers for this are spread between performance-benchmark.csv (0.9ms) and requirements.md (50,000 events/sec)."
-}

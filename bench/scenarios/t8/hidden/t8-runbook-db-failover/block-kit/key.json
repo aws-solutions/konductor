@@ -10,6 +10,19 @@
       "weight": 1
     },
     {
+      "id": "all-required-steps-present",
+      "type": "every",
+      "path": "steps",
+      "min": 8,
+      "match": {
+        "field": "action",
+        "all": [
+          "\\S"
+        ]
+      },
+      "weight": 8
+    },
+    {
       "id": "lag-before-promote",
       "type": "order",
       "path": "steps",
@@ -26,7 +39,7 @@
           "promote"
         ]
       },
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "fence-before-promote",
@@ -45,7 +58,7 @@
           "promote"
         ]
       },
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "promote-before-repoint",
@@ -95,7 +108,7 @@
           "orders-db-c"
         ]
       },
-      "weight": 2
+      "weight": 1
     },
     {
       "id": "status-command-is-real",
@@ -158,16 +171,11 @@
     },
     {
       "id": "abort-threshold-is-rpo",
-      "type": "every",
-      "path": "abort",
-      "weight": 2,
-      "match": {
-        "field": "threshold",
-        "num": {
-          "gt": 0,
-          "lte": 120
-        }
-      }
+      "type": "number",
+      "path": "abort.threshold",
+      "value": 120,
+      "tol": 0,
+      "weight": 8
     },
     {
       "id": "escalation-roles-are-on-rota",
@@ -176,6 +184,61 @@
       "field": "",
       "fromFile": "rota/paging.md",
       "pattern": "^- (.+)$"
+    },
+    {
+      "id": "repoint-step-is-present",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "command",
+        "all": [
+          "^quorumctl\\s+reconfigure",
+          "orders-api",
+          "orders-db-b"
+        ]
+      },
+      "weight": 8
+    },
+    {
+      "id": "write-readback-step-is-present",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "action",
+        "all": [
+          "write",
+          "read.?back|read"
+        ]
+      },
+      "weight": 8
+    },
+    {
+      "id": "monitoring-window-is-present",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "action",
+        "all": [
+          "monitor",
+          "five minutes"
+        ]
+      },
+      "weight": 8
+    },
+    {
+      "id": "old-primary-remains-isolated",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "action",
+        "all": [
+          "orders-db-a",
+          "fenced",
+          "inspect",
+          "reconnect"
+        ]
+      },
+      "weight": 8
     }
   ]
 }

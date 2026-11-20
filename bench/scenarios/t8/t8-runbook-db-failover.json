@@ -1,7 +1,7 @@
 {
   "id": "t8-runbook-db-failover",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -140,7 +140,34 @@
         "verdict": "pass",
         "note": "All required values are derivable from the fixture: storage values (1840, 1960, 2000) appear directly in logs; replication lag (27, 19) is in logs; RPO=120 is explicit in data-policy.md; escalation roles are listed in rota/paging.md; quorumctl command syntax is in vendor/quorumctl-help.txt."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the goal (create a failover runbook with prechecks, safe role change, client recovery, etc.), constraints (JSON structure, use source files), and deliverable location, but does not name a specific methodology, tool, or point to decoys/traps."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture files contain source materials (topology, quorumctl commands, RPO=120s, DNS TTL=30s, lag values in logs, role names in rota) that require synthesis and reasoning; no file directly lists the expected runbook or JSON output."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All key.json test values exist in fixture: abort threshold 120 (policy/data-policy.md RPO), metrics (metrics/catalog.csv), escalation roles (rota/paging.md), node names and commands (topology.yaml, vendor/quorumctl-help.txt), and ordering constraints follow from old-failover-notes.md and quorumctl help."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A careful engineer can synthesize the runbook from topology.yaml (nodes, roles, zones), vendor/quorumctl-help.txt (commands), policy/data-policy.md (RPO=120s), config/clients.yaml (DNS TTL=30s), logs (incident pattern), docs/old-failover-notes.md (fencing lesson), and rota/paging.md (escalation roles)."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
@@ -153,15 +180,15 @@
     },
     "reference": 100,
     "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
-      "lazy": 83.2,
+      "lazy": 38.1,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "decision": "fix",
-    "date": "2026-11-20"
+    }
   },
   "lockedAt": null
 }
