@@ -1,0 +1,31 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name a review method, checklist or process. Does not hint at planted problems or their area. Does not give the number of problems."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear what to review (design doc), where to write (REVIEW.md), and output format (JSON with location, severity, issue, fix). Section numbers provide unambiguous location references."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Key items require cross-referencing multiple files (design doc + CSV data + service targets + product rules). Many findings require connecting design claims to contradictory evidence. A shallow review would miss several items (especially k2 requiring CSV analysis, k1 requiring understanding of the conflict scenario, k8 requiring cross-referencing consistency requirements)."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 8 key items are verifiable: k1 (3.2 last-write-wins vs product-rules double-booking ban), k2 (6.3 RPO 60s vs CSV p99 lag 450-720ms), k3 (6.2 RTO 60s vs 3.5 DNS TTL 300s + health check timing), k4 (8.1 budget omits doubled DB cost), k5 (7.1 vague failback), k6 (3.3 no merge rule for global counter), k7 (6.1 no DNS propagation consideration), k8 (2.2 strong consistency vs 3.2 async replication). Section numbers are accurate. Severity ratings are defensible."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, or file names point to planted problems. The fixture presents the design neutrally. The README lists contents without hints. The dry-run dump achieves 7/20, confirming some difficulty."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

@@ -1,0 +1,4 @@
+{
+  "columns": [{ "key": "value", "label": "Value" }],
+  "rows": [{ "value": 4.5 }]
+}

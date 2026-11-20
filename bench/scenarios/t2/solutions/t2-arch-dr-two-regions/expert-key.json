@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks how the application handles partial regional failures where some services are available but others are not, creating split-brain scenarios.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Questions how the design ensures idempotency of operations during retries after partial failures or network timeouts.",
+      "source": "https://12factor.net (MIT)"
+    },
+    {
+      "id": "e3",
+      "text": "Identifies the need for circuit breakers to prevent cascading failures when cross-region calls experience latency spikes.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Asks about the strategy for schema migrations and backward compatibility during rolling deployments across regions.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Questions how the design handles clock skew between regions for timestamp-based conflict resolution.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Identifies the need for canary deployments and feature flags to control rollouts and mitigate risk.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e7",
+      "text": "Asks about monitoring and alerting for data drift between regions before it causes business impact.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e8",
+      "text": "Questions how the design handles regulatory requirements for data residency when users travel between regions.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    }
+  ],
+  "weakAnswers": [
+    "The design looks good overall, just need to consider scalability.",
+    "Make sure to add proper error handling and logging.",
+    "Consider security implications of cross-region data transfer.",
+    "The team should think about future expansion to more regions.",
+    "Add more details to the testing plan for better coverage."
+  ]
+}

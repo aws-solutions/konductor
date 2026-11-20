@@ -2,7 +2,7 @@
   "id": "t1-bug-money-rounding",
   "phase": "bugfix",
   "role": "developer",
-  "author": "qwen3-coder-next",
+  "author": "minimax-m2.5",
   "reviewer": "gpt-5.6-luna",
   "stack": "python",
   "size": "20 to 30",

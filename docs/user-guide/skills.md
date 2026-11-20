@@ -66,12 +66,12 @@ Turning a business ask into something an engineer can build.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `requirements-extraction` | Extracts design inputs from existing requirements and user stories into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md. | Requirements and stories already exist and you are handing them to the architect. With no requirements yet, write user stories first. | `k-architect`, `k-product-manager` |
+| `requirements-extraction` | Extracts design inputs from existing requirements and user stories into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md. | Requirements and stories already exist and you are handing them to the architect. With no requirements yet, write user stories first. | `k-architect`, `k-product-manager`, `konductor` |
 | `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria, from validated requirements or a rough ask. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | You need stories, epics or acceptance criteria, or want to turn a feature idea into backlog items. No requirements doc is needed. | `k-product-manager`, `konductor` |
-| `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
-| `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm` |
-| `decision-research` | Research patterns for gathering context before deciding, and for surfacing prior art an artifact missed: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
-| `docx-conversion` | Converts `.docx` files to and from Markdown with pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
+| `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm`, `konductor` |
+| `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm`, `konductor` |
+| `decision-research` | Research patterns for gathering context before deciding, and for surfacing prior art an artifact missed: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager`, `konductor` |
+| `docx-conversion` | Converts `.docx` files to and from Markdown with pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm`, `konductor` |
 
 ---
 
@@ -81,13 +81,13 @@ Coordination across people and time rather than within one codebase.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `program-planning` | Program plans with timelines, milestones, dependencies, and critical-path analysis. | Starting or replanning a program spanning multiple workstreams. | `k-tpm` |
-| `program-decision-docs` | Program-level decision documents with options analysis, trade-offs, and a recommendation. | A cross-team decision needs to be written down formally. | `k-tpm` |
-| `status-reporting` | Program status reports for stakeholders. | Weekly updates, executive summaries, milestone reviews. | `k-tpm` |
-| `risk-management` | Identifies, assesses, and tracks program risks with mitigation plans and RAID logs. | Starting a risk assessment, or a risk register has gone stale. | `k-tpm` |
+| `program-planning` | Program plans with timelines, milestones, dependencies, and critical-path analysis. | Starting or replanning a program spanning multiple workstreams. | `k-tpm`, `konductor` |
+| `program-decision-docs` | Program-level decision documents with options analysis, trade-offs, and a recommendation. | A cross-team decision needs to be written down formally. | `k-tpm`, `konductor` |
+| `status-reporting` | Program status reports for stakeholders. | Weekly updates, executive summaries, milestone reviews. | `k-tpm`, `konductor` |
+| `risk-management` | Identifies, assesses, and tracks program risks with mitigation plans and RAID logs. | Starting a risk assessment, or a risk register has gone stale. | `k-tpm`, `konductor` |
 | `plan-review` | Critically reviews a work plan against clarity, verifiability, context completeness, and big picture. Gives a 1-5 rating and a BLOCKED / OKAY / SHIP IT verdict. | You have a plan and want it torn apart before anyone executes it. | `k-tpm`, `konductor` |
-| `legacy-to-agentic-estimate` 📎 | Converts all-human effort estimates into agentic-SDLC estimates accounting for AI toolchains. Ships `convert_estimates.py` plus evals. | Re-baselining a legacy estimate for AI-assisted delivery. Note the tier presets are uncalibrated defaults. | `k-product-manager`, `k-tpm` |
-| `progress-tracking` | Validates feature plans and tracks implementation against requirements traceability, in three modes: initial, progress, final. | Mid-implementation, and you want to know what is genuinely done. | `k-developer` |
+| `legacy-to-agentic-estimate` 📎 | Converts all-human effort estimates into agentic-SDLC estimates accounting for AI toolchains. Ships `convert_estimates.py` plus evals. | Re-baselining a legacy estimate for AI-assisted delivery. Note the tier presets are uncalibrated defaults. | `k-product-manager`, `k-tpm`, `konductor` |
+| `progress-tracking` | Validates feature plans and tracks implementation against requirements traceability, in three modes: initial, progress, final. | Mid-implementation, and you want to know what is genuinely done. | `k-developer`, `konductor` |
 
 📎 ships helper files alongside `SKILL.md`: `legacy-to-agentic-estimate` (`evals`, `scripts`)
 
@@ -99,16 +99,16 @@ Producing the design itself.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `system-design-patterns` | Guides system architecture design through a structured interview, or works from existing requirements without one when you ask for no questions. Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff. | Starting a new service or feature that needs a design document. | `k-architect` |
-| `architecture-advisor` | Quick recommendation mode — concise opinions with trade-off analysis instead of a full artifact. | You want a sanity check or an opinion, not a document. | `k-architect` |
+| `system-design-patterns` | Guides system architecture design through a structured interview, or works from existing requirements without one when you ask for no questions. Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff. | Starting a new service or feature that needs a design document. | `k-architect`, `konductor` |
+| `architecture-advisor` | Quick recommendation mode — concise opinions with trade-off analysis instead of a full artifact. | You want a sanity check or an opinion, not a document. | `k-architect`, `konductor` |
 | `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect`, `konductor` |
-| `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
-| `architecture-diagram-generation` | Generates AWS architecture diagrams as draw.io XML with official service icons and directional data flows; single or multi-account. | You need a real diagram from a written design. | `k-architect` |
-| `cost-estimation` | AWS cost estimates in baseline, optimized, and high-availability scenarios. | Someone asked what this will cost to run. Needs service configs and expected load. | `k-architect` |
-| `decision-writing` | How to write decision records well: structure, tone, alternatives framing, consequence articulation. Its ADR Mode produces inline Architecture Decision Records (Context, Decision, Status, Alternatives Considered, Consequences). | A significant design choice needs a written record, or your ADRs are technically complete but nobody can follow them. | `k-architect` |
-| `trade-off-evaluator` | Scores options across cost, latency, complexity, scalability, and operability into a comparison matrix plus a recommendation. | A decision has more than one credible option. | `k-architect` |
+| `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect`, `konductor` |
+| `architecture-diagram-generation` | Generates AWS architecture diagrams as draw.io XML with official service icons and directional data flows; single or multi-account. | You need a real diagram from a written design. | `k-architect`, `konductor` |
+| `cost-estimation` | AWS cost estimates in baseline, optimized, and high-availability scenarios. | Someone asked what this will cost to run. Needs service configs and expected load. | `k-architect`, `konductor` |
+| `decision-writing` | How to write decision records well: structure, tone, alternatives framing, consequence articulation. Its ADR Mode produces inline Architecture Decision Records (Context, Decision, Status, Alternatives Considered, Consequences). | A significant design choice needs a written record, or your ADRs are technically complete but nobody can follow them. | `k-architect`, `konductor` |
+| `trade-off-evaluator` | Scores options across cost, latency, complexity, scalability, and operability into a comparison matrix plus a recommendation. | A decision has more than one credible option. | `k-architect`, `konductor` |
 | `deliberation-panel` | Multi-perspective deliberation: derives decision-specific axes, argues each independently, cross-examines anonymously, synthesizes a scored recommendation. Requires explicit consent. | A high-stakes decision where you want genuine disagreement, not a single voice. | `konductor`, `k-architect`, `k-developer`, `k-product-manager`, `k-researcher` |
-| `argumentation-reference` | Primer on argumentation theory — Toulmin model, fallacy taxonomy, argument scoring. | Used during adversarial review to name why an argument is weak. | `k-architect` |
+| `argumentation-reference` | Primer on argumentation theory — Toulmin model, fallacy taxonomy, argument scoring. | Used during adversarial review to name why an argument is weak. | `k-architect`, `konductor` |
 | `design-impact-review` | Traces the downstream, cross-artifact impact of a change before it cascades — DB column to API to frontend. Classifies each artifact BREAKING / STALE / UNAFFECTED. | You are about to change a data model, API schema, or interface and want to know what breaks. | `k-developer`, `konductor` |
 
 ---
@@ -120,10 +120,10 @@ Checking a design before anyone builds it.
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `design-evaluation` | Evaluates a design package, or a single design doc, for production readiness across 10 dimensions (8 scored, 2 report sections). | The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use `single-document` scope for one doc. | `k-architect`, `konductor` |
-| `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
-| `doc-accuracy-analyzer` | The entry point for fact-checking a technical document: extracts claims, routes AWS claims to `aws-service-validator`, checks the rest against primary sources, reports. | You need to know which claims in a document are actually true. | `k-architect`, `k-product-manager` |
-| `aws-service-validator` | Validates AWS feature, limit, pricing, and Region claims against live AWS documentation. Called by `doc-accuracy-analyzer`, or run directly on a list of AWS claims. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
-| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
+| `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect`, `konductor` |
+| `doc-accuracy-analyzer` | The entry point for fact-checking a technical document: extracts claims, routes AWS claims to `aws-service-validator`, checks the rest against primary sources, reports. | You need to know which claims in a document are actually true. | `k-architect`, `k-product-manager`, `konductor` |
+| `aws-service-validator` | Validates AWS feature, limit, pricing, and Region claims against live AWS documentation. Called by `doc-accuracy-analyzer`, or run directly on a list of AWS claims. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect`, `konductor` |
+| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect`, `konductor` |
 | `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | all 11. Loads on demand on every runtime |
 
 ---
@@ -135,11 +135,11 @@ API, data and access policy design. The Smithy and IAM skills each pair with a v
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `smithy-modeling` | Generates Smithy API models — service definitions, operations, structures, validation, errors. Supports TypeScript, OpenAPI, and AWS SDK codegen. | Designing a new service API. | `k-architect` |
-| `smithy-validation` | Validates Smithy models for structure, naming, security, and codegen readiness. | Before implementing against a Smithy model. | `k-architect` |
-| `dynamodb-design` | Designs DynamoDB tables and GSIs from access patterns, and reviews a design for hot partitions and unsharded low-cardinality keys. | Designing or reviewing a DynamoDB data model. | `k-architect` |
-| `iam-policy-design` | Generates least-privilege IAM role policies, resource policies, and compliance configuration. | Designing access control for a new service. | `k-architect` |
-| `policy-validation` | Validates IAM policies for over-permissive grants, missing conditions, and compliance gaps. | Before deploying any IAM change. | `k-architect` |
+| `smithy-modeling` | Generates Smithy API models — service definitions, operations, structures, validation, errors. Supports TypeScript, OpenAPI, and AWS SDK codegen. | Designing a new service API. | `k-architect`, `konductor` |
+| `smithy-validation` | Validates Smithy models for structure, naming, security, and codegen readiness. | Before implementing against a Smithy model. | `k-architect`, `konductor` |
+| `dynamodb-design` | Designs DynamoDB tables and GSIs from access patterns, and reviews a design for hot partitions and unsharded low-cardinality keys. | Designing or reviewing a DynamoDB data model. | `k-architect`, `konductor` |
+| `iam-policy-design` | Generates least-privilege IAM role policies, resource policies, and compliance configuration. | Designing access control for a new service. | `k-architect`, `konductor` |
+| `policy-validation` | Validates IAM policies for over-permissive grants, missing conditions, and compliance gaps. | Before deploying any IAM change. | `k-architect`, `konductor` |
 
 For DynamoDB depth that `dynamodb-design` does not carry, such as Streams, backup and the cost
 calculator, it points to the AWS MCP server's `amazon-dynamodb` skill.
@@ -153,8 +153,8 @@ Security-specific analysis, spanning design through remediation.
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `threat-modeling` | AWS threat models via STRIDE — architecture analysis, threat identification, security controls. | After system design, on anything touching auth, PII, or an external boundary. | `k-architect`, `konductor` |
-| `security-test-generation` | Security test plans by domain and layer, covering all 7 domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure. | You need security test coverage, not just functional coverage. | `k-quality-assurance` |
-| `security-remediation` | Analyzes security findings and produces prioritized remediation plans with effort estimates and risk context. | You have a vulnerability report or appsec findings to work through. | `k-developer` |
+| `security-test-generation` | Security test plans by domain and layer, covering all 7 domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure. | You need security test coverage, not just functional coverage. | `k-quality-assurance`, `konductor` |
+| `security-remediation` | Analyzes security findings and produces prioritized remediation plans with effort estimates and risk context. | You have a vulnerability report or appsec findings to work through. | `k-developer`, `konductor` |
 
 ---
 
@@ -169,15 +169,15 @@ Writing and reviewing code.
 | `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer`, `konductor` |
 | `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer`, `konductor` |
 | `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer`, `konductor` |
-| `code-review` | Standard review workflow: reviewing a folder, repository, diff or PR, creating PRs, addressing feedback, and post-implementation cycles. Also reviews a source tree with no git history. | Ordinary code review using git and the GitHub CLI, or reviewing a folder or repository that is not under git. | `k-developer` |
-| `adversarial-code-review` | Reviews a diff from an adversarial security-focused stance, arguing against approval. Targets information disclosure, data-integrity failures, and schema/validation gaps. | After standard review, on anything security-sensitive. This is what `k-adversarial-pull-request-review` runs on. | `k-architect`, `k-developer` |
+| `code-review` | Standard review workflow: reviewing a folder, repository, diff or PR, creating PRs, addressing feedback, and post-implementation cycles. Also reviews a source tree with no git history. | Ordinary code review using git and the GitHub CLI, or reviewing a folder or repository that is not under git. | `k-developer`, `konductor` |
+| `adversarial-code-review` | Reviews a diff from an adversarial security-focused stance, arguing against approval. Targets information disclosure, data-integrity failures, and schema/validation gaps. | After standard review, on anything security-sensitive. This is what `k-adversarial-pull-request-review` runs on. | `k-architect`, `k-developer`, `konductor` |
 | `adversarial-code-review-pass-security` | One parallel pass of the adversarial review, scoped to security: information disclosure, authorization, injection, secrets. | You do not invoke it directly; the orchestrator coordinating `k-adversarial-pull-request-review` spawns a `k-developer` session with it, alongside the integrity and schema passes. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
-| `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
-| `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
-| `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
+| `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer`, `konductor` |
+| `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer`, `konductor` |
+| `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer`, `konductor` |
 | `git-merge` | Branch merges into the default branch, release merges, merge conflicts. | Merging locally; use `code-review` when merges go through PRs. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
 | `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-architect`, `k-developer`, `konductor` |
 | `agents-md-authoring` | Creates and maintains AGENTS.md files that bootstrap agent context. Covers the agents.md standard, the context-loading block, and the CLAUDE.md bridge. | Onboarding a repo for agents, or your conventions have drifted from what agents are told. | `k-developer`, `konductor` |
@@ -190,13 +190,13 @@ Verifying behaviour, including through a real browser.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `test-coverage-analysis` | Analyzes coverage across unit, integration, and E2E to find gaps. Two modes: coverage analysis and release readiness. | After implementation, before release. | `k-quality-assurance` |
-| `e2e-test-strategy` | Turns gap analysis and user stories into a prioritized E2E test matrix (P0-P3) with execution approach and framework recommendations. | You know the gaps and need a plan to close them. | `k-quality-assurance` |
-| `cypress-test-implementation` | Turns an E2E strategy into Cypress implementation tasks. Three modes: initial, progress, final. | You have chosen Cypress and need the work planned and tracked. | `k-quality-assurance` |
-| `playwright-test-implementation` | Authors Playwright specs: selector strategy, authenticated-session setup via `global-setup.ts` and `storageState`, and Cloudscape-specific locator patterns. | You have chosen Playwright, are wiring up `global-setup.ts`, or are fixing flaky selectors on a Cloudscape UI. | `k-quality-assurance` |
-| `app-discovery` | Navigates a deployed web app, discovers pages and interactive elements, and produces a structured discovery report. | You need to test an app nobody has mapped yet. | `k-browser` |
-| `dom-inspection` | Extracts field-level metadata from web forms via the DOM and HTML5 Constraint Validation API — validation rules, error selectors, conditional visibility. | Generating tests for a form and you need its real validation rules. | `k-browser`, `k-quality-assurance` |
-| `ui-text-validation` | Validates UI text against public AWS style guidance, Cloudscape standards, and content-quality principles, with before/after examples. | Reviewing user-facing copy in a console-style app. | `k-quality-assurance` |
+| `test-coverage-analysis` | Analyzes coverage across unit, integration, and E2E to find gaps. Two modes: coverage analysis and release readiness. | After implementation, before release. | `k-quality-assurance`, `konductor` |
+| `e2e-test-strategy` | Turns gap analysis and user stories into a prioritized E2E test matrix (P0-P3) with execution approach and framework recommendations. | You know the gaps and need a plan to close them. | `k-quality-assurance`, `konductor` |
+| `cypress-test-implementation` | Turns an E2E strategy into Cypress implementation tasks. Three modes: initial, progress, final. | You have chosen Cypress and need the work planned and tracked. | `k-quality-assurance`, `konductor` |
+| `playwright-test-implementation` | Authors Playwright specs: selector strategy, authenticated-session setup via `global-setup.ts` and `storageState`, and Cloudscape-specific locator patterns. | You have chosen Playwright, are wiring up `global-setup.ts`, or are fixing flaky selectors on a Cloudscape UI. | `k-quality-assurance`, `konductor` |
+| `app-discovery` | Navigates a deployed web app, discovers pages and interactive elements, and produces a structured discovery report. | You need to test an app nobody has mapped yet. | `k-browser`, `konductor` |
+| `dom-inspection` | Extracts field-level metadata from web forms via the DOM and HTML5 Constraint Validation API — validation rules, error selectors, conditional visibility. | Generating tests for a form and you need its real validation rules. | `k-browser`, `k-quality-assurance`, `konductor` |
+| `ui-text-validation` | Validates UI text against public AWS style guidance, Cloudscape standards, and content-quality principles, with before/after examples. | Reviewing user-facing copy in a console-style app. | `k-quality-assurance`, `konductor` |
 
 ---
 
@@ -210,9 +210,9 @@ it that step's parameters, and the specialist runs its own skill.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `kiro-requirements-generation` | Turns user stories into a Kiro IDE `requirements.md` with a Glossary, EARS-format acceptance criteria, and the source story ID on each requirement, or a bug report into `bugfix.md`. | Step 1 of the `kiro-spec-workflow` SOP. | `k-product-manager` |
-| `kiro-design-generation` | Turns design artifacts into a per-feature Kiro IDE `design.md` with Kiro's 7 sections, including Correctness Properties. Runs first in a design-first spec. | Step 2 of the `kiro-spec-workflow` SOP, after requirements are approved. | `k-architect` |
-| `kiro-task-generation` | Generates a Kiro IDE `tasks.md`: numbered checkboxes with requirement references, optional test tasks, checkpoints, and a task dependency graph. | Step 3 of the `kiro-spec-workflow` SOP, after design is approved. | `k-developer` |
+| `kiro-requirements-generation` | Turns user stories into a Kiro IDE `requirements.md` with a Glossary, EARS-format acceptance criteria, and the source story ID on each requirement, or a bug report into `bugfix.md`. | Step 1 of the `kiro-spec-workflow` SOP. | `k-product-manager`, `konductor` |
+| `kiro-design-generation` | Turns design artifacts into a per-feature Kiro IDE `design.md` with Kiro's 7 sections, including Correctness Properties. Runs first in a design-first spec. | Step 2 of the `kiro-spec-workflow` SOP, after requirements are approved. | `k-architect`, `konductor` |
+| `kiro-task-generation` | Generates a Kiro IDE `tasks.md`: numbered checkboxes with requirement references, optional test tasks, checkpoints, and a task dependency graph. | Step 3 of the `kiro-spec-workflow` SOP, after design is approved. | `k-developer`, `konductor` |
 
 ---
 
@@ -222,7 +222,7 @@ Looking things up outside the repository.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `external-research` | Searches external documentation, web resources, and best practices. | Gathering information on open-source libraries, AWS services, industry patterns, or external tools. | `k-researcher` |
+| `external-research` | Searches external documentation, web resources, and best practices. | Gathering information on open-source libraries, AWS services, industry patterns, or external tools. | `k-researcher`, `konductor` |
 
 ---
 
@@ -248,9 +248,9 @@ Useful when deciding which agent to talk to directly.
 
 | Agent | Skills declared | Preloaded on Claude Code |
 | --- | --- | --- |
+| `konductor` | 71 | 2 |
 | `k-architect` | 37 | 2 |
 | `k-developer` | 27 | 4 |
-| `konductor` | 25 | 2 |
 | `k-product-manager` | 16 | 1 |
 | `k-tpm` | 14 | 1 |
 | `k-quality-assurance` | 13 | 2 |
@@ -260,8 +260,8 @@ Useful when deciding which agent to talk to directly.
 | `k-browser` | 5 | 4 |
 | `k-media-analyzer` | 2 | 1 |
 
-`k-architect` carries by far the most, which is why design work routed anywhere else tends to
-come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writing`, and preloads
+`konductor` declares 71 so it can do role work itself. Of the specialists, `k-architect` carries the most,
+which is why design work routed anywhere else tends to come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writing`, and preloads
 only `constraints`. Its capability is the model's ability to interpret PDFs and images, not a
 skill library.
 

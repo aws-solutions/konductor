@@ -1,0 +1,8 @@
+caller,entrypoint,request_type,median_ms,p99_ms,traffic_share,owner,contract_dependency
+Storefront API,POST /checkout,interactive checkout,170,280,0.58,Web Experience,returns order_id and decline code
+Mobile API,POST /v2/checkout,interactive checkout,190,310,0.19,Mobile,uses checkout_token replay behavior
+Subscription worker,job charge-renewal,renewal order,240,390,0.07,Billing,expects synchronous authorization
+Returns service,POST /returns/{id}/reorder,reorder,210,360,0.04,Returns,uses internal module interface
+Support console,POST /support/orders/{id}/retry,retry checkout,260,430,0.01,Support Tools,passes operator request_id
+Partner gateway,POST /partner/checkout,partner checkout,230,410,0.03,Integrations,expects legacy error codes
+Cart worker,job expire-reservations,reservation cleanup,90,150,0.08,Fulfillment,reads reservation status

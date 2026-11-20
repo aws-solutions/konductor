@@ -96,7 +96,12 @@ function fix(id) {
   const b = brief(id);
   const rev = readJson(path.join(AUTH, 'work', `${id}.review.json`));
   const fails = rev.verdicts.filter((v) => v.verdict === 'fail').map((v) => `- ${v.check}: ${v.note}`);
-  const problems = [...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
+  // The free dry run's findings, when it ran: which checks failed on the reference and how the hidden suite ended.
+  const dryFile = path.join(AUTH, 'work', `${id}.dry.json`);
+  const dry = fs.existsSync(dryFile) && fs.statSync(dryFile).size ? readJson(dryFile) : null;
+  const dryLines = dry ? dry.reference.checks_.filter((c) => !c.passed).map((c) => `- dry run, reference: ${c.type} check failed (${c.detail})`) : [];
+  if (dry && dry.stub.score > 20) dryLines.push(`- dry run: the untouched fixture scores ${dry.stub.score.toFixed(1)} (must be 20 or less)`);
+  const problems = [...dryLines, ...fails, ...(rev.reference?.failingChecks || []).map((c) => `- reference run: ${c}`), ...(rev.fixes || []).map((f) => `- suggested fix: ${f}`)].join('\n');
   const w = path.join(AUTH, 'work', id);
   fs.rmSync(`${w}.v1`, { recursive: true, force: true });
   fs.cpSync(w, `${w}.v1`, { recursive: true });

@@ -1,0 +1,155 @@
+diff --git a/src/forum/handlers/user_handler.py b/src/forum/handlers/user_handler.py
+index 03d4105..353e02d 100644
+--- a/src/forum/handlers/user_handler.py
++++ b/src/forum/handlers/user_handler.py
+@@ -46,6 +46,8 @@ class UserHandler(BaseHTTPRequestHandler):
+             self._handle_login()
+         elif path == '/api/users/logout':
+             self._handle_logout()
++        elif path == '/api/users/avatar':
++            self._handle_upload_avatar()
+         else:
+             self.send_error(404, "Not found")
+     
+@@ -171,7 +173,7 @@ class UserHandler(BaseHTTPRequestHandler):
+             user.username = data['username']
+         
+         if 'avatar_url' in data:
+-            # Old avatar file cleanup would go here
++            # Update avatar URL
+             user.avatar_url = data['avatar_url']
+         
+         self.user_storage.update_user(user)
+@@ -182,6 +184,74 @@ class UserHandler(BaseHTTPRequestHandler):
+             'avatar_url': user.avatar_url,
+             'updated': True
+         })
++    
++    def _handle_upload_avatar(self):
++        """Handle avatar image upload."""
++        user_id = self._get_current_user_id()
++        if not user_id:
++            self.send_error(401, "Unauthorized")
++            return
++        
++        user = self.user_storage.get_user(user_id)
++        if not user:
++            self.send_error(404, "User not found")
++            return
++        
++        content_type = self.headers.get('Content-Type', '')
++        if not content_type.startswith('multipart/form-data'):
++            self.send_error(400, "Expected multipart/form-data")
++            return
++        
++        content_length = int(self.headers.get('Content-Length', 0))
++        if content_length == 0:
++            self.send_error(400, "Empty request body")
++            return
++        
++        file_data = self.rfile.read(content_length)
++        
++        content_disposition = self.headers.get('Content-Disposition', '')
++        filename = None
++        for part in content_disposition.split(';'):
++            part = part.strip()
++            if part.startswith('filename='):
++                filename = part[9:].strip('"\'')
++                break
++        
++        if not filename:
++            self.send_error(400, "No filename provided")
++            return
++        
++        success, saved_path, error = process_image_upload(
++            file_data=file_data,
++            content_type=content_type,
++            original_filename=filename,
++            upload_dir=UPLOAD_DIR
++        )
++        
++        if not success:
++            self.send_error(400, error)
++            return
++        
++        public_url = f"/uploads/{user.email}/{os.path.basename(saved_path)}"
++        
++        user.avatar_url = public_url
++        self.user_storage.update_user(user)
++        
++        self._send_json_response({
++            'avatar_url': public_url,
++            'message': 'Avatar uploaded successfully'
++        })
+ 
+     def _get_current_user_id(self) -> Optional[str]:
+         """Get current user ID from session cookie."""
+diff --git a/src/forum/utils/image_helpers.py b/src/forum/utils/image_helpers.py
+index cae4a8d..06fd83a 100644
+--- a/src/forum/utils/image_helpers.py
++++ b/src/forum/utils/image_helpers.py
+@@ -51,6 +51,64 @@ def validate_image_file(file_path: str, max_size: int = None) -> Tuple[bool, str
+     
+     return True, ""
+ 
++def save_uploaded_file(upload_data: bytes, original_filename: str, upload_dir: str) -> Tuple[bool, str, str]:
++    """
++    Save uploaded file to disk.
++    """
++    try:
++        os.makedirs(upload_dir, exist_ok=True)
++        
++        file_path = os.path.join(upload_dir, original_filename)
++        
++        counter = 1
++        base_name, ext = os.path.splitext(file_path)
++        while os.path.exists(file_path):
++            file_path = f"{base_name}_{counter}{ext}"
++            counter += 1
++        
++        if os.path.exists(file_path):
++            return False, "", "File already exists"
++        
++        with open(file_path, 'wb') as f:
++            f.write(upload_data)
++        
++        return True, file_path, ""
++    except Exception as e:
++        return False, "", f"Failed to save file: {str(e)}"
++
++def process_image_upload(file_data: bytes, content_type: str, original_filename: str, 
++                        upload_dir: str, max_size: int = None) -> Tuple[bool, str, str]:
++    """
++    Process an image upload from HTTP request.
++    """
++    temp_file = None
++    try:
++        temp_fd, temp_path = tempfile.mkstemp(suffix='.upload')
++        temp_file = os.fdopen(temp_fd, 'wb')
++        temp_file.write(file_data)
++        temp_file.close()
++        
++        if max_size and len(file_data) > max_size:
++            return False, "", f"File exceeds maximum size of {max_size} bytes"
++        
++        allowed_types = {'image/jpeg', 'image/png', 'image/gif'}
++        if content_type not in allowed_types:
++            return False, "", f"Unsupported content type: {content_type}"
++        
++        is_valid, error = validate_image_file(temp_path, max_size)
++        if not is_valid:
++            return False, "", error
++        
++        success, saved_path, error = save_uploaded_file(file_data, original_filename, upload_dir)
++        if not success:
++            return False, "", error
++        
++        return True, saved_path, ""
++        
++    except Exception as e:
++        return False, "", f"Upload processing failed: {str(e)}"
++    finally:
++        if temp_file and not temp_file.closed:
++            temp_file.close()
+ 
+ def get_image_dimensions(file_path: str) -> Tuple[Optional[int], Optional[int]]:
