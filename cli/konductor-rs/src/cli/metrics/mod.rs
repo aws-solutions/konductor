@@ -6,6 +6,7 @@
 // usage in each harness's native unit. Local only; nothing is sent.
 
 mod collect;
+mod report;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
@@ -13,7 +14,95 @@ use std::time::UNIX_EPOCH;
 
 use collect::{Harness, Record, Status, PARSER_VERSION};
 
+use super::output::ColorMode;
+
+const EXIT_USAGE_ERROR: u8 = 64;
+const DEFAULT_SINCE: &str = "7d";
 const CACHE_REL: &str = ".konductor/usage/records.jsonl";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub(crate) enum GroupBy {
+    Agent,
+    Model,
+    Day,
+    Repo,
+}
+
+/// `<n>h`, `<n>d`, or `<n>w` → seconds. Splits on the last char, not
+/// byte, so non-ASCII input is a usage error rather than a panic.
+fn parse_since(s: &str) -> Option<i64> {
+    let unit = s.chars().last()?;
+    let num = &s[..s.len() - unit.len_utf8()];
+    let n: i64 = num.parse().ok().filter(|n| *n > 0)?;
+    let per = match unit {
+        'h' => 3600,
+        'd' => 86_400,
+        'w' => 7 * 86_400,
+        _ => return None,
+    };
+    n.checked_mul(per)
+}
+
+pub(crate) fn dispatch_metrics(
+    since: Option<String>,
+    by: GroupBy,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    let since = since.unwrap_or_else(|| DEFAULT_SINCE.to_string());
+    let Some(window) = parse_since(&since) else {
+        eprintln!(
+            "{} invalid --since '{since}': expected a positive number followed by h, d, or w (e.g. 24h, 7d, 4w)",
+            super::output::error_prefix(color, "konductor metrics:")
+        );
+        return EXIT_USAGE_ERROR;
+    };
+    let Some(home) = super::install::index::env_home_dir() else {
+        eprintln!(
+            "{} HOME is not set",
+            super::output::error_prefix(color, "konductor metrics:")
+        );
+        return 1;
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    let cutoff = now - window;
+
+    let agents = konductor_agent_names(&home);
+    let cache_path = home.join(CACHE_REL);
+    let mut cache = load_cache(&cache_path);
+    let scan = refresh(&mut cache.records, &sources(&home), cutoff, &agents);
+    if let Err(e) = save_cache(&cache_path, &cache) {
+        eprintln!(
+            "{} could not write {}: {e}",
+            super::output::error_prefix(color, "konductor metrics: warning:"),
+            cache_path.display()
+        );
+    }
+
+    let (counted, unparsed) = select(&cache.records, cutoff);
+
+    let ctx = report::Context {
+        since: &since,
+        by,
+        agents_known: agents
+            .values()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        unparsed,
+        unreadable: scan.unreadable,
+        stale: scan.reparse_failed,
+        unreadable_cache_lines: cache.unreadable_lines.len(),
+        home: &home,
+    };
+    if json {
+        println!("{}", report::render_json(&counted, &ctx));
+    } else {
+        print!("{}", report::render_text(&counted, &ctx, color));
+    }
+    0
+}
 
 /// Recorded agent name → Konductor agent name. Covers every CLI install
 /// (each tracked target, plus `$HOME` in case the index predates it) and
@@ -95,6 +184,25 @@ fn plugin_agent_names(plugins_dir: &Path) -> Vec<(String, String)> {
         }
     }
     out
+}
+
+/// Records to report, plus how many in-window files couldn't be parsed.
+/// Records without session timestamps (unparsed files, stubs) fall back
+/// to the file's mtime, so a format change still shows up in the footer.
+fn select(cache: &HashMap<String, Record>, cutoff: i64) -> (Vec<&Record>, usize) {
+    let in_window: Vec<&Record> = cache
+        .values()
+        .filter(|r| r.last_ts.unwrap_or(r.mtime as i64) >= cutoff)
+        .collect();
+    let unparsed = in_window
+        .iter()
+        .filter(|r| r.status == Status::Unparsed)
+        .count();
+    let counted = in_window
+        .into_iter()
+        .filter(|r| r.status == Status::Ok && r.konductor_agent.is_some() && !r.models.is_empty())
+        .collect();
+    (counted, unparsed)
 }
 
 struct Source {
@@ -314,6 +422,16 @@ fn save_cache(path: &Path, cache: &Cache) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_since_windows() {
+        assert_eq!(parse_since("24h"), Some(86_400));
+        assert_eq!(parse_since("7d"), Some(7 * 86_400));
+        assert_eq!(parse_since("2w"), Some(14 * 86_400));
+        for bad in ["", "d", "0d", "-1d", "7", "7m", "1.5d", "7日", "7€", "日"] {
+            assert_eq!(parse_since(bad), None, "{bad}");
+        }
+    }
 
     fn rec(agent: &str, matched: bool) -> Record {
         let mut r = collect::tests_support::record(agent);
@@ -596,6 +714,23 @@ mod tests {
                 ),
             ]
         );
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn unparseable_file_in_window_is_counted_by_mtime() {
+        let d = tmp("select-unparsed");
+        let f = d.join("sessions/cli/bad.json");
+        put(&f, "{ not the v2 shape");
+        let sources = vec![Source {
+            harness: Harness::KiroCliV2,
+            path: f.clone(),
+        }];
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &sources, 0, &agents());
+        let mtime = cache[&f.to_string_lossy().into_owned()].mtime as i64;
+        assert_eq!(select(&cache, mtime - 60).1, 1);
+        assert_eq!(select(&cache, mtime + 60).1, 0);
         std::fs::remove_dir_all(&d).ok();
     }
 
