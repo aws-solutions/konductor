@@ -2352,7 +2352,12 @@ mod tests {
             let entry = format!("@aws-mcp/{tool}");
             assert_eq!(kiro_allowed_tools_aws_mcp_problem(&entry), None, "{entry}");
         }
-        for entry in ["fs_read", "shell", "@builtin", "@aws-mcp-other/aws___run_script"] {
+        for entry in [
+            "fs_read",
+            "shell",
+            "@builtin",
+            "@aws-mcp-other/aws___run_script",
+        ] {
             assert_eq!(kiro_allowed_tools_aws_mcp_problem(entry), None, "{entry}");
         }
     }
@@ -2386,7 +2391,10 @@ mod tests {
                 }
             }
         }
-        assert!(checked > 0, "no spec pre-approves an aws-mcp tool; the check ran on nothing");
+        assert!(
+            checked > 0,
+            "no spec pre-approves an aws-mcp tool; the check ran on nothing"
+        );
     }
 
     fn aws_allow_rules() -> Vec<serde_json::Value> {
