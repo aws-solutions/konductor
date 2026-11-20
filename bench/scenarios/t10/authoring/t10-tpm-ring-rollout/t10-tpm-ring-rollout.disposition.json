@@ -1,0 +1,5 @@
+{
+  "hidden-answer": { "verdict": "pass", "note": "worker check: the snapshot header RECEIPT_ERROR_RATE_PERCENT is data the agent must normalise (the request asks for normalizeMetricName), not an answer to the design or the traps; no fixture file names a trap or the design" },
+  "ceiling": { "verdict": "pass", "note": "worker check: the reviewer's example (a generic correct build) is what the free gates test; the scripted shallow answer scores 23.8 and the keys need repository-specific facts (freeze window, per-ring thresholds, gap rule, old-format end date)" },
+  "floor": { "verdict": "pass", "note": "worker check: the request does state that the script exits 2 when required arguments are absent, and the key's `file` fields are substring regexes (`ops/freeze-calendar` matches ops/freeze-calendar.csv)" }
+}

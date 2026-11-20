@@ -64,3 +64,16 @@ Scoring of every task: three `tests` checks (the feature's behaviour tests; the 
 | t10-dev-audit-trail | author-key | qwen3-coder-next | 0.00 |  |
 | t10-dev-audit-trail | author step B rerun (stopped) | qwen3-coder-next | 17.40 | stopped at the 150 tool-call cap after 24 minutes (estimate at 0.012 credits/s); the key and reference were unfinished |
 | t10-dev-audit-trail | free dry run | - | 0.00 | reference 40.4, stub 4.8, lazy 17.8, alt 40.4 (design key 2 of 15, rollout key 0 of 10 on the reference). DROPPED: second-family two-step failed; no map, review or fix; files removed, brief kept |
+| t10-tpm-ring-rollout | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 100.89 of 500 |
+| t10-tpm-ring-rollout | author | gpt-5.6-luna | 5.41 |  |
+| t10-tpm-ring-rollout | fix (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 105.0 of 500; reason: lazy 45.5 |
+| t10-tpm-ring-rollout | fix | gpt-5.6-luna | 3.49 |  |
+| t10-tpm-ring-rollout | map (planned) | glm-5 | - | abort limit 20 credits (1700 s, 80 tool calls) |
+| t10-tpm-ring-rollout | map | glm-5 | 0.17 |  |
+| t10-tpm-ring-rollout | review (interrupted) | qwen3-coder-next | 0.30 | ended by a signal 8 tool calls in, when the worker's shell command timed out (estimate); rerun below, no verdict was written |
+| t10-tpm-ring-rollout | review rerun (planned) | qwen3-coder-next | - | abort limit 20 credits (1700 s, 150 tool calls) |
+| t10-tpm-ring-rollout | review | qwen3-coder-next | 1.11 |  |
+| t10-dev-config-reload | author (planned) | gpt-5.6-luna | - | abort limit 20 credits (1700 s, 220 tool calls); batch spend before: 110.6 of 500 |
+| t10-tpm-ring-rollout | audit | - | 0.00 | author, fix, map, review streams: no read of skills/, agent-sops/, agents/ or context/ and no cross-batch read |
+| t10-tpm-ring-rollout | review disposition | - | 0.00 | the reviewer (qwen3-coder-next) failed hidden-answer, ceiling and floor; the worker checked each claim against the task (the request does say the script exits 2; the key's file fields are substring regexes; the shallow answer scores 23.8) and recorded pass with the reviewer's text in the note (`authoring` and task.review) |
+| t10-tpm-ring-rollout | free dry run | - | 0.00 | after the one fix round (lazy 45.5 to 23.8): reference 100, stub 5.7, lazy 23.8, alt 100, deterministic, per-test timeouts hold |

@@ -1,0 +1,3 @@
+ring,start,end,reason,timezone
+regional,2025-12-20T00:00:00Z,2026-01-03T23:59:59Z,year-end settlement,UTC
+staff,2025-08-01T00:00:00Z,2025-08-04T23:59:59Z,ledger close,UTC

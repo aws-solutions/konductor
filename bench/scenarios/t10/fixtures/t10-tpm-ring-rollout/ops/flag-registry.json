@@ -1,0 +1,8 @@
+{
+  "namingRule": "receipt.<area>.<verb>",
+  "flags": [
+    { "name": "receipt.delivery.retry", "owner": "fulfillment", "state": "active" },
+    { "name": "receipt.renderer.v2", "owner": "rendering", "state": "active" },
+    { "name": "receipt.debug.headers", "owner": "platform", "state": "retired" }
+  ]
+}

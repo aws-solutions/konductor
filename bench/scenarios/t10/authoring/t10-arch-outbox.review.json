@@ -1,0 +1,38 @@
+{
+  "model": "glm-5",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "The request states the problem (events that disappear, duplicate events on retry) without naming specific methods like atomicWrite, claim-based ownership, or dead-letter queues. The interface names are public API documentation, not implementation hints."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "The request specifies all paths, field names, units (integer milliseconds), HTTP routes with status codes, and error codes. The JSON block schemas are explicit. Two competent readers would converge on the same deliverables."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "Fixture docs (broker-contract.md, consumers.md) describe the broker contract and consumer expectations without revealing the outbox pattern or atomic write solution. The notes field in task-draft.json explicitly states the reference design, but this is in the hidden scorer metadata, not in fixture/."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "A generic skim would fail the atomic-transition, claim-retry, per-order, stable-header, and dead-letter key items. The hidden tests verify subtle behaviors like claim contention between instances, exponential backoff timing, and duplicate suppression. A shallow implementation passes only 2-3 of 18 hidden tests."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All test behaviors derive from the stated requirements: atomic persistence prevents loss (implied by 'do not disappear'), idempotent append handles retries (implied by 'do not create a second event'), claim-based coordination handles dual instances (documented in instance-deploy.json), per-order ordering matches consumers.md. No test requires behavior the request does not imply."
+    }
+  ],
+  "reference": {
+    "estimatedScores": {
+      "reference": 100,
+      "stub": 3.6
+    },
+    "failingChecks": []
+  },
+  "fixes": []
+}
