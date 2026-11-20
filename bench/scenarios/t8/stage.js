@@ -197,6 +197,14 @@ function withExpertRubric(rubric, key) {
   return [...(rubric || []).filter((r) => r.id !== 'expert-key'), item];
 }
 
+// Owner rule: a task named in a row of HAND-EDITS.md (the kept tasks' table) carries `handEdited`.
+function handEditedIds() {
+  const file = path.join(DIR, 'HAND-EDITS.md');
+  if (!fs.existsSync(file)) return new Set();
+  const kept = fs.readFileSync(file, 'utf8').split('## Dropped')[0];
+  return new Set([...kept.matchAll(/^\| (t8-[a-z0-9-]+(?:, t8-[a-z0-9-]+)*) \|/gm)].flatMap((m) => m[1].split(', ')));
+}
+
 function mustNotLoad(b, mapping) {
   if (!b.twinOf) return b.mustNotLoad || [];
   const src = readJson(path.join(DIR, `${b.twinOf}.json`));
@@ -230,6 +238,7 @@ function assemble(id) {
     effectSubset: false, tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source },
     ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.filter((v) => REVIEW_CHECKS.has(v.check)).map((v) => reviewed(v, disposition)) } } : {}),
+    ...(handEditedIds().has(id) ? { handEdited: { family: 'claude', editor: 'kirocrew-mate-worker (T8 worker session)', log: 'HAND-EDITS.md' } } : {}),
     pilot: null, lockedAt: null,
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);

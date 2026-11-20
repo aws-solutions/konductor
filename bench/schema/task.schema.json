@@ -932,11 +932,69 @@
               }
             }
           }
+        },
+        "recheck": {
+          "type": "object",
+          "description": "A non-Claude reviewer's check of a hand-edited task against the owner checklist.",
+          "required": [
+            "family",
+            "model",
+            "date",
+            "items"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "family": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "check",
+                  "verdict"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "check": {
+                    "enum": [
+                      "no-method-or-decoy",
+                      "fixture-lists-no-answers",
+                      "key-matches-fixture",
+                      "solvable-from-fixture"
+                    ]
+                  },
+                  "verdict": {
+                    "enum": [
+                      "pass",
+                      "fail"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "pilot": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "required": [
         "scores",
         "decision",
@@ -1000,8 +1058,35 @@
       }
     },
     "lockedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+    },
+    "handEdited": {
+      "type": "object",
+      "description": "Set when anyone other than the recorded author changed the task's prompt, fixture, key, checks or rubric (owner rule 2026-11-19); the edits are listed in the batch's log file.",
+      "required": [
+        "family",
+        "editor",
+        "log"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "editor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "log": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   }
 }

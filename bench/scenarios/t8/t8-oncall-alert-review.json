@@ -89,6 +89,11 @@
       }
     ]
   },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T8 worker session)",
+    "log": "HAND-EDITS.md"
+  },
   "pilot": null,
   "lockedAt": null
 }
