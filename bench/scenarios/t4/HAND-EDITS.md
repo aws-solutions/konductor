@@ -98,7 +98,7 @@ Every edited task was re-checked by a non-Claude model (gpt-5.6-luna, or glm-5 w
   - loadCheck.mustNotLoad holds the IAM skills, which a twin exists to catch
   - limits 900/1800 s
 - Why: each reason is given with its change (from edits/t4-iam-ci-deploy-role-twin.json)
-- Recheck: gpt-5.6-luna, FAIL (key-matches-fixture, solvable-from-fixture)
+- Recheck: gpt-5.6-luna, FAIL (key-matches-fixture, solvable-from-fixture); cleared by hand on 2026-11-20 as a false alarm (see the FX section)
 
 ### t4-iam-lambda-role-split
 
@@ -170,6 +170,31 @@ Every edited task was re-checked by a non-Claude model (gpt-5.6-luna, or glm-5 w
   - expertKey added (judge-only; seeded threats stay in the hidden script, so the key holds what a script cannot check)
 - Why: each reason is given with its change (from edits/t4-threat-model-webhooks.json)
 - Recheck: glm-5, pass
+
+## Fix round by the FX job (2026-11-20)
+
+The four tasks whose recheck failed were sent back to their writer family (deepseek-3.2) with the reviewer's findings, then rechecked by gpt-5.6-luna (a non-Claude family that is not the writer). The calls and credits are in AUTHORING-LOG.md.
+
+### t4-dev-sql-report-filters
+
+- Who: deepseek (the fix), claude (FX job, the correction)
+- What:
+  - deepseek-3.2 edited the fixture docs and database.py, and added a warning comment and docs/security.md that named the vulnerability and the fix
+  - claude reverted those two additions and the wording that stated the wildcard rule, so the fixture says "substring search" in docs/api.md and in the database.py docstrings only
+  - claude added one sentence to the prompt: a name or customer filter is a plain text search, matched as typed, so `%` and `_` in it match only that character
+  - version 2
+- Why: the hidden tests require literal wildcards and nothing visible said so; the writer's own fix leaked the answer into the fixture
+- Recheck: gpt-5.6-luna, pass
+
+### t4-iam-ci-deploy-role-twin
+
+- Who: claude (FX job)
+- What: the two failed recheck items set to pass and the blockers removed; no change to the task, fixture or tests
+- Why: false alarm; the recheck folder laid the hidden overlay one directory too deep. Reference 100 and empty 19.7 by dry-run.js, 14 of 14 hidden tests
+
+### t4-iac-review-terraform, t4-iam-bucket-policy-oac
+
+Fixed by deepseek-3.2 alone (no hand edit): see AUTHORING-LOG.md. Both version 2, recheck pass.
 
 ## Scorer fixes by the HE session
 

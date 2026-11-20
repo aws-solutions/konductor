@@ -1,12 +1,12 @@
 {
   "id": "t4-dev-sql-report-filters",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "security",
   "phases2": [],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Our internal reporting service just came back from a pen test with one line about it: \"the reports API is injectable\". No other detail. Please make it safe without breaking anything people use today. The service lists and exports customers and sales: src/server.py handles the HTTP side and src/database.py has the Database class (Database(db_path)) with get_customers, get_sales, get_customers_csv and get_sales_csv, each taking the filters, sorting and paging arguments they have now. Keep those names and arguments, and keep every filter, sort and page option working as it does for normal input. For an unknown sort column or sort direction, fall back to the default order instead of failing. Bad paging values may raise ValueError. Error messages that reach a caller must not show SQL or table names. Do not add dependencies, and keep the existing tests in tests/ passing (python3 -m unittest discover -s tests). Do not change data/seed.py.",
+  "prompt": "Our internal reporting service just came back from a pen test with one line about it: \"the reports API is injectable\". No other detail. Please make it safe without breaking anything people use today. The service lists and exports customers and sales: src/server.py handles the HTTP side and src/database.py has the Database class (Database(db_path)) with get_customers, get_sales, get_customers_csv and get_sales_csv, each taking the filters, sorting and paging arguments they have now. Keep those names and arguments, and keep every filter, sort and page option working as it does for normal input. A name or customer filter is a plain text search: the text is matched exactly as typed, so a '%' or '_' in it matches only that character. For an unknown sort column or sort direction, fall back to the default order instead of failing. Bad paging values may raise ValueError. Error messages that reach a caller must not show SQL or table names. Do not add dependencies, and keep the existing tests in tests/ passing (python3 -m unittest discover -s tests). Do not change data/seed.py.",
   "fixture": "t4-dev-sql-report-filters",
   "hidden": "t4-dev-sql-report-filters",
   "timeoutSec": 2400,
@@ -155,22 +155,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json prompt states the security goal, interfaces, and behavioral constraints, but does not prescribe parameterization, allowlists, escaping, or another method."
+          "note": "task.json field prompt states the injection-safety goal, interfaces, and behavioral constraints but names no implementation method, tool, checklist, or hidden answer. The wildcard and fallback requirements are ordinary acceptance constraints rather than a prescribed technique."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/src/database.py contains the vulnerable query construction, but no fixture file states the expected findings or fix; fixture/docs/security.md is empty."
+          "note": "fixture/src/database.py lines 82-101, 145-162, 206-229, and 290-308 expose the vulnerable query construction but do not state a fix or hidden expected result. The visible tests and docs likewise do not list the security findings or answer values."
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "fail",
-          "note": "hidden/hidden/py/test_security.py lines 151-160 and 315-321 require wildcard characters to be literal, while fixture/src/database.py lines 66 and 81-82 document and implement name_filter as a LIKE pattern; fixture/docs/api.md lines 11 and 55 also promise LIKE search."
+          "verdict": "pass",
+          "note": "The key's findings are grounded in the fixture: sort identifiers and schema columns appear in fixture/docs/api.md and fixture/data/seed.py, duplicated list and CSV query paths are in fixture/src/database.py, and detailed logging plus leaked errors are in fixture/src/database.py lines 36-48 and fixture/src/server.py lines 19-24. The SQLite read-only defense-in-depth recommendation follows from the documented SQLite reporting database and read-only report methods."
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "fail",
-          "note": "The prompt requires normal filters to keep working, and fixture/src/database.py lines 66 and 78-81 plus fixture/docs/api.md lines 11 and 55 establish wildcard LIKE semantics. Nothing visible tells an engineer to change '%' and '_' into literal searches, so the hidden wildcard expectations cannot be derived without hidden files."
+          "verdict": "pass",
+          "note": "task.json field prompt supplies the required interfaces, defaults, wildcard semantics, fallback behavior, error boundary, and test command; fixture/src/database.py and fixture/src/server.py contain all affected paths. The schemas in fixture/data/seed.py and API defaults in fixture/docs/api.md provide enough information to build allowlists and preserve normal filters, sorting, pagination, and CSV behavior."
         }
       ]
     }
@@ -184,12 +184,8 @@
     "scores": {},
     "reference": 100,
     "stub": 13.3,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "recheck-failed: key-matches-fixture: hidden/hidden/py/test_security.py lines 151-160 and 315-321 require wildcard characters to be literal, while fixture/src/database.py lines 66 and 81-82 document and implement name_filter as a LIKE pattern; fixture/docs/api.md lines 11 and 5",
-      "recheck-failed: solvable-from-fixture: The prompt requires normal filters to keep working, and fixture/src/database.py lines 66 and 78-81 plus fixture/docs/api.md lines 11 and 55 establish wildcard LIKE semantics. Nothing visible tells an engineer to change '%' and '_' into lite"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 13.3,

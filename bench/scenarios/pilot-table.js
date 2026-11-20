@@ -226,6 +226,9 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
 
 const fmt = (v, d = 0) => (finite(v) ? v.toFixed(d) : 'n/a');
 
+// The lazy and alternative scores in pilot.dryRun come from a script, so the table says what they can and cannot show.
+const NOTE_DRY_RUN = 'Dry-run note: the shallow (lazy) and alternative answers behind pilot.dryRun are script-made copies of the reference, not independent attempts. For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there (D-97).';
+
 function renderTable(rows) {
   const L = ['| task | arm | rep | handEdited | singleFamily | score | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
   for (const r of rows) {
@@ -238,6 +241,7 @@ function renderTable(rows) {
   L.push('', `${rows.length} run(s), ${total.toFixed(2)} credits. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
   L.push(`Flagged runs: broken ${count('broken')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, fix ${count('fix')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
   L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
+  L.push(NOTE_DRY_RUN);
   return `${L.join('\n')}\n`;
 }
 

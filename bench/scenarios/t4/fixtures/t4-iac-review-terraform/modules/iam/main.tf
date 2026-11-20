@@ -152,7 +152,6 @@ resource "aws_iam_role" "log_shipping" {
   })
 }
 
-# Decoy: This looks wildcard but is for read-only log operations
 resource "aws_iam_policy" "log_shipping" {
   name        = "${var.name_prefix}-log-shipping-policy"
   description = "Policy for CloudWatch log shipping to S3"
