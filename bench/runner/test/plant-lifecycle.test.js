@@ -563,8 +563,10 @@ test('a line over the limit ends the trial at once: the held agent is killed and
 test('a call over the limit ends the trial at once: the held agent is killed and the trial is plantLimit', async () => {
   const r = rig();
   try {
+    // 2001 calls one at a time took 38 to 85 s under load, three process wake-ups each (DEBT D-15); 50 in flight
+    // still has the gateway count every call and refuse the one past its limit of 2000.
     const flood = Array.from({ length: 2001 }, () => ({ tool: 'get_state', args: {}, inStream: false }));
-    const { results, heldMs, agent, outDir } = await heldCells(r, { calls: flood });
+    const { results, heldMs, agent, outDir } = await heldCells(r, { calls: flood, window: 50 });
     stoppedBeforeHold(heldMs);
     assert.match(results[0].error, /stopped early: plantLimit/);
     assert.notEqual(results[0].status, 'timeout');
