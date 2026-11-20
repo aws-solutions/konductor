@@ -237,7 +237,13 @@ test('a call that outlives its timeout is killed and reported', async () => {
   try {
     const r = await s.mk({ timeoutMs: 400 })({ model: 'glm-5', prompt: RUBRIC_PROMPT });
     assert.match(r.error, /timed out after 400 ms/);
-    assert.equal(s.calls().length, 1);
+    // The caller's own count, not the fake's call record: on a loaded host the fake can be killed at 400 ms before
+    // it has written that record, which failed this test in full suite runs (DEBT D-13).
+    assert.equal(r.retries, 0, 'a timeout is not retried');
+    assert.ok(r.latencyMs >= 400, `killed at the timeout, not before (${r.latencyMs} ms)`);
+    const started = fs.existsSync(path.join(s.root, 'calls')) ? fs.readdirSync(path.join(s.root, 'calls')).filter((f) => /^call-\d+\.json$/.test(f)) : [];
+    assert.ok(started.length <= 1, `one opencode start at most, saw ${started.length}`);
+    assert.deepEqual(fs.readdirSync(s.scratch), [], 'the scratch HOME of the killed call is removed');
   } finally { s.cleanup(); }
 });
 

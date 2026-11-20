@@ -7,6 +7,11 @@ const os = require('node:os');
 const path = require('node:path');
 const { createLedger, createExports, createRateCache } = require('../src');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 test('a transfer to an unknown account leaves the source balance alone', () => {
   const ledger = createLedger({ a: 500 });
   assert.throws(() => ledger.transfer('a', 'ghost', 100), /unknown account: ghost/);
@@ -15,7 +20,7 @@ test('a transfer to an unknown account leaves the source balance alone', () => {
 });
 
 test('a statement name that points outside the export directory is rejected', async () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-'));
+  const base = tempDir('exp-');
   const dir = path.join(base, 'exports');
   fs.mkdirSync(dir);
   fs.writeFileSync(path.join(base, 'secret.txt'), 'top secret');
