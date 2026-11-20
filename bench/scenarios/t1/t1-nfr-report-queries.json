@@ -155,5 +155,10 @@
       "Rewrites the formatters for speed without touching the queries.",
       "Claims memory is lower without a measurement."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "t1-worker",
+    "log": "HAND-EDITS.md"
   }
 }

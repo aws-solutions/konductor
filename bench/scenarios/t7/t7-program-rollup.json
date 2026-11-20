@@ -114,5 +114,30 @@
         "note": "Verified three key values from fixture: ARC points=88 (open Relay rows), BEAM-224 is Blocked with depends_on ARC-117, COVE-354 is Harbor initiative, and S-15 ends 2027-11-26 per capacity.csv; all derivable without authoring scripts."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 61.9,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }

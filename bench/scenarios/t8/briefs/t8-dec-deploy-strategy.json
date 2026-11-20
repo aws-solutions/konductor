@@ -60,5 +60,16 @@
       "Rolling update, because it is the platform default.",
       "A pros and cons table with no tie to the service's numbers."
     ]
+  },
+  "secondFamilyRewrite": {
+    "date": "2026-11-20",
+    "result": "dropped; version 1 kept",
+    "tries": [
+      {
+        "author": "minimax-m2.5",
+        "reviewer": "qwen3-coder-next",
+        "result": "not started: spend stop"
+      }
+    ]
   }
 }

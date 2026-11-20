@@ -1,0 +1,100 @@
+# Answer
+
+Everything that looked relevant in the exports is listed below.
+
+```launch-scope
+{
+ "in": [
+  "F-004",
+  "F-010",
+  "F-014",
+  "F-021",
+  "F-031",
+  "F-038",
+  "F-052",
+  "F-063"
+ ],
+ "out": [
+  "F-001",
+  "F-002",
+  "F-003",
+  "F-005",
+  "F-006",
+  "F-007",
+  "F-008",
+  "F-009",
+  "F-011",
+  "F-012",
+  "F-013",
+  "F-015",
+  "F-016",
+  "F-017",
+  "F-018",
+  "F-019",
+  "F-020",
+  "F-022",
+  "F-023",
+  "F-024",
+  "F-025",
+  "F-026",
+  "F-027",
+  "F-028",
+  "F-029",
+  "F-030",
+  "F-032",
+  "F-033",
+  "F-034",
+  "F-035",
+  "F-036",
+  "F-037",
+  "F-039",
+  "F-040",
+  "F-041",
+  "F-042",
+  "F-043",
+  "F-044",
+  "F-045",
+  "F-046",
+  "F-047",
+  "F-048",
+  "F-049",
+  "F-050",
+  "F-051",
+  "F-053",
+  "F-054",
+  "F-055",
+  "F-056",
+  "F-057",
+  "F-058",
+  "F-059",
+  "F-060",
+  "F-061",
+  "F-062",
+  "F-064",
+  "F-065",
+  "F-066",
+  "F-067",
+  "F-068",
+  "F-069",
+  "F-070",
+  "F-071",
+  "F-072"
+ ],
+ "capacity_points": 63,
+ "planned_points": 58,
+ "must_haves": [
+  "F-014",
+  "F-010"
+ ],
+ "dependencies_pulled_in": [
+  "F-031"
+ ],
+ "open_questions": [
+  "Confirm F-052 dashboard metrics and F-031 schema-version display before regional health work starts.",
+  "Get Northline acceptance wording for F-014 signature page and delivery manifest.",
+  "Validate F-010 import error-report examples with the target segment before copy lock.",
+  "Assign an owner for F-063 adoption measures before the conference follow-up.",
+  "Keep F-057 mobile approvals as a post-launch field-sales discovery item."
+ ]
+}
+```

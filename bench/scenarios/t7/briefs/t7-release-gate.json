@@ -23,5 +23,16 @@
     "Kubernetes release-blocking jobs, https://github.com/kubernetes/sig-release/blob/master/release-blocking-jobs.md (Apache-2.0)",
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+  ],
+  "version": 1,
+  "rewriteAttempts": [
+    {
+      "version": 2,
+      "author": "qwen3-coder-next",
+      "reviewer": "glm-5",
+      "date": "2026-11-19",
+      "result": "failed twice, version 1 kept",
+      "why": "draft 1 gave pass-rate thresholds and the cherry-pick cutoff in the request and could not map cherry-picks to tickets; after the fix round a fixture file still lists the blockers and the decoy by name, the README states the blocker rule, and the planted cherry-picks have distinct titles"
+    }
   ]
 }

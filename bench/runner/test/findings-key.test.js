@@ -78,6 +78,12 @@ test('two findings at nearby lines match their own key items whatever order they
   assert.equal(gradeFindings([b, a], key).score, 1);
 });
 
+test('fixRequired: a generic remark at the right place does not find the item', () => {
+  const key = [{ id: 'a', location: ['3.2'], severity: 'high', fix: ['dead letter'], fixRequired: true }];
+  assert.equal(gradeFindings([{ location: '3.2', severity: 'high', issue: 'needs more tests', fix: 'add tests' }], key).recall, 0);
+  assert.equal(gradeFindings([{ location: '3.2', severity: 'high', issue: 'no dead letter path', fix: 'cap retries' }], key).recall, 1);
+});
+
 test('readFindingsBlock takes a plain array or {findings}, skips bad blocks, and ignores other fences', () => {
   assert.equal(readFindingsBlock(`${FENCE}json\n{bad\n${FENCE}`), null);
   assert.equal(readFindingsBlock(`${FENCE}sh\nls\n${FENCE}\n${block(REFERENCE)}`).length, 4);

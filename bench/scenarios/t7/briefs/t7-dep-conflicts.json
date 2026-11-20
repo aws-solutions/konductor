@@ -18,5 +18,16 @@
   "expert": false,
   "controlKind": "none",
   "reviewer": "glm-5",
-  "date": "2026-11-19"
+  "date": "2026-11-19",
+  "version": 1,
+  "rewriteAttempts": [
+    {
+      "version": 2,
+      "author": "qwen3-coder-next",
+      "reviewer": "glm-5",
+      "date": "2026-11-19",
+      "result": "failed twice, version 1 kept",
+      "why": "draft 1 named the method and the decoy in the request, titled its README a benchmark and left planted rows at the end of the register; the fix round changed only the days_late checks and left the rest"
+    }
+  ]
 }

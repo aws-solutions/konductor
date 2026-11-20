@@ -7,6 +7,7 @@
 //   location: a string or list; an item matches when its location holds one of them (case-insensitive, on a token edge).
 //   severity: critical, high, medium, low or nit.
 //   fix:      keywords; the fix counts when the item's fix or text holds `fixMin` of them (default 1).
+//   fixRequired: optional; the item is found only by a finding whose fix, issue or text holds one of the keywords.
 // Score = recall quality x length term. A found item earns 0.5, plus 0.25 for the right severity (half for one level off)
 // and 0.25 for the fix. The length term caps a long list: more than 1.5 x the key size scales the score by allowed / reported,
 // so listing everything does not win. Precision (matched / reported) is reported beside it.
@@ -51,6 +52,14 @@ function fixCredit(reported, key) {
   return words.filter((w) => text.includes(w)).length >= (key.fixMin ?? 1) ? 1 : 0;
 }
 
+// With `fixRequired` a finding at the right place counts only when its fix or issue text holds a fix keyword, so a
+// generic remark at a coarse location (a section number) does not earn the location credit.
+function mentionsFix(reported, key) {
+  const words = asList(key.fix).map(norm).filter(Boolean);
+  const text = norm(`${reported.fix ?? ''} ${reported.issue ?? ''} ${reported.text ?? ''}`);
+  return !words.length || words.some((w) => text.includes(w));
+}
+
 /**
  * Pure grader. `reported` is the parsed list (or null), `key` the task's findingsKey.
  * Each reported item matches at most one key item and each key item at most one reported item.
@@ -66,7 +75,7 @@ function gradeFindings(reported, key) {
     // (the first on a tie), so two findings a few lines apart are not swapped by the order they were listed in.
     let i = -1, best = -1;
     reported.forEach((r, idx) => {
-      if (used.has(idx) || !locationHit(r, k)) return;
+      if (used.has(idx) || !locationHit(r, k) || (k.fixRequired && !mentionsFix(r, k))) return;
       const fit = severityCredit(k.severity, r.severity) + fixCredit(r, k);
       if (fit > best) { best = fit; i = idx; }
     });

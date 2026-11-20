@@ -9,7 +9,7 @@
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
- *   node bench/runner/bench.js scenarios lint|coverage|prereg ...   (the scenario pack's authoring tools; free, no credits)
+ *   node bench/runner/bench.js scenarios lint|coverage|prereg|pilot-table|ready|spot-review ...   (the scenario pack's authoring tools; free, no credits)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -57,7 +57,7 @@ const USAGE = `Usage:
        arms, one runtime at a time; a Claude Code arm gets the install, model pin and agent checks with --model, and claude itself is not started)
        (--introspect records what each run's agent was sent and did, for diagnosis: Claude Code exports OpenTelemetry, raw API bodies included, to a loopback
        receiver the runner starts per run, and kiro-cli v3 dumps every model request; each run gets <run>/introspect (mode 0700) with probe.json and timeline.md.
-       Nothing goes to a host collector. Off by default; scripts/introspect-summary.js summarizes an out dir; see bench/docs/INTROSPECT.md)
+       Nothing goes to a host collector. Off by default; scripts/introspect-summary.js summarizes an out dir; see bench/docs/introspect.md)
        (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
        to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3.
        --python is the Python 3.12 interpreter task checks and the gateway's python3 get (default BENCH_PYTHON, then python3.12, then
@@ -112,7 +112,7 @@ const USAGE = `Usage:
        15 minutes remain; a refresh that brings no later expiry is asked again a minute later, and only expired credentials with nothing newer stop the pass. Values are never logged.
        On either source, 3 calls in a row that fail on their credentials stop the pass: the remaining calls are recorded as skipped and the command exits 3)
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
-       Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/docs/QUALITY-PACK.md)
+       Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/docs/quality-pack.md)
        (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both
        verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
        fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
@@ -139,17 +139,17 @@ const USAGE = `Usage:
   node bench/runner/bench.js refs-report --run DIR[,DIR...] --out DIR
        (scores the runs of the references-read suite from stream.jsonl, with no model call: per arm, how many runs loaded the skill, tried to read a references/ file, were refused,
        failed or read it, and whether the planted fact reached the answer, with Wilson 95% intervals; the verbatim refusal messages; sandbox errno 38 runs, which are excluded
-       from every rate; and a DECISION with fixed thresholds. Writes refs-report.md, refs-report.json and refs-runs.jsonl to --out. See bench/docs/studies/REFERENCES-READ.md)
+       from every rate; and a DECISION with fixed thresholds. Writes refs-report.md, refs-report.json and refs-runs.jsonl to --out. See bench/docs/studies/references-read.md)
   node bench/runner/bench.js probe-report --run DIR[,DIR...] [--run DIR ...] --out DIR [--scoring FILE] [--arms-file FILE] [--canary-token-file FILE]
        (scores the runs of the constraints-probe suite from stream.jsonl and session files, with no model call: per probe, arm and position, the share of runs that applied
        the rule with a Wilson 95% interval; the delegated agent's own actions for runs that went through the orchestrator; skill lookups, deferral failures and fingerprint hits;
        the canary token; sandbox errno 38 runs, which are excluded from every rate; and the DECISION rows with fixed thresholds. Writes probe-report.md, probe-report.json,
        probe-runs.jsonl and judge-queue.json to --out. --scoring takes a scoring profile for the checks quality column; --arms-file or --canary-token-file gives the exact canary token.
-       See bench/docs/studies/CONSTRAINTS-PROBE.md)
+       See bench/docs/studies/constraints-probe.md)
   node bench/runner/bench.js canary-report --run DIR[,DIR...] --layers-file FILE --out DIR
        (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
-       declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/docs/studies/CANARY-LAYERS.md)
+       declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/docs/studies/canary-layers.md)
   node bench/runner/bench.js plant-trace --run TRIAL_DIR [--vs TRIAL_DIR] --out FILE.html
        (one static HTML page for a plant trial, with no model and no network: one collapsible line per tool call with the time per step, coloured allowed,
        blocked or unsafe attempt from the gateway log; open, it shows the arguments, the gateway's reason and the plant state after the call; a child agent's calls nest under it,
@@ -258,6 +258,23 @@ const USAGE = `Usage:
        tasks and a status: covered (3 targeted tasks, 2 of them HELD-OUT, 1 twin or control), selection-only (a unit listed with a reason in
        --selection-only FILE, default DIR/selection-only.json, as { "skill:name": "reason" }) or hole. --fail-on-hole exits 1 on any hole or any phase
        or role below its minimum. No credits)
+  node bench/runner/bench.js scenarios pilot-table DIR... [--pack DIR] [--json]
+       (one row per pilot run in the wave directories: code-scored quality (hidden tests and substance checks, no judges), time, credits, SOP and skill
+       loads, and the task-health flags of the pilot: broken (error, timeout, hidden suite not parsed), too-easy (90 or more), too-hard (15 or less, or a
+       dry-run reference under 95), answer-leak (a tool call named a hidden or answer path, or an output repeats the reference's own text),
+       second-family (under 1 in 3 tasks of the batch from a second author family), noisy (a check differs between replicates, or flips against a
+       per-check dry run where reference and stub agreed), hand-edited, recheck missing (handEdited set and no review.recheck; blocks a lock), fix (the task
+       file records a lazy score over 40 or pilot.decision fix). A handEdited column gives the editor's family or no, for the hand-edit split, and a
+       singleFamily column shows single-family-authored for a task whose authorship.singleFamily is set (then no second-family flag). --pack is the scenario pack, default bench/scenarios. Reads files only; no credits)
+  node bench/runner/bench.js scenarios ready [DIR] [--batch tN] [--ids [--late]] [--json]
+       (which pack tasks may enter a pilot wave: the batch folder loads in the runner and pilot.dryRun records reference >= 95, stub <= 20, lazy <= 40
+       and alternative >= 80. Prints per-batch counts, the ready list and each not-ready task with its reasons (wave W9 late). --ids prints the ready ids
+       as a comma list for the tasks flag of run; with --late the not-ready ones. A task with a lazy score
+       over 40 or pilot.decision fix is listed as fix and is not ready. Hand-edited tasks with no review.recheck are listed apart as lock blocked;
+       they may still run in the pilot. DIR defaults to bench/scenarios. No credits)
+  node bench/runner/bench.js scenarios spot-review [DIR] [--seed N] [--out FILE]
+       (the owner's spot-review sample: per batch a seeded shuffle of the task ids, the first 10% rounded up and at least one, as markdown with links;
+       default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger

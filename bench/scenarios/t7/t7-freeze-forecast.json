@@ -151,8 +151,33 @@
       {
         "check": "floor",
         "verdict": "pass",
-        "note": "I independently verified: (1) capacity values S2=71, S7=60, S8=76 follow from 79 minus holidays and leave per README rules; (2) the 7-ticket chain MIG-014→MIG-126 follows from depends_on links; (3) earliest_date Apr 30 follows from handoff constraints (Tue/Wed for Runtime, Mon/Thu for Release Ops) and leave timing. All key values are derivable from fixture data using stated conventions."
+        "note": "I independently verified: (1) capacity values S2=71, S7=60, S8=76 follow from 79 minus holidays and leave per README rules; (2) the 7-ticket chain MIG-014\u2192MIG-126 follows from depends_on links; (3) earliest_date Apr 30 follows from handoff constraints (Tue/Wed for Runtime, Mon/Thu for Release Ops) and leave timing. All key values are derivable from fixture data using stated conventions."
       }
     ]
+  },
+  "pilot": {
+    "scores": {
+      "dryRunRepeat": {
+        "repeats": 3,
+        "deterministic": true,
+        "sameTwice": true
+      }
+    },
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 47.6,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "fix",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "log": "HAND-EDITS.md"
   }
 }

@@ -90,6 +90,29 @@ test('the loader rules catch what the schema cannot', () => {
   }
 });
 
+test('target: null may sit beside the v3 target fields, and review may name its model (T3, D-79)', () => {
+  const t = { ...V3, target: null, review: { ...V3.review, model: 'glm-5' } };
+  assert.deepEqual(validate(loadSchema('task'), t), []);
+  assert.deepEqual(v3Errors(t), []);
+});
+
+test('a findings key item takes the grader shape or the prose shape, and needs one of them (T5, D-72)', () => {
+  const schema = loadSchema('task');
+  const graded = { id: 'k2', location: ['test/a.test.js'], severity: 'high', fix: ['expected', 'boundary'], fixMin: 2 };
+  const t = { ...V3, findingsKey: [V3.findingsKey[0], graded, { id: 'k3', location: 'src/x.js', severity: 'low', fix: 'guard' }] };
+  assert.deepEqual(validate(schema, t), []);
+  assert.deepEqual(v3Errors(t), []);
+  for (const bad of [{ ...graded, severity: 'huge' }, { ...graded, fixMin: 0 }, { ...graded, extra: 1 }]) assert.ok(validate(schema, { ...V3, findingsKey: [bad] }).length, JSON.stringify(bad));
+  assert.ok(v3Errors({ ...V3, findingsKey: [{ id: 'k4', weight: 1 }] }).some((e) => /k4 needs "finding" or "location"/.test(e)));
+});
+
+test('every scenario pack folder loads through the run loader (D-79)', () => {
+  const pack = path.join(BENCH_DIR, 'scenarios');
+  for (const b of fs.readdirSync(pack).filter((d) => /^t\d+$/.test(d))) {
+    assert.doesNotThrow(() => loadTasks(BENCH_DIR, { extraDirs: [path.join(pack, b)] }), b);
+  }
+});
+
 test('an old target maps by kind from the repo listing, with kind prefixes and unknown names', () => {
   const cat = { skills: ['backend-review'], sops: ['k-plan'], agents: ['k-architect', 'konductor'] };
   const of = (target) => targetsOf({ ...OLD, target }, cat);
@@ -124,4 +147,16 @@ test('the loader reads a v3 task and refuses one that breaks a v3 rule', () => {
     write(path.join(bench, 'tasks/v3.json'), JSON.stringify({ ...V3, id: 'v3', fixture: 'fx', controlKind: 'none' }));
     assert.throws(() => loadTasks(bench), /invalid task file v3\.json:[\s\S]*twinOf is only for/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a hand-edited task needs a non-Claude recheck before lock', () => {
+  const { lockedAt: _unlocked, ...open } = V3;
+  const edited = { ...open, handEdited: { family: 'claude', editor: 'worker', log: 'HAND-EDITS.md' } };
+  assert.deepEqual(v3Errors(edited), []);
+  assert.ok(v3Errors({ ...edited, lockedAt: '2026-11-20' }).some((e) => /recheck/.test(e)));
+  const items = ['no-method-or-decoy', 'fixture-lists-no-answer', 'key-matches-fixture', 'solvable-from-fixture'].map((check) => ({ check, verdict: 'pass' }));
+  const ok = { ...edited, lockedAt: '2026-11-20', review: { family: 'zhipu', date: '2026-11-20', verdicts: [], recheck: { family: 'zhipu', model: 'glm-5', date: '2026-11-20', items } } };
+  assert.deepEqual(v3Errors(ok), []);
+  assert.deepEqual(validate(loadSchema('task'), ok), []);
+  assert.ok(v3Errors({ ...ok, review: { ...ok.review, recheck: { ...ok.review.recheck, family: 'claude' } } }).some((e) => /non-Claude/.test(e)));
 });

@@ -37,7 +37,7 @@ test('the question-table row has the same number of cells as the rows around it'
 });
 
 test('the runbook points at gc, archive and the protect file', () => {
-  const doc = read('docs/RUNBOOK.md');
+  const doc = read('docs/runbook.md');
   assert.match(doc, /bench\.js gc/);
   assert.match(doc, /archive --run DIR/);
   assert.match(doc, /bench-gc-protect\.txt/);

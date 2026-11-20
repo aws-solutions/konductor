@@ -18,7 +18,7 @@ test('the README lists every suite name that --suite accepts', () => {
 });
 
 test('the README and playbook say cap plan needs --tasks when the registry links no lift task', () => {
-  for (const f of ['docs/reference.md', 'docs/CAP-PLAYBOOK.md']) assert.match(read(f), /pass `--tasks id,id` when the registry links no lift task/, f);
+  for (const f of ['docs/reference.md', 'docs/cap-playbook.md']) assert.match(read(f), /pass `--tasks id,id` when the registry links no lift task/, f);
 });
 
 test('the README names the files each report command writes', () => {
@@ -35,7 +35,7 @@ test('the README documents the profiles, the ledger, the graded judge, the gener
 });
 
 test('the playbook documents the scenario, controls and verdict steps and the optional cap', () => {
-  const doc = read('docs/CAP-PLAYBOOK.md');
+  const doc = read('docs/cap-playbook.md');
   for (const s of [/cap scenarios --cap ID --dry-run/, /cap controls --out DIR/, /report --verdict platform/, /A cap is optional/, /references\/NAME\.md/]) assert.match(doc, s);
   assert.doesNotMatch(doc, /Always pass `--budget-credits`/);
 });
@@ -81,7 +81,7 @@ test('the README states the limits the code enforces', () => {
 });
 
 test('every command in the orchestrator study section of the README and the playbook uses flags the CLI accepts', () => {
-  for (const f of ['docs/reference.md', 'docs/CAP-PLAYBOOK.md']) {
+  for (const f of ['docs/reference.md', 'docs/cap-playbook.md']) {
     const heading = f === 'docs/reference.md' ? 'Orchestrator study: cells, gates, metrics and the pass rule' : 'Orchestrator study';
     const cmds = commandsIn(read(f), heading);
     assert.ok(cmds.length >= 4, `${f}: found ${cmds.length} commands`);
@@ -96,20 +96,20 @@ test('every command in the orchestrator study section of the README and the play
 });
 
 test('the playbook has the orchestrator study section with the cell, arm and A/A advice', () => {
-  const doc = read('docs/CAP-PLAYBOOK.md');
+  const doc = read('docs/cap-playbook.md');
   for (const re of [/## Orchestrator study/, /A\/A/, /--arm-config/, /orchestrator-pass/, /one cell per directory/i]) assert.match(doc, re);
 });
 
 test('the per-skill study is documented in the README and the playbook', () => {
   const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/reference.md'), 'utf8');
-  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/CAP-PLAYBOOK.md'), 'utf8');
+  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/cap-playbook.md'), 'utf8');
   for (const re of [/cap skill-plan/, /cap skill-study/, /cap decide/, /--overlay skill:NAME=DIR/, /run-skill-bench\.sh/, /DELETE, PRUNE/, /NEEDS DATA/]) assert.match(readme, re);
   for (const re of [/Per-skill study: delete, prune or keep/, /cap skill-plan/, /run-skill-bench\.sh/, /What it cannot show/]) assert.match(playbook, re);
 });
 
 test('the README and playbook describe the side-by-side review page and its import', () => {
   const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/reference.md'), 'utf8');
-  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/CAP-PLAYBOOK.md'), 'utf8');
+  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'docs/cap-playbook.md'), 'utf8');
   for (const re of [/cap review --run DIR/, /cap review-import --ratings FILE/, /review-key\.json/, /opens no port/, /--sample-only/, /raters\/ID\//, /pooled/, /unless `--force`, so a second import never replaces the first/, /result\.prev\.json/, /raterKappa/, /calibration\/review-key\//, /`--key` is always\s+required/, /--run DIR/, /stream\.jsonl/, /A `recheck` does not change it/, /cleared by the next import/, /ratings made on the old page will not import/, /even\s+with `--force`/]) assert.match(readme, re);
   for (const re of [/cap review --run DIR/, /cap review-import/]) assert.match(playbook, re);
 });
@@ -163,4 +163,11 @@ test('every bench.js command in the README and guide pages uses a known command 
     }
   }
   assert.ok(seen >= 20, `found only ${seen} commands`);
+});
+
+test('every page under bench/docs has a lowercase kebab-case file name', () => {
+  const docs = path.join(__dirname, '..', '..', 'docs');
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+  const bad = walk(docs).filter((f) => f.endsWith('.md') && !/^[a-z0-9]+(-[a-z0-9]+)*\.md$/.test(path.basename(f)));
+  assert.deepEqual(bad.map((f) => path.relative(docs, f)), []);
 });
