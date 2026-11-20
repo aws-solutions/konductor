@@ -208,29 +208,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric aligns with request for 'gaps in the approach, contradictions with service targets, risks we might have missed'. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks for a general design review with output format (section, severity, issue, fix) but specifies no review method, checklist, process, or decoy. No number of problems mentioned.)."
+          "note": "task.json asks for a concrete architecture review and output format but names no prescribed method, framework, or tool and contains no hint directing the reviewer away from the design risks."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Judge-only rubric; no answer content in criterion. Earlier minimax-m2.5 check of the request, fixture and key: pass (Fixture files (design doc, CSV data, JSON configs, YAML budget) contain planted problems in the content but no comments, tests, or file names explicitly stating what the problems are.)."
+          "note": "The fixture contains the design and source evidence, including its own proposed mechanisms and risks, but no completed review, answer key, or document telling the agent which findings to report."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Verified: design doc has RPO 60s, RTO 120s, last-write-wins conflict resolution, DNS TTL, matching findingsKey. Earlier minimax-m2.5 check of the request, fixture and key: pass (All 8 key items map correctly: k1 (3.2 last-write-wins), k2 (6.3 RPO vs lag CSV data), k3 (6.2 DNS TTL vs RTO), k4 (8.1 budget gaps), k5 (7.1 vague failback), k6 (3.3 global counter), k7 (6.1 DNS propagation), k8 (2.2/3.2 async replication vs strong consistency requirement). Each severity is defensible.)."
+          "note": "The eight keyed findings are grounded in the design sections and supporting files: the design supplies the conflicting RTOs, TTL, LWW counter, failback and cost figures, while service-targets.md and the lag/budget data supply the contradictions. The JSON-section format and severity/fix requirements are stated in task.json and its checks."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Alternative correct reviews can Pass; rubric judges grounding. Earlier minimax-m2.5 check of the request, fixture and key: pass (All problems can be found from fixture alone: design doc sections, replication-lag-measurements.csv (P99 > 60s), dns-config.json (TTL 300s), budget-breakdown.yaml, product-rules.md (strong consistency requirement).)."
+          "note": "A reviewer can derive the findings by comparing the design with service-targets.md, product-rules.md, dns-config.json, replication-lag-measurements.csv, and budget-breakdown.yaml; the key accepts section-based findings rather than requiring the reference wording."
         }
       ]
     }

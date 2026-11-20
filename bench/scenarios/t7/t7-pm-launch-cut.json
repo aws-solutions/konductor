@@ -163,29 +163,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for scope decisions without prescribing a method; F-044 executive wallboard and F-057 mobile approvals are correctly excluded (out-list and absent assertions), not decoys—they are valid options a PM might choose differently."
+          "note": "The prompt asks the PM to read several inputs (backlog.csv, launch brief, roadmap, etc.) and write docs/launch-scope.md with a specific JSON block format. It does not name a method, framework, or process for scope planning, and no decoy hint points away from the real problem (which features to include/exclude for launch)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains backlog, interviews, and commitments; it does not state which features are in/out or the 63-point capacity total."
+          "note": "The fixture's backlog.csv, roadmap.csv, team-capacity.csv, launch-brief.md, sales-commitments.md, and interview notes show feature IDs, priorities, estimates, dependencies, and business context, but none of them state the correct in/out cut decision or the final planned points total (60.5, with 8 features). No file's comments or naming reveals the answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The key's assertions reference backlog IDs (F-010, F-014, F-021, F-038, F-052, F-063) and the 63-point capacity from team-capacity.csv; all are in fixture data."
+          "note": "Every assertion in hidden/hidden/key.json maps to fixture facts: F-014 (signed export commitment), F-010 (import), F-052 (dashboard), F-031 (dashboard prerequisite), F-044 (internal wallboard), F-057 (mobile approvals), capacity_points=63 (four sprints + holiday), planned_points range 58–63, F-063 (snapshot), F-038 (approval), F-021 (audit), must_haves for F-010/F-014, and F-044 in out list. The rubric anchors on the 2027-09-20 launch, capacity, and buffer—matching the key's required facts."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A PM can evaluate customer evidence in interviews, check sales commitments, compare estimates to capacity, identify F-031 as a dependency, and decide scope within the eight-week window."
+          "note": "A competent product manager could derive the correct scope by reading the inputs and reconciling commitments (F-014, F-010), capacity (63 points), audience (regional ops), and constraints. The hidden tests only check the JSON block's correctness; a different set of feature IDs that achieves the same capacity fit and satisfies all assertions would pass."
         }
       ]
     }

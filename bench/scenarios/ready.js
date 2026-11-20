@@ -86,7 +86,7 @@ function render(rows) {
   const line = (name, in_) => `| ${name} | ${in_.length} | ${in_.filter((r) => r.ready).length} | ${in_.filter((r) => r.fix.length).length} | ${in_.filter((r) => !r.ready).length} |`;
   for (const b of batches) L.push(line(b, rows.filter((r) => r.batch === b)));
   if (batches.length > 1) L.push(line('all', rows));
-  L.push('', 'ready + not ready = tasks; fix is the part of not ready marked fix (lazy over 40 or pilot.decision fix).');
+  L.push('', 'ready + not ready = tasks; fix is the part of not ready marked fix (lazy over 40 or pilot.decision fix or drop).');
   L.push('', 'Ready:', ...rows.filter((r) => r.ready).map((r) => `- ${r.id}`));
   if (!rows.some((r) => r.ready)) L.push('- none');
   const fixes = rows.filter((r) => r.fix.length);

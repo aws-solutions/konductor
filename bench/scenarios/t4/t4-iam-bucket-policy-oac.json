@@ -160,29 +160,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric items no_wildcard_sourcearn and proper_private_handling ask for exact distribution ARNs and private path handling, which match the request to lock down buckets for CDN-only access. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt states the desired bucket-policy behavior, relevant file paths, protected paths, and unchanged-file constraints, but does not prescribe a named method or reveal hidden test traps.)."
+          "note": "task.json states the policy outcome and files to edit but does not prescribe a method, framework, or tool and gives no misleading direction away from the access-control problem."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: The anchors (exact ARN per stage, no wildcard, private path denied) are judge-only; the fixture has cdn-config.json with ARNs but does not state the policy structure. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture policies in infra/buckets/ show the insecure starting state, while README.md and docs/architecture.md describe only current and desired behavior; no fixture file lists the expected policy statements or hidden findings.)."
+          "note": "The fixture shows the insecure current policies and documents the architecture, bucket names, CDN setup, and log prefixes, but it does not provide the finished policy statements or an answer key."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: The rubric references infra/cdn-config.json for distribution ARNs and stage pairing, which exists in the fixture with staging and production ARNs. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The exact bucket names, account ID, and per-stage CloudFront ARNs are in infra/cdn-config.json, while docs/architecture.md lines 48-51 identify both log sources and their prefixes; the requested private prefix and TLS requirement are in task.json.)."
+          "note": "The requested policy paths, stage bucket names, account ID, and exact distribution ARNs are in fixture/infra/cdn-config.json; CloudFront/S3 logging and the cloudfront-logs/ and s3-access-logs/ prefixes are documented in fixture/docs/architecture.md. The hidden tests and rubric check those requested restrictions and preserved deploy/log behavior."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different correct implementations (different statement structures, different private path deny approaches) can reach Pass as the rubric judges the outcome not the implementation. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can construct the three valid IAM policies from task.json, the existing policy resources, cdn-config.json, and the logging details in docs/architecture.md, while preserving deploy-role-policy.json and the scripts/tests as requested.)."
+          "note": "A competent developer can replace the wildcard policies using the request, the CDN config, the existing deploy-role policy, and the architecture/logging documentation; the behavior-based checks allow equivalent valid IAM policy structures."
         }
       ]
     }
@@ -195,13 +195,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 16.1,
+    "stub": 15.9,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 16.1,
-      "lazy": 16.1,
+      "stub": 15.9,
+      "lazy": 15.9,
       "alt": 100,
       "date": "2026-11-20"
     }

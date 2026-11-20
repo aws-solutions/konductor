@@ -264,7 +264,7 @@ const USAGE = `Usage:
        dry-run reference under 95), answer-leak (a tool call named a hidden or answer path, or an output repeats the reference's own text),
        second-family (under 1 in 3 tasks of the batch from a second author family), noisy (a check differs between replicates, or flips against a
        per-check dry run where reference and stub agreed), hand-edited, recheck missing (handEdited set and no review.recheck; blocks a lock), fix (the task
-       file records a lazy score over 40 or pilot.decision fix). A handEdited column gives the editor's family or no, for the hand-edit split, and a
+       file records a lazy score over 40 or pilot.decision fix or drop). A handEdited column gives the editor's family or no, for the hand-edit split, and a
        singleFamily column shows single-family-authored for a task whose authorship.singleFamily is set (then no second-family flag). A per-batch table follows:
        runs, distinct tasks, and for each flag the number of distinct tasks with a flagged run. --pack is the scenario pack, default bench/scenarios. Reads files only; no credits)
   node bench/runner/bench.js scenarios ready [DIR] [--batch tN] [--ids [--late]] [--json]
@@ -272,7 +272,7 @@ const USAGE = `Usage:
        and alternative >= 80. Prints per-batch counts (tasks, ready, fix, not ready; ready plus not ready is every task, fix is part of
        not ready) with an all row, the ready list and each not-ready task with its reasons (wave W9 late). --ids prints the ready ids
        as a comma list for the tasks flag of run; with --late the not-ready ones. A task with a lazy score
-       over 40 or pilot.decision fix is listed as fix and is not ready. Hand-edited tasks with no review.recheck are listed apart as lock blocked;
+       over 40 or pilot.decision fix or drop is listed as fix and is not ready. Hand-edited tasks with no review.recheck are listed apart as lock blocked;
        they may still run in the pilot. DIR defaults to bench/scenarios. No credits)
   node bench/runner/bench.js scenarios spot-review [DIR] [--seed N] [--out FILE]
        (the owner's spot-review sample: per batch a seeded shuffle of the task ids, the first 10% rounded up and at least one, as markdown with links;
