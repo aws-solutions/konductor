@@ -121,7 +121,7 @@ function buildTask(s, id) {
     controlKind: b.controlKind || 'none', ...(b.twinOf ? { twinOf: b.twinOf } : {}),
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: s.mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
-    authorship: { family: s.FAMILY[b.author], model: b.author, date: b.date || s.today(), source: b.source, ...(b.twoStep ? { twoStep: { fixture: b.author, key: b.keyAuthor } } : {}) },
+    authorship: { family: s.FAMILY[b.author], model: b.author, date: b.date || s.today(), source: b.source },
     ...(rev ? { review: { family: s.FAMILY[rev.model], date: s.today(), verdicts: rev.verdicts.filter((v) => s.REVIEW_CHECKS.has(v.check)).map((v) => s.reviewed(v, disposition)), ...(rc ? { recheck: { family: s.FAMILY[rc.model], model: rc.model, date: rc.date, items: rc.items.map(({ check, verdict, note }) => ({ check, verdict, ...(note ? { note } : {}) })) } } : {}) } } : {}),
     ...(handEditedIds(s.dir).has(id) ? { handEdited: { family: 'claude', editor: 'kirocrew-mate-worker (T10 worker session)', log: 'HAND-EDITS.md' } } : {}),
     pilot: null, lockedAt: null,

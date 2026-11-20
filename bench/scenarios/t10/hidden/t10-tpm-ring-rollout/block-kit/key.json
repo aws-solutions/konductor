@@ -1,0 +1,172 @@
+{
+  "outputFile": "docs/design/ring-aware-receipts.md",
+  "items": [
+    {
+      "id": "declared-order",
+      "type": "text",
+      "path": "decisions",
+      "all": [
+        "staff.{0,100}pilot",
+        "staff.{0,100}(15|fifteen)"
+      ],
+      "none": [
+        "alphabetical order"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "serialized-state",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "queue|serial|mutex",
+          "staff.{0,120}pilot",
+          "25\\s*percent|25%"
+        ],
+        "none": [
+          "average|global threshold"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "freeze-stop",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "2025-12-20",
+          "2026-01-03"
+        ],
+        "none": [
+          "bypass|ignore"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "gap-hold",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "pilot.{0,50}(gap|missing)",
+          "\\bHOLD\\b",
+          "10|ten"
+        ],
+        "none": [
+          "average"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "ring-budgets",
+      "type": "some",
+      "path": "decisions",
+      "match": {
+        "field": "choice",
+        "all": [
+          "staff.{0,100}(15|fifteen)",
+          "general.{0,100}(120|one hundred twenty)"
+        ],
+        "none": [
+          "same threshold"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "legacy-risk",
+      "type": "some",
+      "path": "risks",
+      "match": {
+        "field": "risk",
+        "all": [
+          "Ledger Lantern",
+          "2025-09-30"
+        ],
+        "none": [
+          "remove immediately"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "calendar-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "all": [
+            "regional",
+            "2025-12-20",
+            "2026-01-03"
+          ],
+          "file": "freeze-calendar",
+          "none": [
+            "staff"
+          ]
+        },
+        {
+          "all": [
+            "staff",
+            "2025-08-01",
+            "2025-08-04"
+          ],
+          "file": "freeze-calendar",
+          "none": [
+            "regional"
+          ]
+        }
+      ],
+      "min": 2,
+      "weight": 1
+    },
+    {
+      "id": "policy-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "all": [
+            "staff",
+            "15-minute",
+            "1.0 percent"
+          ],
+          "file": "error-budget-policy",
+          "none": [
+            "average"
+          ]
+        },
+        {
+          "all": [
+            "staff",
+            "windowMinutes.*15",
+            "promoteBelow.*1\\.0"
+          ],
+          "file": "budget-policy",
+          "none": [
+            "pilot"
+          ]
+        },
+        {
+          "all": [
+            "minimumCompleteMinutes",
+            "10"
+          ],
+          "file": "budget-policy",
+          "none": [
+            "windowMinutes"
+          ]
+        }
+      ],
+      "min": 3,
+      "weight": 1
+    }
+  ]
+}

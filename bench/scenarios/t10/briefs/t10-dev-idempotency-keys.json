@@ -8,8 +8,8 @@
     "decisions",
     "release-ops"
   ],
-  "author": "qwen3-coder-next",
-  "keyAuthor": "minimax-m2.5",
+  "author": "minimax-m2.5",
+  "keyAuthor": "qwen3-coder-next",
   "twoStep": true,
   "reviewer": "glm-5",
   "stack": "cjs",

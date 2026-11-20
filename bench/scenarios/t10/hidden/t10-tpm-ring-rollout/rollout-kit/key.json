@@ -1,0 +1,112 @@
+{
+  "outputFile": "docs/rollout/receipt-pdf.md",
+  "items": [
+    {
+      "id": "phase-metrics-catalogued",
+      "type": "some",
+      "path": "phases",
+      "match": {
+        "all": [
+          "regional",
+          "receipt_error_rate",
+          "percent"
+        ],
+        "none": [
+          "render_latency|delivery_success_rate"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "audience-order",
+      "type": "order",
+      "path": "phases",
+      "first": {
+        "all": [
+          "staff",
+          "threshold.{0,20}1"
+        ],
+        "none": [
+          "general"
+        ]
+      },
+      "then": {
+        "all": [
+          "general",
+          "threshold.{0,20}2\\.5"
+        ],
+        "none": [
+          "staff"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "freeze-action",
+      "type": "some",
+      "path": "phases",
+      "match": {
+        "field": "action",
+        "all": [
+          "regional",
+          "2025-12-20",
+          "2026-01-03"
+        ],
+        "none": [
+          "ignore"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "rollback-descends",
+      "type": "some",
+      "path": "rollback.steps",
+      "match": {
+        "all": [
+          "general",
+          "regional",
+          "down|downward"
+        ],
+        "none": [
+          "ascending"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "rollback-preserves-old",
+      "type": "some",
+      "path": "rollback.steps",
+      "match": {
+        "all": [
+          "Ledger Lantern",
+          "2025-09-30"
+        ],
+        "none": [
+          "remove"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "rollback-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "all": [
+            "Ledger Lantern",
+            "2025-09-30"
+          ],
+          "file": "partners",
+          "none": [
+            "2025-08-01"
+          ]
+        }
+      ],
+      "min": 1,
+      "weight": 1
+    }
+  ]
+}

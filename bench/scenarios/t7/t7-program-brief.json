@@ -1,7 +1,7 @@
 {
   "id": "t7-program-brief",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "ideation",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "director-bottom-line",
-      "criterion": "The prose gives the director a clear bottom line early and explains why the proposed work and dates are credible or conditional (code cannot check this because it cannot judge narrative clarity or reasoning)",
+      "criterion": "The prose gives the director a clear bottom line early and explains why the proposed work and dates are credible or conditional. Fail: no bottom line, or the brief just picks a tool and a big cutover. Partial: states the program outcome and the 2027-08-27 date but not what makes the date conditional. Pass: the opening says one shared deployment tool for Atlas, Beacon and Cedar by 2027-08-27, credible only if Identity Services is staffed (REQ-012) and the Atlas and Beacon ownership conflict is settled before the pilot, and gives the 3-engineer gap (7 asked, 4 available). (code cannot check this because it cannot judge narrative clarity or reasoning)",
       "weight": 2
     },
     {
       "id": "decision-useful-uncertainty",
-      "criterion": "The prose distinguishes confirmed facts from unresolved decisions and gives practical evidence or ownership needed to close the open questions (code cannot check this because it cannot assess honest uncertainty or usefulness to staff)",
+      "criterion": "The prose distinguishes confirmed facts from unresolved decisions and gives practical evidence or ownership needed to close the open questions. Fail: unknowns are generic (for example risks remain) or the memo's staffing ask is repeated without the gap. Partial: separates known from unknown but names no owner or evidence to close them. Pass: confirmed facts (the 365-day audit retention bar from the Atlas path, OIDC sign-in, approval history, 4 of 7 engineers available, REQ-012 owned by Identity Services) are separated from open decisions (tool choice, single owner for Atlas and Beacon, add people versus reduce waves versus move the date), each open item has an owner or the evidence needed to close it, and the feature-flag request is placed outside this program. (code cannot check this because it cannot assess honest uncertainty or usefulness to staff)",
       "weight": 2
     }
   ],
@@ -214,7 +214,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "FX3 job",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

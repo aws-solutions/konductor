@@ -1,7 +1,7 @@
 {
   "id": "t7-scope-cut",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,12 +51,12 @@
   "rubric": [
     {
       "id": "director-bottom-line",
-      "criterion": "The prose leads with the fixed-date decision and gives the requester a clear, actionable tradeoff rather than making them infer it (code cannot check this because it only validates structured values)",
+      "criterion": "The prose leads with the fixed-date decision and gives the requester a clear, actionable tradeoff rather than making them infer it. Fail: the date moves, or the cut is not stated. Partial: keeps the date but gives a wrong or unexplained cut size. Pass: the opening keeps 2027-06-18, states 29 net-new points against 17 points of slack, and says 12 points must come out, naming PRJ-1114 (5) and PRJ-1162 (7) as the cut. (code cannot check this because it only validates structured values)",
       "weight": 2
     },
     {
       "id": "reasoning-and-boundaries",
-      "criterion": "The prose shows how the capacity and cut totals were obtained and states the dependency and customer-commitment boundaries behind the recommendation (code cannot check this because it cannot evaluate explanatory reasoning)",
+      "criterion": "The prose shows how the capacity and cut totals were obtained and states the dependency and customer-commitment boundaries behind the recommendation. Fail: the totals come with no working or count the bug splits as new work. Partial: the totals are shown but a boundary is missing. Pass: the prose lists the six net-new tickets summing to 29, excludes PRJ-1019 and PRJ-1073 as bug splits taken from PRJ-1004 and PRJ-1022, shows slack as 7 + 3 + 7 = 17 after holiday adjustment, keeps PRJ-1046 because must-have PRJ-1102 depends on it, and protects PRJ-1008 as the customer commitment. (code cannot check this because it cannot evaluate explanatory reasoning)",
       "weight": 2
     }
   ],
@@ -183,7 +183,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T7 worker session)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

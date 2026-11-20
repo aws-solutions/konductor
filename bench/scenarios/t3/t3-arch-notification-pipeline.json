@@ -27,12 +27,12 @@
   "rubric": [
     {
       "id": "tradeoff-analysis",
-      "criterion": "Explains why the selected design balances quota headroom, delivery latency, recovery targets, operational complexity, and cost better than the alternatives. (not code-checkable: Tests can recompute limits and cost but cannot judge whether the comparison is technically convincing or whether the tradeoff reasoning is complete.)",
+      "criterion": "Explains why the selected design balances quota headroom, delivery latency, recovery targets, operational complexity, and cost better than the alternatives. Fail: picks on cost or keeps single-queue-pool. Partial: rejects single-queue-pool for throughput but does not weigh the two workable options on latency, recovery and cost. Pass: shows single-queue-pool tops out at 3,000 msg/s against the 6,000 msg/s peak (and extra workers do not raise the per-queue quota), notes topic-regional-queues (3 x 3,000 = 9,000 msg/s) and stream-partitions (8 x 1,000 = 8,000 msg/s) both clear the peak, and weighs the chosen one on the 3-second p99 (not the superseded 8 s), the 60-second RPO, the 15-minute RTO and the 4,500 USD budget. (not code-checkable: Tests can recompute limits and cost but cannot judge whether the comparison is technically convincing or whether the tradeoff reasoning is complete.)",
       "weight": 1
     },
     {
       "id": "architecture-coherence",
-      "criterion": "Presents a coherent set of components and responsibilities that could implement the selected fan-out design without contradicting the source assumptions. (not code-checkable: A script can find a table or decision block but cannot assess whether the components form a practical end-to-end architecture.)",
+      "criterion": "Presents a coherent set of components and responsibilities that could implement the selected fan-out design without contradicting the source assumptions. Fail: no components table, or components that contradict the limits (for example one queue carrying peak). Partial: a table exists but responsibilities overlap or the cost basis is unclear. Pass: the table gives each component one responsibility and an end-to-end path from ingress to delivery that stays within the 3,000 msg/s per-queue quota (not the sandbox 2,500), and the monthly cost uses the schedule of 2 peak hours at 6,000 msg/s plus 22 hours at 1,800 msg/s for 30 days. (not code-checkable: A script can find a table or decision block but cannot assess whether the components form a practical end-to-end architecture.)",
       "weight": 1
     },
     {
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 4,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -197,7 +197,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate review-fix2 worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

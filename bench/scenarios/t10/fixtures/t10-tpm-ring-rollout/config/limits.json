@@ -1,0 +1,6 @@
+{
+  "maxItems": 80,
+  "maxNoteLength": 240,
+  "maxAmountCents": 100000000,
+  "requestTimeoutMs": 2500
+}

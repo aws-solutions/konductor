@@ -1,0 +1,5 @@
+{
+  "development": { "logLevel": "debug", "delivery": "memory" },
+  "staging": { "logLevel": "info", "delivery": "sandbox" },
+  "production": { "logLevel": "warn", "delivery": "provider" }
+}
