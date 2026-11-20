@@ -1,0 +1,6 @@
+{
+  "dashboards": [
+    {"name":"service health","owner":"operations","metrics":["http_requests_total","http_request_duration_ms"]},
+    {"name":"persistence","owner":"platform","metrics":["store_write_errors_total"]}
+  ]
+}

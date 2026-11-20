@@ -36,9 +36,9 @@
       "weight": 1
     },
     {
-      "id": "decision-quality",
-      "criterion": "The ADR is readable, specific, and operationally useful, with assumptions and consequences that a platform team could use when revisiting the decision. (not code-checkable: Automated checks cannot reliably assess clarity, completeness of context, or whether the consequences help a human maintainer.)",
-      "weight": 1
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -70,7 +70,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 2,
+  "version": 3,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -114,7 +114,34 @@
         "verdict": "pass",
         "note": "All necessary numbers are present: peak working set, throughput target, node specs, prices, reservation percentage, and service limits are fully specified."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:3 specifies the deliverable, input interfaces, and exact output schema, but does not prescribe a method, tool, checklist, or specific choice or trap."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/README.md:3-7 and the input files provide source facts and constraints, not a prewritten decision or list of findings; the candidate choice and computed values still require reasoning."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "fixture/candidate-configs.json:4-22, traffic-profile.md:8-11, operating-model.md:3-13, service-requirements.md:7-13, node-benchmarks.csv:2-4, and price-sheet.json:5-7 support the expected options, limits, arithmetic, availability, and tradeoffs."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture contains all required topology, memory-reservation, peak-demand, benchmark, price, and service-objective inputs; the calculations and acceptable candidates follow directly from those files."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -164,7 +191,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "HE hand-edit backfill session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

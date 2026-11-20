@@ -13,7 +13,9 @@
       "none": [
         "(caused by|due to|because of|result of) (the )?(analytics|reporting|rollup)"
       ],
-      "weight": 2
+      "weight": 2,
+      "section": "cause",
+      "gate": true
     },
     {
       "id": "cause-evidence",
@@ -43,7 +45,8 @@
         }
       ],
       "min": 2,
-      "weight": 2
+      "weight": 2,
+      "section": "cause"
     },
     {
       "id": "evidence-precision",
@@ -56,7 +59,8 @@
         "cache=miss burst",
         "connection_limit_reached"
       ],
-      "min": 0.5
+      "min": 0.5,
+      "section": "cause"
     },
     {
       "id": "timeline-warmup",
@@ -70,7 +74,8 @@
           "time": "2025-03-18T14:42:00.000Z",
           "tolMin": 2
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-first-wave",
@@ -84,7 +89,8 @@
           "time": "2025-03-18T15:12:00.000Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-second-wave",
@@ -98,7 +104,8 @@
           "time": "2025-03-18T15:42:00.000Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-third-wave",
@@ -112,7 +119,8 @@
           "time": "2025-03-18T16:12:00.000Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-mitigation",
@@ -126,7 +134,8 @@
           "time": "2025-03-18T16:19:00.000Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-recovery",
@@ -140,14 +149,16 @@
           "time": "2025-03-18T16:22:00.000Z",
           "tolMin": 3
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-bounded",
       "type": "maxLen",
       "path": "timeline",
       "max": 15,
-      "min": 4
+      "min": 4,
+      "section": "timeline"
     },
     {
       "id": "impact-failed-pages",
@@ -155,28 +166,32 @@
       "path": "impact.failedPageRequests",
       "value": 3960,
       "tolPct": 5,
-      "weight": 2
+      "weight": 2,
+      "section": "impact"
     },
     {
       "id": "impact-cpu",
       "type": "number",
       "path": "impact.peakDbCpuPercent",
       "value": 99.2,
-      "tolPct": 1
+      "tolPct": 1,
+      "section": "impact"
     },
     {
       "id": "impact-connections",
       "type": "number",
       "path": "impact.peakDbConnections",
       "value": 240,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "impact-duration",
       "type": "number",
       "path": "impact.affectedMinutes",
       "value": 12,
-      "tolPct": 10
+      "tolPct": 10,
+      "section": "impact"
     },
     {
       "id": "action-fix-expiry",
@@ -190,7 +205,8 @@
           "cache"
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "actions"
     },
     {
       "id": "action-early-guard",
@@ -203,7 +219,8 @@
           "cache hit|hit ratio|miss|expir|database cpu|connections|waiters"
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "actions"
     },
     {
       "id": "action-canary",
@@ -215,14 +232,17 @@
           "canary|stag|review|validat|lint|check",
           "ttl|jitter|expir|warm|reload|policy|config"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "actions-bounded",
       "type": "maxLen",
       "path": "actionItems",
       "max": 10,
-      "min": 2
+      "min": 2,
+      "section": "actions"
     }
-  ]
+  ],
+  "scoring": "sections"
 }

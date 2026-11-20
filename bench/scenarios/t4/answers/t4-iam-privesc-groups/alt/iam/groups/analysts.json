@@ -1,49 +1,27 @@
 {
-    "Statement": [
-        {
-            "Resource": [
-                "arn:aws:s3:::analytics-lake-111122223333",
-                "arn:aws:s3:::analytics-lake-111122223333/*"
-            ],
-            "Action": [
-                "s3:GetObject",
-                "s3:GetObjectVersion",
-                "s3:ListBucket"
-            ],
-            "Effect": "Allow",
-            "Sid": "LakeRead"
-        },
-        {
-            "Resource": "arn:aws:athena:us-east-2:111122223333:workgroup/analytics-read",
-            "Action": [
-                "athena:StartQueryExecution",
-                "athena:GetQueryExecution",
-                "athena:GetQueryResults"
-            ],
-            "Effect": "Allow",
-            "Sid": "QueryWorkgroup"
-        },
-        {
-            "Resource": "*",
-            "Action": [
-                "glue:GetDatabase",
-                "glue:GetDatabases",
-                "glue:GetTable",
-                "glue:GetTables"
-            ],
-            "Effect": "Allow",
-            "Sid": "CatalogRead"
-        },
-        {
-            "Resource": "*",
-            "Action": [
-                "organizations:*",
-                "sts:*",
-                "iam:*"
-            ],
-            "Effect": "Deny",
-            "Sid": "RejectAdministrativePaths"
-        }
-    ],
-    "Version": "2012-10-17"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LakeRead",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::analytics-lake-111122223333", "arn:aws:s3:::analytics-lake-111122223333/*"]
+    },
+    {
+      "Sid": "QueryWorkgroup",
+      "Effect": "Allow",
+      "Action": ["athena:StartQueryExecution", "athena:GetQueryExecution", "athena:GetQueryResults"],
+      "Resource": "arn:aws:athena:us-east-2:111122223333:workgroup/analytics-read"
+    },
+    {
+      "Sid": "CatalogRead",
+      "Effect": "Allow",
+      "Action": ["glue:GetDatabase", "glue:GetDatabases", "glue:GetTable", "glue:GetTables"],
+      "Resource": [
+        "arn:aws:glue:us-east-2:111122223333:catalog",
+        "arn:aws:glue:us-east-2:111122223333:database/*",
+        "arn:aws:glue:us-east-2:111122223333:table/*/*"
+      ]
+    }
+  ]
 }

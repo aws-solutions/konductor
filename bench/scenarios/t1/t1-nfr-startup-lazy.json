@@ -1,7 +1,7 @@
 {
   "id": "t1-nfr-startup-lazy",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
@@ -81,13 +81,18 @@
   "rubric": [
     {
       "id": "r1",
-      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code (code cannot check this because it cannot assess the engineer\u2019s explanation)",
+      "criterion": "The final message identifies the eager import path that caused the startup cost and explains how the replacement defers command code (code cannot check this because it cannot assess the engineer’s explanation)",
       "weight": 1
     },
     {
       "id": "r2",
       "criterion": "The final message states what was measured and calls out the deliberate choice to keep config validation eager and load-time registration intact (code cannot check this because it cannot assess the final explanation of trade-offs)",
       "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -102,7 +107,7 @@
     "items": [
       {
         "id": "cause",
-        "text": "I traced the startup cost to the CLI\u2019s top-level imports of every command and their local engines.",
+        "text": "I traced the startup cost to the CLI’s top-level imports of every command and their local engines.",
         "source": "https://github.com/sindresorhus/import-lazy (MIT; idea only, paraphrased)"
       },
       {
@@ -184,11 +189,52 @@
         "verdict": "pass",
         "note": "All required behaviors are achievable: lazy loading via dynamic require or wrapper functions, config validation remains possible before dispatch, format-registration runs at format.js load time as-is. No timing-dependent or flaky tests observed."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the desired outcome (instant startup, lazy command loading) and constraints (preserve behavior, config validation, format registration) without prescribing any specific implementation method or pointing toward misleading solutions."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains CLI implementation with eager imports, but nothing in comments, docs, or tests describes lazy loading, the 4-module limit, or command-specific loading patterns—the hidden tests verify these behaviors not listed anywhere."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All paths, names, and behaviors referenced in the hidden tests and expert key exist in the fixture: constants.js exports VERSION/REPORT_HEADER/COMMANDS, config.js exports loadConfig, format-registration.js exists with ATLAS_FORMAT_MARKER behavior, all six command modules exist in src/commands/, and config validation rejects invalid modes."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture shows cli.js imports all commands at startup (the problem), the prompt describes the desired lazy behavior, and a developer can implement lazy loading using Node.js require() patterns—the task is solvable from the fixture and request alone."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "t1-worker",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 18.4,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 18.4,
+      "lazy": 34.7,
+      "alt": 65.3,
+      "date": "2026-11-20"
+    }
   }
 }

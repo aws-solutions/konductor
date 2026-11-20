@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-schema-migrate",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -61,6 +61,11 @@
       "weight": 1,
       "id": "honest-verification",
       "criterion": "The final report accurately distinguishes checks that were run from checks that were not run (code cannot check this because it cannot assess an agent's final report)."
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -122,11 +127,52 @@
         "verdict": "pass",
         "note": "The task is substantial but fair: the fixture provides working migrations 001-012, a migration runner, repository patterns, and test examples. No contradictory requirements, no timing-dependent tests, and all necessary context is discoverable."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request describes the what (split addresses, add migration, update repository, CLI) without prescribing any method, framework, or tool, and contains no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture documents the current schema and repository interface but does not reveal the split-table design or the specific migration behavior required by hidden tests."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All paths, names, column names, and interfaces referenced in hidden tests (migrations/013-split-customer-address.js, addresses table columns, src/customer-repository.js, src/migrate.js CLI) match the fixture or are explicitly specified in the request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture shows the current customers table schema, the repository interface, and the migration runner pattern, giving a competent developer everything needed to implement the requested changes."
+        }
+      ]
+    }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "t1-worker",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 16.5,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 16.5,
+      "lazy": 78.4,
+      "alt": 88.6,
+      "date": "2026-11-20"
+    }
   }
 }

@@ -1,0 +1,130 @@
+{
+  "id": "t12-parallel-backlog",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "planning",
+  "phases2": [
+    "implementation"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "We have three people (or agents) free until Wednesday's freeze and the backlog in docs/backlog.md (docs/team.md says who). Before anyone starts, plan the work so as much as possible runs at the same time without people stepping on each other, and every merge leaves the tests green. Write the plan to docs/plan/release-plan.md and do not change any other file. End it with one fenced json block holding an object with: waves (list of waves in time order; each wave is a list of the backlog ids that start in it; an item that must wait for another goes in a later wave, even if the same person does both), packages (list of {id, items: backlog ids, owner, files: repository paths it changes or adds, doneWhen: string}), dependencies (list of {before, after, reason}), conflicts (list of {items, reason}: items that must not be worked on at the same time), notScheduled (list of {item, reason}) and mergeOrder (list of package ids).",
+  "fixture": "t12-parallel-backlog",
+  "hidden": "t12-parallel-backlog",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 6,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/backlog.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "overlaps-from-code",
+      "weight": 2,
+      "criterion": "The plan's dependencies and conflicts come from what the code shares, with the shared file or list named. Fail: items are split evenly or by owner with no reason, or two items that edit the same file or list run at the same time. Partial: the right items are kept apart, but at least one reason is a guess not tied to a file (for example 'A4 might affect config'). Pass: each dependency and conflict names the shared file, setting or list and what would break, items that share nothing run in parallel, and the merge order keeps the tests green after each merge. (code cannot check this because the key sees ids and file names, not whether the reasons are true)"
+    },
+    {
+      "id": "handoff-ready-packages",
+      "weight": 1,
+      "criterion": "Each package could be handed to its owner as is. Fail: packages list only item ids. Partial: files and done criteria are given, but a package's done criterion is not checkable or misses a setting or test it must add. Pass: each package names its files, a checkable done criterion and what it waits for. (code cannot check this because checkability of a done criterion is a judgement)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "fields-list-coupling",
+        "text": "Sees that src/export/csv.js prints the model's FIELDS list, so adding currency in A1 already changes the CSV and its test; A1 and A2 belong together or in strict order.",
+        "source": "original"
+      },
+      {
+        "id": "config-file-conflict",
+        "text": "Sees that A4's new setting has to live in the configuration A5 moves (app.ini to app.json, loader in src/config.js), so A5 goes first and A4 adds its key to the new file.",
+        "source": "original"
+      },
+      {
+        "id": "independent-items",
+        "text": "Runs A3 (CLI help text) and A6 (CI file) in the first wave, since they touch nothing else.",
+        "source": "original"
+      },
+      {
+        "id": "on-hold",
+        "text": "Leaves A7 out with the reason (no sandbox keys from the vendor).",
+        "source": "original"
+      },
+      {
+        "id": "green-after-each-merge",
+        "text": "Gives a merge order in which every merge leaves node --test test/ passing.",
+        "source": "https://martinfowler.com/articles/continuousIntegration.html"
+      }
+    ],
+    "weakAnswers": [
+      "Everything can run in parallel; split the seven items across three people.",
+      "Do the items one after another in backlog order.",
+      "A4 and A5 are unrelated: one is login, the other configuration.",
+      "Start A7 early since it is the biggest item."
+    ]
+  },
+  "targetSkills": [
+    "delegation-protocol",
+    "task-decomposition"
+  ],
+  "targetSop": null,
+  "targetAgent": "konductor",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 16.7,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

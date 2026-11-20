@@ -98,7 +98,7 @@ Every edited task was re-checked by a non-Claude model (gpt-5.6-luna, or glm-5 w
   - loadCheck.mustNotLoad holds the IAM skills, which a twin exists to catch
   - limits 900/1800 s
 - Why: each reason is given with its change (from edits/t4-iam-ci-deploy-role-twin.json)
-- Recheck: gpt-5.6-luna, FAIL (key-matches-fixture, solvable-from-fixture)
+- Recheck: gpt-5.6-luna, FAIL (key-matches-fixture, solvable-from-fixture); cleared by hand on 2026-11-20 as a false alarm (see the FX section)
 
 ### t4-iam-lambda-role-split
 
@@ -171,6 +171,31 @@ Every edited task was re-checked by a non-Claude model (gpt-5.6-luna, or glm-5 w
 - Why: each reason is given with its change (from edits/t4-threat-model-webhooks.json)
 - Recheck: glm-5, pass
 
+## Fix round by the FX job (2026-11-20)
+
+The four tasks whose recheck failed were sent back to their writer family (deepseek-3.2) with the reviewer's findings, then rechecked by gpt-5.6-luna (a non-Claude family that is not the writer). The calls and credits are in AUTHORING-LOG.md.
+
+### t4-dev-sql-report-filters
+
+- Who: deepseek (the fix), claude (FX job, the correction)
+- What:
+  - deepseek-3.2 edited the fixture docs and database.py, and added a warning comment and docs/security.md that named the vulnerability and the fix
+  - claude reverted those two additions and the wording that stated the wildcard rule, so the fixture says "substring search" in docs/api.md and in the database.py docstrings only
+  - claude added one sentence to the prompt: a name or customer filter is a plain text search, matched as typed, so `%` and `_` in it match only that character
+  - version 2
+- Why: the hidden tests require literal wildcards and nothing visible said so; the writer's own fix leaked the answer into the fixture
+- Recheck: gpt-5.6-luna, pass
+
+### t4-iam-ci-deploy-role-twin
+
+- Who: claude (FX job)
+- What: the two failed recheck items set to pass and the blockers removed; no change to the task, fixture or tests
+- Why: false alarm; the recheck folder laid the hidden overlay one directory too deep. Reference 100 and empty 19.7 by dry-run.js, 14 of 14 hidden tests
+
+### t4-iac-review-terraform, t4-iam-bucket-policy-oac
+
+Fixed by deepseek-3.2 alone (no hand edit): see AUTHORING-LOG.md. Both version 2, recheck pass.
+
 ## Scorer fixes by the HE session
 
 None: no lazy answer in this batch scored above 40, or none could be fixed by the scorer.
@@ -184,3 +209,45 @@ Tasks: none (every task already had a dry run).
 ## Not edited
 
 None.
+
+## Edits after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task review of 2026-11-19
+(T1 to T4 report, finding 1). Each task's `version` is bumped and `handEdited` names this session. No paid call ran,
+so no non-Claude recheck exists yet: the tasks are on the recheck list in `bench/DEBT.md` D-108.
+
+### t4-arch-tenant-abac
+
+- What: no task change. The shared evaluator `lib/hidden/iam-eval.js` now keeps `${*}`, `${?}` and `${$}` as literal
+  characters through `globToRegExp` (with a unit test in `t4/lib/iam-eval.test.js`). Before, `${*}` became a wildcard,
+  so a correct deny on a literal `*` tenant matched every tenant and 38 allow tests failed (pilot score 69).
+  `answers/t4-arch-tenant-abac/alt` is now an independent design (the pilot's vanilla answer, with an escaped-literal
+  deny), not the reference with its keys reordered.
+- Why: the tests rejected a policy that real IAM accepts.
+- Dry run: reference 100, stub 14.7, lazy 14.7, alt 96.7. The five other IAM tasks score as before.
+
+### t4-iam-privesc-groups
+
+- What: the hidden "cannot" tests check the outcome (`decide` over identity plus boundary refuses the request), not
+  that the group policy holds an explicit Deny. Each refusal counts only when the group can still do its guide's work,
+  so a boundary that allows nothing earns nothing. One new test: the boundary is a real ceiling (an allow-everything
+  member still cannot create policy versions, attach user policies or pass the admin role). PassRole requests carry
+  `iam:PassedToService` as IAM sends it. Tests check `min` 26 to 27. `answers/.../alt` is now an independent
+  boundary-deny design (the pilot's vanilla answer).
+- Why: the old tests demanded where the Deny sits; the prompt says the boundary applies to every group, so a
+  boundary deny is refused the same way in IAM (pilot score 67 for a correct answer).
+- Dry run: reference 100, stub 17.7, lazy 17.7, alt 100.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t4-dev-path-traversal-files`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): root-cause-containment.
+- `t4-dev-sql-report-filters`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): parameterised-design.
+- `t4-iac-review-terraform`: prioritization given Fail/Partial/Pass anchors.
+- `t4-iam-bucket-policy-oac`: proper_private_handling given Fail/Partial/Pass anchors.
+- `t4-iam-ci-deploy-role-twin`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): change-explained.
+- `t4-iam-lambda-role-split`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): traceable-least-privilege.
+- `t4-iam-vendor-trust`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): trust-design-explained.
+- `t4-policy-fix-accessdenied`: cause given Fail/Partial/Pass anchors.
+- `t4-threat-model-webhooks`: review-quality replaced by anchored attacker-path-fix (weight 2).

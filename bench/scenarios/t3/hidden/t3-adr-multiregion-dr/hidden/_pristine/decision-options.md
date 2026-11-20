@@ -40,7 +40,7 @@
 
 ### Performance Characteristics
 - **RPO**: ~5 minutes (replication lag)
-- **RTO**: ~60 minutes (scale-up + validation)
+- **RTO**: ~65 minutes (scale-up + validation)
 - **Data consistency**: Near-real-time with possible replication lag
 
 ### Cost Estimate (Monthly)
@@ -106,7 +106,7 @@
 | Metric | Nightly Backup | Pilot Light | Warm Standby | Requirement |
 |--------|----------------|-------------|--------------|-------------|
 | RPO | 24 hours | 5 minutes | 2 minutes | 5 minutes |
-| RTO | ~80 minutes | ~60 minutes | ~15 minutes | 45 minutes |
+| RTO | ~80 minutes | ~65 minutes | ~15 minutes | 45 minutes |
 | Monthly Cost | ~$2,524 | ~$8,764 | ~$11,904 | ≤ $12,000 |
 | Data Loss Risk | High | Moderate | Low | Minimize |
 | Implementation Complexity | Low | Medium | High | - |

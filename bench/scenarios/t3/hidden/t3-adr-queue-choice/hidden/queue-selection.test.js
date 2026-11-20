@@ -31,7 +31,7 @@ const designText = fs.readFileSync(
 
 // Parse numbers from requirements (simplified - in real test would use regex)
 // For this test, we'll hardcode the expected values from our calculations
-const MESSAGES_PER_DAY = 8_000_000;
+const MESSAGES_PER_DAY = 11_000_000;
 const DAYS_IN_MONTH = 30;
 const AVG_MESSAGE_SIZE_KB = 90;
 const PEAK_THROUGHPUT = 400;
@@ -43,7 +43,7 @@ const messagesPerMonth = MESSAGES_PER_DAY * DAYS_IN_MONTH;
 const chunksPerMessage = Math.ceil(AVG_MESSAGE_SIZE_KB / CHUNK_SIZE_KB);
 
 // Acceptable options
-const ACCEPTABLE_OPTIONS = ['sqs_standard', 'sqs_fifo', 'kinesis_streams'];
+const ACCEPTABLE_OPTIONS = ['kinesis_streams'];
 const TEMPTING_OPTION = 'sqs_fifo'; // Looks cheaper but fails throughput
 
 describe('Queue Selection ADR Tests', () => {

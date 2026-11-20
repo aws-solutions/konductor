@@ -54,3 +54,34 @@ t8-dec-deploy-strategy 51.6, t8-oncall-alert-review 50.4, t8-inc-queue-backlog 4
 t8-twin-latency-tier-report 42.9 or more), or their lazy and alternative answers score the same
 (t8-neg-config-question, 79.6 each), or no alternative is recorded (t8-bug-retry-storm, lazy 72.1). Each keeps
 `pilot.decision` fix with the reason in `pilot.scores.fixReason`, for a paid single fix by the original writer.
+
+## Fix round by the FX job (2026-11-20)
+
+t8-tpm-rollout-regions and t8-runbook-db-failover: the key was tightened by the original writer (gpt-5.6-luna), not by Claude, so no hand edit is added and `handEdited` is unchanged. Recheck by glm-5; calls and credits in AUTHORING-LOG.md.
+
+## Rubric fixes after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews of 2026-11-19 and 2026-11-20 (empty rubrics, single-item 0/15/30 dials, generic polish items). Each item now carries Fail, Partial and Pass anchors in its criterion text, because the rubric schema has no anchor field and the judge reads the criterion as written. Rubric changes do not move the code-only dry-run scores, so pilot.dryRun stands. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t8-inc-checkout-latency`: clear-causal-narrative given causal-chain Fail/Partial/Pass anchors.
+- `t8-inc-memory-leak`: narrative-judgment given causal-chain Fail/Partial/Pass anchors.
+- `t8-inc-queue-backlog`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): causal-chain.
+- `t8-neg-alert-threshold`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): no-extra-scope.
+- `t8-neg-config-question`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): answer-sourced.
+- `t8-oncall-alert-review`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): alert-judgement.
+- `t8-pm-cache-stampede`: narrative-clarity given causal-chain Fail/Partial/Pass anchors.
+- `t8-pm-cert-expiry-region`: clear-review-narrative given causal-chain Fail/Partial/Pass anchors.
+- `t8-twin-latency-tier-report`: rubric was empty (the judge share was 0 and the code share took 100%); added anchored item(s): counting-rule-stated.
+
+## Harder keys after the task review (2026-11-20, mate task-fix worker)
+
+Who: claude (mate task-fix worker session), owner-approved fixes from the task reviews (T5 mutant tasks saturated at 100 and rewarding suite size; 10 tasks whose lazy answer scored 68.9 to 84.7 against the 40 gate). Shared changes: lib/hidden/mutants.js and mutation.test.js (safe refactors, suite-size budget, kills count only for a suite that passes the refactor), lib/hidden/block-key.js and block.test.js, lib/hidden/plan.test.cjs (gate items, section scoring). Dry runs re-recorded. Each task's version is bumped and handEdited names this session; no non-Claude recheck yet (bench/DEBT.md D-108).
+
+- `t8-dec-deploy-strategy`: block key scored by section (constraints, decision (the call and the reasons each option was rejected)): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate decision-is-canary (a wrong cause or call fails every test); guard checks made format (file_exists decisions/0007-deploy-strategy.md, fixture_unchanged docs/capacity-report.md) because they pass on any answer that writes the file.
+- `t8-inc-memory-leak`: block key scored by section (actions, cause, impact, timeline): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate cause-summary (a wrong cause or call fails every test); guard checks made format (file_exists incidents/search-oom-restarts.md, fixture_unchanged ops/metrics/container-search-08.csv) because they pass on any answer that writes the file.
+- `t8-inc-queue-backlog`: block key scored by section (actions, cause, impact, timeline): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate cause-summary (a wrong cause or call fails every test); guard checks made format (file_exists incidents/notification-backlog.md, fixture_unchanged logs/consumer-a.log) because they pass on any answer that writes the file.
+- `t8-oncall-alert-review`: block key scored by section (changes, hygiene, keeps): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate none (a wrong cause or call fails every test); guard checks made format (file_exists oncall/alert-review.md, fixture_unchanged alerts/alert-rules.yml) because they pass on any answer that writes the file.
+- `t8-pm-cache-stampede`: block key scored by section (actions, cause, impact, timeline): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate cause-summary (a wrong cause or call fails every test); guard checks made format (file_exists postmortems/catalog-db-overload.md, fixture_unchanged logs/db.log) because they pass on any answer that writes the file.
+- `t8-pm-cert-expiry-region`: block key scored by section (actions, cause, impact, timeline): each section earns all when complete, half with one item missed, nothing with more, so half a report earns little; gate root-cause-summary (a wrong cause or call fails every test); guard checks made format (file_exists postmortems/eu-login-outage.md, fixture_unchanged certs/certificate-inventory.csv) because they pass on any answer that writes the file.
+- `t8-neg-config-question`: hidden shape tests (list, sorted, fields, unique, replica counts) now count only when the answer names exactly the debug services the renderer gives, so a wrong answer in the right shape earns nothing; alt answer fixed (it was unsorted, which the prompt forbids) and is now the reference with each record's keys in another order; guard checks made format (file_exists answers/prod-debug.json, fixture_unchanged config/production/catalog.json).
+- `t8-twin-latency-tier-report`: hidden shape tests now count only when the totals match the /checkout records of the log, so a well-shaped report of wrong counts earns nothing; guard checks made format (file_exists reports/checkout-hourly.csv, file_exists reports/checkout-totals.json, fixture_unchanged logs/checkout-api.log).

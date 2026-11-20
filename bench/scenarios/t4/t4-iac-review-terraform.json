@@ -1,6 +1,6 @@
 {
   "id": "t4-iac-review-terraform",
-  "version": 1,
+  "version": 3,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -58,7 +58,7 @@
     },
     {
       "id": "prioritization",
-      "criterion": "Critical and high severity issues are correctly identified and prioritized (code cannot check this because severity assessment requires security expertise)",
+      "criterion": "Critical and high severity issues are correctly identified and prioritized. Fail: critical issues missing from the top of the list, or decoys ranked high. Partial: critical issues found, but ordered below lower-severity ones or with severities off by more than one level. Pass: the critical and high issues come first with defensible severities, and decoys are absent or marked low with a reason. (code cannot check this because severity assessment requires security expertise)",
       "weight": 3
     }
   ],
@@ -172,42 +172,37 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a PR risk review and specifies the changed-file source, output file, and JSON schema, but it names no review method, checklist, tool, trap, or specific finding."
+          "note": "task.json.prompt states the review goal, changed-file context, output format, and constraint without naming a review method, tool, checklist, trap, or expected finding."
         },
         {
           "check": "fixture-lists-no-answer",
-          "verdict": "fail",
-          "note": "fixture/modules/iam/main.tf:155 explicitly labels the log policy as a decoy and explains its read-only interpretation. fixture/docs/reporting.md:18-37 also states the public database, public bucket policy, and full-access role, including that they will be tightened, disclosing expected findings and classifications."
+          "verdict": "pass",
+          "note": "fixture/review/PR-142.md describes the requested feature and deployment sequence, while the Terraform files and docs provide configuration evidence rather than a prewritten findings list or expected answers."
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "fail",
-          "note": "fixture/modules/logging/main.tf:18-19 sets multi-region CloudTrail and log validation to true, contradicting the hidden cloudtrail expectation of single-region and validation disabled. fixture/.github/workflows/ci.yml:39-45 also contains a plan step, contradicting the expert-key claim that CI runs only fmt and validate."
+          "verdict": "pass",
+          "note": "The expected issues are grounded in fixture/main.tf:140, variables.tf:61-72, and .github/workflows/ci.yml:27-37, plus database/main.tf:44-62, storage/main.tf:47-81, and iam/main.tf:93-125; the deployment and docs support the stated prioritization and public-site exception."
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "fail",
-          "note": "A careful review of fixture/modules/logging/main.tf:13-20 would conclude the CloudTrail settings are enabled and should not report the hidden single-region/disabled-validation issue. The hidden expectation therefore cannot be satisfied from the fixture without contradicting it."
+          "verdict": "pass",
+          "note": "A careful reviewer can connect the exposed RDS and S3 settings, wildcard reporting policy, plaintext/default credentials, missing CI scan, and production deployment plan directly to the prompt and fixture, with no hidden facts or user answers required."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 5.7,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "recheck-failed: fixture-lists-no-answer: fixture/modules/iam/main.tf:155 explicitly labels the log policy as a decoy and explains its read-only interpretation. fixture/docs/reporting.md:18-37 also states the public database, public bucket policy, and full-access role, including th",
-      "recheck-failed: key-matches-fixture: fixture/modules/logging/main.tf:18-19 sets multi-region CloudTrail and log validation to true, contradicting the hidden cloudtrail expectation of single-region and validation disabled. fixture/.github/workflows/ci.yml:39-45 also contains a ",
-      "recheck-failed: solvable-from-fixture: A careful review of fixture/modules/logging/main.tf:13-20 would conclude the CloudTrail settings are enabled and should not report the hidden single-region/disabled-validation issue. The hidden expectation therefore cannot be satisfied from"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 5.7,

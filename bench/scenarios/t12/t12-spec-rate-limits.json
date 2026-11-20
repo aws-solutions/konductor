@@ -1,0 +1,138 @@
+{
+  "id": "t12-spec-rate-limits",
+  "class": "orchestration",
+  "version": 1,
+  "phase": "requirements",
+  "phases2": [
+    "architecture",
+    "planning"
+  ],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Product agreed on rate limits for our public API (see docs/product/). Before anyone writes code, I want a spec a teammate can implement from without coming back to us: the requirements with testable acceptance criteria, a design that fits this codebase, and an ordered task list. Put it in .kiro/specs/api-rate-limits/ as requirements.md, design.md and tasks.md. Do not change the code yet. End tasks.md with one fenced json block holding an object with: requirements (list of {id, text, acceptance: list of strings}), tasks (list of {id, title, requirements: list of requirement ids, files: list of repository paths the task touches or adds, dependsOn: list of task ids}, in the order they should be done) and openQuestions (list of strings: what the folder does not settle and someone must decide).",
+  "fixture": "t12-spec-rate-limits",
+  "hidden": "t12-spec-rate-limits",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 4,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": ".kiro/specs/api-rate-limits/requirements.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": ".kiro/specs/api-rate-limits/design.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "implementable-spec",
+      "weight": 2,
+      "criterion": "A developer could build the feature from the spec alone: each requirement has acceptance criteria a test can check, the design says where the limiter runs and how the count is shared, and each task names its files and the requirement it serves. Fail: requirements restate the request with no checkable criteria, or the design names no place in this codebase. Partial: criteria and design are concrete, but one of the agreed rules (per key, exempt callers, shared count, 429 shape) has no task or no test. Pass: every agreed rule has a checkable criterion, a design decision and a task, the tasks are ordered by dependency, and the trade-offs taken (window type, store failure) are stated. (code cannot check this because the key sees the summary block, not whether the documents agree and can be built from)"
+    },
+    {
+      "id": "settled-versus-open",
+      "weight": 1,
+      "criterion": "The spec separates what the folder settles from what it does not. Fail: invents rules the folder never states as if agreed, or follows the superseded per-IP note. Partial: open points are listed, but one invented rule is presented as agreed. Pass: every rule traces to the request or the config, the superseded note is named as superseded, and the unsettled points (for example the unexplained burst figure) are open questions with an owner or a default. (code cannot check this because it cannot tell an invented rule from a sourced one)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "shared-counter",
+        "text": "Counts in the shared store (src/kv.js) with an atomic increment, so two instances give one allowance, and says what happens when the store is down (fail open or closed).",
+        "source": "https://datatracker.ietf.org/doc/html/rfc6585#section-4"
+      },
+      {
+        "id": "window-trade-off",
+        "text": "Names the window type (fixed or sliding) and its edge effect: a fixed window can let up to twice the allowance through across a window edge.",
+        "source": "https://cloud.google.com/architecture/rate-limiting-strategies-techniques"
+      },
+      {
+        "id": "burst-undefined",
+        "text": "Notices that config/plans.json has a burst figure the request never explains and raises it as an open question instead of guessing.",
+        "source": "original"
+      },
+      {
+        "id": "limit-after-auth",
+        "text": "Places the check after authentication and before routing, so unknown keys get 401 without being counted, /health is never counted, and admin keys skip it.",
+        "source": "original"
+      },
+      {
+        "id": "config-not-code",
+        "text": "Reads plan figures from config/plans.json rather than copying 90 and 720 into code, because sales quotes the file.",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "Add a rate limiter middleware with 100 requests per minute per IP.",
+      "Use an in-memory counter in each server process.",
+      "Requirements: the API shall be rate limited. Tasks: implement rate limiting, add tests.",
+      "Limit every caller including the health check and ops keys."
+    ]
+  },
+  "targetSkills": [
+    "kiro-requirements-generation",
+    "kiro-design-generation",
+    "kiro-task-generation"
+  ],
+  "targetSop": "kiro-spec-workflow",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude-opus-5.5",
+    "date": "2026-11-20",
+    "source": "original",
+    "singleFamily": true,
+    "note": "written by hand by the mate task-fix worker (owner-approved, no paid author call); needs a non-Claude recheck (DEBT D-108)"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 0,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null
+}

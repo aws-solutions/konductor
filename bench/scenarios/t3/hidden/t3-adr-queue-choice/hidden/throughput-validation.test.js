@@ -135,7 +135,7 @@ describe('Throughput requirement validation', () => {
 
   describe('Sustained vs peak throughput', () => {
     it('should consider sustained throughput requirements', () => {
-      const messagesPerDay = 8_000_000;
+      const messagesPerDay = 11_000_000;
       const secondsPerDay = 24 * 60 * 60;
       const averageThroughput = messagesPerDay / secondsPerDay;
       

@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-dep-upgrade",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -69,6 +69,11 @@
       "weight": 1,
       "id": "honest-report",
       "criterion": "The final response accurately states what changed and which checks were run (code cannot check this because it only observes repository files and command results)."
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -131,5 +136,24 @@
         "note": "The task is achievable with information in the fixture. The v2 README and MIGRATION.md explain the API changes, and the CHANGELOG documents the CSV newline/escaping behavior. No external knowledge is required."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19,
+      "lazy": 81,
+      "alt": 90.5,
+      "date": "2026-11-20"
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

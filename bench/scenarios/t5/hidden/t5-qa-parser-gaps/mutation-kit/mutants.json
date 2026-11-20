@@ -79,5 +79,16 @@
       ],
       "note": "invalid timeout values skip validation"
     }
-  ]
+  ],
+  "refactors": [
+    {
+      "id": "r1",
+      "files": [
+        "src/values.js"
+      ],
+      "note": "same behaviour, new internals: one numeric pattern, range check inlined"
+    }
+  ],
+  "maxTests": 64,
+  "baseTests": 24
 }

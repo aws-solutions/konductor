@@ -116,3 +116,18 @@ test('lint flags structural problems and unknown operators; evaluate throws on t
   assert.ok(lint(bad).some((p) => /unsupported/.test(p)));
   assert.throws(() => evaluate([bad], { action: 'a:b', resource: 'x' }), /unsupported/);
 });
+
+test('${*}, ${?} and ${$} are literal characters, not wildcards, in resources and conditions', () => {
+  // A deny on a literal "*" tenant (an escaped value) must not match every tenant (the t4-arch-tenant-abac bug).
+  const deny = doc(
+    { Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:aws:s3:::data/*' },
+    { Effect: 'Deny', Action: 's3:GetObject', Resource: 'arn:aws:s3:::data/${*}/*' },
+    { Effect: 'Deny', Action: 's3:GetObject', Resource: '*', Condition: { StringLike: { 'aws:PrincipalTag/tenant': 'a${?}c' } } },
+  );
+  assert.equal(evaluate([deny], { action: 's3:GetObject', resource: 'arn:aws:s3:::data/t1/k' }), 'allow');
+  assert.equal(evaluate([deny], { action: 's3:GetObject', resource: 'arn:aws:s3:::data/*/k' }), 'deny');
+  assert.equal(evaluate([deny], { action: 's3:GetObject', resource: 'arn:aws:s3:::data/t1/k', context: { 'aws:PrincipalTag/tenant': 'abc' } }), 'allow');
+  assert.equal(evaluate([deny], { action: 's3:GetObject', resource: 'arn:aws:s3:::data/t1/k', context: { 'aws:PrincipalTag/tenant': 'a?c' } }), 'deny');
+  const eq = doc({ Effect: 'Allow', Action: 'x:Y', Resource: '*', Condition: { StringEquals: { 'k': 'cost$${$}' } } });
+  assert.ok(isAllowed([eq], { action: 'x:Y', resource: '*', context: { k: 'cost$$' } }));
+});

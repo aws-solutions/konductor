@@ -1,7 +1,7 @@
 {
   "id": "t1-nfr-report-queries",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
@@ -59,6 +59,11 @@
       "id": "verification-report",
       "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response).",
       "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -118,7 +123,34 @@
         "verdict": "pass",
         "note": "All requirements are stated in the prompt. The connection parameter requirement is explicit ('ReportDatabase must also accept an optional sqlite3 connection'). The 3-statement limit, 8 MiB limit, and byte-for-byte output requirements are all clearly specified."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt specifies performance requirements and constraints (3 SQL statements, 8 MiB memory, byte-for-byte output) without prescribing any specific method, framework, or tool, and contains no misleading hints pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture code shows N+1 query patterns in database.py (per-customer queries) and materializes results in memory (report.py, formatters.py), but does not explicitly describe the solution or mention joined queries, streaming, or keyed lookups as the answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "fail",
+          "note": "The prompt states ReportDatabase must accept an optional sqlite3 connection parameter, but the fixture's ReportDatabase.__init__ only accepts a path and has no connection parameter; the hidden tests use ReportDatabase(path, connection=conn), which will fail on the unmodified fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can identify the N+1 query problem and quadratic list scan from the fixture code, understand the memory issue from materialized results, and devise solutions (joined queries, dictionary lookups, streaming) from the stated constraints without seeing hidden tests."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -158,7 +190,21 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "t1-worker",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 29.3,
+      "alt": 81,
+      "date": "2026-11-20"
+    }
   }
 }

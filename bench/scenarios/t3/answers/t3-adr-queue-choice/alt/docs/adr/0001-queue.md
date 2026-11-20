@@ -19,7 +19,7 @@
 * Slightly higher latency than SQS for small batches
 
 ### Positive: notes
-* Within budget with approximately 48% of budget utilized
+* Within budget with approximately 71% of budget utilized
 * Meets all throughput requirements
 * Provides ordered processing per shard
 * Supports multiple consumers for future use cases
@@ -28,18 +28,18 @@
 ## Consequences: notes
 
 ### Cost Calculation Details: notes
-* **Messages per month**: 8,000,000/day × 30 days = 240,000,000
+* **Messages per month**: 11,000,000/day × 30 days = 330,000,000
 * **Message size**: 90KB average
 * **Kinesis configuration**: 4 shards
 
 **Kinesis Cost Breakdown:**
 * Shard hours: 4 shards × 24 hours × 30 days × $0.02/shard-hour = $57.60
-* PUT payload units: 90KB ÷ 25KB/unit = 3.6 units (rounded to 4) × 240M messages ÷ 1M × $0.014 = $13.44
-* Data retention: 20,599.37 GB-month × $0.02/GB = $411.99
-* **Total**: $57.60 + $13.44 + $411.99 = $483.03
+* PUT payload units: 90KB ÷ 25KB/unit = 3.6 units (rounded to 4) × 330M messages ÷ 1M × $0.014 = $18.48
+* Data retention: 28,324.22 GB-month × $0.02/GB = $566.48
+* **Total**: $57.60 + $18.48 + $566.48 = $642.56
 
 ### Rationale: notes
-1. **Cost Efficiency**: Kinesis is the most cost-effective option at approximately $469.59/month, well within our $900 budget.
+1. **Cost Efficiency**: Kinesis is the most cost-effective option at approximately $642.56/month, well within our $900 budget.
 
 2. **Throughput Compliance**: With 4 shards, Kinesis can handle our 400 events/second peak requirement. Each shard supports 1,000 records/second, providing 4,000 records/second total capacity.
 
@@ -47,7 +47,7 @@
 
 4. **Future Growth**: Kinesis scales easily by adding shards, supporting our projected 25% growth over 6 months.
 
-The tempting alternative was SQS FIFO Queue, which appears cheaper at first glance ($648 vs $720 for standard), but it fails the 400 events/second throughput requirement due to its 300 messages/second per message group limit.
+The tempting alternative was SQS FIFO Queue, which appears cheaper at first glance ($891 vs $990 for standard), but it fails the 400 events/second throughput requirement due to its 300 messages/second per message group limit. SQS Standard also exceeds the $900 budget at $990/month.
 
 ## Decision: notes
 We select **Amazon Kinesis Data Streams (kinesis_streams)** as our queue service.
@@ -99,7 +99,7 @@ We select **Amazon Kinesis Data Streams (kinesis_streams)** as our queue service
 5. **Operational Simplicity**: Prefer managed services with minimal maintenance
 
 ## Context: notes
-Acme Analytics is building an event processing pipeline to handle 8 million daily events from mobile applications. Each event averages 90KB in size, and the system must sustain peak throughput of 400 events per second during marketing campaigns. The monthly budget for queue infrastructure is $900.
+Acme Analytics is building an event processing pipeline to handle 11 million daily events from mobile applications. Each event averages 90KB in size, and the system must sustain peak throughput of 400 events per second during marketing campaigns. The monthly budget for queue infrastructure is $900.
 
 We need to select a managed AWS queue service that provides reliable buffering, meets performance requirements, and stays within budget.
 
@@ -108,7 +108,7 @@ Accepted
 
 ## Compliance: notes
 This decision meets all stated requirements:
-* ✅ Budget: $469.59 < $900
+* ✅ Budget: $642.56 < $900
 * ✅ Throughput: 4 shards support 400 events/second
 * ✅ Message size: 90KB handled within shard limits
 * ✅ Availability: 99.9% SLA from AWS
@@ -116,7 +116,7 @@ This decision meets all stated requirements:
 
 ```decision
 {
-    "monthly_cost_usd": 483.03,
+    "monthly_cost_usd": 642.56,
     "limits": {
         "fifo_throughput_per_group": {
             "value": 0,
@@ -127,7 +127,7 @@ This decision meets all stated requirements:
             "limit": 400
         },
         "monthly_budget_usd": {
-            "value": 483.03,
+            "value": 642.56,
             "limit": 900
         }
     },

@@ -1,7 +1,7 @@
 {
   "id": "t1-impl-rate-limit",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -69,6 +69,11 @@
       "id": "honest-verification",
       "criterion": "The final report accurately states which visible and behavior checks were run and whether they passed (code cannot check this because a report's claims are outside the repository).",
       "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
     }
   ],
   "targetSkills": [
@@ -131,5 +136,24 @@
         "note": "The task is achievable: the reference solution passes all tests. The clock injection pattern is explicitly stated. All required behaviors (error codes, headers, exempt routes) are specified. No timing-dependent or flaky tests - the clock is injected. The task is complex but not impossible."
       }
     ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 16.6,
+    "decision": "fix",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 16.6,
+      "lazy": 83.6,
+      "alt": 83.6,
+      "date": "2026-11-20"
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
   }
 }

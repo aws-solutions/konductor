@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The author prompt renderer. A batch config's `prompt.render(id, lib)` builds the prompt of one task from its
+// The author prompt renderer. A batch config's `prompt.render(id, lib, step)` builds the prompt of one task from its
 // briefs/<id>.json and prompts/*.md with the helpers below; the batch keeps only its own wording (stacks, kinds).
-//   node bench/scenarios/lib/prompt.js --config bench/scenarios/tN/scenario.config.js <task-id>   (prints the prompt)
+//   node bench/scenarios/lib/prompt.js --config bench/scenarios/tN/scenario.config.js <task-id> [step]   (prints the prompt;
+//   a batch with a multi-step author flow, such as T1's data and key steps, takes the step name)
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -32,17 +33,17 @@ function helpers(cfg) {
   };
 }
 
-function render(cfg, id) {
+function render(cfg, id, step = null) {
   if (!cfg.prompt?.render) throw new Error(`${cfg.dir}: the batch config has no prompt.render`);
-  return cfg.prompt.render(id, helpers(cfg));
+  return cfg.prompt.render(id, helpers(cfg), step);
 }
 
 if (require.main === module) {
   const argv = process.argv.slice(2);
   const i = argv.indexOf('--config');
-  const id = argv.find((a, j) => !a.startsWith('--') && j !== i + 1);
-  if (i < 0 || !id) { console.error('usage: prompt.js --config FILE <task-id>'); process.exit(2); }
-  process.stdout.write(render(loadConfig(path.resolve(argv[i + 1])), id));
+  const [id, step = null] = argv.filter((a, j) => !a.startsWith('--') && j !== i + 1);
+  if (i < 0 || !id) { console.error('usage: prompt.js --config FILE <task-id> [step]'); process.exit(2); }
+  process.stdout.write(render(loadConfig(path.resolve(argv[i + 1])), id, step));
 }
 
 module.exports = { fill, helpers, render };

@@ -1060,6 +1060,12 @@
             "type": "integer",
             "minimum": 1
           },
+          "signal": {
+            "enum": [
+              "marker",
+              "heuristic"
+            ]
+          },
           "matched": {
             "type": "array",
             "items": {

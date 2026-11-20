@@ -1,0 +1,23 @@
+{
+  "id": "t10-dev-config-reload",
+  "kind": "phased",
+  "phase": "multi-phase",
+  "role": "developer",
+  "phases2": [
+    "implementation",
+    "testing",
+    "release-ops"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ts",
+  "size": "50 to 70",
+  "source": {
+    "url": "https://12factor.net/config",
+    "licence": "MIT (12factor.net, as listed in the plan datasets note); idea only",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "voice": "a developer on the team who owns the worker service, writing to a teammate",
+  "brief": "Phase: long multi-phase, idea to ship. Role: developer. Repo: a TypeScript (erasable syntax, run by Node type stripping) job-worker service whose config files under config/ are read once at start. The ask: reload the config on SIGHUP or when a file changes, validate it first, swap it in atomically, keep the last good config when the new one is bad, tell listeners what changed, and never let a running job see a half-applied config. Traps to plant (adapt, five or more): (1) several modules destructure config values at import time, so a reload never reaches them; (2) the existing schema validator accepts unknown keys silently, so a misspelled key passes; (3) environment variables override file values by a rule in docs/config.md, and a reload must keep that order; (4) a job reads two config values in two separate calls, so a swap between them gives a mixed view; (5) editors write files in two steps, so a watcher fires twice and sometimes sees an empty file. Decisions the design note must settle: snapshot per job or live reads, validation and rollback, debounce, what cannot be reloaded, rollout behind a flag. The feature is built end to end: the request asks for a short design note, the feature with tests, a rollout plan and a release note."
+}

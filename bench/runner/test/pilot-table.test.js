@@ -109,6 +109,8 @@ test('the table lists every run, the totals and the tasks that need a second run
   assert.match(text, /hand-edited with no re-check 1\./);
   assert.match(text, /7 run\(s\), 14\.00 credits/);
   assert.match(text, /Second run for noisy tasks: t8-a,t8-b/);
+  assert.match(text, /script-made copies of the reference, not independent attempts/);
+  assert.match(text, /For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there/);
 });
 
 test('the batch summary counts runs, distinct tasks and flagged tasks per batch, and sums to the whole table', () => {

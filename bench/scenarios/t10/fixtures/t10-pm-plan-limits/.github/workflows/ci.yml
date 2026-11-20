@@ -1,0 +1,13 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --version
+      - run: npm test
+      - run: node scripts/check-json.js
+      - run: node scripts/check-doc-links.js

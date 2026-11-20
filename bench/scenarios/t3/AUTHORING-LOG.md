@@ -106,3 +106,76 @@
 | t3-adr-cache-sizing-twin | lazy+alt answers | glm-5 | 1.41 |
 
 Notes (2026-11-19): the lazy answers of the two twins were written by hand (a model-written lazy answer came out fully correct for a lookup task). The four decision tasks load `hidden/gate.js` with `node --require`, which fails every non-structural test when the chosen option is not an acceptable one. The dry-run score is the hidden-test fraction. Twin tests were rewritten to accept any table layout.
+
+## FX fix round (2026-11-20)
+
+Paid calls of the FX job (owner-approved, hard cap 90 credits for all batches, abort limit 10 credits per call, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t3-adr-cache-sizing recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 45.8 of 90
+- result: t3-adr-cache-sizing recheck gpt-5.6-luna credits=0.397 secs=30
+- plan: t3-arch-notification-pipeline recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 46.2 of 90
+- result: t3-arch-notification-pipeline recheck gpt-5.6-luna credits=0.355 secs=30
+- plan: t3-db-audit-retention recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 46.5 of 90
+- result: t3-db-audit-retention recheck gpt-5.6-luna credits=0.323 secs=20
+- plan: t3-db-order-history recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 46.9 of 90
+- result: t3-db-order-history recheck gpt-5.6-luna credits=0.508 secs=30
+- plan: t3-pm-feature-scope recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 47.4 of 90
+- result: t3-pm-feature-scope recheck gpt-5.6-luna credits=0.599 secs=30
+- plan: t3-dev-lib-choice fix by deepseek-3.2, abort limit 10 credits, spend so far 63.0 of 90
+- result: t3-dev-lib-choice fix deepseek-3.2 credits=5.860 secs=430
+- plan: t3-dev-lib-choice recheck by gpt-5.6-luna, abort limit 10 credits, spend so far 68.8 of 90
+- result: t3-dev-lib-choice recheck gpt-5.6-luna credits=0.383 secs=30
+
+Outcomes:
+
+- t3-dev-lib-choice: DROPPED. deepseek-3.2 fixed the failing hidden test (a regex flag), the reference reached 100, but the gpt-5.6-luna recheck failed key-matches-fixture and solvable-from-fixture (the expert key's 45 JSON cores conflict with the 4.5 cores per 10,000 events in load-test-results.md). Task files are not kept in the tree.
+- First non-Claude recheck of the five scorer fixes: t3-adr-cache-sizing and t3-arch-notification-pipeline pass; t3-db-audit-retention, t3-db-order-history and t3-pm-feature-scope fail (the same model had passed them before the scorer fix, so these verdicts vary between runs). They are recorded as they came, pilot.decision fix with blockers, and not fixed (spend cap).
+- Not reached (spend cap): t3-adr-multiregion-dr, t3-adr-queue-choice, t3-nfr-capacity-autoscale, t3-nfr-latency-budget, t3-sre-log-retention, and the three tasks above.
+
+## FX2 fix round (2026-11-20)
+
+Paid calls of the FX2 job (owner-approved, hard cap 60 credits for all batches, abort limit per call as written in its plan line, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t3-db-audit-retention recheck by gpt-5.6-luna, abort limit 3 credits, spend so far 0.0 of 60
+- result: t3-db-audit-retention recheck gpt-5.6-luna credits=0.395 secs=30
+- plan: t3-db-order-history recheck by gpt-5.6-luna, abort limit 3 credits, spend so far 0.4 of 60
+- result: t3-db-order-history recheck gpt-5.6-luna credits=1.050 secs=60
+- plan: t3-pm-feature-scope recheck by gpt-5.6-luna, abort limit 3 credits, spend so far 1.4 of 60
+- result: t3-pm-feature-scope recheck gpt-5.6-luna credits=0.549 secs=30
+- plan: t3-adr-multiregion-dr fix by deepseek-3.2, abort limit 10 credits, spend so far 2.0 of 60
+- result: t3-adr-multiregion-dr fix deepseek-3.2 credits=10 secs=551
+- plan: t3-adr-queue-choice fix by deepseek-3.2, abort limit 10 credits, spend so far 12.0 of 60
+- result: t3-adr-queue-choice fix deepseek-3.2 credits=10 secs=541
+- plan: t3-adr-queue-choice recheck by gpt-5.6-luna, abort limit 3 credits, spend so far 22.0 of 60
+- result: t3-adr-queue-choice recheck gpt-5.6-luna credits=0.850 secs=50
+- plan: t3-adr-queue-choice recheck by glm-5, abort limit 3 credits, spend so far 22.8 of 60
+- result: t3-adr-queue-choice recheck glm-5 credits=4.013 secs=100
+- plan: t3-nfr-capacity-autoscale fix by deepseek-3.2, abort limit 10 credits, spend so far 26.9 of 60
+- result: t3-nfr-capacity-autoscale fix deepseek-3.2 credits=10 secs=551
+- plan: t3-adr-multiregion-dr recheck by gpt-5.6-luna, abort limit 3 credits, spend so far 36.9 of 60
+- result: t3-adr-multiregion-dr recheck gpt-5.6-luna credits=0.722 secs=50
+- plan: t3-adr-multiregion-dr recheck by glm-5, abort limit 3 credits, spend so far 37.6 of 60
+- result: t3-adr-multiregion-dr recheck glm-5 credits=1.926 secs=80
+- plan: t3-nfr-latency-budget fix by deepseek-3.2, abort limit 10 credits, spend so far 39.5 of 60
+- result: t3-nfr-latency-budget fix deepseek-3.2 credits=10 secs=551
+- plan: t3-nfr-latency-budget recheck by gpt-5.6-luna, abort limit 3 credits, spend so far 49.5 of 60
+- result: t3-nfr-latency-budget recheck gpt-5.6-luna credits=0.420 secs=30
+
+FX2 outcomes (2026-11-20). A fix call stopped at its 540 s limit has no final credit count and is booked at its 10 credit abort limit.
+
+- t3-db-audit-retention, t3-db-order-history, t3-pm-feature-scope: second recheck by gpt-5.6-luna (the scorer-fix recheck had failed once). All three failed again, so they stay `fix` with blockers and are not dropped. Not fixed: the cap was reached first.
+- t3-adr-multiregion-dr: deepseek-3.2 made exactly one option acceptable (meta.json, the key and a hidden test). The reference, empty and alternative answers passed, but the shallow answer scored 55. The shared choice gate was added by hand (HAND-EDITS.md), then lazy 5. Recheck 1 (gpt-5.6-luna) failed fixture-lists-no-answer and solvable-from-fixture; the second recheck (glm-5) passed all four. Kept. Version 2; reference 100, empty 0, lazy 5, alternative 100.
+- t3-adr-queue-choice: deepseek-3.2 fix; the shallow answer scored over 40, so the same hand-added gate (HAND-EDITS.md) brought it to 5. Recheck 1 failed key-matches-fixture and solvable-from-fixture; the second (glm-5) passed. Kept. Version 2; 100, 0, 5, 81.
+- t3-nfr-latency-budget: deepseek-3.2 fix. Recheck by gpt-5.6-luna passed. Kept. Version 2; 100, 0, 25, 100.
+- t3-nfr-capacity-autoscale: DROPPED. The deepseek-3.2 fix left the reference at 74 and the alternative at 74 (gates need 95 and 80). The task's files are not kept in the tree.
+- Not reached (cap): t3-sre-log-retention, and the fixes for t3-db-audit-retention, t3-db-order-history and t3-pm-feature-scope.
+Shared helpers (batch S, 2026-11-20): `decision-lib.js` and `gate.js` moved from `_shared/` to `bench/scenarios/lib/hidden/`; each hidden dir names the ones it uses in `.bench-lib.json` and the tests check copies them in at run time. The dry run is `node bench/scenarios/lib/dry-run.js --config bench/scenarios/t3/scenario.config.js [id]`.
+
+## FX3 fix round (2026-11-20)
+
+Paid calls of the FX3 job (owner-approved, soft cap 60 credits, every call counted at 15 credits in the spend check, abort limit per call as written in its plan line, spend checked before each call). A plan line is written before each call and a result line after it.
+
+- plan: t3-sre-log-retention fix by deepseek-3.2, abort limit 10 credits, counted at 15, spend so far 0.0 of 60
+- result: t3-sre-log-retention fix deepseek-3.2 credits=10 secs=541
+
+FX3 outcome (2026-11-20): t3-sre-log-retention DROPPED. deepseek-3.2 rewrote the prompt (no longer naming the strategies) and changed three fixture files for the key; the reference stayed at 100, but the shallow answer from the shared lib scored 100 (gate 40), so the free gate failed and no recheck was spent. A fix call stopped at its 540 s limit is booked at its 10 credit abort limit.

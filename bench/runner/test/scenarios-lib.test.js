@@ -14,7 +14,7 @@ const { sharedHelpers, addSharedHelpers, helpersHash, MANIFEST } = require('../l
 const { codeScore } = require('../../scenarios/lib/score.js');
 const { loadConfig } = require('../../scenarios/lib/config.js');
 const { dryRun, pilotWith, record } = require('../../scenarios/lib/dry-run.js');
-const { shallow, vary, follow, textAnswer, writeAnswer, DEFAULTS } = require('../../scenarios/lib/answers.js');
+const { shallow, vary, follow, textAnswer, writeAnswer, isCode, shallowOverlay, DEFAULTS } = require('../../scenarios/lib/answers.js');
 const { fill, render } = require('../../scenarios/lib/prompt.js');
 const { stageOf, COMMANDS, foldHelpers, auditStream, reviewed, withExpertRubric } = require('../../scenarios/lib/stage.js');
 
@@ -154,10 +154,25 @@ test('an answer of code only has a lazy answer (half the files) and no alternati
     write(path.join(root, 'sol', 'out.json'), '{"a":[1,2]}\n');
     const lazy = writeAnswer('lazy', path.join(root, 'sol'), path.join(root, 'lazy'));
     assert.deepEqual(lazy.files, { 'out.json': 'json', 'src/a.js': 'kept', 'test/b.test.js': 'dropped' });
-    assert.equal(fs.readFileSync(path.join(root, 'lazy', 'out.json'), 'utf8'), '{"a":[1,1]}\n', 'a one-line JSON stays one line');
+    assert.equal(fs.readFileSync(path.join(root, 'lazy', 'out.json'), 'utf8'), '{"a":[1]}\n', 'a one-line JSON stays one line');
     fs.rmSync(path.join(root, 'sol', 'out.json'));
     assert.equal(writeAnswer('alt', path.join(root, 'sol'), path.join(root, 'alt')).written, false);
     assert.ok(!fs.existsSync(path.join(root, 'alt')));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the shallow overlay lays the reference without its code changes', () => {
+  const root = tmp();
+  try {
+    write(path.join(root, 'sol', 'src', 'a.js'), 'code\n');
+    write(path.join(root, 'sol', 'test', 'a.test.js'), 'test\n');
+    write(path.join(root, 'sol', 'CHANGELOG.md'), 'log\n');
+    write(path.join(root, 'sol', 'DELETE.txt'), 'x\n');
+    const ws = path.join(root, 'ws');
+    fs.mkdirSync(ws);
+    shallowOverlay(path.join(root, 'sol'))(ws);
+    assert.deepEqual(fs.readdirSync(ws).sort(), ['CHANGELOG.md', 'test']);
+    assert.ok(isCode('src/a.js') && !isCode('test/a.test.js') && !isCode('tests/test_x.py') && isCode('lib/x.py'));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -188,6 +203,36 @@ test('fold-helpers turns committed byte copies of shared helpers into .bench-lib
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(hid, MANIFEST), 'utf8')), { 'hidden/grade.cjs': 'grade.cjs', 'kit/grade.js': 'grade.cjs' });
     assert.deepEqual(foldHelpers(hid, lib), {}, 'a second fold changes nothing');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a stopped call counts at the abort limit, a refused call throws, and the run script follows runEnv', () => {
+  const root = tmp();
+  const was = { a: process.env.TY_AUTH, r: process.env.TY_RUN };
+  try {
+    const auth = path.join(root, 'auth');
+    process.env.TY_AUTH = auth;
+    const dir = path.join(root, 'ty');
+    write(path.join(dir, 'briefs', 'x.json'), JSON.stringify({ author: 'glm-5' }));
+    const s = stageOf(loadConfig({ dir, stage: { runEnv: 'TY_RUN', abortCredits: 15 } }));
+    assert.equal(s.runScript(), 'run.sh');
+    process.env.TY_RUN = 'checked.sh';
+    assert.equal(s.runScript(), 'checked.sh');
+    write(path.join(auth, 'work', 'cut.out'), `${JSON.stringify({ type: 'event' })}\n`);
+    assert.deepEqual([s.creditsOf(path.join(auth, 'work', 'cut.out')).credits, s.creditsOf(path.join(auth, 'work', 'cut.out')).estimated], [15, true]);
+    write(path.join(auth, 'checked.sh'), 'touch "$4.refused"\n');
+    write(path.join(auth, 'work', 'x.prompt.txt'), '');
+    assert.throws(() => s.call('m', path.join(auth, 'work', 'x'), 'p', 'x'), /spend check refused the x call/);
+    assert.equal(COMMANDS['log-author'](s, 'x', 'none').refused, true);
+  } finally {
+    for (const [k, v] of [['TY_AUTH', was.a], ['TY_RUN', was.r]]) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('pilot.dryRun takes the higher of the lazy and the shallow score', () => {
+  const res = { scores: { reference: 100, stub: 5, lazy: 20, alt: 90, shallow: 38 }, pass: true };
+  assert.equal(pilotWith(null, res, 'd').dryRun.lazy, 38);
+  assert.equal(pilotWith(null, { ...res, scores: { ...res.scores, shallow: undefined } }, 'd').dryRun.lazy, 20);
 });
 
 test('the stage assembles a task from the batch builder and lays out its parts, with no model call', () => {

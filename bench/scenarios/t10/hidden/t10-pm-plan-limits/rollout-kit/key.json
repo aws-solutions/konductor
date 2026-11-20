@@ -1,0 +1,104 @@
+{
+  "outputFile": "docs/rollout/project-limits.md",
+  "items": [
+    {
+      "id": "known-rings",
+      "type": "inSet",
+      "path": "phases",
+      "field": "ring",
+      "fromFile": "ops/rings.json",
+      "pattern": "\\\"name\\\":\\\"([^\\\"]+)\\\"",
+      "min": 4,
+      "weight": 2
+    },
+    {
+      "id": "known-metrics",
+      "type": "every",
+      "path": "phases",
+      "match": {
+        "field": "gate.metric",
+        "all": [
+          "^[a-z_.]+$"
+        ]
+      },
+      "min": 4,
+      "weight": 1
+    },
+    {
+      "id": "metrics-catalogue",
+      "type": "inSet",
+      "path": "phases",
+      "field": "gate.metric",
+      "fromFile": "ops/metrics.csv",
+      "pattern": "^([a-z_.]+),",
+      "min": 4,
+      "weight": 2
+    },
+    {
+      "id": "ring-order",
+      "type": "order",
+      "path": "phases",
+      "first": {
+        "field": "audience",
+        "all": [
+          "internal"
+        ]
+      },
+      "then": {
+        "field": "audience",
+        "all": [
+          "all"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "reversible-rollback",
+      "type": "text",
+      "path": "rollback.steps",
+      "all": [
+        "disable",
+        "project_limits_enabled",
+        "stop|restore",
+        "unchanged|prior"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "phase-precision",
+      "type": "maxLen",
+      "path": "phases",
+      "min": 3,
+      "max": 4,
+      "weight": 1
+    },
+    {
+      "id": "rollout-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "file": "ops/metrics",
+          "all": [
+            "http_request_duration_ms"
+          ]
+        },
+        {
+          "file": "ops/metrics",
+          "all": [
+            "milliseconds"
+          ]
+        },
+        {
+          "file": "ops/rings",
+          "all": [
+            "name",
+            "dev"
+          ]
+        }
+      ],
+      "min": 3,
+      "weight": 1
+    }
+  ]
+}

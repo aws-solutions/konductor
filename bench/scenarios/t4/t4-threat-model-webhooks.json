@@ -1,6 +1,6 @@
 {
   "id": "t4-threat-model-webhooks",
-  "version": 1,
+  "version": 2,
   "class": "review",
   "phase": "design-review",
   "phases2": [],
@@ -59,9 +59,9 @@
   ],
   "rubric": [
     {
-      "id": "review-quality",
-      "criterion": "The prose connects each finding to the actual data flow and gives a mitigation that an implementation team could act on (code cannot check this because it cannot judge whether the explanation is technically useful and grounded in the design).",
-      "weight": 2
+      "id": "attacker-path-fix",
+      "weight": 2,
+      "criterion": "Each finding names an attacker, a path through this design, and a fix the team can build; the document says what stays open. Fail: generic controls (\"use HTTPS\", \"add auth\") or findings not tied to a named component or flow. Partial: findings tied to components with workable fixes, but no attacker model or no residual-risk section. Pass: attacker, path and fix for each finding, plus a residual-risk section, each shown by a quote; weak answers from the key earn nothing. (code cannot check this because the hidden test matches component names and words, so a keyword list scores the same as a threat model)"
     }
   ],
   "expertKey": {
@@ -211,7 +211,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

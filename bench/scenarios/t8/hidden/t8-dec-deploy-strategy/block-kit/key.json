@@ -12,7 +12,9 @@
         "rolling",
         "blue.?green"
       ],
-      "weight": 2
+      "weight": 2,
+      "section": "decision",
+      "gate": true
     },
     {
       "id": "canary-chosen-with-small-exposure",
@@ -23,7 +25,8 @@
           "canary",
           "\"chosen\""
         ]
-      }
+      },
+      "section": "decision"
     },
     {
       "id": "bluegreen-rejected-for-capacity-cost",
@@ -36,7 +39,8 @@
           "capacity|cost|budget|second fleet|double|7,?200|2,?800|headroom"
         ]
       },
-      "weight": 2
+      "weight": 2,
+      "section": "decision"
     },
     {
       "id": "rolling-rejected-for-broad-exposure",
@@ -48,7 +52,8 @@
           "\"rejected\"",
           "drain|session|websocket|exposure|revert|12 ?min|all hosts|whole fleet|fleet-wide|broad"
         ]
-      }
+      },
+      "section": "decision"
     },
     {
       "id": "constraint-capacity",
@@ -60,7 +65,8 @@
           "72 ?%",
           "capacity-report"
         ]
-      }
+      },
+      "section": "constraints"
     },
     {
       "id": "constraint-drain",
@@ -73,7 +79,8 @@
           "drain",
           "slo"
         ]
-      }
+      },
+      "section": "constraints"
     },
     {
       "id": "constraint-schema",
@@ -85,7 +92,8 @@
           "schema|database|migration",
           "schema-compat"
         ]
-      }
+      },
+      "section": "constraints"
     },
     {
       "id": "constraint-cost",
@@ -97,7 +105,8 @@
           "7,?200",
           "finance"
         ]
-      }
+      },
+      "section": "constraints"
     },
     {
       "id": "constraint-frequency",
@@ -110,7 +119,8 @@
           "week",
           "deploy-goals"
         ]
-      }
+      },
+      "section": "constraints"
     },
     {
       "id": "constraint-revert-window",
@@ -122,7 +132,8 @@
           "revert|roll ?back|stop",
           "compliance"
         ]
-      }
+      },
+      "section": "constraints"
     },
     {
       "id": "revisit-capacity-threshold",
@@ -133,14 +144,17 @@
           "78 ?%",
           "utili[sz]ation|capacity|spare|headroom"
         ]
-      }
+      },
+      "section": "decision"
     },
     {
       "id": "bounded-constraint-list",
       "type": "maxLen",
       "path": "constraints",
       "min": 5,
-      "max": 10
+      "max": 10,
+      "section": "constraints"
     }
-  ]
+  ],
+  "scoring": "sections"
 }

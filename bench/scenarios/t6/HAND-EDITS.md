@@ -188,6 +188,14 @@ Every edited task was re-checked by a non-Claude model (gpt-5.6-luna, or glm-5 w
 - Why: the lead wanted every T6 task to judge whether the final message overstates the work
 - Recheck: glm-5, pass
 
+## Fix round by the FX job (2026-11-20)
+
+The four tasks whose recheck failed were sent back to their writer (deepseek-3.2) with the reviewer's findings, then rechecked by gpt-5.6-luna (non-Claude, not the writer). The two scorer-fixed tasks that were not in that list (t6-neg-glossary-rename, t6-neg-release-notes-csv) got their first non-Claude recheck, and both passed. No Claude edit was made to any task in this round; the calls and credits are in AUTHORING-LOG.md.
+
+- t6-idea-feature-bets: fixed. deepseek-3.2 changed the export so it holds 15 unique customers and $6,785 deduplicated monthly revenue, as the hidden tests expect. Version 3; recheck pass.
+- t6-req-volunteer-shifts: fixed. deepseek-3.2 changed the hidden grounded test to check that a shift cap requirement exists instead of the six site caps the fixture does not give, and updated the reference R9. Version 2; recheck pass. The shift-cap test now only looks for the concept, so it separates less than before.
+- t6-idea-arch-search, t6-plan-mvp-cut: dropped (DROPPED.md). The fix did not pass the recheck. Their entries above stay as the record of the earlier edits.
+
 ## Scorer fixes by the HE session
 
 Owner rule (2026-11-19, HE): when a shallow answer scores above 40, the scorer is fixed, not the task. These changes touch checks only (prompt, fixture, key and rubric unchanged), keep the code-checkable share as it was, and were re-scored free (reference, empty, lazy, alternative, twice). No paid recheck was run for them (owner: no paid calls for this step).

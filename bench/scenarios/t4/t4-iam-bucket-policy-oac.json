@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-bucket-policy-oac",
-  "version": 1,
+  "version": 3,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -58,26 +58,16 @@
     },
     {
       "id": "proper_private_handling",
-      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround (code cannot check this because implementation approach varies)",
+      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround. Fail: a separate bucket, a second distribution or a workaround, or private paths still readable. Partial: private paths refused, but by a broad deny that also blocks a needed public path, or with no explanation. Pass: one clear statement keeps downloads/private/ unreadable through the distribution, the public paths still work, and the message says why. (code cannot check this because implementation approach varies)",
       "weight": 1
     }
   ],
   "expertKey": {
     "items": [
       {
-        "id": "block-public-access",
-        "text": "Recommends turning on S3 Block Public Access for these buckets (or the account) so a later policy edit cannot make them public again.",
-        "source": "AWS S3 User Guide, Blocking public access to your Amazon S3 storage, https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html (AWS documentation; idea only, paraphrased)"
-      },
-      {
-        "id": "origin-access-setup",
-        "text": "Notes that the CDN must be set to sign its origin requests (origin access control) for the service-principal grant to work, and that the old public website endpoint stops working.",
-        "source": "AWS CloudFront Developer Guide, Restricting access to an Amazon S3 origin, https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html (AWS documentation; idea only, paraphrased)"
-      },
-      {
-        "id": "kms-objects",
-        "text": "Mentions that objects encrypted with a customer managed key also need the CDN allowed to decrypt with that key, or confirms the buckets use S3-managed keys.",
-        "source": "AWS CloudFront Developer Guide, Restricting access to an Amazon S3 origin, https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html (AWS documentation; idea only, paraphrased)"
+        "id": "secure-transport-importance",
+        "text": "Explains that the aws:SecureTransport condition prevents data exposure over plain HTTP, which is especially important for sensitive downloads.",
+        "source": "AWS IAM User Guide, IAM policy elements: Condition, https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html (AWS documentation; idea only, paraphrased)"
       },
       {
         "id": "source-arn-why",
@@ -86,8 +76,18 @@
       },
       {
         "id": "private-prefix-placement",
-        "text": "Questions keeping private files in a bucket that the CDN serves at all, and suggests a separate bucket or a deny that cannot be removed by accident.",
-        "source": "CloudGoat, https://github.com/RhinoSecurityLabs/cloudgoat (BSD-3-Clause)"
+        "text": "Notes that denying access to downloads/private/ prefix prevents accidental exposure through overly permissive policies.",
+        "source": "AWS S3 Security Best Practices, https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "least-privilege-approach",
+        "text": "Mentions that granting only GetObject (not s3:*) to CloudFront follows the principle of least privilege.",
+        "source": "AWS IAM User Guide, Apply least-privilege permissions, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "log-delivery-restrictions",
+        "text": "Notes that restricting log delivery to specific prefixes prevents unauthorized data writes to the logs bucket.",
+        "source": "AWS CloudTrail User Guide, Creating a trail, https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-a-trail.html (AWS documentation; idea only, paraphrased)"
       }
     ],
     "weakAnswers": [
@@ -167,41 +167,37 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt in task.json field prompt (line 3) specifies the files, desired access behavior, and constraints without naming an implementation method or revealing policy statements."
+          "note": "The task.json prompt states the desired bucket-policy behavior, relevant file paths, protected paths, and unchanged-file constraints, but does not prescribe a named method or reveal hidden test traps."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture policies in infra/buckets/ show the insecure starting state, while README.md and docs/architecture.md describe broad current and desired behavior; they do not list the exact expected principals, conditions, or policy answers."
+          "note": "The fixture policies in infra/buckets/ show the insecure starting state, while README.md and docs/architecture.md describe only current and desired behavior; no fixture file lists the expected policy statements or hidden findings."
         },
         {
           "check": "key-matches-fixture",
-          "verdict": "fail",
-          "note": "task.json expertKey.items[0-2] and [4] expect Block Public Access, OAC signing, encryption/KMS status, endpoint behavior, and private-bucket design facts that are absent from the fixture. infra/cdn-config.json has no OAC or encryption settings, and the only related fixture references are generic OAI troubleshooting notes."
+          "verdict": "pass",
+          "note": "The exact bucket names, account ID, and per-stage CloudFront ARNs are in infra/cdn-config.json, while docs/architecture.md lines 48-51 identify both log sources and their prefixes; the requested private prefix and TLS requirement are in task.json."
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "fail",
-          "note": "The policy edits themselves are inferable, but the keyed answer also requires determining or addressing OAC, KMS/S3-managed encryption, Block Public Access, and the old endpoint, none of which is specified in task.json or the fixture. The missing configuration is especially material because the prompt forbids changing the CDN config."
+          "verdict": "pass",
+          "note": "A careful engineer can construct the three valid IAM policies from task.json, the existing policy resources, cdn-config.json, and the logging details in docs/architecture.md, while preserving deploy-role-policy.json and the scripts/tests as requested."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 16.1,
-    "decision": "fix",
+    "decision": "keep",
     "date": "2026-11-20",
-    "blockers": [
-      "recheck-failed: key-matches-fixture: task.json expertKey.items[0-2] and [4] expect Block Public Access, OAC signing, encryption/KMS status, endpoint behavior, and private-bucket design facts that are absent from the fixture. infra/cdn-config.json has no OAC or encryption setti",
-      "recheck-failed: solvable-from-fixture: The policy edits themselves are inferable, but the keyed answer also requires determining or addressing OAC, KMS/S3-managed encryption, Block Public Access, and the old endpoint, none of which is specified in task.json or the fixture. The m"
-    ],
     "dryRun": {
       "reference": 100,
       "stub": 16.1,

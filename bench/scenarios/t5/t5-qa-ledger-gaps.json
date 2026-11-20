@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-ledger-gaps",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "An auditor asked how sure we are that a change to the interest code would be noticed, and all I could say was that coverage is 95%. I do not think that is a good answer. Please strengthen the test suite for this ledger library, for the code that moves or counts money: interest, fees, overdrafts, posting and reversal, statements and the CSV export. Add new test files named test_*.py under tests/ (you may also extend the existing ones) and keep `python3 -m unittest discover -s tests` passing, using Python 3.12 and the standard library only. Do not change anything under ledger/ or the CLI, the docs or the configuration; the work is limited to tests under tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "An auditor asked how sure we are that a change to the interest code would be noticed, and all I could say was that coverage is 95%. I do not think that is a good answer. Please strengthen the test suite for this ledger library, for the code that moves or counts money: interest, fees, overdrafts, posting and reversal, statements and the CSV export. Add new test files named test_*.py under tests/ (you may also extend the existing ones) and keep `python3 -m unittest discover -s tests` passing, using Python 3.12 and the standard library only. Do not change anything under ledger/ or the CLI, the docs or the configuration; the work is limited to tests under tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 54 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-ledger-gaps",
   "hidden": "t5-qa-ledger-gaps",
   "timeoutSec": 1200,
@@ -17,22 +17,22 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=30000 mutation.test.js",
-      "min": 10,
+      "min": 12,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests && test \"$(cat tests/*.py | grep -cE '^[[:space:]]*def test_')\" -ge 22",
+      "cmd": "python3 -B -m unittest discover -s tests",
       "expectExit": 0,
-      "weight": 4,
-      "kind": "substance"
+      "weight": 1,
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "ledger/interest.py",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
@@ -40,6 +40,11 @@
       "id": "clarity",
       "criterion": "The added cases clearly state the expected result for each boundary and invalid-input behavior (code cannot check this because readable intent is not observable from pass or fail results alone).",
       "weight": 1
+    },
+    {
+      "id": "suite-economy",
+      "weight": 2,
+      "criterion": "Each new test protects one named rule through the public interface, and the suite has no duplicates or tests that read private state. Fail: many near-duplicate tests per rule, tests that read private attributes or source text, or no rule named. Partial: rules are named, but some are tested several times over or through internals. Pass: one clear test per rule, each named for the rule it protects, all through the public interface, with the expected value shown. (code cannot check this because the size budget and the safe refactor catch only the extremes)"
     }
   ],
   "targetSkills": [
@@ -132,13 +137,13 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 12.9,
+    "stub": 8.3,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 12.9,
-      "lazy": 12.9,
+      "stub": 8.3,
+      "lazy": 25,
       "alt": 100,
       "date": "2026-11-20"
     }
@@ -146,7 +151,7 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "T5 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

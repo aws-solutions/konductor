@@ -43,6 +43,11 @@
       "id": "decision-clarity",
       "criterion": "States a decisive architecture choice and gives a concise, technically accurate explanation of the main tradeoffs and operational consequences. (not code-checkable: Automated checks cannot reliably assess whether the decision is understandable to an architect or whether its rationale is complete without unnecessary material.)",
       "weight": 1
+    },
+    {
+      "id": "rejects-each-option",
+      "weight": 2,
+      "criterion": "The record rejects each option it did not choose for a reason taken from the fixture (a limit, a cost, a requirement or a measurement), and states the consequence of the chosen option the team must live with. Fail: names the winner only, or rejects options for generic reasons (\"too complex\", \"not scalable\") the fixture does not support. Partial: most rejected options get a fixture-based reason, but one is waved away or the cost of the chosen option is not stated. Pass: every rejected option has a reason quoted or computed from the fixture, the chosen option's main downside is stated, and the record says what would change the decision. (code cannot check this because tests check the chosen id and the numbers, not whether each rejection is grounded)"
     }
   ],
   "tiers": [
@@ -74,7 +79,7 @@
       "date": "2026-11-20"
     }
   },
-  "version": 1,
+  "version": 2,
   "targetSkills": [
     "dynamodb-design",
     "trade-off-evaluator"
@@ -171,5 +176,9 @@
       "states that the per-customer option is rejected due to higher cost rather than the database count constraint"
     ]
   },
-  "handEdited": null
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate task-fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
 }

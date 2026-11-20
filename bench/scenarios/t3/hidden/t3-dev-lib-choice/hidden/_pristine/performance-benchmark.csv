@@ -1,8 +1,0 @@
-format,encode_time_ms,decode_time_ms,total_time_ms,size_relative_to_json,schema_required,language_support
-json,0.45,0.45,0.90,1.00,no,widest
-msgpack,0.04,0.04,0.08,0.75,no,wide
-protobuf,0.06,0.05,0.11,0.65,yes,wide
-cbor,0.035,0.035,0.07,0.70,no,moderate
-avro,0.05,0.04,0.09,0.60,yes,moderate
-bson,0.12,0.10,0.22,1.05,no,limited
-thrift,0.08,0.07,0.15,0.70,yes,moderate

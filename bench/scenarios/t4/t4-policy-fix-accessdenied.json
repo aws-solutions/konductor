@@ -1,6 +1,6 @@
 {
   "id": "t4-policy-fix-accessdenied",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "bugfix",
   "phases2": [],
@@ -61,7 +61,7 @@
   "rubric": [
     {
       "id": "cause",
-      "criterion": "The final message gives the real causes: the upload needs the customer key (data key generation, and decrypt for multipart) and the expected key id header that one upload path omitted, and the query needs the index ARN, not only the table (code cannot check this because the explanation is free prose in the final message).",
+      "criterion": "The final message gives the real causes: the upload needs the customer key (data key generation, and decrypt for multipart) and the expected key id header that one upload path omitted, and the query needs the index ARN, not only the table. Fail: no cause, or a cause that is not the denied action. Partial: names the denied action but not the missing statement or why it is needed. Pass: names each missing statement (the key use and the header path) and why the request needs it. (code cannot check this because the explanation is free prose in the final message).",
       "weight": 2
     }
   ],
@@ -157,7 +157,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

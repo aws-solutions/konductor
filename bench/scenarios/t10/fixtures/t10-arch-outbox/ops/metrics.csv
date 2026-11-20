@@ -1,0 +1,9 @@
+name,unit,meaning
+orders.created,count,orders accepted
+payment.status.changed,count,payment status changes accepted
+request.errors,count,requests rejected
+request.latency,ms,request duration
+store.errors,count,storage failures
+status.lag,seconds,age of newest payment status not yet delivered
+broker.published,count,status messages accepted by broker
+broker.errors,count,status messages rejected by broker

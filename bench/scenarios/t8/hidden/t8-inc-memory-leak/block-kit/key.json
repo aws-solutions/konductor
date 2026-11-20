@@ -14,7 +14,9 @@
       "none": [
         "(caused|driven|triggered) by (the )?(marketing|campaign|traffic)",
         "traffic surge"
-      ]
+      ],
+      "section": "cause",
+      "gate": true
     },
     {
       "id": "cause-evidence-chain",
@@ -44,7 +46,8 @@
           ]
         }
       ],
-      "min": 2
+      "min": 2,
+      "section": "cause"
     },
     {
       "id": "evidence-precision",
@@ -59,7 +62,8 @@
         "3\\.7\\.4",
         "cache configuration disabled|memory_headroom=stable"
       ],
-      "min": 0.5
+      "min": 0.5,
+      "section": "cause"
     },
     {
       "id": "timeline-release",
@@ -74,7 +78,8 @@
           "time": "2025-04-08T14:00:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-first-symptom",
@@ -88,7 +93,8 @@
           "time": "2025-04-08T15:35:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-first-oom",
@@ -103,7 +109,8 @@
           "time": "2025-04-09T06:20:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-mitigation",
@@ -118,7 +125,8 @@
           "time": "2025-04-10T12:40:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-recovery",
@@ -133,35 +141,40 @@
           "time": "2025-04-10T13:25:00Z",
           "tolMin": 5
         }
-      }
+      },
+      "section": "timeline"
     },
     {
       "id": "timeline-bounded",
       "type": "maxLen",
       "path": "timeline",
       "max": 15,
-      "min": 4
+      "min": 4,
+      "section": "timeline"
     },
     {
       "id": "impact-duration",
       "type": "number",
       "path": "impact.degradedMinutes",
       "value": 1865,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "impact-kills",
       "type": "number",
       "path": "impact.oomKills",
       "value": 42,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "impact-failures",
       "type": "number",
       "path": "impact.failedRequests",
       "value": 5046,
-      "tolPct": 5
+      "tolPct": 5,
+      "section": "impact"
     },
     {
       "id": "action-fix",
@@ -174,7 +187,8 @@
           "disable|bound|max_entries|limit",
           "memory|budget"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "action-release-guard",
@@ -186,7 +200,8 @@
           "memory|rss|heap",
           "slope|growth|grow|trend|leak|per (hour|request)|rising"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "action-alert-canary",
@@ -198,14 +213,17 @@
           "canary|holdout|baseline|old version|previous version|release gate|rollout",
           "memory|cache"
         ]
-      }
+      },
+      "section": "actions"
     },
     {
       "id": "actions-bounded",
       "type": "maxLen",
       "path": "actionItems",
       "max": 10,
-      "min": 3
+      "min": 3,
+      "section": "actions"
     }
-  ]
+  ],
+  "scoring": "sections"
 }

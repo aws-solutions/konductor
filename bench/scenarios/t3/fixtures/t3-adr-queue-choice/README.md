@@ -4,7 +4,7 @@
 This project involves selecting an appropriate AWS managed queue service for Acme Analytics' event processing pipeline. The system needs to handle mobile app user activity logs with specific throughput, latency, and cost requirements.
 
 ## Problem Statement
-Our mobile applications generate approximately 8 million events per day that need to be processed and stored in our data warehouse. We need a reliable, scalable, and cost-effective queue service to buffer these events during processing.
+Our mobile applications generate approximately 11 million events per day that need to be processed and stored in our data warehouse. We need a reliable, scalable, and cost-effective queue service to buffer these events during processing.
 
 ## Current State
 - Events are sent from mobile SDKs via HTTP/REST

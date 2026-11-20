@@ -1,0 +1,6 @@
+{
+  "serviceName": "northstar-returns",
+  "logLevel": "warn",
+  "currency": "USD",
+  "maxBatch": 25
+}

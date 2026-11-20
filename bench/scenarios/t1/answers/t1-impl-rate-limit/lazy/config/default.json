@@ -1,0 +1,19 @@
+{
+  "serviceName": "booking-api",
+  "host": "127.0.0.1",
+  "port": 3000,
+  "logLevel": "info",
+  "seedFile": "data/seed.json",
+  "rateLimit": {
+    "windowMs": 60000,
+    "maxClients": 1000,
+    "defaultPlan": "free",
+    "plans": {
+      "free": { "limit": 5 },
+      "team": { "limit": 20 }
+    },
+    "keyPlans": {
+      "team-demo": "team"
+    }
+  }
+}

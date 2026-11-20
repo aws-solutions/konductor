@@ -1,0 +1,52 @@
+# Payment status status-events rollout
+
+The release changes the write path and adds a publisher. Keep the existing JSON file and take the normal volume backup before starting. The publisher is controlled by `STATUS_EVENTS_PUBLISH_ENABLED` in the host process, while the numeric settings use the documented millisecond keys from `src/config.js`.
+
+## Phases
+
+1. **Canary**: deploy orders-a with the new code and publisher disabled. Drain its old workers before enabling the new writer, then enable the publisher on orders-a only. Confirm new status updates have one status-events record and that the publisher can publish it.
+2. **Internal**: deploy orders-b with the same code and publisher disabled, then enable its publisher after orders-a is healthy. Exercise updates from both instances and confirm a single order's messages arrive in order. The claim makes the two publisher triggers safe.
+3. **General**: keep both publishers enabled and expose the release to all customers. Watch the backlog and broker error behavior through the existing catalogue metrics. Keep the pre-release file backup until the backlog is empty and the observation window ends.
+
+## Rollback
+
+Trigger rollback if `broker.errors` reaches 1 in a five-minute window, status lag exceeds 42 seconds for 7 minutes, or a consumer reports an ordering violation. Stop enabling new traffic, disable the publisher on both instances, drain old workers, restore the previous application version, and leave the status-events data intact. Do not delete unsent records. If the old publisher is restarted, use the normal instance sequence and reconcile any status changes from the backup before resuming. Re-enable the new publisher only after the data and consumer state are reconciled.
+
+```json
+{
+ "phases": [
+  {
+   "name": "canary",
+   "audience": "operations",
+   "gate": {
+    "metric": "broker.errors",
+    "unit": "count",
+    "threshold": 0
+   },
+   "action": "deploy orders-a with publisher disabled, drain the old publisher, then enable and inspect one event"
+  },
+  {
+   "name": "internal",
+   "audience": "staff",
+   "gate": {
+    "metric": "status.lag",
+    "unit": "seconds",
+    "threshold": 42
+   },
+   "action": "deploy orders-b disabled, enable both claiming publishers, and exercise both instances"
+  }
+ ],
+ "rollback": {
+  "trigger": "broker.errors reaches 1 or status.lag exceeds 60 seconds for 10 minutes or a per-order ordering violation is reported",
+  "steps": [
+   "disable publisher on orders-a and orders-b",
+   "drain workers and stop new status traffic"
+  ]
+ },
+ "evidence": [
+  "ops/metrics.csv:7",
+  "ops/metrics.csv:8",
+  "ops/deploy-rings.json:1"
+ ]
+}
+```

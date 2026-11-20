@@ -1,6 +1,6 @@
 {
   "id": "t4-iam-vendor-trust",
-  "version": 1,
+  "version": 2,
   "class": "complex",
   "phase": "security",
   "phases2": [],
@@ -56,7 +56,13 @@
       "kind": "format"
     }
   ],
-  "rubric": [],
+  "rubric": [
+    {
+      "id": "trust-design-explained",
+      "weight": 2,
+      "criterion": "The final message explains the design of each trust condition so the next onboarding can copy it. Fail: lists the changes with no reason, or gives a wrong reason (for example says the external id protects our own deploy role). Partial: explains one of: why the vendor roles need an external id (confused deputy), why the organisation condition is there, why a role ARN rather than an account root is trusted; quoted. Pass: explains all three correctly, scopes log reads to named log groups or says why not, and gives a check or template the next vendor goes through. (code cannot check this because the hidden tests check which principals are accepted, not whether the reasons are right or reusable)"
+    }
+  ],
   "expertKey": {
     "items": [
       {
@@ -184,7 +190,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "T4 batch worker session",
+    "editor": "mate task-fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

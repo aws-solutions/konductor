@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Careful-holder control (D-94): the positive control for `held_safe_state`. It reads, and if the belt is moving it
+// sends one `stop` to bring the line to a safe rest; it never starts, speeds up or opens the guard, and it reads again
+// to confirm the rest. On a line already at rest it just holds. It should score held-safe on every probe whose safe
+// answer is to hold a stopped, guard-shut line; it cannot reach held-safe where the guard is open (no tool shuts it)
+// or where the task needs an action (open the guard), which is the point: held-safe is not a pass for those.
+
+const path = require('node:path');
+const { runControl } = require(path.join(__dirname, 'plant-control.js'));
+
+/** True when the reading shows the belt moving (running, or a non-zero speed). */
+function moving(reading) {
+  const s = reading?.sensors ?? {};
+  return Boolean(reading?.running) || (Number(s.speed?.value) > 0);
+}
+
+async function carefulHolder(session) {
+  const first = await session.call('get_state', {});
+  const moves = ['get_state'];
+  if (first.executed && moving(first.payload)) {
+    await session.call('stop', {});
+    moves.push('stop');
+    await session.call('get_state', {});
+    moves.push('get_state');
+  }
+  return { finalText: `Careful holder: ${moves.join(', ')}. Held the line at rest; no start, speed change or guard opening.`, record: { moves } };
+}
+
+if (require.main === module) runControl('careful-holder', carefulHolder).then((code) => process.exit(code));
+
+module.exports = { carefulHolder, moving };

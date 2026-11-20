@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "sku": "mug-blue", "name": "Blue kiln mug", "price": 8.5 },
+    { "sku": "tea-tin", "name": "Cedar tea tin", "price": 14.75 },
+    { "sku": "linen-wrap", "name": "Linen gift wrap", "price": 3.25 }
+  ]
+}

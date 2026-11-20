@@ -13,7 +13,16 @@ function readAnswer() {
   return JSON.parse(fs.readFileSync(answerPath, 'utf8'));
 }
 
+// The shape tests count only for an answer that names the right services: a list of the wrong services in the right
+// shape is not half an answer.
+function rightServices() {
+  const want = loadEnvironment('production').filter((s) => s.logLevel === 'debug').map((s) => s.service).sort();
+  const got = readAnswer().map((record) => record.service).sort();
+  assert.deepEqual(got, want, 'the answer must name exactly the services whose rendered production logLevel is debug');
+}
+
 test('the answer is a JSON list', () => {
+  rightServices();
   const answer = readAnswer();
   assert.equal(Array.isArray(answer), true);
 });
@@ -27,17 +36,20 @@ test('the answer lists every effective production debug service', () => {
 });
 
 test('answer records are sorted by service name', () => {
+  rightServices();
   const names = readAnswer().map((record) => record.service);
   assert.deepEqual(names, [...names].sort((left, right) => left.localeCompare(right)));
 });
 
 test('answer records contain only the requested fields', () => {
+  rightServices();
   for (const record of readAnswer()) {
     assert.deepEqual(Object.keys(record).sort(), ['replicas', 'service']);
   }
 });
 
 test('answer services are unique and replica counts are positive integers', () => {
+  rightServices();
   const answer = readAnswer();
   assert.equal(new Set(answer.map((record) => record.service)).size, answer.length);
   for (const record of answer) {
@@ -48,6 +60,7 @@ test('answer services are unique and replica counts are positive integers', () =
 });
 
 test('each listed service uses its effective rendered replica count', () => {
+  rightServices();
   const effective = new Map(loadEnvironment('production').map((service) => [service.service, service]));
   for (const record of readAnswer()) {
     assert.equal(effective.get(record.service).logLevel, 'debug');

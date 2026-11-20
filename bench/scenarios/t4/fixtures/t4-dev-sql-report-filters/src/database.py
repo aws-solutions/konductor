@@ -63,7 +63,7 @@ class Database:
         """Get customers with filters.
         
         Args:
-            name_filter: Customer name filter (LIKE pattern)
+            name_filter: Customer name filter (substring)
             status_filter: List of status values to include
             start_date: Start date for created_at filter (YYYY-MM-DD)
             end_date: End date for created_at filter (YYYY-MM-DD)
@@ -130,7 +130,7 @@ class Database:
         """Get customers for CSV export.
         
         Args:
-            name_filter: Customer name filter (LIKE pattern)
+            name_filter: Customer name filter (substring)
             status_filter: List of status values to include
             start_date: Start date for created_at filter (YYYY-MM-DD)
             end_date: End date for created_at filter (YYYY-MM-DD)
@@ -179,7 +179,7 @@ class Database:
         """Get sales with filters.
         
         Args:
-            customer_name: Customer name filter (LIKE pattern)
+            customer_name: Customer name filter (substring)
             product_filter: List of product IDs to include
             start_date: Start date for sale_date filter (YYYY-MM-DD)
             end_date: End date for sale_date filter (YYYY-MM-DD)
@@ -259,7 +259,7 @@ class Database:
         """Get sales for CSV export.
         
         Args:
-            customer_name: Customer name filter (LIKE pattern)
+            customer_name: Customer name filter (substring)
             product_filter: List of product IDs to include
             start_date: Start date for sale_date filter (YYYY-MM-DD)
             end_date: End date for sale_date filter (YYYY-MM-DD)

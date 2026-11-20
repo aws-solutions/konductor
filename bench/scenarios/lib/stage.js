@@ -17,8 +17,10 @@
 // <outprefix>; it runs kiro-cli in a scratch home with no steering, rules, MCP or skills), work/<id>/ (the author's
 // output) and catalog.json (names and descriptions, t1/catalog-descriptions.js). Every model call is logged with its
 // credits in the batch's AUTHORING-LOG.md. The free parts (audit, assemble, fold-helpers) need no model.
-// Stage config fields: authEnv, mapPrompt (default lib/prompts/map.md), mapModel (default glm-5), timeoutMs,
-// logRow(id, step, model, r), reviewFile(cwd) , buildTask(s, id), layout(s, id) -> [[from, to]], commands { name(s, id, arg) }.
+// Stage config fields: authEnv, runEnv (names a variable that picks another run script than run.sh), abortCredits (credits
+// counted for a call stopped before it reported them), mapPrompt (default lib/prompts/map.md), mapModel (default
+// glm-5), mapFields, reviewSkip, timeoutMs, logRow(id, step, model, r), buildTask(s, id), layout(s, id, task) ->
+// [[from, to]], commands { name(s, id, arg) }.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -68,7 +70,8 @@ function reviewed(v, disposition = {}) {
 }
 
 // Owner rule: a design-type task carries an expert key for the judges; its rubric item scores addressed items over all
-// items (the judge share stays at 30% or less). `why` says why code cannot check it.
+// items (the judge share stays at 30% or less). `why` says why code cannot check it. The loader replaces this item by one
+// criterion per expertKey item with the same total weight (runner/lib/expert-rubric.js); a task without it gets weight 3.
 function withExpertRubric(rubric, key, why = 'the items are engineering judgment, not a pattern in the text') {
   if (!key) return rubric;
   const item = { id: 'expert-key', weight: 3, criterion: `Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because ${why})` };
@@ -120,8 +123,19 @@ function stageOf(cfg) {
       fs.writeFileSync(s.work(`${name}.prompt.txt`), prompt);
       fs.mkdirSync(cwd, { recursive: true });
       const t0 = Date.now();
-      spawnSync('sh', [path.join(auth(), 'run.sh'), model, cwd, s.work(`${name}.prompt.txt`), s.work(name)], { stdio: 'ignore', timeout: o.timeoutMs || 1500000 });
-      return { ...streamInfo(s.work(`${name}.out`)), seconds: (Date.now() - t0) / 1000 };
+      spawnSync('sh', [path.join(auth(), s.runScript()), model, cwd, s.work(`${name}.prompt.txt`), s.work(name)], { stdio: 'ignore', timeout: o.timeoutMs || 1500000 });
+      // A run script with a spend check writes <name>.refused instead of calling the model.
+      if (fs.existsSync(s.work(`${name}.refused`))) throw new Error(`spend check refused the ${name} call`);
+      return { ...s.creditsOf(s.work(`${name}.out`)), seconds: (Date.now() - t0) / 1000 };
+    },
+    // The run script: run.sh, or the file named by $<runEnv> (for example a spend-checked wrapper).
+    runScript: () => (o.runEnv && process.env[o.runEnv]) || 'run.sh',
+    // Credits of a stream; a call stopped before it reported them is counted at the batch's abort limit
+    // (`abortCredits`) and marked `estimated`.
+    creditsOf(file) {
+      const info = streamInfo(file);
+      const finished = fs.readFileSync(file, 'utf8').includes('"runFinished"');
+      return finished || o.abortCredits === undefined ? info : { ...info, credits: o.abortCredits, estimated: true };
     },
     // A twin must not load what its source task is meant to load (skills and SOP), unless its own mapping needs it.
     mustNotLoad(b, mapping) {
@@ -162,9 +176,11 @@ const COMMANDS = {
   },
   'log-author'(s, id, step = 'author') {
     const model = s.brief(id).author;
-    const { credits } = streamInfo(s.work(`${id}.${step}.out`));
-    s.logCall(id, step, model, { credits, seconds: 0 });
-    return { model, credits };
+    const file = s.work(`${id}.${step}.out`);
+    if (!fs.existsSync(file) || fs.existsSync(s.work(`${id}.${step}.refused`))) return { credits: 0, refused: true };
+    const r = s.creditsOf(file);
+    s.logCall(id, step, model, { ...r, seconds: 0 });
+    return { model, credits: r.credits };
   },
   map(s, id) {
     const o = s.cfg.stage || {};

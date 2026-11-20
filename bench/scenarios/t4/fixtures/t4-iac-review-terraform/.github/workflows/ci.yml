@@ -35,25 +35,3 @@ jobs:
       - name: Terraform Validate
         id: validate
         run: terraform validate
-
-      - name: Terraform Plan
-        id: plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false
-        env:
-          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
-          TF_VAR_reporting_db_password: ${{ secrets.TF_VAR_REPORTING_DB_PASSWORD }}
-
-      - name: Update PR
-        uses: actions/github-script@v7
-        if: github.event_name == 'pull_request'
-        with:
-          script: |
-            const fs = require('fs');
-            const output = `## Terraform Plan Output\n\n\`\`\`\n${fs.readFileSync('plan_output.txt', 'utf8')}\n\`\`\``;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });

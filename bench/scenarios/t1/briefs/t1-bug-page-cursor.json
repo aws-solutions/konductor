@@ -1,0 +1,12 @@
+{
+  "id": "t1-bug-page-cursor",
+  "phase": "bugfix",
+  "role": "developer",
+  "author": "qwen3-coder-next",
+  "reviewer": "gpt-5.6-luna",
+  "stack": "node",
+  "size": "20 to 30",
+  "twoStep": true,
+  "source": "original",
+  "brief": "Phase: bug fix. Role: developer. Repo kind: a Node.js 24 library and small CLI (no dependencies) that pages through a large in-memory product catalogue for an export job (a pager, a sorter, filters, a CSV writer, tests, CI config, docs; about 25 files). Build a task where the owner reports symptoms (some products appear twice in an export, a few never appear, the last page is sometimes empty, the count in the summary is wrong when a filter is set), with no diagnosis. The code holds two or three interacting defects, one subtle (for example an unstable sort on equal keys combined with an off-by-one page boundary). Visible tests pass today and do not point at the defects."
+}
