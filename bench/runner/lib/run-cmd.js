@@ -187,6 +187,8 @@ function checkHarnessFlags({ opts, tasks, runtime }) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
     if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
   }
+  const fresh = desc.supports.freshSessions ? [] : tasks.filter((t) => t.freshSessions).map((t) => t.id);
+  if (fresh.length) throw new Error(`fresh-session tasks are not supported on the ${desc.proseName} harness: ${fresh.join(', ')} (only Kiro CLI and Claude Code sum their cost over the sessions). Choose other tasks with --tasks`);
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
   const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;

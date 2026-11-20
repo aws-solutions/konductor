@@ -1,0 +1,9 @@
+{
+  "note": "a different correct answer: other branch names, each worker commits its failing test first and the fix second, merged in the other order, other code",
+  "workers": [
+    { "branch": "worker/eta-business-days", "steps": ["dates-test", "dates-fix"] },
+    { "branch": "worker/weight-units", "steps": ["weights-test", "weights-fix"] }
+  ],
+  "merge": ["worker/eta-business-days", "worker/weight-units"],
+  "cleanup": true
+}

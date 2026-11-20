@@ -27,7 +27,7 @@ This file lists what the runner calls. It is derived from the call sites in `run
 | `removeCredentials(home)` | scratch HOME | nothing. Deletes any credential copy. Must not throw if there is none | `run-one.executeRun` (after the agent exits, and again in cleanup) |
 | `keepPaths(ctx)` | run context | array of absolute paths that must stay visible inside the isolation namespace (the agent binary and its helpers) | `run-one.makeIso` |
 | `turnSummary(streamText)` | the stdout of one turn | `{ sessionId, runFinishedStatus, stopReason, finalText, askedUser }`. `runFinishedStatus === 'success'` is what lets an autonomy conversation continue | `run-one.runTurns` (autonomy tasks only, but always called then) |
-| `parseResult(outDir, { home, tmpdir, acc, arm, ctx, config })` | the run directory and the accumulator | nothing used (kiro returns `acc`, the others return nothing). Fills `acc`, see below | `run-one.postProcess`, only when `outDir/stream.jsonl` exists |
+| `parseResult(outDir, { home, tmpdir, acc, arm, ctx, config, freshSessions })` | the run directory and the accumulator; `freshSessions` is true when `stream-N.jsonl` are separate conversations (a fresh-session task), so totals a harness reads as cumulative per conversation must be summed over them | nothing used (kiro returns `acc`, the others return nothing). Fills `acc`, see below | `run-one.postProcess`, only when `outDir/stream.jsonl` exists |
 | `collectArtifacts(home, outDir, { arm })` | scratch HOME and run directory | nothing. Copies files worth keeping (installed agent definition, settings) before HOME is deleted, through `safe-copy.copyPlainFile`, which refuses a symlink on the path. A throw becomes the flag `artifactCopyFailed` | `run-one.postProcess` |
 
 ## Optional members
@@ -70,13 +70,13 @@ Every harness module exports `meta`, a frozen record of static facts about the r
 | `armPrefix` | string | arm id prefix: `''` for kiro-cli, `oc-`, `cc-`. Exactly one runtime has `''`; it is the fallback of `runtimeOf` |
 | `costUnit` | `'credits'` or `'usd'` | `'usd'` runtimes are the `USD_RUNTIMES` and fill `acc.usage` |
 | `streamFormat` | `'kiro-acp'`, `'opencode-json'`, `'claude-stream-json'` or `'strands-jsonl'` | the shape of `stream.jsonl`. `stop-watch.js`, `trace.js` and `judge/bundle.js` pick their parser from it. A runtime with a new shape adds a value here and a parser to each of those three |
-| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy`, `agentEngine`, `prepareOnly`, `armConfig` |
+| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `freshSessions`, `capCommands`, `skillStudy`, `agentEngine`, `prepareOnly`, `armConfig` |
 | `flags` | object | `own`: run flags that only this runtime's arms accept (refused when no arm of the run uses it). `refused`: run flag to the reason it does not apply, in the order `run` checks them. `perRunCapFlag`: the flag that caps one run's cost, named in the `--run-credit-limit` refusal, or `null` |
 | `noPrompt` | object | how runs skip the agent's own approval prompts (design 15.3, A-4): `flags` passed on the command line, `env` variables set for the agent, and a `note` on what they cover. `strands.js` sets `env`; `kiroArgs` passes the kiro-cli flag, checked by `registry.test.js` |
 | `multiTurnNote` | string or `null` | why autonomy tasks are refused; a string exactly when `supports.multiTurn` is false |
 | `trace` | object | what `trace` says about the run. `sessionFiles`: the harness saves session files (`trace` reports their absence). `timeNote`: how time is known in `stream.jsonl`. `skillsListing`: `'agent-filter'` (the installed agent's skill filter) or `'slash-commands'` (the session init); `null` when `supports.trace` is false |
 
-`supports` records what the runner allows. `run-cmd.js` reads `runCreditLimit`, `multiTurn`, `agentEngine` and `prepareOnly`; `arm-opts.js` reads `armConfig`; `trace.js` reads `trace`. `effort` and `stopOn` must agree with `flags.refused` (`registry.test.js` checks it). The other keys are not read yet.
+`supports` records what the runner allows. `run-cmd.js` reads `runCreditLimit`, `multiTurn`, `freshSessions`, `agentEngine` and `prepareOnly`; `arm-opts.js` reads `armConfig`; `trace.js` reads `trace`. `effort` and `stopOn` must agree with `flags.refused` (`registry.test.js` checks it). The other keys are not read yet.
 
 | Key | Meaning | Where it is enforced |
 | --- | --- | --- |
@@ -85,6 +85,7 @@ Every harness module exports `meta`, a frozen record of static facts about the r
 | `effort` | the effort level is passed to the agent | `flags.refused` in `run-cmd.js` |
 | `runCreditLimit` | `--run-credit-limit` applies | `run-cmd.js` refuses runtimes that are false here |
 | `multiTurn` | autonomy (multi-turn) tasks run | `run-cmd.js` refuses runtimes that are false here, with `multiTurnNote` |
+| `freshSessions` | fresh-session tasks (`freshSessions`) run, with cost summed over the conversations | `run-cmd.js` refuses runtimes that are false here; only Kiro CLI and Claude Code are tested with them (`fresh-sessions.test.js`) |
 | `capCommands` | the `cap` commands accept the runtime | `cap/*` accept `kiro-cli` and `opencode` only |
 | `skillStudy` | `cap skill-study` can drive the runtime | `cap/skillstudy.js` and `cap/studyio.js` are kiro-cli only |
 | `agentEngine` | `--agent-engine` applies | `engineOpt` in `run-cmd.js` |

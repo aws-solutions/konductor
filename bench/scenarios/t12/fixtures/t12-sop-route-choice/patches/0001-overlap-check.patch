@@ -1,0 +1,40 @@
+From: Ravi Menon <ravi@booking-desk.example>
+Subject: [PATCH] overlap: one pass over sorted bookings for the clash check
+
+The front desk screen calls conflicts() for every room on every refresh, and with
+two years of bookings it is slow. Sort once by start and stop as soon as a
+booking starts after the candidate ends.
+
+---
+ src/overlap.js | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/src/overlap.js b/src/overlap.js
+--- a/src/overlap.js
++++ b/src/overlap.js
+@@ -1,12 +1,16 @@
+ 'use strict';
+ 
+-/** The existing bookings that clash with `candidate`: same room and overlapping time. Back-to-back bookings are fine. */
++const ms = (t) => new Date(t).getTime();
++
++/** The existing bookings that clash with `candidate`. */
+ function conflicts(bookings, candidate) {
+-  const start = new Date(candidate.start).getTime();
+-  const end = new Date(candidate.end).getTime();
+-  return bookings.filter((b) => b.room === candidate.room
+-    && new Date(b.start).getTime() < end
+-    && start < new Date(b.end).getTime());
++  const start = ms(candidate.start);
++  const end = ms(candidate.end);
++  const out = [];
++  for (const b of [...bookings].sort((x, y) => ms(x.start) - ms(y.start))) {
++    if (ms(b.start) > end) break;
++    if (ms(b.end) >= start) out.push(b);
++  }
++  return out;
+ }
+ 
+ module.exports = { conflicts };
+-- 
+2.43.0

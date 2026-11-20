@@ -22,6 +22,7 @@ const { writeArmConfig } = require('../arm-config.js');
 const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
 const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
+const { turnStreamTexts } = require('../autonomy.js');
 const listing = require('./claude-listing.js');
 
 const id = 'claude-code';
@@ -417,11 +418,22 @@ function readIfPresent(file) {
   try { return fs.readFileSync(file, 'utf8'); } catch { return ''; }
 }
 
-function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
+// The result line's cost and token totals are cumulative within one conversation. Separate conversations (the
+// sessions of a fresh-session task, one stream-N.jsonl each) are summed.
+function sumSessions(a, outDir, canonical) {
+  const per = turnStreamTexts(outDir).map((t) => parse.aggregateEvents(parseStream(t).events, { expectedModel: canonical }));
+  const costs = per.map((p) => p.costUsd).filter((c) => c !== null);
+  a.costUsd = costs.length ? costs.reduce((x, y) => x + y, 0) : null;
+  a.costMissing = per.some((p) => p.costMissing);
+  a.tokens = Object.fromEntries(Object.keys(a.tokens).map((k) => [k, per.reduce((x, p) => x + (p.tokens[k] ?? 0), 0)]));
+}
+
+function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config, freshSessions = false }) {
   const streamText = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
   const { events, badLines } = parseStream(streamText);
   const canonical = config.canonicalModel ?? canonicalModel(config.model);
   const a = parse.aggregateEvents(events, { expectedModel: canonical });
+  if (freshSessions) sumSessions(a, outDir, canonical);
   const stderr = readIfPresent(path.join(outDir, 'stderr.txt'));
   const flags = acc.meta.flags;
   acc.skills = skills.captureSkills({ runtime: 'claude-code', events, arm, ctx });

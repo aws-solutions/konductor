@@ -1,0 +1,11 @@
+{
+  "base": "07c237b1137c7d52f0e5cf5378e7c64502cd958f",
+  "tickets": [
+    { "id": "PD-41", "files": ["src/weight.js"], "test": "hidden-tests/PD-41.test.js" },
+    { "id": "PD-44", "files": ["src/eta.js"], "test": "hidden-tests/PD-44.test.js" }
+  ],
+  "extra": [
+    { "name": "merged: both fixes work together in quote(), ship date as a string or a Date", "test": "hidden-tests/merged.test.js" }
+  ],
+  "hidden": ["work.test.js", "work.json", "git-work.js", "hidden-tests/"]
+}

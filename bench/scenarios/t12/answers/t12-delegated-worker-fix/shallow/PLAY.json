@@ -1,0 +1,5 @@
+{
+  "note": "one agent fixed both issues itself, straight on main in one commit: right code, no worker branches, no merges",
+  "direct": ["PD-41", "PD-44"],
+  "message": "Fix PD-41 and PD-44"
+}

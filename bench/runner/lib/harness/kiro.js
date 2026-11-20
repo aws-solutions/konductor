@@ -271,7 +271,7 @@ function aggregateRunDir(outDir) {
 }
 
 // Parses stream.jsonl and the copied sessions. Fills `acc` as it goes so a throw part-way keeps the spend already read.
-function parseResult(outDir, { home, acc, arm, ctx }) {
+function parseResult(outDir, { home, acc, arm, ctx, freshSessions = false }) {
   const streamText = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
   const { events } = parseStream(streamText);
   acc.agg = aggregateRunDir(outDir);
@@ -280,6 +280,13 @@ function parseResult(outDir, { home, acc, arm, ctx }) {
   const { transcript, sessions } = readTranscripts(path.join(outDir, 'session'), acc.agg.sessionIds, streamText);
   acc.transcript = transcript;
   acc.session = sessions[0] ?? null;
+  // Each later conversation of a fresh-session task has its own session file; its models join the model check.
+  // Only the top-level session of each stream counts, not a sub-agent's.
+  if (freshSessions && acc.session) {
+    const top = new Set(turnStreamTexts(outDir).map((t) => turnSummary(t).sessionId).filter(Boolean));
+    const later = acc.agg.sessionIds.flatMap((sid, i) => (top.has(sid) ? sessions[i]?.models ?? [] : []));
+    acc.session = { ...acc.session, models: [...new Set([...(acc.session.models ?? []), ...later])] };
+  }
   const cross = crossCheckCredits(acc.agg.credits, sessions);
   acc.meta.creditsSessionTotal = cross.total;
   if (cross.mismatch) acc.meta.flags.push('creditsMismatch');
