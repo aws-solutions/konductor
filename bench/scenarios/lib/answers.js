@@ -188,6 +188,20 @@ function writeAnswer(kind, solutionDir, outDir, opts = {}) {
   return { written, files };
 }
 
+// The free shallow answer of a code task: the reference's docs, changelog, config and test files, with none of its code
+// changes. It shows how much of the score a run gets from keyword and file checks without doing the work (gate: 40 or
+// less). A path is code when it has a code extension and is not a test file.
+const isCode = (rel) => /\.(c?m?js|ts|py)$/.test(rel) && !/(^|\/)(tests?|__tests__)\/|(^|\/)test_[^/]*\.py$|\.test\.(c?m?js|ts)$/.test(rel);
+
+/** A dry-run overlay (a function of the workspace) that lays the shallow answer of `solutionDir` over it. */
+const shallowOverlay = (solutionDir) => (ws) => {
+  for (const rel of listTree(solutionDir)) {
+    if (rel === 'DELETE.txt' || rel === 'ASKS.json' || isCode(rel)) continue;
+    fs.mkdirSync(path.dirname(path.join(ws, rel)), { recursive: true });
+    fs.copyFileSync(path.join(solutionDir, rel), path.join(ws, rel));
+  }
+};
+
 /** Writes the answer of `kind` for task `id` of the batch `cfg`. */
 function writeTaskAnswer(cfg, kind, id) {
   const task = cfg.readTask(id);
@@ -211,4 +225,4 @@ function main(argv) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { shallow, vary, follow, textAnswer, csvAnswer, writeAnswer, writeTaskAnswer, DEFAULTS, main };
+module.exports = { shallow, vary, follow, textAnswer, csvAnswer, writeAnswer, writeTaskAnswer, isCode, shallowOverlay, DEFAULTS, main };

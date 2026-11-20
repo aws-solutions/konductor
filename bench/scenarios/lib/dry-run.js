@@ -10,7 +10,7 @@
 //   variants   any other answers the batch config names (for example T2's dump review), scored once each.
 // It also checks that every `tests` check runs under a per-test timeout, that the task file loads in the runner, and,
 // when the batch asks for it, that a hung hidden test fails alone (the canary). The gates are the plan's (4.6):
-// reference >= 95, stub <= 20, lazy <= 40, alt >= 80, deterministic; a batch config may add or replace gates.
+// reference >= 95, stub <= 20, lazy and shallow <= 40, alt >= 80, deterministic; a batch config may add or replace gates.
 //
 //   node bench/scenarios/lib/dry-run.js --config bench/scenarios/tN/scenario.config.js [id ...] [--repeat N] [--json] [--record]
 //
@@ -95,6 +95,7 @@ function defaultGates(out) {
     stub: s.stub === undefined || (s.stub !== null && s.stub <= 20),
     deterministic: out.deterministic,
     ...(s.lazy !== undefined ? { lazy: s.lazy !== null && s.lazy <= 40 } : {}),
+    ...(s.shallow !== undefined ? { shallow: s.shallow !== null && s.shallow <= 40 } : {}),
     ...(s.alt !== undefined ? { alt: s.alt !== null && s.alt >= 80 } : {}),
     ...(out.canary ? { canary: out.canary.ok } : {}),
     ...(out.errors.length ? { task: false } : {}),
