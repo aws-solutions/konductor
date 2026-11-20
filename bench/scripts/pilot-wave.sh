@@ -44,6 +44,7 @@ usage() {
   say "$WAVES"
 }
 
+ARGS_NO_PREP=$(printf ' %q' "$@" | sed 's/ --prepare-only//')
 WAVE=""; PREP=0; WAIT=1; ONLY=""; SKIPFROM=""; CEIL_OPT=""; RUNLIM_OPT=""; OUT_OPT=""
 need() { [ "$#" -ge 2 ] && [ -n "$2" ] || { say "$1 needs a value" >&2; usage >&2; exit 64; }; }
 while [ "$#" -gt 0 ]; do
@@ -166,7 +167,7 @@ if [ "$PREP" = 1 ]; then
   say "prepare-only (no agent started), out $PO:"
   nice -n 10 "${BJ[@]}" "${RUN[@]}" --out "$PO" --prepare-only
   rm -r -- "$PO"
-  say "prepare-only passed. Paid run: bash $R/bench/scripts/pilot-wave.sh $WAVE"
+  say "prepare-only passed. Paid run: bash $R/bench/scripts/pilot-wave.sh$ARGS_NO_PREP"
   exit 0
 fi
 
