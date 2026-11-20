@@ -35,7 +35,8 @@ function showText({ first, last }: LineWindow): string {
 type Direction = -1 | 1;
 
 // The window the person moved to. It is kept only while `from` is the same:
-// the file, its line count, and the stage and its range.
+// the file, its line count, and the stage and its range. The box of lines is
+// keyed on it too, so another file or stage starts scrolled to its top.
 interface Moved {
   readonly from: string;
   readonly window: LineWindow;
@@ -131,6 +132,7 @@ export function YamlPane({
       </div>
       {before && <p className="wf-code-note">{showButton(-1, before)}</p>}
       <CodeLines
+        key={from}
         lines={lines.slice(first - 1, last)}
         label={`Lines of ${file}`}
         describedBy={noteId}
