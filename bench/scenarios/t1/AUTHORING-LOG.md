@@ -49,6 +49,8 @@ Shallow answer check (free, 2026-11-20): `dry-run.js` also scores a shallow answ
 | t1-refactor-esm | deepseek-3.2 | the dry run failed: the reference scored 87.4 (42 of 51 hidden tests) and the untouched fixture scored 69.1 (36 of 51 passed before any change); the reviewer's leak and floor verdicts were fail | author 35.52 credits; no fix round, because a deepseek fix round costs about 25 credits and the hidden tests tested the old code as much as the new. Replaced by `t1-ref-esm-migrate`, written by the other author with a smaller scope |
 | t1-impl-cursor-paging | deepseek-3.2 | the reference scored 63.0 and the reviewer's leak, ambiguity, hidden-answer and floor verdicts were fail; no fix round (deepseek fix rounds have not repaired a reference) | see the calls table for credits |
 | t1-nfr-latency-cache | minimax-m2.5 | second-family author stopped at the 90-tool-call cap without writing task-draft.json; dropped, not hand-fixed (owner rule) | see the calls table for credits |
+| t1-impl-flag-rollout | minimax-m2.5 | second-family draft: the reference scored 0 (no hidden test ran) and the reviewer's leak, hidden-answer and ceiling verdicts were fail; dropped without a fix round, because the fix would keep a Python hidden suite and so a new per-task bridge copy, which the owner's no-copies rule forbids until the shared lib lands | see the calls table for credits |
+| t1-ref-split-module | minimax-m2.5 | second-family draft stopped by the 45-minute watchdog before it finished; the reviewer saw a partial draft and failed all five checks; dropped, not hand-fixed | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 

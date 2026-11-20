@@ -3,7 +3,7 @@
   "phase": "refactor",
   "role": "developer",
   "author": "gpt-5.6-luna",
-  "reviewer": "glm-5",
+  "reviewer": "qwen3-coder-next",
   "stack": "node",
   "controlKind": "negative",
   "onFixture": "t1-impl-job-retry",
