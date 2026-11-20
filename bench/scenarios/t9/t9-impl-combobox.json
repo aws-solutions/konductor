@@ -93,14 +93,7 @@
         "verdict": "pass",
         "note": "All tests derive from stated requirements. The tests verify: ARIA combobox semantics, keyboard/pointer interaction, live region announcements, ranking reuse via imported filter.js, text rendering of special characters, and form continuity. No test relies on unstated IDs, class names, or hidden behaviors."
       }
-    ],
-    "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
-      "result": "pass",
-      "checklist": "prompt names no method and no decoy; fixture does not list the answers; key matches the fixture; solvable from the fixture alone"
-    }
+    ]
   },
   "pilot": {
     "scores": {},
