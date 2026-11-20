@@ -28,7 +28,6 @@ This growth rate is based on:
 | Q1 2025 | 2.55 | Mobile app launch |
 | Q2 2025 | 3.44 | Full quarter with mobile |
 | Q3 2025 | 4.65 | Peak season planning |
-| Q4 2025 | 6.28 | **Note: This projection assumes continued 35% growth, but may be revised based on Q1 2025 performance** |
 
 ## Processing Time Analysis
 
@@ -60,11 +59,11 @@ Current processing shows linear scaling with data volume:
 Each transaction generates approximately 15,000 events in our system:
 - 1 TB of data ≈ 15 million events
 - Current daily: 21 million events
-- Projected Q4 2025: 94 million events daily
+- Projected Q3 2025: 69.8 million events daily
 
 ## Infrastructure Implications
 
 1. **Storage Requirements**: Need 30-day retention (minimum 42 TB active storage)
-2. **Processing Capacity**: Must handle 4.65 TB within 4 hours by Q4 2025
+2. **Processing Capacity**: Must handle 4.65 TB within 4 hours by Q3 2025
 3. **Network Throughput**: Minimum 3 Gbps sustained during processing window
 4. **Memory Requirements**: 256 GB per processing node for current workloads

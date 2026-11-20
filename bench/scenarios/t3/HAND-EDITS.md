@@ -269,3 +269,16 @@ superseded figure are gone; `review.adjudication` is added. Each task has a new 
   (same in `_pristine`); `hidden/decision.test.js` reads the new shape. expertKey 8 items (drops the two items met by
   copying change-calendar.md; adds seed lead time, writes lost after the switch, zero throughput margin). New lazy,
   alt (answers.js) and other answers. Free gates: reference 100, stub 0, lazy 16, alt 100, other 100.
+
+## t3-adr-batch-vs-stream: one horizon (2026-11-20, deepseek-3.2 f5, owner decision)
+
+The writer family (deepseek-3.2) rewrote the task so the request, fixture, key and answers agree on one planning
+horizon: the next 4 quarters from 2024-Q3, ending 2025-Q3 at 4.65 TB. The 2025-Q4 row (6.28 TB) is gone from
+`data-growth.csv` and `traffic-analysis.md`, every "Q4 2025" that meant the horizon now reads "Q3 2025", and the limit
+key `data_volume_tb_q4_2025` is now `data_volume_tb_q3_2025` in the prompt, hidden test, reference and both answers.
+`hidden/_pristine/` matches the fixture again. One expertKey weak answer still names 6.28 TB as a common mistake.
+The mate hand-edit recheck worker (claude) copied back only the task's own files, since the writer had left scratch
+copies inside `solution/`, and bumped the version to 5. Free gates: reference 100, empty 0, lazy 19, alternative 100;
+the lint is clean and the name scan finds no missing name. The non-Claude recheck is still open: this call cost 22.6
+of the 30 credits approved, so the 15-credit gpt-5.6-luna recheck did not fit. `pilot.decision` stays fix with a
+recheck-pending blocker.

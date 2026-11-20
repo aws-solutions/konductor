@@ -25,7 +25,7 @@ The analytics team requires a reliable nightly reporting pipeline that processes
 
 ### Performance Requirements
 - Current processing time: 2.1 hours for 1.4 TB data
-- Must maintain <4 hour processing time through Q4 2025
+- Must maintain <4 hour processing time through Q3 2025
 - System must scale to handle projected data growth
 - Maximum monthly budget: $10,000 for infrastructure
 
