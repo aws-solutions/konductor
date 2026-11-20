@@ -120,7 +120,7 @@ def test_user_guide_flowchart_gates_the_cdk_step():
 
 
 def test_user_guide_gate_sentence_names_all_three_commands():
-    gate = [b for b in bullets(k_verify_guide()) if b.startswith("**CDK commands wait for your confirmation.**")]
+    gate = [b for b in bullets(k_verify_guide()) if b.startswith("**CDK commands wait for your confirmation; build, test and lint do not.**")]
     assert len(gate) == 1, gate
     sentence = next(s for s in gate[0].split(". ") if "until you confirm" in s)
     for command in GATED_COMMANDS:

@@ -316,7 +316,7 @@ project-specific.
 - **The final checklist is all-or-nothing.** Seven items: success criteria met, build passes,
   tests pass, lint passes, manual verification complete, no regressions, documentation updated
   if applicable. Any failure means the task is not complete.
-- **CDK commands wait for your confirmation.** `cdk synth`, `cdk ls` and `cdk diff` all run the
+- **CDK commands wait for your confirmation; build, test and lint do not.** `cdk synth`, `cdk ls` and `cdk diff` all run the
   CDK app's own code, and `cdk diff` also reads the deployed stack, so the SOP runs none of them
   until you confirm the CDK app is trusted to run where the agent is working. A CDK app the agent
   created in the same session, or one you say you own, counts as confirmed. Editing a checkout
@@ -326,7 +326,9 @@ project-specific.
   runs `cdk diff` only when you also ask for a check against the deployed stack, and it runs
   `cdk diff` and any context lookup only with the credentials you name. Without confirmation it
   validates an existing `cdk.out/` template or reads the stacks, and reports all three commands
-  as not run. It never deploys, bootstraps or creates a change set.
+  as not run. It never deploys, bootstraps or creates a change set. Steps 2 to 4 already run the
+  checkout's code, so what this gate adds is that nothing reaches an AWS account without your
+  confirmation and the credentials you name.
 
 ---
 
