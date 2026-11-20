@@ -23,84 +23,140 @@ use crate::cli::synth::kiro_cli_v2::AGENTS_CONTENT_TYPE_DIR;
 /// commands found there (or why none could be read).
 pub(crate) struct HookWiring {
     pub(crate) file: PathBuf,
+    /// The mode agent whose own file carries the hook (Kiro CLI v2 only).
+    pub(crate) agent: Option<String>,
     pub(crate) commands: Result<Vec<String>, String>,
 }
 
-/// The hook file for `slot` and its orchestration hook commands. `None`
-/// for a strategy that wires no orchestration hook.
-pub(crate) fn orchestration_hook_wiring(
+const UNLISTED: &str = "the file is not listed in the install manifest";
+
+/// The hook files for `slot` and their orchestration hook commands: one
+/// per mode agent on Kiro CLI v2, where each mode agent's own file
+/// carries the hook, else one. Empty for a strategy that wires no
+/// orchestration hook.
+pub(crate) fn orchestration_hook_wirings(
     destination: &Path,
     slot: &StrategyManifest,
-) -> Option<HookWiring> {
-    let v2_agent_file = v2_mode_agent_file(destination, slot);
+) -> Vec<HookWiring> {
     let (relative, commands): (&str, fn(&Value) -> Vec<String>) = match slot.strategy.as_str() {
         kiro_cli_v3::STRATEGY_NAME => (V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, v3_commands),
-        kiro_cli::STRATEGY_NAME => (v2_agent_file.as_str(), v2_commands),
+        kiro_cli::STRATEGY_NAME => return v2_wirings(destination, slot),
         claude::STRATEGY_NAME => (
             claude_hooks_settings_relative_path(destination),
             claude_commands,
         ),
-        _ => return None,
+        _ => return Vec::new(),
     };
     let file = destination.join(relative);
-    // A v2 or v3 document the slot does not list is a leftover or
-    // hand-placed file, not one this install wrote.
-    let unlisted = (slot.strategy == kiro_cli_v3::STRATEGY_NAME
-        || slot.strategy == kiro_cli::STRATEGY_NAME)
+    // A v3 document the slot does not list is a leftover or hand-placed
+    // file, not one this install wrote.
+    let unlisted = slot.strategy == kiro_cli_v3::STRATEGY_NAME
         && !slot.files.iter().any(|f| f.path == relative);
     let commands = if unlisted {
-        Err("the file is not listed in the install manifest".to_string())
+        Err(UNLISTED.to_string())
     } else {
         read_json(&file).map(|value| commands(&value))
     };
-    Some(HookWiring { file, commands })
+    vec![HookWiring {
+        file,
+        agent: None,
+        commands,
+    }]
 }
 
-/// The v2 agent file that carries the orchestration hook: `konductor`'s,
-/// else the first agent the slot lists that loads the Direct Work context
-/// (a renamed orchestrator), else `konductor`'s path so a missing file is
-/// reported under its usual name.
-fn v2_mode_agent_file(destination: &Path, slot: &StrategyManifest) -> String {
-    let agent_path = |name: &str| {
-        kiro_cli::content_manifest_path(
-            kiro_cli::KIRO_DESTINATION_ROOT,
-            AGENTS_CONTENT_TYPE_DIR,
-            &format!("{name}.json"),
-        )
-    };
-    let default = agent_path(crate::cli::orchestration_hook::MODE_AGENT);
-    if slot.strategy != kiro_cli::STRATEGY_NAME || slot.files.iter().any(|f| f.path == default) {
-        return default;
-    }
+fn v2_agent_path(name: &str) -> String {
+    kiro_cli::content_manifest_path(
+        kiro_cli::KIRO_DESTINATION_ROOT,
+        AGENTS_CONTENT_TYPE_DIR,
+        &format!("{name}.json"),
+    )
+}
+
+/// One wiring per v2 mode agent the slot lists: `konductor`, and every
+/// other agent whose file loads the Direct Work context (a renamed
+/// orchestrator). Each file is read as the hook reads it, under its
+/// 1 MiB cap, so a file too large to check is reported here as the hook
+/// reports it. A missing or unparsable file is a mode agent only for
+/// `konductor`. With no mode agent listed, `konductor`'s path, so the
+/// gap is reported under its usual name.
+fn v2_wirings(destination: &Path, slot: &StrategyManifest) -> Vec<HookWiring> {
     let agents_dir = kiro_cli::content_manifest_path(
         kiro_cli::KIRO_DESTINATION_ROOT,
         AGENTS_CONTENT_TYPE_DIR,
         "",
     );
-    slot.files
+    let mut wirings: Vec<HookWiring> = slot
+        .files
         .iter()
         .map(|file| file.path.as_str())
-        .filter(|path| {
-            path.strip_prefix(agents_dir.as_str())
+        .filter_map(|path| {
+            let name = path
+                .strip_prefix(agents_dir.as_str())
                 .and_then(|rest| rest.strip_suffix(".json"))
-                .is_some_and(|name| {
-                    !name.is_empty() && !name.contains('/') && !name.starts_with('_')
-                })
-        })
-        .find(|path| {
-            read_json(&destination.join(path)).is_ok_and(|agent| {
-                crate::cli::orchestration_hook::kiro_agent_loads_direct_work(&agent)
+                .filter(|name| !name.is_empty() && !name.contains('/') && !name.starts_with('_'))?;
+            let is_konductor = name == crate::cli::orchestration_hook::MODE_AGENT;
+            let commands = match read_agent_json(&destination.join(path)) {
+                Ok(agent) => {
+                    let loads =
+                        crate::cli::orchestration_hook::kiro_agent_loads_direct_work(&agent);
+                    if !is_konductor && !loads {
+                        return None;
+                    }
+                    Ok(v2_commands(&agent))
+                }
+                Err(AgentJsonError::TooLarge) => Err(format!(
+                    "the file is larger than {} MiB, so the hook could not check whether it \
+                     loads {}",
+                    crate::cli::orchestration_hook::MAX_AGENT_FILE_BYTES / (1024 * 1024),
+                    crate::cli::orchestration_hook::DIRECT_WORK_CONTEXT_FILE_NAME
+                )),
+                Err(AgentJsonError::Other(reason)) if is_konductor => Err(reason),
+                Err(AgentJsonError::Other(_)) => return None,
+            };
+            Some(HookWiring {
+                file: destination.join(path),
+                agent: Some(name.to_string()),
+                commands,
             })
         })
-        .map(str::to_string)
-        .unwrap_or(default)
+        .collect();
+    if wirings.is_empty() {
+        let default = v2_agent_path(crate::cli::orchestration_hook::MODE_AGENT);
+        wirings.push(HookWiring {
+            file: destination.join(&default),
+            agent: Some(crate::cli::orchestration_hook::MODE_AGENT.to_string()),
+            commands: Err(UNLISTED.to_string()),
+        });
+    }
+    wirings
+}
+
+enum AgentJsonError {
+    TooLarge,
+    Other(String),
+}
+
+/// An agent file under the hook's own read cap; a truncated JSON
+/// document never parses, so a file over the cap is not read.
+fn read_agent_json(path: &Path) -> Result<Value, AgentJsonError> {
+    let (bytes, over) = crate::cli::orchestration_hook::read_agent_file(path, true)
+        .map_err(|err| AgentJsonError::Other(io_reason(&err)))?;
+    if over {
+        return Err(AgentJsonError::TooLarge);
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|err| AgentJsonError::Other(format!("the file is not valid JSON ({err})")))
+}
+
+fn io_reason(err: &std::io::Error) -> String {
+    match err.kind() {
+        std::io::ErrorKind::NotFound => "the file does not exist".to_string(),
+        _ => format!("the file could not be read ({err})"),
+    }
 }
 
 fn read_json(path: &Path) -> Result<Value, String> {
-    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
-        std::io::ErrorKind::NotFound => "the file does not exist".to_string(),
-        _ => format!("the file could not be read ({err})"),
-    })?;
+    let text = std::fs::read_to_string(path).map_err(|err| io_reason(&err))?;
     serde_json::from_str(&text).map_err(|err| format!("the file is not valid JSON ({err})"))
 }
 
@@ -197,8 +253,14 @@ mod tests {
         )
     }
 
+    fn only_wiring(destination: &Path, slot: &StrategyManifest) -> HookWiring {
+        let mut wirings = orchestration_hook_wirings(destination, slot);
+        assert_eq!(wirings.len(), 1, "{}", slot.strategy);
+        wirings.remove(0)
+    }
+
     fn assert_reads_back(destination: &Path, slot: &StrategyManifest, exe: &str) {
-        let wiring = orchestration_hook_wiring(destination, slot).expect("a hook strategy");
+        let wiring = only_wiring(destination, slot);
         let commands = wiring.commands.expect("the written file is readable");
         assert_eq!(commands.len(), 1, "{}: {commands:?}", slot.strategy);
         assert_eq!(
@@ -277,7 +339,7 @@ mod tests {
             &target,
             &[agent_entry.manifest_path.as_str()],
         );
-        let wiring = orchestration_hook_wiring(&target, &slot).expect("a hook strategy");
+        let wiring = only_wiring(&target, &slot);
         assert_eq!(wiring.file, target.join(&agent_entry.manifest_path));
         assert_ne!(
             wiring.commands.as_ref().err().map(String::as_str),
@@ -286,37 +348,137 @@ mod tests {
         fs::remove_dir_all(&root).ok();
     }
 
+    fn agent_path(name: &str) -> String {
+        kiro_cli::content_manifest_path(
+            kiro_cli::KIRO_DESTINATION_ROOT,
+            AGENTS_CONTENT_TYPE_DIR,
+            &format!("{name}.json"),
+        )
+    }
+
+    /// Writes `.kiro/agents/<name>.json` loading `resource`, with an
+    /// `agentSpawn` orchestration entry when `hook` is set.
+    fn write_v2_agent(destination: &Path, name: &str, resource: &str, hook: bool) {
+        let entries: Vec<Value> = hook
+            .then(|| {
+                serde_json::json!({
+                    "command": format!(
+                        "{PLAIN_EXE} __orchestration-hook --agent {name} --install-root {}",
+                        destination.display()
+                    )
+                })
+            })
+            .into_iter()
+            .collect();
+        let file = destination.join(agent_path(name));
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(
+            &file,
+            serde_json::json!({
+                "name": name,
+                "resources": [resource],
+                "hooks": {"agentSpawn": entries}
+            })
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    const DIRECT_WORK: &str = "file://context/k-direct-work.md";
+    const ROUTING_RULES: &str = "file://context/k-orchestrator-routing-rules.md";
+
+    fn v2_slot(destination: &Path, agents: &[&str]) -> StrategyManifest {
+        let listed: Vec<String> = agents.iter().map(|name| agent_path(name)).collect();
+        let listed: Vec<&str> = listed.iter().map(String::as_str).collect();
+        slot(kiro_cli::STRATEGY_NAME, destination, &listed)
+    }
+
+    fn wired_agents(wirings: &[HookWiring]) -> Vec<(&str, usize)> {
+        wirings
+            .iter()
+            .map(|wiring| {
+                (
+                    wiring.agent.as_deref().unwrap_or_default(),
+                    wiring.commands.as_ref().map_or(0, Vec::len),
+                )
+            })
+            .collect()
+    }
+
     #[test]
     fn v2_reads_a_renamed_agent_that_loads_direct_work() {
         let destination = scratch_dir("v2-renamed");
-        let agent_path = |name: &str| {
-            kiro_cli::content_manifest_path(
-                kiro_cli::KIRO_DESTINATION_ROOT,
-                AGENTS_CONTENT_TYPE_DIR,
-                &format!("{name}.json"),
-            )
-        };
-        let write = |name: &str, resource: &str| {
-            let file = destination.join(agent_path(name));
-            fs::create_dir_all(file.parent().unwrap()).unwrap();
-            fs::write(
-                &file,
-                serde_json::json!({"name": name, "resources": [resource]}).to_string(),
-            )
-            .unwrap();
-        };
-        write("acme-mux", "file://context/k-orchestrator-routing-rules.md");
-        write("acme", "file://context/k-direct-work.md");
-        let listed = [agent_path("acme-mux"), agent_path("acme")];
-        let listed: Vec<&str> = listed.iter().map(String::as_str).collect();
-        let slot = slot(kiro_cli::STRATEGY_NAME, &destination, &listed);
-        let wiring = orchestration_hook_wiring(&destination, &slot).expect("a hook strategy");
+        write_v2_agent(&destination, "acme-mux", ROUTING_RULES, false);
+        write_v2_agent(&destination, "acme", DIRECT_WORK, true);
+        let wiring = only_wiring(&destination, &v2_slot(&destination, &["acme-mux", "acme"]));
         assert_eq!(wiring.file, destination.join(agent_path("acme")));
 
-        let mux_only = agent_path("acme-mux");
-        let slot = self::slot(kiro_cli::STRATEGY_NAME, &destination, &[mux_only.as_str()]);
-        let wiring = orchestration_hook_wiring(&destination, &slot).expect("a hook strategy");
+        let wiring = only_wiring(&destination, &v2_slot(&destination, &["acme-mux"]));
         assert_eq!(wiring.file, destination.join(v2_agent_manifest_path()));
+        assert_eq!(wiring.commands.unwrap_err(), UNLISTED);
+        fs::remove_dir_all(&destination).ok();
+    }
+
+    #[test]
+    fn v2_reads_konductor_and_every_renamed_mode_agent() {
+        let destination = scratch_dir("v2-every-mode-agent");
+        write_v2_agent(&destination, "konductor", DIRECT_WORK, true);
+        write_v2_agent(&destination, "acme", DIRECT_WORK, true);
+        write_v2_agent(
+            &destination,
+            "k-developer",
+            "file://context/k-core-rules.md",
+            false,
+        );
+        let slot = v2_slot(&destination, &["konductor", "k-developer", "acme"]);
+        let wirings = orchestration_hook_wirings(&destination, &slot);
+        assert_eq!(wired_agents(&wirings), [("konductor", 1), ("acme", 1)]);
+        fs::remove_dir_all(&destination).ok();
+    }
+
+    #[test]
+    fn v2_reports_a_renamed_mode_agent_without_its_hook() {
+        let destination = scratch_dir("v2-one-unwired");
+        write_v2_agent(&destination, "acme", DIRECT_WORK, true);
+        write_v2_agent(&destination, "globex", DIRECT_WORK, false);
+        let slot = v2_slot(&destination, &["acme", "globex"]);
+        let wirings = orchestration_hook_wirings(&destination, &slot);
+        assert_eq!(wired_agents(&wirings), [("acme", 1), ("globex", 0)]);
+        fs::remove_dir_all(&destination).ok();
+    }
+
+    #[test]
+    fn v2_reads_agent_files_under_the_hook_cap() {
+        let destination = scratch_dir("v2-oversized");
+        write_v2_agent(&destination, "acme", DIRECT_WORK, true);
+        let file = destination.join(agent_path("acme"));
+        let mut text = fs::read_to_string(&file).unwrap();
+        text.push_str(&" ".repeat(crate::cli::orchestration_hook::MAX_AGENT_FILE_BYTES as usize));
+        fs::write(&file, text).unwrap();
+        let wiring = only_wiring(&destination, &v2_slot(&destination, &["acme"]));
+        assert_eq!(wiring.agent.as_deref(), Some("acme"));
+        assert_eq!(
+            wiring.commands.unwrap_err(),
+            "the file is larger than 1 MiB, so the hook could not check whether it loads \
+             k-direct-work.md"
+        );
+
+        // `konductor` is a mode agent by name, so its oversized file is
+        // reported the same way, not skipped.
+        write_v2_agent(&destination, "konductor", DIRECT_WORK, true);
+        fs::write(destination.join(agent_path("konductor")), {
+            let mut text = fs::read_to_string(destination.join(agent_path("konductor"))).unwrap();
+            text.push_str(
+                &" ".repeat(crate::cli::orchestration_hook::MAX_AGENT_FILE_BYTES as usize),
+            );
+            text
+        })
+        .unwrap();
+        let wiring = only_wiring(&destination, &v2_slot(&destination, &["konductor"]));
+        assert!(wiring
+            .commands
+            .unwrap_err()
+            .starts_with("the file is larger than 1 MiB"));
         fs::remove_dir_all(&destination).ok();
     }
 
@@ -327,7 +489,7 @@ mod tests {
         fs::create_dir_all(file.parent().unwrap()).unwrap();
         fs::write(&file, r#"{"hooks":{}}"#).unwrap();
         let slot = slot(kiro_cli::STRATEGY_NAME, &destination, &[]);
-        let wiring = orchestration_hook_wiring(&destination, &slot).expect("a hook strategy");
+        let wiring = only_wiring(&destination, &slot);
         assert_eq!(
             wiring.commands.unwrap_err(),
             "the file is not listed in the install manifest"

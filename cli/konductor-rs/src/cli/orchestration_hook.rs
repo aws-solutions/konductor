@@ -20,7 +20,9 @@ use std::path::{Component, Path, PathBuf};
 
 use super::install::index::env_home_dir;
 use super::install::manifest::read_manifest;
-use super::install::resource_rewrite::{hook_command_install_root, orchestration_hook_wiring};
+use super::install::resource_rewrite::{
+    hook_command_install_root, orchestration_hook_wirings, HookWiring,
+};
 use super::install::{claude, kiro_cli, kiro_cli_v3};
 use super::orchestration_mode::{resolve_user_mode, FallbackReason, Mode, ModeResolution};
 use super::telemetry_hook::{
@@ -38,7 +40,7 @@ pub(crate) const MODE_AGENT: &str = "konductor";
 pub(crate) const DIRECT_WORK_CONTEXT_FILE_NAME: &str = "k-direct-work.md";
 
 /// Cap on an installed agent file read to find its context files.
-const MAX_AGENT_FILE_BYTES: u64 = 1024 * 1024;
+pub(crate) const MAX_AGENT_FILE_BYTES: u64 = 1024 * 1024;
 
 pub(crate) const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
 pub(crate) const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
@@ -207,6 +209,24 @@ enum DirectWork {
     Undecidable(PathBuf),
 }
 
+/// An installed agent file, read at most one byte past
+/// `MAX_AGENT_FILE_BYTES`, and whether it is longer than that cap (the
+/// bytes are cut to the cap). With `whole_only`, a file the stat already
+/// shows is over the cap is not read at all.
+pub(crate) fn read_agent_file(path: &Path, whole_only: bool) -> std::io::Result<(Vec<u8>, bool)> {
+    let file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    if whole_only && len > MAX_AGENT_FILE_BYTES {
+        return Ok((Vec::new(), true));
+    }
+    let mut bytes = Vec::with_capacity(len.min(MAX_AGENT_FILE_BYTES + 1) as usize);
+    file.take(MAX_AGENT_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)?;
+    let over = bytes.len() as u64 > MAX_AGENT_FILE_BYTES;
+    bytes.truncate(MAX_AGENT_FILE_BYTES as usize);
+    Ok((bytes, over))
+}
+
 /// What the agent file `root` holds for `agent` in `layout` (either
 /// layout when `None`) says about the Direct Work context. `agent` is a
 /// name the install's manifest lists, so it is a single path component.
@@ -222,23 +242,8 @@ fn installed_agent_direct_work(
     layout: Option<AgentLayout>,
     agent: &str,
 ) -> DirectWork {
-    // Reads at most one byte past the cap, so `over` tells a file of
-    // exactly the cap from a longer one. With `whole_only`, a file the
-    // stat already shows is over the cap is not read at all.
-    let read = |relative: &Path, whole_only: bool| -> Option<(Vec<u8>, bool)> {
-        let file = std::fs::File::open(root.join(relative)).ok()?;
-        let len = file.metadata().ok()?.len();
-        if whole_only && len > MAX_AGENT_FILE_BYTES {
-            return Some((Vec::new(), true));
-        }
-        let mut bytes = Vec::with_capacity(len.min(MAX_AGENT_FILE_BYTES + 1) as usize);
-        file.take(MAX_AGENT_FILE_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .ok()?;
-        let over = bytes.len() as u64 > MAX_AGENT_FILE_BYTES;
-        bytes.truncate(MAX_AGENT_FILE_BYTES as usize);
-        Some((bytes, over))
-    };
+    let read =
+        |relative: &Path, whole_only: bool| read_agent_file(&root.join(relative), whole_only).ok();
     let kiro = || {
         let relative = PathBuf::from(format!(".kiro/agents/{agent}.json"));
         // A truncated JSON document never parses, so only the whole file
@@ -596,22 +601,41 @@ fn with_trailing_newline(mut text: String) -> String {
 
 /// Whether the install at `owning_root` has its own session-start hook
 /// for `harness` (any hook strategy when the harness is unknown) that
-/// reads `owning_root`. A hook command without `--install-root` counts:
-/// it prints for the nearest install, which is this one.
-fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>) -> bool {
+/// reads `owning_root` and fires for `agent`. A hook command without
+/// `--install-root` counts: it prints for the nearest install, which is
+/// this one. On Kiro CLI v2 each mode agent's own file carries its hook,
+/// so the session agent's file decides; it is not required of the other
+/// mode agents, whose sessions this hook does not run for, so one
+/// unwired agent never makes another agent's session print a fallback
+/// line next to the owner's persona. A slot that does not list the
+/// session agent among its mode agents needs every listed one wired.
+fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>, agent: &str) -> bool {
     let Ok(Some(manifest)) = read_manifest(owning_root) else {
         return false;
+    };
+    let reads_owner = |wiring: &HookWiring| {
+        wiring.commands.as_ref().is_ok_and(|commands| {
+            commands.iter().any(|command| {
+                hook_command_install_root(command)
+                    .is_none_or(|root| same_dir(Path::new(&root), owning_root))
+            })
+        })
     };
     manifest
         .strategies
         .iter()
         .filter(|slot| harness.is_none_or(|name| slot.strategy == name))
-        .filter_map(|slot| orchestration_hook_wiring(owning_root, slot))
-        .filter_map(|wiring| wiring.commands.ok())
-        .flatten()
-        .any(|command| {
-            hook_command_install_root(&command)
-                .is_none_or(|root| same_dir(Path::new(&root), owning_root))
+        .any(|slot| {
+            let wirings = orchestration_hook_wirings(owning_root, slot);
+            let own: Vec<&HookWiring> = wirings
+                .iter()
+                .filter(|wiring| wiring.agent.as_deref() == Some(agent))
+                .collect();
+            if own.is_empty() {
+                !wirings.is_empty() && wirings.iter().all(reads_owner)
+            } else {
+                own.into_iter().all(reads_owner)
+            }
         })
 }
 
@@ -669,7 +693,7 @@ pub(crate) fn dispatch_orchestration_hook(
         DirectWork::Undecidable(relative) => Some(relative),
     };
     let shadowed = own_install.is_some_and(|own| !same_dir(own, owning_root));
-    if shadowed && owner_hook_is_wired(owning_root, harness) {
+    if shadowed && owner_hook_is_wired(owning_root, harness, &agent) {
         return;
     }
     let persona_root = logical_root(owning_root, home.as_deref());
@@ -1326,6 +1350,67 @@ mod tests {
             rules.display()
         )));
         assert!(body.ends_with("\n\n## Digest\n- delegate\n"), "{body}");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    /// On Kiro CLI v2 each mode agent's own file carries the hook, so the
+    /// shadowed check asks the session agent's file, not another's.
+    #[test]
+    fn the_owner_hook_on_kiro_v2_is_the_session_agents_own() {
+        let root = scratch_dir("owner-v2");
+        let agent = |name: &str, hook: bool| {
+            let entries: Vec<serde_json::Value> = hook
+                .then(|| {
+                    serde_json::json!({"command": format!(
+                        "/opt/konductor __orchestration-hook --agent {name} --install-root {}",
+                        root.display()
+                    )})
+                })
+                .into_iter()
+                .collect();
+            serde_json::json!({
+                "name": name,
+                "resources": ["file://context/k-direct-work.md"],
+                "hooks": {"agentSpawn": entries}
+            })
+            .to_string()
+        };
+        let files = [
+            (".kiro/agents/acme.json".to_string(), agent("acme", true)),
+            (
+                ".kiro/agents/globex.json".to_string(),
+                agent("globex", false),
+            ),
+        ];
+        let manifest_files = files
+            .iter()
+            .map(|(path, contents)| {
+                std::fs::create_dir_all(root.join(path).parent().unwrap()).unwrap();
+                std::fs::write(root.join(path), contents).unwrap();
+                ManifestFile {
+                    path: path.clone(),
+                    sha256: None,
+                    provenance: Provenance::Created,
+                }
+            })
+            .collect();
+        upsert_strategy(
+            &root,
+            StrategyManifest::new(
+                kiro_cli::STRATEGY_NAME,
+                "2026-01-01T00:00:00Z",
+                ".",
+                None,
+                Status::Complete,
+                manifest_files,
+            ),
+        )
+        .unwrap();
+        let harness = Some(kiro_cli::STRATEGY_NAME);
+        assert!(owner_hook_is_wired(&root, harness, "acme"));
+        assert!(!owner_hook_is_wired(&root, harness, "globex"));
+        // An agent the slot does not list as a mode agent needs them all.
+        assert!(!owner_hook_is_wired(&root, harness, "initech"));
         std::fs::remove_dir_all(&root).ok();
     }
 

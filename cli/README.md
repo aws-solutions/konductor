@@ -1069,8 +1069,9 @@ orchestration:
   entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `uninstall` removes them.
 - The mode applies to `konductor` and to any installed agent that loads the `k-direct-work.md`
   context, so a fork or custom distribution that renames the orchestrator keeps the mode. On Kiro
-  CLI v2 that agent's own file gets the `agentSpawn` entry. An agent that loads the routing rules
-  instead, like the mux and cmux orchestrators, always coordinates and gets no mode line.
+  CLI v2 that agent's own file gets the `agentSpawn` entry, and `doctor` checks the entry in every
+  such file. An agent that loads the routing rules instead, like the mux and cmux orchestrators,
+  always coordinates and gets no mode line.
 - Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
   read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
   (under 2,500 bytes in total). Only the mode line and the Step 1 pointer are trusted; the summary
