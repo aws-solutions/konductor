@@ -310,14 +310,16 @@ The figures come from the four short pilots on the same model and Kiro CLI build
 trial (0.33 to 0.40 by pilot), p90 0.53, maximum 0.64, mean wall time 20 s, p90 27 s. A cap is trials × p90 × 1.2, the
 analysis plan's rule, rounded up. At 20 s a trial, the 556 trials take about 3.1 hours of wall time, one at a time.
 
-**Soft cap, proposed.** 360 credits for the whole counted set, each wave approved on its own before it starts, with
-its own `--budget-credits` from the table. The owner asked for no hard cap; this is the figure to be reasonable about.
-If wave 0 shows a mean over 0.55 credits per trial the table is redone before wave 1.
+**Soft cap, approved.** 360 credits for the whole counted set, approved by the owner on 2026-11-20: no hard cap, be
+reasonable, and stop and ask if a wave passes twice its estimate. Each wave is approved on its own before it starts,
+with its own `--budget-credits` ceiling from the table (wave 0 and 1 each 45, wave 2 134, wave 3 83, wave 4 49; they
+sum to 356). If wave 0 shows a mean over 0.55 credits per trial the table is redone before wave 1.
 
 **Stop rules.** A wave stops, and the report says incomplete, when: any trial loses its gateway; infra loss passes
 0.5% of trials; the stream mismatch rate passes 1%; integrity exclusions pass 10%; the median credits per trial passes
-0.8 (twice the pilot); or the runner stops it (a new listener on a counted host, a foreign connection). A stopped wave
-is never resumed into the same counts; its out dir is kept and a new wave is started.
+0.8 (twice the pilot); the wave's spend passes twice its estimate (stop and ask the owner); or the runner stops it (a
+new listener on a counted host, a foreign connection). A stopped wave is never resumed into the same counts; its out
+dir is kept and a new wave is started.
 
 **Before wave 0.** The owner signs the release from the counted-set folder with the real key (the authors never touch
 that key), runs the policy test, and runs the free gate against the signed copy:
