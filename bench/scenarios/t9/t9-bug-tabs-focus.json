@@ -82,9 +82,7 @@
       "licence": "W3C Software and Document License (checked in the repository LICENSE); idea only, no text used",
       "licenceCheckedAt": "2026-11-19",
       "use": "idea"
-    },
-    "singleFamily": true,
-    "note": "single-family-authored (batch T9, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+    }
   },
   "review": {
     "family": "zhipu",

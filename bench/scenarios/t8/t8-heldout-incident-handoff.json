@@ -1,0 +1,161 @@
+{
+  "id": "t8-heldout-incident-handoff",
+  "class": "hard",
+  "version": 2,
+  "phase": "release-ops",
+  "role": "developer",
+  "phases2": [
+    "bugfix"
+  ],
+  "questions": "allowed",
+  "prompt": "Lena here. I have been on this invoice incident all afternoon and my shift ends at 16:30 UTC, so a developer is taking it over from me. Can you go through this folder and write the hand-off they will work from, at handoff/incident-handoff.md? They need to know what is going on and why, what to do now and what not to do, how they will know it worked, what could still go wrong, and who owns what. My own notes are in here too, but I did not get far. End the file with a fenced ```json block holding one object with these fields: status (one of investigating, mitigated, resolved); rootCause (object: summary, a short text naming the cause and the change that set it off; evidence, a list of path:line strings, the path relative to this folder and the line 1-based, citing the lines that prove it); impact (object: since, the ISO 8601 UTC time of the first failure; failedRequests, the number of invoice creations that failed; affectedTenants, the number of tenants that had one); mitigation (object: action, the one step to take now, as a short text; rejected, a list of objects with action and reason for the other options the runbook offers); verification (object: metric, a name exactly as metrics/catalogue.csv spells it; healthyBelow, the number in milliseconds that metric must stay under to call this mitigated); owner (the team that must fix the cause, spelled as docs/ownership.md spells it); openRisks (list of strings); actionItems (list of objects with text and owner, each owner a team from docs/ownership.md).",
+  "fixture": "t8-heldout-incident-handoff",
+  "hidden": "t8-heldout-incident-handoff",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 8,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "handoff/incident-handoff.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "config/flag-defaults.yaml",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "logs/invoice-api.log",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "handoff-usable",
+      "criterion": "The prose lets the incoming developer act in the first five minutes without re-reading the folder. Fail: the note blames the 2.41.0 deploy, the render-worker or the Postgres primary itself, recommends a failover, a restart or the rollback, or gives no single next step. Partial: it names the flag and the lock waits and says to turn the flag off, but leaves out one of: why the failover is unsafe now (replica lag against the runbook limit), that flags-sync at 18:00 UTC turns the flag back on, or that Tax Engine, not Documents, owns the fix. Pass: it states the cause with the cited lines, the one step to take with its command, why each other runbook option is rejected, the metric and threshold that show it worked, the 18:00 UTC risk and what to change before it, and one owner per action. (code cannot check this because the key reads only the JSON block, not whether the prose is clear and ordered enough to act on)",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "claude (kirocrew-mate-worker, CV-E session)",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://sre.google/sre-book/managing-incidents/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "fixture, generator, key, reference and prompt written by hand after the gpt-5.6-luna two-step draft was dropped (its one fix left a substance check that the stub and the shallow answer pass: stub 28.6, lazy 40.5); nothing of that draft is used; key numbers computed by authoring/t8-heldout-incident-handoff/gen/key_values.py; held-out under the SR-32 split (hash 1473558289)"
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks the agent to analyze logs, config, and runbooks to determine the root cause, but does not name specific methods, tools, or constraints. It lists the required fields (status, rootCause, impact, etc.) but leaves the analysis up to the agent."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All required fields have clear specifications: status is one of three values, rootCause.summary needs specific keywords, evidence points to paths/lines, impact fields are numeric, verification.metric must match the exact name in metrics/catalogue.csv (invoice_create_p99_ms), owner must be 'Tax Engine', actionItems owners must come from docs/ownership.md. The task explicitly rejects decoys like 2.41.0 deploy."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture does not give away the root cause outright. The logs show the tax-recalc job holding locks (postgres-primary.log) and invoice-api timeouts (invoice-api.log), but the agent must connect these clues with the flag-service audit log showing bulk_tax_recalc enabled at 14:02 UTC and the scheduler.yaml to understand the batch job behavior. The 2.41.0 deploy and render-worker errors are red herrings that require careful analysis to reject."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is not too easy. A quick wrong answer would blame the 2.41.0 deploy (most recent), render-worker errors (loudest), or recommend failover/restart/rollback. But the key catches these: it requires evidence linking bulk_tax_recalc flag enablement to the lock waits, rejects failover unless explaining replica lag > 30s, rejects restart/rollback unless explaining why they don't fix the lock issue, and requires the correct team (Tax Engine) as owner."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the fixture. The first failure timestamp (14:03:08Z) is visible in the first 504 errors in invoice-api.log after the flag enable at 14:02:11Z. The 157 failed requests and 15 affected tenants are counted in per-minute.csv (15 enterprise-us tenants in tenants.csv, 5xx errors starting 14:03Z). The metric name is explicitly in metrics/catalogue.csv, and 1500ms is the SLO threshold defined in docs/slo.md. The owner 'Tax Engine' is in docs/ownership.md."
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks for handoff document with JSON block format, doesn't prescribe specific method or tool. Edits mention test refinement, not decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains logs showing lock waits, flag config, ownership docs, but answer (disable bulk_tax_recalc flag) requires analysis of evidence chain."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "key.json expects evidence from flag-defaults.yaml, postgres-primary.log, invoice-api.log, metrics/catalogue.csv - all exist in fixture. Rubric anchors reward requested outcome."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can analyze 504 errors with lock waits, postgres logs showing tax-recalc holding locks, flag config, and determine to disable flag and handle flag-sync risk."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 12.5,
+      "alt": 100,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
+}

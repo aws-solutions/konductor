@@ -8,6 +8,7 @@ A non-Claude recheck of these tasks against the owner checklist (no method or de
 
 | task | files | what changed and why |
 | --- | --- | --- |
+| t8-heldout-rollback-decision | hidden key | CV-E: the task is written by hand (Claude); after qwen3-coder-next's review the `harm-old-version-rate` tolerance went from 0.12 to 0.2 percentage points, because the 4.17.3 rate rests on 17 declines and a reader who ends the window at 14:00 instead of 14:29 UTC gets 0.56 % (the reviewer's own count); the lazy answer still scores 12.5 |
 | t8-inc-checkout-latency | task file (prompt, checks, blockKey), fixture or solution as named | timeline matchers held literal times beside the time tolerance; the decoy pattern also rejected "deploy"; a config evidence group accepted only one of the change's lines; two exact-phrase and exact-line `contains` checks and a `fixture/` path prefix removed |
 | t8-pm-cert-expiry-region | task file (prompt, checks, blockKey), fixture or solution as named | generator wrote a manifest with the seed into the fixture and named the later fix deploy "certfix"; both removed in the generator and the fixture regenerated (identical otherwise); decoy and timeline patterns widened to accept other phrasings; `fixture/` path prefix removed |
 | t8-bug-retry-storm | task file (prompt, checks, blockKey), fixture or solution as named | request named the shared client as the fix location and the timing as the cause, and fixed a test file name; rewritten to symptom, evidence and contract only; an implementation-string `not_contains` check replaced by a count of test cases; regress test made one test (pass on fix and fail on original) |
@@ -117,6 +118,33 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t8-runbook-db-failover | glm-5 (r3, rubric) | confirmed |  |
 | t8-tpm-rollout-regions | glm-5 (r3, rubric) | confirmed |  |
 | t8-twin-latency-tier-report | glm-5 (c12, full) | confirmed |  |
+
+## Negation-safe cause gates (2026-11-20, CV-FIX worker, owner-approved CV-E2)
+
+- Who: claude (kirocrew-mate-worker, CV-FIX session).
+- Why: a gate's `none` word list failed any correct answer that also said what the cause is NOT ("Not the maps-geo
+  latency.", "The 2.41.0 deploy is not the cause.", "not caused by the analytics rollup"), and the whole task then
+  scored 0. Found by the spot review (reports/spot-review-fixes-2026-11-20.md, addendum on the two held-out tasks);
+  the same pattern was then searched across T7, T8, T10, T11 and T12 keys.
+- What:
+  - `t8-heldout-rollback-decision`: `cause-reused-key` (gate) drops its `none` list, and its first pattern widens from
+    `idempoten|request key|payment key` to `idempoten|\bkey(s|ed)?\b`, so a correct cause that says "keys each
+    authorisation by cart" passes. `risk-migration-additive` drops `none` ("0042 ... does not block the rollback" failed).
+    The alternative answer is rewritten as a different correct answer (other structure, a 14:00 UTC window with
+    2.49 % / 0.54 % / 84, other evidence lines, three audiences, a denial of the decoy in the cause).
+  - `t8-heldout-incident-handoff`: `cause-recalc-locks` (gate) and `mitigation-flag-off` drop their `none` lists
+    ("turn the flag off; do not fail over" missed). `notes/shift-notes-lena.md:8` no longer points at the flags and the
+    scheduler ("Ran out of time before the rest of the folder."). The alternative answer is rewritten as a different
+    correct answer (three evidence lines, other wording, a denial of the 2.41.0 decoy).
+  - `t8-inc-memory-leak`, `t8-inc-queue-backlog`, `t8-pm-cache-stampede` (`cause-summary`, gates),
+    `t8-pm-cert-expiry-region` (`root-cause-summary`, gate) and `t8-rollout-ledger-migration`
+    (`cause-is-compatibility-null`, weight 2): `none` list dropped. Each reference with a denial of its decoy appended
+    scored 0 (97.6 for rollout-ledger) before and 100 after (87.5 for cert-expiry, see below).
+- Left, one item each and not a gate (bench/DEBT.md): `t8-heldout-incident-handoff` `item-fix-job`,
+  `t8-pm-cert-expiry-region` `summary-does-not-blame-release`, `t8-inc-checkout-latency` `cause-summary`,
+  `t8-rollout-ledger-migration` `rota-gap-covered`.
+- Gates re-recorded with `dry-run.js --record`: all seven reference 100, stub 0 (7.1 rollout-ledger), lazy 12.5 to 38.1,
+  alternative 100. Versions bumped; `handEdited` names this session; recheck in `review.recheck`.
 
 ## t8-bug-retry-storm: the regression test weighs more (2026-11-20, mate hand-edit recheck worker, claude)
 

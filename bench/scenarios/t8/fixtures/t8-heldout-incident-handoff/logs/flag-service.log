@@ -1,0 +1,23 @@
+2026-11-20T09:12:04.000Z AUDIT flag-service flag=new_invoice_editor action=enable segment=smb-eu pct=100 by=akim change=UX-301
+2026-11-20T11:40:51.000Z AUDIT flag-service flag=dark_mode action=enable segment=all pct=25 by=akim change=UX-288
+2026-11-20T12:00:12.620Z INFO flag-service sync ok flags=41 clients=36
+2026-11-20T12:15:06.421Z INFO flag-service sync ok flags=41 clients=36
+2026-11-20T12:30:26.074Z INFO flag-service sync ok flags=41 clients=33
+2026-11-20T12:45:30.362Z INFO flag-service sync ok flags=41 clients=31
+2026-11-20T13:00:22.951Z INFO flag-service sync ok flags=41 clients=30
+2026-11-20T13:15:03.647Z INFO flag-service sync ok flags=41 clients=33
+2026-11-20T13:21:09.000Z AUDIT flag-service flag=pdf_watermark action=disable segment=all pct=0 by=lnovak change=DOC-77
+2026-11-20T13:30:44.120Z INFO flag-service sync ok flags=41 clients=34
+2026-11-20T13:45:06.897Z INFO flag-service sync ok flags=41 clients=33
+2026-11-20T14:00:03.480Z INFO flag-service sync ok flags=41 clients=36
+2026-11-20T14:02:11.000Z AUDIT flag-service flag=bulk_tax_recalc action=enable segment=enterprise-us pct=100 by=jporter change=TAX-512
+2026-11-20T14:15:20.732Z INFO flag-service sync ok flags=41 clients=33
+2026-11-20T14:30:58.971Z INFO flag-service sync ok flags=41 clients=36
+2026-11-20T14:45:33.042Z INFO flag-service sync ok flags=41 clients=35
+2026-11-20T15:00:00.419Z INFO flag-service sync ok flags=41 clients=30
+2026-11-20T15:05:33.000Z AUDIT flag-service flag=dark_mode action=enable segment=all pct=50 by=akim change=UX-288
+2026-11-20T15:15:32.467Z INFO flag-service sync ok flags=41 clients=36
+2026-11-20T15:30:44.170Z INFO flag-service sync ok flags=41 clients=32
+2026-11-20T15:45:35.830Z INFO flag-service sync ok flags=41 clients=30
+2026-11-20T16:00:17.613Z INFO flag-service sync ok flags=41 clients=30
+2026-11-20T16:15:40.368Z INFO flag-service sync ok flags=41 clients=35

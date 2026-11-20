@@ -206,3 +206,55 @@ Outcomes:
 - t8-pm-cert-expiry-region, t8-inc-memory-leak, t8-dec-deploy-strategy, t8-oncall-alert-review: gpt-5.6-luna tightened each key and glm-5 (zhipu) passed the recheck, with lazy 38.8, 38.8, 38.1 and 28.6. These key fixes were NOT landed: while FX3 ran, the task-fix worker landed its own section-scored keys for the same tasks (e5eeb028; lazy 37.5, 37.5, 25 and 33.3), and FX3 keeps that work rather than overwrite it. The FX3 drafts are kept as a diff in the FX3 scratch folder.
 - t8-bug-retry-storm: gpt-5.6-luna changed the hidden behaviour test; the free gates passed (reference 100, empty 13.6, lazy 39.6; no alternative answer, its reference is code only). The FX3 gate script first misread the missing alternative as a failure; the task was restored. Its recheck was then refused by the spend check (counted at 15, it would pass 60), so the fix is not landed and the task stays `fix`; the draft is in the FX3 scratch folder.
 - Not reached: t8-inc-queue-backlog, t8-pm-cache-stampede, t8-twin-latency-tier-report, t8-neg-config-question (the task-fix worker's e5eeb028 also covered these).
+
+## CV-E calls (2026-11-20)
+
+Worker CV-E: the two held-out tasks of the coverage review. `t8-heldout-rollback-decision` is written by hand (Claude);
+`t8-heldout-incident-handoff` by gpt-5.6-luna in two steps (step `a`: generator, fixture and request; step `b`, a
+separate call: key and reference; `prompts/step-a.md`, `prompts/step-b.md`). Spend rule: every paid call is counted at
+15 credits before it starts, one call at a time; estimate 90, hard stop 95. Calls run through a spend-checked wrapper
+in a scratch HOME holding only a copy of the Kiro login (memory, reflection and knowledge off; no steering, skills, MCP
+or agents), from a working directory outside every git worktree, with a cleared environment, a tool-call cap of 150
+and an abort at 15 credits. The credits column is what the call reported.
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t8-heldout-incident-handoff | a | gpt-5.6-luna | 3.01 |  |
+| t8-heldout-incident-handoff | b | gpt-5.6-luna | 2.65 |  |
+| t8-heldout-incident-handoff | fix | gpt-5.6-luna | 1.61 |  |
+| t8-heldout-rollback-decision | review | qwen3-coder-next | 2.54 |  |
+| t8-heldout-incident-handoff | review | qwen3-coder-next | 1.06 |  |
+| t8-heldout-rollback-decision | recheck (after the key hand edit) | qwen3-coder-next | 0.43 | 4 of 4 pass |
+
+CV-E outcomes (2026-11-20):
+
+- `t8-heldout-incident-handoff`, gpt-5.6-luna two steps plus one fix (7.27 credits): after step `b` the dry run gave
+  reference 100, stub 7.1, lazy 64.3, alternative 100 (shallow answer passed the "nearly complete" test of every section;
+  `file_exists` and `fixture_unchanged` were `substance`); after the fix, stub 28.6 and lazy 40.5, because it kept the
+  `fixture_unchanged` check as `substance`. The rules allow one fix and no hand fix, so the draft was dropped (kept in the
+  CV-E scratch folder) and the task was written again by hand (Claude) from the same brief, using nothing of the draft.
+  qwen3-coder-next's review passed all five checks.
+- `t8-heldout-rollback-decision`, written by hand (Claude). qwen3-coder-next's review failed `hidden-answer` (the proving
+  log lines are in the logs, which is the design) and `ceiling` (its note lists quick wrong answers the key catches);
+  both are recorded as pass with the reason. Its floor note computed the 4.17.3 rate over a shorter window (0.56 %), so
+  that tolerance was widened (HAND-EDITS.md) and qwen3-coder-next rechecked the task: 4 of 4 pass.
+- Free gates (`dry-run.js --record`): both reference 100, stub 0, lazy 12.5, alternative 100, deterministic.
+- The map step (glm-5) did not run: the 95-credit stop left room for six calls, and the reviews, the fix and the
+  recheck came first. Both tasks keep the targets of the approved coverage review (rollback: `risk-management`,
+  `status-reporting`, agent `k-tpm`; hand-off: `verification`, SOP `k-verify`, agent `k-developer`).
+- Blindness audit (`stage.js audit`, every stream): 0 reads of a konductor skills/, agent-sops/, agents/ or context/
+  path. The only outside paths are the call's own scratch-home tool outputs and two `/tmp/t8-*.sha` files the step `a`
+  author wrote (removed by the worker).
+- Total for CV-E: 6 calls, 11.30 credits reported, 90 counted against the stop of 95.
+
+CV-FIX (2026-11-20, owner-approved CV-E2 gate fix; stop 60 credits counted, 15 per call minimum):
+
+| task | step | model | credits | note |
+| --- | --- | --- | --- | --- |
+| t8-heldout-rollback-decision, t8-heldout-incident-handoff, t8-inc-memory-leak, t8-inc-queue-backlog, t8-pm-cache-stampede, t8-pm-cert-expiry-region, t8-rollout-ledger-migration | recheck (after the negation-safe gate edit, one call for all seven) | deepseek-3.2 | 15.19 | 28 of 28 pass; 15.19 counted of the 60 stop |
+
+- The edit is in HAND-EDITS.md ("Negation-safe cause gates"). Free gates re-recorded: all seven reference 100, alternative 100.
+- The spot review's test answers now score: rollback own answer ("keys each authorisation by cart") 100 (was 0), with
+  "Not the maps-geo latency." 100 (was 0), plain 100 (was 100); incident-handoff reference plus "The 2.41.0 deploy is not
+  the cause." 100 (was 0).
+- Blindness audit of the recheck stream: 0 reads of a konductor skills/, agent-sops/, agents/ or context/ path.

@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "getting-started",
+    "label": "Getting started",
+    "summary": "Set up a Northstar workspace and invite your first teammate.",
+    "minutes": 4
+  },
+  {
+    "slug": "billing",
+    "label": "Billing",
+    "summary": "Understand invoices, receipts, and plan changes.",
+    "minutes": 5
+  },
+  {
+    "slug": "security",
+    "label": "Security",
+    "summary": "Keep sign-in details and workspace access under control.",
+    "minutes": 6
+  },
+  {
+    "slug": "contact",
+    "label": "Contact us",
+    "summary": "Find the right route for a product question.",
+    "minutes": 2
+  }
+]

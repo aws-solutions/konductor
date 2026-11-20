@@ -1,0 +1,11 @@
+name,unit,from,description
+requests_per_min,requests,requests,All requests served per minute
+http_5xx_rate,%,http_5xx / requests,Share of requests answered with a 5xx status
+p99_latency_ms,ms,p99_latency_ms,99th percentile request latency
+payment_auth_attempts,attempts,payment_auth_attempts,Card authorisations sent to the payments gateway
+payment_auth_soft_decline_rate,%,payment_auth_soft_declines / payment_auth_attempts,Share of authorisations the gateway soft-declined (the customer sees "payment did not go through")
+checkout_completed,orders,checkout_completed,Orders paid and placed
+checkout_conversion_rate,%,checkout_completed / payment_auth_attempts,Share of checkout attempts that ended in a placed order
+slot_search_p99_ms,ms,(edge),99th percentile latency of delivery slot search at the edge
+edge_504_rate,%,(edge),Share of edge requests that timed out upstream
+cart_add_rate,adds/min,(app events),Items added to carts per minute

@@ -12,7 +12,7 @@
 //   answer-leak   a tool call named a hidden or answer path, or an output file repeats most of the reference's own text
 //   second-family fewer than 1 in 3 tasks of the batch come from a second author family
 //   hand-edited, recheck missing   the task has `handEdited` set and no `review.recheck` (blocks a lock, plan section 4)
-//   fix           the task file records a lazy score over 40 or pilot.decision "fix" (owner rule; read from the current file)
+//   fix           the task file records a lazy score over 40 or pilot.decision "fix" or "drop" (owner rule; read from the current file)
 //   noisy         a check gave different results in two replicates of the task, or flipped against a per-check dry run
 //                 in which the reference and the stub agreed on it
 

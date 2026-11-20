@@ -281,3 +281,17 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t6-req-tpm-cutover | glm-5 (r2, rubric) | confirmed |  |
 | t6-req-volunteer-shifts | glm-5 (r2, rubric) | confirmed |  |
 | t6-twin-clinic-costs | glm-5 (r2, rubric) | confirmed |  |
+
+## Spot-review drop (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md).
+
+- `t6-idea-feature-bets`: dropped, not fixed (`pilot.decision` drop, reasons in `pilot.blockers`, bench/DEBT.md D-133). No file of the task changed. Four fixture files hand over both traps and the answer, and the key itself does not follow from the data: the "double counting" is asserted, not shown; the $18,500/month saving the key requires does not follow from the ticket counts and the $85 per ticket; and the hidden tests need option names the request spells differently. Saving it means a new fixture, key and tests, which is a new task. `bench/scenarios/ready.js` now counts a dropped task as not ready (it counted only `fix`).
+
+## D-134 scan fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the free scan in reports/spot-review-fixes-2026-11-20.md (bench/DEBT.md D-134). Every number the three flagged idea tasks test was re-derived by script from the fixture data (reports/spot-review-fixes-2026-11-20-scripts/).
+
+- `t6-idea-churn-signal`: no change. 612, 402, 156, 517, 214 and the June 10-16 gap are in `exports/product_metrics.csv`; 65.7 % is 402 / 612. The scan flag came from a bug in the scan itself (it read `2025-06,612` as one number).
+- `t6-idea-onboarding-dropoff` (version 3): all numbers follow from the data (8,232 / 9,800 = 84.0 %; 5,740 / 10,700 = 53.6 %; Cloudmail 23,640 / 30,700 = 77.0 % delivered, 7,060 bounced = 23.0 %; 30,700 of 48,000 sends = 64.0 %; 3,020 against 5,605 on 3 February). Defect: two tests matched only the spelling "21 jan" and "3 feb", so "January 21", "2025-01-21" or "February 3" failed. A helper now accepts day-month, month-day and ISO dates. A second correct answer with those spellings scores 100 (89 on the old tests).
+- `t6-idea-pricing-test` (version 3): the counts follow from the data (assigned 5,584 / 5,256 = 51.5 / 48.5 %; 381 / 409 paid; 4,860 campaign sends; 264 / 4,054 and 228 / 3,816 without 15-18 April). Defect: the key called Variant B's 58 refunds "seven-day refunds", but 24 of them came 17 to 20 days after purchase, and `policy/refund-policy.md` says retained orders use `refund_7d`. Read that way B has 34 refunds (8.31 %), 375 retained orders (7.13 %) and the all-day difference is +0.7 pp, not +0.3. The tests now accept either reading (refund evidence, the all-day comparison, `high_pp` 0.25-0.4 or 0.65-0.75, the B baseline 0.0668 or 0.0713); the date test also accepts "April 15-18". The reference's refund sentence now says 24 of B's refunds are outside seven days. A second correct answer on the `refund_7d` reading scores 100 (72.5 on the old tests).

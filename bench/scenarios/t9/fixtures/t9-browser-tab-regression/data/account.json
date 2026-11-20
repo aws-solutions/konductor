@@ -1,0 +1,7 @@
+{
+  "owner": "Mira Chen",
+  "workspace": "Juniper Studio",
+  "plan": "Team",
+  "renewalMonth": "October",
+  "alerts": ["weekly-summary", "new-device"]
+}

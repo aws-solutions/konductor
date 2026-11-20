@@ -1,0 +1,17 @@
+{
+  "id": "t1-nfr-stream-backpressure",
+  "phase": "nfr",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "25 to 40",
+  "economy": true,
+  "source": {
+    "url": "https://github.com/mafintosh/pump",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: NFR and performance. Role: developer. Repo kind: a Node.js 24 service (node:http only, no dependencies; about 30 files) with an export route that streams many records (read from a paged in-repo data source module) to the client as newline-delimited JSON. Inspiration (idea only): public helpers that pipe streams together and tear every stream down when one fails or the reader goes away. Build a task where the owner says the export process grows without limit when a client reads slowly, keeps reading the data source after a client disconnects, and sometimes leaves a half-written response when the data source throws mid-export. The owner states observable limits the hidden tests can measure deterministically through exported functions and a counter the data source module already exposes (for example the number of pages fetched or the bytes buffered and not yet consumed): a ceiling on bytes buffered ahead of a reader that has stopped reading, no further pages fetched after the client goes away, and a stated failure behaviour when the source throws (for example the response is ended in a stated way and an error line or status is defined). Output for a fast reader must stay byte-for-byte the same. Add wrinkles of your own design (a page size that is not a multiple of the limit, an empty last page, a slow reader that resumes). Use fake or injected readers in tests instead of real time. Each rubric criterion must carry three anchors written as `Fail: ... Partial: ... Pass: ...` inside the criterion text, before the closing \"(code cannot check this because ...)\" clause."
+}

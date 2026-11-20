@@ -4,7 +4,7 @@
   "phase": "testing",
   "role": "frontend",
   "author": "kirocrew-mate-worker",
-  "reviewer": "qwen3-coder-next",
+  "reviewer": "glm-5",
   "handWritten": true,
   "source": "original",
   "brief": "Guarded end-to-end pair, no-approval control: written by the worker session from the coverage review (2026-11-20, addition 4); see ../README.md. Not built by the author prompt or by stage assemble."

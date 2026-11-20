@@ -1,0 +1,4 @@
+{
+  "idempotencyKey": "evt-sample-1",
+  "payload": { "type": "sample.created", "value": 7 }
+}

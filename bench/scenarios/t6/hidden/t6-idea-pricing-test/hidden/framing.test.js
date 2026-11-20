@@ -44,21 +44,25 @@ test('reports the assignment counts and share mismatch', () => {
 
 test('ties the confound to the 15 through 18 April campaign', () => {
   const t = issueText();
-  assert.match(t, /15.{0,5}18\s*April/i);
+  assert.match(t, /15.{0,5}18\s*April|April\s*15.{0,5}18|04-15.{0,12}04-18/i);
   assert.match(t, /Spring Skills Credit/i);
   assert.match(t, /4,?860/);
   assert.match(t, /Variant B|B/);
   assert.match(t, /campaign.?id|campaign id/i);
 });
 
+// The refund file holds 58 Variant B refunds, but 24 of them came 17 to 20 days after purchase, outside the seven-day
+// refund policy that refund_7d counts (policy/refund-policy.md). Either reading is accepted: all 58 (retained 351,
+// 6.68 %, +0.3 pp) or the 34 within seven days (retained 375, 7.13 %, +0.7 pp). Control's 22 are all within seven days.
+const allRefunds = (t) => /\b58\b/.test(t) && /14\.1[0-9]?|14\.2/.test(t) && /\b351\b/.test(t);
+const sevenDayRefunds = (t) => /\b34\b/.test(t) && /8\.3[0-9]?|8\.2/.test(t) && /\b375\b/.test(t);
+
 test('shows the asymmetric refund evidence', () => {
   const t = issueText();
   assert.match(t, /22/);
-  assert.match(t, /58/);
   assert.match(t, /5\.7[0-9]?|5\.8/);
-  assert.match(t, /14\.1[0-9]?|14\.2/);
   assert.match(t, /359/);
-  assert.match(t, /351/);
+  assert.ok(allRefunds(t) || sevenDayRefunds(t), 'Variant B refunds: 58 (14.2 %, 351 retained) or 34 within seven days (8.3 %, 375 retained)');
 });
 
 test('preserves the gross result before correcting it', () => {
@@ -75,11 +79,10 @@ test('gives the all-day adjusted comparison', () => {
   const s = block().adjusted_result.basis;
   assert.match(s, /359/);
   assert.match(s, /5,?584/);
-  assert.match(s, /351/);
   assert.match(s, /5,?256/);
   assert.match(s, /6\.4[0-9]?|0\.064[0-9]?/);
-  assert.match(s, /6\.6[0-9]?|0\.066[0-9]?/);
-  assert.match(s, /\+?0\.3/);
+  assert.ok((/351/.test(s) && /6\.6[0-9]?|0\.066[0-9]?/.test(s) && /\+?0\.3/.test(s)) || (/375/.test(s) && /7\.1[0-9]?|0\.071[0-9]?/.test(s) && /\+?0\.7/.test(s)),
+    'all-day comparison: 351 / 6.68 % / +0.3 pp, or 375 / 7.13 % / +0.7 pp');
 });
 
 test('gives the comparison with the overlapping dates removed', () => {
@@ -96,10 +99,10 @@ test('gives the comparison with the overlapping dates removed', () => {
 test('states the adjusted result range', () => {
   const r = block().adjusted_result;
   assert.ok(r.low_pp <= -0.45 && r.low_pp >= -0.6);
-  assert.ok(r.high_pp >= 0.25 && r.high_pp <= 0.4);
+  assert.ok((r.high_pp >= 0.25 && r.high_pp <= 0.4) || (r.high_pp >= 0.65 && r.high_pp <= 0.75));
   assert.match(`${r.metric} ${r.basis}`, /retained|refund/i);
   assert.match(r.basis, /-?0\.5/);
-  assert.match(r.basis, /\+?0\.3/);
+  assert.match(r.basis, /\+?0\.[37]/);
 });
 
 test('compares rollout choices and selects a clean repeat', () => {
@@ -118,7 +121,7 @@ test('next step names the measure and its baseline', () => {
   assert.match(n.action, /seven.?day|7.?day/i);
   assert.match(n.measure, /retained paid conversion/i);
   assert.ok(closeRate(n.baseline.control_rate, 0.0643));
-  assert.ok(closeRate(n.baseline.variant_b_rate, 0.0668));
+  assert.ok(closeRate(n.baseline.variant_b_rate, 0.0668) || closeRate(n.baseline.variant_b_rate, 0.0713));
 });
 
 test('does not claim the campaign caused the assignment mismatch', () => {

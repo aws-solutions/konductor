@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-pricing-test",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -170,36 +170,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates clarity of framing, evidence discipline, and honest summary without requiring any methodology not in the request. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the task (write a launch framing), specifies the source files to read, lists the required sections and JSON structure, but does not name a specific methodology, checklist, or tool to apply, nor does it point at the traps the hidden tests look for (assignment imbalance, campaign confound, refund asymmetry).)."
+          "note": "Request asks for launch framing based on test data; field name leaks were fixed per edits.md."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors reference figures from fixture files (assignment counts, campaign dates, refund rates) but do not reveal the conclusion; agent must synthesize. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain evidence (assignment counts, refund counts, campaign dates) but none state the conclusion that the test is invalid or list the three issues the hidden tests expect. The analyst-slide-notes.md shows an incorrect draft recommendation, and old-analysis-draft.md explicitly says it's outdated and should be replaced.)."
+          "note": "Fixture contains test data files but does not state calculated values or expert key findings."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite fixture figures: 5,584 vs 5,256 assignment split, April 15-18 campaign, and refund rates; no reliance on reference-specific wording. Earlier glm-5 check of the request, fixture and key: pass (All values the hidden tests expect are derivable from fixture files: 5584/5256 assigned (assignment-summary.csv), 381/409 paid (first-purchase-summary.csv), 22/58 refunds (refund-summary.csv), 4,860 campaign sends (email-send-log.csv), and date ranges 15-18 April (marketing-calendar.md, email-send-log.csv, variant-b-daily.csv).)."
+          "note": "Hidden tests check for values derivable from data; refund policy ambiguity handled per edits.md with multiple valid interpretations."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different phrasing and structure can still reach Pass if the three issues are identified and the adjusted range is given. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can compute gross conversion rates, identify the 51.5/48.5 assignment split, correlate the Spring Skills Credit campaign dates with Variant B's higher daily paid counts, and calculate refund-adjusted retained orders (359 vs 351) to reach the conclusions expected by the hidden tests.)."
+          "note": "Competent PM can analyze A/B test data to identify issues; different valid interpretations of refund policy could pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

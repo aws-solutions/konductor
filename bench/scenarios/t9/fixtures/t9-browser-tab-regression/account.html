@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-site-title="Northstar Help Centre">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Manage your Northstar workspace account.">
+  <title>Northstar Help Centre</title>
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/components.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="index.html">Northstar <span>Help Centre</span></a>
+    <nav class="top-nav" aria-label="Primary">
+      <a href="index.html">Articles</a>
+      <a href="account.html" aria-current="page">Account</a>
+    </nav>
+  </header>
+
+  <main class="shell" data-page="account">
+    <div class="intro account-intro">
+      <p class="eyebrow">Workspace settings</p>
+      <h1>Account</h1>
+      <p class="lead">Keep your profile and workspace preferences up to date.</p>
+      <p class="account-status" data-account-status tabindex="-1">Signed in as Mira Chen</p>
+    </div>
+
+    <div class="content-grid">
+      <nav class="section-nav" aria-label="Account sections" role="tablist">
+        <a href="#profile" role="tab" data-section-link="profile" aria-controls="profile" aria-selected="true">Profile</a>
+        <a href="#security" role="tab" data-section-link="security" aria-controls="security" aria-selected="false">Security</a>
+        <a href="#notifications" role="tab" data-section-link="notifications" aria-controls="notifications" aria-selected="false">Notifications</a>
+      </nav>
+
+      <div class="article-stack">
+        <section id="profile" data-section="profile" data-title="Profile">
+          <p class="eyebrow">Your details</p>
+          <h2 data-section-heading>Profile</h2>
+          <p>These details identify you around the Juniper Studio workspace.</p>
+          <dl class="details"><div><dt>Name</dt><dd>Mira Chen</dd></div><div><dt>Workspace</dt><dd>Juniper Studio</dd></div></dl>
+        </section>
+        <section id="security" data-section="security" data-title="Security" hidden>
+          <p class="eyebrow">Sign-in safety</p>
+          <h2 data-section-heading>Security</h2>
+          <p>Review how you sign in and check the devices that recently opened this account.</p>
+          <div class="tip"><strong>Recent check</strong><br>Your last sign-in review was 12 days ago.</div>
+        </section>
+        <section id="notifications" data-section="notifications" data-title="Notifications" hidden>
+          <p class="eyebrow">Your inbox</p>
+          <h2 data-section-heading>Notifications</h2>
+          <p>Choose the updates that help you keep an eye on the workspace without filling your inbox.</p>
+          <label class="check-row"><input type="checkbox" checked> Weekly workspace summary</label>
+          <label class="check-row"><input type="checkbox" checked> New device alerts</label>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer"><span>Northstar Help Centre</span><span>Workspace: Juniper Studio</span></footer>
+  <script type="module" src="src/router.js"></script>
+  <script type="module" src="src/account-view.js"></script>
+</body>
+</html>

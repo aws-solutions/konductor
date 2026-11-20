@@ -1,0 +1,1100 @@
+2026-11-20T10:00:05.291Z INFO orders-api host=oa-3 version=4.17.3 req=r-b9310ca1fd route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:00:17.382Z INFO orders-api host=oa-3 version=4.17.3 req=r-d1e405b514 route=GET /v2/catalog status=200 dur_ms=62
+2026-11-20T10:00:47.949Z INFO orders-api host=oa-3 version=4.17.3 req=r-de0e96bcc4 route=POST /v2/checkout status=200 dur_ms=195 payment=approved
+2026-11-20T10:01:01.079Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.27
+2026-11-20T10:01:05.395Z INFO orders-api host=oa-3 version=4.17.3 req=r-6a75d4b311 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:01:17.480Z INFO orders-api host=oa-3 version=4.17.3 req=r-38f2afc7d0 route=GET /v2/catalog status=200 dur_ms=160
+2026-11-20T10:01:47.339Z INFO orders-api host=oa-3 version=4.17.3 req=r-934a28c527 route=GET /v2/catalog status=200 dur_ms=81
+2026-11-20T10:02:05.518Z INFO orders-api host=oa-3 version=4.17.3 req=r-1782daa1bd route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:02:17.302Z INFO orders-api host=oa-3 version=4.17.3 req=r-6c7e912c71 route=GET /v2/catalog status=200 dur_ms=101
+2026-11-20T10:02:47.590Z INFO orders-api host=oa-3 version=4.17.3 req=r-d25d1c8a3d route=POST /v2/cart/items status=200 dur_ms=141
+2026-11-20T10:02:49.731Z ERROR orders-api host=oa-3 version=4.17.3 req=r-8e09d96d5d route=GET /v2/slots status=503 dur_ms=2477 err=db pool wait
+2026-11-20T10:03:05.670Z INFO orders-api host=oa-3 version=4.17.3 req=r-c4e8181744 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:03:11.182Z INFO orders-api host=oa-3 version=4.17.3 req=r-b40e4a393d route=POST /v2/checkout status=200 dur_ms=331 order=o-7307660 payment=soft_decline reason=card_expired
+2026-11-20T10:03:17.677Z INFO orders-api host=oa-3 version=4.17.3 req=r-f7432354ac route=GET /v2/orders status=200 dur_ms=94
+2026-11-20T10:03:39.743Z ERROR orders-api host=oa-3 version=4.17.3 req=r-e137b91f3b route=POST /v2/cart/items status=502 dur_ms=198 err=inventory timeout
+2026-11-20T10:03:47.781Z INFO orders-api host=oa-3 version=4.17.3 req=r-86f867a3ea route=POST /v2/checkout status=200 dur_ms=189 payment=approved
+2026-11-20T10:04:05.129Z INFO orders-api host=oa-3 version=4.17.3 req=r-3d27470d82 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:04:17.087Z INFO orders-api host=oa-3 version=4.17.3 req=r-3442ce11ed route=POST /v2/cart/items status=200 dur_ms=101
+2026-11-20T10:04:47.721Z INFO orders-api host=oa-3 version=4.17.3 req=r-52a0801065 route=GET /v2/slots status=200 dur_ms=96
+2026-11-20T10:04:52.458Z INFO orders-api host=oa-3 version=4.17.3 req=r-828328b5a9 route=POST /v2/checkout status=200 dur_ms=197 order=o-7365819 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T10:05:05.068Z INFO orders-api host=oa-3 version=4.17.3 req=r-1da738d0fd route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:05:17.825Z INFO orders-api host=oa-3 version=4.17.3 req=r-908c67b231 route=GET /v2/slots status=200 dur_ms=142
+2026-11-20T10:05:47.733Z INFO orders-api host=oa-3 version=4.17.3 req=r-6340505acd route=GET /v2/orders status=200 dur_ms=187
+2026-11-20T10:06:05.927Z INFO orders-api host=oa-3 version=4.17.3 req=r-b0ca3c09e4 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:06:07.437Z ERROR orders-api host=oa-3 version=4.17.3 req=r-be0725fb26 route=GET /v2/catalog status=503 dur_ms=886 err=inventory timeout
+2026-11-20T10:06:17.792Z INFO orders-api host=oa-3 version=4.17.3 req=r-d7a72a3190 route=GET /v2/cart status=200 dur_ms=109
+2026-11-20T10:06:35.847Z WARN orders-api host=oa-3 version=4.17.3 req=r-7a38448845 inventory lookup retry attempt=2 dur_ms=259
+2026-11-20T10:06:47.680Z INFO orders-api host=oa-3 version=4.17.3 req=r-c336d4f347 route=POST /v2/cart/items status=200 dur_ms=200
+2026-11-20T10:07:05.855Z INFO orders-api host=oa-3 version=4.17.3 req=r-64e609d539 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:07:17.163Z INFO orders-api host=oa-3 version=4.17.3 req=r-6fe6c43683 route=GET /v2/orders status=200 dur_ms=41
+2026-11-20T10:07:24.120Z ERROR orders-api host=oa-3 version=4.17.3 req=r-7fad0ac07f route=POST /v2/cart/items status=502 dur_ms=2131 err=db pool wait
+2026-11-20T10:07:38.992Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.30
+2026-11-20T10:07:47.647Z INFO orders-api host=oa-3 version=4.17.3 req=r-129fdd7e10 route=GET /v2/catalog status=200 dur_ms=56
+2026-11-20T10:08:05.619Z INFO orders-api host=oa-3 version=4.17.3 req=r-cc5f68d090 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:08:17.028Z INFO orders-api host=oa-3 version=4.17.3 req=r-4bc77b322a route=POST /v2/checkout status=200 dur_ms=100 payment=approved
+2026-11-20T10:08:46.138Z ERROR orders-api host=oa-3 version=4.17.3 req=r-e82877a6c2 route=GET /v2/orders status=503 dur_ms=1647 err=upstream reset
+2026-11-20T10:08:47.785Z INFO orders-api host=oa-3 version=4.17.3 req=r-ba460c5b97 route=GET /v2/slots status=200 dur_ms=119
+2026-11-20T10:08:59.034Z INFO orders-api host=oa-3 version=4.17.3 req=r-f8b72c5152 route=POST /v2/checkout status=200 dur_ms=411 order=o-7319610 payment=soft_decline reason=insufficient_funds
+2026-11-20T10:09:05.981Z INFO orders-api host=oa-3 version=4.17.3 req=r-8c88f6d98f route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:09:17.063Z INFO orders-api host=oa-3 version=4.17.3 req=r-bf3ee44f86 route=GET /v2/catalog status=200 dur_ms=142
+2026-11-20T10:09:47.502Z INFO orders-api host=oa-3 version=4.17.3 req=r-e5c04a2711 route=POST /v2/cart/items status=200 dur_ms=96
+2026-11-20T10:10:05.651Z INFO orders-api host=oa-3 version=4.17.3 req=r-7f34b74e7e route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:10:10.258Z ERROR orders-api host=oa-3 version=4.17.3 req=r-bf89ab81eb route=GET /v2/slots status=503 dur_ms=1043 err=upstream reset
+2026-11-20T10:10:14.612Z ERROR orders-api host=oa-3 version=4.17.3 req=r-74b72b35b8 route=GET /v2/slots status=500 dur_ms=377 err=upstream reset
+2026-11-20T10:10:17.740Z INFO orders-api host=oa-3 version=4.17.3 req=r-321d7e0cd4 route=GET /v2/catalog status=200 dur_ms=61
+2026-11-20T10:10:22.938Z ERROR orders-api host=oa-3 version=4.17.3 req=r-69c8b880e6 route=GET /v2/catalog status=502 dur_ms=237 err=inventory timeout
+2026-11-20T10:10:47.446Z INFO orders-api host=oa-3 version=4.17.3 req=r-5406b4ae69 route=POST /v2/checkout status=200 dur_ms=144 payment=approved
+2026-11-20T10:11:05.240Z INFO orders-api host=oa-3 version=4.17.3 req=r-30b1d306d9 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:11:17.985Z INFO orders-api host=oa-3 version=4.17.3 req=r-641ca4370c route=GET /v2/cart status=200 dur_ms=111
+2026-11-20T10:11:47.576Z INFO orders-api host=oa-3 version=4.17.3 req=r-9fe35f7ca3 route=POST /v2/checkout status=200 dur_ms=129 payment=approved
+2026-11-20T10:12:05.541Z INFO orders-api host=oa-3 version=4.17.3 req=r-134231540f route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:12:17.802Z INFO orders-api host=oa-3 version=4.17.3 req=r-2f69865cd0 route=POST /v2/checkout status=200 dur_ms=168 payment=approved
+2026-11-20T10:12:47.205Z INFO orders-api host=oa-3 version=4.17.3 req=r-377fdf78ae route=POST /v2/checkout status=200 dur_ms=52 payment=approved
+2026-11-20T10:12:55.578Z ERROR orders-api host=oa-3 version=4.17.3 req=r-245e3bdbb8 route=GET /v2/cart status=500 dur_ms=63 err=db pool wait
+2026-11-20T10:13:05.744Z INFO orders-api host=oa-3 version=4.17.3 req=r-60139361e3 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:13:17.385Z INFO orders-api host=oa-3 version=4.17.3 req=r-f2c915bebe route=GET /v2/cart status=200 dur_ms=132
+2026-11-20T10:13:47.510Z INFO orders-api host=oa-3 version=4.17.3 req=r-e9358df17f route=GET /v2/orders status=200 dur_ms=143
+2026-11-20T10:14:05.590Z INFO orders-api host=oa-3 version=4.17.3 req=r-a09636e6de route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:14:17.406Z INFO orders-api host=oa-3 version=4.17.3 req=r-9e3ad12ce3 route=GET /v2/orders status=200 dur_ms=180
+2026-11-20T10:14:47.990Z INFO orders-api host=oa-3 version=4.17.3 req=r-e90358ef18 route=GET /v2/orders status=200 dur_ms=88
+2026-11-20T10:15:05.128Z INFO orders-api host=oa-3 version=4.17.3 req=r-35f018609e route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:15:17.427Z INFO orders-api host=oa-3 version=4.17.3 req=r-1977e80351 route=GET /v2/cart status=200 dur_ms=174
+2026-11-20T10:15:44.124Z INFO orders-api host=oa-3 version=4.17.3 req=r-55046c4120 route=POST /v2/checkout status=200 dur_ms=388 order=o-7342753 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T10:15:47.057Z INFO orders-api host=oa-3 version=4.17.3 req=r-09b54f1202 route=GET /v2/slots status=200 dur_ms=156
+2026-11-20T10:16:05.442Z INFO orders-api host=oa-3 version=4.17.3 req=r-75bcb27a95 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:16:17.156Z INFO orders-api host=oa-3 version=4.17.3 req=r-8812c8f76b route=GET /v2/orders status=200 dur_ms=117
+2026-11-20T10:16:44.233Z INFO orders-api host=oa-3 version=4.17.3 req=r-634882df4d route=POST /v2/checkout status=200 dur_ms=172 order=o-7347739 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T10:16:47.850Z INFO orders-api host=oa-3 version=4.17.3 req=r-92f4166a4d route=GET /v2/orders status=200 dur_ms=43
+2026-11-20T10:17:05.249Z INFO orders-api host=oa-3 version=4.17.3 req=r-5a883958e1 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:17:17.902Z INFO orders-api host=oa-3 version=4.17.3 req=r-e9a0117f69 route=GET /v2/cart status=200 dur_ms=116
+2026-11-20T10:17:47.698Z INFO orders-api host=oa-3 version=4.17.3 req=r-abb7abe3c6 route=GET /v2/catalog status=200 dur_ms=85
+2026-11-20T10:18:05.506Z INFO orders-api host=oa-3 version=4.17.3 req=r-19d0f5367d route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:18:16.416Z ERROR orders-api host=oa-3 version=4.17.3 req=r-0100ef02a7 route=POST /v2/checkout status=502 dur_ms=2134 err=inventory timeout
+2026-11-20T10:18:17.176Z INFO orders-api host=oa-3 version=4.17.3 req=r-edd7651288 route=GET /v2/orders status=200 dur_ms=191
+2026-11-20T10:18:47.890Z INFO orders-api host=oa-3 version=4.17.3 req=r-e6dde44993 route=POST /v2/checkout status=200 dur_ms=179 payment=approved
+2026-11-20T10:19:05.927Z INFO orders-api host=oa-3 version=4.17.3 req=r-de32ed4756 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:19:17.060Z INFO orders-api host=oa-3 version=4.17.3 req=r-4bccb8cfa8 route=GET /v2/orders status=200 dur_ms=165
+2026-11-20T10:19:47.165Z INFO orders-api host=oa-3 version=4.17.3 req=r-598f0a7f81 route=GET /v2/cart status=200 dur_ms=120
+2026-11-20T10:20:05.186Z INFO orders-api host=oa-3 version=4.17.3 req=r-fe999d10c2 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:20:17.539Z INFO orders-api host=oa-3 version=4.17.3 req=r-d3f24a2037 route=GET /v2/orders status=200 dur_ms=119
+2026-11-20T10:20:21.210Z ERROR orders-api host=oa-3 version=4.17.3 req=r-f86b2109f0 route=GET /v2/slots status=503 dur_ms=1636 err=db pool wait
+2026-11-20T10:20:47.578Z INFO orders-api host=oa-3 version=4.17.3 req=r-29f6802f3c route=GET /v2/slots status=200 dur_ms=166
+2026-11-20T10:21:05.415Z INFO orders-api host=oa-3 version=4.17.3 req=r-c966903057 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:21:17.430Z INFO orders-api host=oa-3 version=4.17.3 req=r-8afd065152 route=GET /v2/cart status=200 dur_ms=188
+2026-11-20T10:21:47.844Z INFO orders-api host=oa-3 version=4.17.3 req=r-736a36d426 route=GET /v2/cart status=200 dur_ms=91
+2026-11-20T10:22:05.208Z INFO orders-api host=oa-3 version=4.17.3 req=r-3d0d8aa2ce route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:22:17.521Z INFO orders-api host=oa-3 version=4.17.3 req=r-fc299d94a8 route=POST /v2/cart/items status=200 dur_ms=152
+2026-11-20T10:22:20.671Z ERROR orders-api host=oa-3 version=4.17.3 req=r-deb0b5ba30 route=POST /v2/cart/items status=503 dur_ms=343 err=inventory timeout
+2026-11-20T10:22:45.180Z ERROR orders-api host=oa-3 version=4.17.3 req=r-acae3a288d route=POST /v2/cart/items status=503 dur_ms=2518 err=upstream reset
+2026-11-20T10:22:47.159Z INFO orders-api host=oa-3 version=4.17.3 req=r-cad634d391 route=GET /v2/catalog status=200 dur_ms=113
+2026-11-20T10:23:01.038Z ERROR orders-api host=oa-3 version=4.17.3 req=r-891d273cf1 route=GET /v2/slots status=500 dur_ms=1868 err=inventory timeout
+2026-11-20T10:23:05.154Z INFO orders-api host=oa-3 version=4.17.3 req=r-0019645290 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:23:17.560Z INFO orders-api host=oa-3 version=4.17.3 req=r-f0e33f37d8 route=GET /v2/orders status=200 dur_ms=127
+2026-11-20T10:23:47.243Z INFO orders-api host=oa-3 version=4.17.3 req=r-d326468f50 route=GET /v2/cart status=200 dur_ms=121
+2026-11-20T10:23:53.750Z ERROR orders-api host=oa-3 version=4.17.3 req=r-c18f1ec2d5 route=GET /v2/slots status=503 dur_ms=1008 err=inventory timeout
+2026-11-20T10:24:05.558Z INFO orders-api host=oa-3 version=4.17.3 req=r-1da31e2334 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:24:09.363Z ERROR orders-api host=oa-3 version=4.17.3 req=r-452eca4ee1 route=POST /v2/cart/items status=503 dur_ms=2820 err=db pool wait
+2026-11-20T10:24:12.336Z WARN orders-api host=oa-3 version=4.17.3 req=r-a15a0d9a3d inventory lookup retry attempt=2 dur_ms=298
+2026-11-20T10:24:17.169Z INFO orders-api host=oa-3 version=4.17.3 req=r-5d18aa5f6e route=POST /v2/checkout status=200 dur_ms=87 payment=approved
+2026-11-20T10:24:47.244Z INFO orders-api host=oa-3 version=4.17.3 req=r-dff10b2b82 route=POST /v2/cart/items status=200 dur_ms=60
+2026-11-20T10:25:05.995Z INFO orders-api host=oa-3 version=4.17.3 req=r-6f779e8071 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:25:17.147Z INFO orders-api host=oa-3 version=4.17.3 req=r-1faff10b13 route=POST /v2/checkout status=200 dur_ms=198 payment=approved
+2026-11-20T10:25:47.499Z INFO orders-api host=oa-3 version=4.17.3 req=r-08d82f80eb route=POST /v2/cart/items status=200 dur_ms=78
+2026-11-20T10:26:01.560Z INFO orders-api host=oa-3 version=4.17.3 req=r-7742b44bbe route=POST /v2/checkout status=200 dur_ms=190 order=o-7344758 payment=soft_decline reason=card_expired
+2026-11-20T10:26:05.966Z INFO orders-api host=oa-3 version=4.17.3 req=r-cab4553fea route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:26:17.536Z INFO orders-api host=oa-3 version=4.17.3 req=r-01e91d8312 route=GET /v2/catalog status=200 dur_ms=158
+2026-11-20T10:26:35.092Z ERROR orders-api host=oa-3 version=4.17.3 req=r-6d4670bcfa route=GET /v2/catalog status=503 dur_ms=610 err=inventory timeout
+2026-11-20T10:26:47.593Z INFO orders-api host=oa-3 version=4.17.3 req=r-f55a2ab733 route=POST /v2/checkout status=200 dur_ms=185 payment=approved
+2026-11-20T10:27:05.069Z INFO orders-api host=oa-3 version=4.17.3 req=r-c238d53009 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:27:17.787Z INFO orders-api host=oa-3 version=4.17.3 req=r-d727d3c0fb route=POST /v2/cart/items status=200 dur_ms=80
+2026-11-20T10:27:47.804Z INFO orders-api host=oa-3 version=4.17.3 req=r-fc6b1b1a4d route=GET /v2/catalog status=200 dur_ms=70
+2026-11-20T10:28:05.857Z INFO orders-api host=oa-3 version=4.17.3 req=r-3d724cd652 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:28:17.423Z INFO orders-api host=oa-3 version=4.17.3 req=r-c118cc03b2 route=POST /v2/checkout status=200 dur_ms=109 payment=approved
+2026-11-20T10:28:47.403Z INFO orders-api host=oa-3 version=4.17.3 req=r-5c85818622 route=POST /v2/checkout status=200 dur_ms=107 payment=approved
+2026-11-20T10:28:48.306Z ERROR orders-api host=oa-3 version=4.17.3 req=r-e22cea9f10 route=POST /v2/checkout status=503 dur_ms=1281 err=db pool wait
+2026-11-20T10:29:05.088Z INFO orders-api host=oa-3 version=4.17.3 req=r-a3d629923b route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:29:17.845Z INFO orders-api host=oa-3 version=4.17.3 req=r-7eb3708c25 route=GET /v2/catalog status=200 dur_ms=147
+2026-11-20T10:29:47.541Z INFO orders-api host=oa-3 version=4.17.3 req=r-90c1ee3a93 route=GET /v2/slots status=200 dur_ms=153
+2026-11-20T10:30:05.167Z INFO orders-api host=oa-3 version=4.17.3 req=r-b44125e1d1 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:30:17.832Z INFO orders-api host=oa-3 version=4.17.3 req=r-a1a2bbdad4 route=POST /v2/checkout status=200 dur_ms=135 payment=approved
+2026-11-20T10:30:47.174Z INFO orders-api host=oa-3 version=4.17.3 req=r-f47e1f7347 route=POST /v2/cart/items status=200 dur_ms=142
+2026-11-20T10:31:05.655Z INFO orders-api host=oa-3 version=4.17.3 req=r-ecf00fc7df route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:31:17.483Z INFO orders-api host=oa-3 version=4.17.3 req=r-6645e50649 route=GET /v2/orders status=200 dur_ms=112
+2026-11-20T10:31:37.424Z ERROR orders-api host=oa-3 version=4.17.3 req=r-33c7114b1d route=GET /v2/orders status=500 dur_ms=1174 err=db pool wait
+2026-11-20T10:31:42.398Z WARN orders-api host=oa-3 version=4.17.3 req=r-2b4c22ce9f inventory lookup retry attempt=2 dur_ms=200
+2026-11-20T10:31:47.859Z INFO orders-api host=oa-3 version=4.17.3 req=r-2ae058f203 route=GET /v2/orders status=200 dur_ms=55
+2026-11-20T10:32:05.331Z INFO orders-api host=oa-3 version=4.17.3 req=r-8029274d53 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:32:17.279Z INFO orders-api host=oa-3 version=4.17.3 req=r-90bf3d86b2 route=GET /v2/slots status=200 dur_ms=124
+2026-11-20T10:32:18.989Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.21
+2026-11-20T10:32:47.575Z INFO orders-api host=oa-3 version=4.17.3 req=r-70b3d4602b route=GET /v2/orders status=200 dur_ms=192
+2026-11-20T10:33:05.946Z INFO orders-api host=oa-3 version=4.17.3 req=r-44e62312d8 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:33:06.626Z ERROR orders-api host=oa-3 version=4.17.3 req=r-4b5cfb92be route=POST /v2/checkout status=500 dur_ms=2424 err=inventory timeout
+2026-11-20T10:33:13.742Z ERROR orders-api host=oa-3 version=4.17.3 req=r-fdfd0dcb72 route=POST /v2/cart/items status=503 dur_ms=1488 err=db pool wait
+2026-11-20T10:33:17.521Z INFO orders-api host=oa-3 version=4.17.3 req=r-01bba6b774 route=GET /v2/catalog status=200 dur_ms=126
+2026-11-20T10:33:34.228Z WARN orders-api host=oa-3 version=4.17.3 req=r-b4978a2a70 inventory lookup retry attempt=2 dur_ms=222
+2026-11-20T10:33:38.804Z INFO orders-api host=oa-3 version=4.17.3 req=r-ff117898be route=POST /v2/checkout status=200 dur_ms=320 order=o-7358782 payment=soft_decline reason=card_expired
+2026-11-20T10:33:47.194Z INFO orders-api host=oa-3 version=4.17.3 req=r-4fd3e1335c route=GET /v2/slots status=200 dur_ms=92
+2026-11-20T10:34:05.382Z INFO orders-api host=oa-3 version=4.17.3 req=r-c013c1c8b0 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:34:17.546Z INFO orders-api host=oa-3 version=4.17.3 req=r-3435acafee route=GET /v2/slots status=200 dur_ms=83
+2026-11-20T10:34:47.918Z INFO orders-api host=oa-3 version=4.17.3 req=r-9721b82ffa route=GET /v2/slots status=200 dur_ms=164
+2026-11-20T10:35:05.333Z INFO orders-api host=oa-3 version=4.17.3 req=r-50a890c27f route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:35:17.656Z INFO orders-api host=oa-3 version=4.17.3 req=r-82ded60433 route=POST /v2/cart/items status=200 dur_ms=198
+2026-11-20T10:35:25.314Z ERROR orders-api host=oa-3 version=4.17.3 req=r-de92a70147 route=GET /v2/cart status=500 dur_ms=852 err=upstream reset
+2026-11-20T10:35:47.008Z INFO orders-api host=oa-3 version=4.17.3 req=r-edb75b26ee route=GET /v2/orders status=200 dur_ms=105
+2026-11-20T10:36:03.280Z ERROR orders-api host=oa-3 version=4.17.3 req=r-ae641f6c5c route=GET /v2/slots status=503 dur_ms=1145 err=db pool wait
+2026-11-20T10:36:05.801Z INFO orders-api host=oa-3 version=4.17.3 req=r-d8105da3d8 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:36:17.555Z INFO orders-api host=oa-3 version=4.17.3 req=r-34a275c594 route=GET /v2/cart status=200 dur_ms=80
+2026-11-20T10:36:47.933Z INFO orders-api host=oa-3 version=4.17.3 req=r-4c470213b3 route=GET /v2/slots status=200 dur_ms=180
+2026-11-20T10:37:05.527Z INFO orders-api host=oa-3 version=4.17.3 req=r-9d8070ec98 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:37:17.840Z INFO orders-api host=oa-3 version=4.17.3 req=r-92279dec9e route=POST /v2/checkout status=200 dur_ms=118 payment=approved
+2026-11-20T10:37:38.482Z WARN orders-api host=oa-3 version=4.17.3 req=r-ec0019d806 inventory lookup retry attempt=2 dur_ms=184
+2026-11-20T10:37:47.327Z INFO orders-api host=oa-3 version=4.17.3 req=r-753953fdbf route=POST /v2/cart/items status=200 dur_ms=102
+2026-11-20T10:38:05.882Z INFO orders-api host=oa-3 version=4.17.3 req=r-812012467c route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:38:17.687Z INFO orders-api host=oa-3 version=4.17.3 req=r-69d806eb65 route=POST /v2/checkout status=200 dur_ms=112 payment=approved
+2026-11-20T10:38:47.855Z INFO orders-api host=oa-3 version=4.17.3 req=r-7b31400abe route=POST /v2/cart/items status=200 dur_ms=169
+2026-11-20T10:38:58.987Z ERROR orders-api host=oa-3 version=4.17.3 req=r-4f9c428918 route=GET /v2/orders status=502 dur_ms=131 err=db pool wait
+2026-11-20T10:39:01.010Z ERROR orders-api host=oa-3 version=4.17.3 req=r-bfd7eb6b66 route=GET /v2/catalog status=503 dur_ms=2916 err=db pool wait
+2026-11-20T10:39:05.687Z INFO orders-api host=oa-3 version=4.17.3 req=r-dbfbef05fb route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:39:17.486Z INFO orders-api host=oa-3 version=4.17.3 req=r-2835425a72 route=POST /v2/checkout status=200 dur_ms=121 payment=approved
+2026-11-20T10:39:47.452Z INFO orders-api host=oa-3 version=4.17.3 req=r-3ef9c71341 route=GET /v2/cart status=200 dur_ms=144
+2026-11-20T10:40:05.253Z INFO orders-api host=oa-3 version=4.17.3 req=r-ee0575719c route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:40:10.402Z ERROR orders-api host=oa-3 version=4.17.3 req=r-ad97d52b0a route=POST /v2/checkout status=500 dur_ms=2587 err=inventory timeout
+2026-11-20T10:40:15.052Z ERROR orders-api host=oa-3 version=4.17.3 req=r-a16437af27 route=GET /v2/catalog status=503 dur_ms=1123 err=inventory timeout
+2026-11-20T10:40:17.187Z INFO orders-api host=oa-3 version=4.17.3 req=r-8f2aee1860 route=GET /v2/orders status=200 dur_ms=56
+2026-11-20T10:40:47.439Z INFO orders-api host=oa-3 version=4.17.3 req=r-834c8d4b69 route=GET /v2/orders status=200 dur_ms=158
+2026-11-20T10:41:05.082Z INFO orders-api host=oa-3 version=4.17.3 req=r-66197efef6 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:41:16.974Z WARN orders-api host=oa-3 version=4.17.3 req=r-d6a7ade3bd inventory lookup retry attempt=2 dur_ms=119
+2026-11-20T10:41:17.569Z INFO orders-api host=oa-3 version=4.17.3 req=r-8217a3117e route=GET /v2/cart status=200 dur_ms=197
+2026-11-20T10:41:47.580Z INFO orders-api host=oa-3 version=4.17.3 req=r-5f7ee5a668 route=GET /v2/orders status=200 dur_ms=68
+2026-11-20T10:42:05.823Z INFO orders-api host=oa-3 version=4.17.3 req=r-3d703ce87e route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:42:17.510Z INFO orders-api host=oa-3 version=4.17.3 req=r-569be3654b route=GET /v2/orders status=200 dur_ms=99
+2026-11-20T10:42:47.043Z INFO orders-api host=oa-3 version=4.17.3 req=r-d79872e515 route=GET /v2/cart status=200 dur_ms=108
+2026-11-20T10:43:05.345Z INFO orders-api host=oa-3 version=4.17.3 req=r-01b0c81e41 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:43:17.510Z INFO orders-api host=oa-3 version=4.17.3 req=r-5ffbadc84d route=POST /v2/checkout status=200 dur_ms=160 payment=approved
+2026-11-20T10:43:17.987Z ERROR orders-api host=oa-3 version=4.17.3 req=r-c37fb8556a route=GET /v2/cart status=502 dur_ms=1589 err=db pool wait
+2026-11-20T10:43:47.457Z INFO orders-api host=oa-3 version=4.17.3 req=r-de940c2fc9 route=POST /v2/checkout status=200 dur_ms=61 payment=approved
+2026-11-20T10:43:54.209Z INFO orders-api host=oa-3 version=4.17.3 req=r-0830ca7494 route=POST /v2/checkout status=200 dur_ms=262 order=o-7317533 payment=soft_decline reason=insufficient_funds
+2026-11-20T10:44:05.645Z INFO orders-api host=oa-3 version=4.17.3 req=r-16b6d7d151 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:44:17.424Z INFO orders-api host=oa-3 version=4.17.3 req=r-cb6544459f route=POST /v2/checkout status=200 dur_ms=50 payment=approved
+2026-11-20T10:44:37.200Z ERROR orders-api host=oa-3 version=4.17.3 req=r-34d98341ee route=POST /v2/cart/items status=503 dur_ms=1650 err=inventory timeout
+2026-11-20T10:44:47.285Z INFO orders-api host=oa-3 version=4.17.3 req=r-ade073da81 route=GET /v2/orders status=200 dur_ms=93
+2026-11-20T10:45:05.858Z INFO orders-api host=oa-3 version=4.17.3 req=r-e70e109687 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:45:17.909Z INFO orders-api host=oa-3 version=4.17.3 req=r-8856b0c81b route=GET /v2/cart status=200 dur_ms=151
+2026-11-20T10:45:33.322Z ERROR orders-api host=oa-3 version=4.17.3 req=r-522770d0d6 route=POST /v2/cart/items status=502 dur_ms=1332 err=upstream reset
+2026-11-20T10:45:47.276Z INFO orders-api host=oa-3 version=4.17.3 req=r-5b80a37a2c route=GET /v2/cart status=200 dur_ms=98
+2026-11-20T10:46:05.687Z INFO orders-api host=oa-3 version=4.17.3 req=r-a829676ab4 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:46:17.898Z INFO orders-api host=oa-3 version=4.17.3 req=r-20de0b518d route=GET /v2/orders status=200 dur_ms=193
+2026-11-20T10:46:47.576Z INFO orders-api host=oa-3 version=4.17.3 req=r-ba629d2090 route=GET /v2/catalog status=200 dur_ms=72
+2026-11-20T10:47:05.496Z INFO orders-api host=oa-3 version=4.17.3 req=r-ac8dcdbede route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:47:17.036Z INFO orders-api host=oa-3 version=4.17.3 req=r-68441baf61 route=GET /v2/catalog status=200 dur_ms=68
+2026-11-20T10:47:20.585Z WARN orders-api host=oa-3 version=4.17.3 req=r-5986a67687 inventory lookup retry attempt=2 dur_ms=101
+2026-11-20T10:47:47.438Z INFO orders-api host=oa-3 version=4.17.3 req=r-7909a9246c route=POST /v2/cart/items status=200 dur_ms=44
+2026-11-20T10:47:52.825Z INFO orders-api host=oa-3 version=4.17.3 req=r-521f744cf7 route=POST /v2/checkout status=200 dur_ms=206 order=o-7328956 payment=soft_decline reason=card_expired
+2026-11-20T10:48:02.170Z INFO orders-api host=oa-3 version=4.17.3 req=r-662fdaad48 route=POST /v2/checkout status=200 dur_ms=420 order=o-7323183 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T10:48:05.126Z INFO orders-api host=oa-3 version=4.17.3 req=r-b5efcd9fb8 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:48:17.939Z INFO orders-api host=oa-3 version=4.17.3 req=r-228b2febee route=POST /v2/checkout status=200 dur_ms=41 payment=approved
+2026-11-20T10:48:47.753Z INFO orders-api host=oa-3 version=4.17.3 req=r-3c121c1e76 route=GET /v2/cart status=200 dur_ms=120
+2026-11-20T10:48:47.755Z ERROR orders-api host=oa-3 version=4.17.3 req=r-18a48c86c1 route=POST /v2/checkout status=503 dur_ms=2293 err=db pool wait
+2026-11-20T10:49:05.973Z INFO orders-api host=oa-3 version=4.17.3 req=r-d5c5402721 route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:49:17.948Z INFO orders-api host=oa-3 version=4.17.3 req=r-90b37bd246 route=GET /v2/cart status=200 dur_ms=58
+2026-11-20T10:49:46.074Z INFO orders-api host=oa-3 version=4.17.3 req=r-611d35d734 route=POST /v2/checkout status=200 dur_ms=219 order=o-7370193 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T10:49:47.622Z INFO orders-api host=oa-3 version=4.17.3 req=r-fba4067650 route=POST /v2/checkout status=200 dur_ms=99 payment=approved
+2026-11-20T10:50:05.730Z INFO orders-api host=oa-3 version=4.17.3 req=r-605496ad52 route=GET /healthz status=200 dur_ms=1
+2026-11-20T10:50:17.229Z INFO orders-api host=oa-3 version=4.17.3 req=r-8c2f845472 route=POST /v2/cart/items status=200 dur_ms=145
+2026-11-20T10:50:23.728Z ERROR orders-api host=oa-3 version=4.17.3 req=r-0d777c485f route=GET /v2/orders status=503 dur_ms=1761 err=upstream reset
+2026-11-20T10:50:47.535Z INFO orders-api host=oa-3 version=4.17.3 req=r-b618007515 route=POST /v2/checkout status=200 dur_ms=167 payment=approved
+2026-11-20T10:51:05.832Z INFO orders-api host=oa-3 version=4.17.3 req=r-fcf206e2bd route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:51:17.160Z INFO orders-api host=oa-3 version=4.17.3 req=r-528926c055 route=GET /v2/orders status=200 dur_ms=97
+2026-11-20T10:51:47.658Z INFO orders-api host=oa-3 version=4.17.3 req=r-4aed3d9fe4 route=GET /v2/cart status=200 dur_ms=154
+2026-11-20T10:52:05.763Z INFO orders-api host=oa-3 version=4.17.3 req=r-128208cb99 route=GET /healthz status=200 dur_ms=2
+2026-11-20T10:52:08.803Z ERROR orders-api host=oa-3 version=4.17.3 req=r-c25e002718 route=GET /v2/orders status=500 dur_ms=1959 err=db pool wait
+2026-11-20T10:52:17.044Z INFO orders-api host=oa-3 version=4.17.3 req=r-f151a62dcc route=POST /v2/cart/items status=200 dur_ms=132
+2026-11-20T10:52:33.448Z ERROR orders-api host=oa-3 version=4.17.3 req=r-57bb05025f route=GET /v2/slots status=500 dur_ms=644 err=db pool wait
+2026-11-20T10:52:35.608Z ERROR orders-api host=oa-3 version=4.17.3 req=r-94040a905b route=GET /v2/catalog status=502 dur_ms=1314 err=upstream reset
+2026-11-20T10:52:47.363Z INFO orders-api host=oa-3 version=4.17.3 req=r-3394be7295 route=GET /v2/orders status=200 dur_ms=103
+2026-11-20T10:53:05.867Z INFO orders-api host=oa-3 version=4.17.3 req=r-c00b22941e route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:53:17.587Z INFO orders-api host=oa-3 version=4.17.3 req=r-f11ff294a0 route=GET /v2/slots status=200 dur_ms=181
+2026-11-20T10:53:20.260Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.22
+2026-11-20T10:53:47.116Z INFO orders-api host=oa-3 version=4.17.3 req=r-3d637a2894 route=POST /v2/checkout status=200 dur_ms=156 payment=approved
+2026-11-20T10:54:05.332Z INFO orders-api host=oa-3 version=4.17.3 req=r-cd6f4d622d route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:54:17.971Z INFO orders-api host=oa-3 version=4.17.3 req=r-fec95f8f91 route=GET /v2/catalog status=200 dur_ms=81
+2026-11-20T10:54:27.122Z INFO orders-api host=oa-3 version=4.17.3 req=r-fbc86988b4 route=POST /v2/checkout status=200 dur_ms=401 order=o-7364498 payment=soft_decline reason=insufficient_funds
+2026-11-20T10:54:32.426Z ERROR orders-api host=oa-3 version=4.17.3 req=r-de84a54c6b route=POST /v2/cart/items status=503 dur_ms=266 err=db pool wait
+2026-11-20T10:54:47.738Z INFO orders-api host=oa-3 version=4.17.3 req=r-185103e23b route=POST /v2/checkout status=200 dur_ms=132 payment=approved
+2026-11-20T10:55:05.017Z INFO orders-api host=oa-3 version=4.17.3 req=r-808e16573b route=GET /healthz status=200 dur_ms=3
+2026-11-20T10:55:14.210Z ERROR orders-api host=oa-3 version=4.17.3 req=r-751cb04a45 route=POST /v2/checkout status=502 dur_ms=2057 err=db pool wait
+2026-11-20T10:55:17.413Z INFO orders-api host=oa-3 version=4.17.3 req=r-5a9705e3ad route=GET /v2/orders status=200 dur_ms=156
+2026-11-20T10:55:47.950Z INFO orders-api host=oa-3 version=4.17.3 req=r-98f2cf68cd route=POST /v2/cart/items status=200 dur_ms=145
+2026-11-20T10:56:05.392Z INFO orders-api host=oa-3 version=4.17.3 req=r-5f48068621 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:56:17.586Z INFO orders-api host=oa-3 version=4.17.3 req=r-1a8894484f route=GET /v2/catalog status=200 dur_ms=149
+2026-11-20T10:56:40.294Z ERROR orders-api host=oa-3 version=4.17.3 req=r-9b5b1aa7d8 route=POST /v2/cart/items status=503 dur_ms=1197 err=inventory timeout
+2026-11-20T10:56:47.335Z INFO orders-api host=oa-3 version=4.17.3 req=r-d1ab65dfbd route=POST /v2/cart/items status=200 dur_ms=85
+2026-11-20T10:57:05.496Z INFO orders-api host=oa-3 version=4.17.3 req=r-51315930cf route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:57:17.198Z INFO orders-api host=oa-3 version=4.17.3 req=r-b341eafbfa route=GET /v2/orders status=200 dur_ms=87
+2026-11-20T10:57:47.588Z INFO orders-api host=oa-3 version=4.17.3 req=r-512861729f route=POST /v2/checkout status=200 dur_ms=155 payment=approved
+2026-11-20T10:58:05.987Z INFO orders-api host=oa-3 version=4.17.3 req=r-37e43afe33 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:58:17.786Z INFO orders-api host=oa-3 version=4.17.3 req=r-0e852cc07d route=POST /v2/cart/items status=200 dur_ms=124
+2026-11-20T10:58:28.777Z ERROR orders-api host=oa-3 version=4.17.3 req=r-07d364cf3d route=GET /v2/orders status=503 dur_ms=1634 err=inventory timeout
+2026-11-20T10:58:47.052Z INFO orders-api host=oa-3 version=4.17.3 req=r-fca797c10f route=POST /v2/cart/items status=200 dur_ms=186
+2026-11-20T10:59:05.117Z INFO orders-api host=oa-3 version=4.17.3 req=r-0adaa06c19 route=GET /healthz status=200 dur_ms=4
+2026-11-20T10:59:17.616Z INFO orders-api host=oa-3 version=4.17.3 req=r-d4baddbfb3 route=GET /v2/cart status=200 dur_ms=107
+2026-11-20T10:59:47.861Z INFO orders-api host=oa-3 version=4.17.3 req=r-1fd24d91a1 route=GET /v2/slots status=200 dur_ms=105
+2026-11-20T11:00:05.965Z INFO orders-api host=oa-3 version=4.17.3 req=r-ca2083825f route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:00:17.605Z INFO orders-api host=oa-3 version=4.17.3 req=r-72efeee81c route=GET /v2/cart status=200 dur_ms=155
+2026-11-20T11:00:21.702Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.34
+2026-11-20T11:00:47.331Z INFO orders-api host=oa-3 version=4.17.3 req=r-cbee60ce0b route=GET /v2/slots status=200 dur_ms=80
+2026-11-20T11:01:05.971Z INFO orders-api host=oa-3 version=4.17.3 req=r-f5dc768735 route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:01:16.320Z ERROR orders-api host=oa-3 version=4.17.3 req=r-f36b2fb350 route=GET /v2/cart status=502 dur_ms=2301 err=inventory timeout
+2026-11-20T11:01:17.642Z INFO orders-api host=oa-3 version=4.17.3 req=r-6bf790260d route=POST /v2/cart/items status=200 dur_ms=42
+2026-11-20T11:01:47.906Z INFO orders-api host=oa-3 version=4.17.3 req=r-7e6c9c3bb2 route=POST /v2/cart/items status=200 dur_ms=181
+2026-11-20T11:02:01.193Z INFO orders-api host=oa-3 version=4.17.3 req=r-c08488ea61 route=POST /v2/checkout status=200 dur_ms=217 order=o-7391589 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T11:02:05.002Z INFO orders-api host=oa-3 version=4.17.3 req=r-3ac6aee8b3 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:02:17.862Z INFO orders-api host=oa-3 version=4.17.3 req=r-c4fdc6587c route=GET /v2/slots status=200 dur_ms=172
+2026-11-20T11:02:47.121Z INFO orders-api host=oa-3 version=4.17.3 req=r-6db361a9bb route=GET /v2/slots status=200 dur_ms=181
+2026-11-20T11:03:05.056Z INFO orders-api host=oa-3 version=4.17.3 req=r-bb0c2f6226 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:03:17.707Z INFO orders-api host=oa-3 version=4.17.3 req=r-27db65f861 route=GET /v2/orders status=200 dur_ms=102
+2026-11-20T11:03:47.108Z INFO orders-api host=oa-3 version=4.17.3 req=r-3ed8539cd1 route=POST /v2/checkout status=200 dur_ms=58 payment=approved
+2026-11-20T11:03:50.435Z ERROR orders-api host=oa-3 version=4.17.3 req=r-5b90a8a953 route=POST /v2/cart/items status=502 dur_ms=1398 err=upstream reset
+2026-11-20T11:04:05.829Z INFO orders-api host=oa-3 version=4.17.3 req=r-4ecfd10bbf route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:04:17.653Z INFO orders-api host=oa-3 version=4.17.3 req=r-35f58ce077 route=GET /v2/orders status=200 dur_ms=97
+2026-11-20T11:04:47.653Z INFO orders-api host=oa-3 version=4.17.3 req=r-5e43bb4d97 route=POST /v2/checkout status=200 dur_ms=94 payment=approved
+2026-11-20T11:05:05.923Z INFO orders-api host=oa-3 version=4.17.3 req=r-2546cefef3 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:05:17.489Z INFO orders-api host=oa-3 version=4.17.3 req=r-ade3ff2f22 route=GET /v2/slots status=200 dur_ms=153
+2026-11-20T11:05:47.683Z INFO orders-api host=oa-3 version=4.17.3 req=r-8e04fe5c2a route=GET /v2/catalog status=200 dur_ms=68
+2026-11-20T11:06:05.517Z INFO orders-api host=oa-3 version=4.17.3 req=r-283e26628d route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:06:17.392Z INFO orders-api host=oa-3 version=4.17.3 req=r-e926ab288f route=GET /v2/cart status=200 dur_ms=43
+2026-11-20T11:06:47.676Z INFO orders-api host=oa-3 version=4.17.3 req=r-85607f29bf route=GET /v2/cart status=200 dur_ms=98
+2026-11-20T11:07:05.199Z INFO orders-api host=oa-3 version=4.17.3 req=r-f74c1a9131 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:07:17.041Z INFO orders-api host=oa-3 version=4.17.3 req=r-2a64392c68 route=POST /v2/cart/items status=200 dur_ms=75
+2026-11-20T11:07:47.125Z INFO orders-api host=oa-3 version=4.17.3 req=r-751626f369 route=GET /v2/orders status=200 dur_ms=154
+2026-11-20T11:07:53.306Z ERROR orders-api host=oa-3 version=4.17.3 req=r-86554dc6af route=POST /v2/checkout status=502 dur_ms=2741 err=upstream reset
+2026-11-20T11:08:05.847Z INFO orders-api host=oa-3 version=4.17.3 req=r-b5d004c079 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:08:17.032Z INFO orders-api host=oa-3 version=4.17.3 req=r-7bf004896b route=POST /v2/checkout status=200 dur_ms=145 payment=approved
+2026-11-20T11:08:47.689Z INFO orders-api host=oa-3 version=4.17.3 req=r-ccdc9d0bff route=GET /v2/cart status=200 dur_ms=134
+2026-11-20T11:09:05.713Z INFO orders-api host=oa-3 version=4.17.3 req=r-e24b7d9c35 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:09:17.986Z INFO orders-api host=oa-3 version=4.17.3 req=r-58d163b8a0 route=GET /v2/catalog status=200 dur_ms=157
+2026-11-20T11:09:47.234Z INFO orders-api host=oa-3 version=4.17.3 req=r-5c14912d6d route=GET /v2/cart status=200 dur_ms=168
+2026-11-20T11:09:52.923Z WARN orders-api host=oa-3 version=4.17.3 req=r-31e7b1fd0c inventory lookup retry attempt=2 dur_ms=174
+2026-11-20T11:10:05.753Z INFO orders-api host=oa-3 version=4.17.3 req=r-c11091e593 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:10:17.634Z INFO orders-api host=oa-3 version=4.17.3 req=r-3ff1b9f2a9 route=GET /v2/catalog status=200 dur_ms=174
+2026-11-20T11:10:47.931Z INFO orders-api host=oa-3 version=4.17.3 req=r-499cacfb52 route=GET /v2/slots status=200 dur_ms=97
+2026-11-20T11:11:05.025Z INFO orders-api host=oa-3 version=4.17.3 req=r-c170c68a11 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:11:17.220Z INFO orders-api host=oa-3 version=4.17.3 req=r-233292e6e5 route=POST /v2/cart/items status=200 dur_ms=166
+2026-11-20T11:11:47.323Z INFO orders-api host=oa-3 version=4.17.3 req=r-74804de24d route=POST /v2/checkout status=200 dur_ms=84 payment=approved
+2026-11-20T11:12:05.534Z INFO orders-api host=oa-3 version=4.17.3 req=r-3ce88682bf route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:12:17.295Z INFO orders-api host=oa-3 version=4.17.3 req=r-ecc5251363 route=POST /v2/cart/items status=200 dur_ms=145
+2026-11-20T11:12:47.334Z INFO orders-api host=oa-3 version=4.17.3 req=r-feeaf1e150 route=GET /v2/orders status=200 dur_ms=134
+2026-11-20T11:13:05.874Z INFO orders-api host=oa-3 version=4.17.3 req=r-148a303b11 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:13:17.348Z INFO orders-api host=oa-3 version=4.17.3 req=r-1dd74c50c4 route=GET /v2/catalog status=200 dur_ms=124
+2026-11-20T11:13:47.438Z INFO orders-api host=oa-3 version=4.17.3 req=r-c4d15c7e42 route=GET /v2/orders status=200 dur_ms=79
+2026-11-20T11:14:05.114Z INFO orders-api host=oa-3 version=4.17.3 req=r-40170496d7 route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:14:17.337Z INFO orders-api host=oa-3 version=4.17.3 req=r-c866ff56a8 route=GET /v2/slots status=200 dur_ms=170
+2026-11-20T11:14:21.352Z WARN orders-api host=oa-3 version=4.17.3 req=r-06ee416968 inventory lookup retry attempt=2 dur_ms=262
+2026-11-20T11:14:47.928Z INFO orders-api host=oa-3 version=4.17.3 req=r-37caaaa6c2 route=GET /v2/catalog status=200 dur_ms=61
+2026-11-20T11:15:01.837Z ERROR orders-api host=oa-3 version=4.17.3 req=r-0c54ca1f84 route=GET /v2/orders status=503 dur_ms=943 err=upstream reset
+2026-11-20T11:15:05.491Z INFO orders-api host=oa-3 version=4.17.3 req=r-5e61600f8e route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:15:12.449Z ERROR orders-api host=oa-3 version=4.17.3 req=r-f917e0da20 route=GET /v2/cart status=500 dur_ms=371 err=inventory timeout
+2026-11-20T11:15:17.433Z INFO orders-api host=oa-3 version=4.17.3 req=r-7e8db645e8 route=GET /v2/orders status=200 dur_ms=75
+2026-11-20T11:15:47.019Z INFO orders-api host=oa-3 version=4.17.3 req=r-9f29798ef7 route=GET /v2/slots status=200 dur_ms=191
+2026-11-20T11:16:05.902Z INFO orders-api host=oa-3 version=4.17.3 req=r-efe6e39222 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:16:10.166Z ERROR orders-api host=oa-3 version=4.17.3 req=r-274a78cb7e route=GET /v2/slots status=500 dur_ms=2360 err=upstream reset
+2026-11-20T11:16:17.073Z INFO orders-api host=oa-3 version=4.17.3 req=r-36caa53619 route=POST /v2/checkout status=200 dur_ms=154 payment=approved
+2026-11-20T11:16:47.207Z INFO orders-api host=oa-3 version=4.17.3 req=r-d964a8a4d4 route=GET /v2/orders status=200 dur_ms=71
+2026-11-20T11:17:05.961Z INFO orders-api host=oa-3 version=4.17.3 req=r-0687f3cbfb route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:17:17.054Z INFO orders-api host=oa-3 version=4.17.3 req=r-0df259a21b route=GET /v2/slots status=200 dur_ms=140
+2026-11-20T11:17:47.299Z INFO orders-api host=oa-3 version=4.17.3 req=r-911ebaaa02 route=GET /v2/catalog status=200 dur_ms=107
+2026-11-20T11:18:05.939Z INFO orders-api host=oa-3 version=4.17.3 req=r-f7782998cd route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:18:17.724Z INFO orders-api host=oa-3 version=4.17.3 req=r-aa0d0fc7e0 route=POST /v2/cart/items status=200 dur_ms=145
+2026-11-20T11:18:47.232Z INFO orders-api host=oa-3 version=4.17.3 req=r-25d9e39058 route=GET /v2/orders status=200 dur_ms=139
+2026-11-20T11:19:05.639Z INFO orders-api host=oa-3 version=4.17.3 req=r-d31bc27d66 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:19:17.993Z INFO orders-api host=oa-3 version=4.17.3 req=r-3477788592 route=POST /v2/cart/items status=200 dur_ms=189
+2026-11-20T11:19:47.498Z INFO orders-api host=oa-3 version=4.17.3 req=r-bf691a7ff2 route=GET /v2/orders status=200 dur_ms=100
+2026-11-20T11:20:05.572Z INFO orders-api host=oa-3 version=4.17.3 req=r-f0105e5244 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:20:17.746Z INFO orders-api host=oa-3 version=4.17.3 req=r-00cdef128d route=POST /v2/checkout status=200 dur_ms=190 payment=approved
+2026-11-20T11:20:47.811Z INFO orders-api host=oa-3 version=4.17.3 req=r-6daa608e2c route=GET /v2/slots status=200 dur_ms=102
+2026-11-20T11:21:02.902Z WARN orders-api host=oa-3 version=4.17.3 req=r-22f9f93624 inventory lookup retry attempt=2 dur_ms=264
+2026-11-20T11:21:05.010Z INFO orders-api host=oa-3 version=4.17.3 req=r-ccdf8d5b3e route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:21:13.276Z ERROR orders-api host=oa-3 version=4.17.3 req=r-65f4eb79ee route=GET /v2/catalog status=500 dur_ms=1503 err=upstream reset
+2026-11-20T11:21:17.425Z INFO orders-api host=oa-3 version=4.17.3 req=r-d78f3fa17e route=GET /v2/catalog status=200 dur_ms=68
+2026-11-20T11:21:47.070Z INFO orders-api host=oa-3 version=4.17.3 req=r-d3bbda2737 route=GET /v2/orders status=200 dur_ms=181
+2026-11-20T11:21:54.038Z ERROR orders-api host=oa-3 version=4.17.3 req=r-bc34fcb6ca route=POST /v2/checkout status=503 dur_ms=2859 err=inventory timeout
+2026-11-20T11:22:05.687Z INFO orders-api host=oa-3 version=4.17.3 req=r-3869750ce8 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:22:17.575Z INFO orders-api host=oa-3 version=4.17.3 req=r-8eb0300fca route=GET /v2/catalog status=200 dur_ms=139
+2026-11-20T11:22:23.025Z ERROR orders-api host=oa-3 version=4.17.3 req=r-3981cbef75 route=POST /v2/checkout status=500 dur_ms=1169 err=inventory timeout
+2026-11-20T11:22:32.044Z ERROR orders-api host=oa-3 version=4.17.3 req=r-c6aedd2610 route=POST /v2/checkout status=500 dur_ms=594 err=inventory timeout
+2026-11-20T11:22:35.699Z INFO orders-api host=oa-3 version=4.17.3 req=r-e07b149389 route=POST /v2/checkout status=200 dur_ms=298 order=o-7318573 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T11:22:38.150Z ERROR orders-api host=oa-3 version=4.17.3 req=r-e406ef1756 route=GET /v2/orders status=503 dur_ms=130 err=inventory timeout
+2026-11-20T11:22:47.312Z INFO orders-api host=oa-3 version=4.17.3 req=r-096c34f93e route=GET /v2/orders status=200 dur_ms=113
+2026-11-20T11:23:05.346Z INFO orders-api host=oa-3 version=4.17.3 req=r-bfe65611a2 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:23:17.615Z INFO orders-api host=oa-3 version=4.17.3 req=r-d4eda06124 route=GET /v2/orders status=200 dur_ms=71
+2026-11-20T11:23:47.502Z INFO orders-api host=oa-3 version=4.17.3 req=r-3f614ba58a route=POST /v2/cart/items status=200 dur_ms=176
+2026-11-20T11:24:05.759Z INFO orders-api host=oa-3 version=4.17.3 req=r-7a7ead1f7f route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:24:17.229Z INFO orders-api host=oa-3 version=4.17.3 req=r-ac68ee0138 route=POST /v2/checkout status=200 dur_ms=148 payment=approved
+2026-11-20T11:24:47.790Z INFO orders-api host=oa-3 version=4.17.3 req=r-11dd8727e7 route=GET /v2/slots status=200 dur_ms=175
+2026-11-20T11:25:05.611Z INFO orders-api host=oa-3 version=4.17.3 req=r-7dd4230ace route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:25:07.558Z WARN orders-api host=oa-3 version=4.17.3 req=r-063175fc5a inventory lookup retry attempt=2 dur_ms=260
+2026-11-20T11:25:17.424Z INFO orders-api host=oa-3 version=4.17.3 req=r-e49ec7fdd3 route=GET /v2/catalog status=200 dur_ms=43
+2026-11-20T11:25:47.153Z INFO orders-api host=oa-3 version=4.17.3 req=r-56c23580fc route=GET /v2/catalog status=200 dur_ms=111
+2026-11-20T11:26:05.496Z INFO orders-api host=oa-3 version=4.17.3 req=r-456c4f9a8c route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:26:17.229Z INFO orders-api host=oa-3 version=4.17.3 req=r-52dc30b96f route=GET /v2/slots status=200 dur_ms=197
+2026-11-20T11:26:47.494Z INFO orders-api host=oa-3 version=4.17.3 req=r-884ab049cc route=GET /v2/catalog status=200 dur_ms=145
+2026-11-20T11:27:05.574Z INFO orders-api host=oa-3 version=4.17.3 req=r-713b40f7c9 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:27:17.894Z INFO orders-api host=oa-3 version=4.17.3 req=r-fc28b12bd1 route=GET /v2/slots status=200 dur_ms=51
+2026-11-20T11:27:47.845Z INFO orders-api host=oa-3 version=4.17.3 req=r-f9304227e9 route=POST /v2/checkout status=200 dur_ms=182 payment=approved
+2026-11-20T11:28:05.165Z INFO orders-api host=oa-3 version=4.17.3 req=r-390d23d3b9 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:28:17.036Z INFO orders-api host=oa-3 version=4.17.3 req=r-4f979c5d1d route=GET /v2/cart status=200 dur_ms=179
+2026-11-20T11:28:47.265Z INFO orders-api host=oa-3 version=4.17.3 req=r-c32f7c07b6 route=GET /v2/slots status=200 dur_ms=164
+2026-11-20T11:29:05.981Z INFO orders-api host=oa-3 version=4.17.3 req=r-6d7265c69f route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:29:17.989Z INFO orders-api host=oa-3 version=4.17.3 req=r-8ff4418a1d route=GET /v2/slots status=200 dur_ms=122
+2026-11-20T11:29:47.785Z INFO orders-api host=oa-3 version=4.17.3 req=r-4916452b45 route=GET /v2/orders status=200 dur_ms=155
+2026-11-20T11:30:05.242Z INFO orders-api host=oa-3 version=4.17.3 req=r-7cb55bd93f route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:30:14.474Z ERROR orders-api host=oa-3 version=4.17.3 req=r-8b24d1ab79 route=GET /v2/catalog status=503 dur_ms=1621 err=upstream reset
+2026-11-20T11:30:17.272Z INFO orders-api host=oa-3 version=4.17.3 req=r-4fd823e777 route=GET /v2/orders status=200 dur_ms=165
+2026-11-20T11:30:47.515Z INFO orders-api host=oa-3 version=4.17.3 req=r-e587de6cb1 route=GET /v2/orders status=200 dur_ms=102
+2026-11-20T11:31:05.944Z INFO orders-api host=oa-3 version=4.17.3 req=r-dd84c6e933 route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:31:17.353Z INFO orders-api host=oa-3 version=4.17.3 req=r-54e6746e94 route=GET /v2/orders status=200 dur_ms=74
+2026-11-20T11:31:47.767Z INFO orders-api host=oa-3 version=4.17.3 req=r-e0ab95c73a route=GET /v2/orders status=200 dur_ms=101
+2026-11-20T11:32:05.279Z INFO orders-api host=oa-3 version=4.17.3 req=r-e955017416 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:32:14.211Z WARN orders-api host=oa-3 version=4.17.3 req=r-772348198b inventory lookup retry attempt=2 dur_ms=288
+2026-11-20T11:32:17.201Z INFO orders-api host=oa-3 version=4.17.3 req=r-66c9341fd0 route=GET /v2/cart status=200 dur_ms=89
+2026-11-20T11:32:41.116Z ERROR orders-api host=oa-3 version=4.17.3 req=r-42ee4309b4 route=GET /v2/slots status=502 dur_ms=265 err=upstream reset
+2026-11-20T11:32:47.150Z INFO orders-api host=oa-3 version=4.17.3 req=r-b41ce88db6 route=GET /v2/cart status=200 dur_ms=78
+2026-11-20T11:33:05.889Z INFO orders-api host=oa-3 version=4.17.3 req=r-04f97e4409 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:33:17.950Z INFO orders-api host=oa-3 version=4.17.3 req=r-1168e30894 route=POST /v2/cart/items status=200 dur_ms=172
+2026-11-20T11:33:47.384Z INFO orders-api host=oa-3 version=4.17.3 req=r-935fad6004 route=GET /v2/orders status=200 dur_ms=199
+2026-11-20T11:34:05.440Z INFO orders-api host=oa-3 version=4.17.3 req=r-d4d50b9a08 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:34:17.052Z INFO orders-api host=oa-3 version=4.17.3 req=r-d24f0ee9dc route=GET /v2/cart status=200 dur_ms=77
+2026-11-20T11:34:47.261Z INFO orders-api host=oa-3 version=4.17.3 req=r-b28ec06412 route=POST /v2/cart/items status=200 dur_ms=141
+2026-11-20T11:35:05.628Z INFO orders-api host=oa-3 version=4.17.3 req=r-b10ffeb978 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:35:17.769Z INFO orders-api host=oa-3 version=4.17.3 req=r-83462c8ec0 route=POST /v2/cart/items status=200 dur_ms=189
+2026-11-20T11:35:47.859Z INFO orders-api host=oa-3 version=4.17.3 req=r-de30df82f0 route=POST /v2/cart/items status=200 dur_ms=55
+2026-11-20T11:36:05.735Z INFO orders-api host=oa-3 version=4.17.3 req=r-6feede27e0 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:36:17.320Z INFO orders-api host=oa-3 version=4.17.3 req=r-600c278ccd route=GET /v2/orders status=200 dur_ms=100
+2026-11-20T11:36:47.364Z INFO orders-api host=oa-3 version=4.17.3 req=r-7795243db4 route=GET /v2/slots status=200 dur_ms=87
+2026-11-20T11:37:05.685Z INFO orders-api host=oa-3 version=4.17.3 req=r-2a31784e6b route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:37:12.015Z ERROR orders-api host=oa-3 version=4.17.3 req=r-80ed278c9c route=GET /v2/catalog status=500 dur_ms=1406 err=upstream reset
+2026-11-20T11:37:17.483Z INFO orders-api host=oa-3 version=4.17.3 req=r-0995a38950 route=POST /v2/checkout status=200 dur_ms=193 payment=approved
+2026-11-20T11:37:47.803Z INFO orders-api host=oa-3 version=4.17.3 req=r-91df29b7a7 route=GET /v2/slots status=200 dur_ms=99
+2026-11-20T11:38:05.997Z INFO orders-api host=oa-3 version=4.17.3 req=r-d0cc3534cb route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:38:07.300Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.32
+2026-11-20T11:38:17.271Z INFO orders-api host=oa-3 version=4.17.3 req=r-e022e9d55e route=POST /v2/cart/items status=200 dur_ms=140
+2026-11-20T11:38:38.713Z INFO orders-api host=oa-3 version=4.17.3 req=r-48e6e7e0b5 route=POST /v2/checkout status=200 dur_ms=174 order=o-7308342 payment=soft_decline reason=insufficient_funds
+2026-11-20T11:38:47.857Z INFO orders-api host=oa-3 version=4.17.3 req=r-dc84a5c8f8 route=GET /v2/slots status=200 dur_ms=197
+2026-11-20T11:39:05.981Z INFO orders-api host=oa-3 version=4.17.3 req=r-33de743e81 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:39:17.951Z INFO orders-api host=oa-3 version=4.17.3 req=r-d2bad4ee6a route=POST /v2/cart/items status=200 dur_ms=170
+2026-11-20T11:39:42.039Z ERROR orders-api host=oa-3 version=4.17.3 req=r-e08bcbaca4 route=GET /v2/slots status=502 dur_ms=2635 err=upstream reset
+2026-11-20T11:39:47.928Z INFO orders-api host=oa-3 version=4.17.3 req=r-f6c3e506c5 route=GET /v2/cart status=200 dur_ms=110
+2026-11-20T11:40:05.388Z INFO orders-api host=oa-3 version=4.17.3 req=r-71f5569603 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:40:09.815Z ERROR orders-api host=oa-3 version=4.17.3 req=r-65962226ad route=GET /v2/slots status=503 dur_ms=1088 err=db pool wait
+2026-11-20T11:40:10.006Z WARN orders-api host=oa-3 version=4.17.3 req=r-bab2167e52 inventory lookup retry attempt=2 dur_ms=202
+2026-11-20T11:40:10.787Z ERROR orders-api host=oa-3 version=4.17.3 req=r-b57cea1225 route=GET /v2/cart status=503 dur_ms=2535 err=inventory timeout
+2026-11-20T11:40:17.172Z INFO orders-api host=oa-3 version=4.17.3 req=r-30d73ccd80 route=GET /v2/slots status=200 dur_ms=194
+2026-11-20T11:40:47.164Z INFO orders-api host=oa-3 version=4.17.3 req=r-da6f0a660c route=GET /v2/orders status=200 dur_ms=151
+2026-11-20T11:41:05.298Z INFO orders-api host=oa-3 version=4.17.3 req=r-4c8fe67e0c route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:41:17.288Z INFO orders-api host=oa-3 version=4.17.3 req=r-f50712f7af route=GET /v2/cart status=200 dur_ms=97
+2026-11-20T11:41:47.385Z INFO orders-api host=oa-3 version=4.17.3 req=r-ae8a232301 route=GET /v2/catalog status=200 dur_ms=79
+2026-11-20T11:42:00.792Z ERROR orders-api host=oa-3 version=4.17.3 req=r-988e7065c3 route=GET /v2/catalog status=503 dur_ms=1548 err=inventory timeout
+2026-11-20T11:42:05.639Z INFO orders-api host=oa-3 version=4.17.3 req=r-a0ce20c4e6 route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:42:17.989Z INFO orders-api host=oa-3 version=4.17.3 req=r-da8d307c74 route=POST /v2/cart/items status=200 dur_ms=107
+2026-11-20T11:42:41.558Z INFO orders-api host=oa-3 version=4.17.3 req=r-94a158bbcc route=POST /v2/checkout status=200 dur_ms=389 order=o-7323128 payment=soft_decline reason=insufficient_funds
+2026-11-20T11:42:47.908Z INFO orders-api host=oa-3 version=4.17.3 req=r-68a57428a0 route=GET /v2/catalog status=200 dur_ms=109
+2026-11-20T11:43:05.359Z INFO orders-api host=oa-3 version=4.17.3 req=r-f8dc4d6772 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:43:17.396Z INFO orders-api host=oa-3 version=4.17.3 req=r-7dc66a8892 route=GET /v2/cart status=200 dur_ms=81
+2026-11-20T11:43:47.390Z INFO orders-api host=oa-3 version=4.17.3 req=r-0265392f11 route=POST /v2/cart/items status=200 dur_ms=163
+2026-11-20T11:44:05.249Z INFO orders-api host=oa-3 version=4.17.3 req=r-f410770986 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:44:17.415Z INFO orders-api host=oa-3 version=4.17.3 req=r-1630231e44 route=GET /v2/orders status=200 dur_ms=179
+2026-11-20T11:44:47.222Z INFO orders-api host=oa-3 version=4.17.3 req=r-fd208cda3a route=POST /v2/checkout status=200 dur_ms=176 payment=approved
+2026-11-20T11:45:05.437Z INFO orders-api host=oa-3 version=4.17.3 req=r-bafe094d95 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:45:17.035Z INFO orders-api host=oa-3 version=4.17.3 req=r-a7790dcae8 route=POST /v2/cart/items status=200 dur_ms=116
+2026-11-20T11:45:47.922Z INFO orders-api host=oa-3 version=4.17.3 req=r-525c387743 route=POST /v2/checkout status=200 dur_ms=143 payment=approved
+2026-11-20T11:46:05.729Z INFO orders-api host=oa-3 version=4.17.3 req=r-e1a7c33bea route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:46:17.818Z INFO orders-api host=oa-3 version=4.17.3 req=r-36e665ba04 route=GET /v2/slots status=200 dur_ms=161
+2026-11-20T11:46:47.150Z INFO orders-api host=oa-3 version=4.17.3 req=r-715977152f route=GET /v2/catalog status=200 dur_ms=176
+2026-11-20T11:47:05.014Z INFO orders-api host=oa-3 version=4.17.3 req=r-cb2e605e1e route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:47:17.509Z INFO orders-api host=oa-3 version=4.17.3 req=r-b3087f50a1 route=POST /v2/cart/items status=200 dur_ms=144
+2026-11-20T11:47:47.572Z INFO orders-api host=oa-3 version=4.17.3 req=r-7ddb6cecc2 route=GET /v2/catalog status=200 dur_ms=53
+2026-11-20T11:48:05.835Z INFO orders-api host=oa-3 version=4.17.3 req=r-3eb43b6744 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:48:17.333Z INFO orders-api host=oa-3 version=4.17.3 req=r-450167a096 route=GET /v2/orders status=200 dur_ms=148
+2026-11-20T11:48:47.342Z INFO orders-api host=oa-3 version=4.17.3 req=r-97c0649b30 route=GET /v2/orders status=200 dur_ms=91
+2026-11-20T11:49:05.356Z INFO orders-api host=oa-3 version=4.17.3 req=r-a6b5268441 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:49:17.165Z INFO orders-api host=oa-3 version=4.17.3 req=r-a0b39c42fa route=GET /v2/cart status=200 dur_ms=123
+2026-11-20T11:49:36.772Z ERROR orders-api host=oa-3 version=4.17.3 req=r-4fc3db0923 route=GET /v2/slots status=503 dur_ms=2024 err=inventory timeout
+2026-11-20T11:49:47.355Z INFO orders-api host=oa-3 version=4.17.3 req=r-a190edc03a route=POST /v2/cart/items status=200 dur_ms=155
+2026-11-20T11:50:05.212Z INFO orders-api host=oa-3 version=4.17.3 req=r-5bf4fe1447 route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:50:17.014Z INFO orders-api host=oa-3 version=4.17.3 req=r-adbedf4e08 route=GET /v2/catalog status=200 dur_ms=40
+2026-11-20T11:50:47.427Z INFO orders-api host=oa-3 version=4.17.3 req=r-864e5da507 route=GET /v2/orders status=200 dur_ms=110
+2026-11-20T11:51:05.577Z INFO orders-api host=oa-3 version=4.17.3 req=r-ef66c558e4 route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:51:17.185Z INFO orders-api host=oa-3 version=4.17.3 req=r-749dd878ed route=POST /v2/cart/items status=200 dur_ms=158
+2026-11-20T11:51:37.446Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.28
+2026-11-20T11:51:47.809Z INFO orders-api host=oa-3 version=4.17.3 req=r-397e13c54b route=POST /v2/checkout status=200 dur_ms=76 payment=approved
+2026-11-20T11:51:54.663Z WARN orders-api host=oa-3 version=4.17.3 req=r-69d48632cd inventory lookup retry attempt=2 dur_ms=253
+2026-11-20T11:52:05.795Z INFO orders-api host=oa-3 version=4.17.3 req=r-5c1c4085e7 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:52:17.448Z INFO orders-api host=oa-3 version=4.17.3 req=r-58df5b888a route=GET /v2/catalog status=200 dur_ms=41
+2026-11-20T11:52:47.975Z INFO orders-api host=oa-3 version=4.17.3 req=r-696c606e80 route=POST /v2/checkout status=200 dur_ms=69 payment=approved
+2026-11-20T11:53:05.566Z INFO orders-api host=oa-3 version=4.17.3 req=r-7f90c96dd2 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:53:17.949Z INFO orders-api host=oa-3 version=4.17.3 req=r-dfcc9aa029 route=POST /v2/checkout status=200 dur_ms=53 payment=approved
+2026-11-20T11:53:47.044Z INFO orders-api host=oa-3 version=4.17.3 req=r-fa8f2e0c10 route=POST /v2/checkout status=200 dur_ms=132 payment=approved
+2026-11-20T11:54:05.033Z INFO orders-api host=oa-3 version=4.17.3 req=r-bbff4e8b69 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:54:17.673Z INFO orders-api host=oa-3 version=4.17.3 req=r-2f39364175 route=GET /v2/slots status=200 dur_ms=140
+2026-11-20T11:54:47.819Z INFO orders-api host=oa-3 version=4.17.3 req=r-98501a820f route=POST /v2/checkout status=200 dur_ms=196 payment=approved
+2026-11-20T11:55:05.990Z INFO orders-api host=oa-3 version=4.17.3 req=r-7ab548f058 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:55:08.215Z ERROR orders-api host=oa-3 version=4.17.3 req=r-d19fe52b91 route=GET /v2/orders status=500 dur_ms=748 err=upstream reset
+2026-11-20T11:55:17.134Z INFO orders-api host=oa-3 version=4.17.3 req=r-15d61f9e64 route=POST /v2/checkout status=200 dur_ms=107 payment=approved
+2026-11-20T11:55:47.019Z INFO orders-api host=oa-3 version=4.17.3 req=r-5da7b29ee1 route=GET /v2/catalog status=200 dur_ms=63
+2026-11-20T11:56:05.753Z INFO orders-api host=oa-3 version=4.17.3 req=r-22d769e145 route=GET /healthz status=200 dur_ms=2
+2026-11-20T11:56:17.583Z INFO orders-api host=oa-3 version=4.17.3 req=r-5cd9aec488 route=POST /v2/cart/items status=200 dur_ms=141
+2026-11-20T11:56:47.267Z INFO orders-api host=oa-3 version=4.17.3 req=r-e811aeaadd route=GET /v2/slots status=200 dur_ms=126
+2026-11-20T11:57:05.402Z INFO orders-api host=oa-3 version=4.17.3 req=r-5eace2f320 route=GET /healthz status=200 dur_ms=1
+2026-11-20T11:57:17.121Z INFO orders-api host=oa-3 version=4.17.3 req=r-5f3a4f817a route=GET /v2/slots status=200 dur_ms=187
+2026-11-20T11:57:47.151Z INFO orders-api host=oa-3 version=4.17.3 req=r-dc8029a171 route=GET /v2/catalog status=200 dur_ms=179
+2026-11-20T11:58:05.128Z INFO orders-api host=oa-3 version=4.17.3 req=r-8f0223c20a route=GET /healthz status=200 dur_ms=3
+2026-11-20T11:58:17.261Z INFO orders-api host=oa-3 version=4.17.3 req=r-7ef4a8a21d route=POST /v2/cart/items status=200 dur_ms=171
+2026-11-20T11:58:47.943Z INFO orders-api host=oa-3 version=4.17.3 req=r-fde6f3227a route=POST /v2/checkout status=200 dur_ms=196 payment=approved
+2026-11-20T11:58:55.043Z ERROR orders-api host=oa-3 version=4.17.3 req=r-bb39495ed6 route=POST /v2/checkout status=500 dur_ms=649 err=inventory timeout
+2026-11-20T11:59:03.055Z ERROR orders-api host=oa-3 version=4.17.3 req=r-4b1e17b406 route=GET /v2/cart status=503 dur_ms=1487 err=db pool wait
+2026-11-20T11:59:05.707Z INFO orders-api host=oa-3 version=4.17.3 req=r-1ea90a96b1 route=GET /healthz status=200 dur_ms=4
+2026-11-20T11:59:06.258Z ERROR orders-api host=oa-3 version=4.17.3 req=r-803e73f9bb route=POST /v2/checkout status=503 dur_ms=2431 err=upstream reset
+2026-11-20T11:59:17.470Z INFO orders-api host=oa-3 version=4.17.3 req=r-43f1a225b1 route=GET /v2/cart status=200 dur_ms=102
+2026-11-20T11:59:47.096Z INFO orders-api host=oa-3 version=4.17.3 req=r-f110b6612d route=GET /v2/orders status=200 dur_ms=139
+2026-11-20T12:00:05.542Z INFO orders-api host=oa-3 version=4.17.3 req=r-22ee920c09 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:00:17.109Z INFO orders-api host=oa-3 version=4.17.3 req=r-ee9805add0 route=POST /v2/cart/items status=200 dur_ms=184
+2026-11-20T12:00:43.521Z ERROR orders-api host=oa-3 version=4.17.3 req=r-1e2fb82f6a route=GET /v2/cart status=500 dur_ms=2084 err=upstream reset
+2026-11-20T12:00:44.942Z INFO orders-api host=oa-3 version=4.17.3 req=r-fd73e9b672 route=POST /v2/checkout status=200 dur_ms=309 order=o-7370782 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T12:00:47.716Z INFO orders-api host=oa-3 version=4.17.3 req=r-2c1f7d0da8 route=POST /v2/checkout status=200 dur_ms=107 payment=approved
+2026-11-20T12:01:05.129Z INFO orders-api host=oa-3 version=4.17.3 req=r-2036f9cf1b route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:01:05.177Z ERROR orders-api host=oa-3 version=4.17.3 req=r-903313d52b route=GET /v2/slots status=503 dur_ms=1136 err=upstream reset
+2026-11-20T12:01:17.985Z INFO orders-api host=oa-3 version=4.17.3 req=r-0067503ead route=POST /v2/cart/items status=200 dur_ms=136
+2026-11-20T12:01:47.840Z INFO orders-api host=oa-3 version=4.17.3 req=r-6e18b6115e route=POST /v2/cart/items status=200 dur_ms=84
+2026-11-20T12:02:05.767Z INFO orders-api host=oa-3 version=4.17.3 req=r-ddbe2535a4 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:02:17.523Z INFO orders-api host=oa-3 version=4.17.3 req=r-097d84ed1d route=GET /v2/catalog status=200 dur_ms=137
+2026-11-20T12:02:30.970Z ERROR orders-api host=oa-3 version=4.17.3 req=r-5efcf1d0fc route=POST /v2/checkout status=500 dur_ms=1405 err=db pool wait
+2026-11-20T12:02:47.730Z INFO orders-api host=oa-3 version=4.17.3 req=r-7d6b4d4887 route=GET /v2/cart status=200 dur_ms=172
+2026-11-20T12:02:59.033Z ERROR orders-api host=oa-3 version=4.17.3 req=r-8281ce9f6d route=GET /v2/slots status=503 dur_ms=1208 err=inventory timeout
+2026-11-20T12:03:05.016Z INFO orders-api host=oa-3 version=4.17.3 req=r-dccfc3990e route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:03:17.972Z INFO orders-api host=oa-3 version=4.17.3 req=r-12b7eb3372 route=POST /v2/checkout status=200 dur_ms=199 payment=approved
+2026-11-20T12:03:47.342Z INFO orders-api host=oa-3 version=4.17.3 req=r-fa8344941a route=GET /v2/cart status=200 dur_ms=91
+2026-11-20T12:04:05.156Z INFO orders-api host=oa-3 version=4.17.3 req=r-cf7da64ab4 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:04:17.244Z INFO orders-api host=oa-3 version=4.17.3 req=r-d3f618ad3f route=GET /v2/catalog status=200 dur_ms=196
+2026-11-20T12:04:47.144Z INFO orders-api host=oa-3 version=4.17.3 req=r-4803daa5a2 route=POST /v2/cart/items status=200 dur_ms=50
+2026-11-20T12:05:05.491Z INFO orders-api host=oa-3 version=4.17.3 req=r-3e27899ab6 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:05:17.638Z INFO orders-api host=oa-3 version=4.17.3 req=r-3e2b02181c route=GET /v2/catalog status=200 dur_ms=193
+2026-11-20T12:05:45.344Z ERROR orders-api host=oa-3 version=4.17.3 req=r-7f47268faf route=GET /v2/orders status=502 dur_ms=541 err=upstream reset
+2026-11-20T12:05:47.467Z INFO orders-api host=oa-3 version=4.17.3 req=r-2e6a79f4f3 route=GET /v2/cart status=200 dur_ms=102
+2026-11-20T12:06:05.717Z INFO orders-api host=oa-3 version=4.17.3 req=r-0b43dc636e route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:06:17.887Z INFO orders-api host=oa-3 version=4.17.3 req=r-477bf056a2 route=GET /v2/catalog status=200 dur_ms=42
+2026-11-20T12:06:43.958Z ERROR orders-api host=oa-3 version=4.17.3 req=r-c3d5e477f6 route=POST /v2/checkout status=500 dur_ms=675 err=db pool wait
+2026-11-20T12:06:47.100Z INFO orders-api host=oa-3 version=4.17.3 req=r-e07dd930bc route=GET /v2/slots status=200 dur_ms=198
+2026-11-20T12:07:05.211Z INFO orders-api host=oa-3 version=4.17.3 req=r-7bdbe604e7 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:07:05.686Z WARN orders-api host=oa-3 version=4.17.3 req=r-7b61054a84 inventory lookup retry attempt=2 dur_ms=255
+2026-11-20T12:07:11.371Z ERROR orders-api host=oa-3 version=4.17.3 req=r-7fcc8b43a2 route=POST /v2/cart/items status=503 dur_ms=472 err=inventory timeout
+2026-11-20T12:07:17.437Z INFO orders-api host=oa-3 version=4.17.3 req=r-ffb2479ea6 route=GET /v2/catalog status=200 dur_ms=98
+2026-11-20T12:07:47.900Z INFO orders-api host=oa-3 version=4.17.3 req=r-d47c9bda4e route=GET /v2/slots status=200 dur_ms=166
+2026-11-20T12:08:05.334Z INFO orders-api host=oa-3 version=4.17.3 req=r-2da1b43f5c route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:08:17.581Z INFO orders-api host=oa-3 version=4.17.3 req=r-fbc74bb87c route=POST /v2/cart/items status=200 dur_ms=132
+2026-11-20T12:08:47.871Z INFO orders-api host=oa-3 version=4.17.3 req=r-30b91eb6cd route=POST /v2/checkout status=200 dur_ms=156 payment=approved
+2026-11-20T12:09:05.133Z INFO orders-api host=oa-3 version=4.17.3 req=r-9af8f7e6d6 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:09:17.723Z INFO orders-api host=oa-3 version=4.17.3 req=r-dac7e1a329 route=GET /v2/slots status=200 dur_ms=169
+2026-11-20T12:09:21.537Z ERROR orders-api host=oa-3 version=4.17.3 req=r-a5599e918d route=GET /v2/cart status=503 dur_ms=583 err=inventory timeout
+2026-11-20T12:09:47.234Z INFO orders-api host=oa-3 version=4.17.3 req=r-996066f52c route=GET /v2/orders status=200 dur_ms=71
+2026-11-20T12:10:05.261Z INFO orders-api host=oa-3 version=4.17.3 req=r-3c54e79e61 route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:10:08.861Z ERROR orders-api host=oa-3 version=4.17.3 req=r-318fb6912b route=GET /v2/cart status=502 dur_ms=2236 err=inventory timeout
+2026-11-20T12:10:16.202Z INFO orders-api host=oa-3 version=4.17.3 req=r-fded9a2402 route=POST /v2/checkout status=200 dur_ms=288 order=o-7397406 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T12:10:17.483Z INFO orders-api host=oa-3 version=4.17.3 req=r-d3b63ed4ad route=GET /v2/cart status=200 dur_ms=113
+2026-11-20T12:10:47.193Z INFO orders-api host=oa-3 version=4.17.3 req=r-2ef8bf77f1 route=GET /v2/catalog status=200 dur_ms=123
+2026-11-20T12:11:05.300Z INFO orders-api host=oa-3 version=4.17.3 req=r-6523972ea8 route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:11:17.555Z INFO orders-api host=oa-3 version=4.17.3 req=r-d75cada652 route=POST /v2/checkout status=200 dur_ms=180 payment=approved
+2026-11-20T12:11:47.419Z INFO orders-api host=oa-3 version=4.17.3 req=r-9d30816bf7 route=GET /v2/orders status=200 dur_ms=88
+2026-11-20T12:11:48.305Z ERROR orders-api host=oa-3 version=4.17.3 req=r-eb3f6f0fb6 route=POST /v2/checkout status=502 dur_ms=1278 err=inventory timeout
+2026-11-20T12:12:05.497Z INFO orders-api host=oa-3 version=4.17.3 req=r-d5b95580d7 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:12:17.939Z INFO orders-api host=oa-3 version=4.17.3 req=r-bd2852d7bf route=GET /v2/slots status=200 dur_ms=112
+2026-11-20T12:12:47.184Z INFO orders-api host=oa-3 version=4.17.3 req=r-0ff0b588e8 route=GET /v2/cart status=200 dur_ms=174
+2026-11-20T12:13:02.353Z ERROR orders-api host=oa-3 version=4.17.3 req=r-7fd908d4d1 route=POST /v2/cart/items status=502 dur_ms=1899 err=inventory timeout
+2026-11-20T12:13:05.338Z INFO orders-api host=oa-3 version=4.17.3 req=r-8a8e359222 route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:13:17.063Z INFO orders-api host=oa-3 version=4.17.3 req=r-f88519828d route=GET /v2/orders status=200 dur_ms=196
+2026-11-20T12:13:47.799Z INFO orders-api host=oa-3 version=4.17.3 req=r-fea2e18024 route=GET /v2/orders status=200 dur_ms=141
+2026-11-20T12:14:05.060Z INFO orders-api host=oa-3 version=4.17.3 req=r-e9a0a49b63 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:14:17.268Z INFO orders-api host=oa-3 version=4.17.3 req=r-d97e80cabf route=POST /v2/cart/items status=200 dur_ms=160
+2026-11-20T12:14:47.175Z INFO orders-api host=oa-3 version=4.17.3 req=r-c27649edf1 route=GET /v2/orders status=200 dur_ms=143
+2026-11-20T12:15:05.687Z INFO orders-api host=oa-3 version=4.17.3 req=r-adbac1c833 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:15:17.079Z INFO orders-api host=oa-3 version=4.17.3 req=r-6c982f7be5 route=POST /v2/cart/items status=200 dur_ms=194
+2026-11-20T12:15:47.151Z INFO orders-api host=oa-3 version=4.17.3 req=r-ff2a9c047b route=POST /v2/checkout status=200 dur_ms=140 payment=approved
+2026-11-20T12:16:05.453Z INFO orders-api host=oa-3 version=4.17.3 req=r-f2d0f80f43 route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:16:17.283Z INFO orders-api host=oa-3 version=4.17.3 req=r-d3303448fc route=POST /v2/cart/items status=200 dur_ms=62
+2026-11-20T12:16:17.577Z ERROR orders-api host=oa-3 version=4.17.3 req=r-c44cf24936 route=GET /v2/orders status=500 dur_ms=678 err=inventory timeout
+2026-11-20T12:16:47.675Z INFO orders-api host=oa-3 version=4.17.3 req=r-6ccfc4f11f route=POST /v2/cart/items status=200 dur_ms=99
+2026-11-20T12:17:05.935Z INFO orders-api host=oa-3 version=4.17.3 req=r-7562de9ac8 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:17:15.838Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.23
+2026-11-20T12:17:17.640Z INFO orders-api host=oa-3 version=4.17.3 req=r-1f513542e9 route=GET /v2/catalog status=200 dur_ms=190
+2026-11-20T12:17:47.381Z INFO orders-api host=oa-3 version=4.17.3 req=r-882555437d route=GET /v2/orders status=200 dur_ms=123
+2026-11-20T12:18:05.549Z INFO orders-api host=oa-3 version=4.17.3 req=r-d93962fb61 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:18:17.155Z INFO orders-api host=oa-3 version=4.17.3 req=r-4390800135 route=POST /v2/cart/items status=200 dur_ms=66
+2026-11-20T12:18:33.358Z INFO orders-api host=oa-3 version=4.17.3 req=r-f6ef29ff50 route=POST /v2/checkout status=200 dur_ms=308 order=o-7322918 payment=soft_decline reason=card_expired
+2026-11-20T12:18:47.640Z INFO orders-api host=oa-3 version=4.17.3 req=r-56460289b3 route=GET /v2/catalog status=200 dur_ms=138
+2026-11-20T12:19:05.304Z INFO orders-api host=oa-3 version=4.17.3 req=r-7c16496cb0 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:19:17.250Z INFO orders-api host=oa-3 version=4.17.3 req=r-92fa255b25 route=GET /v2/orders status=200 dur_ms=186
+2026-11-20T12:19:19.327Z ERROR orders-api host=oa-3 version=4.17.3 req=r-3b9dda24dc route=POST /v2/checkout status=500 dur_ms=803 err=inventory timeout
+2026-11-20T12:19:47.421Z INFO orders-api host=oa-3 version=4.17.3 req=r-db5db2ea41 route=GET /v2/orders status=200 dur_ms=76
+2026-11-20T12:20:05.623Z INFO orders-api host=oa-3 version=4.17.3 req=r-425a71c03d route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:20:17.947Z INFO orders-api host=oa-3 version=4.17.3 req=r-71e64c595d route=GET /v2/orders status=200 dur_ms=121
+2026-11-20T12:20:41.273Z ERROR orders-api host=oa-3 version=4.17.3 req=r-70e764751d route=GET /v2/slots status=503 dur_ms=2211 err=db pool wait
+2026-11-20T12:20:42.838Z INFO orders-api host=oa-3 version=4.17.3 req=r-506a234d31 route=POST /v2/checkout status=200 dur_ms=177 order=o-7314386 payment=soft_decline reason=card_expired
+2026-11-20T12:20:45.567Z ERROR orders-api host=oa-3 version=4.17.3 req=r-2ca824cc0c route=POST /v2/checkout status=502 dur_ms=1308 err=db pool wait
+2026-11-20T12:20:47.443Z INFO orders-api host=oa-3 version=4.17.3 req=r-94a1471e81 route=GET /v2/orders status=200 dur_ms=107
+2026-11-20T12:21:05.004Z INFO orders-api host=oa-3 version=4.17.3 req=r-804c888a7f route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:21:17.602Z INFO orders-api host=oa-3 version=4.17.3 req=r-ede1182476 route=GET /v2/orders status=200 dur_ms=49
+2026-11-20T12:21:40.534Z INFO orders-api host=oa-3 version=4.17.3 req=r-d7aa126e8b route=POST /v2/checkout status=200 dur_ms=257 order=o-7360199 payment=soft_decline reason=card_expired
+2026-11-20T12:21:47.374Z INFO orders-api host=oa-3 version=4.17.3 req=r-b57c5a2cc4 route=GET /v2/cart status=200 dur_ms=148
+2026-11-20T12:22:05.023Z INFO orders-api host=oa-3 version=4.17.3 req=r-fad3524aec route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:22:17.725Z INFO orders-api host=oa-3 version=4.17.3 req=r-c023ed4178 route=POST /v2/cart/items status=200 dur_ms=113
+2026-11-20T12:22:47.931Z INFO orders-api host=oa-3 version=4.17.3 req=r-9301b95d79 route=POST /v2/checkout status=200 dur_ms=200 payment=approved
+2026-11-20T12:23:05.703Z INFO orders-api host=oa-3 version=4.17.3 req=r-a0f0ab17d3 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:23:17.456Z INFO orders-api host=oa-3 version=4.17.3 req=r-bf10a32247 route=GET /v2/orders status=200 dur_ms=183
+2026-11-20T12:23:47.099Z INFO orders-api host=oa-3 version=4.17.3 req=r-605e7109a1 route=GET /v2/slots status=200 dur_ms=139
+2026-11-20T12:24:05.473Z INFO orders-api host=oa-3 version=4.17.3 req=r-bd973ff50f route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:24:17.820Z INFO orders-api host=oa-3 version=4.17.3 req=r-f40aed17bd route=GET /v2/orders status=200 dur_ms=77
+2026-11-20T12:24:47.283Z INFO orders-api host=oa-3 version=4.17.3 req=r-7e20e33dc5 route=GET /v2/slots status=200 dur_ms=106
+2026-11-20T12:25:05.524Z INFO orders-api host=oa-3 version=4.17.3 req=r-84ea80f1df route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:25:17.946Z INFO orders-api host=oa-3 version=4.17.3 req=r-36cb919eb6 route=GET /v2/slots status=200 dur_ms=94
+2026-11-20T12:25:39.982Z ERROR orders-api host=oa-3 version=4.17.3 req=r-36213207df route=POST /v2/cart/items status=503 dur_ms=106 err=db pool wait
+2026-11-20T12:25:47.318Z INFO orders-api host=oa-3 version=4.17.3 req=r-67efc88374 route=GET /v2/slots status=200 dur_ms=130
+2026-11-20T12:26:05.316Z INFO orders-api host=oa-3 version=4.17.3 req=r-7c297246c4 route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:26:17.970Z INFO orders-api host=oa-3 version=4.17.3 req=r-660795b478 route=POST /v2/checkout status=200 dur_ms=163 payment=approved
+2026-11-20T12:26:47.927Z INFO orders-api host=oa-3 version=4.17.3 req=r-0f588124b3 route=GET /v2/orders status=200 dur_ms=175
+2026-11-20T12:27:05.893Z INFO orders-api host=oa-3 version=4.17.3 req=r-5eb00760b3 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:27:17.303Z INFO orders-api host=oa-3 version=4.17.3 req=r-baeadcb242 route=POST /v2/checkout status=200 dur_ms=161 payment=approved
+2026-11-20T12:27:47.662Z INFO orders-api host=oa-3 version=4.17.3 req=r-f98e60d92b route=GET /v2/slots status=200 dur_ms=131
+2026-11-20T12:28:05.716Z INFO orders-api host=oa-3 version=4.17.3 req=r-899cfcc66e route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:28:17.749Z INFO orders-api host=oa-3 version=4.17.3 req=r-fe1dd8a2bd route=POST /v2/checkout status=200 dur_ms=127 payment=approved
+2026-11-20T12:28:47.766Z INFO orders-api host=oa-3 version=4.17.3 req=r-84f3a07e4c route=POST /v2/checkout status=200 dur_ms=95 payment=approved
+2026-11-20T12:29:05.861Z INFO orders-api host=oa-3 version=4.17.3 req=r-f0a871375e route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:29:17.185Z INFO orders-api host=oa-3 version=4.17.3 req=r-01e82904a6 route=GET /v2/cart status=200 dur_ms=41
+2026-11-20T12:29:47.669Z INFO orders-api host=oa-3 version=4.17.3 req=r-2719ecbbfe route=GET /v2/orders status=200 dur_ms=156
+2026-11-20T12:30:05.425Z INFO orders-api host=oa-3 version=4.17.3 req=r-855ab24eee route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:30:17.162Z INFO orders-api host=oa-3 version=4.17.3 req=r-948abe78d9 route=GET /v2/slots status=200 dur_ms=163
+2026-11-20T12:30:47.472Z INFO orders-api host=oa-3 version=4.17.3 req=r-871aec6e6d route=POST /v2/cart/items status=200 dur_ms=141
+2026-11-20T12:31:05.418Z INFO orders-api host=oa-3 version=4.17.3 req=r-ac7e1b600c route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:31:12.200Z ERROR orders-api host=oa-3 version=4.17.3 req=r-168578ff25 route=POST /v2/checkout status=503 dur_ms=271 err=db pool wait
+2026-11-20T12:31:17.577Z INFO orders-api host=oa-3 version=4.17.3 req=r-d4ec0c046a route=GET /v2/cart status=200 dur_ms=60
+2026-11-20T12:31:47.229Z INFO orders-api host=oa-3 version=4.17.3 req=r-08eb2d0ade route=GET /v2/slots status=200 dur_ms=154
+2026-11-20T12:32:05.253Z INFO orders-api host=oa-3 version=4.17.3 req=r-d8e2a81509 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:32:17.325Z INFO orders-api host=oa-3 version=4.17.3 req=r-2a915392cb route=GET /v2/orders status=200 dur_ms=136
+2026-11-20T12:32:47.577Z INFO orders-api host=oa-3 version=4.17.3 req=r-7249a9cbbd route=GET /v2/cart status=200 dur_ms=115
+2026-11-20T12:33:05.584Z INFO orders-api host=oa-3 version=4.17.3 req=r-3c44d5c95c route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:33:17.092Z INFO orders-api host=oa-3 version=4.17.3 req=r-aeaa2fc057 route=GET /v2/catalog status=200 dur_ms=196
+2026-11-20T12:33:35.957Z ERROR orders-api host=oa-3 version=4.17.3 req=r-0060eed90e route=GET /v2/catalog status=500 dur_ms=1024 err=upstream reset
+2026-11-20T12:33:47.345Z INFO orders-api host=oa-3 version=4.17.3 req=r-176411e561 route=POST /v2/cart/items status=200 dur_ms=146
+2026-11-20T12:34:04.758Z ERROR orders-api host=oa-3 version=4.17.3 req=r-61e72730df route=GET /v2/slots status=503 dur_ms=2903 err=upstream reset
+2026-11-20T12:34:05.670Z INFO orders-api host=oa-3 version=4.17.3 req=r-4b3663e850 route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:34:17.894Z INFO orders-api host=oa-3 version=4.17.3 req=r-5c4ca602ec route=GET /v2/cart status=200 dur_ms=100
+2026-11-20T12:34:42.759Z ERROR orders-api host=oa-3 version=4.17.3 req=r-29590ce10e route=POST /v2/cart/items status=503 dur_ms=1049 err=inventory timeout
+2026-11-20T12:34:47.375Z INFO orders-api host=oa-3 version=4.17.3 req=r-3c536c8e46 route=GET /v2/catalog status=200 dur_ms=150
+2026-11-20T12:35:05.627Z INFO orders-api host=oa-3 version=4.17.3 req=r-8a2d8bfbb8 route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:35:17.724Z INFO orders-api host=oa-3 version=4.17.3 req=r-33b38bdce4 route=GET /v2/catalog status=200 dur_ms=140
+2026-11-20T12:35:47.315Z INFO orders-api host=oa-3 version=4.17.3 req=r-5451d2b736 route=GET /v2/catalog status=200 dur_ms=45
+2026-11-20T12:36:05.421Z INFO orders-api host=oa-3 version=4.17.3 req=r-6fb6f7a43e route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:36:17.032Z INFO orders-api host=oa-3 version=4.17.3 req=r-bfbadbcb42 route=GET /v2/catalog status=200 dur_ms=177
+2026-11-20T12:36:20.601Z WARN orders-api host=oa-3 version=4.17.3 req=r-f16692322f inventory lookup retry attempt=2 dur_ms=159
+2026-11-20T12:36:22.463Z ERROR orders-api host=oa-3 version=4.17.3 req=r-fe10a430d1 route=GET /v2/slots status=503 dur_ms=1940 err=upstream reset
+2026-11-20T12:36:47.488Z INFO orders-api host=oa-3 version=4.17.3 req=r-8e622e6d1a route=GET /v2/catalog status=200 dur_ms=196
+2026-11-20T12:37:05.858Z INFO orders-api host=oa-3 version=4.17.3 req=r-70edcab624 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:37:17.429Z INFO orders-api host=oa-3 version=4.17.3 req=r-035cd88db6 route=POST /v2/checkout status=200 dur_ms=93 payment=approved
+2026-11-20T12:37:47.813Z INFO orders-api host=oa-3 version=4.17.3 req=r-0c2c3ddd87 route=POST /v2/checkout status=200 dur_ms=192 payment=approved
+2026-11-20T12:38:05.322Z INFO orders-api host=oa-3 version=4.17.3 req=r-4ea09e11c9 route=POST /v2/checkout status=200 dur_ms=263 order=o-7368921 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T12:38:05.729Z INFO orders-api host=oa-3 version=4.17.3 req=r-62258016e6 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:38:17.459Z INFO orders-api host=oa-3 version=4.17.3 req=r-ad27760630 route=GET /v2/orders status=200 dur_ms=51
+2026-11-20T12:38:38.923Z INFO orders-api host=oa-3 version=4.17.3 req=r-9cd9927d95 route=POST /v2/checkout status=200 dur_ms=253 order=o-7301433 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T12:38:39.529Z ERROR orders-api host=oa-3 version=4.17.3 req=r-d6fd2f6b46 route=GET /v2/cart status=500 dur_ms=219 err=inventory timeout
+2026-11-20T12:38:47.784Z INFO orders-api host=oa-3 version=4.17.3 req=r-6fcf9aee56 route=POST /v2/cart/items status=200 dur_ms=74
+2026-11-20T12:39:05.505Z INFO orders-api host=oa-3 version=4.17.3 req=r-507568bce9 route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:39:17.809Z INFO orders-api host=oa-3 version=4.17.3 req=r-35c6d7cab6 route=GET /v2/catalog status=200 dur_ms=50
+2026-11-20T12:39:31.836Z ERROR orders-api host=oa-3 version=4.17.3 req=r-ba4392bcd6 route=GET /v2/slots status=500 dur_ms=658 err=inventory timeout
+2026-11-20T12:39:47.787Z INFO orders-api host=oa-3 version=4.17.3 req=r-1e4ec7bbba route=GET /v2/slots status=200 dur_ms=167
+2026-11-20T12:40:05.589Z INFO orders-api host=oa-3 version=4.17.3 req=r-3c72bfda97 route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:40:17.488Z INFO orders-api host=oa-3 version=4.17.3 req=r-cc9d57ef1e route=POST /v2/checkout status=200 dur_ms=53 payment=approved
+2026-11-20T12:40:20.875Z WARN orders-api host=oa-3 version=4.17.3 req=r-c19c97616a inventory lookup retry attempt=2 dur_ms=163
+2026-11-20T12:40:29.544Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.21
+2026-11-20T12:40:47.648Z INFO orders-api host=oa-3 version=4.17.3 req=r-885c49848f route=GET /v2/catalog status=200 dur_ms=165
+2026-11-20T12:41:05.632Z INFO orders-api host=oa-3 version=4.17.3 req=r-f5f8aa5c31 route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:41:09.390Z ERROR orders-api host=oa-3 version=4.17.3 req=r-4562a6d5d4 route=GET /v2/orders status=503 dur_ms=1544 err=db pool wait
+2026-11-20T12:41:17.415Z INFO orders-api host=oa-3 version=4.17.3 req=r-7d82b1e126 route=POST /v2/checkout status=200 dur_ms=171 payment=approved
+2026-11-20T12:41:43.076Z WARN orders-api host=oa-3 version=4.17.3 req=r-fa0108f6a3 inventory lookup retry attempt=2 dur_ms=296
+2026-11-20T12:41:47.974Z INFO orders-api host=oa-3 version=4.17.3 req=r-8a5d018986 route=GET /v2/cart status=200 dur_ms=81
+2026-11-20T12:42:05.472Z INFO orders-api host=oa-3 version=4.17.3 req=r-ab9cb7a120 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:42:17.684Z INFO orders-api host=oa-3 version=4.17.3 req=r-bf4d85881b route=POST /v2/cart/items status=200 dur_ms=94
+2026-11-20T12:42:47.810Z INFO orders-api host=oa-3 version=4.17.3 req=r-98cc388034 route=POST /v2/cart/items status=200 dur_ms=40
+2026-11-20T12:43:05.995Z INFO orders-api host=oa-3 version=4.17.3 req=r-7834487a8f route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:43:17.055Z INFO orders-api host=oa-3 version=4.17.3 req=r-bffeaea25c route=GET /v2/orders status=200 dur_ms=140
+2026-11-20T12:43:40.687Z INFO orders-api host=oa-3 version=4.17.3 req=r-2808ee95e3 route=POST /v2/checkout status=200 dur_ms=246 order=o-7335945 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T12:43:47.114Z INFO orders-api host=oa-3 version=4.17.3 req=r-f292d2cfc3 route=GET /v2/catalog status=200 dur_ms=200
+2026-11-20T12:43:53.255Z ERROR orders-api host=oa-3 version=4.17.3 req=r-55245de762 route=POST /v2/checkout status=502 dur_ms=2966 err=db pool wait
+2026-11-20T12:44:05.051Z INFO orders-api host=oa-3 version=4.17.3 req=r-503018d648 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:44:17.901Z INFO orders-api host=oa-3 version=4.17.3 req=r-017c8bccbc route=GET /v2/catalog status=200 dur_ms=119
+2026-11-20T12:44:47.395Z INFO orders-api host=oa-3 version=4.17.3 req=r-0764e65a33 route=POST /v2/cart/items status=200 dur_ms=130
+2026-11-20T12:45:00.771Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.28
+2026-11-20T12:45:05.638Z INFO orders-api host=oa-3 version=4.17.3 req=r-eabc155bd6 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:45:17.907Z INFO orders-api host=oa-3 version=4.17.3 req=r-1c194e4f37 route=GET /v2/cart status=200 dur_ms=48
+2026-11-20T12:45:47.352Z INFO orders-api host=oa-3 version=4.17.3 req=r-41d68f8d6d route=GET /v2/slots status=200 dur_ms=181
+2026-11-20T12:46:05.615Z INFO orders-api host=oa-3 version=4.17.3 req=r-aa3ad18dce route=GET /healthz status=200 dur_ms=4
+2026-11-20T12:46:17.011Z INFO orders-api host=oa-3 version=4.17.3 req=r-b270f19226 route=POST /v2/cart/items status=200 dur_ms=166
+2026-11-20T12:46:47.141Z INFO orders-api host=oa-3 version=4.17.3 req=r-15a0805bb1 route=POST /v2/checkout status=200 dur_ms=48 payment=approved
+2026-11-20T12:47:04.303Z ERROR orders-api host=oa-3 version=4.17.3 req=r-a0f8be34fa route=GET /v2/cart status=503 dur_ms=1608 err=db pool wait
+2026-11-20T12:47:05.896Z INFO orders-api host=oa-3 version=4.17.3 req=r-15da93115e route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:47:17.531Z INFO orders-api host=oa-3 version=4.17.3 req=r-a6845c3844 route=GET /v2/orders status=200 dur_ms=108
+2026-11-20T12:47:32.349Z ERROR orders-api host=oa-3 version=4.17.3 req=r-619792bfff route=POST /v2/cart/items status=503 dur_ms=197 err=upstream reset
+2026-11-20T12:47:37.212Z ERROR orders-api host=oa-3 version=4.17.3 req=r-402fab48a4 route=GET /v2/catalog status=503 dur_ms=814 err=inventory timeout
+2026-11-20T12:47:47.364Z INFO orders-api host=oa-3 version=4.17.3 req=r-a70cbecc0c route=POST /v2/cart/items status=200 dur_ms=190
+2026-11-20T12:48:02.282Z ERROR orders-api host=oa-3 version=4.17.3 req=r-e9c71cf8f0 route=GET /v2/slots status=503 dur_ms=2191 err=inventory timeout
+2026-11-20T12:48:05.077Z INFO orders-api host=oa-3 version=4.17.3 req=r-af9ad6d390 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:48:11.066Z ERROR orders-api host=oa-3 version=4.17.3 req=r-3a0c026e28 route=POST /v2/cart/items status=503 dur_ms=2922 err=upstream reset
+2026-11-20T12:48:17.094Z INFO orders-api host=oa-3 version=4.17.3 req=r-0ed8c20c3e route=GET /v2/cart status=200 dur_ms=78
+2026-11-20T12:48:47.233Z INFO orders-api host=oa-3 version=4.17.3 req=r-91a95a9fe3 route=GET /v2/orders status=200 dur_ms=184
+2026-11-20T12:49:02.612Z ERROR orders-api host=oa-3 version=4.17.3 req=r-833c8a6009 route=GET /v2/slots status=503 dur_ms=1628 err=db pool wait
+2026-11-20T12:49:05.653Z INFO orders-api host=oa-3 version=4.17.3 req=r-5ccae4cc0f route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:49:17.173Z INFO orders-api host=oa-3 version=4.17.3 req=r-da8a27059e route=GET /v2/cart status=200 dur_ms=135
+2026-11-20T12:49:47.368Z INFO orders-api host=oa-3 version=4.17.3 req=r-7b7b0869a0 route=GET /v2/cart status=200 dur_ms=131
+2026-11-20T12:49:51.142Z ERROR orders-api host=oa-3 version=4.17.3 req=r-08e49083c3 route=POST /v2/checkout status=503 dur_ms=2257 err=upstream reset
+2026-11-20T12:50:05.908Z INFO orders-api host=oa-3 version=4.17.3 req=r-360aaf8b2a route=GET /healthz status=200 dur_ms=2
+2026-11-20T12:50:17.831Z INFO orders-api host=oa-3 version=4.17.3 req=r-ce8d839916 route=POST /v2/cart/items status=200 dur_ms=102
+2026-11-20T12:50:47.317Z INFO orders-api host=oa-3 version=4.17.3 req=r-b9ef8cfdad route=POST /v2/cart/items status=200 dur_ms=192
+2026-11-20T12:51:05.997Z INFO orders-api host=oa-3 version=4.17.3 req=r-5deb1f8496 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:51:17.506Z INFO orders-api host=oa-3 version=4.17.3 req=r-c146815e48 route=GET /v2/slots status=200 dur_ms=120
+2026-11-20T12:51:34.967Z ERROR orders-api host=oa-3 version=4.17.3 req=r-70261965b5 route=POST /v2/cart/items status=503 dur_ms=2374 err=db pool wait
+2026-11-20T12:51:47.628Z INFO orders-api host=oa-3 version=4.17.3 req=r-a7f3d0ea63 route=GET /v2/catalog status=200 dur_ms=161
+2026-11-20T12:52:05.004Z ERROR orders-api host=oa-3 version=4.17.3 req=r-1d6da0adec route=GET /v2/orders status=502 dur_ms=1234 err=inventory timeout
+2026-11-20T12:52:05.144Z INFO orders-api host=oa-3 version=4.17.3 req=r-dc26097842 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:52:05.154Z ERROR orders-api host=oa-3 version=4.17.3 req=r-f09eb0e840 route=GET /v2/catalog status=503 dur_ms=1434 err=upstream reset
+2026-11-20T12:52:17.312Z INFO orders-api host=oa-3 version=4.17.3 req=r-836cb2bd45 route=GET /v2/orders status=200 dur_ms=63
+2026-11-20T12:52:47.036Z INFO orders-api host=oa-3 version=4.17.3 req=r-ab03cf8a4d route=POST /v2/checkout status=200 dur_ms=80 payment=approved
+2026-11-20T12:53:05.950Z INFO orders-api host=oa-3 version=4.17.3 req=r-9dd62ef3b9 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:53:17.237Z INFO orders-api host=oa-3 version=4.17.3 req=r-69c81dffb4 route=POST /v2/cart/items status=200 dur_ms=178
+2026-11-20T12:53:47.034Z INFO orders-api host=oa-3 version=4.17.3 req=r-8e8eaa47b1 route=GET /v2/catalog status=200 dur_ms=102
+2026-11-20T12:54:05.859Z INFO orders-api host=oa-3 version=4.17.3 req=r-b3b35f3092 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:54:17.325Z INFO orders-api host=oa-3 version=4.17.3 req=r-0723129516 route=POST /v2/checkout status=200 dur_ms=155 payment=approved
+2026-11-20T12:54:33.563Z ERROR orders-api host=oa-3 version=4.17.3 req=r-5854b8142d route=GET /v2/catalog status=503 dur_ms=739 err=upstream reset
+2026-11-20T12:54:47.357Z INFO orders-api host=oa-3 version=4.17.3 req=r-7844a2e8ad route=POST /v2/checkout status=200 dur_ms=200 payment=approved
+2026-11-20T12:55:05.664Z INFO orders-api host=oa-3 version=4.17.3 req=r-bc45bfbe95 route=GET /healthz status=200 dur_ms=1
+2026-11-20T12:55:17.078Z INFO orders-api host=oa-3 version=4.17.3 req=r-91753782a4 route=GET /v2/catalog status=200 dur_ms=78
+2026-11-20T12:55:47.947Z INFO orders-api host=oa-3 version=4.17.3 req=r-05c77e7c5b route=GET /v2/cart status=200 dur_ms=59
+2026-11-20T12:56:00.387Z ERROR orders-api host=oa-3 version=4.17.3 req=r-fa356bf9fe route=POST /v2/checkout status=503 dur_ms=1780 err=upstream reset
+2026-11-20T12:56:05.083Z INFO orders-api host=oa-3 version=4.17.3 req=r-e79ab51487 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:56:17.433Z INFO orders-api host=oa-3 version=4.17.3 req=r-52e9d9cb9c route=GET /v2/orders status=200 dur_ms=139
+2026-11-20T12:56:31.530Z WARN orders-api host=oa-3 version=4.17.3 req=r-f00484a46e inventory lookup retry attempt=2 dur_ms=80
+2026-11-20T12:56:47.321Z INFO orders-api host=oa-3 version=4.17.3 req=r-d099ae6bf7 route=GET /v2/slots status=200 dur_ms=53
+2026-11-20T12:56:49.926Z ERROR orders-api host=oa-3 version=4.17.3 req=r-60d5e46199 route=GET /v2/catalog status=503 dur_ms=1156 err=inventory timeout
+2026-11-20T12:57:03.846Z WARN orders-api host=oa-3 version=4.17.3 cache=catalog miss_rate_high value=0.21
+2026-11-20T12:57:05.381Z INFO orders-api host=oa-3 version=4.17.3 req=r-2b1095d9de route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:57:17.846Z INFO orders-api host=oa-3 version=4.17.3 req=r-81732ca791 route=GET /v2/cart status=200 dur_ms=103
+2026-11-20T12:57:47.177Z INFO orders-api host=oa-3 version=4.17.3 req=r-224f6e6d74 route=POST /v2/cart/items status=200 dur_ms=127
+2026-11-20T12:58:05.198Z INFO orders-api host=oa-3 version=4.17.3 req=r-13dd031410 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:58:09.714Z ERROR orders-api host=oa-3 version=4.17.3 req=r-a4b40266e7 route=GET /v2/cart status=502 dur_ms=2780 err=inventory timeout
+2026-11-20T12:58:17.343Z INFO orders-api host=oa-3 version=4.17.3 req=r-bb5e994627 route=GET /v2/slots status=200 dur_ms=102
+2026-11-20T12:58:47.701Z INFO orders-api host=oa-3 version=4.17.3 req=r-9536d4eba6 route=POST /v2/checkout status=200 dur_ms=92 payment=approved
+2026-11-20T12:59:05.425Z INFO orders-api host=oa-3 version=4.17.3 req=r-4bce458f15 route=GET /healthz status=200 dur_ms=3
+2026-11-20T12:59:17.265Z INFO orders-api host=oa-3 version=4.17.3 req=r-568846d4a3 route=POST /v2/cart/items status=200 dur_ms=133
+2026-11-20T12:59:47.318Z INFO orders-api host=oa-3 version=4.17.3 req=r-cdcb61bcf5 route=GET /v2/orders status=200 dur_ms=118
+2026-11-20T12:59:49.200Z INFO orders-api host=oa-3 version=4.17.3 req=r-555b1e9a04 route=POST /v2/checkout status=200 dur_ms=253 order=o-7352414 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:00:05.496Z INFO orders-api host=oa-3 version=4.17.3 req=r-c6e19112ca route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:00:17.810Z INFO orders-api host=oa-3 version=4.17.3 req=r-8c5edd30f0 route=POST /v2/cart/items status=200 dur_ms=183
+2026-11-20T13:00:47.994Z INFO orders-api host=oa-3 version=4.17.3 req=r-72aca3d06e route=GET /v2/catalog status=200 dur_ms=103
+2026-11-20T13:01:05.690Z INFO orders-api host=oa-3 version=4.17.3 req=r-fdafb86af3 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:01:17.019Z INFO orders-api host=oa-3 version=4.17.3 req=r-261e3b53c1 route=GET /v2/catalog status=200 dur_ms=54
+2026-11-20T13:01:47.871Z INFO orders-api host=oa-3 version=4.17.3 req=r-9e1fcd5f69 route=POST /v2/cart/items status=200 dur_ms=150
+2026-11-20T13:01:53.103Z ERROR orders-api host=oa-3 version=4.17.3 req=r-22385b9bcc route=POST /v2/cart/items status=500 dur_ms=2275 err=inventory timeout
+2026-11-20T13:02:05.487Z INFO orders-api host=oa-3 version=4.17.3 req=r-7b447e25e8 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:02:17.790Z INFO orders-api host=oa-3 version=4.17.3 req=r-263c650463 route=GET /v2/slots status=200 dur_ms=41
+2026-11-20T13:02:20.769Z WARN orders-api host=oa-3 version=4.17.3 req=r-04bddee695 inventory lookup retry attempt=2 dur_ms=244
+2026-11-20T13:02:47.971Z INFO orders-api host=oa-3 version=4.17.3 req=r-cdc678daa4 route=POST /v2/checkout status=200 dur_ms=131 payment=approved
+2026-11-20T13:03:05.668Z INFO orders-api host=oa-3 version=4.17.3 req=r-2dddd2607d route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:03:17.665Z INFO orders-api host=oa-3 version=4.17.3 req=r-f3206af205 route=GET /v2/orders status=200 dur_ms=62
+2026-11-20T13:03:27.431Z ERROR orders-api host=oa-3 version=4.17.3 req=r-815278e2f5 route=GET /v2/cart status=503 dur_ms=2697 err=upstream reset
+2026-11-20T13:03:43.728Z ERROR orders-api host=oa-3 version=4.17.3 req=r-a408ffe9ff route=GET /v2/orders status=503 dur_ms=1805 err=inventory timeout
+2026-11-20T13:03:47.493Z INFO orders-api host=oa-3 version=4.17.3 req=r-0b60ddcafe route=GET /v2/cart status=200 dur_ms=54
+2026-11-20T13:04:05.737Z INFO orders-api host=oa-3 version=4.17.3 req=r-a9a48e045b route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:04:06.518Z ERROR orders-api host=oa-3 version=4.17.3 req=r-f0747c1124 route=POST /v2/checkout status=503 dur_ms=1041 err=upstream reset
+2026-11-20T13:04:17.884Z INFO orders-api host=oa-3 version=4.17.3 req=r-c019246179 route=GET /v2/cart status=200 dur_ms=186
+2026-11-20T13:04:47.578Z INFO orders-api host=oa-3 version=4.17.3 req=r-4fb515605a route=POST /v2/checkout status=200 dur_ms=90 payment=approved
+2026-11-20T13:05:05.697Z INFO orders-api host=oa-3 version=4.17.3 req=r-46d14e12c0 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:05:15.365Z WARN orders-api host=oa-3 version=4.17.3 req=r-e65529fc66 inventory lookup retry attempt=2 dur_ms=126
+2026-11-20T13:05:17.695Z INFO orders-api host=oa-3 version=4.17.3 req=r-4cecf2afd4 route=POST /v2/checkout status=200 dur_ms=89 payment=approved
+2026-11-20T13:05:47.465Z INFO orders-api host=oa-3 version=4.17.3 req=r-1ac15dea54 route=POST /v2/checkout status=200 dur_ms=84 payment=approved
+2026-11-20T13:05:49.924Z ERROR orders-api host=oa-3 version=4.17.3 req=r-154c3e2647 route=GET /v2/orders status=502 dur_ms=821 err=upstream reset
+2026-11-20T13:05:55.289Z INFO orders-api host=oa-3 version=4.17.3 req=r-7e0e6f1971 route=POST /v2/checkout status=200 dur_ms=271 order=o-7369153 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:06:04.914Z WARN orders-api host=oa-3 version=4.17.3 req=r-2598dc2b46 inventory lookup retry attempt=2 dur_ms=226
+2026-11-20T13:06:05.320Z INFO orders-api host=oa-3 version=4.17.3 req=r-04b821321d route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:06:17.078Z INFO orders-api host=oa-3 version=4.17.3 req=r-5e02117dc9 route=GET /v2/catalog status=200 dur_ms=51
+2026-11-20T13:06:25.744Z INFO orders-api host=oa-3 version=4.17.3 req=r-3eb4720032 route=POST /v2/checkout status=200 dur_ms=304 order=o-7385909 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:06:47.042Z INFO orders-api host=oa-3 version=4.17.3 req=r-0cbb4c1345 route=POST /v2/cart/items status=200 dur_ms=190
+2026-11-20T13:07:05.930Z INFO orders-api host=oa-3 version=4.17.3 req=r-fe0448b0c0 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:07:17.245Z INFO orders-api host=oa-3 version=4.17.3 req=r-613f83538d route=POST /v2/cart/items status=200 dur_ms=193
+2026-11-20T13:07:33.778Z ERROR orders-api host=oa-3 version=4.17.3 req=r-a1ccce2459 route=GET /v2/cart status=500 dur_ms=115 err=inventory timeout
+2026-11-20T13:07:47.807Z INFO orders-api host=oa-3 version=4.17.3 req=r-eafa1499ab route=GET /v2/slots status=200 dur_ms=99
+2026-11-20T13:08:05.786Z INFO orders-api host=oa-3 version=4.17.3 req=r-6ecc25a726 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:08:17.446Z INFO orders-api host=oa-3 version=4.17.3 req=r-16e97473e1 route=GET /v2/slots status=200 dur_ms=129
+2026-11-20T13:08:47.283Z INFO orders-api host=oa-3 version=4.17.3 req=r-87713dc3f9 route=GET /v2/catalog status=200 dur_ms=179
+2026-11-20T13:09:05.051Z INFO orders-api host=oa-3 version=4.17.3 req=r-f6698ccab2 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:09:17.163Z INFO orders-api host=oa-3 version=4.17.3 req=r-369a45b52d route=POST /v2/checkout status=200 dur_ms=58 payment=approved
+2026-11-20T13:09:47.305Z INFO orders-api host=oa-3 version=4.17.3 req=r-45135f3158 route=POST /v2/checkout status=200 dur_ms=115 payment=approved
+2026-11-20T13:10:03.417Z ERROR orders-api host=oa-3 version=4.18.0 req=r-4383b810d0 route=GET /v2/orders status=502 dur_ms=2520 err=db pool wait
+2026-11-20T13:10:05.701Z INFO orders-api host=oa-3 version=4.18.0 req=r-4dc6fc9d63 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:10:17.236Z INFO orders-api host=oa-3 version=4.18.0 req=r-11ec89d89c route=GET /v2/catalog status=200 dur_ms=169
+2026-11-20T13:10:41.930Z INFO orders-api host=oa-3 version=4.18.0 req=r-068506ea41 route=POST /v2/checkout status=200 dur_ms=271 order=o-7366110 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:10:47.404Z INFO orders-api host=oa-3 version=4.18.0 req=r-1630b54f3e route=GET /v2/orders status=200 dur_ms=183
+2026-11-20T13:11:05.376Z INFO orders-api host=oa-3 version=4.18.0 req=r-610d91fef4 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:11:17.257Z INFO orders-api host=oa-3 version=4.18.0 req=r-818908d263 route=POST /v2/cart/items status=200 dur_ms=68
+2026-11-20T13:11:47.301Z INFO orders-api host=oa-3 version=4.18.0 req=r-85d1075f2a route=POST /v2/cart/items status=200 dur_ms=50
+2026-11-20T13:12:05.473Z INFO orders-api host=oa-3 version=4.18.0 req=r-9ee2488bb0 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:12:17.341Z INFO orders-api host=oa-3 version=4.18.0 req=r-fde3e8a7c8 route=GET /v2/orders status=200 dur_ms=126
+2026-11-20T13:12:47.987Z INFO orders-api host=oa-3 version=4.18.0 req=r-141f16aa27 route=GET /v2/slots status=200 dur_ms=125
+2026-11-20T13:13:05.955Z INFO orders-api host=oa-3 version=4.18.0 req=r-21a42b5f3c route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:13:12.391Z INFO orders-api host=oa-3 version=4.18.0 req=r-d4b3b2dbc0 route=POST /v2/checkout status=200 dur_ms=254 order=o-7327075 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:13:17.101Z INFO orders-api host=oa-3 version=4.18.0 req=r-46af6dda51 route=GET /v2/orders status=200 dur_ms=130
+2026-11-20T13:13:39.032Z WARN orders-api host=oa-3 version=4.18.0 req=r-e8cbaf4e8f inventory lookup retry attempt=2 dur_ms=263
+2026-11-20T13:13:47.566Z INFO orders-api host=oa-3 version=4.18.0 req=r-026435a187 route=GET /v2/catalog status=200 dur_ms=74
+2026-11-20T13:14:05.506Z INFO orders-api host=oa-3 version=4.18.0 req=r-d8dea420ce route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:14:17.973Z INFO orders-api host=oa-3 version=4.18.0 req=r-fb976668bf route=GET /v2/orders status=200 dur_ms=73
+2026-11-20T13:14:30.037Z INFO orders-api host=oa-3 version=4.18.0 req=r-3d83d4c60c route=POST /v2/checkout status=200 dur_ms=264 order=o-7348702 payment=soft_decline reason=insufficient_funds
+2026-11-20T13:14:47.505Z INFO orders-api host=oa-3 version=4.18.0 req=r-580d337019 route=GET /v2/orders status=200 dur_ms=122
+2026-11-20T13:14:49.984Z ERROR orders-api host=oa-3 version=4.18.0 req=r-a711ab09dd route=GET /v2/slots status=503 dur_ms=1178 err=upstream reset
+2026-11-20T13:14:56.890Z ERROR orders-api host=oa-3 version=4.18.0 req=r-574f445834 route=GET /v2/cart status=500 dur_ms=846 err=inventory timeout
+2026-11-20T13:15:05.581Z INFO orders-api host=oa-3 version=4.18.0 req=r-e1e683ee4f route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:15:17.189Z INFO orders-api host=oa-3 version=4.18.0 req=r-53426da7c1 route=POST /v2/cart/items status=200 dur_ms=115
+2026-11-20T13:15:26.491Z INFO orders-api host=oa-3 version=4.18.0 req=r-c906629583 route=POST /v2/checkout status=200 dur_ms=208 order=o-7373930 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:15:47.271Z INFO orders-api host=oa-3 version=4.18.0 req=r-53287c0fff route=GET /v2/orders status=200 dur_ms=66
+2026-11-20T13:16:05.663Z INFO orders-api host=oa-3 version=4.18.0 req=r-f214ef1d54 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:16:17.215Z INFO orders-api host=oa-3 version=4.18.0 req=r-79162d063b route=POST /v2/checkout status=200 dur_ms=175 payment=approved
+2026-11-20T13:16:47.841Z INFO orders-api host=oa-3 version=4.18.0 req=r-f69aa12a9f route=GET /v2/slots status=200 dur_ms=185
+2026-11-20T13:17:05.158Z INFO orders-api host=oa-3 version=4.18.0 req=r-e82cc283ac route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:17:17.640Z INFO orders-api host=oa-3 version=4.18.0 req=r-e633ff07a5 route=GET /v2/orders status=200 dur_ms=97
+2026-11-20T13:17:39.217Z WARN orders-api host=oa-3 version=4.18.0 req=r-f4057aaab7 inventory lookup retry attempt=2 dur_ms=101
+2026-11-20T13:17:47.232Z INFO orders-api host=oa-3 version=4.18.0 req=r-ccbd93a187 route=POST /v2/cart/items status=200 dur_ms=137
+2026-11-20T13:17:53.483Z ERROR orders-api host=oa-3 version=4.18.0 req=r-7495415d3c route=POST /v2/cart/items status=503 dur_ms=42 err=db pool wait
+2026-11-20T13:17:57.439Z ERROR orders-api host=oa-3 version=4.18.0 req=r-1e217fdc5d route=GET /v2/catalog status=503 dur_ms=2866 err=db pool wait
+2026-11-20T13:18:05.164Z INFO orders-api host=oa-3 version=4.18.0 req=r-092f7e9f81 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:18:17.464Z INFO orders-api host=oa-3 version=4.18.0 req=r-4190c1dd4b route=GET /v2/slots status=200 dur_ms=129
+2026-11-20T13:18:47.838Z INFO orders-api host=oa-3 version=4.18.0 req=r-3e8e19dbb3 route=POST /v2/cart/items status=200 dur_ms=199
+2026-11-20T13:18:50.848Z ERROR orders-api host=oa-3 version=4.18.0 req=r-95e155a219 route=GET /v2/orders status=500 dur_ms=40 err=db pool wait
+2026-11-20T13:19:05.070Z INFO orders-api host=oa-3 version=4.18.0 req=r-01eda0a3ce route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:19:17.182Z INFO orders-api host=oa-3 version=4.18.0 req=r-3dfaea8550 route=GET /v2/cart status=200 dur_ms=76
+2026-11-20T13:19:45.772Z INFO orders-api host=oa-3 version=4.18.0 req=r-31ebc2b3d7 route=POST /v2/checkout status=200 dur_ms=298 order=o-7310566 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:19:47.368Z INFO orders-api host=oa-3 version=4.18.0 req=r-1068e4f837 route=POST /v2/cart/items status=200 dur_ms=75
+2026-11-20T13:20:05.653Z INFO orders-api host=oa-3 version=4.18.0 req=r-b8bb05c621 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:20:17.478Z INFO orders-api host=oa-3 version=4.18.0 req=r-40da05c85e route=GET /v2/slots status=200 dur_ms=71
+2026-11-20T13:20:47.011Z INFO orders-api host=oa-3 version=4.18.0 req=r-fa45802e60 route=GET /v2/orders status=200 dur_ms=176
+2026-11-20T13:21:05.011Z INFO orders-api host=oa-3 version=4.18.0 req=r-9759331db3 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:21:17.265Z INFO orders-api host=oa-3 version=4.18.0 req=r-747e1f4c38 route=POST /v2/cart/items status=200 dur_ms=166
+2026-11-20T13:21:47.647Z INFO orders-api host=oa-3 version=4.18.0 req=r-7e06cf4c72 route=GET /v2/cart status=200 dur_ms=86
+2026-11-20T13:22:05.324Z INFO orders-api host=oa-3 version=4.18.0 req=r-f499db7033 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:22:17.268Z INFO orders-api host=oa-3 version=4.18.0 req=r-3dbdbfc3d2 route=POST /v2/cart/items status=200 dur_ms=94
+2026-11-20T13:22:24.736Z ERROR orders-api host=oa-3 version=4.18.0 req=r-d8730e3024 route=POST /v2/checkout status=500 dur_ms=2184 err=inventory timeout
+2026-11-20T13:22:47.589Z INFO orders-api host=oa-3 version=4.18.0 req=r-6c55d2dff1 route=GET /v2/catalog status=200 dur_ms=152
+2026-11-20T13:23:05.340Z INFO orders-api host=oa-3 version=4.18.0 req=r-61df0220b9 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:23:17.076Z INFO orders-api host=oa-3 version=4.18.0 req=r-889c01d86d route=GET /v2/catalog status=200 dur_ms=175
+2026-11-20T13:23:27.061Z ERROR orders-api host=oa-3 version=4.18.0 req=r-4abae4d0bb route=GET /v2/orders status=503 dur_ms=526 err=db pool wait
+2026-11-20T13:23:47.874Z INFO orders-api host=oa-3 version=4.18.0 req=r-bbc4dbd0ed route=GET /v2/slots status=200 dur_ms=184
+2026-11-20T13:24:05.832Z INFO orders-api host=oa-3 version=4.18.0 req=r-1f77e2cd0a route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:24:17.964Z INFO orders-api host=oa-3 version=4.18.0 req=r-80b985232d route=GET /v2/slots status=200 dur_ms=144
+2026-11-20T13:24:47.166Z INFO orders-api host=oa-3 version=4.18.0 req=r-6bdc8d5c60 route=POST /v2/checkout status=200 dur_ms=108 payment=approved
+2026-11-20T13:25:05.623Z INFO orders-api host=oa-3 version=4.18.0 req=r-14d3bf7a01 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:25:10.908Z ERROR orders-api host=oa-3 version=4.18.0 req=r-923e413990 route=POST /v2/checkout status=503 dur_ms=140 err=inventory timeout
+2026-11-20T13:25:17.576Z INFO orders-api host=oa-3 version=4.18.0 req=r-338bc96026 route=GET /v2/slots status=200 dur_ms=187
+2026-11-20T13:25:47.613Z INFO orders-api host=oa-3 version=4.18.0 req=r-5a554c46fd route=POST /v2/checkout status=200 dur_ms=175 payment=approved
+2026-11-20T13:25:57.628Z ERROR orders-api host=oa-3 version=4.18.0 req=r-329bce31b6 route=POST /v2/checkout status=503 dur_ms=1599 err=inventory timeout
+2026-11-20T13:26:05.877Z INFO orders-api host=oa-3 version=4.18.0 req=r-ea53bf0d89 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:26:17.304Z INFO orders-api host=oa-3 version=4.18.0 req=r-ebac325f31 route=GET /v2/catalog status=200 dur_ms=184
+2026-11-20T13:26:47.409Z INFO orders-api host=oa-3 version=4.18.0 req=r-6ce57c3e38 route=POST /v2/cart/items status=200 dur_ms=65
+2026-11-20T13:27:05.277Z INFO orders-api host=oa-3 version=4.18.0 req=r-2b9fc06452 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:27:17.568Z INFO orders-api host=oa-3 version=4.18.0 req=r-0b574fa359 route=GET /v2/catalog status=200 dur_ms=99
+2026-11-20T13:27:47.109Z INFO orders-api host=oa-3 version=4.18.0 req=r-e93592b5e0 route=POST /v2/checkout status=200 dur_ms=124 payment=approved
+2026-11-20T13:28:05.909Z INFO orders-api host=oa-3 version=4.18.0 req=r-e364f6f9a1 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:28:07.882Z INFO orders-api host=oa-3 version=4.18.0 req=r-2ae92f834d route=POST /v2/checkout status=200 dur_ms=236 order=o-7362411 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:28:15.210Z INFO orders-api host=oa-3 version=4.18.0 req=r-4103c00d73 route=POST /v2/checkout status=200 dur_ms=273 order=o-7386804 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:28:17.163Z INFO orders-api host=oa-3 version=4.18.0 req=r-279708491a route=GET /v2/orders status=200 dur_ms=147
+2026-11-20T13:28:47.747Z INFO orders-api host=oa-3 version=4.18.0 req=r-f6a607d998 route=GET /v2/catalog status=200 dur_ms=164
+2026-11-20T13:29:05.287Z INFO orders-api host=oa-3 version=4.18.0 req=r-f04e467f15 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:29:17.603Z INFO orders-api host=oa-3 version=4.18.0 req=r-8e4c87e93f route=POST /v2/cart/items status=200 dur_ms=95
+2026-11-20T13:29:47.637Z INFO orders-api host=oa-3 version=4.18.0 req=r-63ac1a953c route=GET /v2/catalog status=200 dur_ms=180
+2026-11-20T13:30:05.187Z INFO orders-api host=oa-3 version=4.18.0 req=r-042babc4dd route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:30:17.503Z INFO orders-api host=oa-3 version=4.18.0 req=r-aceac7b9c4 route=GET /v2/catalog status=200 dur_ms=115
+2026-11-20T13:30:39.082Z INFO orders-api host=oa-3 version=4.18.0 req=r-5614b8c8d4 route=POST /v2/checkout status=200 dur_ms=295 order=o-7357214 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:30:47.030Z INFO orders-api host=oa-3 version=4.18.0 req=r-408bea3a3f route=GET /v2/orders status=200 dur_ms=70
+2026-11-20T13:31:05.933Z INFO orders-api host=oa-3 version=4.18.0 req=r-856050a3c1 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:31:17.133Z INFO orders-api host=oa-3 version=4.18.0 req=r-15943d6f9f route=POST /v2/cart/items status=200 dur_ms=100
+2026-11-20T13:31:31.577Z ERROR orders-api host=oa-3 version=4.18.0 req=r-57ccf198a3 route=GET /v2/orders status=502 dur_ms=1917 err=db pool wait
+2026-11-20T13:31:47.994Z INFO orders-api host=oa-3 version=4.18.0 req=r-d40a829bdb route=GET /v2/orders status=200 dur_ms=158
+2026-11-20T13:32:05.421Z INFO orders-api host=oa-3 version=4.18.0 req=r-63f1520c62 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:32:17.264Z INFO orders-api host=oa-3 version=4.18.0 req=r-2abd4df2d6 route=GET /v2/orders status=200 dur_ms=158
+2026-11-20T13:32:23.563Z INFO orders-api host=oa-3 version=4.18.0 req=r-0bea629b9f route=POST /v2/checkout status=200 dur_ms=398 order=o-7308569 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:32:47.416Z INFO orders-api host=oa-3 version=4.18.0 req=r-cacd039a96 route=GET /v2/orders status=200 dur_ms=113
+2026-11-20T13:33:05.558Z INFO orders-api host=oa-3 version=4.18.0 req=r-4f051e3031 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:33:17.773Z INFO orders-api host=oa-3 version=4.18.0 req=r-e84c9ec0a0 route=GET /v2/catalog status=200 dur_ms=165
+2026-11-20T13:33:34.748Z ERROR orders-api host=oa-3 version=4.18.0 req=r-d61b0c81a3 route=POST /v2/cart/items status=500 dur_ms=548 err=inventory timeout
+2026-11-20T13:33:47.530Z INFO orders-api host=oa-3 version=4.18.0 req=r-a19145acc5 route=GET /v2/cart status=200 dur_ms=142
+2026-11-20T13:34:05.947Z INFO orders-api host=oa-3 version=4.18.0 req=r-6142a7c9d0 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:34:17.519Z INFO orders-api host=oa-3 version=4.18.0 req=r-99e523f8fc route=GET /v2/slots status=200 dur_ms=45
+2026-11-20T13:34:47.204Z INFO orders-api host=oa-3 version=4.18.0 req=r-d6b3e088eb route=POST /v2/cart/items status=200 dur_ms=148
+2026-11-20T13:35:04.051Z INFO orders-api host=oa-3 version=4.18.0 req=r-9e454d3c0b route=POST /v2/checkout status=200 dur_ms=268 order=o-7349471 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:35:05.769Z INFO orders-api host=oa-3 version=4.18.0 req=r-3e8499da28 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:35:16.350Z WARN orders-api host=oa-3 version=4.18.0 req=r-f52e0e0ec3 route=GET /v2/slots slow upstream=maps-geo dur_ms=915
+2026-11-20T13:35:17.877Z INFO orders-api host=oa-3 version=4.18.0 req=r-61b8bb31e2 route=GET /v2/cart status=200 dur_ms=679
+2026-11-20T13:35:47.727Z INFO orders-api host=oa-3 version=4.18.0 req=r-0729db239a route=POST /v2/checkout status=200 dur_ms=838 payment=approved
+2026-11-20T13:35:50.064Z WARN orders-api host=oa-3 version=4.18.0 req=r-f6c56ef55a inventory lookup retry attempt=2 dur_ms=171
+2026-11-20T13:36:05.640Z INFO orders-api host=oa-3 version=4.18.0 req=r-8cf4e76861 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:36:10.023Z INFO orders-api host=oa-3 version=4.18.0 req=r-c30998d6bb route=POST /v2/checkout status=200 dur_ms=404 order=o-7397435 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:36:17.201Z INFO orders-api host=oa-3 version=4.18.0 req=r-beead6d311 route=POST /v2/checkout status=200 dur_ms=971 payment=approved
+2026-11-20T13:36:47.063Z INFO orders-api host=oa-3 version=4.18.0 req=r-0fab8176af route=GET /v2/orders status=200 dur_ms=660
+2026-11-20T13:37:05.468Z INFO orders-api host=oa-3 version=4.18.0 req=r-56a58834a6 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:37:17.437Z INFO orders-api host=oa-3 version=4.18.0 req=r-42b746ee22 route=GET /v2/catalog status=200 dur_ms=321
+2026-11-20T13:37:23.381Z WARN orders-api host=oa-3 version=4.18.0 req=r-f7c22286b9 route=GET /v2/slots slow upstream=maps-geo dur_ms=1136
+2026-11-20T13:37:29.816Z ERROR orders-api host=oa-3 version=4.18.0 req=r-39191f8ea4 route=POST /v2/cart/items status=502 dur_ms=1166 err=inventory timeout
+2026-11-20T13:37:47.952Z INFO orders-api host=oa-3 version=4.18.0 req=r-8141fef17a route=POST /v2/checkout status=200 dur_ms=1250 payment=approved
+2026-11-20T13:38:05.693Z INFO orders-api host=oa-3 version=4.18.0 req=r-4ddfc2ee2d route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:38:17.327Z INFO orders-api host=oa-3 version=4.18.0 req=r-953e528a89 route=GET /v2/cart status=200 dur_ms=1051
+2026-11-20T13:38:31.636Z ERROR orders-api host=oa-3 version=4.18.0 req=r-86ade36806 route=GET /v2/cart status=502 dur_ms=822 err=upstream reset
+2026-11-20T13:38:43.085Z INFO orders-api host=oa-3 version=4.18.0 req=r-9c5878c6d7 route=POST /v2/checkout status=200 dur_ms=235 order=o-7324870 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:38:47.157Z INFO orders-api host=oa-3 version=4.18.0 req=r-7ae6004e94 route=GET /v2/cart status=200 dur_ms=636
+2026-11-20T13:39:05.736Z INFO orders-api host=oa-3 version=4.18.0 req=r-9a3ec3de77 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:39:17.793Z INFO orders-api host=oa-3 version=4.18.0 req=r-52d74a5568 route=POST /v2/checkout status=200 dur_ms=986 payment=approved
+2026-11-20T13:39:35.961Z INFO orders-api host=oa-3 version=4.18.0 req=r-e5899d7fa0 route=POST /v2/checkout status=200 dur_ms=380 order=o-7337184 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:39:43.446Z ERROR orders-api host=oa-3 version=4.18.0 req=r-cfa4788e18 route=GET /v2/orders status=503 dur_ms=1266 err=inventory timeout
+2026-11-20T13:39:45.984Z WARN orders-api host=oa-3 version=4.18.0 req=r-c36e65eab7 route=GET /v2/slots slow upstream=maps-geo dur_ms=985
+2026-11-20T13:39:47.173Z INFO orders-api host=oa-3 version=4.18.0 req=r-3214ac6797 route=GET /v2/slots status=200 dur_ms=1015
+2026-11-20T13:39:49.054Z INFO orders-api host=oa-3 version=4.18.0 req=r-7eec741da1 route=POST /v2/checkout status=200 dur_ms=400 order=o-7350376 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:40:05.818Z INFO orders-api host=oa-3 version=4.18.0 req=r-3bcb2fd0cf route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:40:17.064Z INFO orders-api host=oa-3 version=4.18.0 req=r-6a82099d04 route=POST /v2/checkout status=200 dur_ms=1079 payment=approved
+2026-11-20T13:40:37.120Z WARN orders-api host=oa-3 version=4.18.0 req=r-a69bf3be31 route=GET /v2/slots slow upstream=maps-geo dur_ms=991
+2026-11-20T13:40:47.149Z INFO orders-api host=oa-3 version=4.18.0 req=r-1528349db9 route=POST /v2/checkout status=200 dur_ms=670 payment=approved
+2026-11-20T13:41:05.998Z INFO orders-api host=oa-3 version=4.18.0 req=r-b6a26eae6c route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:41:17.062Z INFO orders-api host=oa-3 version=4.18.0 req=r-c92be9872b route=GET /v2/catalog status=200 dur_ms=323
+2026-11-20T13:41:34.051Z WARN orders-api host=oa-3 version=4.18.0 cache=catalog miss_rate_high value=0.22
+2026-11-20T13:41:36.855Z WARN orders-api host=oa-3 version=4.18.0 req=r-5f12a5dd2f route=GET /v2/slots slow upstream=maps-geo dur_ms=981
+2026-11-20T13:41:47.064Z INFO orders-api host=oa-3 version=4.18.0 req=r-ceda2b06c0 route=GET /v2/orders status=200 dur_ms=1177
+2026-11-20T13:42:05.867Z INFO orders-api host=oa-3 version=4.18.0 req=r-2394aad1c8 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:42:17.342Z INFO orders-api host=oa-3 version=4.18.0 req=r-1ebb2698d6 route=POST /v2/checkout status=200 dur_ms=1071 payment=approved
+2026-11-20T13:42:17.411Z WARN orders-api host=oa-3 version=4.18.0 req=r-a30db83a13 route=GET /v2/slots slow upstream=maps-geo dur_ms=1144
+2026-11-20T13:42:18.446Z ERROR orders-api host=oa-3 version=4.18.0 req=r-7eaecd09a8 route=POST /v2/checkout status=503 dur_ms=1905 err=upstream reset
+2026-11-20T13:42:37.418Z INFO orders-api host=oa-3 version=4.18.0 req=r-b381745b50 route=POST /v2/checkout status=200 dur_ms=170 order=o-7390841 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:42:47.089Z INFO orders-api host=oa-3 version=4.18.0 req=r-49a03141bc route=GET /v2/catalog status=200 dur_ms=510
+2026-11-20T13:43:05.678Z INFO orders-api host=oa-3 version=4.18.0 req=r-e61b0c2183 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:43:17.722Z INFO orders-api host=oa-3 version=4.18.0 req=r-89cb8bb060 route=POST /v2/checkout status=200 dur_ms=934 payment=approved
+2026-11-20T13:43:27.921Z WARN orders-api host=oa-3 version=4.18.0 req=r-3ff18101fb route=GET /v2/slots slow upstream=maps-geo dur_ms=1124
+2026-11-20T13:43:47.978Z INFO orders-api host=oa-3 version=4.18.0 req=r-33595af861 route=POST /v2/checkout status=200 dur_ms=548 payment=approved
+2026-11-20T13:43:48.987Z INFO orders-api host=oa-3 version=4.18.0 req=r-9ef161db34 route=POST /v2/checkout status=200 dur_ms=303 order=o-7397167 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:44:00.308Z WARN orders-api host=oa-3 version=4.18.0 req=r-7814000d92 route=GET /v2/slots slow upstream=maps-geo dur_ms=1011
+2026-11-20T13:44:05.077Z INFO orders-api host=oa-3 version=4.18.0 req=r-2fbe0f5ead route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:44:11.389Z ERROR orders-api host=oa-3 version=4.18.0 req=r-355d32ea8d route=GET /v2/slots status=502 dur_ms=2623 err=db pool wait
+2026-11-20T13:44:17.724Z INFO orders-api host=oa-3 version=4.18.0 req=r-bd46aac983 route=GET /v2/catalog status=200 dur_ms=662
+2026-11-20T13:44:18.299Z INFO orders-api host=oa-3 version=4.18.0 req=r-14bc3b6e3e route=POST /v2/checkout status=200 dur_ms=160 order=o-7305172 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:44:47.421Z INFO orders-api host=oa-3 version=4.18.0 req=r-9020e6c74f route=POST /v2/checkout status=200 dur_ms=984 payment=approved
+2026-11-20T13:45:05.963Z INFO orders-api host=oa-3 version=4.18.0 req=r-d88c698fa3 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:45:17.354Z INFO orders-api host=oa-3 version=4.18.0 req=r-e63bf81684 route=GET /v2/orders status=200 dur_ms=901
+2026-11-20T13:45:31.823Z ERROR orders-api host=oa-3 version=4.18.0 req=r-ce9b40cc55 route=POST /v2/checkout status=503 dur_ms=2409 err=inventory timeout
+2026-11-20T13:45:47.272Z INFO orders-api host=oa-3 version=4.18.0 req=r-3502afa722 route=GET /v2/slots status=200 dur_ms=644
+2026-11-20T13:45:59.770Z WARN orders-api host=oa-3 version=4.18.0 req=r-dd79954ef7 route=GET /v2/slots slow upstream=maps-geo dur_ms=1215
+2026-11-20T13:46:04.607Z WARN orders-api host=oa-3 version=4.18.0 req=r-657dc16a5e route=GET /v2/slots slow upstream=maps-geo dur_ms=947
+2026-11-20T13:46:05.350Z INFO orders-api host=oa-3 version=4.18.0 req=r-11deff8986 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:46:17.886Z INFO orders-api host=oa-3 version=4.18.0 req=r-3e62dc7568 route=GET /v2/catalog status=200 dur_ms=975
+2026-11-20T13:46:20.639Z INFO orders-api host=oa-3 version=4.18.0 req=r-b9a73f33ce route=POST /v2/checkout status=200 dur_ms=238 order=o-7334784 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:46:42.464Z INFO orders-api host=oa-3 version=4.18.0 req=r-8d43537be4 route=POST /v2/checkout status=200 dur_ms=377 order=o-7363984 payment=soft_decline reason=insufficient_funds
+2026-11-20T13:46:47.322Z INFO orders-api host=oa-3 version=4.18.0 req=r-e8e3b31d6b route=GET /v2/catalog status=200 dur_ms=1024
+2026-11-20T13:47:05.702Z INFO orders-api host=oa-3 version=4.18.0 req=r-a026efae8a route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:47:17.443Z INFO orders-api host=oa-3 version=4.18.0 req=r-26506d8491 route=GET /v2/catalog status=200 dur_ms=870
+2026-11-20T13:47:43.537Z INFO orders-api host=oa-3 version=4.18.0 req=r-2731a0f557 route=POST /v2/checkout status=200 dur_ms=267 order=o-7369620 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:47:45.667Z INFO orders-api host=oa-3 version=4.18.0 req=r-84c9a8ce28 route=POST /v2/checkout status=200 dur_ms=258 order=o-7388696 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:47:47.990Z INFO orders-api host=oa-3 version=4.18.0 req=r-5ea155befb route=POST /v2/cart/items status=200 dur_ms=344
+2026-11-20T13:47:48.031Z WARN orders-api host=oa-3 version=4.18.0 cache=catalog miss_rate_high value=0.25
+2026-11-20T13:48:05.060Z INFO orders-api host=oa-3 version=4.18.0 req=r-d3ae072f99 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:48:17.016Z INFO orders-api host=oa-3 version=4.18.0 req=r-eeb5548033 route=POST /v2/cart/items status=200 dur_ms=377
+2026-11-20T13:48:18.314Z INFO orders-api host=oa-3 version=4.18.0 req=r-b696f9bc44 route=POST /v2/checkout status=200 dur_ms=248 order=o-7339724 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T13:48:26.916Z WARN orders-api host=oa-3 version=4.18.0 req=r-f0c21e7b31 route=GET /v2/slots slow upstream=maps-geo dur_ms=1493
+2026-11-20T13:48:29.529Z ERROR orders-api host=oa-3 version=4.18.0 req=r-3fcab1f3b4 route=GET /v2/orders status=503 dur_ms=732 err=inventory timeout
+2026-11-20T13:48:33.509Z INFO orders-api host=oa-3 version=4.18.0 req=r-146fced3f2 route=POST /v2/checkout status=200 dur_ms=371 order=o-7314982 payment=soft_decline reason=card_expired
+2026-11-20T13:48:47.966Z INFO orders-api host=oa-3 version=4.18.0 req=r-e46d612414 route=GET /v2/cart status=200 dur_ms=841
+2026-11-20T13:49:00.058Z INFO orders-api host=oa-3 version=4.18.0 req=r-5d6995a997 route=POST /v2/checkout status=200 dur_ms=381 order=o-7303499 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:49:05.336Z INFO orders-api host=oa-3 version=4.18.0 req=r-3758f3b6bf route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:49:09.438Z WARN orders-api host=oa-3 version=4.18.0 req=r-cd9b6dc781 route=GET /v2/slots slow upstream=maps-geo dur_ms=1174
+2026-11-20T13:49:17.131Z INFO orders-api host=oa-3 version=4.18.0 req=r-fb94510143 route=GET /v2/cart status=200 dur_ms=1138
+2026-11-20T13:49:26.358Z WARN orders-api host=oa-3 version=4.18.0 req=r-fd2a2c2dcf inventory lookup retry attempt=2 dur_ms=145
+2026-11-20T13:49:29.485Z INFO orders-api host=oa-3 version=4.18.0 req=r-6deaa80d8e route=POST /v2/checkout status=200 dur_ms=412 order=o-7388717 payment=soft_decline reason=insufficient_funds
+2026-11-20T13:49:37.791Z INFO orders-api host=oa-3 version=4.18.0 req=r-9f13380710 route=POST /v2/checkout status=200 dur_ms=300 order=o-7311184 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:49:47.070Z INFO orders-api host=oa-3 version=4.18.0 req=r-cff3b1179d route=GET /v2/cart status=200 dur_ms=507
+2026-11-20T13:49:56.049Z INFO orders-api host=oa-3 version=4.18.0 req=r-928b6b71e4 route=POST /v2/checkout status=200 dur_ms=218 order=o-7309312 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:50:05.748Z INFO orders-api host=oa-3 version=4.18.0 req=r-6ccac8dc3b route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:50:17.308Z INFO orders-api host=oa-3 version=4.18.0 req=r-49fc70e432 route=GET /v2/cart status=200 dur_ms=1033
+2026-11-20T13:50:27.904Z INFO orders-api host=oa-3 version=4.18.0 req=r-42a17ada40 route=POST /v2/checkout status=200 dur_ms=312 order=o-7302357 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:50:47.767Z INFO orders-api host=oa-3 version=4.18.0 req=r-8a6bc8932d route=GET /v2/orders status=200 dur_ms=411
+2026-11-20T13:51:00.981Z WARN orders-api host=oa-3 version=4.18.0 req=r-1207c255ac route=GET /v2/slots slow upstream=maps-geo dur_ms=1004
+2026-11-20T13:51:05.093Z INFO orders-api host=oa-3 version=4.18.0 req=r-2c359fa579 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:51:17.395Z INFO orders-api host=oa-3 version=4.18.0 req=r-b9261bc430 route=POST /v2/cart/items status=200 dur_ms=511
+2026-11-20T13:51:22.591Z INFO orders-api host=oa-3 version=4.18.0 req=r-a312d89059 route=POST /v2/checkout status=200 dur_ms=159 order=o-7387906 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:51:47.738Z INFO orders-api host=oa-3 version=4.18.0 req=r-a034920630 route=GET /v2/cart status=200 dur_ms=516
+2026-11-20T13:51:59.253Z ERROR orders-api host=oa-3 version=4.18.0 req=r-fdeaf06d4a route=GET /v2/cart status=500 dur_ms=2903 err=upstream reset
+2026-11-20T13:52:05.027Z INFO orders-api host=oa-3 version=4.18.0 req=r-20ebed12ec route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:52:11.651Z WARN orders-api host=oa-3 version=4.18.0 cache=catalog miss_rate_high value=0.26
+2026-11-20T13:52:17.167Z INFO orders-api host=oa-3 version=4.18.0 req=r-e5f8bfa0e8 route=POST /v2/checkout status=200 dur_ms=1042 payment=approved
+2026-11-20T13:52:35.924Z ERROR orders-api host=oa-3 version=4.18.0 req=r-a7536554a3 route=GET /v2/catalog status=503 dur_ms=1691 err=db pool wait
+2026-11-20T13:52:36.578Z ERROR orders-api host=oa-3 version=4.18.0 req=r-0956b9b84a route=GET /v2/slots status=503 dur_ms=2119 err=inventory timeout
+2026-11-20T13:52:47.450Z INFO orders-api host=oa-3 version=4.18.0 req=r-86abc49262 route=POST /v2/checkout status=200 dur_ms=878 payment=approved
+2026-11-20T13:53:03.031Z ERROR orders-api host=oa-3 version=4.18.0 req=r-bf931a8857 route=GET /v2/catalog status=503 dur_ms=1738 err=upstream reset
+2026-11-20T13:53:05.918Z INFO orders-api host=oa-3 version=4.18.0 req=r-673c6f8c98 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:53:17.001Z INFO orders-api host=oa-3 version=4.18.0 req=r-9b3048baff route=POST /v2/cart/items status=200 dur_ms=314
+2026-11-20T13:53:47.191Z INFO orders-api host=oa-3 version=4.18.0 req=r-573bbb6a22 route=GET /v2/catalog status=200 dur_ms=802
+2026-11-20T13:53:52.858Z INFO orders-api host=oa-3 version=4.18.0 req=r-c8cdf43e71 route=POST /v2/checkout status=200 dur_ms=391 order=o-7302758 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:53:59.423Z WARN orders-api host=oa-3 version=4.18.0 req=r-c684fa98a4 inventory lookup retry attempt=2 dur_ms=149
+2026-11-20T13:54:05.759Z INFO orders-api host=oa-3 version=4.18.0 req=r-6310d56876 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:54:17.277Z INFO orders-api host=oa-3 version=4.18.0 req=r-28e4d4c005 route=POST /v2/checkout status=200 dur_ms=605 payment=approved
+2026-11-20T13:54:26.801Z WARN orders-api host=oa-3 version=4.18.0 req=r-ff46fe9a7d route=GET /v2/slots slow upstream=maps-geo dur_ms=1252
+2026-11-20T13:54:47.597Z INFO orders-api host=oa-3 version=4.18.0 req=r-6f53e65109 route=GET /v2/orders status=200 dur_ms=593
+2026-11-20T13:55:05.837Z INFO orders-api host=oa-3 version=4.18.0 req=r-d3be529fda route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:55:17.579Z INFO orders-api host=oa-3 version=4.18.0 req=r-6c13b30a86 route=GET /v2/catalog status=200 dur_ms=114
+2026-11-20T13:55:25.952Z INFO orders-api host=oa-3 version=4.18.0 req=r-463429161e route=POST /v2/checkout status=200 dur_ms=312 order=o-7384891 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:55:45.269Z ERROR orders-api host=oa-3 version=4.18.0 req=r-1c1e85cc8a route=GET /v2/orders status=503 dur_ms=2964 err=db pool wait
+2026-11-20T13:55:47.461Z INFO orders-api host=oa-3 version=4.18.0 req=r-aa9e8e67ff route=POST /v2/checkout status=200 dur_ms=56 payment=approved
+2026-11-20T13:55:58.898Z ERROR orders-api host=oa-3 version=4.18.0 req=r-e50104e589 route=GET /v2/orders status=500 dur_ms=1169 err=upstream reset
+2026-11-20T13:56:05.165Z INFO orders-api host=oa-3 version=4.18.0 req=r-e3d0fd15e2 route=GET /healthz status=200 dur_ms=1
+2026-11-20T13:56:17.454Z INFO orders-api host=oa-3 version=4.18.0 req=r-d5947111f7 route=POST /v2/cart/items status=200 dur_ms=177
+2026-11-20T13:56:39.198Z ERROR orders-api host=oa-3 version=4.18.0 req=r-546c8b8766 route=GET /v2/slots status=500 dur_ms=283 err=inventory timeout
+2026-11-20T13:56:47.660Z INFO orders-api host=oa-3 version=4.18.0 req=r-aeecb31b0b route=GET /v2/catalog status=200 dur_ms=70
+2026-11-20T13:57:05.947Z INFO orders-api host=oa-3 version=4.18.0 req=r-88aa216301 route=GET /healthz status=200 dur_ms=3
+2026-11-20T13:57:17.855Z INFO orders-api host=oa-3 version=4.18.0 req=r-e9e59cdda9 route=GET /v2/catalog status=200 dur_ms=178
+2026-11-20T13:57:27.283Z INFO orders-api host=oa-3 version=4.18.0 req=r-54819344c1 route=POST /v2/checkout status=200 dur_ms=357 order=o-7344092 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:57:47.196Z INFO orders-api host=oa-3 version=4.18.0 req=r-94bc8b370d route=POST /v2/checkout status=200 dur_ms=46 payment=approved
+2026-11-20T13:58:05.258Z INFO orders-api host=oa-3 version=4.18.0 req=r-62e6912fd5 route=GET /healthz status=200 dur_ms=2
+2026-11-20T13:58:17.525Z INFO orders-api host=oa-3 version=4.18.0 req=r-f835ae2862 route=POST /v2/checkout status=200 dur_ms=163 payment=approved
+2026-11-20T13:58:47.757Z INFO orders-api host=oa-3 version=4.18.0 req=r-b8a5e1ed76 route=GET /v2/catalog status=200 dur_ms=62
+2026-11-20T13:59:05.867Z INFO orders-api host=oa-3 version=4.18.0 req=r-730b161638 route=GET /healthz status=200 dur_ms=4
+2026-11-20T13:59:13.790Z INFO orders-api host=oa-3 version=4.18.0 req=r-e3cccd8a05 route=POST /v2/checkout status=200 dur_ms=207 order=o-7300598 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T13:59:17.491Z INFO orders-api host=oa-3 version=4.18.0 req=r-5e4bfbfce9 route=GET /v2/orders status=200 dur_ms=194
+2026-11-20T13:59:47.637Z INFO orders-api host=oa-3 version=4.18.0 req=r-775b28121e route=GET /v2/catalog status=200 dur_ms=146
+2026-11-20T14:00:05.888Z INFO orders-api host=oa-3 version=4.18.0 req=r-b69765ebcd route=GET /healthz status=200 dur_ms=2
+2026-11-20T14:00:17.295Z INFO orders-api host=oa-3 version=4.18.0 req=r-3175b828fb route=GET /v2/catalog status=200 dur_ms=136
+2026-11-20T14:00:47.004Z INFO orders-api host=oa-3 version=4.18.0 req=r-3143fefc17 route=GET /v2/cart status=200 dur_ms=152
+2026-11-20T14:00:59.818Z INFO orders-api host=oa-3 version=4.18.0 req=r-2f44f36cf2 route=POST /v2/checkout status=200 dur_ms=349 order=o-7396057 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:01:05.911Z INFO orders-api host=oa-3 version=4.18.0 req=r-0766e3f7d2 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:01:17.373Z INFO orders-api host=oa-3 version=4.18.0 req=r-47f0092b9d route=GET /v2/catalog status=200 dur_ms=199
+2026-11-20T14:01:44.363Z INFO orders-api host=oa-3 version=4.18.0 req=r-1881008abc route=POST /v2/checkout status=200 dur_ms=239 order=o-7373641 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:01:47.369Z INFO orders-api host=oa-3 version=4.18.0 req=r-be1d6726c3 route=POST /v2/cart/items status=200 dur_ms=95
+2026-11-20T14:02:05.710Z INFO orders-api host=oa-3 version=4.18.0 req=r-e04b77a975 route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:02:14.366Z INFO orders-api host=oa-3 version=4.18.0 req=r-72a2f42bac route=POST /v2/checkout status=200 dur_ms=241 order=o-7375392 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:02:17.245Z INFO orders-api host=oa-3 version=4.18.0 req=r-36225fe170 route=POST /v2/checkout status=200 dur_ms=71 payment=approved
+2026-11-20T14:02:28.513Z ERROR orders-api host=oa-3 version=4.18.0 req=r-6c7fbecb4c route=POST /v2/cart/items status=500 dur_ms=2621 err=db pool wait
+2026-11-20T14:02:47.476Z INFO orders-api host=oa-3 version=4.18.0 req=r-276e3caa53 route=POST /v2/checkout status=200 dur_ms=55 payment=approved
+2026-11-20T14:03:00.927Z INFO orders-api host=oa-3 version=4.18.0 req=r-0472067802 route=POST /v2/checkout status=200 dur_ms=216 order=o-7304257 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:03:05.904Z INFO orders-api host=oa-3 version=4.18.0 req=r-1d21e3b29c route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:03:17.091Z INFO orders-api host=oa-3 version=4.18.0 req=r-aadcf34891 route=POST /v2/cart/items status=200 dur_ms=188
+2026-11-20T14:03:20.020Z ERROR orders-api host=oa-3 version=4.18.0 req=r-bb5130ea23 route=GET /v2/catalog status=503 dur_ms=2468 err=upstream reset
+2026-11-20T14:03:47.743Z INFO orders-api host=oa-3 version=4.18.0 req=r-3bb04df377 route=POST /v2/cart/items status=200 dur_ms=91
+2026-11-20T14:04:05.624Z INFO orders-api host=oa-3 version=4.18.0 req=r-683f2a059c route=GET /healthz status=200 dur_ms=2
+2026-11-20T14:04:14.081Z ERROR orders-api host=oa-3 version=4.18.0 req=r-55541f30a1 route=GET /v2/orders status=503 dur_ms=2035 err=upstream reset
+2026-11-20T14:04:17.251Z INFO orders-api host=oa-3 version=4.18.0 req=r-1b0ddc7571 route=POST /v2/checkout status=200 dur_ms=53 payment=approved
+2026-11-20T14:04:23.813Z INFO orders-api host=oa-3 version=4.18.0 req=r-067bf294f5 route=POST /v2/checkout status=200 dur_ms=282 order=o-7377089 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:04:46.405Z INFO orders-api host=oa-3 version=4.18.0 req=r-c9dcb2cfb0 route=POST /v2/checkout status=200 dur_ms=313 order=o-7347222 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:04:47.205Z INFO orders-api host=oa-3 version=4.18.0 req=r-a8941c0065 route=POST /v2/cart/items status=200 dur_ms=45
+2026-11-20T14:04:54.229Z INFO orders-api host=oa-3 version=4.18.0 req=r-1410d7aec0 route=POST /v2/checkout status=200 dur_ms=341 order=o-7318004 payment=soft_decline reason=card_expired
+2026-11-20T14:05:05.107Z INFO orders-api host=oa-3 version=4.18.0 req=r-32f038ddbb route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:05:10.315Z ERROR orders-api host=oa-3 version=4.18.0 req=r-f746340589 route=POST /v2/checkout status=503 dur_ms=646 err=inventory timeout
+2026-11-20T14:05:17.499Z INFO orders-api host=oa-3 version=4.18.0 req=r-7fe73ee2b6 route=POST /v2/checkout status=200 dur_ms=183 order=o-7374531 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:05:17.729Z INFO orders-api host=oa-3 version=4.18.0 req=r-7481729e2d route=POST /v2/cart/items status=200 dur_ms=124
+2026-11-20T14:05:47.389Z INFO orders-api host=oa-3 version=4.18.0 req=r-efc427d54a route=GET /v2/catalog status=200 dur_ms=189
+2026-11-20T14:06:05.850Z INFO orders-api host=oa-3 version=4.18.0 req=r-9e4f80453b route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:06:17.798Z INFO orders-api host=oa-3 version=4.18.0 req=r-f8e977aa35 route=GET /v2/orders status=200 dur_ms=140
+2026-11-20T14:06:47.270Z INFO orders-api host=oa-3 version=4.18.0 req=r-73ae7456f4 route=POST /v2/cart/items status=200 dur_ms=109
+2026-11-20T14:06:51.344Z ERROR orders-api host=oa-3 version=4.18.0 req=r-0b83434cf5 route=GET /v2/catalog status=503 dur_ms=2781 err=db pool wait
+2026-11-20T14:07:05.641Z INFO orders-api host=oa-3 version=4.18.0 req=r-e26edcf457 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:07:17.960Z INFO orders-api host=oa-3 version=4.18.0 req=r-5fddaefaa2 route=POST /v2/checkout status=200 dur_ms=161 payment=approved
+2026-11-20T14:07:43.324Z ERROR orders-api host=oa-3 version=4.18.0 req=r-695e0ec811 route=GET /v2/orders status=502 dur_ms=429 err=upstream reset
+2026-11-20T14:07:47.745Z INFO orders-api host=oa-3 version=4.18.0 req=r-22358726e4 route=GET /v2/slots status=200 dur_ms=97
+2026-11-20T14:08:05.224Z INFO orders-api host=oa-3 version=4.18.0 req=r-545e87e6d6 route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:08:17.683Z INFO orders-api host=oa-3 version=4.18.0 req=r-ceb63c4674 route=GET /v2/orders status=200 dur_ms=49
+2026-11-20T14:08:21.874Z INFO orders-api host=oa-3 version=4.18.0 req=r-d9176253d4 route=POST /v2/checkout status=200 dur_ms=383 order=o-7301455 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:08:47.124Z INFO orders-api host=oa-3 version=4.18.0 req=r-b921862752 route=GET /v2/cart status=200 dur_ms=69
+2026-11-20T14:08:58.824Z INFO orders-api host=oa-3 version=4.18.0 req=r-6f07b63ea6 route=POST /v2/checkout status=200 dur_ms=288 order=o-7382230 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:09:05.951Z INFO orders-api host=oa-3 version=4.18.0 req=r-e1c5c4095a route=GET /healthz status=200 dur_ms=2
+2026-11-20T14:09:17.503Z INFO orders-api host=oa-3 version=4.18.0 req=r-f460b9d531 route=GET /v2/catalog status=200 dur_ms=128
+2026-11-20T14:09:47.421Z INFO orders-api host=oa-3 version=4.18.0 req=r-4ad61cdd41 route=POST /v2/checkout status=200 dur_ms=42 payment=approved
+2026-11-20T14:10:05.927Z INFO orders-api host=oa-3 version=4.18.0 req=r-54a235d5eb route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:10:17.518Z INFO orders-api host=oa-3 version=4.18.0 req=r-bf5185ddf1 route=GET /v2/cart status=200 dur_ms=196
+2026-11-20T14:10:21.409Z ERROR orders-api host=oa-3 version=4.18.0 req=r-57a7682053 route=GET /v2/catalog status=500 dur_ms=2137 err=db pool wait
+2026-11-20T14:10:47.782Z INFO orders-api host=oa-3 version=4.18.0 req=r-c194aca6a7 route=POST /v2/checkout status=200 dur_ms=147 payment=approved
+2026-11-20T14:11:05.863Z INFO orders-api host=oa-3 version=4.18.0 req=r-69333573c8 route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:11:17.673Z INFO orders-api host=oa-3 version=4.18.0 req=r-2f1f384ccd route=POST /v2/cart/items status=200 dur_ms=76
+2026-11-20T14:11:47.902Z INFO orders-api host=oa-3 version=4.18.0 req=r-cf28359432 route=POST /v2/cart/items status=200 dur_ms=146
+2026-11-20T14:12:05.075Z INFO orders-api host=oa-3 version=4.18.0 req=r-ebcbbed590 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:12:17.783Z INFO orders-api host=oa-3 version=4.18.0 req=r-d87185c8e9 route=GET /v2/cart status=200 dur_ms=132
+2026-11-20T14:12:47.853Z INFO orders-api host=oa-3 version=4.18.0 req=r-fc9d5872f0 route=GET /v2/slots status=200 dur_ms=151
+2026-11-20T14:13:05.628Z INFO orders-api host=oa-3 version=4.18.0 req=r-75cfc137d5 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:13:17.579Z ERROR orders-api host=oa-3 version=4.18.0 req=r-79712f5b5d route=GET /v2/cart status=503 dur_ms=2214 err=upstream reset
+2026-11-20T14:13:17.828Z INFO orders-api host=oa-3 version=4.18.0 req=r-626faff45c route=GET /v2/catalog status=200 dur_ms=175
+2026-11-20T14:13:47.045Z INFO orders-api host=oa-3 version=4.18.0 req=r-5d89f6f2d8 route=POST /v2/cart/items status=200 dur_ms=195
+2026-11-20T14:14:05.035Z INFO orders-api host=oa-3 version=4.18.0 req=r-eaabf2125a route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:14:05.839Z ERROR orders-api host=oa-3 version=4.18.0 req=r-4500b70526 route=POST /v2/checkout status=500 dur_ms=1178 err=upstream reset
+2026-11-20T14:14:11.525Z ERROR orders-api host=oa-3 version=4.18.0 req=r-9f27df0cf4 route=GET /v2/cart status=503 dur_ms=2358 err=db pool wait
+2026-11-20T14:14:17.117Z INFO orders-api host=oa-3 version=4.18.0 req=r-bfb050d885 route=GET /v2/cart status=200 dur_ms=172
+2026-11-20T14:14:17.752Z ERROR orders-api host=oa-3 version=4.18.0 req=r-9a53f298b7 route=GET /v2/cart status=500 dur_ms=87 err=db pool wait
+2026-11-20T14:14:47.354Z INFO orders-api host=oa-3 version=4.18.0 req=r-3c9f8cd0f5 route=GET /v2/catalog status=200 dur_ms=100
+2026-11-20T14:15:05.620Z INFO orders-api host=oa-3 version=4.18.0 req=r-355a4c1a91 route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:15:06.047Z INFO orders-api host=oa-3 version=4.18.0 req=r-548e8acdfd route=POST /v2/checkout status=200 dur_ms=295 order=o-7384542 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:15:17.314Z INFO orders-api host=oa-3 version=4.18.0 req=r-28b65ddf79 route=POST /v2/checkout status=200 dur_ms=82 payment=approved
+2026-11-20T14:15:39.386Z WARN orders-api host=oa-3 version=4.18.0 cache=catalog miss_rate_high value=0.33
+2026-11-20T14:15:47.115Z INFO orders-api host=oa-3 version=4.18.0 req=r-f279eb0579 route=GET /v2/catalog status=200 dur_ms=107
+2026-11-20T14:16:05.499Z INFO orders-api host=oa-3 version=4.18.0 req=r-badf8f9af8 route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:16:11.624Z ERROR orders-api host=oa-3 version=4.18.0 req=r-8adb20cfe5 route=GET /v2/cart status=503 dur_ms=821 err=upstream reset
+2026-11-20T14:16:17.530Z INFO orders-api host=oa-3 version=4.18.0 req=r-a421f4319c route=GET /v2/cart status=200 dur_ms=45
+2026-11-20T14:16:47.473Z INFO orders-api host=oa-3 version=4.18.0 req=r-d2e0944410 route=POST /v2/cart/items status=200 dur_ms=148
+2026-11-20T14:17:05.283Z INFO orders-api host=oa-3 version=4.18.0 req=r-b606078fe8 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:17:16.327Z INFO orders-api host=oa-3 version=4.18.0 req=r-eb042fcaca route=POST /v2/checkout status=200 dur_ms=298 order=o-7375200 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:17:17.532Z INFO orders-api host=oa-3 version=4.18.0 req=r-b2d3035b8e route=POST /v2/cart/items status=200 dur_ms=113
+2026-11-20T14:17:24.807Z INFO orders-api host=oa-3 version=4.18.0 req=r-a7317f4b1b route=POST /v2/checkout status=200 dur_ms=335 order=o-7377276 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:17:47.243Z INFO orders-api host=oa-3 version=4.18.0 req=r-6515fd834c route=GET /v2/slots status=200 dur_ms=99
+2026-11-20T14:17:48.397Z ERROR orders-api host=oa-3 version=4.18.0 req=r-e0a6cf109f route=GET /v2/slots status=500 dur_ms=1228 err=upstream reset
+2026-11-20T14:18:05.211Z INFO orders-api host=oa-3 version=4.18.0 req=r-dbc282d6a3 route=GET /healthz status=200 dur_ms=2
+2026-11-20T14:18:17.200Z INFO orders-api host=oa-3 version=4.18.0 req=r-b923e40bb3 route=GET /v2/slots status=200 dur_ms=159
+2026-11-20T14:18:47.804Z INFO orders-api host=oa-3 version=4.18.0 req=r-d734fd1b8a route=GET /v2/catalog status=200 dur_ms=62
+2026-11-20T14:19:05.605Z INFO orders-api host=oa-3 version=4.18.0 req=r-7800dc229d route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:19:17.221Z INFO orders-api host=oa-3 version=4.18.0 req=r-87a2b0d618 route=GET /v2/slots status=200 dur_ms=83
+2026-11-20T14:19:47.896Z INFO orders-api host=oa-3 version=4.18.0 req=r-49e6dd09f7 route=GET /v2/cart status=200 dur_ms=103
+2026-11-20T14:20:05.060Z INFO orders-api host=oa-3 version=4.18.0 req=r-6223826cb0 route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:20:17.358Z INFO orders-api host=oa-3 version=4.18.0 req=r-f685f3faba route=GET /v2/catalog status=200 dur_ms=85
+2026-11-20T14:20:38.466Z INFO orders-api host=oa-3 version=4.18.0 req=r-24ca927f09 route=POST /v2/checkout status=200 dur_ms=194 order=o-7347160 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:20:46.188Z INFO orders-api host=oa-3 version=4.18.0 req=r-70343301a2 route=POST /v2/checkout status=200 dur_ms=347 order=o-7363832 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:20:46.974Z INFO orders-api host=oa-3 version=4.18.0 req=r-17ad202266 route=POST /v2/checkout status=200 dur_ms=413 order=o-7380586 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:20:47.474Z INFO orders-api host=oa-3 version=4.18.0 req=r-cc7d69d810 route=POST /v2/checkout status=200 dur_ms=105 payment=approved
+2026-11-20T14:21:05.138Z INFO orders-api host=oa-3 version=4.18.0 req=r-5f2d542580 route=GET /healthz status=200 dur_ms=2
+2026-11-20T14:21:17.502Z INFO orders-api host=oa-3 version=4.18.0 req=r-8a876c2ac5 route=GET /v2/catalog status=200 dur_ms=136
+2026-11-20T14:21:36.547Z INFO orders-api host=oa-3 version=4.18.0 req=r-024c2f7ada route=POST /v2/checkout status=200 dur_ms=154 order=o-7311355 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:21:47.489Z INFO orders-api host=oa-3 version=4.18.0 req=r-bde99da1f2 route=POST /v2/cart/items status=200 dur_ms=164
+2026-11-20T14:22:05.824Z INFO orders-api host=oa-3 version=4.18.0 req=r-c14a147f74 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:22:17.425Z INFO orders-api host=oa-3 version=4.18.0 req=r-2d4089fc85 route=POST /v2/checkout status=200 dur_ms=166 payment=approved
+2026-11-20T14:22:47.035Z INFO orders-api host=oa-3 version=4.18.0 req=r-bac0e066b4 route=GET /v2/cart status=200 dur_ms=198
+2026-11-20T14:23:05.223Z INFO orders-api host=oa-3 version=4.18.0 req=r-8a01610193 route=POST /v2/checkout status=200 dur_ms=243 order=o-7312812 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:23:05.481Z INFO orders-api host=oa-3 version=4.18.0 req=r-6f84ec625a route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:23:17.068Z INFO orders-api host=oa-3 version=4.18.0 req=r-fbde7c2456 route=POST /v2/checkout status=200 dur_ms=118 payment=approved
+2026-11-20T14:23:47.237Z INFO orders-api host=oa-3 version=4.18.0 req=r-60df75476e route=POST /v2/checkout status=200 dur_ms=106 payment=approved
+2026-11-20T14:24:05.069Z INFO orders-api host=oa-3 version=4.18.0 req=r-555dea0bde route=GET /healthz status=200 dur_ms=3
+2026-11-20T14:24:10.437Z ERROR orders-api host=oa-3 version=4.18.0 req=r-0e53621dc6 route=POST /v2/cart/items status=503 dur_ms=1039 err=db pool wait
+2026-11-20T14:24:16.514Z INFO orders-api host=oa-3 version=4.18.0 req=r-e8851996fb route=POST /v2/checkout status=200 dur_ms=401 order=o-7376675 payment=soft_decline reason=issuer_soft_decline
+2026-11-20T14:24:17.987Z INFO orders-api host=oa-3 version=4.18.0 req=r-df7295c8cb route=POST /v2/cart/items status=200 dur_ms=147
+2026-11-20T14:24:35.736Z INFO orders-api host=oa-3 version=4.18.0 req=r-9d7d3c424c route=POST /v2/checkout status=200 dur_ms=304 order=o-7374595 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:24:47.047Z INFO orders-api host=oa-3 version=4.18.0 req=r-ba9ab34164 route=GET /v2/slots status=200 dur_ms=141
+2026-11-20T14:24:57.897Z ERROR orders-api host=oa-3 version=4.18.0 req=r-52a51cc795 route=GET /v2/catalog status=503 dur_ms=2216 err=upstream reset
+2026-11-20T14:25:05.528Z INFO orders-api host=oa-3 version=4.18.0 req=r-68e452a241 route=GET /healthz status=200 dur_ms=2
+2026-11-20T14:25:17.170Z INFO orders-api host=oa-3 version=4.18.0 req=r-2e53e4f0f3 route=POST /v2/cart/items status=200 dur_ms=40
+2026-11-20T14:25:27.254Z ERROR orders-api host=oa-3 version=4.18.0 req=r-da68a7b63e route=GET /v2/cart status=502 dur_ms=426 err=upstream reset
+2026-11-20T14:25:47.782Z INFO orders-api host=oa-3 version=4.18.0 req=r-82521608c9 route=GET /v2/cart status=200 dur_ms=56
+2026-11-20T14:26:05.412Z INFO orders-api host=oa-3 version=4.18.0 req=r-4e7d37860c route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:26:17.393Z INFO orders-api host=oa-3 version=4.18.0 req=r-54f326822c route=GET /v2/cart status=200 dur_ms=65
+2026-11-20T14:26:47.782Z INFO orders-api host=oa-3 version=4.18.0 req=r-7d182b109d route=POST /v2/checkout status=200 dur_ms=60 payment=approved
+2026-11-20T14:27:05.960Z INFO orders-api host=oa-3 version=4.18.0 req=r-f2db4a52d8 route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:27:17.107Z INFO orders-api host=oa-3 version=4.18.0 req=r-d19f50054e route=GET /v2/cart status=200 dur_ms=53
+2026-11-20T14:27:28.281Z ERROR orders-api host=oa-3 version=4.18.0 req=r-b8516d4cfb route=POST /v2/checkout status=500 dur_ms=180 err=db pool wait
+2026-11-20T14:27:47.528Z INFO orders-api host=oa-3 version=4.18.0 req=r-2a3a48131f route=GET /v2/cart status=200 dur_ms=60
+2026-11-20T14:27:57.641Z WARN orders-api host=oa-3 version=4.18.0 cache=catalog miss_rate_high value=0.31
+2026-11-20T14:28:05.243Z INFO orders-api host=oa-3 version=4.18.0 req=r-e46913c915 route=GET /healthz status=200 dur_ms=1
+2026-11-20T14:28:17.750Z INFO orders-api host=oa-3 version=4.18.0 req=r-37c8782f9e route=POST /v2/cart/items status=200 dur_ms=178
+2026-11-20T14:28:23.828Z INFO orders-api host=oa-3 version=4.18.0 req=r-8f519e21f7 route=POST /v2/checkout status=200 dur_ms=245 order=o-7340602 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:28:47.912Z INFO orders-api host=oa-3 version=4.18.0 req=r-2a45f0197f route=GET /v2/orders status=200 dur_ms=188
+2026-11-20T14:29:05.781Z INFO orders-api host=oa-3 version=4.18.0 req=r-4aeba816e5 route=GET /healthz status=200 dur_ms=4
+2026-11-20T14:29:08.400Z INFO orders-api host=oa-3 version=4.18.0 req=r-7b99c42641 route=POST /v2/checkout status=200 dur_ms=356 order=o-7330158 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:29:17.647Z INFO orders-api host=oa-3 version=4.18.0 req=r-10d79963a4 route=GET /v2/orders status=200 dur_ms=158
+2026-11-20T14:29:30.795Z INFO orders-api host=oa-3 version=4.18.0 req=r-68abc706bd route=POST /v2/checkout status=200 dur_ms=381 order=o-7390476 payment=soft_decline reason=idempotency_key_reused
+2026-11-20T14:29:47.512Z INFO orders-api host=oa-3 version=4.18.0 req=r-b2e5c33e86 route=POST /v2/cart/items status=200 dur_ms=118

@@ -1,0 +1,13 @@
+:root {
+  color: #24313b;
+  background: #f5f3ed;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.6;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 280px; }
+a { color: inherit; }
+button, input { font: inherit; }
+:focus-visible { outline: 3px solid #d47a3b; outline-offset: 4px; }

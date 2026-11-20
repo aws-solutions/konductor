@@ -9,10 +9,6 @@
         "expired|expiration|not-after",
         "mTLS|mutual TLS|client certificate"
       ],
-      "none": [
-        "rel-8421",
-        "(caused|triggered|introduced) by (the )?(auth(-service)? )?(deploy|release|rollout)"
-      ],
       "weight": 3,
       "section": "cause",
       "gate": true

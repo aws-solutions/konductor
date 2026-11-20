@@ -64,3 +64,9 @@ Coverage-review wave (2026-11-20), batch CV-B: estimate 225 credits, stop 450. T
 | t9-browser-tab-regression | data | gpt-5.6-luna | 1.75 |  |
 | t9-state-management-refactor | review | qwen3-coder-next | 0.48 |  |
 | t9-state-management-refactor | fix | gpt-5.6-luna | 2.61 |  |
+| t9-browser-tab-regression | key | gpt-5.6-luna | 5.83 |  |
+| t9-e2e-approved-checkout | review | glm-5 | 5.17 |  |
+| t9-browser-tab-regression | fix | gpt-5.6-luna | 2.72 |  |
+| t9-e2e-no-approval-control | review (stopped at its tool-call cap, 61 calls, no verdict) | qwen3-coder-next | 15.00 | the cut stream reports no credits, so the abort limit is counted; re-run with glm-5 |
+| t9-e2e-no-approval-control | review | glm-5 | 3.75 |  |
+| t9-browser-tab-regression | review | glm-5 | 4.21 |  |

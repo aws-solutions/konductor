@@ -80,6 +80,37 @@
     "date": "2026-11-20",
     "source": "original"
   },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a plan document without specifying methods, naming the journey areas, or revealing the hidden tests. It directs the agent to read docs/checkout.md and observe site behavior, which is appropriate for the task."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly states the deliverable (docs/e2e-plan.md with journeys as '- ' lines showing shopper actions and exact results). The hidden tests check for coverage of documented checkout behavior, which the agent can derive from fixture/docs/checkout.md and the code."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture/docs/checkout.md documents all the checkout rules (basket, delivery thresholds, promo codes, validation, confirmation). The code implements these rules. The hidden tests check coverage of documented behavior, not hidden secrets."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer like listing only 5 journeys would fail the 'at least 10 journeys' test. Writing and committing tests would fail all guard() checks. A plan missing key areas (empty basket, unknown code dropping previous code, STEEP5 minimum) would fail specific coverage tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All test requirements can be derived from reading docs/checkout.md and observing the checkout code behavior. The tests check for realistic journey coverage matching documented checkout rules. No test relies on hidden class names, IDs, or undocumented behavior."
+      }
+    ]
+  },
   "pilot": {
     "scores": {},
     "reference": 100,

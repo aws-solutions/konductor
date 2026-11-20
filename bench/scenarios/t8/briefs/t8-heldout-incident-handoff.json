@@ -1,0 +1,44 @@
+{
+  "id": "t8-heldout-incident-handoff",
+  "kind": "doc",
+  "twoStep": true,
+  "phase": "release-ops",
+  "role": "developer",
+  "phases2": [
+    "bugfix"
+  ],
+  "author": "claude",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "size": "18 to 32",
+  "loglines": 3500,
+  "split": {
+    "set": "HELD-OUT",
+    "hash": 1473558289,
+    "rule": "bench/scenarios/split.js (SR-32 v1), checked 2026-11-20 before the id was used"
+  },
+  "source": {
+    "url": "https://sre.google/sre-book/managing-incidents/",
+    "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "outFile": "handoff/incident-handoff.md",
+  "voice": "the outgoing on-call engineer at the end of a long shift, asking a colleague to write the hand-off note for the developer who takes the incident over",
+  "blockFields": "`status` (one of `investigating`, `mitigated`, `resolved`), `rootCause` (object: `summary`, a short text naming the cause and the change that triggered it; `evidence`, a list of `path:line` strings citing the lines that prove it), `mitigation` (object: `action`, the one safe step to take now or already taken, as a short text; `rejected`, a list of `{ \"action\", \"reason\" }` for the other options in the runbook that are unsafe or useless here), `verification` (object: `metric`, a metric name exactly as the folder's metrics catalogue spells it; `healthyBelow`, the number that metric must stay under for the incident to count as mitigated, with its unit stated in the request), `owner` (the team that owns the failing component, spelled as the folder's ownership file spells it), `openRisks` (list of strings), `actionItems` (list of `{ \"text\", \"owner\" }`, each owner a team name from the ownership file).",
+  "seedExtra": "Seed these, each provable only from the large files or from one line deep in a doc: (1) one root cause, proved by a chain of lines across at least two files (for example a feature flag turned on for a share of tenants in the flag audit log, then the first slow query and lock waits in the database log for those tenants only); (2) one loud decoy that looks causal (an application deploy shortly before the first error that changed something harmless, plus noisy warnings all day); (3) a runbook listing four or five mitigations, of which exactly one is safe and effective now: one is useless because the cause comes back (restarting workers), one is unsafe because of a condition visible only in the logs or metrics (a database failover while replica lag is far above the runbook's limit), one is a rollback of the decoy deploy (does nothing); (4) a scheduled job or config default that would undo the safe mitigation at a fixed time later that day, visible in one cron or config file; this is the open risk; (5) an ownership file listing several teams, where the team that owns the failing component is not the team whose service shows the loudest errors; the on-call chat export has someone wrongly pinging the loud team. Put the metric catalogue in a CSV with the metric names. The outgoing engineer's shift notes are partial and partly wrong (they suspect the deploy).",
+  "kindExtra": "Key shape for this task: a `text` item on `status` (mitigated or investigating, whichever the fixture supports; never resolved, the cause is not fixed); a `text` item on `rootCause.summary` with two or more `all` patterns and a `none` pattern for the decoy, with `gate: true`; one `evidence` item with 2 or 3 groups matching the seeded proving lines; one `evidencePrecision` item (min 0.5); a `text` item on `mitigation.action` for the safe step with `none` patterns for the unsafe and useless ones; 2 or 3 `some` items on `mitigation.rejected` (the failover rejected for the lag, the restart rejected because the cause returns); a `text` item on `verification.metric` and a `number` item on `verification.healthyBelow` with a tolerance; a `text` item on `owner` with a `none` for the loud team; a `some` item on `openRisks` naming the scheduled undo and its time; an `inSet` item on `actionItems` owners from the ownership file; a `maxLen` on `actionItems` (max 8). Use `\"scoring\": \"sections\"` with sections `diagnosis`, `mitigation`, `ownership` and gate the root cause. 12 to 16 items.",
+  "briefLine": "An incident hand-off note for an ongoing incident: diagnosis with cited evidence, the one safe mitigation and why the others are rejected, how to verify it, the open risk, and the right owner.",
+  "brief": "Phase: release, ops and incident. Role: developer taking over an ongoing incident. Folder: the ops folder of a mid-size B2B invoicing service (invoice API, a PDF render worker, a billing scheduler, a Postgres primary with one replica, a feature-flag service). An incident started this afternoon: invoice creation slowed and a share of requests failed for some tenants. The outgoing on-call engineer has been on it for hours and is handing it over. The folder holds the raw logs of the services and the database for the day, a per-minute metrics CSV, the metric catalogue, the deploy history, the feature-flag audit log, the crontab or scheduler config, the incident runbook, the team ownership file, the on-call chat export, the outgoing engineer's shift notes and the architecture notes. The request: the outgoing engineer asks the agent to write the hand-off note the incoming developer will work from: what is going on and why, what to do now and what not to do, how to tell it worked, what could still go wrong, and who owns what.",
+  "secondFamilyTry": {
+    "date": "2026-11-20",
+    "author": "gpt-5.6-luna",
+    "steps": [
+      "a (generator, fixture, request)",
+      "b (key, reference)",
+      "fix (one, same family)"
+    ],
+    "credits": 7.28,
+    "result": "dropped: after its one fix the draft kept a substance fixture_unchanged check that the stub and the shallow answer pass (stub 28.6 over 20, lazy 40.5 over 40); the rules allow no second fix and no hand fix, so the task was written again by hand (Claude) from this brief, using nothing of the draft; the draft is kept in the CV-E scratch folder"
+  }
+}
