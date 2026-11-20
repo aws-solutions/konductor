@@ -2303,10 +2303,65 @@ mod tests {
         );
     }
 
+    /// Why a `kiroCli.allowedTools` entry would let Kiro CLI run an aws-mcp
+    /// tool outside `AWS_MCP_READ_ONLY_TOOLS` with no prompt, or `None` when
+    /// it cannot. Only an exact read-only name passes: the whole server
+    /// (`@aws-mcp`), any pattern (`@aws-mcp/*`, `@aws-mcp/aws___*`), a
+    /// misspelled or acting tool, and the catch-alls `*` and `@mcp` all fail.
+    fn kiro_allowed_tools_aws_mcp_problem(entry: &str) -> Option<&'static str> {
+        let server = format!("@{AWS_MCP_SERVER_NAME}");
+        if entry == "*" || entry == "@mcp" {
+            return Some("pre-approves every MCP tool, aws-mcp included");
+        }
+        if entry == server {
+            return Some("pre-approves the whole aws-mcp server");
+        }
+        if entry.starts_with("aws___") && !AWS_MCP_READ_ONLY_TOOLS.contains(&entry) {
+            return Some("names an aws-mcp tool outside AWS_MCP_READ_ONLY_TOOLS");
+        }
+        let tool = entry.strip_prefix(&server)?.strip_prefix('/')?;
+        if AWS_MCP_READ_ONLY_TOOLS.contains(&tool) {
+            None
+        } else {
+            Some("is not an exact name in AWS_MCP_READ_ONLY_TOOLS")
+        }
+    }
+
+    #[test]
+    fn kiro_allowed_tools_check_refuses_every_widening_shape() {
+        for entry in [
+            "*",
+            "@mcp",
+            "@aws-mcp",
+            "@aws-mcp/*",
+            "@aws-mcp/aws___*",
+            "@aws-mcp/aws___run_script",
+            "@aws-mcp/aws___get_presigned_url",
+            "@aws-mcp/aws___get_tasks",
+            "@aws-mcp/aws___serch_documentation",
+            "@aws-mcp/",
+            "aws___run_script",
+            "aws___*",
+        ] {
+            assert!(
+                kiro_allowed_tools_aws_mcp_problem(entry).is_some(),
+                "{entry} must be refused"
+            );
+        }
+        for tool in AWS_MCP_READ_ONLY_TOOLS {
+            let entry = format!("@aws-mcp/{tool}");
+            assert_eq!(kiro_allowed_tools_aws_mcp_problem(&entry), None, "{entry}");
+        }
+        for entry in ["fs_read", "shell", "@builtin", "@aws-mcp-other/aws___run_script"] {
+            assert_eq!(kiro_allowed_tools_aws_mcp_problem(entry), None, "{entry}");
+        }
+    }
+
     /// Kiro CLI runs every `allowedTools` entry with no prompt, and synth
-    /// copies that list as is (nothing filters it the way install filters
-    /// the Claude Code allow list). So the specs themselves may pre-approve
-    /// only read-only aws-mcp tools, and no catch-all that would cover the rest.
+    /// copies that list into both Kiro outputs as is (V2 `allowedTools`, V3
+    /// allow rules). Nothing filters it the way install filters the Claude
+    /// Code allow list, so the specs themselves must pre-approve only
+    /// read-only aws-mcp tools, by exact name.
     #[test]
     fn real_agent_specs_pre_approve_only_read_only_aws_mcp_tools_on_kiro() {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -2319,23 +2374,15 @@ mod tests {
             let Some(kiro) = agent.client_config.kiro_cli.as_ref() else {
                 continue;
             };
-            let names_aws_mcp = kiro.tools.iter().any(|t| t.starts_with(&kiro_prefix));
             for entry in &kiro.allowed_tools {
-                if let Some(tool) = entry.strip_prefix(&kiro_prefix) {
-                    assert!(
-                        AWS_MCP_READ_ONLY_TOOLS.contains(&tool),
-                        "agent '{}' pre-approves {entry} in kiroCli.allowedTools, \
-                         which is not in AWS_MCP_READ_ONLY_TOOLS",
+                if let Some(problem) = kiro_allowed_tools_aws_mcp_problem(entry) {
+                    panic!(
+                        "agent '{}': {entry} in kiroCli.allowedTools {problem}",
                         agent.name
                     );
-                    checked += 1;
                 }
-                if names_aws_mcp {
-                    assert!(
-                        entry != "*" && entry != "@mcp",
-                        "agent '{}' pre-approves every aws-mcp tool with {entry} in kiroCli.allowedTools",
-                        agent.name
-                    );
+                if entry.starts_with(&kiro_prefix) {
+                    checked += 1;
                 }
             }
         }
