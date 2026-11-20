@@ -8,6 +8,11 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { dedupeCustomers } = require('../scripts/dedupe-customers');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 const ROOT = path.join(__dirname, '..');
 const norm = (e) => String(e ?? '').trim().toLowerCase();
 
@@ -17,7 +22,7 @@ const cust = (id, email, over = {}) => ({
 
 // A scratch data directory holding the given records.
 function dir({ customers, orders, archive } = {}) {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dedupe-'));
+  const d = tempDir('dedupe-');
   fs.writeFileSync(path.join(d, 'customers.json'), JSON.stringify(customers ?? []));
   if (orders !== undefined) fs.writeFileSync(path.join(d, 'orders.json'), JSON.stringify(orders));
   if (archive !== undefined) fs.writeFileSync(path.join(d, 'customers.archive.json'), JSON.stringify(archive));
@@ -32,7 +37,7 @@ const ids = (list) => list.map((c) => c.id).sort();
 
 // A scratch copy of the data as shipped (kept beside the tests, so a run on the real data/ does not change it).
 function shipped() {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dedupe-'));
+  const d = tempDir('dedupe-');
   for (const f of ['customers.json', 'orders.json']) fs.copyFileSync(path.join(__dirname, 'data', f), path.join(d, f));
   return d;
 }

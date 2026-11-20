@@ -37,6 +37,8 @@ Blindness audit (`audit.js`): every author, map and review stream is scanned for
 
 `t1-ref-schema-migrate`: the reviewer found the request did not say whether a whitespace-only address is blank, which a hidden test relies on; the worker added that sentence to the request (review verdict `fixed`).
 
+Shallow answer check (free, 2026-11-20): `dry-run.js` also scores a shallow answer built without a model: the reference's docs, changelog, config and test files with none of its code changes. It must score 40 or less. All 15 tasks in the tree passed (15.2 to 38.1; highest t1-bug-cache-ttl 38.1, t1-ref-esm-migrate 37.8), so no scorer change was needed.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
@@ -46,6 +48,7 @@ Blindness audit (`audit.js`): every author, map and review stream is scanned for
 | t1-bug-csv-import | deepseek-3.2 | the author was stopped after 90 tool calls (the cap for a deepseek call) without writing `task-draft.json` | author 13.66; no task written. Not replaced yet |
 | t1-refactor-esm | deepseek-3.2 | the dry run failed: the reference scored 87.4 (42 of 51 hidden tests) and the untouched fixture scored 69.1 (36 of 51 passed before any change); the reviewer's leak and floor verdicts were fail | author 35.52 credits; no fix round, because a deepseek fix round costs about 25 credits and the hidden tests tested the old code as much as the new. Replaced by `t1-ref-esm-migrate`, written by the other author with a smaller scope |
 | t1-impl-cursor-paging | deepseek-3.2 | the reference scored 63.0 and the reviewer's leak, ambiguity, hidden-answer and floor verdicts were fail; no fix round (deepseek fix rounds have not repaired a reference) | see the calls table for credits |
+| t1-nfr-latency-cache | minimax-m2.5 | second-family author stopped at the 90-tool-call cap without writing task-draft.json; dropped, not hand-fixed (owner rule) | see the calls table for credits |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -119,6 +122,10 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-nfr-ndjson-stream | author | gpt-5.6-luna | 3.27 |
 | t1-nfr-ndjson-stream | map | glm-5 | 0.17 |
 | t1-nfr-ndjson-stream | review | glm-5 | 6.19 |
-| t1-ref-split-module | author | minimax-m2.5 | 0.00 |
+| t1-ref-split-module | author | minimax-m2.5 | 18.00 (estimate: stopped by the 45-minute watchdog before the call reported; the one finished minimax author call cost 17.55) |
 | t1-ref-split-module | map | glm-5 | 0.16 |
 | t1-ref-split-module | review | gpt-5.6-luna | 2.84 |
+| t1-nfr-latency-cache | author | minimax-m2.5 | 18.00 (estimate: stopped at the 90-tool-call cap before the call reported) |
+| t1-ref-esm-migrate | author | gpt-5.6-luna | 1.94 |
+| t1-ref-esm-migrate | map | glm-5 | 0.17 |
+| t1-ref-esm-migrate | review | glm-5 | 9.20 |

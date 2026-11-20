@@ -61,7 +61,7 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 0,
@@ -115,7 +115,34 @@
         "verdict": "pass",
         "note": "all necessary data is provided and derivable from the fixture files"
       }
-    ]
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes goals, constraints, and output format without naming methods or revealing which option is correct or which is the tempting decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "No fixture file states the correct answer; all files provide evidence (data sizes, costs, limits) that must be reasoned from to reach the decision."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "All hidden test values (businessCap=150, latencyLimit=30, offHoursCap=450 from traffic-profile.csv; limits from acceptance.json; costs from price-sheet.json) exist in fixture and are consistent."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "An engineer can calculate each option's metrics from migration-model.json and price-sheet.json, compare against limits in acceptance.json and traffic-profile.csv, and identify continuous_replication as the only option meeting all five constraints."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -167,5 +194,10 @@
       "recommends an option without showing the cost breakdown or verifying all five acceptance constraints",
       "relies on rehearsal timing as evidence that the production migration will meet the downtime window"
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T3 batch worker session",
+    "log": "HAND-EDITS.md"
   }
 }

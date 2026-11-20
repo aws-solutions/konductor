@@ -7,12 +7,17 @@ const os = require('node:os');
 const path = require('node:path');
 const { run } = require('../src');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 const SHIPPED = path.join(__dirname, '..', 'data');
 const HEADER = 'id,postedAt,orderId,type,amountCents,status';
 
 // A scratch data directory with the given ledger rows (and, optionally, orders).
 function dataDir(rows, orders = []) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rev-'));
+  const dir = tempDir('rev-');
   fs.writeFileSync(path.join(dir, 'ledger.csv'), `${[HEADER, ...rows].join('\n')}\n`);
   fs.writeFileSync(path.join(dir, 'orders.json'), JSON.stringify(orders));
   return dir;

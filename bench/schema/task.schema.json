@@ -1054,6 +1054,14 @@
             "drop"
           ]
         },
+        "blockers": {
+          "description": "Why the task cannot be locked yet, one string each (for example 'recheck-failed: ...' or 'gate-failed: ...').",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "date": {
           "type": "string",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}"
@@ -1101,7 +1109,8 @@
       "pattern": "^\\d{4}-\\d{2}-\\d{2}"
     },
     "handEdited": {
-      "type": "object",
+      "description": "null: checked, no one but the author changed the prompt, fixture, key, checks or rubric.",
+      "type": ["object", "null"],
       "required": [
         "family",
         "editor",

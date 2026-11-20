@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 35
     },
     {
@@ -65,8 +65,21 @@
       "use": "idea"
     }
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 6,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -162,5 +175,10 @@
       "Calculates cost using the old $0.12/GB-month pricing instead of current $0.10/GB-month rate.",
       "Recommends Option 2 without noting that 2.5 TB leaves zero headroom for the 3M rows/day growth."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

@@ -7,12 +7,17 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 const bin = path.join(__dirname, '..', 'bin', 'migrate.js');
 const run = (args) => spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8' });
 const line = '{"id":"a","customer":"A","total":1.005,"placed":"02/29/2024","status":"DONE","address":"1 X St, Y, CA 90210-1234"}\r\n';
 
 test('up twice changes nothing and down restores the original bytes', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rb-'));
+  const dir = tempDir('rb-');
   const file = path.join(dir, 'orders.jsonl');
   fs.writeFileSync(file, line);
   run(['up', '--dir', dir]);

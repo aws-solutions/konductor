@@ -1,0 +1,32 @@
+{
+    "Statement": [
+        {
+            "Resource": "arn:aws:s3:::nightly-exports-example/exports/*",
+            "Action": [
+                "s3:PutObject",
+                "s3:UploadPart"
+            ],
+            "Effect": "Allow",
+            "Sid": "WriteExportObjects"
+        },
+        {
+            "Resource": [
+                "arn:aws:dynamodb:us-test-1:111122223333:table/LedgerRecords",
+                "arn:aws:dynamodb:us-test-1:111122223333:table/LedgerRecords/index/by_day"
+            ],
+            "Action": "dynamodb:Query",
+            "Effect": "Allow",
+            "Sid": "ReadLedgerIndex"
+        },
+        {
+            "Resource": "arn:aws:kms:us-test-1:111122223333:key/12345678-1234-4abc-8def-1234567890ab",
+            "Action": [
+                "kms:GenerateDataKey",
+                "kms:Decrypt"
+            ],
+            "Effect": "Allow",
+            "Sid": "UseExportKey"
+        }
+    ],
+    "Version": "2012-10-17"
+}

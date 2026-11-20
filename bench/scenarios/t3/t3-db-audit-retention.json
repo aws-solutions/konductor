@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 22
     },
     {
@@ -60,8 +60,21 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
-  "version": 1,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 14,
+      "alt": 100,
+      "date": "2026-11-20"
+    }
+  },
+  "version": 2,
   "targetSkills": [
     "system-design-patterns",
     "decision-writing"
@@ -157,5 +170,10 @@
       "proposes daily DELETE operations for retention cleanup without recognizing this requires full table scans and violates the time-bucket deletion requirement",
       "calculates raw storage (190 TB) but forgets index overhead, incorrectly concluding the 2-index or 3-index options fit within 300 TB"
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "HE hand-edit backfill session",
+    "log": "HAND-EDITS.md"
   }
 }

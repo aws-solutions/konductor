@@ -7,8 +7,13 @@ const os = require('node:os');
 const path = require('node:path');
 const { dedupeCustomers } = require('../scripts/dedupe-customers');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 test('duplicates by email are merged, archived and their orders re-pointed', () => {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dd-'));
+  const d = tempDir('dd-');
   const c = (id, email, updatedAt) => ({ id, name: id, email, phone: '', tier: 'basic', notes: '', createdAt: updatedAt, updatedAt });
   fs.writeFileSync(path.join(d, 'customers.json'), JSON.stringify([c('a', 'X@example.com', '2024-01-01'), c('b', 'x@example.com', '2024-02-01')]));
   fs.writeFileSync(path.join(d, 'orders.json'), JSON.stringify([{ id: 'o', customerId: 'a', totalCents: 1 }]));

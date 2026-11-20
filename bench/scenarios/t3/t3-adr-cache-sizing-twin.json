@@ -52,7 +52,7 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-19",
+    "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
       "stub": 0,
@@ -103,7 +103,34 @@
         "verdict": "pass",
         "note": "All required inputs are present: price-sheet.json has node data, operating-model.md has the 25% reservation; the prompt specifies output location and rounding rules."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The task.json prompt field specifies only the inputs, arithmetic outputs, destination, rounding, and no-recommendation constraint; it names no method, checklist, tool, trap, or expected answer."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/price-sheet.json supplies raw node inputs and fixture/operating-model.md supplies the 25% reservation, while the other fixture files provide context or decoys without stating computed results."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The expertKey items in task.json are supported by fixture/operating-model.md, price-sheet.json, price-sheet.md, README.md, traffic-profile.md, candidate-configs.json, and the prompt; cache-105 computes to about 8.25 USD/usable GB."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The task.json prompt identifies the source files, formula inputs, rounding, and output path, and the three node records in fixture/price-sheet.json are sufficient to calculate every requested table value without hidden information."
+        }
+      ]
+    }
   },
   "expertKey": {
     "items": [
@@ -155,5 +182,10 @@
       "calculates price per advertised GB instead of price per usable GB, ignoring the 25% engine overhead that defines usable capacity.",
       "creates docs/adr/0001-cache.md instead of docs/memory-table.md, following the README's architecture framing rather than the explicit prompt instruction."
     ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "T3 batch worker session",
+    "log": "HAND-EDITS.md"
   }
 }
