@@ -1,7 +1,7 @@
 {
   "id": "t11-docx-room-booking-reqs",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -25,7 +25,7 @@
       "type": "file_exists",
       "path": "docs/requirements/room-booking.md",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "min_matches",
@@ -33,20 +33,20 @@
       "pattern": "- \\*\\*RB-\\d{3}\\*\\*",
       "min": 16,
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "contains",
       "path": "docs/requirements/room-booking.md",
       "pattern": "## Open questions",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "fixture_unchanged",
       "path": "inbox/room-booking-spec-v3.docx",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     }
   ],
   "rubric": [
@@ -109,34 +109,78 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A lazy answer (copying table values like 21 days, 4 hours, using 'could' for wishlist items) would fail tests: old-duration-absent (catches '4 hours'), advance-window (needs '30 calendar days'), no-wishlist-priority (catches 'could'), youth-conflict (must be in openQuestions). Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 96 in pilot wave 11, while the dry run keeps the lazy answer at 39.5 and the stub at 4.8, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
+        "note": "A lazy answer (copying table values like 21 days, 4 hours, using 'could' for wishlist items) would fail tests: old-duration-absent (catches '4 hours'), advance-window (needs '30 calendar days'), no-wishlist-priority (catches 'could'), youth-conflict (must be in openQuestions). Strengthened, not easy by design (wave 11/12 review fix, 2026-11-21): a lazy answer that copied the Booking limits table as written and skipped the revision notes scored 79.6, because the trap items were 10 of 35 weights and the shape checks counted as substance. Now a gate item fails every hidden test when no requirement applies either revised value (30 days or 3 hours), and the shape checks are format: that answer (answers/.../shallow) scores 0, one revision applied 86.1, no open question 91.7."
       },
       {
         "check": "floor",
         "verdict": "pass",
         "note": "All tests derive from the Word document. The key correctly reads the revision notes as overriding table values. The no-padding constraint (14-16 requirements) is reasonable. The youth conflict is properly flagged as undecided in the source. No timing-dependent or image-based tests."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to convert Word doc to requirements, names no method/framework, contains no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains DOCX source but no pre-existing room-booking.md or requirements matching hidden test key."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check requirements extracted from DOCX; rubric anchors (Fail/Partial/Pass) follow request for narrative judgment."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can read DOCX, extract requirements, format per template with RB-### ids, priorities, source sections, open questions, and JSON block."
+        }
+      ],
+      "version": 4
+    }
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 4.8,
+    "stub": 0,
     "dryRun": {
       "reference": 100,
-      "stub": 4.8,
-      "lazy": 39.5,
+      "stub": 0,
+      "lazy": 0,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "editor": "mate wave 11/12 review-fix worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   }
 }

@@ -71,5 +71,39 @@
     "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
     "log": "HAND-EDITS.md",
     "version": 3
+  },
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "verdicts": [],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:27 asks for a coverage-gap review and names no method, process, framework, or tool for doing it. The undecided e2e planning statement is relevant scope, not a misleading route away from the review."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/.bench-answer-key.md:1-26 is explicitly an answer key and directly lists the seeded defects and the exact coverage gaps. This leaks the answer the task asks the agent to derive. (disposition: bench/fixtures/inventory-api/.bench-answer-key.md is the grader's key; sandbox.copyFixture (bench/runner/lib/sandbox.js:228) never copies it into the agent's workspace)"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "task.json:27 names existing src/, test/, and test-coverage-review/ paths, and the checks use those paths. Rubric asks for the requested severity summary while deferring e2e planning, with anchors that distinguish planning from reporting."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "README.md and the source and test files provide enough behavior and coverage information to review gaps without the key. The checks and rubric allow any appropriately supported report rather than requiring the reference's wording or structure."
+        }
+      ],
+      "version": 3
+    }
   }
 }

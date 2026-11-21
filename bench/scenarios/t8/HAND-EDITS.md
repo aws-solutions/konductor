@@ -207,3 +207,29 @@ Who: claude (mate spot-review fix worker session), from /tmp/pilot-w8 (pin 7cc81
 - `t8-tpm-rollout-regions` (pilot 53): five weight-10 items read fixed positions (`steps.4.percent` ... `steps.12.percent`) and `capacity.canaryPercent`, a field the request never names; they now look for a step naming the region at 100 percent and a 5 percent canary step. `steps` may hold fewer than 14 entries (the request says "no more than 14"); goNoGo may hold 4 to 14. Pilot answer 93.3; it still misses the schema-expand step before the writer (real).
 - `t8-pm-cert-expiry-region` (pilot 63): evidence precision counts lines naming the certificate (serial A7E4-91C2, gw-auth-eu, the TLS handshake error), not only the literal `not_after` words; timeline up to 24 entries. Pilot answer 87.5; its evidence precision (6 of 14) is still under 0.5 (real).
 - `bench/scenarios/pilot-table.js`: the answer-leak flag skipped paths named in `hidden/`, `answers/`, ... even when the task itself asks the agent to write there; t8-neg-config-question writes `answers/prod-debug.json`. Paths the task names in its checks or request are now ignored (test in `pilot-table.test.js`); the wave 8 table has no answer-leak flag.
+
+## Judge-vs-code fixes (2026-11-21, mate judge-vs-code worker, claude)
+
+- `t8-rollout-ledger-migration` v4: expertKey item `flag` now names this folder's switch: "a flag or kill switch, or in
+  this folder the ledger-v3 traffic share on ledger-public set to 0 while the 3.0 hosts stay deployed". The folder has
+  no feature flag (the request says to use what is in the folder), and the canary log already shows
+  `action=traffic_paused` on `ledger-public`. Both pilot plans roll back by setting that share to 0; gpt-5.6-luna
+  quoted it and still failed the item. The judged 0 on both runs has a second cause that is not the key:
+  deepseek-3.2 and qwen3-coder-next answered "(nothing in the output)" for all six items, although the plan addresses
+  at least four of them (see `reports/judge-vs-code-gaps-2026-11-21.md` and DEBT D-149). No check or fixture changed.
+- `t8-rollout-ledger-migration` v5: five expert items (expand-contract, canary-compare, data-rollback, gates-before,
+  timing) keep their points and now state them with this folder's facts, as the other T8 keys do: the migration file
+  names and the release-notes rule for 003, the cohort=canary / cohort=stable log tags, settlement_code as what 2.x
+  reads and 003 as the step that cannot be undone, the metric files, and the freeze (2025-11-21 18:00) and
+  contingency (2025-11-19 13:00) times. After v4, qwen3-coder-next failed every item because the plan "does not quote
+  any passage" stating the textbook sentence, while quoting the plan's own lines on the same point (the 001/002/003
+  safety, the 003 point of no return, the stop rules); deepseek-3.2 failed every item with no evidence. The T8 keys
+  judges score well (t8-runbook-db-failover, t8-pm-cache-stampede) all name folder facts. The weak answers are kept.
+  The judge-side habit is flagged by `blankExpert` (bench/judge/views.js, D-149).
+
+## Version bump for the 2026-11-21 judge-vs-code edits (mate debt worker, DEBT D-150)
+
+The judge-vs-code edits of 2026-11-21 changed these tasks without a new version, so an older recheck still cleared the lock. Each is now one version up with `handEdited.version` set, and `bench/scenarios/content-lock.json` records it; `scenarios ready` blocks the lock until a non-Claude recheck records that version. No content changed in this step.
+
+Round 6 non-Claude recheck (2026-11-21, qwen3-coder-next, call Q1): t8-rollout-ledger-migration v6 passes 4 of 4, in
+`review.recheck`. The call read the content at v5; the D-150 bump to v6 changed only the version.

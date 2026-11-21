@@ -111,6 +111,23 @@ const OPS = {
     const ok = got !== null && Math.abs(got - a.value) <= tol + 1e-9;
     return { ok, detail: got === null ? `${a.path} is not a number` : `got ${got}, want ${a.value} +/- ${tol}` };
   },
+  // A total built the way an estimate guide says: every item's estimate is one of the guide's values (`allowed`), the
+  // total is their sum (rounded up to a whole day at most, as a guide may allow), and it sits within `minPct`..`maxPct`
+  // of the reference total `value`. Sizing each ticket is judgment, so the band is wide; adding wrongly fails.
+  guideTotal(doc, a) {
+    const got = toNum(getPath(doc, a.path));
+    const each = list(getPath(doc, a.items)).map((el) => toNum(getPath(el, a.field)));
+    if (got === null) return { ok: false, detail: `${a.path} is not a number` };
+    if (!each.length || each.some((n) => n === null)) return { ok: false, detail: `${a.items}[].${a.field} missing or not numbers` };
+    const offGuide = each.filter((n) => !a.allowed.some((v) => Math.abs(v - n) < 1e-9));
+    const sum = each.reduce((s, n) => s + n, 0);
+    const adds = Math.abs(got - sum) < 1e-9 || (got > sum && got - sum < 1 && Number.isInteger(got));
+    const lo = (a.value * a.minPct) / 100;
+    const hi = (a.value * a.maxPct) / 100;
+    const inBand = got >= lo - 1e-9 && got <= hi + 1e-9;
+    const ok = !offGuide.length && adds && inBand;
+    return { ok, detail: `total ${got}, items sum ${sum}${offGuide.length ? `, off-guide ${offGuide.join(', ')}` : ''}, band ${lo}-${hi}` };
+  },
   equals(doc, a) {
     const got = getPath(doc, a.path);
     const wants = a.oneOf ?? [a.value];

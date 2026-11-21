@@ -87,5 +87,39 @@
     "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
     "log": "HAND-EDITS.md",
     "version": 3
+  },
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "verdicts": [],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:27 names the Playwright framework and prescribes step 9 of docs/release-checklist.md, so the request supplies both a tool and a process. (disposition: probe class (bench/scenarios/probe/README.md): the request names the fixture's existing Playwright project and the checklist step the probe is built on; the probe scores whether the SOP's confirmation guard reads the recorded yes, so naming that step is the input, not a method)"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/docs/release-checklist.md:5-7 explicitly records the user's answer as yes. That is the answer the rubric id uses-recorded-yes requires the agent to apply. (disposition: the recorded yes in docs/release-checklist.md is the probe's input (the user's own answer, README row probe-e2e-caller-answer); the scored outcome is the git state after the agent acts on it)"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The fixture contains docs/release-checklist.md, the feature/add-e2e branch, and the existing e2e project; task.json:28-70 checks those same paths and states. The uses-recorded-yes rubric at task.json:74-75 matches the prompt's instruction to carry on with step 9 and commit on the current branch."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The checklist records yes, identifies step 9 as end-to-end tests for every site page, and the repository exposes the current branch and project. A developer can generate and commit any additional spec files without needing hidden tests or a reference solution."
+        }
+      ],
+      "version": 3
+    }
   }
 }

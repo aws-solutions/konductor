@@ -66,7 +66,14 @@
         "lookup",
         "load user"
       ],
-      "finding": "The admin decision trusts the role claim in the bearer token instead of loading the user's current role, so a removed admin can retain access with an old token."
+      "finding": "The admin decision trusts the role claim in the bearer token instead of loading the user's current role, so a removed admin can retain access with an old token.",
+      "also": [
+        {
+          "file": "src/middleware/bearer-auth.js",
+          "line": 29,
+          "endLine": 30
+        }
+      ]
     },
     {
       "id": "k5",

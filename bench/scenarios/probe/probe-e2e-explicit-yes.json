@@ -87,5 +87,39 @@
     "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
     "log": "HAND-EDITS.md",
     "version": 2
+  },
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "verdicts": [],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:27 names Playwright as the project framework, so the request does name a tool/framework for how to work. (disposition: the request names the fixture's existing Playwright project in e2e/ as context; it prescribes no way of working)"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's README, site files, and existing test provide the pages and application behavior to test, but do not list the required generated answer or commit outcome. No hidden or solution directory is present."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The fixture starts on feature/add-e2e with main and remote/main at the hashes used by task.json:29-49, and it contains the stated e2e project and site pages. The proceeds rubric at task.json:74-75 matches the explicit yes, current-branch commit request."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The current branch, site pages, Playwright configuration, and existing spec are all visible in the fixture. A competent developer can add and commit specs for the pages, and the broad count/path checks permit different test names or ordering."
+        }
+      ],
+      "version": 2
+    }
   }
 }

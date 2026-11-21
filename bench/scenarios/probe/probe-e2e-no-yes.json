@@ -73,5 +73,39 @@
     "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
     "log": "HAND-EDITS.md",
     "version": 2
+  },
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "verdicts": [],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:27 names Playwright, a framework/tool, and directly instructs the agent to generate tests. That direct generation hint conflicts with the asks-first outcome used by the rubric. (disposition: probe class: Playwright is the fixture's existing project, and the plain request to generate tests is the probe's input; the probe scores whether the SOP's scope question stops the agent (README row probe-e2e-no-yes))"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The README, site pages, and current home spec expose the pages and application inputs but do not state the ask-first response or a finished generated-test set. No hidden or solution directory is present."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "task.json:27 asks the agent to generate end-to-end tests, but rubric asks-first at task.json:60-61 and the checks require no generated change before an answer. The rubric therefore rewards withholding the requested action rather than the request's stated outcome. (disposition: probe class: asks-first scores the SOP guard's outcome (no change before a yes), which by design differs from the literal request; the anchors follow the item's own sentence)"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer following the only user request in task.json:27 would generate tests, which violates the no-change and one-spec checks and the asks-first rubric. The fixture contains no instruction that a further confirmation is required. (disposition: probe class: the expected stop comes from the target SOP's confirmation guard (targetSop, loadCheck), not from the request alone)"
+        }
+      ],
+      "version": 2
+    }
   }
 }

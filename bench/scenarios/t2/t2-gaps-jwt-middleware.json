@@ -1,6 +1,6 @@
 {
   "id": "t2-gaps-jwt-middleware",
-  "version": 4,
+  "version": 6,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -151,50 +151,68 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a PR review with specific findings format (location/severity/issue/fix) and tells the agent to read pr/87 and inspect surrounding code. No method/framework name is given for how to review, and no decoy (the removed d2 decoy in edits.md was the only one, and it sat on a line already discussed)."
+          "note": "Request asks to review PR 87 for JWT bearer token migration, no specific review method prescribed, no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture's code (bearer-auth.js, token.js, session-routes.js, role-guard.js) shows the buggy implementation but does not name the security issues (algorithm confusion, time unit mismatch, refresh token replay, role claim trust, token leak in 401, missing negative tests). No comment, doc, or filename reveals the answer."
+          "note": "Fixture shows JWT implementation but does not list security vulnerabilities (algorithm confusion, time unit error, token replay, role trust, token leakage, missing tests)."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Every finding in key.json (k1-k6) maps to actual lines/code in the fixture: k1 to bearer-auth.js:23-27 and token.js:37/session-routes.js:30, k2 to bearer-auth.js:36-38, k3 to session-routes.js:28-34, k4 to role-guard.js:3-5, k5 to bearer-auth.js:7-10 and :32, k6 to tests/bearer-auth.test.js:13-18. The checks verify findings.json format, location validity, and fixture unchanged. The rubric r1 anchors on concrete project-specific consequences and actionable fixes, matching the findings' wording."
+          "note": "Key items reference specific code lines in fixture; edits.md shows k2 was corrected (milliseconds vs seconds); rubric anchors added focus on concrete consequences and actionable fixes."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A competent Node.js developer could discover all six issues by reading the PR description, diff in pr/87, fixture source code, and test file. Each finding is grounded in actual code behavior (e.g., Date.now() vs NumericDate, algorithm header trust, no refresh token invalidation). A solution with different phrasing or file references that identifies the same problems would pass the hidden tests."
+          "note": "Security issues like algorithm confusion, time unit mismatch, token replay, role trust from token, token leakage in 401 responses are discoverable through JWT verification code review."
         }
-      ]
+      ],
+      "version": 6
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate judge-vs-code worker (2026-11-21)",
+    "log": "HAND-EDITS.md",
+    "version": 6
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 7.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
       "lazy": 32,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

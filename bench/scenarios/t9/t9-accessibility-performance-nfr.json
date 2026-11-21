@@ -1,11 +1,11 @@
 {
   "id": "t9-accessibility-performance-nfr",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "nfr",
   "role": "frontend",
   "questions": "allowed",
-  "prompt": "The order-history page works on my laptop, but support ticket 4417 and the accessibility audit (docs/audit-notes.md) want three fixes.\n\n1. Keyboard and screen reader. The status filter (All, Processing, Shipped, Delivered) must work with the keyboard alone: Tab reaches it, arrow keys change the choice, and each label is read out. After any filter change, a polite announcement says `N orders shown`, where N is every order that matches, not the rows on screen.\n\n2. Date errors. If To is before From, or a date does not exist (2025-02-30), show a specific message next to the field it belongs to (To, for a backwards range). Assistive technology must tie the message to that field, and the field must be marked invalid. Fixing the input removes the message.\n\n3. Typing in the search box must not filter and redraw the list on every key. Wait for a 200 ms pause; Enter filters at once. Put the search in `src/search.js` as `createSearch({ orders, delayMs, schedule, onResults })`, with no DOM access. `schedule(fn, ms)` runs fn later and returns a function that cancels it. It returns `{ setQuery(text), submit() }`, and `onResults` gets the full list of matches. The page shows at most 50 rows, with a `Show more` button for the next 50.\n\nSearch, dates and statuses must behave as they do today, and data/orders.js stays as it is. Update the audit notes and the Unreleased changelog, and add tests. Then tell me what you did and what you left out.",
+  "prompt": "The order-history page works on my laptop, but support ticket 4417 and the accessibility audit (docs/audit-notes.md) want three fixes.\n\n1. Keyboard and screen reader. The status filter (All, Processing, Shipped, Delivered) must work with the keyboard alone: Tab reaches it, arrow keys change the choice, and each label is read out. After any filter change, a polite announcement says `N orders shown`, where N is every order that matches, not the rows on screen.\n\n2. Date errors. If To is before From, or a date does not exist (2025-02-30), show a specific message next to the field it belongs to (To, for a backwards range). Assistive technology must tie the message to that field, and the field must be marked invalid. Fixing the input removes the message.\n\n3. Typing in the search box must not filter and redraw the list on every key. Wait for a 200 ms pause; Enter filters at once. Put the search in `src/search.js` as `createSearch({ orders, delayMs, schedule, onResults })`, with no DOM access. `schedule(fn, ms)` runs fn later and returns a function that cancels it. It returns `{ setQuery(text), submit() }`, and `onResults` gets the full list of matches. The page shows at most 50 rows, with a `Show more` button for the next 50.\n\nSearch, dates and statuses must behave as they do today, and data/orders.js stays as it is. Update the audit notes and the Unreleased changelog, and add tests (at least four new ones). Then tell me what you did and what you left out.",
   "fixture": "t9-accessibility-performance-nfr",
   "hidden": "t9-accessibility-performance-nfr",
   "timeoutSec": 2400,
@@ -73,7 +73,7 @@
       },
       {
         "id": "cap-tradeoff",
-        "text": "States the trade-offs of the 50-row cap: browser find (Ctrl+F) and select-all only see rendered rows, a screen reader user must activate Show more to reach later rows, the count in the live region stays the full total, and focus stays on the button while new rows append after it; a virtual list or a proper pager were the alternatives.",
+        "text": "States the trade-offs of the 50-row cap: rows not yet shown are out of reach of browser find, select-all and a screen reader until Show more is used, while the live-region count stays the full total; it may also say where focus goes after Show more or name another design (such as a virtual list or a pager).",
         "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
       },
       {
@@ -83,7 +83,7 @@
       },
       {
         "id": "limits",
-        "text": "Mentions what was not verified or is still open: the 200 ms delay is a fixed choice with no real-device test on a mid-range phone, the live region wording for a single order reads '1 orders shown' as specified, and Enter on the search box now flushes the wait instead of submitting a form.",
+        "text": "Mentions what was not verified or is still open, such as: the 200 ms delay is a fixed choice not tested on a slow device, the live-region wording for a single order ('1 orders shown' as specified), or the change in what Enter on the search box does.",
         "source": "https://www.w3.org/WAI/WCAG22/quickref/ (W3C Document License (checked on the W3C site); idea only, no text used; idea only, paraphrased)"
       }
     ],
@@ -171,5 +171,11 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate recheck worker (2026-11-21): request states the test count; two expert items take other details (round 6 recheck L8)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }

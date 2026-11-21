@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-avatar-upload",
-  "version": 3,
+  "version": 6,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -72,7 +72,7 @@
     },
     {
       "id": "k3",
-      "finding": "Trusting client-supplied Content-Type: Only checking the Content-Type header without verifying the actual file content allows attackers to upload non-image files with image MIME types.",
+      "finding": "The image check trusts the client-supplied Content-Type and then only sniffs the leading bytes with imghdr, so a file that starts with an image header but carries other content (a polyglot) is accepted as an image.",
       "weight": 1
     },
     {
@@ -156,50 +156,68 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric aligns with request for review focusing on 'security implications of file uploads, error handling'. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt specifies focus areas (security, error handling, consistency) but names no review method, checklist, process, decoy, or number of problems.)."
+          "note": "The prompt asks for a code review focused on upload security, error handling, and existing patterns, but does not prescribe a framework, tool, or review procedure. Its claims about prior testing and updated docs are matters to verify, not a misleading alternative problem."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Judge-only rubric; no answer content in criterion. Earlier minimax-m2.5 check of the request, fixture and key: pass (No comments, tests, docs, or file names in the fixture reveal the planted problems. The api.md at line 105 contains wrong documentation (claiming automatic deletion) which is the planted problem itself, not a hint.)."
+          "note": "fixture/docs/security.md:7-26 states the expected path-traversal prevention, 2MB limit, image validation, and old-avatar cleanup, and fixture/docs/api.md:105 states the cleanup behavior verbatim. These fixture documents expose several behaviors that the hidden key checks. (disposition: docs/security.md and docs/api.md state the project's existing upload rules; the review task checks the PR (pr/418/changes.diff) against them, and the defects the key lists are in that diff, not in the docs)"
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: findingsKey references upload elements (path traversal, size limit, Content-Type, temp files, email in URL) in fixture code. Earlier minimax-m2.5 check of the request, fixture and key: pass (All 7 key items correctly match fixture locations: k1 (image_helpers.py:55-56 path traversal), k2 (user_handler.py:263 missing max_size), k3 (image_helpers.py:106-107 Content-Type only), k4 (image_helpers.py:77-125 temp cleanup), k5 (user_handler.py:275 email in URL), k6 (user_handler.py:207-209 no old file deletion), k7 (api.md:105 wrong doc). Severities are defensible.)."
+          "note": "Every keyed location and behavior is present in the PR diff and fixture, including MAX_UPLOAD_SIZE in config.py, imghdr validation, temporary-file creation, email-based URLs, avatar replacement, and the API documentation claim. The rubric's anchored criterion asks for grounded consequences and actionable fixes, which matches the requested review rather than the reference's wording or ordering."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different correct reviews can Pass; rubric judges grounding. Earlier minimax-m2.5 check of the request, fixture and key: pass (All planted problems are discoverable through careful review of the fixture code: path traversal in os.path.join, missing max_size param in function call, Content-Type header check without content verification, missing tempfile cleanup in finally block, email in URL construction, no old file deletion in update handler, and doc claiming automatic deletion that doesn't exist in implementation.)."
+          "note": "The PR diff, surrounding source, configuration, API/security documentation, and tests provide enough context to identify the findings and report valid file locations without hidden tests or the solution. The key matches locations with slack and does not require the reference's prose, order, or JSON shape."
         }
-      ]
+      ],
+      "version": 6
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate recheck worker (2026-11-21): findingsKey k3 text follows the hidden key (round 6 recheck)",
+    "log": "HAND-EDITS.md",
+    "version": 6
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 7.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
       "lazy": 32,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

@@ -28,7 +28,13 @@
         "MAX_UPLOAD_SIZE",
         "config"
       ],
-      "finding": "Missing file size limit: process_image_upload is called without the max_size parameter, bypassing the 2MB limit defined in config.MAX_UPLOAD_SIZE."
+      "finding": "Missing file size limit: process_image_upload is called without the max_size parameter, bypassing the 2MB limit defined in config.MAX_UPLOAD_SIZE.",
+      "also": [
+        {
+          "file": "src/forum/handlers/user_handler.py",
+          "line": 239
+        }
+      ]
     },
     {
       "id": "k3",
@@ -42,9 +48,18 @@
         "file",
         "content",
         "imghdr",
-        "magic"
+        "magic",
+        "structural",
+        "signature",
+        "decode"
       ],
-      "finding": "Trusting client-supplied Content-Type: Only checking the Content-Type header without verifying the actual file content allows attackers to upload non-image files with image MIME types."
+      "finding": "The image check trusts the client-supplied Content-Type and then only sniffs the leading bytes with imghdr, so a file that starts with an image header but carries other content (a polyglot) is accepted as an image.",
+      "also": [
+        {
+          "file": "src/forum/utils/image_helpers.py",
+          "line": 32
+        }
+      ]
     },
     {
       "id": "k4",
@@ -102,9 +117,17 @@
         "update",
         "accurate",
         "remove",
-        "claim"
+        "claim",
+        "docs",
+        "delete the previous"
       ],
-      "finding": "Documentation incorrectly claims old files are automatically deleted, but the implementation doesn't delete old avatar files when users update their avatar URL."
+      "finding": "Documentation incorrectly claims old files are automatically deleted, but the implementation doesn't delete old avatar files when users update their avatar URL.",
+      "also": [
+        {
+          "file": "src/forum/handlers/user_handler.py",
+          "line": 278
+        }
+      ]
     }
   ],
   "decoys": [

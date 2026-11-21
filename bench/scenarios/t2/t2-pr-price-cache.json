@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-price-cache",
-  "version": 4,
+  "version": 5,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -151,51 +151,68 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric matches request to check implementation 'preserves documented behavior' and 'tests and configuration still make sense'. Earlier qwen3-coder-next check of the request, fixture and key: pass (Prompt names a review method (read repo, check behavior) and specific files (pr/508/description.md, changes.diff); no planted problem/decoy/count is indicated)."
+          "note": "Request asks to review PR 508 for catalog API cache addition, no specific review method prescribed, no misleading hints pointing away from real problems."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Judge-only rubric; anchors are quality thresholds. Earlier qwen3-coder-next check of the request, fixture and key: pass (Fixture files contain no comments, tests, docs or filenames that state any planted problem; test/price-cache.test.mjs:70-73 is a decoy test that verifies falsy values are preserved)."
+          "note": "Fixture contains PR description and diff showing implementation, but does not list the specific security flaws (tenant isolation, TTL mismatch, mutation, deduplication, eviction, invalidation) that are key findings."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: findingsKey references cache elements (tenant isolation, invalidation, TTL unit, concurrent misses, mutation) in fixture code. Earlier qwen3-coder-next check of the request, fixture and key: pass (All 6 key items (k1-k6) have correct file/line locations: k1=price-service.mjs:11-12 (tenant-scoped cache key), k2=price-service.mjs:24-25 (replace missing invalidation), k3=app.mjs:22-24 (ttlSeconds/ttlMs mismatch), k4=price-service.mjs:28-29 (#load no dedup), k5=price-cache.mjs:26 (direct reference return), k6=price-cache.mjs:29-31 (maxEntries never enforced))."
+          "note": "Key items reference specific lines in fixture files (price-service.mjs, app.mjs, price-cache.mjs) that exist; rubric anchors ask for concrete consequences and actionable fixes matching request focus."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Alternative valid reviews can Pass; rubric judges consequence explanation. Earlier qwen3-coder-next check of the request, fixture and key: pass (All 6 issues are visible in fixture: tenant key omission (price-service.mjs:11), replace invalidation gap (price-service.mjs:24-25), TTL unit mismatch (app.mjs:22), no in-flight dedup (price-service.mjs:28), direct reference return (price-cache.mjs:26), no eviction (price-cache.mjs set method))."
+          "note": "Competent developer could identify cache tenant isolation, TTL unit mismatch, cache mutation, missing deduplication, missing eviction, and bulk replace invalidation issues from code review."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): the fixture's store test removes its temp dir (D-100)",
+    "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 4
+    "version": 5
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 7.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
       "lazy": 32,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

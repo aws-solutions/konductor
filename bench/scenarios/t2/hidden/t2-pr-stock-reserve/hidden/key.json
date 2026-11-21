@@ -75,7 +75,8 @@
       "fix": [
         "fake timers",
         "fake clock",
-        "advance time"
+        "advance time",
+        "inject a clock"
       ],
       "finding": "The expiry test waits 15 real milliseconds for a sub-millisecond hold, so scheduler load and timer granularity can make the test intermittently fail."
     }

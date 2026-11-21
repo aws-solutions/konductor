@@ -127,3 +127,43 @@ The fixture's `test/store.test.mjs` made a `catalog-test-` dir in TMPDIR and nev
 visible suite left one behind. The test now removes it in `t.after`. The pull request under review does not touch this
 file, and no key item reads it. Free gates unchanged: reference 100, stub 7.1, lazy 32, alt 100, dump 28.6. A case in
 `bench/runner/test/temp-leaks.test.js` fails on the old file. Non-Claude recheck: pending (`handEdited.version` 4).
+
+## Judge-vs-code fixes (2026-11-21, mate judge-vs-code worker, claude)
+
+From `reports/judged-pilot-waves-4-12-2026-11-21.md`: every wave 6 pr- review got 100 from the three judges and 49 to
+58 on code. Read against the reviews, the grader was at fault: literal keyword phrases, greedy pairing and a 1.5x
+length cap (fixed in the shared grader, `139a3665` and `3447c9d7`), and key items that named one line where the
+defect shows at two. The key edits below accept the other place or the reviewer's words; no item was dropped.
+
+| Date | Task | Who | What changed | Why |
+| --- | --- | --- | --- | --- |
+| 2026-11-21 | t2-pr-price-cache v5 | claude (mate judge-vs-code worker) | `key.json`: k3 also at `src/services/price-service.mjs:14`; k5 also at `price-service.mjs:12-15` | k3 (seconds passed as milliseconds) shows where `set` gets `this.ttlSeconds`; k5 (cached array returned by reference) shows where `list` returns it. The wave 6 review named those lines. |
+| 2026-11-21 | t2-pr-avatar-upload v4 | claude (mate judge-vs-code worker) | `key.json`: k2 also at `user_handler.py:239`; k3 also at `image_helpers.py:32`, finding rewritten, fix words structural / signature / decode added; k7 also at `user_handler.py:278`, fix words docs / delete the previous added | k3's finding said only the Content-Type is checked, but `validate_image_file` does sniff the bytes with `imghdr` (line 32); the real defect is that the sniff is weak (polyglots pass), which the review said. k2 (no size limit) shows where Content-Length is read; k7 (docs promise deletion) can be fixed in the code or the docs. |
+| 2026-11-21 | t2-pr-cursor-pages v4 | claude (mate judge-vs-code worker) | `key.json`: k1 also at `src/api/issues.js:20`, fix words after the last row; k2 also at `src/pagination/cursor.js:3`, fix word tiebreaker | k1's repeated row comes from the cursor encoded at line 20 as much as the `>=` at 18; k2 (no stable order) was named at the offset cursor with "id as a sort tiebreaker". |
+| 2026-11-21 | t2-pr-stock-reserve v3 | claude (mate judge-vs-code worker) | `key.json`: k6 fix words inject a clock | The review's fix for the 15 ms real-time wait was "Inject a clock". |
+| 2026-11-21 | t2-gaps-jwt-middleware v5 | claude (mate judge-vs-code worker) | `key.json`: k4 also at `src/middleware/bearer-auth.js:29-30` | The role claim is taken from the token where the middleware returns `verified.payload`, which is where the review named it. |
+
+Wave 6 runs scored again with the current grader (no model call): avatar 93.2, cursor 76.2, orders-migration 80.5,
+price-cache 83, refund-flow 86.4, stock-reserve 90.3, webhook-relay 86.4, jwt-middleware 100 (were 49 to 59). Gates of
+all 16 T2 tasks unchanged: reference 100, stub 7.1, lazy 28.6 to 35.1, alt 100, dump 28.6 to 35.7. Non-Claude recheck:
+pending for the five tasks above.
+
+<<<<<<< HEAD
+## Round 6 non-Claude recheck (2026-11-21, mate recheck worker)
+
+deepseek-3.2 (call D5) passed t2-pr-price-cache v5, t2-gaps-jwt-middleware v5, t2-pr-cursor-pages v4 and
+t2-pr-stock-reserve v3, 4 of 4 each. gpt-5.6-luna (call L5) failed t2-pr-avatar-upload v4 on two items. (1)
+key-matches-fixture: `findingsKey` k3 in the task file still said the upload checks only the Content-Type, while the
+fixture runs `imghdr` and the hidden key's k3 was already reworded to "trusts the Content-Type and only sniffs the leading
+bytes". Fixed (claude, by hand): the task file's k3 text now matches the hidden key; version 4 to 5. (2)
+fixture-lists-no-answer: `docs/security.md` lists the upload rules; disposed, because those are the project's existing
+rules the PR must be checked against, and the defects are in `pr/418/changes.diff`. A second gpt-5.6-luna recheck follows.
+=======
+## Version bump for the 2026-11-21 judge-vs-code edits (mate debt worker, DEBT D-150)
+
+The judge-vs-code edits of 2026-11-21 changed these tasks without a new version, so an older recheck still cleared the lock. Each is now one version up with `handEdited.version` set, and `bench/scenarios/content-lock.json` records it; `scenarios ready` blocks the lock until a non-Claude recheck records that version. No content changed in this step.
+>>>>>>> origin/feat/bench-pilot-nk
+
+After the D-150 bumps (9a8697f4, version field only, content unchanged): the round 6 rechecks above move to the bumped
+versions (t2-gaps-jwt-middleware v6, t2-pr-cursor-pages v5, t2-pr-stock-reserve v4). The k3 sync is a content change, so
+t2-pr-avatar-upload goes to v6 (content-lock.json recorded); its gpt-5.6-luna recheck L6 read that content.

@@ -213,29 +213,30 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request describes outbox pattern requirements without prescribing specific method. Edits clarify requirements, not add decoys."
+          "note": "Request describes architectural problem (payment notifications that don't disappear/duplicate) and specifies required interfaces/fields but doesn't prescribe specific implementation method or contain misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides building blocks (store, orders, broker) but doesn't reveal outbox implementation. No file describes finished behavior."
+          "note": "Fixture contains base code structure but doesn't list the solution or describe finished behavior. Only mention of x-event-id is in consumer documentation about how consumers work, not implementation guidance."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check for statusEvents collection, event fields, broker behavior matching request. Fixture has all required interfaces (store.js, orders.js, broker.js, http.js, config.js)."
+          "note": "Hidden tests check behaviors explicitly stated in request (fields, headers, error codes) or implied by requirements (queuing, deduplication, ordering). Rubric checks design matches code as requested."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can implement outbox from fixture and request. Different implementations (names, structure) that meet requirements would pass tests."
+          "note": "Competent developer can implement from request (specifies interfaces, data structures, config, errors, paths) and fixture (base code). Different correct implementations would pass behavioral tests."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "pilot": {

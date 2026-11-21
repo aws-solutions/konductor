@@ -45,46 +45,71 @@ function severityCredit(want, got) {
   return a === b ? 1 : Math.abs(a - b) === 1 ? 0.5 : 0;
 }
 
+// Keywords and finding text are compared as words: identifiers are split ("tenantId" and "tenant_id" read "tenant id",
+// "in-flight" reads "in flight"), so a keyword written as prose matches the same name written as code.
+const prose = (s) => norm(String(s ?? '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/\s+/g, ' '));
+
+// A one-word keyword is found anywhere in the text; a keyword of several words when each of its words starts a word
+// of the text, in any order ("remove token" in "Remove the token field"), since a reviewer rarely writes the phrase.
+function holds(text, keyword) {
+  const parts = keyword.split(' ').filter((p) => p.length > 2);
+  if (parts.length < 2) return text.includes(keyword);
+  return parts.every((p) => new RegExp(`(?<![a-z0-9])${escapeRe(p)}`).test(text));
+}
+
 function fixCredit(reported, key) {
-  const words = asList(key.fix).map(norm).filter(Boolean);
+  const words = asList(key.fix).map(prose).filter(Boolean);
   if (!words.length) return 1;
-  const text = norm(`${reported.fix ?? ''} ${reported.text ?? ''}`);
-  return words.filter((w) => text.includes(w)).length >= (key.fixMin ?? 1) ? 1 : 0;
+  const text = prose(`${reported.fix ?? ''} ${reported.text ?? ''}`);
+  return words.filter((w) => holds(text, w)).length >= (key.fixMin ?? 1) ? 1 : 0;
 }
 
 // With `fixRequired` a finding at the right place counts only when its fix or issue text holds a fix keyword, so a
 // generic remark at a coarse location (a section number) does not earn the location credit.
 function mentionsFix(reported, key) {
-  const words = asList(key.fix).map(norm).filter(Boolean);
-  const text = norm(`${reported.fix ?? ''} ${reported.issue ?? ''} ${reported.text ?? ''}`);
-  return !words.length || words.some((w) => text.includes(w));
+  const words = asList(key.fix).map(prose).filter(Boolean);
+  const text = prose(`${reported.fix ?? ''} ${reported.issue ?? ''} ${reported.text ?? ''}`);
+  return !words.length || words.some((w) => holds(text, w));
+}
+
+// The pairing of key items to findings with the most pairs (augmenting paths), each key item trying its best-fitting
+// findings first. A greedy pass in key order let one item take the only finding a later item could use.
+function pairUp(key, reported) {
+  const fits = key.map((k) => reported
+    .map((r, idx) => ({ idx, ok: locationHit(r, k) && !(k.fixRequired && !mentionsFix(r, k)), fit: severityCredit(k.severity, r.severity) + fixCredit(r, k) }))
+    .filter((c) => c.ok)
+    .sort((a, b) => b.fit - a.fit || a.idx - b.idx)
+    .map((c) => c.idx));
+  const owner = new Map();
+  const tryItem = (ki, seen) => {
+    for (const idx of fits[ki]) {
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      if (!owner.has(idx) || tryItem(owner.get(idx), seen)) { owner.set(idx, ki); return true; }
+    }
+    return false;
+  };
+  key.forEach((_, ki) => tryItem(ki, new Set()));
+  const byItem = new Map([...owner].map(([idx, ki]) => [ki, idx]));
+  return key.map((_, ki) => byItem.get(ki) ?? -1);
 }
 
 /**
- * Pure grader. `reported` is the parsed list (or null), `key` the task's findingsKey.
+ * Pure grader. `reported` is the parsed list (or null), `key` the task's findingsKey. `lengthAllowance` (default
+ * LENGTH_ALLOWANCE) sets how long a list may be, as a multiple of the key size, before the length term scales it down.
  * Each reported item matches at most one key item and each key item at most one reported item.
  */
-function gradeFindings(reported, key) {
+function gradeFindings(reported, key, { lengthAllowance = LENGTH_ALLOWANCE } = {}) {
   const n = key.length;
   const zero = { recall: 0, severityAccuracy: 0, fixAccuracy: 0, precision: 0, lengthTerm: 1, score: 0, reported: 0, matched: [], missed: key.map((k) => k.id) };
   if (!Array.isArray(reported)) return { ...zero, error: 'no findings block' };
-  const used = new Set();
   const hits = [];
-  for (const k of key) {
-    // Of the unused reported items at this location, take the one whose severity and fix fit this key item best
-    // (the first on a tie), so two findings a few lines apart are not swapped by the order they were listed in.
-    let i = -1, best = -1;
-    reported.forEach((r, idx) => {
-      if (used.has(idx) || !locationHit(r, k) || (k.fixRequired && !mentionsFix(r, k))) return;
-      const fit = severityCredit(k.severity, r.severity) + fixCredit(r, k);
-      if (fit > best) { best = fit; i = idx; }
-    });
-    if (i < 0) continue;
-    used.add(i);
-    hits.push({ id: k.id, sev: severityCredit(k.severity, reported[i].severity), fix: fixCredit(reported[i], k) });
-  }
+  pairUp(key, reported).forEach((i, ki) => {
+    if (i < 0) return;
+    hits.push({ id: key[ki].id, sev: severityCredit(key[ki].severity, reported[i].severity), fix: fixCredit(reported[i], key[ki]) });
+  });
   const found = hits.length;
-  const allowed = Math.ceil(n * LENGTH_ALLOWANCE);
+  const allowed = Math.ceil(n * lengthAllowance);
   const lengthTerm = reported.length > allowed ? allowed / reported.length : 1;
   const quality = hits.reduce((s, h) => s + 0.5 + 0.25 * h.sev + 0.25 * h.fix, 0) / (n || 1);
   return {

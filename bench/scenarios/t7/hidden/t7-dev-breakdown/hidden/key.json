@@ -131,11 +131,21 @@
     },
     {
       "id": "workday-total",
-      "desc": "total estimate follows the team guide",
-      "op": "number",
+      "desc": "total estimate follows the team guide: guide sizes per ticket, added up, within half to one and a half times the reference total",
+      "op": "guideTotal",
       "path": "total_estimate_days",
-      "value": 17.0,
-      "tolPct": 20
+      "items": "tickets",
+      "field": "estimate_days",
+      "allowed": [
+        0.5,
+        1,
+        2,
+        3,
+        5
+      ],
+      "value": 17,
+      "minPct": 50,
+      "maxPct": 150
     }
   ]
 }

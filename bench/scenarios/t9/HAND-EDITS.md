@@ -32,3 +32,20 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 had one judged rubric item with no Fail / Partial / Pass anchor. Each now has the three anchors, written from the
 task's own request (what a shopper or a registrant reads). No check, key, fixture or answer changed, so the free gates
 are unchanged. Non-Claude recheck of the anchors: pending (`handEdited.version` 2).
+
+## t9-accessibility-performance-nfr v2 (2026-11-21, mate recheck worker, claude)
+
+The first non-Claude recheck (gpt-5.6-luna, round 6 call L8) failed key-matches-fixture and solvable-from-fixture.
+The check that counts tests wants 35, but the fixture has 31 and the request only said "add tests". The request now
+says "at least four new ones". Expert items `cap-tradeoff` and `limits` required details only the reference had:
+focus staying on Show more, a virtual list or pager as the alternatives, and no test on a mid-range phone. Each now
+keeps its core point and gives those details as examples. Checks, hidden tests, fixture and answers are unchanged, so
+the free gates are unchanged (100 / 3.6 / 21.4 / 100). Version 1 to 2. One writer-family fix; a second gpt-5.6-luna
+recheck follows.
+
+Second recheck (gpt-5.6-luna, L9, v2): no-method-or-decoy and fixture-lists-no-answer pass. key-matches-fixture and
+solvable-from-fixture fail on a separate defect. `hidden/browser.test.js` "status filter is a radio group" finds the
+four options with `getByRole('radio')`. The fixture's status filter is plain `div` chips, and the request asks only
+for keyboard use, arrow keys and spoken labels. So a correct native select or listbox fails that test. Not fixed
+here: the writer family has had its one fix attempt (owner rule). Next step: either the request names the radio
+group, or the test also accepts a select or listbox; then one more non-Claude recheck.

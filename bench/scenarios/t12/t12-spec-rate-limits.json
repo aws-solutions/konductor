@@ -1,7 +1,7 @@
 {
   "id": "t12-spec-rate-limits",
   "class": "orchestration",
-  "version": 4,
+  "version": 5,
   "phase": "requirements",
   "phases2": [
     "architecture",
@@ -162,37 +162,39 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for a spec based on product request, names no specific method/framework/tool, contains no misleading hints"
+          "note": "The prompt specifies the documents and their required contents, but names no framework, tool, or prescribed implementation method. The superseded per-IP note is in the fixture's source material, not a misleading direction in the request."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Product request (rate-limits-request.md) is intentional input for spec task, not leaked answer; superseded per-IP note provides context"
+          "note": "The fixture supplies product decisions, plans, keys, authentication, routing, and the shared KV API, but contains no completed .kiro/specs output or implementation. Its product document states the agreed inputs, not a finished spec or solution beyond what the request asks the agent to derive."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check elements that exist in fixture (plans.json, keys.json, kv.js) or are stated in request; bounds (5-14, 3-14, 1-8) stated in prompt"
+          "note": "The requested output names, JSON schema, list bounds, and no-code constraint match the hidden checks. The key and rubric rely on fixture-backed paths and facts such as config/plans.json, requestsPerMinute, src/kv.js incr, authentication, /health, admin keys, shared instances, and the superseded IP note; their accepted trade-offs also match the rubric."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can write spec from product request and codebase; solution can differ in naming/structure/order and still pass"
+          "note": "The product request and repository files identify every agreed behavior and the code locations needed for a design and ordered task list, including the deliberately open burst figure. A competent developer can choose among the rubric's accepted window and store-failure trade-offs without seeing the hidden key or reference solution."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate wave 11/12 fix worker (2026-11-21)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate wave 11/12 review-fix worker (2026-11-21)",
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {},

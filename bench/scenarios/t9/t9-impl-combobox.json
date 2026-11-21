@@ -95,31 +95,32 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "request specifies combobox implementation with keyboard/pointer handling, accessibility roles, and reuse of existing rank function; no traps or decoys"
+          "note": "Request asks to create type-ahead picker with accessibility requirements but doesn't prescribe implementation method. Specifies behavior (keyboard nav, screen reader support)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture contains only basic form input; no comments, tests, or docs reveal implementation details"
+          "note": "Fixture shows basic form with country input but not finished combobox implementation. Hidden tests check for combobox behavior not described in fixture."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "hidden tests and task checks all match the request and solution: combobox/listbox roles, aria-expanded/activedescendant/selected, keyboard navigation, status announcements, rank function reuse"
+          "note": "Hidden tests check ranking behavior, country data, accessibility. Prompt mentions all key requirements. Rubric anchors align with request about maintaining welcoming tone."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "developer can implement: add country-picker.js module with combobox accessibility attributes, keyboard handlers (ArrowUp/Down/Enter/Escape), option rendering with textContent, and integration with existing rank function"
+          "note": "Competent frontend developer could implement accessible combobox from prompt and fixture. Requirements clear: keyboard nav, screen reader support, use existing data/ranking."
         }
-      ]
+      ],
+      "version": 2
     }
   },
   "handEdited": {

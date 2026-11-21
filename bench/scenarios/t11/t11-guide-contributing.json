@@ -102,7 +102,35 @@
         "verdict": "pass",
         "note": "All tests use reasonable timeouts (30s), derive facts from fixture files, and do not require images or external documents. Each testable fact exists in the repository."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to create CONTRIBUTING.md, names no method/framework, contains no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains repository files to document, but no pre-existing CONTRIBUTING.md with answer."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Checks test guide completeness and repository specifics; rubric anchors (Fail/Partial/Pass) follow request for review guidance."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can examine repository structure, package.json, tests, configs to write practical contributor guide."
+        }
+      ],
+      "version": 2
+    }
   },
   "pilot": {
     "scores": {},

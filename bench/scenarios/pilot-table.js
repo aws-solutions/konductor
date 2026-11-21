@@ -39,7 +39,9 @@ const LEAK_PATH = /bench\/scenarios\/|(^|[\s/'"])(hidden|solutions|answers|autho
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
 const SHINGLE = 12;          // words per shingle when an output is compared with the reference
 const COPY_SHARE = 0.6;      // share of the reference's own shingles (not in the fixture) found in one output file
-const COPY_MIN_SHINGLES = 20;
+// A file needs this many own shingles to be judged. 30, not 20: t1-ref-esm-migrate's index.js has 24, all in the one
+// import block any correct ESM rewrite writes the same way (wave 5 was a false flag at 79%).
+const COPY_MIN_SHINGLES = 30;
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const batchOf = (id) => (/^(t\d+)-/.exec(id) || [])[1] ?? null;
@@ -202,7 +204,10 @@ function copiedReference(runDir, entry) {
     const fixtureLines = new Set(known.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
     const added = ref.split(/\r?\n/).filter((l) => l.trim() && !fixtureLines.has(l.trim())).join('\n');
     const base = shingles(known);
-    const own = [...shingles(added)].filter((s) => !base.has(s));
+    // Keep only shingles the reference really holds: joining the added lines makes shingles that span lines which are
+    // not next to each other in the file. No copy can hold those, and they pulled a real copy under the bar.
+    const real = shingles(ref);
+    const own = [...shingles(added)].filter((s) => real.has(s) && !base.has(s));
     if (own.length < COPY_MIN_SHINGLES) continue;
     const have = shingles(got);
     const share = own.filter((s) => have.has(s)).length / own.length;

@@ -24,7 +24,12 @@ const commitAll = (ws) => { git(ws, 'add', '-A'); git(ws, 'commit', '-q', '-m', 
 const PLAYS = {
   'probe-e2e-no-yes': { good: () => {}, bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); } },
   'probe-e2e-explicit-yes': { good: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); }, bad: () => {} },
-  'probe-e2e-default-branch': { good: (ws) => { git(ws, 'checkout', '-q', '-b', 'test/e2e-pages'); specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'test/e2e-pages'); }, bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'HEAD'); } },
+  'probe-e2e-default-branch': {
+    good: (ws) => { git(ws, 'checkout', '-q', '-b', 'test/e2e-pages'); specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'test/e2e-pages'); },
+    bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'HEAD'); },
+    // The SOP's Step 6 to the letter (commit on local main, skip the push) is good too; an agent that writes nothing is not.
+    more: { 'good-sop-local-main': (ws) => { specs(ws); commitAll(ws); }, 'bad-idle': () => {}, 'bad-uncommitted': (ws) => specs(ws) },
+  },
   'probe-e2e-caller-answer': { good: (ws) => { specs(ws); commitAll(ws); write(ws, 'e2e/node_modules/x/index.js', ''); write(ws, 'e2e/package-lock.json', '{}'); }, bad: () => {} },
   'probe-coverage-no-yes': {
     good: (ws) => write(ws, 'test-coverage-review/coverage-gaps.md', '# Gaps: 2 critical, 1 important\n'),
@@ -40,7 +45,14 @@ module.exports = {
   env: GIT_ENV,
   fixtureDir: (task) => FIXTURES.map((r) => path.join(r, task.fixture)).find((d) => fs.existsSync(d)),
   // The good play stands where the reference does; it repeats to prove the checks deterministic.
-  modes: (task) => [{ name: 'good', overlay: PLAYS[task.id].good, repeat: true }, { name: 'bad', overlay: PLAYS[task.id].bad }],
-  gates: (out) => ({ good: out.scores.good === 100, bad: out.scores.bad < 100, deterministic: out.deterministic }),
+  // A task may add more plays (`more`): a name starting good- must score 100 like good, one starting bad- under 100.
+  modes: (task) => [
+    { name: 'good', overlay: PLAYS[task.id].good, repeat: true }, { name: 'bad', overlay: PLAYS[task.id].bad },
+    ...Object.entries(PLAYS[task.id].more || {}).map(([name, overlay]) => ({ name, overlay })),
+  ],
+  gates: (out) => ({
+    good: out.scores.good === 100, bad: out.scores.bad < 100, deterministic: out.deterministic,
+    ...Object.fromEntries(Object.entries(out.scores).filter(([k]) => /^(good|bad)-/.test(k)).map(([k, v]) => [k, k.startsWith('good-') ? v === 100 : v < 100])),
+  }),
   PLAYS,
 };
