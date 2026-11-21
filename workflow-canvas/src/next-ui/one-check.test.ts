@@ -62,6 +62,15 @@ function held() {
 
 const signalOf = () => new AbortController();
 
+/**
+ * A reader the test starts and does not read. A reader whose signal aborts
+ * fails, as the port says it does, so its failure is taken here rather than
+ * left for the runner to report.
+ */
+const reading = (answer: Promise<unknown>): void => {
+  void answer.catch(() => undefined);
+};
+
 describe('oneCheck', () => {
   it('makes one call for the text both readers ask about', async () => {
     const server = held();
@@ -138,7 +147,7 @@ describe('oneCheck', () => {
     const shared = oneCheck(server.validate);
     const mine = signalOf();
 
-    void shared.validate({ text: 'one' }, mine.signal);
+    reading(shared.validate({ text: 'one' }, mine.signal));
     mine.abort();
 
     expect(server.calls[0]?.signal.aborted).toBe(true);
@@ -159,7 +168,22 @@ describe('oneCheck', () => {
     expect(server.calls).toHaveLength(1);
     expect(server.calls[0]?.signal.aborted).toBe(false);
     expect((await judged).diagnostics).toHaveLength(1);
-    await expect(drawn).resolves.toBeDefined();
+    // The reader that gave up is answered then and there, and not with the
+    // answer it is no longer waiting for: its caller checks one text at a
+    // time, and a check it has called off would hold the next one back.
+    await expect(drawn).rejects.toThrow('The check was called off.');
+  });
+
+  it('asks nothing for a reader that has already given up', async () => {
+    const server = held();
+    const shared = oneCheck(server.validate);
+    const mine = signalOf();
+    mine.abort();
+
+    const drawn = shared.validate({ text: 'one' }, mine.signal);
+
+    expect(server.calls).toHaveLength(0);
+    await expect(drawn).rejects.toThrow('The check was called off.');
   });
 
   it('aborts the call once the last reader of it has given up', async () => {
@@ -167,8 +191,8 @@ describe('oneCheck', () => {
     const shared = oneCheck(server.validate);
     const first = signalOf();
     const second = signalOf();
-    void shared.validate({ text: 'one' }, first.signal);
-    void shared.validate({ text: 'one' }, second.signal);
+    reading(shared.validate({ text: 'one' }, first.signal));
+    reading(shared.validate({ text: 'one' }, second.signal));
 
     first.abort();
     expect(server.calls[0]?.signal.aborted).toBe(false);
@@ -181,7 +205,7 @@ describe('oneCheck', () => {
     const server = held();
     const shared = oneCheck(server.validate);
     const mine = signalOf();
-    void shared.validate({ text: 'one' }, mine.signal);
+    reading(shared.validate({ text: 'one' }, mine.signal));
     mine.abort();
 
     const judged = shared.check('one');

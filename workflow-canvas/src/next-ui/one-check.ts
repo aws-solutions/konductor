@@ -59,6 +59,13 @@ function resultOf(answer: CheckAnswer): CheckResult {
   };
 }
 
+// What a reader whose signal aborted is given, as the request behind it would
+// have given: `ValidatePort` says the check fails when its signal does, and a
+// caller that called it off drops the failure anyway.
+function calledOff(): Error {
+  return new DOMException('The check was called off.', 'AbortError');
+}
+
 // A lost session is its own failure for the editor, which says so at once
 // because no save can work then.
 function editorError(error: unknown): unknown {
@@ -138,16 +145,40 @@ export function oneCheck(validate: ValidatePort, name?: string): OneCheck {
 
   return {
     validate: (request, signal) => {
+      // A reader that has already given up is not waiting for anything, so
+      // its text is not asked about at all.
+      if (signal.aborted) return Promise.reject(calledOff());
       const { call, answer } = ask(request.text);
       const reader = readerOf(call);
-      // This reader gives up when its text is no longer the one on the page.
-      // The call ends with the last reader of it, because the editor waits
-      // for the same answer to say whether the draft may be saved, and
-      // losing it would leave Save closed until the next edit.
-      signal.addEventListener('abort', reader.gaveUp, { once: true });
-      return answer.finally(() => {
-        reader.settled();
-        signal.removeEventListener('abort', reader.gaveUp);
+      // The reader waits on a promise of its own, not on the shared one, so
+      // its signal ends its wait at once: the caller lines its checks up one
+      // after another, and leaving a check it has called off at the head of
+      // that line would hold the next one back. The call itself goes on for
+      // whoever still waits for it, because the editor waits for the same
+      // answer to say whether the draft may be saved, and losing it would
+      // leave Save closed until the next edit.
+      return new Promise<CheckAnswer>((resolve, reject) => {
+        const giveUp = () => {
+          reader.gaveUp();
+          reject(calledOff());
+        };
+        signal.addEventListener('abort', giveUp, { once: true });
+        const done = () => {
+          reader.settled();
+          signal.removeEventListener('abort', giveUp);
+        };
+        // Whichever comes first wins: a promise already settled takes no
+        // second answer, so the reader that gave up keeps its failure.
+        answer.then(
+          (value) => {
+            done();
+            resolve(value);
+          },
+          (error) => {
+            done();
+            reject(error);
+          },
+        );
       });
     },
     check: async (text) => {
