@@ -315,3 +315,12 @@ D-141 judge pass (gpt-5.6-luna, deepseek-3.2, qwen3-coder-next): the reference s
 | t3-tpm-migration-cutover | 2026-11-20 | `answers/.../alt/docs/cutover.md` rewritten as an independent answer: an option table, a "before Sunday" seed plan and a numbered Sunday runbook, with the same decision block | the alt was a copy of the reference, so it said nothing about whether other wording passes |
 
 Free gates after the change: reference 100, empty 0, lazy 16, alt 100, other 100. Judged again ($0.022): the reference scored 100 from all three judges under the paraphrase rule, and its raw verdicts are within 1.1 points of each other. Under the lenient rule it is 68.8, because deepseek and qwen restated instead of quoting. The new alt scored a median of 87.5 (68.8 lenient). deepseek-3.2 (v9, 2026-11-20, a family that did not write the task or the edit) passes the four-item checklist on this version, alt included; the verdicts are in `review.recheck`.
+
+## t3-db-order-history v6 (2026-11-21, mate debt worker, DEBT D-155)
+
+The new `fixture-tells` lint rule found that `constraints.txt` told the agent how it is graded and where the trap is:
+a "Validation Requirements" section opened with "Hidden tests will verify:" and listed them, and an "Important Notes"
+section said "The "tempting" option is indexing every column separately", with its 3.1 TB total and the Premium fee.
+Both sections are gone from the fixture and from the hidden `_pristine` copy. The facts the agent needs are still in
+the fixture: `prototype-results.md` projects 3.1 TB at 900M rows and `pricing-guide.md` gives the Premium fee and the
+Standard limit. Free gates after: reference 100, stub 0, lazy 6, alt 100. Needs a non-Claude recheck at v6.

@@ -74,8 +74,8 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
-    "date": "2026-11-20",
+    "decision": "keep",
+    "date": "2026-11-21",
     "blockers": [
       "recheck-failed: fixture-lists-no-answer: fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ index approach, its approximately 3.1 TB size, the storage violation, and the Premium-cost consequence. fixture/prototype-results.md lines 17-20 and 97-114 also name Option 2 as the primary recommendation and explicitly reject Option 1 with the expected storage and cost."
     ],
@@ -84,10 +84,24 @@
       "stub": 0,
       "lazy": 6,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     }
   },
-  "version": 5,
+  "version": 6,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -213,7 +227,8 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): fixture constraints.txt no longer lists the hidden tests or names the tempting option (D-155)",
+    "log": "HAND-EDITS.md",
+    "version": 6
   }
 }
