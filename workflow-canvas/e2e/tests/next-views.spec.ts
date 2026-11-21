@@ -11,6 +11,12 @@ import {
   test,
 } from '../support/next-fixtures';
 import { sharedSession } from '../support/session';
+
+/** Another launch address, as a person pastes one. */
+const OTHER_CODE = 'nQ3x7vJ2kLmN9pRs4TuVw5Y_-ab12';
+
+/** The run id that every run of these tests is given. */
+const RUN_ID = '20261024-0412-a7b3c';
 import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 const RUN_EVENTS = [
@@ -217,6 +223,55 @@ test('follows a run that is still going once after a reload', async ({
   // whole run beside it.
   expect(new Set(follows).size).toBe(1);
   await expect(next.goal).toHaveValue('');
+});
+
+test('follows the run through a look at the Design view, and drops it for another workflow', async ({
+  next,
+}) => {
+  await answerRunWith(next.page, [running(1, 'draft')], [runRow('running')], {
+    finished: false,
+  });
+  await next.selectTab('Run');
+  await next.runButton.click();
+  await expect(next.page.getByTestId('run-progress')).toContainText('draft');
+
+  // The page follows the run, so the Design view takes no follower off it.
+  await next.selectTab('Design');
+  await answerRunWith(
+    next.page,
+    [running(1, 'draft'), passed(2, 'draft'), running(3, 'review')],
+    [runRow('running')],
+    { finished: false },
+  );
+  await next.page.waitForResponse((answer) => answer.url().includes('/events'));
+  await next.selectTab('Run');
+
+  // What came while the Design view was up is on the page.
+  await expect(next.page.getByTestId('run-progress')).toContainText('review');
+
+  // Another workflow is another session, so its Run view follows no run of
+  // the one that was left. The session of the pasted address is one the
+  // server knows, so the load works and the page really swaps.
+  await next.page.route('**/api/session', (route) =>
+    route.fulfill({ json: { ...sharedSession(), harness: 'other-harness' } }),
+  );
+  const asked = next.page.waitForEvent('dialog');
+  await next.page.evaluate((code) => (window.location.hash = code), OTHER_CODE);
+  await (await asked).accept();
+  await next.title.waitFor();
+  await next.selectTab('Run');
+  await expect(next.page.getByText('No run yet.')).toBeVisible();
+
+  // Nothing reads the run of the workflow that was left: the wait for such a
+  // read runs out, where a follower still on it would read within a second.
+  await expect(
+    next.page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname === `/api/runs/${RUN_ID}/events`,
+      { timeout: 1500 },
+    ),
+  ).rejects.toThrow();
+  await expect(next.goal).toBeEditable();
 });
 
 test('carries a run reloaded part-way through to its end', async ({ next }) => {
