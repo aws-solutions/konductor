@@ -3166,7 +3166,7 @@ mod tests {
         McpServerDef {
             command: Some("uvx".to_string()),
             args: vec![
-                "mcp-proxy-for-aws-cli==1.7.0".to_string(),
+                "mcp-proxy-for-aws-cli==2.0.0".to_string(),
                 "https://aws-mcp.us-east-1.api.aws/mcp".to_string(),
             ],
             url: None,
@@ -3207,7 +3207,7 @@ mod tests {
         assert_eq!(
             file["mcpServers"]["aws-mcp"]["args"],
             serde_json::json!([
-                "mcp-proxy-for-aws-cli==1.7.0",
+                "mcp-proxy-for-aws-cli==2.0.0",
                 "https://aws-mcp.us-east-1.api.aws/mcp"
             ])
         );

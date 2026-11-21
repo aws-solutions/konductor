@@ -97,17 +97,17 @@ EDITS = [
      "├── skills/                       79 skills (<name>/SKILL.md"),
     # ---- aws-mcp: pinned, and synth bundles it into Claude Code and Kiro CLI agents ----
     ('reference MCP registry note: synth bundles aws-mcp',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
      ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==2.0.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. konductor synth --claude-bundled-mcp-servers aws-mcp (what make synth and the release build run) writes the aws-mcp entry into the Claude Code and Kiro CLI agent files, so konductor, k-architect and k-developer launch it themselves.'
      ' k-architect and k-developer request all its tools (mcp__aws-mcp__* in Claude Code, @aws-mcp in Kiro CLI). konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'
      ' playwright-mcp is not bundled: k-browser requests its tools (mcp__playwright-mcp__* in Claude Code, @playwright-mcp in Kiro CLI) and you configure the server yourself.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
-     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==1.7.0 — allowedTools grants documentation '
+     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==2.0.0 — allowedTools grants documentation '
      'search/read, region list, and regional availability.'),
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
@@ -652,7 +652,7 @@ _AWS_MCP_KIRO_CONFIG = """{
     "aws-mcp": {
       "command": "uvx",
       "args": [
-        "mcp-proxy-for-aws-cli==1.7.0",
+        "mcp-proxy-for-aws-cli==2.0.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1",
@@ -858,7 +858,7 @@ ROSTER = [
      " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
      " act on an AWS account.</p>",
      _mono("k-developer") + ". Install " + _mono("uvx") + ". Their agent files carry an " + _mono("aws-mcp")
-     + " entry in " + _mono("mcpServers") + ", launched via " + _mono("uvx mcp-proxy-for-aws-cli==1.7.0")
+     + " entry in " + _mono("mcpServers") + ", launched via " + _mono("uvx mcp-proxy-for-aws-cli==2.0.0")
      + " with " + _mono("--skip-auth") + ", so you do not add it to your own MCP config. Without "
      + _mono("uvx") + " the server fails to start and the agents still work, just without AWS lookups."
      " The first start downloads the proxy through " + _mono("uvx") + ", which can delay the agent's"

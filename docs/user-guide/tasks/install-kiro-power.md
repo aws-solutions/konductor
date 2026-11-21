@@ -159,7 +159,7 @@ configuration:
     "aws-mcp": {
       "command": "uvx",
       "args": [
-        "mcp-proxy-for-aws-cli==1.7.0",
+        "mcp-proxy-for-aws-cli==2.0.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1",
