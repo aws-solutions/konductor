@@ -8,7 +8,7 @@ Last review: 2026-11-20 (debt triage: 25 rows closed, of them 8 merged into the 
 
 | week | opened | closed | net | open rows at the end (open, in progress, blocked) |
 | --- | --- | --- | --- | --- |
-| 2026-11-16 to 2026-11-22 (the file started on 2026-11-17) | 167 | 108 | +59 | 59 (48, 4, 7) |
+| 2026-11-16 to 2026-11-22 (the file started on 2026-11-17) | 167 | 108 | +59 | 59 (49, 3, 7) |
 
 Update this table at each weekly review with `node bench/scripts/debt-check.js --week --since <the Monday>`. The same script checks the table's format (a test runs it) and, with `--past-due`, lists the rows past their due date.
 
