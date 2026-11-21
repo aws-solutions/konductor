@@ -63,18 +63,20 @@ async function openPage({
     start: vi.fn(() => Promise.resolve(RUN_ID)),
     get: vi.fn(() => Promise.reject(new Error('The old tab reads no run.'))),
   };
+  const result = loaded(HELLO_DOCUMENT, runs, acceptingEdits());
+  const portsFor = vi.fn(() => ports);
   render(
     <App
-      load={Promise.resolve(loaded(HELLO_DOCUMENT, runs, acceptingEdits()))}
+      load={Promise.resolve(result)}
       scheduler={scheduler}
       nextUi={nextUi}
-      nextPortsFor={() => ports}
+      nextPortsFor={portsFor}
       {...(swapRisk ? { swapRisk } : {})}
       {...(runMemory ? { runMemory } : {})}
     />,
   );
   await act(async () => {});
-  return { ports, scheduler, runs };
+  return { ports, scheduler, runs, result, portsFor };
 }
 
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
@@ -85,6 +87,12 @@ describe('the page without ?ui=next', () => {
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
     expect(screen.queryByTestId('raw-edit-note')).toBeNull();
+  });
+
+  it('builds no calls of those views', async () => {
+    const { portsFor } = await openPage({ nextUi: false });
+
+    expect(portsFor).not.toHaveBeenCalled();
   });
 
   it('reads none of the calls of the views being built', async () => {
@@ -106,6 +114,17 @@ describe('the page without ?ui=next', () => {
 });
 
 describe('the page with ?ui=next', () => {
+  it('builds the calls of the views for the workflow it shows', async () => {
+    const { portsFor, result } = await openPage({ nextUi: true });
+
+    // The token of those calls comes from this workflow, not from whichever
+    // load answered last.
+    expect(portsFor).toHaveBeenCalledTimes(1);
+    expect(portsFor).toHaveBeenCalledWith(
+      result.ok ? result.workflow : undefined,
+    );
+  });
+
   it('draws the Design view, with a stop mark instead of the end node', async () => {
     await openPage({ nextUi: true });
 

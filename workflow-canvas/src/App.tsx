@@ -30,6 +30,7 @@ import { useThemeMode } from './theme/use-theme-mode';
 import {
   openWorkflowName,
   withDocument,
+  type LoadedWorkflow,
   type LoadResult,
 } from './workflow/load-workflow';
 
@@ -76,9 +77,10 @@ export function App({
   nextUi?: boolean;
   /**
    * Builds the calls those views make for the workflow that has just loaded.
-   * It is called once per load, so each workflow has its own.
+   * It is called once per load, with that workflow, so each one has its own
+   * calls and they address the session it was loaded with.
    */
-  nextPortsFor?: () => NextPorts;
+  nextPortsFor?: (workflow: LoadedWorkflow) => NextPorts;
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
@@ -86,7 +88,10 @@ export function App({
   // each load gets its own; the hooks of those views tell workflows apart by
   // them.
   const nextPorts = useMemo(
-    () => (nextUi && result?.ok && nextPortsFor ? nextPortsFor() : undefined),
+    () =>
+      nextUi && result?.ok && nextPortsFor
+        ? nextPortsFor(result.workflow)
+        : undefined,
     [nextUi, result, nextPortsFor],
   );
   // One follower at a time: with the views being built on the page, the Run
