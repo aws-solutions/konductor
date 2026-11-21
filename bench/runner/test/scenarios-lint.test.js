@@ -181,6 +181,16 @@ test('the file rules find a none pattern in a block key, a bare node --test dire
   assert.match(res.findings[0].detail, /node --test test\/.*use test\/\*\.test\.js/);
 });
 
+test('a key graded by the shared block-key.js skips denials in none lists; a none item is flagged unless it has its own denial guard', () => {
+  const dir = filePack();
+  write(path.join(dir, 'hidden/keyed/.bench-lib.json'), JSON.stringify({ 'block-kit/block-key.js': 'block-key.js' }));
+  const key = JSON.parse(fs.readFileSync(path.join(dir, 'hidden/keyed/block-kit/key.json'), 'utf8'));
+  key.items.push({ id: 'guarded', type: 'none', path: 'items', match: { all: ['ip'], none: ['\\bnot\\b'] } });
+  write(path.join(dir, 'hidden/keyed/block-kit/key.json'), JSON.stringify(key));
+  const res = lintDir(dir, CATALOG);
+  assert.deepEqual(res.findings.filter((f) => f.taskId === 'keyed').map((f) => f.where), ['block-kit/key.json#no-pdf-item']);
+});
+
 test('a baseline entry marks a finding known; an entry that no longer matches is stale; the CLI fails on a new finding only', () => {
   const dir = filePack();
   const baseline = { 'keyed|key-negation|block-kit/key.json#blames-release': 'D-136', 'keyed|key-negation|block-kit/key.json#gone': 'D-136', 'other|judge-share|checks': 'D-81' };

@@ -30,21 +30,33 @@ function keyFiles(dir, rel = '') {
   return out.sort();
 }
 
-// The unanchored `none` patterns of one block key item ([] when it has none).
-function nonePatterns(item) {
-  const lists = [item.none, item.match?.none];
-  if (item.type === 'none') lists.push(typeof item.match === 'string' ? [item.match] : item.match?.all ?? []);
+// The unanchored `none` patterns of one block key item ([] when it has none). `denialSafe`: the key is graded by the
+// shared block-key.js, whose `none` lists skip a match in a denied claim (`claims`), so only a `none` item's own match
+// patterns (a list element that matches is a failure, denied or not) are left.
+function nonePatterns(item, { denialSafe = false } = {}) {
+  const lists = denialSafe ? [] : [item.none, item.match?.none];
+  // A `none` item whose match has its own `none` list carries a hand-written denial guard (t12-spec-rate-limits).
+  if (item.type === 'none' && !(Array.isArray(item.match?.none) && item.match.none.length)) lists.push(typeof item.match === 'string' ? [item.match] : item.match?.all ?? []);
   return lists.filter(Array.isArray).flat().filter((re) => !anchored(re));
+}
+
+// True when the hidden dir copies in the shared block-key.js (`.bench-lib.json` names it).
+function usesSharedBlockKey(hiddenDir) {
+  try {
+    const lib = JSON.parse(fs.readFileSync(path.join(hiddenDir, '.bench-lib.json'), 'utf8'));
+    return Object.values(lib).some((v) => typeof v === 'string' && path.basename(v) === 'block-key.js');
+  } catch { return false; }
 }
 
 /** key-negation findings of a task whose hidden dir is `hiddenDir`. */
 function keyNegationFindings(hiddenDir) {
+  const denialSafe = usesSharedBlockKey(hiddenDir);
   const found = [];
   for (const rel of keyFiles(hiddenDir)) {
     let key;
     try { key = JSON.parse(fs.readFileSync(path.join(hiddenDir, rel), 'utf8')); } catch { continue; }
     for (const item of Array.isArray(key?.items) ? key.items : []) {
-      const bad = nonePatterns(item ?? {});
+      const bad = nonePatterns(item ?? {}, { denialSafe });
       if (bad.length) found.push({ rule: 'key-negation', where: `${rel}#${item.id}`, detail: `${rel} item "${item.id}" fails an answer that matches ${JSON.stringify(bad[0])}, even in a denial` });
     }
   }

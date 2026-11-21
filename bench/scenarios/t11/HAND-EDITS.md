@@ -43,3 +43,20 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t11-merge-pricing-branches | qwen3-coder-next (earlier, after the last edit) | confirmed | qwen3-coder-next (after the last edit) failed solvable-from-fixture on a missing test/feature-pricing.test.js; that file comes from the feature branch the task merges, so the T11 worker disposed it as a misread and this job agrees |
 | t11-resume-csv-export | qwen3-coder-next (earlier, after the last edit) | confirmed | qwen3-coder-next failed two items because the fixture lacks the CSV behaviour; that behaviour is the work the request asks for, so the T11 worker disposed it as a misread and this job agrees |
 | t11-twin-pricing-validation | qwen3-coder-next (earlier, after the last edit) | confirmed |  |
+
+## t11-docx-room-booking-reqs v2 (2026-11-21, mate debt worker, DEBT D-136)
+
+`old-duration-absent` failed a correct requirement that names the old limit ("no longer than 3 hours (the old limit
+was 4 hours)"). Its `match` now has a `none` pattern, anchored with `^.*` so it reads the text as written: a requirement
+that says 4 hours was, or is replaced by, the old value is not counted. A plain "no longer than 4 hours" still fails.
+`answers/t11-docx-room-booking-reqs/other/` is that correct answer; `scenario.config.js` now scores `other` answers.
+
+| Answer | Before | After |
+| --- | --- | --- |
+| reference | 100 | 100 |
+| stub | 4.8 | 4.8 |
+| lazy | 39.5 | 39.5 |
+| alt | 100 | 100 |
+| other (names the old 4 hours) | 95.9 | 100 |
+
+Non-Claude recheck: pending (paid; the `handEdited` mark blocks a lock until it is done).

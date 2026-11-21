@@ -103,11 +103,13 @@ module.exports = {
   dir: __dirname,
   env: GIT_ENV,
   // A task may keep answers/<id>/shallow/: an answer that misses the point (for t11-fresh-session-memory, one that
-  // followed the stale notes); the dry run gates it at 40 or less.
+  // followed the stale notes); the dry run gates it at 40 or less. answers/<id>/other/ is a second correct answer
+  // in other words, gated at 80 like alt (lib/config.js).
   modes: (task, cfg) => {
     const shallow = overlayOf(cfg.answerDir(task.id, 'shallow'));
+    const other = overlayOf(cfg.answerDir(task.id, 'other'));
     const modes = modesOf({ solution: cfg.solutionDir(task.id), lazy: cfg.answerDir(task.id, 'lazy'), alt: cfg.answerDir(task.id, 'alt') });
-    return shallow ? [...modes, { name: 'shallow', overlay: shallow }] : modes;
+    return [...modes, ...(shallow ? [{ name: 'shallow', overlay: shallow }] : []), ...(other ? [{ name: 'other', overlay: other }] : [])];
   },
   prompt: { render },
   stage: {
