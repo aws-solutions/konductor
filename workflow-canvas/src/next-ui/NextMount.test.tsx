@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { WorkflowExtras } from '../api/workflow-extras';
+import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
 import type { RunMemory, RunPort } from '../execution/core/ports';
 import type { SwapRisk } from '../launch/swap-guard';
 import { EventWaits, HeldEvents } from '../test-support/held-events';
@@ -382,5 +383,106 @@ describe('the check of a text with ?ui=next', () => {
     expect(first?.[0].text).not.toBe(second?.[0].text);
     expect(first?.[1].aborted).toBe(true);
     expect(second?.[1].aborted).toBe(false);
+  });
+
+  const saveButton = () => screen.getByRole('button', { name: 'Save' });
+  const isOff = (element: HTMLElement) =>
+    element.hasAttribute('disabled') ||
+    element.getAttribute('aria-disabled') === 'true';
+
+  /** A check that answers when the test says so, and reports its calls. */
+  function heldChecks() {
+    const calls: { text: string; signal: AbortSignal }[] = [];
+    const answers: ((answer: CheckAnswer) => void)[] = [];
+    let answered = 0;
+    const validate = vi.fn((request: CheckRequest, signal: AbortSignal) => {
+      calls.push({ text: request.text, signal });
+      return new Promise<CheckAnswer>((resolve, reject) => {
+        answers.push(resolve);
+        // A call whose signal aborts fails, as the request behind it does.
+        signal.addEventListener(
+          'abort',
+          () => reject(new Error('The check was called off.')),
+          { once: true },
+        );
+      });
+    });
+    /** Answers every call that is still waiting. */
+    const settleAll = (answer: CheckAnswer) => {
+      for (; answered < answers.length; answered += 1) {
+        answers[answered]?.(answer);
+      }
+    };
+    return { calls, settleAll, validate };
+  }
+
+  const CLEAN: CheckAnswer = {
+    errors: 0,
+    warnings: 0,
+    infos: 0,
+    view: null,
+    diagnostics: [],
+  };
+
+  const BROKEN: CheckAnswer = {
+    errors: 1,
+    warnings: 0,
+    infos: 0,
+    view: null,
+    diagnostics: [
+      {
+        code: 'UNKNOWN_AGENT',
+        severity: 'error',
+        path: 'stages[0].agent',
+        line: 8,
+        column: 5,
+        end_line: 8,
+        end_column: 16,
+        message: 'No agent is named drafting.',
+      },
+    ],
+  };
+
+  // The editor judges the draft by the findings of the check it waits for,
+  // and the Run view takes the Design view off the page, so the reader that
+  // gives up there must not take the editor's answer with it. Save is open
+  // while a check is out, so what the loss costs is the findings: without
+  // them the editor never hears that the draft is broken, and no later check
+  // of it is made.
+  it('answers the editor when the Run view takes the Design view off', async () => {
+    const server = heldChecks();
+    await openPage({
+      nextUi: true,
+      ports: portsOf({ validate: server.validate }),
+    });
+    await openProperties();
+    // The page checks the file as it was loaded when it opens; this is about
+    // the check of the edit that follows.
+    await act(async () => server.settleAll(CLEAN));
+    const before = server.calls.length;
+
+    await type('drafting');
+    await act(async () => {});
+    const edited = server.calls[before]?.text;
+    expect(server.calls).toHaveLength(before + 1);
+    expect(isOff(saveButton())).toBe(false);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+    });
+    await act(async () => server.settleAll(BROKEN));
+
+    // The editor read the findings of the call it was already waiting for:
+    // nothing was asked again for that text.
+    expect(server.calls).toHaveLength(before + 1);
+    expect(server.calls[before]?.text).toBe(edited);
+    // Back on the Design view, Save is closed on the broken draft. The view
+    // reads the text it shows again when it opens, which the editor does not
+    // need: it has judged this draft.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
+    });
+
+    expect(isOff(saveButton())).toBe(true);
   });
 });
