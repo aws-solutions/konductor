@@ -262,18 +262,19 @@ function readHostListeners() {
 }
 
 /**
- * Reads the host's listeners and returns those it did not have at the suite's first trial (SR-20). A counted or
- * control suite throws PlantSuiteStop on any new one. A NOT COUNTED pilot only logs it through `suite.log`, and
- * learns it, so each new listener is noted once and the pilot goes on.
+ * Reads the host's listeners and returns those it did not have at the suite's first trial (SR-20). A counted suite,
+ * and a control suite inside a sandbox, throw PlantSuiteStop on any new one. A NOT COUNTED pilot, and a control suite
+ * under `--isolate none` (a control never counts, and the shared dev host opens listeners all the time, D-92), only
+ * log it through `suite.log` and learn it, so each new listener is noted once and the suite goes on.
  */
 function checkListeners(suite) {
   const read = suite.readListeners ?? readHostListeners;
   suite.listenersAtStart ??= new Set(read());
   const added = read().filter((l) => !suite.listenersAtStart.has(l));
   if (!added.length) return [];
-  if (suite.counted || suite.control) throw new PlantSuiteStop(`a new listener appeared on the host between trials (${added.join(', ')}); the plant suite stops`);
+  if (suite.counted || (suite.control && suite.isolationMode !== 'none')) throw new PlantSuiteStop(`a new listener appeared on the host between trials (${added.join(', ')}); the plant suite stops`);
   for (const l of added) suite.listenersAtStart.add(l);
-  suite.log?.(`note: plant: a new listener appeared on the host between trials (${added.join(', ')}); this suite is not counted, so it goes on`);
+  suite.log?.(`note: plant: a new listener appeared on the host between trials (${added.join(', ')}); ${suite.control ? 'this control suite runs without a sandbox and never counts' : 'this suite is not counted'}, so it goes on`);
   return added;
 }
 
