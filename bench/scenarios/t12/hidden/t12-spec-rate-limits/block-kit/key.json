@@ -12,7 +12,8 @@
           "\\b(by|per) (client |source )?ip\\b"
         ],
         "none": [
-          "\\bnot\\b|never|instead|rather than|supersed|unlike|replac|\\bold\\b|previous|former|earlier|2025|no longer|retired|drop"
+          "\\b(not|never|no longer|instead of|rather than|unlike|replac\\w*|supersed\\w*|old|previous|former|earlier|2025)\\W+(\\w+\\W+){0,6}?(by|per) (client |source )?ip\\b",
+          "(by|per) (client |source )?ip\\b\\W+(\\w+\\W+){0,6}?(is |was |are )?(retired|dropped|replaced|superseded|removed|no longer)"
         ]
       },
       "weight": 2
