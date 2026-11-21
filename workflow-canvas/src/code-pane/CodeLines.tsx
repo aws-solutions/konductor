@@ -9,10 +9,23 @@ export interface CodeLine {
   readonly text: string;
 }
 
+/** The lines from `line` to `end_line`, both included, as the API gives them. */
+export interface LineRange {
+  readonly line: number;
+  readonly end_line: number;
+}
+
+function isMarked(n: number, range: LineRange | undefined): boolean {
+  return range !== undefined && n >= range.line && n <= range.end_line;
+}
+
 /**
  * Numbered lines of plain text in a box that scrolls and takes keyboard
  * focus, so the arrow keys can scroll it. Text is rendered as text, never as
  * markup. The numbers are hidden from a screen reader, which reads the lines.
+ * The lines of `marked` are drawn as marked. Only the first carries
+ * `aria-current`, as one item of a list is current; the caller says which
+ * lines the range holds in the note that `describedBy` names.
  * With `followEnd`, the box stays on its last line as lines arrive, until the
  * person scrolls up, and follows again once they scroll back to the bottom.
  * It jumps there with no animation, so it does not move against a reduced
@@ -22,6 +35,7 @@ export function CodeLines({
   lines,
   label,
   describedBy,
+  marked,
   followEnd = false,
 }: {
   lines: readonly CodeLine[];
@@ -29,6 +43,7 @@ export function CodeLines({
   label: string;
   /** The id of the element that says more about the box. */
   describedBy?: string;
+  marked?: LineRange;
   /** Keep the box on its last line while the person has not scrolled up. */
   followEnd?: boolean;
 }) {
@@ -54,7 +69,12 @@ export function CodeLines({
     >
       <ol className="wf-code-lines">
         {lines.map((line) => (
-          <li key={line.n} className="wf-code-line">
+          <li
+            key={line.n}
+            className="wf-code-line"
+            data-marked={isMarked(line.n, marked) ? 'true' : undefined}
+            aria-current={line.n === marked?.line ? 'true' : undefined}
+          >
             <span className="wf-code-n" aria-hidden="true">
               {line.n}
             </span>
