@@ -3,18 +3,16 @@
 // Hidden test of the second step of t12-handoff-export-dates: the fix must be finished from the hand-off alone. It reads
 // only deliverables (the hand-off's JSON block, the result's JSON block in docs/handoff/BILL-1187-result.md and the
 // repository), never a session label or a tool log.
-//   .bench-base/   a copy of the fixture's code before any change (src, test, package.json)
+//   .bench-base/   the untouched fixture, copied in by the tests check (.bench-lib.json "@pristine")
 // Every test needs the hand-off block and the result file (no second step, no credit) and counts twice: the finished
 // work is the larger part of the task.
-// shortcut: the process helpers below are also in the parallel-backlog work test; move them to
-// bench/scenarios/lib/hidden when a third task needs them.
+// The process helpers (files, node, withTemp) are bench/scenarios/lib/hidden/work-kit.js.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const { readBlock } = require('./block-kit/block-key.js');
+const { files, node, withTemp: tempDir } = require('./work-kit.js');
 
 const root = __dirname;
 const BASE = path.join(root, '.bench-base');
@@ -30,26 +28,7 @@ const words = (s) => String(s).trim().replace(/\s+/g, ' ').toLowerCase();
 const list = (v) => (Array.isArray(v) ? v : []);
 const listed = list(handoff?.context?.files).map(norm);
 
-function files(dir, rel = '') {
-  const out = [];
-  if (!fs.existsSync(path.join(dir, rel))) return out;
-  for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
-    const r = rel ? `${rel}/${e.name}` : e.name;
-    if (e.isDirectory()) out.push(...files(dir, r));
-    else if (e.isFile()) out.push(r);
-  }
-  return out;
-}
-
-function node(args, cwd, env = {}) {
-  const { NODE_TEST_CONTEXT, ...rest } = process.env;
-  return spawnSync(process.execPath, args, { cwd, env: { ...rest, ...env }, encoding: 'utf8', timeout: 12000 });
-}
-
-function withTemp(fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't12-handoff-'));
-  try { return fn(dir); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-}
+const withTemp = (fn) => tempDir('t12-handoff', fn);
 
 const work = (name, fn) => {
   for (const n of [1, 2]) {

@@ -1,7 +1,7 @@
 {
   "id": "t12-parallel-backlog",
   "class": "orchestration",
-  "version": 4,
+  "version": 5,
   "phase": "multi-phase",
   "phases2": [
     "planning",
@@ -115,8 +115,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): hidden work test reads the untouched fixture through @pristine and the shared work-kit.js; no hand-kept .bench-base copy (D-120)",
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {},
@@ -127,10 +128,22 @@
       "stub": 0,
       "lazy": 20,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null,
   "review": {

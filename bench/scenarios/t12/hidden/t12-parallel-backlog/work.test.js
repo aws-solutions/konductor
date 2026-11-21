@@ -4,18 +4,16 @@
 // plan's order. It reads only deliverables (the plan's JSON block, work/<package>/, docs/plan/merge-log.md and the
 // repository after the merges), never a session label or a tool log.
 //   work/<P>/        the repository files package P changes or adds, as they are after P, plus REPORT.md
-//   .bench-base/     a copy of the fixture's code before any change (src, test, config, .ci, package.json), so the
+//   .bench-base/     the untouched fixture, copied in by the tests check (.bench-lib.json "@pristine"), so the
 //                    merges can be replayed one at a time
 // Every test needs the plan's block (no plan, no credit) and counts twice: the work is the larger part of the task.
-// shortcut: the process helpers below are also in the hand-off task's work test; move them to
-// bench/scenarios/lib/hidden when a third task needs them.
+// The process helpers (files, node, withTemp) are bench/scenarios/lib/hidden/work-kit.js.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const { readBlock } = require('./block-kit/block-key.js');
+const { files, node, withTemp: tempDir } = require('./work-kit.js');
 
 const root = __dirname;
 const BASE = path.join(root, '.bench-base');
@@ -31,28 +29,9 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const ZERO_FAIL = /\b0\s*(fail|failed|failing|failures)\b|\bfail(s|ed|ures?)?\W{0,3}0\b/i;
 const SOME_PASS = /\b\d+\s*(pass|passed|passing)\b|\bpass(es|ed)?\W{0,3}\d+/i;
 
-function files(dir, rel = '') {
-  const out = [];
-  if (!fs.existsSync(path.join(dir, rel))) return out;
-  for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
-    const r = rel ? `${rel}/${e.name}` : e.name;
-    if (e.isDirectory()) out.push(...files(dir, r));
-    else if (e.isFile()) out.push(r);
-  }
-  return out;
-}
-
 const workFiles = (id) => files(path.join(root, 'work', id)).filter((f) => f !== 'REPORT.md');
 
-function node(args, cwd, env = {}) {
-  const { NODE_TEST_CONTEXT, ...rest } = process.env;
-  return spawnSync(process.execPath, args, { cwd, env: { ...rest, ...env }, encoding: 'utf8', timeout: 12000 });
-}
-
-function withTemp(fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't12-work-'));
-  try { return fn(dir); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-}
+const withTemp = (fn) => tempDir('t12-work', fn);
 
 // A copy of the repository's code (src, test, config, package.json) in `dir`.
 function copyCode(dir) {

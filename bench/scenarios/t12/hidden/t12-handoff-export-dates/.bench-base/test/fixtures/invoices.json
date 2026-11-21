@@ -1,4 +1,0 @@
-[
-  { "id": "INV-3001", "customer": "Harbor & Pine", "issuedAt": "2026-10-31T13:30:00Z", "dueAt": "2026-11-30T13:30:00Z", "amountCents": 125000, "currency": "NZD" },
-  { "id": "INV-3002", "customer": "Moa Logistics, Ltd", "issuedAt": "2026-11-01T09:00:00Z", "dueAt": "2026-12-01T09:00:00Z", "amountCents": 4800, "currency": "NZD" }
-]

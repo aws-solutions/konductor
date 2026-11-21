@@ -193,16 +193,16 @@
       "legacyRecheckVersion": 1
     },
     "t12-handoff-export-dates": {
-      "version": 3,
-      "sha256": "678aaab3148e0c15ec402825adf84f6966ca87ebe7d31e38689877a99e5efc17"
+      "version": 4,
+      "sha256": "7a6bcac881cea8843906f477f0bb99cce8cc768fb5b29cf6902c7c4f4c5aa88e"
     },
     "t12-mux-parallel-merge": {
       "version": 1,
       "sha256": "49ced470d14dc5cb6c71f0e26dc7c4b6dac3697ee86958c0358ed7930e86e09e"
     },
     "t12-parallel-backlog": {
-      "version": 4,
-      "sha256": "de43f86f666a47ca5cb446ca99b87d6ff64df6ef4f28907c3439ac479fc2f2b2"
+      "version": 5,
+      "sha256": "9577cd69267c9a925ff185405d646157ce0fff7fb66e17105c5360d95ce83c98"
     },
     "t12-sdlc-contact-import": {
       "version": 4,
