@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-stock-reserve",
-  "version": 3,
+  "version": 4,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -176,7 +176,7 @@
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "pilot": {
     "scores": {},

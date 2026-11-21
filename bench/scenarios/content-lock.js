@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Ties each pack task's content to its version (DEBT D-150). bench/scenarios/content-lock.json holds, per task id, the
+// version and a hash of what an agent or a grader sees: the task file without its bookkeeping (pilot, review,
+// handEdited, authorship, version, lockedAt) plus every file of its fixture and hidden dirs. A change to the prompt,
+// checks, rubric, key or fixture that keeps the same version is caught: `scenarios ready` lists it as a lock blocker,
+// the content-lock test fails, and `--write` refuses to record it. A version bump is recorded with --write.
+//   node bench/scenarios/content-lock.js           check; exit 1 and name each task whose content moved
+//   node bench/scenarios/content-lock.js --write   record new tasks and bumped versions; refuses a same-version change
+// `legacyRecheckVersion` is the task version a review.recheck with no `version` field covered when this file was
+// started (2026-11-21); such a recheck clears no later version (ready.js lockBlockers).
+
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { loadTaskFiles } = require('./files.js');
+
+const PACK_DIR = __dirname;
+const LOCK_FILE = path.join(__dirname, 'content-lock.json');
+const BOOKKEEPING = new Set(['pilot', 'review', 'handEdited', 'authorship', 'version', 'lockedAt']);
+
+function canonical(v) {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v !== null && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
+  return JSON.stringify(v);
+}
+
+function addDir(h, dir, label) {
+  if (!fs.existsSync(dir)) return;
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const r = path.join(rel, e.name);
+      if (e.isDirectory()) walk(r);
+      else if (e.isFile()) h.update(`\0${label}/${r.split(path.sep).join('/')}\0`).update(fs.readFileSync(path.join(dir, r)));
+      else if (e.isSymbolicLink()) h.update(`\0${label}/${r}\0link:${fs.readlinkSync(path.join(dir, r))}`);
+    }
+  };
+  walk('');
+}
+
+/** The content hash of the task in `file`: its file without bookkeeping, and its fixture and hidden dirs. */
+function contentHash(file, task) {
+  const h = crypto.createHash('sha256');
+  h.update(canonical(Object.fromEntries(Object.entries(task).filter(([k]) => !BOOKKEEPING.has(k)))));
+  const dir = path.dirname(file);
+  if (typeof task.fixture === 'string') addDir(h, path.join(dir, 'fixtures', task.fixture), 'fixture');
+  if (typeof task.hidden === 'string') addDir(h, path.join(dir, 'hidden', task.hidden), 'hidden');
+  return h.digest('hex');
+}
+
+const readLock = (file = LOCK_FILE) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')).tasks ?? {} : {});
+
+/** Per task: { id, version, sha256, entry, problem } where problem is null, 'new', 'bumped' or 'same-version change'. */
+function compare(packDir = PACK_DIR, lock = readLock(path.join(packDir, 'content-lock.json'))) {
+  return loadTaskFiles(packDir).map(({ file, task }) => {
+    const sha256 = contentHash(file, task);
+    const entry = lock[task.id] ?? null;
+    let problem = null;
+    if (!entry) problem = 'new';
+    else if (task.version > entry.version) problem = 'bumped';
+    else if (task.version < entry.version) problem = 'version went down';
+    else if (sha256 !== entry.sha256) problem = 'same-version change';
+    return { id: task.id, version: task.version, sha256, entry, problem };
+  });
+}
+
+const SAME_VERSION = (id, v) => `${id}: content changed at version ${v}; bump its version (and set handEdited.version) so the change is rechecked`;
+
+function main(argv) {
+  const lock = readLock();
+  const rows = compare(PACK_DIR, lock);
+  const bad = rows.filter((r) => r.problem === 'same-version change' || r.problem === 'version went down');
+  if (!argv.includes('--write')) {
+    for (const r of rows.filter((x) => x.problem)) console.log(r.problem === 'same-version change' ? SAME_VERSION(r.id, r.version) : `${r.id}: ${r.problem} (run node bench/scenarios/content-lock.js --write)`);
+    console.log(rows.some((r) => r.problem) ? `${rows.filter((r) => r.problem).length} task(s) differ from content-lock.json` : `ok: ${rows.length} task(s) match content-lock.json`);
+    return rows.some((r) => r.problem) ? 1 : 0;
+  }
+  if (bad.length) { for (const r of bad) console.error(r.problem === 'same-version change' ? SAME_VERSION(r.id, r.version) : `${r.id}: version went down`); return 1; }
+  const tasks = {};
+  for (const r of rows.sort((a, b) => (a.id < b.id ? -1 : 1))) {
+    const legacy = r.entry?.legacyRecheckVersion;
+    tasks[r.id] = { version: r.version, sha256: r.sha256, ...(legacy !== undefined ? { legacyRecheckVersion: legacy } : {}) };
+  }
+  fs.writeFileSync(LOCK_FILE, `${JSON.stringify({ _comment: 'Generated by bench/scenarios/content-lock.js; a content change needs a version bump.', tasks }, null, 2)}\n`);
+  console.log(`wrote content-lock.json: ${rows.length} task(s), ${rows.filter((r) => r.problem).length} new or bumped`);
+  return 0;
+}
+
+if (require.main === module) process.exitCode = main(process.argv.slice(2));
+
+module.exports = { contentHash, compare, readLock, LOCK_FILE, BOOKKEEPING };

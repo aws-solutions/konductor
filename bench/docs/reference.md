@@ -1272,6 +1272,11 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   `loadCheck.mustNotLoad`). A unit short of that is a **hole**, or **selection-only** when `selection-only.json` (`{ "skill:name": "reason" }`, beside
   the tasks or given by `--selection-only`) holds the owner's reason. `--fail-on-hole` exits 1 on any hole or any phase or role under its minimum.
 - `bench/scenarios/probe/` holds five tasks that probe the confirmation guard of PR #299 on `k-e2e-test-generation` and `k-test-coverage-review`, scored from git state and files only (no judge). Their fixtures are git repositories with a local bare remote: a fixture directory `dotgit/` is renamed `.git` when the runner copies the fixture. See `bench/scenarios/probe/README.md`; free check: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/probe/scenario.config.js`.
+- `node bench/scenarios/content-lock.js [--write]` ties each pack task's content to its version: `bench/scenarios/content-lock.json` holds the version
+  and a hash of the task file without its bookkeeping (pilot, review, handEdited, authorship, version, lockedAt) plus its fixture and hidden dirs. A
+  change to the prompt, checks, rubric, key or fixture at the same version is a lock blocker in `scenarios ready` (`content changed, version not
+  bumped`), fails `content-lock.test.js`, and is refused by `--write`; after a version bump, `--write` records it. A hand-edited task needs a
+  `review.recheck` that records its current version; a recheck with no `version` covers only up to the entry's `legacyRecheckVersion` (DEBT D-150).
 - `scenarios prereg freeze DIR --base REF|dir:PATH [--accept-gaps REASON] [--date YYYY-MM-DD]` first runs `scenarios lint` and the coverage gate on the
   `--base` tree and refuses (exit 1, nothing written) on a new lint finding or a stale lint baseline entry, and on coverage holes or phase or role
   shortfalls unless `--accept-gaps` gives the reason; the lock records the gates (`gates.lint`, `gates.coverage` with `acceptedBecause`). It then

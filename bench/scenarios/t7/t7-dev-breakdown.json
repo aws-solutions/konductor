@@ -1,7 +1,7 @@
 {
   "id": "t7-dev-breakdown",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "planning",
   "role": "developer",
   "questions": "allowed",
@@ -228,6 +228,6 @@
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   }
 }

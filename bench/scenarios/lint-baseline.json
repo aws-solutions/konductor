@@ -8,6 +8,7 @@
     "probe-e2e-no-yes|judge-share|checks": "D-81",
     "t1-ref-callbacks|judge-share|checks": "D-81",
     "t1-ref-schema-migrate|judge-share|checks": "D-81",
+    "t11-docx-room-booking-reqs|judge-share|checks": "D-81 (493baa8f made its shape checks format, 2026-11-21)",
     "t11-docx-room-booking-reqs|key-negation|block-kit/key.json#no-calendar-must": "not a defect: needs the feature and a must priority in one requirement (review 2026-11-21)",
     "t11-docx-room-booking-reqs|key-negation|block-kit/key.json#no-sms-must": "not a defect: needs the feature and a must priority in one requirement (review 2026-11-21)",
     "t11-docx-room-booking-reqs|key-negation|block-kit/key.json#no-waitlist-must": "not a defect: needs the feature and a must priority in one requirement (review 2026-11-21)",
