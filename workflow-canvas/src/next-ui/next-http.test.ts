@@ -170,6 +170,9 @@ describe('createNextPorts, the events of a run', () => {
   });
 });
 
+/** One character outside the first plane, which takes two units in a string. */
+const ASTRAL = '\u{1d538}';
+
 describe('createNextPorts, the check of a text', () => {
   const finding = {
     code: 'UNKNOWN_KEY',
@@ -240,6 +243,23 @@ describe('createNextPorts, the check of a text', () => {
     expect(checked.view?.stages[0]?.done_when).toEqual(['draft-exists']);
     expect(checked.view?.stages[0]?.surprise).toBe(7);
     expect(checked.view?.stages).toHaveLength(1);
+  });
+
+  it('reads an outcome of 300 characters outside the first plane', async () => {
+    // The contract counts characters, which are code points: these take two
+    // units each in a JavaScript string, and the reply is within the limit.
+    const outcome = ASTRAL.repeat(300);
+    expect(outcome.length).toBe(600);
+    const view = { ...answer.view, intent: { outcome } };
+    const { fetchFn } = serverOf({ body: { view, diagnostics: [] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const checked = await ports.validate(
+      { text: '' },
+      new AbortController().signal,
+    );
+
+    expect(checked.view?.intent).toEqual({ outcome });
   });
 
   it('reads an intent with the longest outcome the contract allows', async () => {
@@ -376,6 +396,10 @@ describe('createNextPorts, the check of a text', () => {
     [
       'an intent whose outcome is longer than the contract allows',
       { ...answer.view, intent: { outcome: 'a'.repeat(301) } },
+    ],
+    [
+      'an intent of 301 characters outside the first plane',
+      { ...answer.view, intent: { outcome: ASTRAL.repeat(301) } },
     ],
     [
       'an intent whose outcome runs over two lines',
