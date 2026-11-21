@@ -420,65 +420,35 @@ async function typeInto(input: HTMLElement, value: string) {
 }
 
 describe('DesignView, the drawing', () => {
-  it('ends the last stage with a stop mark and draws no end node', async () => {
-    drawn();
-    await settle();
-
-    expect(
-      screen.getByRole('img', { name: 'The run ends after review' }),
-    ).toBeTruthy();
-    expect(screen.queryByTestId('node-end')).toBeNull();
-  });
-
-  it('draws each stage of the workflow', async () => {
+  // Each stage, and a stop mark where the end node used to be. One drawing
+  // answers both: mounting the view again for the second would only draw the
+  // same one.
+  it('draws each stage of the workflow, the last ending in a stop mark', async () => {
     drawn();
     await settle();
 
     expect(screen.getByTestId('node-stage-draft')).toBeTruthy();
     expect(screen.getByTestId('node-stage-review')).toBeTruthy();
-  });
-
-  it('picks the stage that is clicked', async () => {
-    drawn();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('node-stage-review'));
-    });
-    await openProperties();
-
-    expect(nameInput().value).toBe('review');
+    expect(
+      screen.getByRole('img', { name: 'The run ends after review' }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('node-end')).toBeNull();
   });
 });
 
 describe('DesignView, the YAML tab', () => {
-  it('shows the text of the workflow', async () => {
+  it('shows the text of the workflow, which cannot be typed into yet', async () => {
     drawn();
     await settle();
 
     expect(panelOf('YAML').textContent).toContain('name: draft');
-  });
-
-  it('says that the text cannot be typed into yet', async () => {
-    drawn();
-    await settle();
-
     expect(screen.getByTestId('raw-edit-note').textContent).toContain(
       'cannot be typed into here yet',
     );
   });
 
-  it('marks the lines of the picked stage once the check answers', async () => {
-    const { scheduler } = drawn();
-    await openProperties();
-    await typeInto(nameInput(), 'drafting');
-    await checkNow(scheduler);
-
-    await openYaml();
-
-    expect(panelOf('YAML').textContent).toContain('are stage drafting');
-  });
-
-  it('says where the check of the text is', async () => {
+  // One answer says both where the check got to and which lines it names.
+  it('says the text is valid and marks the lines of the picked stage', async () => {
     const { scheduler } = drawn();
     await openProperties();
     await typeInto(nameInput(), 'drafting');
@@ -487,6 +457,9 @@ describe('DesignView, the YAML tab', () => {
     expect(screen.getByTestId('yaml-check-status').textContent).toContain(
       'The text is valid',
     );
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('are stage drafting');
   });
 
   it('lists what the check found wrong with the text', async () => {
@@ -584,7 +557,9 @@ describe('DesignView, the Properties tab', () => {
     ).toBeTruthy();
   });
 
-  it('shows the keys the file has before anything is edited', async () => {
+  // The keys of the file as it was loaded, and which of them can be edited:
+  // the same form answers both.
+  it('shows the keys the file has before anything is edited, the ones it cannot write read-only', async () => {
     drawn({ document: WITH_PROMPT });
     await settle();
 
@@ -592,6 +567,10 @@ describe('DesignView, the Properties tab', () => {
 
     expect(promptInput().value).toBe('Write the greeting to README.md.');
     expect(nameInput().value).toBe('draft');
+    expect(promptInput().readOnly).toBe(true);
+    expect(panelOf('Properties').textContent).toContain(
+      'edited in a later step',
+    );
   });
 
   it('shows a prompt file the same way', async () => {
@@ -627,17 +606,6 @@ describe('DesignView, the Properties tab', () => {
     );
   });
 
-  it('shows a key that only the file has as read-only, with a note', async () => {
-    drawn({ document: WITH_PROMPT });
-    await settle();
-    await openProperties();
-
-    expect(promptInput().readOnly).toBe(true);
-    expect(panelOf('Properties').textContent).toContain(
-      'edited in a later step',
-    );
-  });
-
   it('leaves the name and the agent editable', async () => {
     drawn({ document: WITH_PROMPT });
     await settle();
@@ -659,7 +627,9 @@ describe('DesignView, undo and redo', () => {
     expect(isOff(button('Redo'))).toBe(true);
   });
 
-  it('goes back to the text before the edit', async () => {
+  // Redo only means anything after an undo, so the two steps are walked on
+  // one draft rather than typed out twice.
+  it('goes back to the text before the edit, and comes back to it with Redo', async () => {
     drawn();
     await openProperties();
     await typeInto(nameInput(), 'drafting');
@@ -671,20 +641,10 @@ describe('DesignView, undo and redo', () => {
 
     expect(panelOf('YAML').textContent).toContain('name: draft');
     expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
-  });
-
-  it('comes back to the edited text with Redo', async () => {
-    drawn();
-    await openProperties();
-    await typeInto(nameInput(), 'drafting');
-    await act(async () => {
-      fireEvent.click(button('Undo'));
-    });
 
     await act(async () => {
       fireEvent.click(button('Redo'));
     });
-    await openYaml();
 
     expect(panelOf('YAML').textContent).toContain('name: drafting');
     expect(screen.queryByTestId('earlier-text-note')).toBeNull();
@@ -802,9 +762,13 @@ describe('DesignView, saving', () => {
     expect(edits.save.mock.calls[0]?.[0]).toContain('name: drafting');
   });
 
-  it('refuses a save that would drop the prompt of the stage it changed', async () => {
+  it('says nothing until an edit, then refuses a save that would drop the prompt of the stage it changed', async () => {
     const { edits } = drawn({ document: WITH_PROMPT });
     await settle();
+
+    // Nothing is refused while nothing is changed: the file is only a problem
+    // once a save of it is on the table.
+    expect(screen.queryByTestId('save-refused')).toBeNull();
     await openProperties();
     await typeInto(nameInput(), 'drafting');
 
@@ -832,13 +796,6 @@ describe('DesignView, saving', () => {
     expect(screen.getByTestId('save-refused').textContent).toContain(
       'prompt_file',
     );
-  });
-
-  it('says nothing about a save while nothing is changed', async () => {
-    drawn({ document: WITH_PROMPT });
-    await settle();
-
-    expect(screen.queryByTestId('save-refused')).toBeNull();
   });
 
   it('refuses a save of a stage changed before the keys of the file are read', async () => {
@@ -883,6 +840,9 @@ describe('DesignView, saving', () => {
     await act(async () => {
       fireEvent.click(button('Add agent-1'));
     });
+
+    // The stage that was added is drawn under the name the button offered.
+    expect(screen.getByTestId('node-stage-agent-1')).toBeTruthy();
     await act(async () => {
       fireEvent.click(screen.getByTestId('node-stage-draft'));
     });
@@ -1036,16 +996,6 @@ describe('DesignView, saving', () => {
       'would drop the prompt of reviewing',
     );
   });
-
-  it('adds a stage to the drawing', async () => {
-    drawn();
-
-    await act(async () => {
-      fireEvent.click(button('Add agent-1'));
-    });
-
-    expect(screen.getByTestId('node-stage-agent-1')).toBeTruthy();
-  });
 });
 
 describe('DesignView, what went wrong with a save', () => {
@@ -1104,7 +1054,10 @@ describe('DesignView, what went wrong with a save', () => {
     );
   });
 
-  it('offers to load the file again when it changed on disk', async () => {
+  // One conflict, walked to its end: the offer to load the file again, the
+  // load itself, and what is left of the draft after it. Each step needs the
+  // one before it, so they are one draft rather than three of the same.
+  it('offers to load the file again when it changed on disk, and says what became of the draft', async () => {
     const { edits } = drawn();
     edits.save.mockRejectedValue(
       new SaveConflict('The file changed.', 'c'.repeat(64)),
@@ -1114,37 +1067,18 @@ describe('DesignView, what went wrong with a save', () => {
 
     expect(screen.getByTestId('conflict')).toBeTruthy();
     expect(button('Load the file again')).toBeTruthy();
-  });
-
-  it('loads the file again when that is asked, and says the draft went', async () => {
-    const { edits } = drawn();
-    edits.save.mockRejectedValue(
-      new SaveConflict('The file changed.', 'c'.repeat(64)),
-    );
-    await changeThenSave();
 
     await press('Load the file again');
     await settle();
 
     expect(edits.reload).toHaveBeenCalled();
-    expect(screen.getByTestId('discarded').textContent).toContain(
+    const discarded = screen.getByTestId('discarded');
+    expect(discarded.textContent).toContain(
       'replaced by the file as it is now',
     );
-  });
-
-  it('keeps the draft to take away when the file was loaded again', async () => {
-    const { edits } = drawn();
-    edits.save.mockRejectedValue(
-      new SaveConflict('The file changed.', 'c'.repeat(64)),
-    );
-    await changeThenSave();
-    await press('Load the file again');
-    await settle();
-
+    // The work that was replaced can still be taken away.
     expect(
-      within(screen.getByTestId('discarded')).getByRole('button', {
-        name: 'Copy my version',
-      }),
+      within(discarded).getByRole('button', { name: 'Copy my version' }),
     ).toBeTruthy();
   });
 });
@@ -1163,7 +1097,7 @@ describe('DesignView, the agent of a stage', () => {
       .map((option) => option.getElement().textContent ?? '');
   };
 
-  it('keeps the agent the file names on offer after another is chosen', async () => {
+  it('keeps the agent the file names on offer after another is chosen, and takes it back', async () => {
     // The file names an agent that GET /api/agents no longer lists.
     drawn({ document: UNLISTED_AGENT, agents: OTHERS });
     await settle();
@@ -1175,15 +1109,19 @@ describe('DesignView, the agent of a stage', () => {
     });
 
     expect(agentOptionIds().join(' ')).toContain('k-legacy');
-  });
 
-  it('lets the agent the file names be chosen again', async () => {
-    drawn({ document: UNLISTED_AGENT, agents: OTHERS });
-    await settle();
-    await openProperties();
-    await chooseAgent('k-architect');
-
-    await chooseAgent('k-legacy');
+    // Still on offer means it can be chosen again, which is what it is for,
+    // so it is taken from the list that was just read.
+    const select = wrapper().findSelect()!;
+    const legacy = select
+      .findDropdown()
+      .findOptions()
+      .findIndex((option) =>
+        option.getElement().textContent?.startsWith('k-legacy'),
+      );
+    await act(async () => {
+      select.selectOption(legacy + 1);
+    });
 
     expect(
       within(screen.getByTestId('node-stage-draft')).getByTitle(
@@ -1197,7 +1135,7 @@ describe('DesignView, choosing a stage in the drawing', () => {
   const nodeOf = (name: string) =>
     screen.getByTestId(`node-stage-${name}`).parentElement!;
 
-  it('opens the keys of a stage activated with the keyboard', async () => {
+  it('opens the keys of a stage activated with the keyboard, with the focus in the first one', async () => {
     drawn();
     await settle();
 
@@ -1207,16 +1145,7 @@ describe('DesignView, choosing a stage in the drawing', () => {
 
     expect(panelOf('Properties').hidden).toBe(false);
     expect(nameInput().value).toBe('review');
-  });
-
-  it('puts the focus in the first key a person can edit', async () => {
-    drawn();
-    await settle();
-
-    await act(async () => {
-      fireEvent.keyDown(nodeOf('review'), { key: 'Enter' });
-    });
-
+    // A person who reached the drawing by keyboard goes on typing there.
     expect(document.activeElement).toBe(nameInput());
   });
 
@@ -1238,7 +1167,7 @@ describe('DesignView, choosing a stage in the drawing', () => {
     expect(document.activeElement).toBe(tab('Properties'));
   });
 
-  it('opens the keys of a stage chosen with the pointer', async () => {
+  it('opens the keys of the stage chosen with the pointer', async () => {
     drawn();
     await settle();
 
@@ -1247,6 +1176,8 @@ describe('DesignView, choosing a stage in the drawing', () => {
     });
 
     expect(panelOf('Properties').hidden).toBe(false);
+    // The stage that was clicked is the one the editor picked.
+    expect(nameInput().value).toBe('review');
   });
 });
 
@@ -1271,7 +1202,12 @@ describe('DesignView, many problems in the text', () => {
   const findingItems = () =>
     within(screen.getByTestId('yaml-problems')).getAllByRole('listitem');
 
-  it('shows a page of problems and says how many are left', async () => {
+  // One list of findings, asked for page by page to its end: a page at a
+  // time, how many are left, and the limit the view stops at. Which findings
+  // a page holds, and that the page count stops at the limit whatever the
+  // server sends, are rules of `findingsPage` and `nextShown`, which
+  // findings.test.ts puts 5,000 findings through without a view at all.
+  it('shows a page of problems at a time, says how many are left, and stops at its own limit', async () => {
     const { scheduler } = drawn({ answers: [manyFindings(500)] });
     await openProperties();
     await typeInto(nameInput(), 'drafting');
@@ -1281,28 +1217,14 @@ describe('DesignView, many problems in the text', () => {
     expect(screen.getByTestId('yaml-problems-left').textContent).toContain(
       '480 more problems',
     );
-  });
-
-  it('shows another page when the person asks', async () => {
-    const { scheduler } = drawn({ answers: [manyFindings(500)] });
-    await openProperties();
-    await typeInto(nameInput(), 'drafting');
-    await checkNow(scheduler);
 
     await act(async () => {
       fireEvent.click(button(`Show ${FINDINGS_PER_PAGE} more`));
     });
 
     expect(findingItems()).toHaveLength(FINDINGS_PER_PAGE * 2);
-  });
 
-  it('never shows more than its own limit, however many the server sends', async () => {
-    const { scheduler } = drawn({ answers: [manyFindings(5_000)] });
-    await openProperties();
-    await typeInto(nameInput(), 'drafting');
-    await checkNow(scheduler);
-
-    for (let page = 1; page * FINDINGS_PER_PAGE < FINDINGS_SHOWN_MOST; page++) {
+    for (let page = 2; page * FINDINGS_PER_PAGE < FINDINGS_SHOWN_MOST; page++) {
       await act(async () => {
         fireEvent.click(
           screen.getByRole('button', { name: /^Show [\d,]+ more$/ }),
@@ -1328,22 +1250,17 @@ describe('DesignView, many problems in the text', () => {
 });
 
 describe('DesignView, a stage renamed to the name of another one', () => {
-  it('keeps the keys of the stage that is picked, not the one of that name', async () => {
-    drawn({ document: WITH_PROMPT });
+  // The keys and the lines both come from where the stage was loaded from,
+  // so one rename answers for both.
+  it('keeps the keys and the lines of the stage that is picked, not the one of that name', async () => {
+    const { scheduler } = drawn({ document: WITH_PROMPT });
     await settle();
     await openProperties();
 
     await typeInto(nameInput(), 'review');
 
     expect(promptInput().value).toBe('Write the greeting to README.md.');
-  });
 
-  it('marks the lines of the stage that is picked', async () => {
-    const { scheduler } = drawn({ document: WITH_PROMPT });
-    await settle();
-    await openProperties();
-
-    await typeInto(nameInput(), 'review');
     await checkNow(scheduler);
     await openYaml();
 
