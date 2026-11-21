@@ -266,7 +266,16 @@ const sessionEntry = (exec, n, summary) => ({
  * conversation (no resume) in the same cwd and scratch HOME, so whatever the agent saved in the workspace is still there.
  * Fills `conv` as it goes; returns the combined exec record, with one entry per session in `sessions` for a fresh-session task.
  */
-async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt, plantRun = null }) {
+// Kiro CLI records the process that holds a session in HOME/.kiro/session-leases/<id>.lease (its pid). Every turn runs in a
+// fresh pid namespace, so the pid turn 1 left can belong to a live process of turn 2 and the resume is refused
+// (SessionHeldElsewhereError, pilot wave 3c). Turn 1 has exited before a resume starts, so its lease is stale; drop it.
+function dropStaleLease(home, sessionId) {
+  if (!home || !/^[A-Za-z0-9_-]+$/.test(String(sessionId ?? ''))) return;
+  const dir = path.join(home, '.kiro', 'session-leases');
+  for (const f of [`${sessionId}.lease`, `${sessionId}.lease.lock`]) fs.rmSync(path.join(dir, f), { force: true });
+}
+
+async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt, plantRun = null, home = null }) {
   const fresh = task.freshSessions ?? [];
   const multi = Boolean(task.autonomy) || fresh.length > 0;
   const deadline = Date.now() + task.timeoutSec * 1000;
@@ -291,6 +300,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         break;
       }
       const turnTask = fresh.length && turn > 1 ? { ...task, prompt: fresh[turn - 2].prompt } : task;
+      if (resume) dropStaleLease(home, resume.sessionId);
       const cmd = harness.buildCommand({ arm, task: turnTask, config, ctx, cwd, resume });
       if (turn === 1) {
         fs.writeFileSync(path.join(outDir, 'command.txt'), `${cmd.display}\n(cwd=<fresh copy of ${task.real ? `real task ${task.real}` : `fixture ${task.fixture}`}>, isolation=${iso.mode})\n`);
@@ -457,7 +467,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         if (plantRun?.startError) exec = plantRun.unstartedExec();
         else {
           meta.agentStarted = true;
-          exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir, conv, startedAt: new Date().toISOString(), plantRun });
+          exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir, conv, startedAt: new Date().toISOString(), plantRun, home });
         }
       } catch (e) {
         meta.infraError = e.message;
@@ -544,4 +554,5 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   return result;
 }
 
-module.exports = { executeRun, auditContamination, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };
+module.exports = {
+  dropStaleLease, executeRun, auditContamination, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };

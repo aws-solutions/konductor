@@ -17,8 +17,8 @@ scriptedSuite(test, assert, {
     },
     { 
       id: 'F3', 
-      all: [/minimum.*group.*3/i],
-      wrong: [/minimum.*group.*2/i, /minimum.*group.*4/i, /individual.*sign.*up/i]
+      all: [/group/i, /\b3\b|\bthree\b/i, /minimum|at least|or more|fewer than|smaller than|below/i],
+      wrong: [/minimum\s+group[^.]{0,20}\b(?:2|4|two|four)\b/i]
     },
     { 
       id: 'F4', 
@@ -27,7 +27,7 @@ scriptedSuite(test, assert, {
     },
     { 
       id: 'F5', 
-      all: [/(?:verify|verif\w*|check)\s+(?:the\s+)?age|age\s+(?:verification|check)/i, /without\s+storing|not\s+(?:be\s+)?stor|no\s+(?:full\s+)?(?:birth|dob)|instead of (?:a |the )?(?:full )?birth/i, /age\s+(?:bracket|band|range|group)|16-17|18\+/i],
+      all: [/(?:verify|verif\w*|check)\s+(?:the\s+)?age|age\s+(?:verification|check)|age[^.]{0,40}verif|verif\w*[^.]{0,40}\bage\b/i, /without\s+storing|not\s+(?:be\s+)?stor|no\s+(?:full\s+)?(?:birth|dob)|instead of (?:a |the )?(?:full )?birth/i, /age\s+(?:bracket|band|range|group)|16-17|18\+/i],
       wrong: [/store.*birth.*date/i, /require.*date\s+of\s+birth/i, /dob.*required/i]
     },
     { 

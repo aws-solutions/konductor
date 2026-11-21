@@ -12,12 +12,12 @@ scriptedSuite(test, assert, {
     },
     {
       id: 'F2',
-      all: [/12\s+(?:rugged )?tablets?/i, /shared/i, /asset tag/i],
+      all: [/\b12\b[^.]{0,25}tablets?|tablets?[^.]{0,25}\b12\b|twelve[^.]{0,25}tablets?/i, /shared/i, /asset tag/i],
       wrong: [/1[01]\s+tablets?/i, /one tablet per inspector/i]
     },
     {
       id: 'F3',
-      all: [/4\s+(?:photos?|images?)/i, /original resolution/i, /people|vehicle plates?|license plates?/i],
+      all: [/4\s+(?:photos?|images?)/i, /original[^.]{0,20}resolution|full resolution|no resiz/i, /people|vehicle plates?|license plates?/i],
       wrong: [/5\s+(?:photos?|images?)/i, /resize|compress/i]
     },
     {

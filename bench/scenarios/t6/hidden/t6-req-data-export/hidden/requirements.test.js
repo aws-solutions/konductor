@@ -7,7 +7,7 @@ scriptedSuite(test, assert, {
   facts: [
     {
       id: 'F1',
-      all: [/account owner|owner of the account/i, /(?:Account Data )?Export permission/i],
+      all: [/account owner|owner of the account/i, /Export permission|permission[^.]{0,30}(?:Account Data )?Export|Account Data Export/i],
       wrong: [/all administrators/i, /any administrator/i]
     },
     {

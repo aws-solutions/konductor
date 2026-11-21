@@ -1,7 +1,7 @@
 {
   "id": "t6-req-data-export",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -287,22 +287,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to read material and create implementable requirements, no specific method prescribed."
+          "note": "Prompt asks for requirements document without prescribing a specific method, framework, or tool. No misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains admin roles, data schemas, policy notes but not synthesized requirements."
+          "note": "Fixture contains source material (policy excerpts, meeting notes, data files) but does not list the finished behavior or specific requirements that would pass hidden tests."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check patterns matching scripted facts; rubric matches prompt and fixture scope."
+          "note": "Hidden tests and rubric reference items grounded in fixture (e.g., one-active-job limit in infra-limits.md) or scripted facts. Rubric anchors reward the outcome requested."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM could extract requirements from fixture; alternative wording/structure would pass."
+          "note": "Competent developer can extract requirements from source material; scripted facts provide explicit answers when asked. Different correct implementations would pass."
         }
       ]
     }
@@ -317,13 +317,13 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 17.1,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     }
   }
 }

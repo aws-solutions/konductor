@@ -1,7 +1,7 @@
 {
   "id": "t6-req-volunteer-shifts",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -265,29 +265,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to consolidate the supplied volunteer documents into requirements and specifies the closing JSON block, with no prescribed method, framework or misleading hint."
+          "note": "Prompt asks for requirements for dev team/vendor without prescribing a specific method, framework, or tool."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains handbook, safeguarding, privacy, operational and draft source material, but does not provide a finished requirements document or the complete set of scripted answers."
+          "note": "Fixture contains spreadsheets, policy documents, meeting notes but not the specific requirements (Mountain Time, 5-7 day checks, etc.) that would pass hidden tests."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The grounded tests reference existing fixture data and policy paths, the shift-cap test checks only the concept actually supported by the handbook, and task.json scriptedUser supplies the clarified values; rubric R1 and R2 reward the stated requirements rather than reference file names."
+          "note": "Rubric references scripted facts (Mountain Time, background check timing, age brackets) and items from fixture (shift caps). All requirements are grounded in source or scripted answers."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can derive role checks, privacy constraints and baseline shift rules from fixture/policy and fixture/drafts, then obtain the six clarifications from task.json; hidden tests accept equivalent wording and the edits record confirms the former over-specific shift-cap check was relaxed."
+          "note": "Scripted user provides specific facts when asked; fixture contains operational context. Different correct implementations meeting the requirements would pass."
         }
       ]
     }
@@ -302,13 +302,13 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 0,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     }
   }
 }

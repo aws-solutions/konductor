@@ -1,7 +1,7 @@
 {
   "id": "t6-req-expense-approvals",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -232,29 +232,29 @@
       }
     ],
     "recheck": {
-      "family": "openai",
-      "model": "gpt-5.6-luna",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json asks for a vendor-facing requirements document from the supplied materials and specifies its JSON ending, but names no requirements method or framework and gives no misleading process hint."
+          "note": "Prompt asks for requirements focusing on 'what it must do, not how to build it' without prescribing a specific method or framework."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains policy, audit, grant, data, and draft source material with unresolved or older values; it does not contain a finished requirements document listing the scripted answers as the answer."
+          "note": "Fixture contains policy excerpts, meeting notes, and evolving grant information but not the complete set of requirements that would pass hidden tests."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The grounded tests reference existing fixture paths such as handbook/finance-policy-excerpt.md, grants-list.md and audit findings, while the remaining current decisions are stated in task.json scriptedUser; rubric R1 and R2 reward those requested vendor requirements."
+          "note": "Rubric references grant caps changed in April (in fixture), scripted facts provide specific amounts and rules. Hidden tests check for requirements grounded in source material."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can extract the baseline controls from fixture/handbook, fixture/audit and fixture/grants-list.md and ask the scripted questions for changed values; the tests allow equivalent requirement wording and do not depend on reference ordering."
+          "note": "Scripted user provides specific facts when asked; fixture contains policy documents and meeting notes to inform requirements. Different correct implementations would pass."
         }
       ]
     }
@@ -269,13 +269,13 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 28.6,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     }
   }
 }
