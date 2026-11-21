@@ -10,7 +10,9 @@ export type ReasonSentence = (code: string) => string | undefined;
 /**
  * The word for where a stage is. Running, Passed and Blocked name the
  * spec's stage states `running`, `passed` and `blocked`. A `pending` stage is
- * Queued, or Not run once the run has finished, as it will not start.
+ * Queued, or Not run once the run has finished, as it will not start. A stage
+ * that was running when the run ended is Not finished: the run is over and no
+ * last word for the stage came.
  */
 export function stageStateWord(
   status: FollowedStage['status'],
@@ -20,7 +22,7 @@ export function stageStateWord(
     case 'pending':
       return runFinished ? 'Not run' : 'Queued';
     case 'running':
-      return 'Running';
+      return runFinished ? 'Not finished' : 'Running';
     case 'passed':
       return 'Passed';
     case 'blocked':
