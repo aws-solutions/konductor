@@ -402,7 +402,7 @@ const USAGE = `Usage:
        (read-only, no model call, advisory: per rubric criterion and check, the pass rate per arm and the variant minus baseline difference with an interval,
        flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE (or reported INSUFFICIENT-DATA) from the judgments and check results on disk. Writes criteria.md and criteria.json to --out
        (default DIR/criteria for --study). Changes no call, margin or floor of cap decide)
-  node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
+  node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE] [--criteria-pack quality]
        (--criteria-pack adds the quality-pack criteria of each sampled output to sheet.json and sheet.md for a person to rate)
   node bench/runner/bench.js calibrate export-reference --tasks ID,ID --criteria ID,ID --out DIR [--seed S] [--bench-dir DIR] [--extra-tasks DIR,DIR]

@@ -74,7 +74,7 @@ function loadOrderOf(events, runtime) {
     if (u.sessionUpdate !== 'tool_call' || (u.toolCallId && calls.has(u.toolCallId))) return;
     const tool = toolNameOf(u);
     const named = skillFileReadOf(u) ?? skillResourceCallOf(u) ?? skillActivationOf(u);
-    if (named) { add(u.toolCallId, named.name, 'skill', at); return; }
+    if (named) { add(u.toolCallId, named.name, /sop-md$/.test(named.via ?? '') ? 'sop' : 'skill', at); return; }
     const sc = skillsCallOf(u);
     if (sc?.tool === 'get_skill') { const n = mcpInputOf(u.rawInput ?? {})?.name; add(u.toolCallId, typeof n === 'string' && n.trim() ? n.trim() : '(get_skill)', 'skill', at); return; }
     if (tool === SUBAGENT_TOOL) { for (const t of subagentTargets(u.rawInput ?? {}, { nameIsAgent: isV3Call(u) })) if (t !== '(unnamed)') add(u.toolCallId, t, 'agent', at); return; }
@@ -96,7 +96,7 @@ function loadCheckOf({ order, extraction, task, arm, isSop = () => false }) {
     const key = unitKey(c.name);
     const loaded = c.kind === 'agent' ? !c.failed : okSkills.has(key);
     if (!loaded || units.has(key)) continue;
-    const kind = c.kind === 'agent' ? 'agent' : isSop(c.name) || lower(c.name).startsWith('sop-') ? 'sop' : 'skill';
+    const kind = c.kind === 'agent' ? 'agent' : c.kind === 'sop' || isSop(c.name) || lower(c.name).startsWith('sop-') ? 'sop' : 'skill';
     units.set(key, { unit: key, kind, firstAt: c.at });
   }
   const before = (u) => order.firstWriteAt === null || u.firstAt < order.firstWriteAt;

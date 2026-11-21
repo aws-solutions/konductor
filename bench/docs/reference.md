@@ -1229,7 +1229,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   "load skill X before you start" against the same arm without it to separate discovery from effect. `cap forced-prefix --cap skill:NAME --harness kiro-cli|opencode --out DIR`
   writes that instruction for each harness (kiro-cli: the `get_skill` tool of the skills server; opencode: the `skill` tool). `--cap` also takes `sop:NAME` (kiro-cli:
   read the installed `NAME.sop.md` with the file tool; opencode: load the skill `sop-NAME`) and `agent:NAME` (hand the whole task to that agent with the
-  subagent tool, `task` on opencode); a forced Kiro CLI SOP read is not yet seen by the load check (DEBT D-52). Only the first turn of the entry agent sees it; a subagent does not.
+  subagent tool, `task` on opencode); the load check counts a read of the installed `NAME.sop.md` (file tool or shell) as a load of SOP `NAME`. Only the first turn of the entry agent sees it; a subagent does not.
   Give it to the forced arm and its A/A repeat in a run of their own. An arm's A/A identity is its ref, its arm config and the sha256 of its prefix, so a prefixed arm never pairs with the same ref without one; an arm without a prefix keeps the identity it had. An arm whose runs disagree on the prefix, or carry one without a hash, is never paired. `--arm-agent name=AGENT` starts an arm in
   another agent. `--stop-on first-capability|first-load|end_turn` and `--max-tool-calls N` stop a run early and mark it `earlyStopped`.
 - Audit lint and baseline: `cap audit` also checks names, third-person descriptions, SKILL.md length, links, orphan and too-deep reference

@@ -114,18 +114,34 @@ function skillActivationOf(update) {
 
 const SKILL_MD = /(?:^|\/)([^/\s'"]+)\/SKILL\.md$/;
 const SHELL_SKILL_READ = /\b(?:cat|head|tail|sed|less|more|bat|awk)\b[^|;&\n]*?([^/\s'"]+)\/SKILL\.md\b/;
+// A Kiro CLI SOP is installed as `<name>.sop.md`; a forced SOP load is a read of that file (bench/cap/forced.js).
+const SOP_MD = /(?:^|\/)([^/\s'"]+)\.sop\.md$/;
+const SHELL_SOP_READ = /\b(?:cat|head|tail|sed|less|more|bat|awk)\b[^|;&\n]*?(?:^|[/\s'"])([^/\s'"]+)\.sop\.md\b/;
 const READ_TOOLS = new Set(['read_file', 'fs_read']);
 const SHELL_TOOLS = new Set(['execute_bash', 'execute_cmd']);
 
-// { name, via } of a kiro read_file/fs_read of a SKILL.md, or of a shell command that prints one; else null.
+// { name, via } of a kiro read_file/fs_read of a SKILL.md or an installed `<name>.sop.md`, or of a shell command that
+// prints one; else null.
 function skillFileReadOf(u) {
   const tool = toolNameOf(u);
   const raw = u?.rawInput && typeof u.rawInput === 'object' ? u.rawInput : {};
   if (READ_TOOLS.has(tool)) {
     const paths = [raw.path, ...(Array.isArray(raw.operations) ? raw.operations.map((o) => o?.path) : []), ...(u.locations ?? []).map((l) => l?.path)];
-    for (const p of paths) { const m = SKILL_MD.exec(String(p ?? '')); if (m) return { name: m[1], via: 'read-skill-md' }; }
+    for (const p of paths) {
+      const s = String(p ?? '');
+      const m = SKILL_MD.exec(s);
+      if (m) return { name: m[1], via: 'read-skill-md' };
+      const sop = SOP_MD.exec(s);
+      if (sop) return { name: sop[1], via: 'read-sop-md' };
+    }
   }
-  if (SHELL_TOOLS.has(tool)) { const m = SHELL_SKILL_READ.exec(String(raw.command ?? '')); if (m) return { name: m[1], via: 'shell-read-skill-md' }; }
+  if (SHELL_TOOLS.has(tool)) {
+    const cmd = String(raw.command ?? '');
+    const m = SHELL_SKILL_READ.exec(cmd);
+    if (m) return { name: m[1], via: 'shell-read-skill-md' };
+    const sop = SHELL_SOP_READ.exec(cmd);
+    if (sop) return { name: sop[1], via: 'shell-read-sop-md' };
+  }
   return null;
 }
 

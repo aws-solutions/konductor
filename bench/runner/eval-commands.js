@@ -164,7 +164,7 @@ function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir, log = () => {} }) {
   if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
   if (credsFile) readProfile(credsFile, awsProfile);
   const awsBin = process.env.BENCH_AWS_BIN || 'aws';
-  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { bin: awsBin }), log }) : null;
+  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { awsBin }), log }) : null;
   const cacheDir = path.resolve(flagValue(opts, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
   const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(opts, 'opencode-bin') });
   return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir });
@@ -582,6 +582,7 @@ function cmdCalibrate(opts) {
       runDir: path.resolve(need(opts, 'run')), benchDir: benchDirOf(opts),
       n: numOpt(opts, 'n', 25, { int: true }), seed: seedOf(opts),
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out, criteriaPack: packOf(opts),
+      extraDirs: extraDirsOf(opts),
     });
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). Label sheet.json, then run: calibrate score --labels ${r.sheetPath}`);
   } else if (sub === 'export-reference') {

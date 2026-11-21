@@ -17,6 +17,8 @@ const { execFile, execFileSync } = require('node:child_process');
 
 const REFRESH_WITHIN_MS = 15 * 60 * 1000;
 const RECHECK_MS = 60 * 1000;
+// One limit for both export calls: an SSO or credential_process refresh can take well over a minute.
+const EXPORT_TIMEOUT_MS = 120 * 1000;
 const PROFILE_RE = /^[A-Za-z0-9._@+-]{1,128}$/;
 // Variables that would make `aws` read something other than the named profile.
 const OVERRIDES = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_PROFILE', 'AWS_DEFAULT_PROFILE'];
@@ -37,17 +39,20 @@ function exportFailure(profile, e) {
   return new Error(`aws configure export-credentials --profile ${profile} failed: ${why.slice(0, 300)}`);
 }
 
+// The export runs two ways with the same options ({ awsBin, baseEnv, timeoutMs }): the run path reads credentials
+// synchronously (profileCredentials), the judge path refreshes them without blocking its event loop (awsExport).
+
 /** Runs the export synchronously and returns its stdout. */
-function exportCredentials(profile, { awsBin = 'aws', baseEnv = process.env, timeoutMs = 120000 } = {}) {
+function exportCredentials(profile, { awsBin = 'aws', baseEnv = process.env, timeoutMs = EXPORT_TIMEOUT_MS } = {}) {
   try {
     return execFileSync(awsBin, exportArgs(profile), { env: exportEnv(baseEnv), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: timeoutMs });
   } catch (e) { throw exportFailure(profile, e); }
 }
 
 /** Runs the export asynchronously and resolves its stdout. */
-function awsExport(profile, { bin = 'aws', env = process.env, timeoutMs = 60000 } = {}) {
+function awsExport(profile, { awsBin = 'aws', baseEnv = process.env, timeoutMs = EXPORT_TIMEOUT_MS } = {}) {
   return new Promise((resolve, reject) => {
-    execFile(bin, exportArgs(profile), { env: exportEnv(env), encoding: 'utf8', timeout: timeoutMs, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(awsBin, exportArgs(profile), { env: exportEnv(baseEnv), encoding: 'utf8', timeout: timeoutMs, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) reject(exportFailure(profile, { killed: err.killed, code: err.code, stderr }));
       else resolve(stdout);
     });
@@ -177,7 +182,7 @@ function writeCredentials({ home, profile, region, creds }) {
 }
 
 module.exports = {
-  REFRESH_WITHIN_MS, REFRESH_BEFORE_MS: REFRESH_WITHIN_MS, RECHECK_MS, isProfileName,
+  REFRESH_WITHIN_MS, RECHECK_MS, EXPORT_TIMEOUT_MS, isProfileName,
   exportCredentials, awsExport, parseExport, parseProcessCredentials, envVars,
   profileCredentials, makeExportedCredentials, credentialsText, writeCredentials,
 };
