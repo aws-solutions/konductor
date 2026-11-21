@@ -44,7 +44,12 @@ async function controlTrial(name, prompt, { armName = 'policy', start = START, o
   try {
     let out = '';
     host.stdout.on('data', (d) => { out += d; });
-    const socketPath = await new Promise((resolve) => { const t = setInterval(() => { if (out.includes('\n')) { clearInterval(t); resolve(JSON.parse(out.split('\n')[0]).socket); } }, 20); });
+    // Resolve on the host's socket line; reject at once if the host process dies first, so a gateway that fails to
+    // start fails the test instead of hanging forever waiting for a line that will never come.
+    const socketPath = await new Promise((resolve, reject) => {
+      host.once('exit', (code) => reject(new Error(`arm gateway host exited (code ${code}) before sending its socket`)));
+      const t = setInterval(() => { if (out.includes('\n')) { clearInterval(t); resolve(JSON.parse(out.split('\n')[0]).socket); } }, 20);
+    });
     const home = path.join(root, 'home');
     const work = path.join(root, 'work');
     fs.mkdirSync(work, { recursive: true });

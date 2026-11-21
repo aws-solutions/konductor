@@ -70,8 +70,12 @@ class GatewayProcess:
         listed = {path: sha256_file(path) for path in (task, *files)}
         listed.update(hashes or {})
         ours, theirs = socket.socketpair()
+        # The gateway runs with an otherwise empty environment; pass only the dynamic-linker search path when it is
+        # set, so a Python built against a non-default shared library (e.g. the arm gateway's mujoco needing libffi
+        # on this host) can still load its C extensions. No agent or task data is passed.
+        gw_env = {k: os.environ[k] for k in ("LD_LIBRARY_PATH",) if k in os.environ}
         self.proc = subprocess.Popen([python, "-I", GATEWAY_START, "--control-fd", str(theirs.fileno())],
-                                     pass_fds=[theirs.fileno()], env={})
+                                     pass_fds=[theirs.fileno()], env=gw_env)
         theirs.close()
         self.control = JsonLines(ours)
         self.clients = []
