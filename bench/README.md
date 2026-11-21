@@ -177,6 +177,7 @@ where it fits.
   [benchmark your own agent](docs/benchmark-your-own-agent.md) · [agenteval](agenteval/README.md)
 - Reference: [every command and flag](docs/reference.md) · [task format](docs/tasks.md) ·
   [cap playbook](docs/cap-playbook.md) · [quality pack](docs/quality-pack.md) · [unattended runs](docs/runbook.md) ·
+  [paired fill, no silent budget skips](docs/paired-fill.md) ·
   [the 2x2 kit, step by step](docs/repeat.md)
 - Studies and history: [docs/studies/](docs/studies/) · [docs/history/](docs/history/)
 - Known debt in the bench code, with owners and dates: [DEBT.md](DEBT.md)
