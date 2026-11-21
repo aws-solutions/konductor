@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-onboarding-dropoff",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -52,7 +52,7 @@
       "path": "docs/framing.md",
       "pattern": "analytics.{0,20}outage.{0,20}caused",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -203,21 +203,42 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): analytics-cause precision test is denial-safe; check 5 not_contains is format, the hidden test scores it (D-158)",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 3.2,
+    "stub": 4.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
-      "stub": 3.2,
-      "lazy": 9.5,
+      "stub": 4.1,
+      "lazy": 4.1,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

@@ -526,8 +526,8 @@
       "sha256": "1f794b728741f5aa16c316d4ecc04ebacff2e52a7c9052beda7f9779a24a8de7"
     },
     "t6-idea-churn-signal": {
-      "version": 3,
-      "sha256": "c6cfaa9facc9f35e7e7b675eb3d90ade3bc3afe9246adcd2e89f1901d32fd447",
+      "version": 4,
+      "sha256": "802262b7537cc0af3260fb8c897fa0ac09aea424b04de120f3aa31c6b45eb989",
       "legacyRecheckVersion": 2
     },
     "t6-idea-feature-bets": {
@@ -536,13 +536,13 @@
       "legacyRecheckVersion": 4
     },
     "t6-idea-onboarding-dropoff": {
-      "version": 3,
-      "sha256": "45f99184db5bbf41038f0b79510c17876c92b3d2bce265e47cde372bfd566106",
+      "version": 4,
+      "sha256": "0e0ca26be5f9ada3b7e866a4c5b1c9eb9a8a8b7b13427afa20fc849232150b2a",
       "legacyRecheckVersion": 3
     },
     "t6-idea-pricing-test": {
-      "version": 4,
-      "sha256": "740dadee779f4241817a5e717b51968f6a52c3e8597873524838a39db2c5a05e",
+      "version": 5,
+      "sha256": "7fb9271a3d32f375e4da3841aac74ff1583dcdb05a927cf149bedbda449ac0b7",
       "legacyRecheckVersion": 3
     },
     "t6-neg-glossary-rename": {

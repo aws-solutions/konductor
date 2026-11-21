@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { blockOf, itemTexts, requirementTexts } = require('./doc-key');
+const { blockOf, itemTexts, requirementTexts, contradicts } = require('./doc-key');
 
 const block = () => blockOf('docs/framing.md');
 const allText = () => JSON.stringify(block());
@@ -127,6 +127,6 @@ test('next step names the measure and its baseline', () => {
 test('does not claim the campaign caused the assignment mismatch', () => {
   const t = issueText();
   assert.ok(t.trim(), 'the framing block lists no issues');
-  assert.doesNotMatch(t, /campaign.{0,60}(caused|created|produced).{0,60}(assign|ratio|split)/i);
-  assert.doesNotMatch(t, /refund.{0,60}(caused|created|produced).{0,60}(assign|ratio|split)/i);
+  assert.ok(!contradicts(t, /campaign.{0,60}(caused|created|produced).{0,60}(assign|ratio|split)/i), 'states the claim (a sentence that denies it is fine)');
+  assert.ok(!contradicts(t, /refund.{0,60}(caused|created|produced).{0,60}(assign|ratio|split)/i), 'states the claim (a sentence that denies it is fine)');
 });

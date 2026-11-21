@@ -12,6 +12,9 @@
 //   fixture-tells  a fixture file that names its trap or how it is graded ("hidden tests will verify", "the tempting
 //                  option is ...", a decoy): the agent reads it and the task tests nothing (t3-db-order-history,
 //                  t6-idea-feature-bets; DEBT D-155). .bench-answer-key.md is exempt: a run never copies it.
+//   claim-negation a substance not_contains check, or a hidden test doesNotMatch, on a pattern that names a cause or
+//                  a blame: a correct answer that denies the claim matches too and loses the point (D-136 in block
+//                  keys; found again in T6 hidden suites, DEBT D-158). Apply it with doc-key.js contradicts().
 //   solution-link  a check that links `solution` to the workspace (`ln -s . solution`) without first moving an
 //                  agent-made solution/ aside: ln fails and the whole suite reads as unparsed (DEBT D-144).
 // Each finding has a `where` (the key item or file) so lint-baseline.json can hold the known ones by name.
@@ -137,6 +140,29 @@ function fixtureTellFindings(fixtureDir) {
   return found;
 }
 
+// A pattern that names a cause or a blame: a correct answer that denies it ("the outage did not cause the drop") also
+// matches, so it may only be applied denial-safe (doc-key.js contradicts, block-key.js claims).
+const CLAIM = /caus|because|due to|blam|led to|drove|responsib/i;
+const DOES_NOT_MATCH = /assert\.doesNotMatch\([^,\n]+,\s*(\/(?:[^/\\\n]|\\.)+\/[a-z]*)/g;
+
+/** claim-negation findings: a hidden test asserting doesNotMatch, or a substance not_contains check, on a claim pattern. */
+function claimNegationFindings(task, hiddenDir) {
+  const found = [];
+  (task.checks ?? []).forEach((c, i) => {
+    if (c?.type === 'not_contains' && c.kind !== 'format' && typeof c.pattern === 'string' && CLAIM.test(c.pattern)) {
+      found.push({ rule: 'claim-negation', where: `checks[${i}]`, detail: `check ${i} fails an answer that denies ${JSON.stringify(c.pattern)}; test it denial-safe in the hidden suite (doc-key.js contradicts)` });
+    }
+  });
+  if (!hiddenDir || !fs.existsSync(hiddenDir)) return found;
+  for (const rel of fixtureFiles(hiddenDir).filter((f) => /\.(c?js)$/.test(f) && !/(^|\/)_pristine\//.test(f))) {
+    const text = fs.readFileSync(path.join(hiddenDir, rel), 'utf8');
+    for (const m of text.matchAll(DOES_NOT_MATCH)) {
+      if (CLAIM.test(m[1])) found.push({ rule: 'claim-negation', where: `${rel}:${text.slice(0, m.index).split('\n').length}`, detail: `${rel} asserts doesNotMatch ${m[1]}, which fails a sentence that denies the claim; use contradicts() from doc-key.js` });
+    }
+  }
+  return found;
+}
+
 const SOLUTION_LINK = /\bln\s+-[a-z]*s[a-z]*\s+\S+\s+solution\b/;
 const SOLUTION_GUARD = /\[\s+-L\s+solution\s+\]/;
 
@@ -157,7 +183,8 @@ function fileFindings(task, file) {
     ...bareTestDirFindings(fixtureDir),
     ...fixtureTellFindings(fixtureDir),
     ...solutionLinkFindings(task),
+    ...claimNegationFindings(task, hiddenDir),
   ];
 }
 
-module.exports = { fileFindings, keyNegationFindings, bareTestDirFindings, fixtureTellFindings, bareTestDirs, solutionLinkFindings, nonePatterns };
+module.exports = { fileFindings, keyNegationFindings, bareTestDirFindings, fixtureTellFindings, claimNegationFindings, bareTestDirs, solutionLinkFindings, nonePatterns };

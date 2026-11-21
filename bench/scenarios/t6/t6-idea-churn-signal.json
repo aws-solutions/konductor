@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-churn-signal",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -206,9 +206,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): the problem and options precision tests need a problem and an option (D-143)",
+    "editor": "mate debt worker (2026-11-21): price-cause precision test is denial-safe (contradicts) (D-158)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "pilot": {
     "scores": {},

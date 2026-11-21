@@ -362,3 +362,18 @@ The untouched fixture still scored above 7 on four live tasks: hidden tests pass
 
 Free gates after: references 100, alternatives 94.9 to 100, lazy 20.5 to 34.2, stub 0. Each needs a non-Claude recheck
 at its new version before a lock.
+
+## Denial-safe cause tests (2026-11-21, mate debt worker, DEBT D-158)
+
+The new `claim-negation` lint rule found the D-136 negation bug in T6 hidden suites: four precision tests used
+`assert.doesNotMatch` on a cause pattern, so a correct answer that denies the wrong cause ("The analytics outage did
+not cause the drop") failed them. Each now asserts `!contradicts(...)` from `doc-key.js`, which skips a match with a
+negation in the same sentence and still fails the plain claim.
+
+- `t6-idea-churn-signal` v4: the price-as-main-cause test.
+- `t6-idea-onboarding-dropoff` v4: the analytics-cause test. Its `not_contains` check 5 (the same claim, no denial
+  guard) is now `format`; the hidden test scores the claim.
+- `t6-idea-pricing-test` v5: the campaign-caused and refund-caused tests.
+
+Free gates after: references 100, alternatives 100, stub 0 to 4.1, lazy 4.1 to 30.5. Each needs a non-Claude recheck
+at its new version before a lock.

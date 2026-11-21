@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-pricing-test",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -200,9 +200,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): the issues precision test needs issues; fixture_unchanged on data is format (D-143)",
+    "editor": "mate debt worker (2026-11-21): campaign and refund cause precision tests are denial-safe (D-158)",
     "log": "HAND-EDITS.md",
-    "version": 4
+    "version": 5
   },
   "pilot": {
     "scores": {},
