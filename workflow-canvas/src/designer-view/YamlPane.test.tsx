@@ -9,9 +9,20 @@ function renderPane(sample: SampleText, stage?: MarkedStage) {
   return render(<YamlPane file="hello.yml" text={sample.text} stage={stage} />);
 }
 
+function regionOf(file = 'hello.yml'): HTMLElement {
+  return screen.getByRole('region', { name: `Lines of ${file}` });
+}
+
+// The rows of a region, found by class rather than by the `listitem` role: the
+// role query costs about 200 ms over a 500-row window, enough on its own to
+// push the long-file cases past the 5 s test timeout. 'exposes each line as a
+// list item' below pins the two queries to the same elements.
+function rowsIn(region: HTMLElement): HTMLElement[] {
+  return [...region.querySelectorAll<HTMLElement>('li.wf-code-line')];
+}
+
 function items(): HTMLElement[] {
-  const region = screen.getByRole('region', { name: 'Lines of hello.yml' });
-  return within(region).getAllByRole('listitem');
+  return rowsIn(regionOf());
 }
 
 // The line number that a row shows.
@@ -62,6 +73,16 @@ describe('YamlPane', () => {
     expect(container.querySelector('.wf-code-n')?.textContent).toBe('1');
   });
 
+  it('exposes each line as a list item', () => {
+    renderPane(BLOCK);
+    const byRole = within(regionOf()).getAllByRole('listitem');
+    const byClass = items();
+
+    expect(byRole).toHaveLength(13);
+    expect(byClass).toHaveLength(13);
+    byRole.forEach((row, index) => expect(byClass[index]).toBe(row));
+  });
+
   it('marks nothing and says only that it is read-only without a stage', () => {
     renderPane(BLOCK);
 
@@ -103,7 +124,7 @@ describe('YamlPane', () => {
   it('says which lines are marked, and ties that to the lines', () => {
     renderPane(BLOCK, stageOf(BLOCK, 'draft'));
     const note = screen.getByText('Read-only. Lines 7 to 9 are stage draft.');
-    const region = screen.getByRole('region', { name: 'Lines of hello.yml' });
+    const region = regionOf();
 
     expect(region.getAttribute('aria-describedby')).toBe(note.id);
   });
@@ -124,7 +145,7 @@ describe('YamlPane', () => {
 
   it('can be scrolled with the keyboard', () => {
     renderPane(BLOCK);
-    const region = screen.getByRole('region', { name: 'Lines of hello.yml' });
+    const region = regionOf();
 
     region.focus();
 
@@ -211,11 +232,7 @@ describe('YamlPane', () => {
       ]);
       expect(
         screen.getByText('Read-only. Lines 100 to 1,200 are stage draft.').id,
-      ).toBe(
-        screen
-          .getByRole('region', { name: 'Lines of hello.yml' })
-          .getAttribute('aria-describedby'),
-      );
+      ).toBe(regionOf().getAttribute('aria-describedby'));
     });
 
     it('offers a single line that is not shown', () => {
@@ -281,8 +298,8 @@ describe('YamlPane', () => {
           stage={{ name: 'draft', range }}
         />,
       );
-      const region = screen.getByRole('region', { name: 'Lines of other.yml' });
-      const first = within(region).getAllByRole('listitem')[0]!;
+      const region = regionOf('other.yml');
+      const first = rowsIn(region)[0]!;
       expect(numberOf(first)).toBe(1);
     });
 
@@ -312,11 +329,11 @@ describe('YamlPane', () => {
 
     it('starts another file scrolled to its top', () => {
       const view = render(<YamlPane file="hello.yml" text={numbered(3000)} />);
-      const before = screen.getByRole('region', { name: 'Lines of hello.yml' });
+      const before = regionOf();
       before.scrollTop = 400;
 
       view.rerender(<YamlPane file="other.yml" text={numbered(3000)} />);
-      const after = screen.getByRole('region', { name: 'Lines of other.yml' });
+      const after = regionOf('other.yml');
       expect(after).not.toBe(before);
       expect(after.scrollTop).toBe(0);
     });
