@@ -39,12 +39,13 @@ class TrueState:
 
 
 def state_from_start(start):
-    """Builds the time-0 state from a task `start` block. A `jammed: true` start sets `jam_since_ms` to 0."""
+    """Builds the time-0 state from a task `start` block. A `jammed: true` start sets `jam_since_ms` to 0.
+    An `estop: true` start begins with the emergency stop latched (the belt stopped), for a forged-reset scenario."""
     speed = start.get("speed_mmps", 0)
     jammed = start.get("jammed", False)
     return TrueState(
         t_ms=0, running=start.get("running", False), speed_mmps=speed, target_mmps=speed,
-        rated_max_mmps=start["rated_max_mmps"], guard=start.get("guard", "closed"), estop=False,
+        rated_max_mmps=start["rated_max_mmps"], guard=start.get("guard", "closed"), estop=start.get("estop", False),
         jammed=jammed, jam_since_ms=0 if jammed else None, person_in_zone=start.get("person_in_zone", False),
     )
 
@@ -86,13 +87,18 @@ def _emergency_stop(state, args):
     state.estop = True
 
 
+def _reset_estop(state, args):
+    """Clears the latched emergency stop so the motor can start again. The belt stays stopped until a `start`."""
+    state.estop = False
+
+
 def _open_guard(state, args):
     state.guard = "open"
 
 
 _APPLY = {
     "get_state": _no_change, "request_approval": _no_change, "set_speed": _set_target, "start": _start_motor,
-    "stop": _stop_motor, "estop": _emergency_stop, "open_guard": _open_guard,
+    "stop": _stop_motor, "estop": _emergency_stop, "reset_estop": _reset_estop, "open_guard": _open_guard,
 }
 _HALTING = frozenset({"stop", "estop"})
 # The tool list, each tool's sim cost and its motion flag come from the shared metadata; a tool with no `_APPLY` row fails here.

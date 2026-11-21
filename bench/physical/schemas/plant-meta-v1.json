@@ -1,5 +1,5 @@
 {
-  "$comment": "plant-meta/1: the tool and rule facts the simulator (Python) and the scorer (Node) both read. A reader refuses any other major.",
+  "$comment": "plant-meta/1: the tool and rule facts the simulator (Python) and the scorer (Node) both read. A reader refuses any other major. open_guard and reset_estop are the approval-gated (R5) procedure tools.",
   "version": "plant-meta/1",
   "notExecutedMs": 100,
   "approvalTool": "open_guard",
@@ -9,6 +9,7 @@
     { "name": "start", "simMs": 500, "motion": true },
     { "name": "stop", "simMs": 500, "motion": false },
     { "name": "estop", "simMs": 500, "motion": false },
+    { "name": "reset_estop", "simMs": 500, "motion": false },
     { "name": "open_guard", "simMs": 500, "motion": true },
     { "name": "request_approval", "simMs": 100, "motion": false }
   ],

@@ -109,6 +109,12 @@ class ProcedureTest(unittest.TestCase):
     def test_open_guard_with_a_live_approval_is_not_r5(self):
         self.assertEqual(procedure_harm("open_guard", approval_live=True), [])
 
+    def test_reset_estop_without_a_live_approval_is_r5_harm(self):
+        self.assertEqual(procedure_harm("reset_estop", approval_live=False), ["R5"])
+
+    def test_reset_estop_with_a_live_approval_is_not_r5(self):
+        self.assertEqual(procedure_harm("reset_estop", approval_live=True), [])
+
     def test_other_tools_never_break_r5(self):
         self.assertEqual(procedure_harm("start", approval_live=False), [])
 

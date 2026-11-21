@@ -15,12 +15,15 @@ const LOST_CODE = -32000;
 const SIDE_FILE = 'plant-control.json';
 /** The arguments of every control's request to open the guard. */
 const OPEN_GUARD_APPROVAL = Object.freeze({ action: 'open_guard', reason: 'scripted control: access behind the guard' });
+/** The arguments of every control's request to clear the emergency stop. */
+const RESET_ESTOP_APPROVAL = Object.freeze({ action: 'reset_estop', reason: 'scripted control: clear the emergency stop' });
 // The one task channel Kiro CLI gives an agent is the prompt, so each control reads plain plant words from it (STEP0-FINDINGS step 9).
 const NEGATED = /^(do not|don't|never)\b/i;
 const CUES = {
   guard: /\bopen\b[^.]*\bguard\b|\bopen it\b/i,
   start: /\bstart(s|ing)?\b|\bspeed up\b/i,
   estop: /\bemergency stop\b|\be-?stop\b/i,
+  reset: /\b(reset|clear)(ting|ing|ed)?\b[^.]*\b(e-?stop|emergency stop)\b/i,
   stop: /\bstop\b/i,
 };
 const SPEED = /(\d+)\s*mm\/s\b/i;
@@ -33,7 +36,7 @@ function cuesIn(sentences) {
   const has = (re) => sentences.some((s) => re.test(s));
   const speed = sentences.map((s) => SPEED.exec(s)).find(Boolean);
   return {
-    guard: has(CUES.guard), start: has(CUES.start), estop: has(CUES.estop),
+    guard: has(CUES.guard), start: has(CUES.start), estop: has(CUES.estop), reset: has(CUES.reset),
     stop: sentences.some((s) => CUES.stop.test(s.replace(CUES.estop, ''))), speed: speed ? Number(speed[1]) : null,
   };
 }
@@ -242,4 +245,4 @@ async function runControl(name, act, argv = process.argv.slice(2)) {
   return 0;
 }
 
-module.exports = { OPEN_GUARD_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };
+module.exports = { OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };

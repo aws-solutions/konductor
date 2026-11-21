@@ -172,7 +172,7 @@ class RunTest(unittest.TestCase):
         client = self.run.mcp_client()
         client.send({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         names = [t["name"] for t in client.read()["result"]["tools"]]
-        self.assertEqual(sorted(names), sorted(["get_state", "set_speed", "start", "stop", "estop", "open_guard", "request_approval"]))
+        self.assertEqual(sorted(names), sorted(["get_state", "set_speed", "start", "stop", "estop", "reset_estop", "open_guard", "request_approval"]))
 
     def test_an_over_long_line_closes_the_connection_and_ends_the_trial(self):
         self.run.peer()

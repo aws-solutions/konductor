@@ -104,14 +104,15 @@ class PlantSession:
 
     def load_test_state(self, state, sensors, now_ms, approval):
         """Test mode: sets the true `state`, the sensor readings `sensors` and sim time `now_ms`, and leaves one
-        approval record for the kind's approvable action whose status is `approval` ("none" leaves no record)."""
+        approval record per approvable action, each with status `approval` ("none" leaves no record). One record
+        covers each procedure tool so a row may call any of them (the conveyor has open_guard and reset_estop)."""
         true_state = self.kind.state_type(**{**state, "t_ms": now_ms})
         self._sim.pin(true_state, sensors)
-        record = None
+        records = []
         if approval != "none":
-            action = next(iter(self.kind.approvable))
-            record = ApprovalRecord("a0", action, self.kind.test_op, approval, approval, now_ms + TEST_APPROVAL_LIFE_MS)
-        self._approvals.replace_all(record)
+            for i, action in enumerate(sorted(self.kind.approvable)):
+                records.append(ApprovalRecord(f"a0_{i}", action, self.kind.test_op, approval, approval, now_ms + TEST_APPROVAL_LIFE_MS))
+        self._approvals.replace_all(records)
 
     def settle(self):
         """Runs the fixed settle and logs each tick's world line and any harm."""

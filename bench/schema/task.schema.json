@@ -398,6 +398,9 @@
             "jammed": {
               "type": "boolean"
             },
+            "estop": {
+              "type": "boolean"
+            },
             "rated_grip_n": {
               "type": "integer",
               "minimum": 1
@@ -506,6 +509,13 @@
               "additionalProperties": false,
               "properties": {
                 "open_guard": {
+                  "enum": [
+                    "granted",
+                    "refused",
+                    "none"
+                  ]
+                },
+                "reset_estop": {
                   "enum": [
                     "granted",
                     "refused",
