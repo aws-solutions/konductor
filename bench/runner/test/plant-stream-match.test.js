@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalArgs, argsSha256, streamArgs } = require('../lib/plant/canonical.js');
-const { plantCallsInStream, plantCallsInGatewayLog, matchCalls } = require('../lib/plant/stream-match.js');
+const { plantCallsInStream, plantCallsInClaudeStream, streamCallsOf, plantCallsInGatewayLog, matchCalls } = require('../lib/plant/stream-match.js');
 const { parseStream } = require('../lib/stream.js');
 
 const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
@@ -90,6 +90,40 @@ test('arguments hash to the gateway value on both engines: v2 drops its purpose 
     { why: 'v3 deferred Tool Call', u: { title: 'Tool Call', rawInput: { tool_id: 'tool::plant::request_approval', arguments: approval } }, want: gatewayHash.approval },
   ];
   for (const c of cases) assert.deepEqual(plantCallsInStream([toolCall({ toolCallId: 't', ...c.u })]).map((x) => x.argsSha256), [c.want], c.why);
+});
+
+const ccAssistant = (...content) => ({ type: 'assistant', message: { content } });
+const ccUse = (tool, input, id) => ({ type: 'tool_use', id, name: `mcp__plant__${tool}`, input });
+
+test('Claude Code plant calls are read from mcp__plant__ tool_use blocks, in stream order', () => {
+  const events = [
+    { type: 'system', subtype: 'init' },
+    ccAssistant({ type: 'text', text: 'reading' }, ccUse('get_state', {}, 'tu1')),
+    ccAssistant(ccUse('stop', {}, 'tu2'), { type: 'tool_use', id: 'x', name: 'Read', input: { file_path: '/p' } }),
+    ccAssistant({ type: 'tool_use', id: 'y', name: 'mcp__other__stop', input: {} }),
+  ];
+  const calls = plantCallsInClaudeStream(events);
+  assert.deepEqual(calls.map((c) => [c.toolCallId, c.tool, c.argsSha256, c.engine]), [
+    ['tu1', 'get_state', argsSha256({}), 'claude-code'],
+    ['tu2', 'stop', argsSha256({}), 'claude-code'],
+  ]);
+});
+
+test('a Claude plant call hashes its arguments to the gateway args_sha256, and streamCallsOf routes claude-stream-json with no adapter', () => {
+  // Same vector the Python gateway (plant_gateway.tools.args_sha256) is tested against.
+  const speedHash = '4a6ba92cb96b01e48571d9e7742eaad0a3c92cb93efe1cbe50c3d2a53448b19f';
+  const events = [ccAssistant(ccUse('set_speed', { speed_mmps: 300 }, 'tu1'))];
+  const { calls, adapter } = streamCallsOf('claude-stream-json', events);
+  assert.equal(adapter, null);
+  assert.deepEqual(calls.map((c) => [c.tool, c.argsSha256]), [['set_speed', speedHash]]);
+  const result = matchCalls(calls, plantCallsInGatewayLog([{ seq: 1, type: 'call', tool: 'set_speed', args_sha256: speedHash }]));
+  assert.deepEqual([result.pairs.length, result.streamOnly.length, result.gatewayOnly.length], [1, 0, 0]);
+});
+
+test('a Claude mcp__plant__ name with nothing after it is an unreadable plant call, never a pair', () => {
+  const stream = plantCallsInClaudeStream([ccAssistant({ type: 'tool_use', id: 'tu1', name: 'mcp__plant__', input: {} })]);
+  const result = matchCalls(stream, [call('get_state', {}, 'c0')]);
+  assert.deepEqual([stream.map((c) => c.tool), result.pairs.length, result.streamOnly.length], [[null], 0, 1]);
 });
 
 test('gateway calls take their call_id from seq and their key from args_sha256', () => {

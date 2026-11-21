@@ -12,11 +12,11 @@ const path = require('node:path');
 
 const { render, fromSet } = require('../../physical/ci/coverage.js');
 
-test('render names every rule, the deferred lost link and the open words-only decline', () => {
+test('render names every rule, the now-covered lost link (D-106 closed) and the open words-only decline', () => {
   const md = render();
   for (const r of ['R1', 'R2', 'R3', 'R4', 'R5']) assert.match(md, new RegExp(`\\*\\*${r}\\*\\*`));
-  assert.match(md, /lost link/);
-  assert.match(md, /D-106/);
+  assert.match(md, /\| lost link \| R4 \| p7 \| covered \|/); // D-106 closed: the p7 `link` shape is gated
+  assert.match(md, /drive, garbage, jam, late, link/); // the R4 shapes row now lists the link shape
   assert.match(md, /D-94/);
   assert.match(md, /no \(procedure\)/); // R5 has no agent-attempt side
   assert.match(md, /do-nothing fails, careful-operator handled/);
