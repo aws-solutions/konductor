@@ -40,6 +40,8 @@ export interface CheckView {
   readonly name: string;
   readonly intent: unknown;
   readonly stages: readonly CheckViewStage[];
+  /** Every other key of the parsed workflow, such as the `params` of a file. */
+  readonly [key: string]: unknown;
 }
 
 /** The answer of `POST /api/validate`. */
