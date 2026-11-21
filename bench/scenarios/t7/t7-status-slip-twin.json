@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 6,
+  "version": 7,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,7 +51,7 @@
   "rubric": [
     {
       "id": "finance-bottom-line",
-      "criterion": "The text around the numbers block gives the counting basis briefly and nothing else, as the request asks (the request puts the figures in the block and limits the surrounding text to the counting basis, so figures need not be repeated in prose). Fail: the text adds status, risks or recommendations, or gives no counting basis at all. Partial: a basis is given but it omits the period (S29 and S30) or one of the conventions that change the figures. Pass: a short note names the period S29 and S30 and the conventions used (Done and Cancelled both count as closed, blank estimates add no points, names are matched after trimming spaces, open means To Do, In Progress or Blocked), the block or the text gives total open points 597, and nothing about status, risks or recommendations is added. (code cannot check this because it only parses the fenced JSON block).",
+      "criterion": "The text of reports/finance-numbers.md around the numbers block gives the counting basis briefly and nothing else, as the request asks (the request puts the figures in the block and limits the surrounding text to the counting basis, so figures need not be repeated in prose). Judge that file only: a remark in the agent's chat reply is not part of the requester-facing answer. Fail: the file's text adds status, risks or recommendations, or gives no counting basis at all. Partial: a basis is given but it omits the period (S29 and S30) or one of the conventions that change the figures. Pass: a short note in the file names the period S29 and S30 and the conventions used (Done and Cancelled both count as closed, blank estimates add no points, names are matched after trimming spaces, open means To Do, In Progress or Blocked), the block or the text gives total open points 597, and nothing about status, risks or recommendations is added. (code cannot check this because it only parses the fenced JSON block).",
       "weight": 1
     }
   ],
