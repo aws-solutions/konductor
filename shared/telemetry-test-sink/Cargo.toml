@@ -1,6 +1,6 @@
 [package]
 name = "telemetry-test-sink"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 description = "Test-only loopback HTTP sink standing in for the real telemetry endpoint, shared by cli/konductor-rs's and mcp/lib/skill-lookup-core's test suites so neither ever sends telemetry to a real endpoint during a test run"
 # Lives in the shared/ workspace, sibling to cli/ and mcp/, for the
@@ -52,4 +52,4 @@ rustls = { version = "=0.23.46", default-features = false, features = ["ring", "
 # points curl at (see src/lib.rs) -- the private key never touches disk
 # and never needs PEM at all; it goes straight from `rcgen`'s DER output
 # into rustls's `ServerConfig`.
-rcgen = { version = "=0.13.2", default-features = false, features = ["ring", "pem"] }
+rcgen = { version = "=0.14.10", default-features = false, features = ["ring", "pem"] }

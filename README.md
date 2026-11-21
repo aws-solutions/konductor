@@ -180,7 +180,7 @@ See [`cli/README.md`](cli/README.md#getting-started) for prerequisites and a ful
 straight from GitHub. It's a third install path, alongside the install script and a source build.
 
 1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
-2. Enter `https://github.com/aws-solutions/konductor/tree/v1.2.0/powers/konductor`.
+2. Enter `https://github.com/aws-solutions/konductor/tree/v1.2.1/powers/konductor`.
 3. Choose **Install**. This registers the Power's manifest; onboarding itself runs separately, the first time you invoke it (step 4 below).
 4. Either say "konductor", "install konductor", or "set up konductor" in a chat session, or use the Try-power action in the installed Powers list. Both trigger the same onboarding skill.
 
@@ -447,7 +447,7 @@ mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solution
 ### 🔌 Integrations
 
 AWS MCP comes pre-wired for `konductor`, `k-architect` and `k-developer` on Claude Code and Kiro
-CLI, launched through `mcp-proxy-for-aws-cli==1.7.0`. You need `uvx`. Without it the server fails to
+CLI, launched through `mcp-proxy-for-aws-cli==2.0.0`. You need `uvx`. Without it the server fails to
 start and the agents work without AWS lookups. The agents start the proxy with `--skip-auth`, so
 documentation search and skills work without AWS credentials; calls that act on an account still
 need them. `k-architect` and `k-developer` get the full server, including AWS API tools, so scope
@@ -523,7 +523,7 @@ own; servers such as Playwright MCP are yours to configure.
   unless telemetry is off. See [Data Collection](#data-collection) for what is sent and how to turn
   it off.
 - **The bundled AWS MCP server.** `.mcp.json` launches
-  `uvx mcp-proxy-for-aws-cli==1.7.0 https://aws-mcp.us-east-1.api.aws/mcp --metadata AWS_REGION=us-east-1`.
+  `uvx mcp-proxy-for-aws-cli==2.0.0 https://aws-mcp.us-east-1.api.aws/mcp --metadata AWS_REGION=us-east-1`.
   `uvx` downloads that pinned package on first use. The proxy connects to the managed AWS MCP
   endpoint `aws-mcp.us-east-1.api.aws` with the AWS credentials in your environment, which lets
   `k-architect` and `k-developer` read AWS documentation and call AWS APIs.

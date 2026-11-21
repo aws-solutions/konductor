@@ -22,7 +22,7 @@ alternative to the Kiro CLI and Claude Code installation paths.
 3. Enter:
 
    ```text
-   https://github.com/aws-solutions/konductor/tree/v1.2.0/powers/konductor
+   https://github.com/aws-solutions/konductor/tree/v1.2.1/powers/konductor
    ```
 
 4. Choose **Install**.
@@ -159,7 +159,7 @@ configuration:
     "aws-mcp": {
       "command": "uvx",
       "args": [
-        "mcp-proxy-for-aws-cli==1.7.0",
+        "mcp-proxy-for-aws-cli==2.0.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1",

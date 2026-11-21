@@ -13,10 +13,10 @@
 // *what was scanned* — one file, one concern, matching the split
 // `main.rs`'s module doc comment describes.
 use rmcp::model::{
-    CallToolRequestParams, CallToolResult, ContentBlock, ErrorData as McpErrorData,
-    GetPromptRequestParams, GetPromptResult, Implementation, InitializeRequestParams,
-    InitializeResult, ListPromptsResult, ListToolsResult, PaginatedRequestParams, Prompt,
-    PromptMessage, Role, ServerCapabilities, ServerInfo, Tool,
+    CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock,
+    ErrorData as McpErrorData, GetPromptRequestParams, GetPromptResponse, GetPromptResult,
+    Implementation, InitializeRequestParams, InitializeResult, ListPromptsResult, ListToolsResult,
+    PaginatedRequestParams, Prompt, PromptMessage, Role, ServerCapabilities, ServerConfig, Tool,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData as McpError, RoleServer, ServerHandler};
@@ -823,8 +823,8 @@ fn mcp_error_code(err: &McpError) -> &'static str {
 }
 
 impl ServerHandler for SkillLookupServer {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_tools()
                 .enable_prompts()
@@ -857,7 +857,7 @@ impl ServerHandler for SkillLookupServer {
         &self,
         request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResponse, McpError> {
         let empty = serde_json::Map::new();
         let args = request.arguments.as_ref().unwrap_or(&empty);
         let tool_name = request.name.as_ref();
@@ -890,7 +890,7 @@ impl ServerHandler for SkillLookupServer {
             record_tool_call(counters, tool_name, args, &result);
         }
 
-        result
+        result.map(CallToolResponse::from)
     }
 
     async fn list_prompts(
@@ -905,7 +905,7 @@ impl ServerHandler for SkillLookupServer {
         &self,
         request: GetPromptRequestParams,
         _context: RequestContext<RoleServer>,
-    ) -> Result<GetPromptResult, McpError> {
+    ) -> Result<GetPromptResponse, McpError> {
         let name = request.name.as_str();
         // Mirrors `find_skills`/`get_skill`'s own per-call debug line
         // and `call_tool`'s rejection line above: routed
@@ -919,7 +919,7 @@ impl ServerHandler for SkillLookupServer {
         if let Err(ref e) = result {
             logging::log(Level::Warn, &format!("prompt rejected: {name}: {e}"));
         }
-        result
+        result.map(GetPromptResponse::from)
     }
 
     async fn initialize(
@@ -927,9 +927,9 @@ impl ServerHandler for SkillLookupServer {
         request: InitializeRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, McpError> {
-        // `rmcp` 2.1.0 dispatches the first `initialize` through the same
+        // `rmcp` 3.11.0 dispatches the first `initialize` through the same
         // `Service::handle_request` -> `ServerHandler::initialize` path
-        // (`rmcp-2.1.0/src/service/server.rs`'s `serve_server_with_ct_inner`)
+        // (`rmcp-3.11.0/src/service/server.rs`'s `serve_server_with_ct_inner`)
         // as every later request, so this method is reachable on a
         // session's legitimate first call and can't unconditionally
         // reject. `self.initialized` tracks whether this session has
@@ -948,7 +948,7 @@ impl ServerHandler for SkillLookupServer {
         }
 
         // Mirrors `rmcp`'s own default `ServerHandler::initialize` impl
-        // (`rmcp-2.1.0/src/handler/server.rs`): answer from `get_info()`,
+        // (`rmcp-3.11.0/src/handler/server.rs`): answer from `get_info()`,
         // then negotiate the protocol version against what the client
         // requested. This handler still needs its own override (rather
         // than relying on the default impl) purely to add the
