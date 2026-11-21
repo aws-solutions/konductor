@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import type { CheckView } from '../designer-view/yaml-draft';
+import type { CheckView, CheckViewStage } from '../designer-view/yaml-draft';
 import {
   SAVABLE_KEYS,
   checkStageOf,
@@ -9,6 +9,7 @@ import {
   markedStageOf,
   pickedStageOf,
   saveRefusal,
+  sourceStageOf,
 } from './view-stage';
 
 const view: CheckView = {
@@ -214,6 +215,26 @@ describe('droppedKeysOf', () => {
   });
 });
 
+describe('sourceStageOf', () => {
+  it('takes the stage from the place it was loaded from', () => {
+    expect(sourceStageOf(view, { kind: 'loaded', index: 1 })?.agent).toBe(
+      'k-quality-assurance',
+    );
+  });
+
+  it('takes no stage for one that was added since', () => {
+    expect(sourceStageOf(view, { kind: 'added' })).toBeUndefined();
+  });
+
+  it('takes no stage while the file is not known', () => {
+    expect(sourceStageOf(null, { kind: 'loaded', index: 0 })).toBeUndefined();
+  });
+
+  it('takes no stage for a place the file does not have', () => {
+    expect(sourceStageOf(view, { kind: 'loaded', index: 5 })).toBeUndefined();
+  });
+});
+
 describe('saveRefusal', () => {
   const draft = (name: string, id = 's1') => ({
     id,
@@ -222,46 +243,125 @@ describe('saveRefusal', () => {
   });
   const plain = { name: 'draft', agent: 'k-developer' };
   const withPrompt = { ...plain, prompt: 'Write it.' };
+  const loaded = (index: number) => ({ kind: 'loaded', index }) as const;
+  const added = { kind: 'added' } as const;
+  const fileOf = (...stages: CheckViewStage[]): CheckView => ({
+    ...view,
+    stages,
+  });
 
   it('lets a save of changed stages with no other key go ahead', () => {
     expect(
-      saveRefusal([{ draft: draft('drafting'), saved: plain, changed: true }]),
+      saveRefusal(
+        [{ draft: draft('drafting'), source: loaded(0), changed: true }],
+        fileOf(plain),
+      ),
     ).toBeUndefined();
   });
 
   it('lets a save go ahead when the stage with a prompt is unchanged', () => {
     expect(
-      saveRefusal([
-        { draft: draft('draft'), saved: withPrompt, changed: false },
-        { draft: draft('reviewing', 's2'), saved: plain, changed: true },
-      ]),
+      saveRefusal(
+        [
+          { draft: draft('draft'), source: loaded(0), changed: false },
+          {
+            draft: draft('reviewing', 's2'),
+            source: loaded(1),
+            changed: true,
+          },
+        ],
+        fileOf(withPrompt, plain),
+      ),
     ).toBeUndefined();
   });
 
   it('refuses a save that would drop the prompt of a changed stage', () => {
-    const refusal = saveRefusal([
-      { draft: draft('drafting'), saved: withPrompt, changed: true },
-    ]);
+    const refusal = saveRefusal(
+      [{ draft: draft('drafting'), source: loaded(0), changed: true }],
+      fileOf(withPrompt),
+    );
 
     expect(refusal).toContain('would drop the prompt of drafting');
     expect(refusal).toContain('refused');
   });
 
   it('names every key the changed stage would lose', () => {
-    const refusal = saveRefusal([
-      {
-        draft: draft('drafting'),
-        saved: { ...plain, prompt_file: 'draft.md', done_when: 'x' },
-        changed: true,
-      },
-    ]);
+    const refusal = saveRefusal(
+      [{ draft: draft('drafting'), source: loaded(0), changed: true }],
+      fileOf({ ...plain, prompt_file: 'draft.md', done_when: 'x' }),
+    );
 
     expect(refusal).toContain('done_when and prompt_file');
   });
 
-  it('refuses a save when a stage the view does not describe is unchanged', () => {
+  it('lets a save of a stage the person added go ahead', () => {
     expect(
-      saveRefusal([{ draft: draft('draft'), saved: undefined, changed: true }]),
+      saveRefusal(
+        [
+          { draft: draft('draft'), source: loaded(0), changed: false },
+          { draft: draft('agent-2', 's2'), source: added, changed: true },
+        ],
+        fileOf(withPrompt),
+      ),
     ).toBeUndefined();
+  });
+
+  it('refuses a save of a stage changed before the first check settles', () => {
+    const refusal = saveRefusal(
+      [{ draft: draft('drafting'), source: loaded(0), changed: true }],
+      null,
+    );
+
+    expect(refusal).toContain('the keys it has in the file are not known');
+    expect(refusal).toContain('drafting');
+  });
+
+  it('refuses a save of a changed stage when the first check failed', () => {
+    expect(
+      saveRefusal(
+        [{ draft: draft('drafting'), source: loaded(0), changed: true }],
+        undefined,
+      ),
+    ).toContain('not known');
+  });
+
+  it('refuses a save of a stage renamed after another was added', () => {
+    // The file has two stages; the draft has three, and the loaded first one
+    // was renamed, so neither the count nor the name finds it.
+    const refusal = saveRefusal(
+      [
+        { draft: draft('drafting'), source: loaded(0), changed: true },
+        { draft: draft('review', 's2'), source: loaded(1), changed: false },
+        { draft: draft('agent-3', 's3'), source: added, changed: true },
+      ],
+      fileOf(withPrompt, plain),
+    );
+
+    expect(refusal).toContain('would drop the prompt of drafting');
+  });
+
+  it('refuses a save of a stage renamed after another was removed', () => {
+    // The file has three stages; the first was deleted and the second, which
+    // has the prompt, was renamed.
+    const refusal = saveRefusal(
+      [{ draft: draft('reviewing', 's2'), source: loaded(1), changed: true }],
+      fileOf(plain, withPrompt, plain),
+    );
+
+    expect(refusal).toContain('would drop the prompt of reviewing');
+  });
+
+  it('refuses a save of a stage renamed after a delete and an add restored the count', () => {
+    // The counts match again, so a position would point at the wrong stage:
+    // the added stage would answer for the deleted one, which had the prompt.
+    const refusal = saveRefusal(
+      [
+        { draft: draft('reviewing', 's2'), source: loaded(1), changed: true },
+        { draft: draft('agent-3', 's3'), source: added, changed: true },
+      ],
+      fileOf(plain, withPrompt),
+    );
+
+    expect(refusal).toContain('would drop the prompt of reviewing');
   });
 });

@@ -9,6 +9,29 @@ export const FINDINGS_SHOWN_MOST = 200;
 
 const ORDER: readonly string[] = ['error', 'warning', 'info'];
 
+// Where a finding ranks: by its severity, worst first. A severity this page
+// does not know ranks after the ones it does, so it never pushes an error off
+// the list.
+function rankOf(finding: CheckDiagnostic): number {
+  const rank = ORDER.indexOf(finding.severity);
+  return rank < 0 ? ORDER.length : rank;
+}
+
+/**
+ * The findings of an answer, worst first, at most `FINDINGS_SHOWN_MOST` of
+ * them. The whole answer is ranked before it is cut, so an error the server
+ * sent after a thousand infos is on the first page and no error is dropped
+ * behind a finding of a lower severity. `Array#sort` is stable, so findings
+ * of the same severity keep the order the server sent them in.
+ */
+function worstFirst(
+  all: readonly CheckDiagnostic[],
+): readonly CheckDiagnostic[] {
+  return [...all]
+    .sort((a, b) => rankOf(a) - rankOf(b))
+    .slice(0, FINDINGS_SHOWN_MOST);
+}
+
 /** The page of findings to draw, and what is left over. */
 export interface FindingsPage {
   /** The findings to list now, worst first. */
@@ -32,9 +55,7 @@ export function findingsPage(
   shown: number,
 ): FindingsPage {
   const all = answer?.diagnostics ?? [];
-  const sorted = [...all]
-    .slice(0, FINDINGS_SHOWN_MOST)
-    .sort((a, b) => ORDER.indexOf(a.severity) - ORDER.indexOf(b.severity));
+  const sorted = worstFirst(all);
   const page = sorted.slice(
     0,
     Math.max(0, Math.min(shown, FINDINGS_SHOWN_MOST)),
