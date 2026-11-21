@@ -1419,6 +1419,10 @@ One-time setup: Linux, Python 3.9 or later, Node 22 or later. The gateway uses o
 ```
 python3 -m venv .venv && .venv/bin/pip install cedarpy
 ```
+An `arm-sim` release also needs Python 3.12 with the arm wheels (same pins as the arm release manifest):
+```
+python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy cedarpy
+```
 Tests: `python3 -m unittest discover -s bench/physical/test -p 'test_*.py'` (run them with `.venv/bin/python` to include the Cedar tests). The Node tests are `bench/runner/test/plant-*.test.js`.
 
 ### Arm plant (Phase 2b, in progress)
