@@ -52,13 +52,13 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 0,
-      "lazy": 11,
+      "lazy": 22,
       "alt": 100,
-      "date": "2026-11-19"
+      "date": "2026-11-21"
     }
   },
   "version": 3,
