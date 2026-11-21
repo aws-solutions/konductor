@@ -131,6 +131,26 @@ describe('writerKeepsItem', () => {
     );
   });
 
+  // The writer writes a value the way a parser reads back as that same text,
+  // so a word YAML 1.1 takes for a boolean comes back quoted.
+  it('does not keep an item whose name the file writes as a plain yes', () => {
+    const item = '  - name: yes\n    agent: k-developer\n';
+
+    expect(writerKeepsItem(item, 'yes', 'k-developer', '\n')).toBe(false);
+  });
+
+  it('does not keep an item whose agent the file writes as a plain off', () => {
+    const item = '  - name: draft\n    agent: off\n';
+
+    expect(writerKeepsItem(item, 'draft', 'off', '\n')).toBe(false);
+  });
+
+  it('keeps an item whose values the file writes as the writer would', () => {
+    const item = '  - name: "yes"\n    agent: "off"\n';
+
+    expect(writerKeepsItem(item, 'yes', 'off', '\n')).toBe(true);
+  });
+
   it.each([
     ['carriage returns and line feeds', '\r\n'],
     ['carriage returns alone', '\r'],
