@@ -103,9 +103,39 @@ test('checkRun accepts locked tasks read from the batch directories and refuses 
   assert.throws(() => prereg.requirePrereg({ prereg: true }, { taskIds: [], extraDirs: [] }), /takes the path/);
 });
 
+/** A konductor tree with one skill, for the freeze gates' lint and coverage. */
+function konductorTree() {
+  const tree = tmp();
+  write(path.join(tree, 'skills/plan-review/SKILL.md'), '---\nname: plan-review\ndescription: Use when reviewing a plan.\n---\n\n# P\n');
+  return tree;
+}
+
+test('freeze runs the lint and the coverage gate first: a lint finding refuses, gaps refuse unless accepted, and the lock records them (D-55)', () => {
+  const tree = konductorTree();
+  const dir = pack();
+  const plain = cli(['scenarios', 'prereg', 'freeze', dir, '--date', '2026-11-19', '--base', `dir:${tree}`]);
+  assert.equal(plain.status, 1);
+  assert.match(plain.stderr, /coverage hole: skill:plan-review/);
+  assert.match(plain.stderr, /--accept-gaps/);
+  assert.equal(fs.existsSync(path.join(dir, 'PREREG.json')), false, 'nothing is written');
+  const leaky = pack();
+  write(path.join(leaky, 'batch1/a-1.json'), `${JSON.stringify(task('a-1', { prompt: 'Run plan-review on it.' }))}\n`);
+  const refused = cli(['scenarios', 'prereg', 'freeze', leaky, '--date', '2026-11-19', '--base', `dir:${tree}`, '--accept-gaps', 'a test pack']);
+  assert.equal(refused.status, 1);
+  assert.match(refused.stderr, /lint: a-1: names-unit/);
+  const ok = cli(['scenarios', 'prereg', 'freeze', dir, '--date', '2026-11-19', '--base', `dir:${tree}`, '--accept-gaps', 'a test pack']);
+  assert.equal(ok.status, 0, ok.stderr);
+  const lock = JSON.parse(fs.readFileSync(path.join(dir, 'PREREG.json'), 'utf8'));
+  assert.equal(lock.gates.coverage.acceptedBecause, 'a test pack');
+  assert.ok(lock.gates.coverage.holes.includes('skill:plan-review'));
+  assert.equal(lock.gates.lint.new, 0);
+  assert.deepEqual(prereg.checkPrereg(path.join(dir, 'PREREG.json'), dir), []);
+  assert.equal(cli(['scenarios', 'prereg', 'freeze', pack(), '--date', '2026-11-19']).status, 2, 'freeze needs --base');
+});
+
 test('the CLI freezes (exit 0), checks (0 then 1 after an edit), and refuses a missing action or directory (2)', () => {
   const dir = pack();
-  const frozen = cli(['scenarios', 'prereg', 'freeze', dir, '--date', '2026-11-19']);
+  const frozen = cli(['scenarios', 'prereg', 'freeze', dir, '--date', '2026-11-19', '--base', `dir:${konductorTree()}`, '--accept-gaps', 'a test pack']);
   assert.equal(frozen.status, 0, frozen.stderr);
   assert.match(frozen.stdout, /5 task\(s\) \(\d+ DEV, \d+ HELD-OUT\)/);
   assert.equal(cli(['scenarios', 'prereg', 'check', dir]).status, 0);

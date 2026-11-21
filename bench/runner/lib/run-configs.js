@@ -10,7 +10,7 @@ const { writeAtomic } = require('./owned.js');
 
 const HISTORY_DIR = 'run-configs';
 
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('./util.js');
 const stamp = (iso) => String(iso || new Date().toISOString()).replace(/[:.]/g, '-');
 
 function freeName(dir, base) {

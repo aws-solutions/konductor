@@ -28,7 +28,7 @@ const CONTROLS_DIR = path.join(CAP_DIR, 'controls');
 const CONVENTION = 'convention-control';
 const TASKS_FILE = /^tasks-(.+)\.json$/;
 
-const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 const short = (h) => (h ? h.slice(0, 12) : 'none');
 
 /** The batches of the tasks files in `dir` (tasks-<batch>.json, not the .buckets sidecars), in name order. */

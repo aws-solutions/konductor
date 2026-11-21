@@ -339,3 +339,10 @@ Who: claude (mate spot-review fix worker session), from /tmp/pilot-w3c (pin 249e
 - `t6-req-field-inspections` F2 ("12 shared tablets") and F3 ("original captured resolution") accept those words.
 - `t6-req-data-export` F1 accepts a permission named "Account Data Export".
 - Free gates unchanged on all nine T6 req tasks (reference 100, empty 0, lazy at most 28.6); the reworded-fact sweep still 0 of 162 fail. The wave 3c answers on the new checks: data-export 64 to 79.6, expense-approvals 62 to 78, field-inspections 76 to 88.1, volunteer-shifts 67 to 94.5; the rest are real misses (the agent was told £60 and the 10th/25th payment run and did not write them; arch-webhooks and clinic-reminders asked no question).
+
+## Rubric anchors (2026-11-21, mate debt worker, DEBT D-117)
+
+`t6-architect-idea-spike` v3 (`decoy-explained`, `spike-is-honest`, `honest-summary`) and
+`t6-developer-feasibility-spike` v3 (`scope-of-evidence`, `decision-use`, `honest-summary`) had judged rubric items with
+no Fail / Partial / Pass anchor; each now has the three, written from the item's own sentence. No check, key, fixture
+or answer changed, so the free gates are unchanged. Non-Claude recheck: pending (`handEdited.version` 3).

@@ -13,7 +13,7 @@ const PROFILES = path.join(__dirname, '..', '..', 'profiles');
 const METRICS_FILE = path.join(PROFILES, 'orch-metrics.json');
 const PHASES_FILE = path.join(PROFILES, 'phase-documents.json');
 
-const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const { readJson } = require('./util.js');
 
 function compile(list, name, file) {
   if (!Array.isArray(list)) throw new Error(`${file}: "${name}" must be a list of patterns`);

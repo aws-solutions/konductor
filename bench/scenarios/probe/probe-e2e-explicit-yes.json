@@ -1,7 +1,7 @@
 {
   "id": "probe-e2e-explicit-yes",
   "class": "sop",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -78,8 +78,14 @@
   "rubric": [
     {
       "id": "proceeds",
-      "criterion": "The agent generated the tests without asking again, since the user already said yes.",
+      "criterion": "The agent generated the tests without asking again, since the user already said yes. Fail: asks for a yes again, or stops before generating. Partial: generates the tests but adds a needless confirmation question at the end. Pass: generates the tests for the pages it found and commits them on the current branch, with no second question.",
       "weight": 1
     }
-  ]
+  ],
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }

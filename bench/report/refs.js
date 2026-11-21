@@ -34,8 +34,7 @@ const SHELL_TOOLS = /^(execute_bash|shell|Bash|bash|execute)$/;
 const REFUSAL = /outside (?:of )?(?:the |your |this )?(?:workspace|working directory|project|allowed|current)|not (?:allowed|permitted|within|inside|in) (?:the |to |your )?(?:workspace|read|access|working|allowed)|(?:workspace|sandbox|path|directory) (?:boundary|restriction|policy)|permission denied|access (?:is )?denied|denied|refus|forbidden|unauthori[sz]ed|not authori[sz]ed|blocked|EACCES|EPERM|operation not permitted|not trusted|untrusted|reject(?:ed)? by|rejected|declined|not approved|(?:requires?|needs?) (?:user )?approval|approval (?:is )?required|trusted (?:paths?|directories|folders?)/i;
 const ERRNO = /function not implemented|\berror 38\b|errno[ :=]*38\b|\bENOSYS\b/i;
 
-const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-const readText = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
+const { readJsonOrNull: readJson, readTextOrNull: readText } = require('../runner/lib/util.js');
 const readJsonl = (f) => {
   const text = readText(f);
   if (text == null) return null;

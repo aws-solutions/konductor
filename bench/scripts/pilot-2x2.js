@@ -14,7 +14,7 @@ const MARKER = 'pilot-2x2.json';
 
 const out = (line) => process.stdout.write(`${line}\n`);
 const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 
 function* resultFiles(dir) {

@@ -1,7 +1,7 @@
 {
   "id": "t11-docx-room-booking-reqs",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -52,7 +52,7 @@
   "rubric": [
     {
       "id": "narrative-judgment",
-      "criterion": "The prose distinguishes approved behavior from undecided policy and gives reviewers a clear reason to trust the extraction (code cannot check this because narrative judgment and readability are not represented in the import block).",
+      "criterion": "The prose distinguishes approved behavior from undecided policy and gives reviewers a clear reason to trust the extraction (code cannot check this because narrative judgment and readability are not represented in the import block). Fail: the prose mixes approved rules with open questions, or gives no basis for the extraction. Partial: approved and undecided items are apart, but the reader cannot tell which source section backs a rule. Pass: approved behaviour and undecided policy are clearly apart, and the prose says where each rule came from and why the extraction can be trusted.",
       "weight": 1
     }
   ],
@@ -135,8 +135,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): old-duration-absent skips a requirement that names 4 hours as the old value (D-136)",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   }
 }

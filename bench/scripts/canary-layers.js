@@ -30,7 +30,7 @@ const TOKEN_SHAPE = /kd-cl-(rules|prompt|index|skill|sop|ctx)-[0-9a-f]{8}/g;
 
 const makeToken = (layer, hex = crypto.randomBytes(4).toString('hex')) => `kd-cl-${layer}-${hex}`;
 const markerLine = (token) => `Delivery marker: ${token}`;
-const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const { readJson } = require('../runner/lib/util.js');
 
 function extract(repo, ref, dest) {
   fs.rmSync(dest, { recursive: true, force: true });

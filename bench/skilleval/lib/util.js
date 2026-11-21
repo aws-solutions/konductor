@@ -5,9 +5,9 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex');
+const { sha256 } = require('../../runner/lib/util.js');
 
-const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const { readJson } = require('../../runner/lib/util.js');
 
 function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });

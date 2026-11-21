@@ -41,6 +41,15 @@ test('sdlc-spike-dedupe: "throwaway" is judged by the rubric only', () => {
   assert.equal(t.rubric.some((r) => r.id === 'throwaway'), true);
 });
 
+test('the two loose keyword checks are gone and the rubric judges them (review S2, D-41)', () => {
+  const spike = task('sdlc/sdlc-spike-dedupe.json');
+  assert.equal(spike.checks.some((c) => /recommend/.test(c.cmd || c.pattern || '')), false);
+  assert.equal(spike.rubric.some((r) => r.id === 'recommendation'), true);
+  const framing = task('sdlc/sdlc-problem-framing.json');
+  assert.equal(framing.checks.some((c) => /kill\|abandon/.test(c.cmd || c.pattern || '')), false);
+  assert.match(framing.rubric.find((r) => r.id === 'measure').criterion, /stop rule/);
+});
+
 test('the no-new-dependency check passes the fixture and fails a tree with a dependency', () => {
   const { runChecks } = require('../lib/checks.js');
   const { tmp, write } = require('./helpers.js');

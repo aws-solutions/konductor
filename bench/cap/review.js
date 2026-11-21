@@ -20,7 +20,6 @@
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const path = require('node:path');
-const { mulberry32 } = require('../../tests/scripts/stats.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { secretLiterals, scrubString } = require('../runner/lib/scrub.js');
@@ -43,15 +42,8 @@ const MAX_QUOTE = 2000;
 
 class ReviewError extends Error {}
 
-function shuffle(list, seed) {
-  const rng = mulberry32(seed);
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// A copy of `list` in a seeded order (util.js seededShuffle: Fisher-Yates on mulberry32).
+const { seededShuffle: shuffle } = require('../runner/lib/util.js');
 
 const letter = (i) => (i < 26 ? String.fromCharCode(65 + i) : `Z${i - 25}`);
 const sha16 = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);
@@ -64,7 +56,7 @@ function canonical(v) {
   if (v !== null && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
   return JSON.stringify(v === undefined ? null : v);
 }
-const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 
 /**
  * A hash of what the rater saw for one run: the stream.jsonl bytes (the final text comes from them), the checks the

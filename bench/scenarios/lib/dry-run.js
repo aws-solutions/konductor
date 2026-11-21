@@ -15,7 +15,7 @@
 //
 //   node bench/scenarios/lib/dry-run.js --config bench/scenarios/tN/scenario.config.js [id ...] [--repeat N] [--json] [--record]
 //
-// No ids: every task of the batch. --record writes pilot.dryRun (reference, stub, lazy, alt, date) into each task file
+// No ids: every task of the batch. --record writes pilot.dryRun (reference, stub, lazy, alt, per-check checks, date) into each task file
 // that has all four scores. Scratch goes under $TMPDIR and is removed. Exit 1 when a task fails a gate.
 
 const fs = require('node:fs');
@@ -146,7 +146,11 @@ function pilotWith(pilot, res, date) {
   if (![s.reference, s.stub, s.lazy, s.alt].every((v) => typeof v === 'number')) return null;
   // With a free shallow answer the lazy figure is the higher of the two, so neither can hide.
   const lazy = typeof s.shallow === 'number' ? Math.max(s.lazy, s.shallow) : s.lazy;
-  const dryRun = { reference: s.reference, stub: s.stub, lazy, alt: s.alt, date };
+  // Per check (in task order), whether the reference and the stub passed it: the pilot table reads a check the two agree
+  // on as insensitive, so a run that flips it is noisy on its first run (DEBT D-88).
+  const passes = (m) => (Array.isArray(res.modes?.[m]?.results) ? [...res.modes[m].results].sort((x, y) => x.i - y.i).map((x) => Boolean(x.passed)) : null);
+  const checks = passes('reference') && passes('stub') ? { reference: passes('reference'), stub: passes('stub') } : null;
+  const dryRun = { reference: s.reference, stub: s.stub, lazy, alt: s.alt, ...(checks ? { checks } : {}), date };
   return { scores: {}, ...(pilot || {}), reference: s.reference, stub: s.stub, dryRun, decision: res.pass ? 'keep' : 'fix', date };
 }
 

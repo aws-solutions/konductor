@@ -14,7 +14,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { loadTasks, suiteExtraDirs, BENCH_DIR } = require('../runner/lib/tasks.js');
 
-const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const { readJson } = require('../runner/lib/util.js');
 
 function skillNamesOf(repo, agent) {
   const file = path.join(repo, 'agents', `${agent}.agent-spec.json`);

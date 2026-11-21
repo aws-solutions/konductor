@@ -423,7 +423,7 @@ function builtinStartup(runtime) {
 }
 
 const safe = (fn) => { try { return fn(); } catch { return null; } };
-const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const { readJson } = require('./util.js');
 
 // Per-arm facts read once from a trial install: where the agent definition is, and what the arm's source tree lists.
 function kiroSkillInfo(home, exportDir, agentName = 'konductor') {

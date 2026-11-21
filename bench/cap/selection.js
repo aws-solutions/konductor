@@ -38,7 +38,7 @@ const STUB_BEHAVIOURS = Object.freeze({
   correct: (request) => request.expect === 'load',
 });
 
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 
 /** The requests as trigger queries: [{ id, text, expect }]. `set` is a checked selection.json. */
 const queriesOf = (set) => set.requests.map((r) => ({ id: r.id, text: r.prompt, expect: r.expect }));

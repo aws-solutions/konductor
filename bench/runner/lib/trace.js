@@ -15,8 +15,8 @@ const { runtimeOf, descriptorOf, supporting, joinNames } = require('./harness/ru
 const claude = require('./harness/claude-code-parse.js');
 const skills = require('./skills.js');
 
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
-const readText = (file) => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('./util.js');
+const { readTextOrNull: readText } = require('./util.js');
 const WRITE_TOOLS = new Set(['fs_write', 'str_replace', 'fs_append', 'Write', 'Edit', 'MultiEdit']);
 const FIND_SKILLS = 'find_skills';
 

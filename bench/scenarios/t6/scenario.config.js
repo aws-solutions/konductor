@@ -20,7 +20,7 @@ const DIR = __dirname;
 const GENERIC_ASK = 'Is there anything else I should know before I start?';
 const FAMILY = { 'claude-sonnet-5.5': 'claude', 'gpt-5.6-luna': 'openai', 'deepseek-3.2': 'deepseek', 'glm-5': 'zhipu', 'qwen3-coder-next': 'qwen', 'minimax-m2.5': 'minimax' };
 const DATE = '2026-11-20';
-const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const { readJson } = require('../../runner/lib/util.js');
 
 const SCRIPTED = `2. The scripted user (\`scriptedUser\` in task-draft.json). The colleague knows 4 to 8 facts that are NOT in the fixture or the request, that a careful practitioner would think to ask about after reading the folder (the folder shows the gap, for example data with two time zones but no rule for them), and that change the requirements. For each fact write:
    - \`id\`: F1, F2, ...

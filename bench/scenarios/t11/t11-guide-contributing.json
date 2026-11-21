@@ -1,7 +1,7 @@
 {
   "id": "t11-guide-contributing",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -44,7 +44,7 @@
   "rubric": [
     {
       "id": "review-guidance",
-      "criterion": "The guide gives contributors clear, respectful review and ownership expectations (code cannot check this because it requires judging the quality of human-facing guidance).",
+      "criterion": "The guide gives contributors clear, respectful review and ownership expectations (code cannot check this because it requires judging the quality of human-facing guidance). Fail: no review or ownership expectations, or they are vague or curt (\"someone will look at it\"). Partial: names who reviews and when, but misses ownership of releases or how to respond to review. Pass: says who reviews what, how long it usually takes, how to answer review comments, and who owns releases, in a respectful tone.",
       "weight": 1
     }
   ],
@@ -118,5 +118,11 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }

@@ -3,7 +3,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { mulberry32 } = require('../../tests/scripts/stats.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { loadRun, readJson } = require('../report/load.js');
@@ -17,16 +16,8 @@ const { notJudgedReason } = require('./run.js');
 
 const VERDICTS = ['pass', 'partial', 'fail'];
 
-/** A copy of `list` in a seeded order: the same `seed` always gives the same order (Fisher-Yates on mulberry32). */
-function shuffle(list, seed) {
-  const rng = mulberry32(seed);
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// A copy of `list` in a seeded order (util.js seededShuffle: Fisher-Yates on mulberry32).
+const { seededShuffle: shuffle } = require('../runner/lib/util.js');
 
 // The runs a calibration sheet is drawn from, shuffled by the seed, the first n. Runs the judges never see are left out
 // too (budget-skipped, credentials possibly unscrubbed, output files replaced by the agent, no workspace): their text must

@@ -52,6 +52,8 @@ const CASES = [
   { name: 'the autonomy-storage-cleanup solution and hidden tests (cs-, vault-)', ws: { fixture: 'auto-storage', solution: 'autonomy-storage-cleanup', hidden: 'autonomy-storage-cleanup', roots: TASK_ROOTS }, dirs: ['test', 'intended', 'invariants'] },
   // The task runs its intended tests with this TZ.
   { name: 'the autonomy-monthly-revenue hidden tests (rev-)', ws: { fixture: 'auto-reports', solution: 'autonomy-monthly-revenue', hidden: 'autonomy-monthly-revenue', roots: TASK_ROOTS }, dirs: ['intended', 'invariants'], env: { TZ: 'America/New_York' } },
+  // DEBT D-100: the one scenario fixture whose tests left a dir when run under a fresh TMPDIR.
+  { name: 'the t2-pr-price-cache fixture store test (catalog-test-)', ws: { fixture: 't2-pr-price-cache', roots: { fixtures: path.join(BENCH, 'scenarios', 't2', 'fixtures') } }, files: ['test/store.test.mjs'] },
 ];
 
 for (const c of CASES) {

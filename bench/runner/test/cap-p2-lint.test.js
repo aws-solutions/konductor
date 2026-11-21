@@ -157,6 +157,21 @@ const withLintFindings = (repo) => {
 
 const ratchetRules = (rep) => rep.findings.filter((f) => f.rule.startsWith('lint-')).map((f) => `${f.level}|${f.rule}|${f.id}${f.detail ? `|${f.detail}` : ''}`).sort();
 
+test('the rules main\'s skill gate owns are never ratcheted: a new finding of them stays a warning (K-9)', () => {
+  const { applyBaseline, isRatchetRule, DEFERRED_RULES } = require('../../cap/baseline.js');
+  assert.deepEqual([...DEFERRED_RULES].sort(), ['description-long', 'description-no-cue', 'description-short', 'lint-skill-lines']);
+  for (const r of DEFERRED_RULES) assert.equal(isRatchetRule(r), false, r);
+  assert.equal(isRatchetRule('lint-orphan-file'), true);
+  assert.equal(isRatchetRule('description-block-scalar'), true);
+  const findings = [
+    { level: 'warn', id: 'skill:a', rule: 'description-no-cue', fid: 'description-no-cue|skill:a', msg: 'm' },
+    { level: 'warn', id: 'skill:b', rule: 'lint-skill-lines', fid: 'lint-skill-lines|skill:b', msg: 'm' },
+    { level: 'warn', id: 'skill:c', rule: 'lint-orphan-file', fid: 'lint-orphan-file|skill:c|x.md', msg: 'm' },
+  ];
+  const { findings: out } = applyBaseline(findings, { schemaVersion: 1, waived: {} });
+  assert.deepEqual(out.map((f) => f.level), ['warn', 'warn', 'error']);
+});
+
 test('without a baseline file the lint findings are warnings and the audit passes', () => {
   const s = auditSetup(withLintFindings);
   try {

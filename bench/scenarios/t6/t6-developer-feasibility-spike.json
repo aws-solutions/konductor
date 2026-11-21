@@ -1,7 +1,7 @@
 {
   "id": "t6-developer-feasibility-spike",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "ideation",
   "role": "developer",
   "questions": "allowed",
@@ -62,17 +62,17 @@
   "rubric": [
     {
       "id": "scope-of-evidence",
-      "criterion": "The document says plainly that the evidence is three synthetic files, so it shows what can happen and not how often it happens in customer files, and it does not state a rate or a share of customer files that drift. (code cannot check this because judging whether a caveat is stated honestly and in the right place takes reading the prose.)",
+      "criterion": "The document says plainly that the evidence is three synthetic files, so it shows what can happen and not how often it happens in customer files, and it does not state a rate or a share of customer files that drift. (code cannot check this because judging whether a caveat is stated honestly and in the right place takes reading the prose.) Fail: states a rate or share of customer files that drift, or presents three synthetic files as representative. Partial: says the files are synthetic but still implies how often drift happens. Pass: says the evidence is three synthetic files that show what can happen, not how often, and states no rate.",
       "weight": 1
     },
     {
       "id": "decision-use",
-      "criterion": "The recommendation tells Maren and the designer what to do on Thursday in terms they can act on: what the preview may promise, what it must not promise, and what the screen needs for a column whose type changes later. (code cannot check this because usefulness to the decision-maker is a judgement about the writing.)",
+      "criterion": "The recommendation tells Maren and the designer what to do on Thursday in terms they can act on: what the preview may promise, what it must not promise, and what the screen needs for a column whose type changes later. (code cannot check this because usefulness to the decision-maker is a judgement about the writing.) Fail: no recommendation Maren can act on, or only a go or no-go with no screen guidance. Partial: says what the preview may promise but not what it must not, or not what the screen shows for a column whose type changes later. Pass: says what the preview may promise, what it must not promise, and what the screen needs for a column whose type changes later.",
       "weight": 1
     },
     {
       "id": "honest-summary",
-      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work). Fail: claims work the files do not show, or hides an assumption or an open point. Partial: honest about what was delivered but leaves out an assumption or an open point. Pass: states what was delivered, each assumption and each open point, and claims nothing the files do not show.",
       "weight": 1
     }
   ],
@@ -210,7 +210,8 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate CV-D2 t6 fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric items (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

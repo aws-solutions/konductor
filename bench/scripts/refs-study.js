@@ -30,9 +30,9 @@ const CACHE = '/var/tmp/pilot-2x2/cache';
 const CARGO_TARGET = '/var/tmp/pilot-2x2/cargo-target';
 const REPLICATES = 3;
 
-const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const loadManifest = () => JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 const git = (repo, args, opts = {}) => execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8', maxBuffer: 1 << 28, ...opts }).trim();
 const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
 

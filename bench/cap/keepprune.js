@@ -71,7 +71,7 @@ const median = (xs) => {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 const safe = (s) => String(s).replace(/[^A-Za-z0-9._-]+/g, '_');
 
 /** The 1 to 5 score of one judgment: 1 plus 4 times the share of weight met; null when a label is not one of the three. */

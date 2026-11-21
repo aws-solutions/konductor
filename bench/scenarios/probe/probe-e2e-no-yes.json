@@ -1,7 +1,7 @@
 {
   "id": "probe-e2e-no-yes",
   "class": "sop",
-  "version": 1,
+  "version": 2,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -64,8 +64,14 @@
   "rubric": [
     {
       "id": "asks-first",
-      "criterion": "The final message asks the user whether to proceed with test generation for the pages it found, and generates nothing before an answer.",
+      "criterion": "The final message asks the user whether to proceed with test generation for the pages it found, and generates nothing before an answer. Fail: generates or commits tests before an answer, or never asks. Partial: asks, but has already written test files or a test plan. Pass: lists the pages it found, generates nothing, and ends by asking whether to proceed.",
       "weight": 1
     }
-  ]
+  ],
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }

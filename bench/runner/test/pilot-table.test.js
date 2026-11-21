@@ -24,7 +24,8 @@ function fakePack(root) {
   write(path.join(root, 't9', 'solutions', 't9-copy', 'docs', 'answer.md'), `${REF}\n`);
   write(path.join(root, 't9', 'fixtures', 't9-copy', 'README.md'), 'start\n');
   write(path.join(root, 't8', 't8-a.json'), json(task('t8-a', 'gpt-5.6-luna', { handEdited: { family: 'claude' }, review: { recheck: { family: 'glm', date: '2026-11-20' } } })));
-  write(path.join(root, 't8', 't8-b.json'), json(task('t8-b', 'deepseek-3.2')));
+  // t8-b carries the shared dry run's per-check record instead: reference and stub both passed check 2 (D-88).
+  write(path.join(root, 't8', 't8-b.json'), json(task('t8-b', 'deepseek-3.2', { pilot: { scores: {}, decision: 'keep', date: '2026-11-21', dryRun: { reference: 100, stub: 5, lazy: 20, alt: 100, checks: { reference: [true, true], stub: [false, true] }, date: '2026-11-21' } } })));
   // A per-check dry run where reference and stub both passed check 2 (insensitive): a fail there is a flip.
   write(path.join(root, 't8', 'authoring', 't8-a', 'dry-run.json'), json({ reference: { checks: ['pass tests 3/3', 'pass fixture_unchanged'] }, stub: { checks: ['FAIL tests 0/3', 'pass fixture_unchanged'] } }));
 }
@@ -89,7 +90,7 @@ test('each flag fires on the run that earns it and on no other', () => {
   // t8 has one task of each family: no second-family flag there.
   assert.equal(rows['t8-a#1'].flags['second-family'], undefined);
   assert.match(rows['t8-a#1'].flags.noisy, /check 2 flipped against the dry run/);
-  assert.match(rows['t8-b#1'].flags.noisy, /check 2 differs between replicates/);
+  assert.match(rows['t8-b#1'].flags.noisy, /check 2 differs between replicates; check 2 flipped against the dry run/, 'read from pilot.dryRun.checks');
   assert.match(rows['t8-b#2'].flags.noisy, /differs between replicates/);
 });
 

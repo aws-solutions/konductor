@@ -3,7 +3,7 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, backfill, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers|pack [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
@@ -27,7 +27,7 @@ const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli
 const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers|pack [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--replicate-offset N] [--resume [--resume-errors]] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
@@ -247,8 +247,11 @@ const USAGE = `Usage:
        (the prompt leak lint: refuses a task prompt that names a skill, SOP or agent of the konductor tree at --base, uses a term from the fixed method
        list, or says "do not ask" on a task where questions are allowed; also refuses a v3 task (one with a phase) with no authorship.source or an empty
        licence. DIR holds task files, or batch directories of them. Exit 1 when there is any finding. No credits)
-  node bench/runner/bench.js scenarios prereg freeze|check DIR [--date YYYY-MM-DD]
-       (freeze writes DIR/PREREG.json: every task's id, version and file sha256, the SR-32 DEV and HELD-OUT lists recomputed from the ids, and the fixed
+  node bench/runner/bench.js scenarios prereg freeze DIR --base REF|dir:PATH [--accept-gaps REASON] [--selection-only FILE] [--repo-root DIR] [--date YYYY-MM-DD]
+  node bench/runner/bench.js scenarios prereg check DIR
+       (freeze first runs scenarios lint and the coverage gate on the --base tree: a new lint finding or a stale lint baseline entry refuses (exit 1),
+       and so do coverage holes and phase or role shortfalls unless --accept-gaps gives the reason, which the lock records under gates. Then it writes
+       DIR/PREREG.json: every task's id, version and file sha256, the SR-32 DEV and HELD-OUT lists recomputed from the ids, and the fixed
        protocol of bench/scenarios/protocol.js (margin, verdict words, bootstrap draws and seed, reps, stop rules), with a hash of the whole record. It
        refuses a task with no integer version and never overwrites a lock. check recomputes everything and exits 1, naming each task whose file changed,
        a task added or missing, a split list or protocol that no longer matches, or an edited lock)

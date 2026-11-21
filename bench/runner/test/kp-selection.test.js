@@ -108,6 +108,22 @@ test('cap select on a frozen set opens the whole-skill gate; a draft or a change
   assert.match(kp('stub-kp-c', { selection: other }).wholeSkill.why.join(' '), /measured on another loaded unit/);
 });
 
+test('cap select --from-run scores a recorded run folder in the loadRun layout the same as the stub it came from (K-5)', (t) => {
+  const tree = frozenTree(t);
+  const stub = runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, runId: 'stub-sel', baselinesDir: tree.baselinesDir, measuredAt: '2026-11-21' });
+  const results = sel.runStub({ name: PILOT, set: SET, runId: 'stub-rec', dir: tmp(t), reps: 3, behaviour: 'correct' });
+  const run = path.join(tree.root, 'recorded-run');
+  results.forEach((r, i) => {
+    const dir = path.join(run, 'main', r.taskId ?? `sel-${i}`, String(r.replicate ?? i + 1));
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify(r));
+  });
+  const fromRun = runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, fromRun: run, baselinesDir: tree.baselinesDir, measuredAt: '2026-11-21' });
+  assert.equal(fromRun.result.source, run);
+  for (const k of ['triggerPrecision', 'triggerRecall', 'observedUseRate', 'runs', 'frozen']) assert.deepEqual(fromRun.result[k], stub.result[k], k);
+  assert.ok(fs.existsSync(path.join(tree.out, 'recorded-run', 'selection', `${PILOT}.json`)));
+});
+
 test('a baseline without selection.json is refused by cap select, and a bad one fails the baselines check', (t) => {
   const tree = frozenTree(t);
   fs.rmSync(path.join(tree.baselinesDir, PILOT, 'selection.json'));

@@ -25,3 +25,10 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | Task | Recheck | Result | Note |
 | --- | --- | --- | --- |
 | t9-impl-combobox | qwen3-coder-next (earlier, after the last edit) | confirmed |  |
+
+## Rubric anchors, v2 (2026-11-21, mate debt worker, DEBT D-117)
+
+`t9-impl-cart-summary` (`copy`), `t9-impl-combobox` (`voice`) and `t9-review-checkout-ui` (`actionable-review`) each
+had one judged rubric item with no Fail / Partial / Pass anchor. Each now has the three anchors, written from the
+task's own request (what a shopper or a registrant reads). No check, key, fixture or answer changed, so the free gates
+are unchanged. Non-Claude recheck of the anchors: pending (`handEdited.version` 2).

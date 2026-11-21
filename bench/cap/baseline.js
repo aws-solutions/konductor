@@ -13,7 +13,11 @@ const BASELINE_FILE = 'audit-baseline.json';
 
 // The rules a baseline can waive: the lint checks and the warn-level description checks.
 const RATCHET_RULES = new Set(['description-no-cue', 'description-short', 'description-long', 'description-block-scalar']);
-const isRatchetRule = (rule) => rule.startsWith('lint-') || RATCHET_RULES.has(rule);
+// Rules main's static skill gate owns (tests/skill_quality.py and its own shrink-only tests/skill-quality-baseline.json:
+// the activation cue, the description length and the SKILL.md line count). `cap audit` still reports them as warnings,
+// but never ratchets them, so one finding is waived or failed in one place only (DEBT K-9).
+const DEFERRED_RULES = new Set(['description-no-cue', 'description-short', 'description-long', 'lint-skill-lines']);
+const isRatchetRule = (rule) => !DEFERRED_RULES.has(rule) && (rule.startsWith('lint-') || RATCHET_RULES.has(rule));
 
 const fileOf = (benchDir) => path.join(benchDir, 'capabilities', BASELINE_FILE);
 
@@ -74,4 +78,4 @@ function baselineUpdate({ report, benchDir, force = false, now = new Date() }) {
   return { written: true, added: existing && !force ? [] : added, removed, count: keep.length, file };
 }
 
-module.exports = { readBaseline, applyBaseline, baselineUpdate, isRatchetRule, BASELINE_FILE, RATCHET_RULES };
+module.exports = { readBaseline, applyBaseline, baselineUpdate, isRatchetRule, BASELINE_FILE, RATCHET_RULES, DEFERRED_RULES };
