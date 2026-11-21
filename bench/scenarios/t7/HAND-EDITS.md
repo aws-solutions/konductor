@@ -150,3 +150,9 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
 
 - `t7-pm-launch-cut` (version 7): F-021 was required in scope, but `sales-commitments.md:17-21` says Greybridge's F-021 ask "is a follow-up discussion, not a launch promise". The `audit-filters-in` assertion is removed (13 assertions, `min` 13) and the weight-8 `cmd` check no longer needs f-021; F-021 in or out both pass. A plan without F-021 (F-004 and F-028 instead, 58 points) scores 100. Free gates: reference 100, stub 2.9, lazy 33.2, alt 100.
 - `t7-ship-train` (version 6): `targetSkills` and `loadCheck.mustLoad` are `sprint-planning` and `program-planning`, `targetAgent` `k-tpm`, as for t7-freeze-forecast (it measured no skill before). Free gates unchanged: 100 / 2.9 / 29.5 / 100.
+
+## Judge-vs-code fixes (2026-11-21, mate judge-vs-code worker, claude)
+
+| Task | What changed | Why |
+| --- | --- | --- |
+| t7-status-slip-twin v6 | rubric `finance-bottom-line` rewritten: the text around the block must give the counting basis briefly (period S29 and S30; Done and Cancelled closed; blank estimates add no points; trimmed names; open statuses) and add nothing else; the figures may sit in the block | The request says "Keep the surrounding text brief and limited to the counting basis", but the old criterion failed any answer without the figures repeated in prose ("Fail: no figures up front"), and its Pass named "the reopened ticket is excluded" although the README counts a reopened In Progress ticket as open. Both pilot answers (code 66.9 and 100) did what the request asks and got a judged 0 on both runs. No key, check or fixture changed. |
