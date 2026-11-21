@@ -753,8 +753,8 @@
       "legacyRecheckVersion": 4
     },
     "t9-accessibility-performance-nfr": {
-      "version": 1,
-      "sha256": "77d789195d770aed366344aeaa0c94ea8962129e54ed7b872bd4017169d7e1e0"
+      "version": 2,
+      "sha256": "7a1b0dec6b9c10cd7f5884b423273723fae5aa47c368c5fc80ecece471d84d51"
     },
     "t9-browser-tab-regression": {
       "version": 2,
