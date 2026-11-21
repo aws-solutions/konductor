@@ -23,8 +23,9 @@ const PACK_COMPONENT = 'pack';
 // `checksMode` only when it is 'all', so default weights stay plain.
 const CHECKS_MODES = ['fraction', 'all'];
 const CHECKS_MODE_KEY = 'checksMode';
-// How the judge's evidence quotes are matched: 'lenient' (the default, tightened), 'strict', or 'paraphrase' (lenient, or a
-// faithful restatement; rebuilt from the saved outputs, see judge/quote.js). The strict and lenient views live in the
+// How the judge's evidence quotes are matched: 'lenient' (the default, tightened), 'strict', 'paraphrase' (lenient, or a
+// faithful restatement; rebuilt from the saved outputs, see judge/quote.js) or 'paraphrase-guarded' (paraphrase with the
+// figure and rubric-copy guards). The strict and lenient views live in the
 // judgments (see judge/views.js); the rule only picks which one the scores read. The loaded weights carry `quoteMode` only
 // when it is not the default, so a default scoring file loads to the same object as before.
 const QUOTE_MODES = QUOTE_RULES;

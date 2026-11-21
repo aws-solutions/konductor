@@ -49,14 +49,16 @@ const INNER_QUOTE_MIN_CHARS = 40; // a quoted span of this length found verbatim
 const COVERAGE_MIN = 0.6; // the checked fragments must carry this share of the quote's letters and digits
 const MAX_UNSUPPORTED_LETTERS = 20; // a quote with this many letters or more that the output does not support is refused, by either path
 
-// A judge pass records the strict and lenient views; 'paraphrase' is a report-time view rebuilt from the saved outputs.
+// A judge pass records the strict and lenient views; 'paraphrase' and 'paraphrase-guarded' are report-time views rebuilt
+// from the saved outputs.
 const JUDGE_QUOTE_RULES = ['strict', 'lenient'];
-const QUOTE_RULES = [...JUDGE_QUOTE_RULES, 'paraphrase'];
+const QUOTE_RULES = [...JUDGE_QUOTE_RULES, 'paraphrase', 'paraphrase-guarded'];
 const DEFAULT_QUOTE_RULE = 'lenient';
 const RULE_TEXT = {
   strict: 'strict (every segment between ellipses must appear in the output, in order)',
   lenient: `lenient (tightened: quotes with ${MAX_UNSUPPORTED_LETTERS} or more unsupported letters are rejected)`,
   paraphrase: 'paraphrase (lenient, or a restatement whose figures and most content words are in the output)',
+  'paraphrase-guarded': 'paraphrase-guarded (paraphrase, but every figure must be in the output and a copy of the rubric text is refused)',
 };
 
 const alnumCount = (s) => (s.match(/[\p{L}\p{N}]/gu) || []).length;
@@ -146,6 +148,9 @@ const JUDGE_WORDS = new Set(('output answer document states stated claims claime
   + 'agent author write writes wrote section line lines heading table block').split(' '));
 
 const figuresOf = (s) => (String(s).match(/\d[\d,]*(?:\.\d+)?/g) || []).map((n) => n.replace(/,/g, '').replace(/\.0+$/, '')).filter((n) => n.replace(/\D/g, '').length >= 2);
+const citedLinesOf = (s) => [...String(s).matchAll(/\blines?\s+(\d+)/gi)].map((m) => Number(m[1]));
+// The figures evidence names, without the line numbers it cites ("line 12").
+const evidenceFiguresOf = (s) => { const cited = citedLinesOf(s); return figuresOf(s).filter((n) => !cited.includes(Number(n))); };
 // Words are compared on a crude stem (a trailing "s" or "es" dropped), so "partition" matches "partitions".
 const stem = (w) => (w.length > 4 ? w.replace(/(?:es|s)$/, '') : w);
 const contentWords = (s) => wordsOf(s).filter((w) => w.length >= 4 && !/^\d/.test(w) && !JUDGE_WORDS.has(w)).map(stem);
@@ -154,9 +159,9 @@ function paraphraseMatch(outputText, evidence) {
   const out = String(outputText);
   const figures = new Set(figuresOf(out));
   const lines = out.split('\n').length;
-  const cited = [...String(evidence).matchAll(/\blines?\s+(\d+)/gi)].map((m) => Number(m[1]));
+  const cited = citedLinesOf(evidence);
   if (cited.some((n) => n < 1 || n > lines)) return false;
-  const evFigures = figuresOf(evidence).filter((n) => !cited.includes(Number(n)));
+  const evFigures = evidenceFiguresOf(evidence);
   if (evFigures.some((n) => !figures.has(n))) return false;
   const words = contentWords(evidence);
   const outWords = new Set(wordsOf(out).map(stem));
@@ -169,16 +174,32 @@ function paraphraseMatch(outputText, evidence) {
 // strict rule is tried first, so a quote the strict rule accepts is never refused. The argument defaults to strict so a
 // caller that wants the pack's rule says nothing; the judge passes the rule it resolved (DEFAULT_QUOTE_RULE unless told).
 // `paraphrase` (implies lenient) also accepts a faithful restatement (paraphraseMatch).
-function makeQuoteMatcher(outputText, { lenient = false, paraphrase = false } = {}) {
+// `guarded` (the 'paraphrase-guarded' rule; implies paraphrase) adds two checks to the loose paths, never to strict:
+// - figure guard: evidence that names a figure the output lacks is refused, on the lenient path too. The lenient rule
+//   alone lets a changed figure through when it is a small share of a long quote (on the first judged T3 wave, 122 of 398
+//   quotes with every figure shifted were accepted).
+// - rubric-copy guard: evidence the lenient rule cannot find in the output but finds in the criterion's own text (the
+//   second argument) is the judge pasting the rubric's anchor, not citing the output, and is refused.
+// The rubric text is optional; without it only the figure guard applies.
+function makeQuoteMatcher(outputText, { lenient = false, paraphrase = false, guarded = false } = {}) {
   const haystack = normalize(outputText);
-  const loose = lenient || paraphrase;
+  const loose = lenient || paraphrase || guarded;
   const looseHaystack = loose ? ` ${wordsOf(outputText).join(' ')} ` : null;
-  return (quote) => {
+  const outFigures = guarded ? new Set(figuresOf(outputText)) : null;
+  const figuresHeld = (quote) => evidenceFiguresOf(quote).every((n) => outFigures.has(n));
+  return (quote, criterionText) => {
     const segments = segmentsOf(quote);
     if (segments.length && inOrder(haystack, segments)) return true;
-    if (loose && lenientMatch(looseHaystack, quote)) return true;
-    return paraphrase ? paraphraseMatch(outputText, quote) : false;
+    if (loose && lenientMatch(looseHaystack, quote)) return !guarded || figuresHeld(quote);
+    if (!(paraphrase || guarded) || !paraphraseMatch(outputText, quote)) return false;
+    return !guarded || !copiedFromRubric(criterionText, quote);
   };
 }
 
-module.exports = { makeQuoteMatcher, paraphraseMatch, normalize, segmentsOf, unsupportedLetters, wordsOf, FRAGMENT_MIN_CHARS, INNER_QUOTE_MIN_CHARS, MAX_UNSUPPORTED_LETTERS, QUOTE_RULES, JUDGE_QUOTE_RULES, DEFAULT_QUOTE_RULE, RULE_TEXT };
+/** True when the lenient rule finds `quote` in the criterion's own text: the judge copied the rubric, not the output. */
+function copiedFromRubric(criterionText, quote) {
+  if (!criterionText) return false;
+  return lenientMatch(` ${wordsOf(criterionText).join(' ')} `, quote) || inOrder(normalize(criterionText), segmentsOf(quote));
+}
+
+module.exports = { makeQuoteMatcher, paraphraseMatch, copiedFromRubric, evidenceFiguresOf, normalize, segmentsOf, unsupportedLetters, wordsOf, FRAGMENT_MIN_CHARS, INNER_QUOTE_MIN_CHARS, MAX_UNSUPPORTED_LETTERS, QUOTE_RULES, JUDGE_QUOTE_RULES, DEFAULT_QUOTE_RULE, RULE_TEXT };

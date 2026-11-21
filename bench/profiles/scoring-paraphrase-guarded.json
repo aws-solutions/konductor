@@ -1,0 +1,5 @@
+{
+  "description": "The default weights with the paraphrase-guarded evidence rule (opt-in): the paraphrase rule, plus two checks on every loose path. Evidence that names a figure of two or more digits the output lacks is refused, on the lenient path too. Evidence the output does not hold but the criterion's own text does is a copy of the rubric and is refused. The view is rebuilt from the saved outputs, so it needs the run's workspaces. Select it with --scoring on report, report-2x2, contrast and report --verdict.",
+  "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 },
+  "quotes": "paraphrase-guarded"
+}
