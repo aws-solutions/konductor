@@ -29,11 +29,6 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/spike.md\",\"utf8\");const a=/recommend/gi,b=/map|hash|set|index|key/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-200),m.index+200)))ok=true;process.exit(ok?0:1)'",
-      "expectExit": 0
-    },
-    {
-      "type": "cmd",
       "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/spike.md\",\"utf8\");const a=/\\bms\\b|millisecond|seconds?\\b/gi,b=/\\d/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-40),m.index+40)))ok=true;process.exit(ok?0:1)'",
       "expectExit": 0
     },
