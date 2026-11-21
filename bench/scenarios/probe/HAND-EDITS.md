@@ -60,3 +60,9 @@ yet, because the owner wants an independent review (Fable) of every fail, not a 
   key-matches-fixture and solvable-from-fixture: check line 31 needs the labels critical, important or suggestion;
   line 38 bans some report file names; line 57 needs a question mark or `QUESTION:` in the final message. None of these
   is stated in the request.
+
+The independent review (claude-fable-5.1, 2026-11-21, `reports/review-probe-disposals-fable.md` in the mate workspace)
+found all six L11 and L12 fails to be checklist misreads, with no task defect. Both rechecks are now in
+`review.recheck` (probe-e2e-no-yes v3, probe-coverage-no-yes v4), and each disposal cites that review. The recheck
+bundle also leaked one file: it copied `.bench-answer-key.md` into the fixture the rechecker read. It now drops that
+file, as `sandbox.copyFixture` does, and has a test for it.
