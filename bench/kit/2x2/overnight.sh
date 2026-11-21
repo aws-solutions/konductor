@@ -12,7 +12,7 @@
 set -Eeuo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 S=${S:-${KIT_DIR:?set S (the study directory) or KIT_DIR}}
-KIT_SRC=$HERE   # the kit's helpers are sourced below, from a stream, so tell it where it lives
+KIT_SRC=$HERE   # the kit sourced below finds lib.sh here
 K=${K:-$HERE/run-2x2.sh}
 LOG=$S/overnight.log
 ST=$S/overnight.state
@@ -51,9 +51,9 @@ if [ "$STATUS" = 1 ]; then
   exit 0
 fi
 
-# The kit's own helpers (spent_in, stage_dirs, cred_minutes, caps) come from the kit file, minus its command switch.
+# The kit's own helpers (spent_in, stage_dirs, cred_minutes, caps) come from the kit file, not its command switch.
 # shellcheck disable=SC1090
-source <(sed '/^cmd=\${1:-}/,$d' "$K")
+source "$K"   # the kit returns before its command switch when sourced
 set +e +u; set -Eeuo pipefail   # the kit sets its own flags; keep ours
 trap 'c=$BASH_COMMAND; stop "unexpected failure at line $LINENO: ${c%%$'"'"'\n'"'"'*}"' ERR
 mkdir -p "$ST"
