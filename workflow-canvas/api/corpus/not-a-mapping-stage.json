@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "NOT_A_MAPPING",
+      "column": 5,
+      "end_column": 10,
+      "end_line": 7,
+      "file": "not-a-mapping-stage.yml",
+      "line": 7,
+      "path": "stages[0]",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

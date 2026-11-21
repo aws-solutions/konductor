@@ -1,0 +1,10 @@
+format: konductor/1
+name: duplicate-stage
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer
+  - name: write
+    agent: k-quality-assurance

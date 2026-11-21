@@ -1,0 +1,26 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 2,
+      "end_line": 6,
+      "file": "same-key-quoted.yml",
+      "line": 6,
+      "path": "1",
+      "severity": "error"
+    },
+    {
+      "code": "DUPLICATE_KEY",
+      "column": 1,
+      "end_column": 4,
+      "end_line": 7,
+      "file": "same-key-quoted.yml",
+      "line": 7,
+      "path": "1",
+      "severity": "error"
+    }
+  ],
+  "errors": 2,
+  "view": null
+}

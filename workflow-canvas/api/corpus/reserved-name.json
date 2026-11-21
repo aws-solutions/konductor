@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "RESERVED_NAME",
+      "column": 11,
+      "end_column": 16,
+      "end_line": 7,
+      "file": "reserved-name.yml",
+      "line": 7,
+      "path": "stages[0].name",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

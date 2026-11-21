@@ -63,6 +63,7 @@ not per individual commit.
   folder, which is where Kiro CLI looks, and the summary shows that file. The summary names the file of each agent,
   the keys such as `hooks` and `mcpServers` that a Claude agent file sets (by name only), and `tools: unreadable` with
   the reason for a list it cannot read.
+- `workflow-canvas/api/corpus/` holds workflow files and their diagnostics that the stub and the Rust loader both check.
 
 ### Changed
 

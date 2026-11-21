@@ -1,0 +1,86 @@
+format: konductor/1
+name: stages-40
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: s0
+    agent: k-developer
+  - name: s1
+    agent: k-developer
+  - name: s2
+    agent: k-developer
+  - name: s3
+    agent: k-developer
+  - name: s4
+    agent: k-developer
+  - name: s5
+    agent: k-developer
+  - name: s6
+    agent: k-developer
+  - name: s7
+    agent: k-developer
+  - name: s8
+    agent: k-developer
+  - name: s9
+    agent: k-developer
+  - name: s10
+    agent: k-developer
+  - name: s11
+    agent: k-developer
+  - name: s12
+    agent: k-developer
+  - name: s13
+    agent: k-developer
+  - name: s14
+    agent: k-developer
+  - name: s15
+    agent: k-developer
+  - name: s16
+    agent: k-developer
+  - name: s17
+    agent: k-developer
+  - name: s18
+    agent: k-developer
+  - name: s19
+    agent: k-developer
+  - name: s20
+    agent: k-developer
+  - name: s21
+    agent: k-developer
+  - name: s22
+    agent: k-developer
+  - name: s23
+    agent: k-developer
+  - name: s24
+    agent: k-developer
+  - name: s25
+    agent: k-developer
+  - name: s26
+    agent: k-developer
+  - name: s27
+    agent: k-developer
+  - name: s28
+    agent: k-developer
+  - name: s29
+    agent: k-developer
+  - name: s30
+    agent: k-developer
+  - name: s31
+    agent: k-developer
+  - name: s32
+    agent: k-developer
+  - name: s33
+    agent: k-developer
+  - name: s34
+    agent: k-developer
+  - name: s35
+    agent: k-developer
+  - name: s36
+    agent: k-developer
+  - name: s37
+    agent: k-developer
+  - name: s38
+    agent: k-developer
+  - name: s39
+    agent: k-developer

@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "WRONG_TYPE",
+      "column": 10,
+      "end_column": 13,
+      "end_line": 3,
+      "file": "wrong-type-version.yml",
+      "line": 3,
+      "path": "version",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

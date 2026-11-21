@@ -132,7 +132,13 @@ pub fn to_diagnostics(
                 column: start.column,
                 end_line: end.line,
                 end_column: end.column,
-                message: problem.message,
+                // The contract says the message of a key or text from a later slice names the slice.
+                message: match (problem.code, problem.slice) {
+                    (Code::NotSupportedByThisBuild, Some(slice)) => {
+                        format!("{} Slice {slice} adds it.", problem.message)
+                    }
+                    _ => problem.message,
+                },
                 suggestion: problem.suggestion,
                 slice: problem.slice,
             }

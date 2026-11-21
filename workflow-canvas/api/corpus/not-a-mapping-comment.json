@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "NOT_A_MAPPING",
+      "column": 1,
+      "end_column": 1,
+      "end_line": 1,
+      "file": "not-a-mapping-comment.yml",
+      "line": 1,
+      "path": "",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

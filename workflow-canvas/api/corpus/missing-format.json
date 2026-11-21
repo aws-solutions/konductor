@@ -1,0 +1,17 @@
+{
+  "diagnostics": [
+    {
+      "code": "MISSING_KEY",
+      "column": 1,
+      "end_column": 1,
+      "end_line": 8,
+      "file": "missing-format.yml",
+      "line": 1,
+      "path": "",
+      "severity": "error",
+      "suggestion": "format: konductor/1"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

@@ -1,0 +1,9 @@
+format: konductor/1
+name: stage-kind-ambiguous
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer
+    uses: other

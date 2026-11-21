@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "NAME_MISMATCH",
+      "column": 7,
+      "end_column": 12,
+      "end_line": 2,
+      "file": "name-mismatch.yml",
+      "line": 2,
+      "path": "name",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

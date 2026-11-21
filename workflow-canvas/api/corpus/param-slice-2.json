@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 3,
+      "end_column": 8,
+      "end_line": 7,
+      "file": "param-slice-2.yml",
+      "line": 7,
+      "path": "params.topic",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

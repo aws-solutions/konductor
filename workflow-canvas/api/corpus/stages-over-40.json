@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 3,
+      "end_column": 1,
+      "end_line": 89,
+      "file": "stages-over-40.yml",
+      "line": 7,
+      "path": "stages",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

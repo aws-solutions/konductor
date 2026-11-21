@@ -1,0 +1,8 @@
+format: konductor/1
+name: reserved-name
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: start
+    agent: k-developer

@@ -1,0 +1,13 @@
+format: konductor/1
+name: check-id-twice
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - id: a
+      file: A.md
+    - id: a
+      file: B.md
+stages:
+  - name: write
+    agent: k-developer

@@ -3,3 +3,6 @@ node_modules/
 package-lock.json
 playwright-report/
 test-results/
+
+# The corpus files hold deliberate oddities such as CRLF and a byte order mark.
+api/corpus/

@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 37,
+      "end_column": 42,
+      "end_line": 4,
+      "file": "multibyte-columns.yml",
+      "line": 4,
+      "path": "intent.owner",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

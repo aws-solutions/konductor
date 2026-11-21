@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_NAME",
+      "column": 11,
+      "end_column": 17,
+      "end_line": 7,
+      "file": "invalid-check-id.yml",
+      "line": 7,
+      "path": "intent.accept[0].id",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

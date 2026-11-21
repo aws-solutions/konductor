@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 6,
+      "end_line": 4,
+      "file": "unknown-key-far.yml",
+      "line": 4,
+      "path": "owner",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

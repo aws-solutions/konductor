@@ -1,0 +1,12 @@
+format: konductor/1
+name: distinct-keys
+version: 0.1.0
+intent:
+  outcome: Say hello
+True: a
+true: b
+1.0: c
+1: d
+stages:
+  - name: write
+    agent: k-developer

@@ -1,0 +1,11 @@
+format: konductor/1
+name: invalid-check-id
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - id: Bad_Id
+      file: README.md
+stages:
+  - name: write
+    agent: k-developer

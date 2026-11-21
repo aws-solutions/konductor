@@ -1,0 +1,26 @@
+{
+  "diagnostics": [
+    {
+      "code": "STAGE_KIND_AMBIGUOUS",
+      "column": 5,
+      "end_column": 1,
+      "end_line": 10,
+      "file": "stage-kind-ambiguous.yml",
+      "line": 7,
+      "path": "stages.write",
+      "severity": "error"
+    },
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 5,
+      "end_column": 9,
+      "end_line": 9,
+      "file": "stage-kind-ambiguous.yml",
+      "line": 9,
+      "path": "stages.write.uses",
+      "severity": "error"
+    }
+  ],
+  "errors": 2,
+  "view": null
+}

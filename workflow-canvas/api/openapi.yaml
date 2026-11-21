@@ -220,17 +220,21 @@ info:
     the run is `passed` with `exit_code` 0.
 
     **One run per workspace.** Only one run is active at a time in a
-    workspace. A run holds a lock on the workspace that records the PID and the
-    start time of the process that owns it, so `already_running` covers a run
-    started by any process in the workspace, such as `konductor flow run` in a
-    terminal, and not only a run started through this API. When the owner
-    exits, its sessions and checks are killed with their process group. If the
-    owner stops while a run is `running`, the run reads as `halted` the next
-    time anything in the workspace looks at it: the stage that was running (or
-    the next `pending` one if none was) is `blocked` with the reason
-    `SESSION_FAILED`, `exit_code` is 1, and `finished_at` is the time it was
-    found. If every stage had `passed`, there is none to block, and the run
-    reads as `passed` with `exit_code` 0. A `running` run is never left behind.
+    workspace. A run holds one operating system lock on the workspace for as
+    long as it runs, and the lock records the PID and the start time of the
+    process that owns it. So `already_running` covers a run started by any
+    process in the workspace, such as `konductor flow run` in a terminal, and
+    not only a run started through this API. When the owner exits normally, it
+    kills its sessions and checks with their process group. When the owner is
+    killed, the system frees the lock, and a session may still be running. The
+    next run in the workspace, by any process, ends that session before it
+    starts its own. If the owner stops while a run is `running`, the run reads
+    as `halted` the next time anything in the workspace looks at it: the stage
+    that was running (or the next `pending` one if none was) is `blocked` with
+    the reason `SESSION_FAILED`, `exit_code` is 1, and `finished_at` is the
+    time it was found. If every stage had `passed`, there is none to block, and
+    the run reads as `passed` with `exit_code` 0. A `running` run is never left
+    behind.
 
     **Trust.** A project workflow runs only after the user confirms it in a
     terminal, with `konductor flow trust <name>`. `POST /api/run` answers 409

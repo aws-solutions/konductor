@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 6,
+      "end_line": 6,
+      "file": "lone-cr-positions.yml",
+      "line": 6,
+      "path": "owner",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}
