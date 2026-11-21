@@ -13,7 +13,7 @@ const { parseStream, toolNameOf, SUBAGENT_TOOL } = require('../stream.js');
 const { SUBAGENT_TOOLS: CC_SUBAGENT_TOOLS } = require('../harness/claude-code-parse.js');
 const skills = require('../skills.js');
 
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../util.js');
 const readLines = (file) => { try { return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean); } catch { return []; } };
 const oneLine = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const clip = (s, n) => { const t = oneLine(s); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };

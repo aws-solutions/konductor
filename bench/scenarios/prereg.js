@@ -15,7 +15,7 @@ const { PROTOCOL } = require('./protocol.js');
 const FILE = 'PREREG.json';
 const SCHEMA_VERSION = 1;
 
-const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 
 /** JSON with sorted object keys, so a hash does not depend on key order. */
 function canonical(v) {

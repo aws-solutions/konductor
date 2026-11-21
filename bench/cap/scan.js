@@ -17,7 +17,7 @@ const PATH_OF = {
   context: (n) => `context/${n}.md`,
 };
 
-const readText = (file) => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
+const { readTextOrNull: readText } = require('../runner/lib/util.js');
 const names = (dir, pick) => {
   try { return fs.readdirSync(dir, { withFileTypes: true }).map(pick).filter(Boolean).sort(); } catch { return []; }
 };

@@ -31,8 +31,7 @@ const POSITIONS = ['entry', 'delegated', 'orchestrator-direct'];
 const WRITE_TOOLS = new Set(['fs_write', 'str_replace', 'fs_append', 'Write', 'Edit', 'MultiEdit']);
 const OVERHEAD_TOOLS = new Set(['subagent', 'summary']);
 
-const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-const readText = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
+const { readJsonOrNull: readJson, readTextOrNull: readText } = require('../runner/lib/util.js');
 const readJsonl = (f) => {
   const text = readText(f);
   if (text == null) return null;

@@ -152,7 +152,7 @@ function shingles(s) {
   for (let i = 0; i + SHINGLE <= w.length; i++) out.add(w.slice(i, i + SHINGLE).join(' '));
   return out;
 }
-const readText = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
+const { readTextOrNull: readText } = require('../runner/lib/util.js');
 
 /**
  * Output files that repeat most of the reference's own text: for each reference file, the shingles that are not in the

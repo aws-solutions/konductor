@@ -31,7 +31,7 @@ const SCHEMA_ID = `${SCHEMA_NAME}/${MAJOR}`;
 const WHOLE = Object.freeze({ noData: 'NO DATA', ready: 'ready for review' });
 const NO_SELECTION = `no selection result (trigger precision and recall, observed use): the blocks give the ${CLAIM} only, so no whole-skill keep or prune call is made`;
 
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 /** The rule set every record names: the dates and one hash over all five rule texts. */
 const RULES = Object.freeze({
   labelRulesDate: LABEL_RULES_DATE, verdictRulesDate: VERDICT_RULES_DATE, passRulesDate: PASS_RULES_DATE, deepRulesDate: DEEP_RULES_DATE, panelRulesDate: PANEL_RULES_DATE,

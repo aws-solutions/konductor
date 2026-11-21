@@ -153,7 +153,7 @@ function renderSkillsMarkdown(sum, { title = '## Skills actually used' } = {}) {
 
 // ---- recompute from a run directory (no result.json needed, nothing is written) ----
 
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const subdirs = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort(); } catch { return []; } };
 
 function armContext({ runDir, armId, config, repoRoot, runtime, vanilla }) {

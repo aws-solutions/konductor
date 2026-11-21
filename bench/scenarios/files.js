@@ -12,7 +12,7 @@ const SKIP_DIRS = new Set(['fixtures', 'hidden', 'node_modules']);
 // Files the scenario tools write themselves; they are not tasks.
 const GENERATED = new Set(['coverage.json', 'PREREG.json']);
 
-const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const { readJson } = require('../runner/lib/util.js');
 function parse(file) {
   try { return readJson(file); } catch (e) { throw new Error(`${file} is not valid JSON: ${e.message}`); }
 }

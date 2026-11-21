@@ -26,7 +26,7 @@ const PRESET_ARM = { noskills: 'konductor-noskills' };
 const BARE_PROMPT = 'You are a general software engineering assistant. Do the work you are asked to do.';
 const ORCHESTRATOR = 'konductor';
 
-const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 const readSha = (file) => (fs.existsSync(file) ? sha256(fs.readFileSync(file)) : null);
 const toList = (v) => (v === undefined || v === null ? [] : Array.isArray(v) ? v : String(v).split(',').filter(Boolean));
 const inside = (child, parent) => child === parent || child.startsWith(parent + path.sep);

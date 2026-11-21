@@ -24,7 +24,7 @@ const LAYER_LABEL = {
 };
 const SHAPE = /kd-cl-(?:rules|prompt|index|skill|sop|ctx)-[0-9a-f]{8}/g;
 
-const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const readJsonl = (f) => { try { return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return null; } };
 
 function sessionStarts(runDir) {

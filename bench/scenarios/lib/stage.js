@@ -41,7 +41,7 @@ const REVIEW_CHECKS = new Set(['leak', 'ambiguity', 'ceiling', 'floor', 'hidden-
 const NO_MAPPING = Object.freeze({ targetSkills: [], targetSop: null, targetAgent: null });
 
 const today = () => new Date().toISOString().slice(0, 10);
-const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+const { readJson } = require('../../runner/lib/util.js');
 
 /** Credits and final text of a kiro-cli stream-json file. */
 function streamInfo(file) {

@@ -34,7 +34,7 @@ const ALLOWED_TOP_FILES = new Set([MANIFEST_NAME, 'README.md']);
 const SKILL_FOLDER = /^[a-z0-9][a-z0-9-]{0,127}$/;
 const TASKS_FILE = /^tasks-([a-z0-9][a-z0-9-]{0,127})\.json$/;
 
-const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 
 // The secret shapes of his redact.js (pull request #271) and baseline-manifest.js. Each needs a real value's length.
 const SECRET_SHAPES = Object.freeze([

@@ -29,7 +29,7 @@ const SKIPPED_DIRS = new Set(['evals']);
 /** A path SKILL.md names below references/ or scripts/, with an optional leading <skill>/ (or skills/<skill>/). */
 const DECLARED = /(?<![A-Za-z0-9_./-])(?:skills\/)?(?:([a-z0-9][a-z0-9-]*)\/)?((?:references|scripts)\/[A-Za-z0-9_./-]*[A-Za-z0-9_])/g;
 
-const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const { sha256 } = require('../runner/lib/util.js');
 
 /** Why each kind other than a skill is refused, as the message names it. */
 const REFUSED_KINDS = Object.freeze({

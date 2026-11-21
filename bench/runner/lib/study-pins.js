@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { readRunConfigs } = require('./run-configs.js');
 
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('./util.js');
 
 const listDirs = (dir) => { try { return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch { return []; } };
 

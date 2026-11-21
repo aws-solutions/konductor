@@ -34,7 +34,7 @@ const CONTROL_ARMS = ['base', 'base-b', 'ctl-keep', 'ctl-prune'];
 const CONTROL_TASKS = ['control-keep', 'control-prune'];
 const ACTING_AGENT = 'konductor';
 
-const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const writeJson = (f, o) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, `${JSON.stringify(o, null, 2)}\n`); };
 const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
 

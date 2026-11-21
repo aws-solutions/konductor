@@ -66,7 +66,7 @@ function preflight(args) {
   out(`PASS credential preflight under claude's environment: account ****${id.slice(-4)}, region ${region}${shadow.length ? `; ${shadow.join(', ')} set here and not passed to claude` : ''}`);
 }
 
-const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const { readJson } = require('../runner/lib/util.js');
 const onlyRun = (dir) => {
   const found = [];
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) walk(path.join(d, e.name)); else if (e.name === 'result.json') found.push(path.join(d, e.name)); } };

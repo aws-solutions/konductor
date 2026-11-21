@@ -12,7 +12,7 @@ const { runtimeOf } = require('../runner/lib/harness/runtime.js');
 const { extractSkills, startupKiro, has } = require('../runner/lib/skills.js');
 
 const UNNAMED = '(unnamed)';
-const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 const subdirs = (d) => { try { return fs.readdirSync(d).filter((n) => isDir(path.join(d, n))).sort(); } catch { return []; } };
 

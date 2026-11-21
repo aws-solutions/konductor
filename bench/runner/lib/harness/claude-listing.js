@@ -72,7 +72,7 @@ function formulaBudget({ window, model, fraction, override }) {
   return Math.floor(window * (FOUR_CHAR_MODELS.test(model) ? 4 : 3) * fraction);
 }
 
-const readText = (file) => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
+const { readTextOrNull: readText } = require('../util.js');
 
 /** The skills installed in `configDir/skills`: `{ name, sop, modelInvocable }` in name order. */
 function installedSkills(configDir) {

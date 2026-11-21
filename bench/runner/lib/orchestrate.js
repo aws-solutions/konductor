@@ -17,26 +17,9 @@ const { runPlantCell } = require('./plant/lifecycle.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
-// Small seeded PRNG so a run order can be reproduced from the seed in run-config.
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffle(items, rand) {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// The seeded generator and the Fisher-Yates shuffle live in util.js, so a run order is reproduced from the seed in
+// run-config the same way every other seeded draw in bench is.
+const { mulberry32, shuffle } = require('./util.js');
 
 // Replicate-major: every (task, arm) pair runs once per replicate, in a seeded random order.
 // A budget stop then removes whole replicates or an unbiased random remainder, never a task class.
@@ -330,7 +313,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
         const aside = `${dir}.throttled-${refused.length + 1}`;
         fs.renameSync(dir, aside);
         fs.rmSync(path.join(aside, 'result.json'), { force: true });
-        fs.writeFileSync(path.join(aside, 'attempt-result.json'), `${JSON.stringify({ ...r, [unit === 'usd' ? 'costUsdCharged' : 'creditsCharged']: charged }, null, 2)}\n`);
+        writeAtomic(path.join(aside, 'attempt-result.json'), `${JSON.stringify({ ...r, [unit === 'usd' ? 'costUsdCharged' : 'creditsCharged']: charged }, null, 2)}\n`);
         refused.push({ dir: path.basename(aside), status: r.status, error: r.error ?? null, charged });
         log(`throttled ${arm.id} / ${task.id} / #${replicate}: the service refused the run; kept as ${path.basename(aside)}, running it again in ${Math.round(throttleRetry.waitMs / 1000)} s`);
         await new Promise((res) => setTimeout(res, throttleRetry.waitMs));
