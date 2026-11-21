@@ -154,3 +154,13 @@ No model call. Probe answers scored with the bench's own check code.
 | --- | --- | --- | --- |
 | t12-spec-rate-limits v5 | 2026-11-21 | key: `starter-figure` / `studio-figure` became `named-plan-figure` (a requirement names starter or studio with its figure source) and `every-plan-figure` (the same, or a rule for each/every/all/any plan or plans); `test-task` no longer takes "refus"; `remaining-header-task` keeps "remaining" but not "remaining tasks/work/items/instance/edge cases/..."; new shallow fake `answers/.../shallow-paste` (the request pasted in as requirements, three generic tasks) gated at 40 by the batch config | v4 let a pasted request finish the requirements section (50), missed "all plans", passed "the remaining instance" and "Refuse requests whose key is unknown" plus a test file. Now: paste 25, a rule for every plan with no plan named 75 (one item), "all plans" 75, the wave 12 answer and the reference 100. |
 | t12-spec-rate-limits v5 | 2026-11-21 | key: `limit-per-key-not-ip` hides a per-IP phrase only when a negation or contrast word (not, never, no longer, instead of, rather than, unlike, replaced, superseded, old, previous, former, earlier, 2025) sits up to 6 words before it, or retired/dropped/replaced/superseded/removed/no longer up to 6 words after | The old `none` list held `\bnot\b`, `old` and `2025` and was applied to the whole requirement, so "limits each caller per client IP; a key is not tracked" passed the item (Opus F5). Now that answer fails it; "requests are not limited per client IP" and "limiting per client IP is superseded" still pass. |
+
+## Round 6 recheck fix (2026-11-21, mate recheck worker, claude)
+
+The round 6 gpt-5.6-luna recheck (L2) failed `t12-handoff-export-dates` on no-method-or-decoy: the request laid out the
+second step as a process ("as a second, separate piece of work: whoever does it starts with nothing but the hand-off,
+reads only ..."). Under the owner rule for the other two T12 tasks (D-127 b), the request now states the outcome: the
+fix is finished, it needed nothing but the hand-off and its context.files, it changed only those files and left the
+hand-off as written, and `docs/handoff/BILL-1187-result.md` records that with the same fields. The pull request line
+now says the owner opens it. Prompt only; hidden tests, checks, key and answers unchanged, so the free gates are
+unchanged (100 / 0 / 27.3 / 100). Version 2 to 3. One writer-family fix; a gpt-5.6-luna recheck follows.

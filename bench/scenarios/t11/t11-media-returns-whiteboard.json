@@ -120,31 +120,32 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt (task-draft.json) only asks to replace the lifecycle with the image as source of truth. It does not mention any specific method names beyond the required exports (STATES, createReturn, applyEvent) nor any decoy techniques."
+          "note": "Prompt asks to implement from whiteboard image, names no method/framework, contains no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture test/lifecycle.test.js contains only one minimal test that references STATES.NEW (not in the required STATES map), and the fixture lifecycle.js has only 4 states (NEW, RECEIVED, REFUNDED, CLOSED) with different event vocabulary (receive, refund, close) than the task requires. This is clearly incomplete and not the expected solution."
+          "note": "Fixture contains whiteboard image and existing lifecycle.js, but no complete solution matching hidden tests."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden tests (hidden-behaviour.test.js) use all required states, events, and behaviors described in the task, and match what the solution implements. The fixture test only has a minimal stub test referencing STATES.NEW which is not in the required STATES map, confirming it is intentionally incomplete and the hidden tests are the key."
+          "note": "Checks test implementation details from image; rubric anchors (Fail/Partial/Pass) follow request for image legibility review."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The task-draft.json specifies exactly the required STATES map, event vocabulary, return record fields, and behavior constraints. The hidden tests show what behavior is expected. The fixture image (returns-whiteboard.png) contains the full state machine diagram. With the prompt's requirements plus the image, the complete implementation can be derived without needing the solution folder."
+          "note": "Competent developer can read whiteboard image, implement state machine with specified states, events, and interface."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "handEdited": {

@@ -128,7 +128,35 @@
         "verdict": "pass",
         "note": "All required pieces are present in the fixture: buildCartView template, roundHalfAwayFromZero, formatMoney with currency digits, shipping logic, tax calculation. The promo catalog structure and expiry handling logic are not in fixture but are specified in the task."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks to add promotion/delivery-progress functionality without prescribing implementation method. Describes what to do, not how."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains existing cart code without showing finished promotion/delivery-progress behavior. Hidden tests check for behavior not described in fixture."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check for promoCodeRow, freeShippingProgress, and specific promo codes (SAVE15, TAKE750, SHIPDAY) as described in prompt. Rubric anchors align with request about natural messaging."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer could implement from prompt and fixture. Requirements clear: fields to add, calculations, behavior. Different implementations could pass if criteria met."
+        }
+      ],
+      "version": 2
+    }
   },
   "pilot": {
     "scores": {},

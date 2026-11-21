@@ -141,5 +141,39 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "verdicts": [],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt states the requested API, documents, tests, and customer outcome; it does not prescribe a parser, framework, or implementation method. The test command is an acceptance command, not a misleading solution hint, and the request contains no decoy."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains the product request, the existing address-book API and validation behavior, and a baseline test. It contains no import implementation, feature note, customer help answer, or tests that reveal the finished solution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden behavior checks follow the request's CSV, BOM, quoted fields, column-order, duplicate, validation, line-number, result, and 5,000-row rules; the blank-line case is explicitly allowed either way. The document key and rubric check the requested JSON sections and agreement across requirements, design, code, tests, and help, while accepting alternative parser and error implementations."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The request and fixture expose the public API, address-book validation and duplicate semantics, file locations, row limit, output shape, and documentation format needed to implement the task. A competent developer can use another valid CSV-reader design, error wording, or test organization and still satisfy the stated checks and rubric."
+        }
+      ],
+      "version": 4
+    }
+  }
 }

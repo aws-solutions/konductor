@@ -116,7 +116,35 @@
         "verdict": "pass",
         "note": "All tests derive from the Word document. The key correctly reads the revision notes as overriding table values. The no-padding constraint (14-16 requirements) is reasonable. The youth conflict is properly flagged as undecided in the source. No timing-dependent or image-based tests."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt asks to convert Word doc to requirements, names no method/framework, contains no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains DOCX source but no pre-existing room-booking.md or requirements matching hidden test key."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check requirements extracted from DOCX; rubric anchors (Fail/Partial/Pass) follow request for narrative judgment."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can read DOCX, extract requirements, format per template with RB-### ids, priorities, source sections, open questions, and JSON block."
+        }
+      ],
+      "version": 4
+    }
   },
   "pilot": {
     "scores": {},
