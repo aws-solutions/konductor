@@ -11,6 +11,9 @@ import { LaunchWait } from './launch/LaunchWait';
 import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
 import { sessionStorageMemory } from './launch/session-memory';
 import { createSwapRisk, guardOffers } from './launch/swap-guard';
+import { createNextPorts } from './next-ui/next-http';
+import { wantsNextUi } from './next-ui/next-ui';
+import { tapSessions } from './next-ui/session-tap';
 import { installTheme } from './theme/install';
 import { useWorkflowSource } from './workflow/use-workflow-source';
 import { createWorkflowSource } from './workflow/workflow-source';
@@ -20,11 +23,19 @@ if (!root) throw new Error('Missing #root element');
 
 installTheme(document.body);
 
-const source = createWorkflowSource(
-  createHttpApi(),
-  takeLaunchCode(window),
-  sessionStorageMemory(window),
-);
+const sessions = sessionStorageMemory(window);
+
+// The views being built need calls that the API client does not have yet.
+// Each loaded workflow gets its own, built from the token it was loaded
+// with, so no call of theirs can address another session.
+const nextUi = wantsNextUi(window.location.search);
+const tap = tapSessions(createHttpApi());
+const nextPortsFor = () =>
+  createNextPorts(tap.loadedToken(), {
+    onSessionLost: () => sessions.forget(),
+  });
+
+const source = createWorkflowSource(tap.api, takeLaunchCode(window), sessions);
 const swapRisk = createSwapRisk();
 watchLaunchCode(
   window,
@@ -50,6 +61,8 @@ function Root() {
       }
       runMemory={runMemory}
       swapRisk={swapRisk}
+      nextUi={nextUi}
+      nextPortsFor={nextPortsFor}
     />
   );
 }
