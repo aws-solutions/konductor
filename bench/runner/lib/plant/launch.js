@@ -22,9 +22,11 @@ const FINAL_MS = 15000;
 async function startGateway({ taskFile, logDir, socketPath, arm = 'policy', seed = 1, release = 'local', python = 'python3', readyMs = READY_MS }) {
   const token = crypto.randomBytes(32).toString('hex');
   const runId = crypto.randomBytes(16).toString('hex');
+  const gwEnv = { PATH: process.env.PATH ?? '/usr/bin:/bin' };
+  if (process.env.LD_LIBRARY_PATH) gwEnv.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH;
   const proc = spawn(python, ['-I', GATEWAY_START, '--control-fd', '3'], {
     stdio: ['ignore', 'ignore', 'inherit', 'pipe'],
-    env: { PATH: process.env.PATH ?? '/usr/bin:/bin' },
+    env: gwEnv,
   });
   const control = proc.stdio[3];
   const frames = new FrameReader(control);

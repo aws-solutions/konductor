@@ -68,10 +68,14 @@ class FrameReader {
 
 /** The `{file, args, env}` that start a gateway under `python`, with core dumps off before Python runs and a minimal env. */
 function gatewayCommand(python) {
+  // Minimal env, plus the dynamic-linker search path when it is set, so a Python built against a non-default shared
+  // library (the arm gateway's mujoco needing libffi on this host) can load its C extensions. No agent/task data.
+  const env = { PATH: process.env.PATH ?? '/usr/bin:/bin' };
+  if (process.env.LD_LIBRARY_PATH) env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH;
   return {
     file: '/bin/sh',
     args: ['-c', 'ulimit -c 0 && exec "$0" "$@"', python, '-I', GATEWAY_START, '--control-fd', '3'],
-    env: { PATH: process.env.PATH ?? '/usr/bin:/bin' },
+    env,
   };
 }
 

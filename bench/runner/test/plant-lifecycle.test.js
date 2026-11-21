@@ -282,7 +282,8 @@ test('the preflight points the task fixture at the release copy, and masks the r
 test('the gateway starts under sh with core dumps off and a PATH-only env, and the token is in neither', () => {
   const cmd = gatewayCommand('python3');
   assert.match(cmd.args[1], /ulimit -c 0/);
-  assert.deepEqual(Object.keys(cmd.env), ['PATH']);
+  // Minimal env: PATH, plus the dynamic-linker search path only when the parent has it set (nothing else leaks).
+  assert.deepEqual(Object.keys(cmd.env).sort(), process.env.LD_LIBRARY_PATH ? ['LD_LIBRARY_PATH', 'PATH'] : ['PATH']);
   const token = 'f'.repeat(64);
   const gw = new GatewayProcess({ python: 'python3', stdoutPath: '/dev/null', stderrPath: '/dev/null', makeToken: () => token });
   assert.ok(!JSON.stringify(gatewayCommand(gw.python)).includes(token));
