@@ -1249,7 +1249,14 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   others), or says "do not ask" on a task where questions are allowed (the default). A hyphenated unit name (`threat-modeling`) is caught as written; a
   one-word name (`verification`) is caught only in backticks or quotes, or next to the word skill, SOP or agent, because it is also an everyday word. It also refuses a
   v3 task (one with a `phase`) that has no `authorship.source`, or a public source with an empty licence. Plain deliverable names (ADR, postmortem,
-  threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks. Exit 1 on any finding.
+  threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks.
+  It also checks bug classes that reviews found more than once (`bench/scenarios/lint-files.js`): `judge-share` (a v3 task's judges carry more than
+  30% of its score under the default weights, for example no `tests` check), `key-negation` (a block key item fails an answer whose text matches a
+  `none` pattern, so a correct denial of the wrong cause loses it; a pattern anchored as `^...$` is exempt), `bare-test-dir` (a fixture's
+  `package.json` script or CI file runs `node --test DIR`, which Node 22 and later read as one file, unless DIR has a `package.json` naming a main
+  file) and `solution-link` (a check runs `ln -s . solution` without moving an agent-made `solution/` aside first). Known findings are listed in
+  `bench/scenarios/lint-baseline.json`, each with its DEBT row: they print as `known` and do not fail. Exit 1 on a new finding, or on a baseline
+  entry of a linted task that no longer matches (remove it: the baseline only shrinks).
 - `scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole]` builds the coverage matrix from the task files and writes
   `coverage.json` and `coverage.md` (into `--out`, default DIR). View 1 is phase by role: counts of real tasks (not twins or controls) against the target
   counts of the plan, a phase needing 8 tasks and 5 held-out, a role 8 real tasks. View 2 has one row per skill, SOP and agent of the tree: owner agents,

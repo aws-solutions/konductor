@@ -133,3 +133,67 @@ test('the CLI exits 1 with the findings, 0 when clean, and 2 without --base or a
   assert.equal(cli(['scenarios', 'lint', '--base', `dir:${tree}`]).status, 2);
   assert.equal(cli(['scenarios', 'nope']).status, 2);
 });
+
+// The file rules and the baseline (DEBT D-81, D-119, D-136, D-144).
+const { judgeShare } = require('../../scenarios/lint.js');
+
+test('judge-share: the judges carry at most 30% of a v3 task; a task without a tests check or a substance check carries more', () => {
+  const rubric = [{ id: 'r1' }];
+  const t = (checks) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, rubric, checks });
+  assert.equal(judgeShare(t([{ type: 'tests' }, { type: 'cmd' }])), 0.3);
+  assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'cmd' }])), []);
+  assert.deepEqual(rules(t([{ type: 'cmd' }])), ['judge-share'], 'no hidden share: 0.3 of 0.5');
+  assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'file_exists', kind: 'format' }])), ['judge-share'], 'a format check is not scored: 0.3 of 0.8');
+  assert.equal(judgeShare({ checks: [{ type: 'cmd' }] }), null, 'no rubric, no judges');
+  assert.deepEqual(rules({ prompt: 'ok', rubric, checks: [{ type: 'cmd' }] }), [], 'an old task is exempt');
+});
+
+function filePack() {
+  const dir = tmp();
+  const task = (id, o = {}) => write(path.join(dir, `${id}.json`), JSON.stringify({ id, prompt: 'Fix it.', fixture: id, hidden: id, ...o }));
+  task('keyed');
+  write(path.join(dir, 'hidden/keyed/block-kit/key.json'), JSON.stringify({ items: [
+    { id: 'blames-release', type: 'text', path: 'cause', none: ['rel-8421'] },
+    { id: 'decision', type: 'text', path: 'decision', none: ['^\\s*rolling\\s*$'] },
+    { id: 'no-pdf-item', type: 'none', path: 'items', match: { all: ['pdf'] } },
+    { id: 'fine', type: 'some', path: 'items', match: { all: ['retry'] } },
+  ] }));
+  task('baredir');
+  write(path.join(dir, 'fixtures/baredir/package.json'), JSON.stringify({ scripts: { test: 'node --test test/', lint: 'node --test test/*.test.js' } }));
+  write(path.join(dir, 'fixtures/baredir/test/a.test.js'), '');
+  write(path.join(dir, 'fixtures/baredir/.github/workflows/ci.yml'), 'jobs:\n  t:\n    steps:\n      - run: node --test test\n');
+  task('shimmed');
+  write(path.join(dir, 'fixtures/shimmed/package.json'), JSON.stringify({ scripts: { test: 'node --test test/' } }));
+  write(path.join(dir, 'fixtures/shimmed/test/package.json'), JSON.stringify({ main: 'index.js' }));
+  task('linked', { checks: [{ type: 'tests', cmd: 'ln -sfn . solution && node --test hidden/*.test.js' }, { type: 'tests', cmd: '( [ -L solution ] || [ ! -e solution ] || mv solution .x ) && ln -sfn . solution && node --test h.test.js' }] });
+  return dir;
+}
+
+test('the file rules find a none pattern in a block key, a bare node --test directory and an unguarded solution link', () => {
+  const res = lintDir(filePack(), CATALOG);
+  assert.deepEqual(res.findings.map((f) => [f.taskId, f.rule, f.where]), [
+    ['baredir', 'bare-test-dir', 'package.json'],
+    ['baredir', 'bare-test-dir', '.github/workflows/ci.yml'],
+    ['keyed', 'key-negation', 'block-kit/key.json#blames-release'],
+    ['keyed', 'key-negation', 'block-kit/key.json#no-pdf-item'],
+    ['linked', 'solution-link', 'checks[0]'],
+  ]);
+  assert.match(res.findings[0].detail, /node --test test\/.*use test\/\*\.test\.js/);
+});
+
+test('a baseline entry marks a finding known; an entry that no longer matches is stale; the CLI fails on a new finding only', () => {
+  const dir = filePack();
+  const baseline = { 'keyed|key-negation|block-kit/key.json#blames-release': 'D-136', 'keyed|key-negation|block-kit/key.json#gone': 'D-136', 'other|judge-share|checks': 'D-81' };
+  const res = lintDir(dir, CATALOG, { baseline });
+  assert.equal(res.findings.find((f) => f.where === 'block-kit/key.json#blames-release').known, 'D-136');
+  assert.equal(res.findings.filter((f) => f.known).length, 1);
+  assert.deepEqual(res.stale, ['keyed|key-negation|block-kit/key.json#gone'], 'a task outside the linted directory is not stale');
+});
+
+test('the repository lint baseline is shrink-only data: every entry names a DEBT row or a review', () => {
+  const { known } = JSON.parse(fs.readFileSync(path.join(__dirname, '../../scenarios/lint-baseline.json'), 'utf8'));
+  for (const [k, why] of Object.entries(known)) {
+    assert.match(k, /^[a-z0-9-]+\|(key-negation|bare-test-dir|solution-link|judge-share|names-unit|method-term|no-ask|authorship)\|/, k);
+    assert.match(why, /^D-\d+|^not a defect: /, k);
+  }
+});
