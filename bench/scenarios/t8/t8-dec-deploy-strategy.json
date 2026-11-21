@@ -1,7 +1,7 @@
 {
   "id": "t8-dec-deploy-strategy",
   "class": "hard",
-  "version": 5,
+  "version": 6,
   "phase": "decisions",
   "role": "sre",
   "phases2": [
@@ -188,9 +188,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): key word forms widened from wave 8 answers (D-116)",
+    "editor": "mate fixture-fix worker (2026-11-21): deploy/fleet-updater.md rules in-place rolling out (LITE note)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   },
   "pilot": {
     "scores": {
@@ -203,6 +203,18 @@
       "stub": 0,
       "lazy": 25,
       "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
       "date": "2026-11-21"
     },
     "decision": "keep",
