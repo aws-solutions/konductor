@@ -49,14 +49,17 @@ const HISTORY: RunSummaryRow[] = [
   },
 ];
 
-function renderFloor(run: FollowedRun | undefined) {
+function renderFloor(run: FollowedRun | undefined, ended = false) {
   return render(
     <RunFloor
       run={run}
       progress={
-        run ? runProgress(run, { startedAt: 0 }, () => 65_000) : undefined
+        run
+          ? runProgress(run, { startedAt: 0 }, () => 65_000, { ended })
+          : undefined
       }
       history={HISTORY}
+      ended={ended}
       reasonSentence={reasonSentence}
     />,
   );
@@ -67,6 +70,36 @@ const stageButton = (name: string) =>
 const detail = (name: string) => screen.getByRole('region', { name });
 const consoleBox = (name: string) =>
   screen.getByRole('region', { name: `Console lines of ${name}` });
+
+describe('RunFloor when the run is over with no last event', () => {
+  it('says the run ended instead of naming a stage at work', () => {
+    renderFloor(RUNNING, true);
+
+    expect(screen.getByTestId('run-progress').textContent).toContain(
+      'The run ended. 1 of 2 stages passed.',
+    );
+  });
+
+  it('shows the stage that was running as not finished', () => {
+    renderFloor(RUNNING, true);
+
+    const stages = within(
+      screen.getByRole('region', { name: 'Stages' }),
+    ).getAllByRole('button');
+    expect(stages.map((button) => button.textContent)).toEqual([
+      'draftPassed',
+      'reviewNot finished',
+    ]);
+  });
+
+  it('says that no more console lines can come', () => {
+    renderFloor(runWith([]), true);
+
+    expect(
+      within(detail('draft')).getByText('No live output is available.'),
+    ).toBeTruthy();
+  });
+});
 
 describe('RunFloor', () => {
   it('shows the progress, the stages, the detail of the stage at work and the past runs', () => {
