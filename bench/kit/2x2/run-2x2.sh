@@ -6,7 +6,7 @@
 #   paid:  smoke | stage1 kiro|cc | judge 1|2 | stage2 kiro|cc
 # Needs: S (the study directory) or KIT_DIR; R (a dedicated konductor worktree, never your own checkout, and the kit must
 # run from a copy outside it); AWSP (the NAME of your least-privilege Bedrock profile, never a key). Optional: REFRESH_CMD
-# (refreshes AWSP), ACK_CC_VERSION=1, ALLOW_MAIN_MOVED=1, RESUME_ERRORS=1, KBIN, CBIN, LISTING_JS, LOCK.
+# (refreshes AWSP), ACK_CC_VERSION=1, ALLOW_MAIN_MOVED=1, RESUME_ERRORS=1, KBIN, CBIN, LISTING_JS, LOCK, STUDY_ENV (another study file).
 # Effort is --effort high in both harnesses; scores are the median of three judges.
 # SPEND APPROVED by the owner on 2026-11-18: 520 credits and $151 in all, each stage capped on its own:
 #   smoke $1 (about $0.5, Claude Code 2.1.327) runs first; stage 1 (DEV) 80 credits and $20; stage 2 (HELD-OUT) 440 credits and $130.
@@ -21,16 +21,12 @@ set -euo pipefail
 KIT_SRC=${KIT_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)}   # the dir of this script; a caller that sources the helpers sets it first
 R=${R:-}                                    # a dedicated konductor worktree; `freeze` checks out the frozen bench commit in it
 S=${S:-${KIT_DIR:?set S (the study directory) or KIT_DIR}}
+# shellcheck source=lib.sh
+source "$KIT_SRC/lib.sh"   # the helpers both kits share: pins, freeze, host, logins, spend sums
+study_env "${STUDY_ENV:-$KIT_SRC/study-2x2.env}" REGION KIRO_VERSION KBIN_SHA CC_VERSION CBIN_SHA OPENCODE_VERSION EFFORT SEED PANEL CAP1_CR CAP1_CC CAP1_JUDGE CAP2_CR CAP2_CC CAP2_JUDGE RUN_CAP_USD CRED_MIN_MINUTES   # pins, versions, panel, caps (D-49)
 AWSP=${AWSP:-}
-REGION=us-east-1
-KBIN=${KBIN:-$S/bin/kiro-cli-3.5.0/kiro-cli}
-KBIN_SHA=e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e
-CBIN=${CBIN:-$S/bin/claude-code/2.1.327.1766/claude}
-CBIN_SHA=343c744baa14bfd38286a7cb90871051f04379956da6c5b803a9e66019a76ac9
-CC_VERSION=2.1.327.1766
-EFFORT=high
-SEED=20261118
-PANEL=gpt-5.6-luna,deepseek-3.2,glm-5
+KBIN=${KBIN:-$S/bin/kiro-cli-$KIRO_VERSION/kiro-cli}
+CBIN=${CBIN:-$S/bin/claude-code/$CC_VERSION/claude}
 LOCK=${LOCK:-/var/tmp/konductor-heavy.lock}
 BJ=$R/bench/runner/bench.js
 X=$R/bench/rootcause,$R/bench/sdlc   # extra task dirs: rootcause tasks and the sdlc suite
@@ -49,16 +45,9 @@ HELD_SOP=("plan-multipart-feature,sop-test-coverage-review")
 DEV_NEW=("sdlc-design-review-gaps") DEV_NEW_REPS=1
 HELD_NEW=("sdlc-code-review,sdlc-review-audit") HELD_NEW_REPS=2
 LISTING_JS=${LISTING_JS:-$KIT_SRC/listing-check.js}
-CAP1_CR=80 CAP1_CC=13 CAP1_JUDGE=7       # stage 1, DEV set x 2 reps (load probe, tuning): 80 credits, $20
-CAP2_CR=440 CAP2_CC=90 CAP2_JUDGE=40     # stage 2, HELD-OUT set x 3 reps (the verdict): 440 credits, $130
-RUN_CAP_USD=3
-CRED_MIN_MINUTES=60
 export TMPDIR=$S/tmp
 umask 077
 mkdir -p "$TMPDIR"
-
-# shellcheck source=lib.sh
-source "$KIT_SRC/lib.sh"   # the helpers both kits share: pins, freeze, host, logins, spend sums
 
 # ---- pins, freeze, host
 
@@ -275,7 +264,7 @@ case "$cmd" in check | freeze | prepare | smoke | stage1 | stage2 | judge-plan |
 case "$cmd" in
   split-check) split_check ;;
   check) need_awsp; pins; split_check; quiet; kiro_login; "$KBIN" chat --list-models --format json | grep -q '"model_id":"claude-sonnet-5.5"' || die "Kiro does not list claude-sonnet-5.5"
-         [ "$(opencode --version)" = 1.19.5 ] || die "opencode is not 1.19.5"; bedrock; families; preconditions; say "check passed" ;;
+         [ "$(opencode --version)" = "$OPENCODE_VERSION" ] || die "opencode is not $OPENCODE_VERSION"; bedrock; families; preconditions; say "check passed" ;;
   freeze) freeze ;;
   prepare) load_frozen; split_check; quiet; take_lock prepare   # --prepare-only makes a real run's flag and arm checks since 25516bab
            use_set held; all=$(printf '%s,' "${DEV[@]}" "${DEV_NEW[@]}" "${HELD[@]}" "${HELD_SOP[@]}" "${HELD_NEW[@]}" | sed 's/,$//')

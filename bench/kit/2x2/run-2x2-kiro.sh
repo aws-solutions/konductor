@@ -12,7 +12,7 @@
 #   paid:  stage3 kiro | judge
 # Needs: S (the study directory) or KIT_DIR; R (a dedicated konductor worktree); AWSP (the NAME of your least-privilege
 # Bedrock profile, never a key). Optional: SHARED (a dir that holds bin/ and cache/ of an earlier study), KBIN, CBIN,
-# LISTING_JS, LOCK, PY312_BIN, KONDUCTOR_REF, BUILD_LABEL, REFRESH_CMD, ALLOW_MAIN_MOVED=1, RESUME_ERRORS=1.
+# LISTING_JS, LOCK, STUDY_ENV (another study file), PY312_BIN, KONDUCTOR_REF, BUILD_LABEL, REFRESH_CMD, ALLOW_MAIN_MOVED=1, RESUME_ERRORS=1.
 # Effort is --effort high; scores are the median of three judges.
 # SPEND APPROVED by the owner on 2026-11-19, as soft caps: 390 credits and $20 of judging (ceiling 396 credits and $129).
 # Startup rule (owner, 2026-11-18): each arm starts the default agent of its tool (Kiro kiro_default) or konductor, with no
@@ -22,17 +22,13 @@ set -euo pipefail
 KIT_SRC=${KIT_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)}   # the dir of this script; a caller that sources the helpers sets it first
 R=${R:-}                                    # a dedicated konductor worktree; `freeze` checks out the frozen bench commit in it
 S=${S:-${KIT_DIR:?set S (the study directory) or KIT_DIR}}
+# shellcheck source=lib.sh
+source "$KIT_SRC/lib.sh"   # the helpers both kits share: pins, freeze, host, logins, spend sums
+study_env "${STUDY_ENV:-$KIT_SRC/study-2x2-kiro.env}" REGION KIRO_VERSION KBIN_SHA CC_VERSION CBIN_SHA OPENCODE_VERSION EFFORT SEED PANEL CAP3_CR CAP3_JUDGE CEIL3_CR CEIL3_JUDGE TIMEOUT_SEC CAP1_CR CAP1_CC CAP1_JUDGE CAP2_CR CAP2_CC CAP2_JUDGE RUN_CAP_USD CRED_MIN_MINUTES   # pins, versions, panel, caps (D-49)
 SHARED=${SHARED:-$S}   # where the pinned binaries (bin/) and the build cache live; set it to the first study's dir to reuse them
 AWSP=${AWSP:-}
-REGION=us-east-1
-KBIN=${KBIN:-$SHARED/bin/kiro-cli-3.5.0/kiro-cli}
-KBIN_SHA=e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e
-CBIN=${CBIN:-$SHARED/bin/claude-code/2.1.327.1766/claude}
-CBIN_SHA=343c744baa14bfd38286a7cb90871051f04379956da6c5b803a9e66019a76ac9
-CC_VERSION=2.1.327.1766
-EFFORT=high
-SEED=20261118
-PANEL=gpt-5.6-luna,deepseek-3.2,glm-5
+KBIN=${KBIN:-$SHARED/bin/kiro-cli-$KIRO_VERSION/kiro-cli}
+CBIN=${CBIN:-$SHARED/bin/claude-code/$CC_VERSION/claude}
 LOCK=${LOCK:-/var/tmp/konductor-heavy.lock}
 BJ=$R/bench/runner/bench.js
 X=$R/bench/rootcause,$R/bench/sdlc   # extra task dirs: rootcause tasks and the sdlc suite
@@ -51,24 +47,11 @@ HELD_SOP=("plan-multipart-feature,sop-test-coverage-review")
 DEV_NEW=("sdlc-design-review-gaps") DEV_NEW_REPS=1
 HELD_NEW=("sdlc-code-review,sdlc-review-audit") HELD_NEW_REPS=2
 LISTING_JS=${LISTING_JS:-$KIT_SRC/listing-check.js}
-# Kiro-only rerun (owner approval needed before any paid step): 390 credits and $20 of judging. Left of the approved total
-# after the first study: 520 - 123.84 = 396.16 credits and $151 - $21.16 = $129.84. No Claude Code spend.
-# SOFT caps (owner, 2026-11-19): 390 credits and $20 of judging are the plan. The run warns at 90% of them and goes on; it
-# stops only at the ceiling, the rest of the approved total (396 credits; $129 of the $151 for judging).
-CAP3_CR=390 CAP3_JUDGE=20 CEIL3_CR=396 CEIL3_JUDGE=129
-TIMEOUT_SEC=1800          # soft limit for BOTH arms and every task (pre-declared before the first run); the report re-scores at 600 and 1200 s
 PY312_BIN=${PY312_BIN:-$S/pybin}         # a dir whose python3 and python are Python 3.12 (see bench/docs/repeat.md)
 export PATH=$PY312_BIN:$PATH
-CAP1_CR=80 CAP1_CC=13 CAP1_JUDGE=7       # stage 1, DEV set x 2 reps (load probe, tuning): 80 credits, $20
-CAP2_CR=440 CAP2_CC=90 CAP2_JUDGE=40     # stage 2, HELD-OUT set x 3 reps (the verdict): 440 credits, $130
-RUN_CAP_USD=3
-CRED_MIN_MINUTES=60
 export TMPDIR=$S/tmp
 umask 077
 mkdir -p "$TMPDIR"
-
-# shellcheck source=lib.sh
-source "$KIT_SRC/lib.sh"   # the helpers both kits share: pins, freeze, host, logins, spend sums
 
 # ---- pins, freeze, host
 
@@ -255,7 +238,7 @@ case "$cmd" in check | freeze | prepare | stage3 | judge-plan | judge | gate | r
 case "$cmd" in
   split-check) split_check ;;
   check) need_awsp; pins; split_check; quiet; kiro_login; "$KBIN" chat --list-models --format json | grep -q '"model_id":"claude-sonnet-5.5"' || die "Kiro does not list claude-sonnet-5.5"
-         [ "$(opencode --version)" = 1.19.5 ] || die "opencode is not 1.19.5"
+         [ "$(opencode --version)" = "$OPENCODE_VERSION" ] || die "opencode is not $OPENCODE_VERSION"
          python3 --version 2>&1 | grep -q '^Python 3\.12\.' || die "python3 is not 3.12 on PATH (PY312_BIN=$PY312_BIN)"
          python --version 2>&1 | grep -q '^Python 3\.12\.' || die "python is not 3.12 on PATH (PY312_BIN=$PY312_BIN)"
          bedrock; families; preconditions; say "check passed" ;;

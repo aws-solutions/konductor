@@ -11,14 +11,23 @@ need_r() { # R is the konductor worktree the kit builds from and checks out; the
   case "$KIT_SRC/" in "$(cd "$R" && pwd -P)"/*) die "run the kit from a copy outside $R: freeze checks out another commit there and would replace this script" ;; esac
 }
 
+# study_env FILE NAME...: read the study constants from FILE (plain NAME=value lines) and refuse when one is unset or empty
+study_env() {
+  local f=$1 v; shift
+  [ -f "$f" ] || die "no study file $f"
+  # shellcheck disable=SC1090
+  . "$f"
+  for v in "$@"; do [ -n "${!v:-}" ] || die "$v is not set in $f"; done
+}
+
 # ---- pins, freeze, host
 pins() {
   [ "$(sha256sum "$KBIN" | cut -d' ' -f1)" = "$KBIN_SHA" ] || die "kiro-cli copy at $KBIN does not match its pinned sha256"
   [ "$(sha256sum "$CBIN" | cut -d' ' -f1)" = "$CBIN_SHA" ] || die "claude copy at $CBIN does not match its pinned sha256"
-  "$KBIN" --version | grep -qx 'kiro-cli 3.5.0' || die "kiro-cli copy is not 3.5.0"
-  "$CBIN" --version | grep -q '^2\.1\.327 ' || die "claude copy is not 2.1.327"
+  "$KBIN" --version | grep -qxF "kiro-cli $KIRO_VERSION" || die "kiro-cli copy is not $KIRO_VERSION"
+  [[ "$("$CBIN" --version)" == "${CC_VERSION%.*} "* ]] || die "claude copy is not ${CC_VERSION%.*}"
   "$CBIN" --help | grep -q -- '--effort' || die "claude copy has no --effort flag"
-  say "pins ok: kiro-cli 3.5.0, claude $CC_VERSION with --effort (bench validated on $(validated))"
+  say "pins ok: kiro-cli $KIRO_VERSION, claude $CC_VERSION with --effort (bench validated on $(validated))"
 }
 validated() { node -e 'console.log(require(process.argv[1]).VALIDATED_VERSION)' "$R/bench/runner/lib/harness/claude-code.js"; }
 ack_cc() { # owner rule (2026-11-18): no stage starts without ACK_CC_VERSION=1, set after the smoke run passes
