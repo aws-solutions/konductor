@@ -55,9 +55,6 @@ export interface NextPorts {
   ) => Promise<CheckAnswer>;
 }
 
-/** The session token of the page, or `undefined` while there is none. */
-export type TokenSource = () => string | undefined;
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
