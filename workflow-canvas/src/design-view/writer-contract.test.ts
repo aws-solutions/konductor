@@ -33,16 +33,39 @@ function renamed(stages: readonly StageView[], index: number): StageView[] {
   );
 }
 
+/** One line of a file and the break that ends it, empty at the end of one. */
+interface Line {
+  text: string;
+  eol: string;
+}
+
+// The lines of a text with their breaks kept, so a file written with any mix
+// of `\r\n`, `\n` and a lone `\r` can be taken apart and put back byte for
+// byte.
+function brokenLinesOf(text: string): Line[] {
+  const lines: Line[] = [];
+  let end = 0;
+  for (const match of text.matchAll(/([^\r\n]*)(\r\n|\r|\n)/g)) {
+    lines.push({ text: match[1] ?? '', eol: match[2] ?? '' });
+    end = match.index + match[0].length;
+  }
+  if (end < text.length) lines.push({ text: text.slice(end), eol: '' });
+  return lines;
+}
+
+const joined = (lines: readonly Line[]) =>
+  lines.map((line) => line.text + line.eol).join('');
+
 /**
  * The file as it would read if the writer had changed nothing but the name on
  * the line the stage starts at. The writer keeps the lines of a stage exactly
- * when what it writes is this.
+ * when what it writes is this, the break of every line included.
  */
 function onlyTheNameChanged(text: string, line: number): string {
-  const lines = text.split('\n');
-  const at = lines[line - 1] ?? '';
-  lines[line - 1] = at.replace(/- name: .*$/, `- name: ${NEW_NAME}`);
-  return lines.join('\n');
+  const lines = brokenLinesOf(text);
+  const at = lines[line - 1];
+  if (at) at.text = at.text.replace(/- name: .*$/, `- name: ${NEW_NAME}`);
+  return joined(lines);
 }
 
 // A scalar as a parser reads it: the value, without the quotes a file may
@@ -56,7 +79,7 @@ const scalarOf = (value: string) =>
  * it left out, as a parser's range is.
  */
 function checkStagesOf(text: string): CheckViewStage[] {
-  const lines = text.split('\n');
+  const lines = brokenLinesOf(text).map((line) => line.text);
   const starts = lines.flatMap((line, index) =>
     /^[ \t]*- /.test(line) ? [index] : [],
   );
@@ -92,6 +115,25 @@ intent:
   outcome: Add a greeting to the README
 stages:
 `;
+
+/**
+ * The sample file with the breaks it is written with spelled out: `key` ends
+ * every line down to `stages:`, `stage` the two lines of the first stage, and
+ * `end` the last line of the file, which `''` leaves without one.
+ */
+function withBreaks(key: string, stage: string, end = key): string {
+  return [
+    `format: konductor/1${key}`,
+    `name: hello${key}`,
+    `intent:${key}`,
+    `  outcome: Add a greeting to the README${key}`,
+    `stages:${key}`,
+    `  - name: draft${stage}`,
+    `    agent: k-developer${stage}`,
+    `  - name: review${key}`,
+    `    agent: k-quality-assurance${end}`,
+  ].join('');
+}
 
 describe('the stage writer and the reader of the lines it keeps', () => {
   it.each([
@@ -163,6 +205,27 @@ describe('the stage writer and the reader of the lines it keeps', () => {
 `,
       0,
     ],
+    // The writer ends a line it writes again with the break of the `stages:`
+    // key, so a file written throughout with one kind of break keeps its
+    // bytes, and a stage whose breaks differ from that key does not.
+    ['a file written throughout with CRLF', withBreaks('\r\n', '\r\n'), 0],
+    [
+      'a file written throughout with lone carriage returns',
+      withBreaks('\r', '\r'),
+      0,
+    ],
+    ['a CRLF key with a stage written with LF', withBreaks('\r\n', '\n'), 0],
+    ['an LF key with a stage written with CRLF', withBreaks('\n', '\r\n'), 0],
+    [
+      'an LF key with a stage written with lone carriage returns',
+      withBreaks('\n', '\r'),
+      0,
+    ],
+    [
+      'a file with no final break, editing a stage before its last line',
+      withBreaks('\n', '\n', ''),
+      0,
+    ],
   ])('agree on %s', (_, text, index) => {
     const { writerKept, readerSaid } = bothOn(text, index);
 
@@ -181,6 +244,37 @@ describe('the stage writer and the reader of the lines it keeps', () => {
     // The case the agreement above must not be vacuous on.
     expect(writerKept).toBe(true);
     expect(readerSaid).toBe(true);
+  });
+
+  it('says the writer keeps a CRLF file, so the save may go ahead', () => {
+    const { writerKept, readerSaid } = bothOn(withBreaks('\r\n', '\r\n'), 0);
+
+    expect(writerKept).toBe(true);
+    expect(readerSaid).toBe(true);
+  });
+
+  it('says the writer rewrites the breaks of a stage the key does not share', () => {
+    const text = withBreaks('\r\n', '\n');
+
+    const { writerKept, readerSaid, written } = bothOn(text, 0);
+
+    // The lines of the edited stage come back ended the way the key is, so
+    // bytes outside the name that was edited have changed.
+    expect(written).toContain('- name: drafting\r\n');
+    expect(writerKept).toBe(false);
+    expect(readerSaid).toBe(false);
+  });
+
+  // The writer ends the last line of a file as it found it, so a file that
+  // ends inside the stage being edited keeps its missing break. The reader
+  // refuses that stage all the same: whether those two lines are still the
+  // last of the file depends on the draft being saved, which it cannot see,
+  // and a stage added at the end would move them.
+  it('refuses a stage the file ends on, though the writer would keep it', () => {
+    const { writerKept, readerSaid } = bothOn(withBreaks('\n', '\n', ''), 1);
+
+    expect(writerKept).toBe(true);
+    expect(readerSaid).toBe(false);
   });
 
   it('says the writer drops a comment inside the stage, so the save is refused', () => {
