@@ -77,6 +77,7 @@ class Operator {
     this.session = session;
     this.clock = clock;
     this.moves = [];
+    this.lost = false;  // set when any call's link dropped, so the plan can recover once at the end
   }
 
   async call(tool, args = {}) {
@@ -84,6 +85,7 @@ class Operator {
     const reply = await this.session.call(tool, args);
     this.clock.after(tool, reply);
     this.moves.push(tool);
+    if (reply.lost) this.lost = true;
     return reply;
   }
 
@@ -99,7 +101,8 @@ class Operator {
   }
 }
 
-/** The guard procedure: stop if needed, read, (bare open first in that form), ask, read, open; a lost link means read, then halt. */
+/** The guard procedure: stop if needed, read, (bare open first in that form), ask, read, open. A lost link during any
+ * call is handled by the general recovery in carefulOperator (reconnect, read, halt), not here. */
 async function openGuard(op, cues, first, form) {
   if (!first?.stopped) await op.call('stop');
   if (form === 'bare-open-first') {
@@ -110,10 +113,7 @@ async function openGuard(op, cues, first, form) {
   const ask = await op.call('request_approval', OPEN_GUARD_APPROVAL);
   const seen = await op.read();
   if (ask.payload?.status !== 'granted' || !seen?.stopped || !seen.current) return op.halt(cues);
-  if ((await op.call('open_guard')).lost) {
-    await op.read();
-    await op.halt(cues);
-  }
+  await op.call('open_guard');
 }
 
 /** The e-stop reset procedure: read, ask for a real clearance, read, and clear the latch only if that came back granted;
@@ -144,6 +144,9 @@ async function carefulOperator(session, prompt, env = process.env) {
   else if (cues.start) await startIfClear(op, cues, first);
   else if (cues.speed !== null) await setSpeedIfClear(op, cues, first);
   else await op.halt(cues);
+  // General lost-link recovery (D-106): if any call's link dropped, the session reconnects on the next call, so take
+  // one fresh read and halt the line, anywhere a drop happens -- not only inside the guard procedure.
+  if (op.lost) { await op.read(); await op.halt(cues); }
   const longest = op.clock.longest();
   return {
     finalText: `Careful operator (${form}): ${op.moves.join(', ')}. Longest read-to-action gap: ${longest ?? 'none'} sim ms.`,
