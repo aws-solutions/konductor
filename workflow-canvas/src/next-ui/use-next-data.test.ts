@@ -70,6 +70,40 @@ describe('useNextData', () => {
     expect(ports.loadExtras).toHaveBeenCalledTimes(2);
   });
 
+  it('has nothing while the read for a new reload value is in flight', async () => {
+    // The fields of the workflow as it was before the save are not the ones
+    // it has now, so no view may draw from them while the reread is out.
+    let answer: (extras: WorkflowExtras) => void = () => undefined;
+    const held = new Promise<WorkflowExtras>((resolve) => {
+      answer = resolve;
+    });
+    const loadExtras = vi
+      .fn<NextPorts['loadExtras']>()
+      .mockResolvedValueOnce(EXTRAS)
+      .mockReturnValueOnce(held);
+    const ports = portsOf({ loadExtras });
+    const { result, rerender } = renderHook(
+      ({ reload }: { reload: string }) => useNextData({ ports, reload }),
+      { initialProps: { reload: 'hash-1' } },
+    );
+    await act(async () => {});
+
+    rerender({ reload: 'hash-2' });
+    await act(async () => {});
+
+    expect(result.current.extras).toEqual({ stageFields: {} });
+    expect(result.current.agents).toBe(KNOWN_AGENTS);
+    expect(result.current.failure).toBeUndefined();
+
+    // Once it answers, the fields of the workflow as it is now are there.
+    await act(async () => {
+      answer({ stageFields: {}, goalDefault: 'Ship it' });
+      await held;
+    });
+
+    expect(result.current.extras.goalDefault).toBe('Ship it');
+  });
+
   it('says why the reads failed', async () => {
     const ports = portsOf({
       loadExtras: vi.fn(() => Promise.reject(new Error('The server said no.'))),

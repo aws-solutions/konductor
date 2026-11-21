@@ -37,7 +37,9 @@ interface Read extends NextData {
  * Reads the extra fields of the workflow and the list of agents once, and
  * again whenever `reload` changes, such as after a save, because a save can
  * change the keys a stage may have. The reads are aborted by the next one and
- * by unmounting, and no state is set after that.
+ * by unmounting, and no state is set after that. While a read is in flight
+ * the views have nothing, so none of them shows what the workflow held before
+ * it.
  *
  * What was read belongs to the session it was read through: another `ports`
  * object is another workflow, so the fields and the agents start again from
@@ -79,7 +81,13 @@ export function useNextData({
     return () => controller.abort();
   }, [ports, reload]);
 
-  if (ports === undefined || read?.ports !== ports) return NOTHING_READ;
+  // What was read answers for one session and for one `reload`. A fresh read
+  // is in flight until it has set both, and until then the views have
+  // nothing: the fields a workflow had before a save are not the fields it
+  // has now, and a run must not be started with the default goal it had.
+  if (ports === undefined || read?.ports !== ports || read.reload !== reload) {
+    return NOTHING_READ;
+  }
   return read.failure === undefined
     ? { extras: read.extras, agents: read.agents }
     : { extras: read.extras, agents: read.agents, failure: read.failure };
