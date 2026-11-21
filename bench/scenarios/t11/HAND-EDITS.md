@@ -73,3 +73,12 @@ gates unchanged: reference 100, stub 17.5, lazy 23.8, alt 100. Non-Claude rechec
 `t11-docx-room-booking-reqs` v3 (`narrative-judgment`) and `t11-guide-contributing` v2 (`review-guidance`) each had a
 judged rubric item with no Fail / Partial / Pass anchor; each now has the three. No check, key, fixture or answer
 changed. Non-Claude recheck: pending (`handEdited.version` 3 and 2).
+
+## Review fixes of the wave 11/12 edits (2026-11-21, mate wave 11/12 review-fix worker, claude)
+
+From `reports/review-wave11-12-edits-claude-opus-5.5.md` and `reports/review-wave11-12-edits-claude-fable-5.1.md`.
+No model call. Probe answers scored with the bench's own check code.
+
+| Task | What changed | Why |
+| --- | --- | --- |
+| t11-docx-room-booking-reqs v4 | key: `old-duration-absent` also allows "revised from" and "changed from" before the old 4 hours | The docx itself says "revised from 4 hours to 3 hours"; a correct requirement quoting it scored 95.9, the same one with "reduced from" 100 (Opus F4). Now both 100. |

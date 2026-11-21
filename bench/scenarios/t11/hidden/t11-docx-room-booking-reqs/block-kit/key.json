@@ -65,7 +65,7 @@
           "\\b(4|four)\\b[^.]{0,20}hours?"
         ],
         "none": [
-          "^.*\\b(was|old|previous(ly)?|former(ly)?|earlier|down from|reduced from|instead of|replac\\w*|supersed\\w*)\\b[^.]{0,30}\\b(4|four)\\b[^.]{0,20}hours?"
+          "^.*\\b(was|old|previous(ly)?|former(ly)?|earlier|down from|reduced from|revised from|changed from|instead of|replac\\w*|supersed\\w*)\\b[^.]{0,30}\\b(4|four)\\b[^.]{0,20}hours?"
         ]
       }
     },

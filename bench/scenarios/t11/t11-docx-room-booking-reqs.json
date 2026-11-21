@@ -1,7 +1,7 @@
 {
   "id": "t11-docx-room-booking-reqs",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -135,8 +135,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "editor": "mate wave 11/12 review-fix worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   }
 }
