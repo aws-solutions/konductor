@@ -165,7 +165,12 @@ same. With the scripted fake model these runs cost nothing. With the one pinned 
 Strands lets an agent's own hooks cancel, change or repeat a tool call. bench lists every such hook before the first
 run and refuses one on a plain arm. The `-hooked` arms measure such an agent and keep its numbers apart. Any other
 agent type joins the same way: a harness that sends its plant calls through the same gateway (see
-[plug in a new agent type](agents.md#plug-in-a-new-agent-type)). The steps and files for a new plant adapter, and what
+[plug in a new agent type](agents.md#plug-in-a-new-agent-type)).
+
+Claude Code is the next agent type and connects the shim way, like Kiro CLI: it mounts the plant MCP shim and its
+plant tools read as `mcp__plant__<tool>`. The stream-to-gateway check already reads a Claude Code stream
+(`plantCallsInClaudeStream` in `stream-match.js`); mounting the shim from the Claude Code harness is the step still
+open. See [driving the plant from Claude Code](physical-ai-claude-code.md). The steps and files for a new plant adapter, and what
 works today for an agent bench has not run, are in
 [benchmark your own agent](benchmark-your-own-agent.md#track-1-an-agent-that-drives-a-machine).
 

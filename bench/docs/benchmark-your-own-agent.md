@@ -103,8 +103,9 @@ Then follow these steps. Each names the files you touch.
 4. **Teach the match check your stream.** `streamCallsOf` in `bench/runner/lib/plant/stream-match.js` reads your
    agent's stream and lists its plant calls. Add a reader for your `streamFormat`. Until you do, your stream is read
    as Kiro CLI's, no plant call is found, and every trial fails as a mismatch. That fails safe, but it tells you
-   nothing. If your agent can change a call inside itself, record what the model asked for before that code runs,
-   the way the Strands trace does with `model_tool_use` and `forward` lines.
+   nothing. `plantCallsInClaudeStream` (for Claude Code's `claude-stream-json`) is a worked example of the MCP-stdio
+   case: it lists every `mcp__plant__<tool>` call. If your agent can change a call inside itself, record what the
+   model asked for before that code runs, the way the Strands trace does with `model_tool_use` and `forward` lines.
 5. **Pin its version.** A release pins one exact agent build. `bench/runner/lib/plant/intake.js` checks the Kiro
    CLI pin (`versions.kiroCli`) or the Strands pin (`versions.strands.version`). Add a pin check for yours. Without
    a pin a suite must not count.
