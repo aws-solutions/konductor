@@ -54,12 +54,42 @@ export interface PickedStage {
 }
 
 /**
+ * Where a stage of the draft comes from in the file as it was loaded: the
+ * place it had there, or `added` for a stage made since, which the file has
+ * no stage for and so has nothing to lose.
+ *
+ * A place, not a name and not the current position: a person renames a stage
+ * and adds and deletes others, and only the place it was loaded from still
+ * names the lines the file holds for it.
+ */
+export type StageSource =
+  | { readonly kind: 'loaded'; readonly index: number }
+  | { readonly kind: 'added' };
+
+/**
+ * The stage of the file that `source` came from, or `undefined` when the file
+ * has none: a stage added since, or a file that is not known, as it is not
+ * while the first check is in flight or after it failed.
+ */
+export function sourceStageOf(
+  file: CheckView | null | undefined,
+  source: StageSource,
+): CheckViewStage | undefined {
+  if (source.kind === 'added') return undefined;
+  return file?.stages[source.index];
+}
+
+/**
  * The stage of `view` that `picked` is, or `undefined` when it cannot be
  * told. The position decides when the view has as many stages as the draft,
  * because a name is not unique while a person types: a stage renamed to the
  * name of another one would otherwise resolve to that other stage. A name
  * match is taken only when the view has another number of stages, where a
  * position means nothing.
+ *
+ * This reads a view of the text as it is now, whose stages are in the order
+ * of the draft. The file as it was loaded is read by `sourceStageOf`, which
+ * takes the place a stage was loaded from instead.
  */
 export function pickedStageOf(
   view: CheckView | null | undefined,
@@ -114,28 +144,47 @@ export function fieldValuesOf(
   };
 }
 
+/** A stage of the draft, as the save guard reads it. */
+export interface GuardedStage {
+  readonly draft: DraftStage;
+  /** Where in the file as loaded this stage came from. */
+  readonly source: StageSource;
+  /** Whether the person has changed its name or its agent since the load. */
+  readonly changed: boolean;
+}
+
+const ONLY_TWO = 'Only the name and the agent of a stage can be saved yet.';
+
 /**
  * Why a save of this workflow is refused, or `undefined` when it may go
  * ahead. The stage writer of the editor rebuilds a stage it changed from the
  * name and the agent alone, so saving a stage that has another key, such as a
  * prompt, would drop it from the file. Until the writer keeps those keys, a
  * change to such a stage is not saved at all.
+ *
+ * The guard fails closed. A changed stage whose file stage cannot be read is
+ * refused as well, because the keys it would drop are then unknown: that is
+ * so while the first check of the file is in flight, after that check failed,
+ * and for a file that has no stage at the place this one was loaded from. A
+ * stage the person added has nothing in the file to lose, and an unchanged
+ * stage keeps its own lines, so neither is refused.
  */
 export function saveRefusal(
-  stages: readonly {
-    readonly draft: DraftStage;
-    readonly saved: CheckViewStage | undefined;
-    readonly changed: boolean;
-  }[],
+  stages: readonly GuardedStage[],
+  /** The file as it was loaded, or `null` while it is not known. */
+  file: CheckView | null | undefined,
 ): string | undefined {
-  const atRisk = stages
-    .filter((stage) => stage.changed)
-    .map((stage) => ({
-      name: stage.draft.name,
-      dropped: droppedKeysOf(stage.saved),
-    }))
-    .filter((stage) => stage.dropped.length > 0);
-  const first = atRisk[0];
-  if (first === undefined) return undefined;
-  return `A save would drop the ${first.dropped.join(' and ')} of ${first.name}, so it is refused. Only the name and the agent of a stage can be saved yet.`;
+  for (const stage of stages) {
+    if (!stage.changed || stage.source.kind === 'added') continue;
+    const name = stage.draft.name;
+    const saved = sourceStageOf(file, stage.source);
+    if (saved === undefined) {
+      return `A save would rebuild ${name}, and the keys it has in the file are not known, so it is refused. ${ONLY_TWO}`;
+    }
+    const dropped = droppedKeysOf(saved);
+    if (dropped.length > 0) {
+      return `A save would drop the ${dropped.join(' and ')} of ${name}, so it is refused. ${ONLY_TWO}`;
+    }
+  }
+  return undefined;
 }

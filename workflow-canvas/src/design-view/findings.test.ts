@@ -72,6 +72,33 @@ describe('findingsPage', () => {
     ]);
   });
 
+  it('shows an error the server sent after more findings than it lists', () => {
+    // The cap must be taken after the ranking: the error is entry 1,001.
+    const infos = Array.from({ length: 1_000 }, (_, index) =>
+      finding(index + 1, 'info'),
+    );
+    const answer = answerOf([...infos, finding(1_001, 'error')]);
+
+    const { page, left } = findingsPage(answer, FINDINGS_PER_PAGE);
+
+    expect(page[0]?.line).toBe(1_001);
+    expect(page[0]?.severity).toBe('error');
+    expect(left).toBe(1_001 - FINDINGS_PER_PAGE);
+  });
+
+  it('keeps the order the server sent within one severity', () => {
+    const answer = answerOf([
+      finding(7, 'warning'),
+      finding(3, 'error'),
+      finding(5, 'warning'),
+      finding(1, 'error'),
+    ]);
+
+    expect(findingsPage(answer, 4).page.map((one) => one.line)).toEqual([
+      3, 1, 7, 5,
+    ]);
+  });
+
   it('never shows more than its own limit', () => {
     const page = findingsPage(many(5_000), 5_000);
 
