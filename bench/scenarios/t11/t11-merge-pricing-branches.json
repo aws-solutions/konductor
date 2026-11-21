@@ -150,7 +150,8 @@
   "handEdited": {
     "family": "claude",
     "editor": "mate wave 11/12 review-fix worker (2026-11-21)",
-    "log": "HAND-EDITS.md"
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
