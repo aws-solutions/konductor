@@ -1,7 +1,7 @@
 {
   "id": "t11-merge-pricing-branches",
   "class": "hard",
-  "version": 2,
+  "version": 4,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -37,7 +37,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "test \"$(grep -rhoE '(^|[^a-zA-Z_.])(test|it)\\(' test | wc -l)\" -ge 11",
+      "cmd": "test \"$(git grep -hoE '(^|[^a-zA-Z_.])(test|it)\\(' HEAD -- test | wc -l)\" -ge 14",
       "expectExit": 0,
       "weight": 2,
       "kind": "substance"
@@ -149,22 +149,38 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate wave 11/12 review-fix worker (2026-11-21)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 10.2,
+    "stub": 14.6,
     "dryRun": {
       "reference": 100,
-      "stub": 10.2,
-      "lazy": 36.3,
+      "stub": 14.6,
+      "lazy": 29.3,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null
 }

@@ -143,7 +143,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "Not too easy: a quick wrong answer would be implementing waitlist code before sign-off or applying Ravi's patch without review. Hidden tests catch these: 'unsigned feature: no waitlist code before sign-off' fails if code is written; 'patch review: the patch is not applied' fails if patch or overlap.js is changed. Also, order matters: 'order: the live bug is fixed first' catches top-to-bottom processing."
+        "note": "Not too easy: a quick wrong answer would be implementing waitlist code before sign-off or applying Ravi's patch without review. Hidden tests catch these: 'unsigned feature: no waitlist code before sign-off' fails if code is written; 'patch review: the patch is not applied' fails if patch or overlap.js is changed. Also, order matters: 'order: the live bug is fixed first' catches top-to-bottom processing. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 100 in pilot wave 12, while the dry run keeps the lazy answer at 36.4 (shallow 27.3) and the stub at 0, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",

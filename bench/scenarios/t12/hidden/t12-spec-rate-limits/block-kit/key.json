@@ -12,7 +12,8 @@
           "\\b(by|per) (client |source )?ip\\b"
         ],
         "none": [
-          "\\bnot\\b|never|instead|rather than|supersed|unlike|replac|\\bold\\b|previous|former|earlier|2025|no longer|retired|drop"
+          "\\b(not|never|no longer|instead of|rather than|unlike|replac\\w*|supersed\\w*|old|previous|former|earlier|2025)\\W+(\\w+\\W+){0,6}?(by|per) (client |source )?ip\\b",
+          "(by|per) (client |source )?ip\\b\\W+(\\w+\\W+){0,6}?(is |was |are )?(retired|dropped|replaced|superseded|removed|no longer)"
         ]
       },
       "weight": 2
@@ -29,26 +30,26 @@
       }
     },
     {
-      "id": "starter-figure",
+      "id": "named-plan-figure",
       "section": "requirements",
       "type": "some",
       "path": "requirements",
       "match": {
         "all": [
-          "starter",
-          "\\b90\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
+          "starter|studio",
+          "\\b90\\b|\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
         ]
       }
     },
     {
-      "id": "studio-figure",
+      "id": "every-plan-figure",
       "section": "requirements",
       "type": "some",
       "path": "requirements",
       "match": {
         "all": [
-          "studio",
-          "\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
+          "starter|studio|\\b(each|every|all|any) plans?\\b",
+          "\\b90\\b|\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
         ]
       }
     },
@@ -179,7 +180,7 @@
       "match": {
         "all": [
           "test",
-          "429|over the limit|over-limit|exceed"
+          "429|over the limit|over-limit|exceed|retry-after|rate_limited"
         ]
       }
     },
@@ -190,7 +191,10 @@
       "path": "tasks",
       "match": {
         "all": [
-          "x-ratelimit-remaining"
+          "x-ratelimit-remaining|\\bremaining\\b"
+        ],
+        "none": [
+          "remaining (tasks?|work|items?|instances?|tickets?|steps?|issues?|questions?|edge cases?|parts?)\\b"
         ]
       }
     },

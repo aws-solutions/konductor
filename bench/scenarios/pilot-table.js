@@ -39,7 +39,9 @@ const LEAK_PATH = /bench\/scenarios\/|(^|[\s/'"])(hidden|solutions|answers|autho
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
 const SHINGLE = 12;          // words per shingle when an output is compared with the reference
 const COPY_SHARE = 0.6;      // share of the reference's own shingles (not in the fixture) found in one output file
-const COPY_MIN_SHINGLES = 20;
+// A file needs this many own shingles to be judged. 30, not 20: t1-ref-esm-migrate's index.js has 24, all in the one
+// import block any correct ESM rewrite writes the same way (wave 5 was a false flag at 79%).
+const COPY_MIN_SHINGLES = 30;
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const batchOf = (id) => (/^(t\d+)-/.exec(id) || [])[1] ?? null;
@@ -154,9 +156,35 @@ function shingles(s) {
 }
 const { readTextOrNull: readText } = require('../runner/lib/util.js');
 
+// Text of `rel` on every branch of a fixture's own git repository (fixtures/<id>/dotgit), so a merge task whose branches
+// already hold the answer's lines (t11-merge-pricing-branches) is not flagged for merging them. Cached per fixture.
+const branchTextCache = new Map();
+function branchTexts(fixDir, rel) {
+  if (!fs.existsSync(path.join(fixDir, 'dotgit'))) return '';
+  if (!branchTextCache.has(fixDir)) {
+    const { copyFixture } = require('../runner/lib/sandbox.js');
+    const { execFileSync } = require('node:child_process');
+    const os = require('node:os');
+    const tmp = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'pt-git-'));
+    const files = new Map();
+    try {
+      copyFixture(fixDir, tmp);
+      const git = (...a) => execFileSync('git', ['-C', tmp, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      for (const ref of git('for-each-ref', '--format=%(refname)').split('\n').filter(Boolean)) {
+        for (const p of git('ls-tree', '-r', '--name-only', ref).split('\n').filter(Boolean)) {
+          try { files.set(p, `${files.get(p) ?? ''}\n${git('show', `${ref}:${p}`)}`); } catch { /* binary or gone */ }
+        }
+      }
+    } catch { /* not a usable repository: no branch text */ } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+    branchTextCache.set(fixDir, files);
+  }
+  return branchTextCache.get(fixDir).get(rel) ?? '';
+}
+
 /**
  * Output files that repeat most of the reference's own text: for each reference file, the shingles that are not in the
- * fixture's file of the same name, and the share of them found in the run's file of that name.
+ * fixture's file of the same name (on disk or on any of its branches), and the share of them found in the run's file
+ * of that name.
  */
 function copiedReference(runDir, entry) {
   if (!entry) return [];
@@ -172,10 +200,14 @@ function copiedReference(runDir, entry) {
     // Only text the reference ADDS counts as its own: lines that are not in the fixture's copy of the file. A fix that
     // only deletes or reorders fixture lines (t5-qa-flaky-fix's helpers.js) has no own text, so a correct answer that
     // makes the same deletion is not a copy.
-    const fixtureLines = new Set((readText(path.join(fix, rel)) ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+    const known = `${readText(path.join(fix, rel)) ?? ''}\n${branchTexts(fix, rel)}`;
+    const fixtureLines = new Set(known.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
     const added = ref.split(/\r?\n/).filter((l) => l.trim() && !fixtureLines.has(l.trim())).join('\n');
-    const base = shingles(readText(path.join(fix, rel)) ?? '');
-    const own = [...shingles(added)].filter((s) => !base.has(s));
+    const base = shingles(known);
+    // Keep only shingles the reference really holds: joining the added lines makes shingles that span lines which are
+    // not next to each other in the file. No copy can hold those, and they pulled a real copy under the bar.
+    const real = shingles(ref);
+    const own = [...shingles(added)].filter((s) => real.has(s) && !base.has(s));
     if (own.length < COPY_MIN_SHINGLES) continue;
     const have = shingles(got);
     const share = own.filter((s) => have.has(s)).length / own.length;

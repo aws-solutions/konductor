@@ -25,7 +25,10 @@ function cmdPlantPolicyTest(opts, run = spawnSync) {
   }
   const python = opts.python && opts.python !== true ? opts.python : 'python3';
   const { file, args } = policyTestCommand({ release: opts.release, python });
-  const result = run(file, args, { stdio: 'inherit', env: { PATH: process.env.PATH ?? '/usr/bin:/bin' } });
+  // PATH plus the dynamic-linker search path when set, so an arm release's gateway can load libffi for mujoco.
+  const env = { PATH: process.env.PATH ?? '/usr/bin:/bin' };
+  if (process.env.LD_LIBRARY_PATH) env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH;
+  const result = run(file, args, { stdio: 'inherit', env });
   process.exitCode = result.status ?? 1;
 }
 

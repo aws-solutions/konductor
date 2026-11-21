@@ -48,5 +48,5 @@ test('keeps fractional cents until the completed quote', () => {
     region: 'meadow'
   });
   assert.equal(quote.subtotal, 0.21);
-  assert.equal(quote.total, 5.21);
+  assert.equal(quote.total, 5.2);
 });

@@ -100,7 +100,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "Quick wrong answer: reject only quantity=0 without line index format. Hidden tests catch missing line index, missing quantity types (negative/fractional/string/null/NaN), negative unitPrice, and wrong index on later lines."
+        "note": "Quick wrong answer: reject only quantity=0 without line index format. Hidden tests catch missing line index, missing quantity types (negative/fractional/string/null/NaN), negative unitPrice, and wrong index on later lines. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 100 in pilot wave 11, while the dry run keeps the lazy answer at 35.7 and the stub at 14.3, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",

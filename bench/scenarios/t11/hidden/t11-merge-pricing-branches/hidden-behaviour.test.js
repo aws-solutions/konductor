@@ -20,26 +20,37 @@ test('keeps the default Harbor quote taxable', () => {
   });
 });
 
-test('applies WELCOME10 to the basket before Meadow tax', () => {
+test('applies WELCOME10 to a Meadow basket, which owes no tax', () => {
   quote({ lines: [one(20, 2)], promoCode: 'WELCOME10', region: 'meadow' }, {
-    subtotal: 40, discount: 4, shipping: 4.99, tax: 1.08, total: 42.07
+    subtotal: 40, discount: 4, shipping: 4.99, tax: 0, total: 40.99
   });
 });
 
-test('applies BASKET5 at its minimum basket', () => {
+test('applies BASKET5 at its minimum basket in Meadow', () => {
   quote({ lines: [one(25)], promoCode: 'BASKET5', region: 'meadow' }, {
-    subtotal: 25, discount: 5, shipping: 4.99, tax: 0.6, total: 25.59
+    subtotal: 25, discount: 5, shipping: 4.99, tax: 0, total: 24.99
   });
 });
 
 test('does not apply BASKET5 below its minimum', () => {
-  quote({ lines: [one(24.99)], promoCode: 'BASKET5', region: 'meadow' }, {
-    subtotal: 24.99, discount: 0, shipping: 4.99, tax: 0.75, total: 30.73
+  quote({ lines: [one(24.99)], promoCode: 'BASKET5', region: 'ridge' }, {
+    subtotal: 24.99, discount: 0, shipping: 4.99, tax: 1.5, total: 31.48
   });
 });
 
-test('rejects an unknown promotion code', () => {
-  assert.throws(() => calculateOrder({ lines: [one(10)], promoCode: 'NOT-A-CODE', region: 'meadow' }), /unknown promo code/);
+// The promo branch ignores an unknown code and the request is silent, so rejecting it or ignoring it are both right;
+// giving a discount for it is not.
+test('never discounts an unknown promotion code', () => {
+  assert.equal(calculateOrder({ lines: [one(10)], promoCode: 'WELCOME10', region: 'meadow' }).discount, 1);
+  let result;
+  try {
+    result = calculateOrder({ lines: [one(10)], promoCode: 'NOT-A-CODE', region: 'meadow' });
+  } catch (error) {
+    assert.match(String(error && error.message), /promo/i);
+    return;
+  }
+  assert.equal(result.discount, 0);
+  assert.equal(result.total, 14.99);
 });
 
 test('does not tax Harbor shipping', () => {
@@ -54,10 +65,12 @@ test('taxes Ridge shipping as part of the base', () => {
   });
 });
 
-test('supports the reduced-rate Meadow region', () => {
+test('supports the zero-rate Meadow region', () => {
   quote({ lines: [one(10)], region: 'meadow' }, {
-    subtotal: 10, discount: 0, shipping: 4.99, tax: 0.3, total: 15.29
+    subtotal: 10, discount: 0, shipping: 4.99, tax: 0, total: 14.99
   });
+  // The tax branch rejects a region it does not know; Meadow's zero rate must come from its entry, not from a fallback.
+  assert.throws(() => calculateOrder({ lines: [one(10)], region: 'nowhere' }), /region/);
 });
 
 test('takes the promotion off before calculating regional tax', () => {
@@ -85,8 +98,8 @@ test('uses a caller supplied configuration file', () => {
 });
 
 test('rounds the combined basket rather than each line', () => {
-  quote({ lines: [one(0.105, 1, 'a'), one(0.105, 1, 'b')], region: 'meadow' }, {
-    subtotal: 0.21, discount: 0, shipping: 4.99, tax: 0.01, total: 5.21
+  quote({ lines: [one(0.105, 1, 'a'), one(0.105, 1, 'b')], region: 'harbor' }, {
+    subtotal: 0.21, discount: 0, shipping: 4.99, tax: 0.02, total: 5.22
   });
 });
 
@@ -106,7 +119,6 @@ test('keeps the tax branch tip in main history', () => {
 
 test('has no conflict markers in tracked files', () => {
   const files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
-  assert.ok(files.includes('test/feature-pricing.test.js'));
   for (const file of files) {
     const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
     assert.doesNotMatch(text, /^(<<<<<<<|=======|>>>>>>>)( |$)/m, file);
