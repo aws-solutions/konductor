@@ -1,7 +1,7 @@
 {
   "id": "t12-handoff-export-dates",
   "class": "orchestration",
-  "version": 2,
+  "version": 3,
   "phase": "multi-phase",
   "phases2": [
     "planning",
@@ -9,7 +9,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "I am off from tomorrow and BILL-1187 is half done (see docs/). Write the hand-off in docs/handoff/BILL-1187.md so that someone who has never seen this repository (another engineer, or an agent working alone) can finish it with only what you leave them (I will be unreachable). End the hand-off with one fenced json block holding an object with: task (string), expectedOutcome (string), mustDo (list of strings), mustNot (list of strings), context (object with files: list of repository paths they should read or change, commands: list of shell commands, facts: list of strings), doneWhen (list of strings: how they know it is finished) and deadline (string). Then the fix must be finished from that hand-off as a second, separate piece of work: whoever does it starts with nothing but the hand-off, reads only the hand-off and the files its context.files lists, changes only those files (or adds new files next to them), and leaves the hand-off as it is. That second step writes docs/handoff/BILL-1187-result.md ending with one fenced json block holding an object with: readFiles (list of the repository paths it read, the hand-off first), changedFiles (list of the paths it changed or added), ranCommands (list of the shell commands it ran) and doneWhen (list of {criterion: copied word for word from the hand-off's doneWhen, met: true or false, evidence: string}). Opening the pull request is not part of this run: leave it to me and say so in the result.",
+  "prompt": "I am off from tomorrow and BILL-1187 is half done (see docs/). Write the hand-off in docs/handoff/BILL-1187.md so that someone who has never seen this repository (another engineer, or an agent working alone) can finish it with only what you leave them (I will be unreachable). End the hand-off with one fenced json block holding an object with: task (string), expectedOutcome (string), mustDo (list of strings), mustNot (list of strings), context (object with files: list of repository paths they should read or change, commands: list of shell commands, facts: list of strings), doneWhen (list of strings: how they know it is finished) and deadline (string). BILL-1187 must also be finished before I go, in a way that shows the hand-off is enough on its own: the finished fix needed nothing but the hand-off and the files its context.files lists, changed only those files (or added new files next to them), and left the hand-off as written. docs/handoff/BILL-1187-result.md records that, ending with one fenced json block holding an object with: readFiles (list of the repository paths it read, the hand-off first), changedFiles (list of the paths it changed or added), ranCommands (list of the shell commands it ran) and doneWhen (list of {criterion: copied word for word from the hand-off's doneWhen, met: true or false, evidence: string}). I will open the pull request myself; the result should say it is left to me.",
   "fixture": "t12-handoff-export-dates",
   "hidden": "t12-handoff-export-dates",
   "timeoutSec": 1800,
@@ -114,8 +114,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate recheck worker (2026-11-21): the request states the outcome, not the process (D-127 b)",
+    "log": "HAND-EDITS.md",
+    "version": 3
   },
   "pilot": {
     "scores": {},

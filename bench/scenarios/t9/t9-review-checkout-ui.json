@@ -242,7 +242,35 @@
         "verdict": "pass",
         "note": "All tests derive from the request and findingsKey; no tests rely on internal class names, IDs, or timing; the fixture contains enough information to derive all issues."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request asks for code review with output format specification but doesn't prescribe review methodology. No misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture contains checkout UI code to review, not the answer (review findings). Hidden tests check for specific findings to identify."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests use findingsKey that matches issues in fixture code (e.g., untrusted markup in order-summary.js). Rubric anchors align with request about actionable findings."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent code reviewer could examine codebase and identify issues. FindingsKey represents expected correct findings; different but equivalent findings could match via fix keywords."
+        }
+      ],
+      "version": 2
+    }
   },
   "pilot": {
     "scores": {},

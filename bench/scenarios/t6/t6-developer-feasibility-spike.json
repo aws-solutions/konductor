@@ -167,31 +167,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request specifies output format but not implementation method; no misleading hints found."
+          "note": "task.json:12 specifies the script interface and deliverables, not a method for doing the work, and contains no misleading hint away from measuring type drift after row 500."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides CSV files and inference library but doesn't reveal where type changes occur (generator removed per edits.md)."
+          "note": "The fixture defines the inference rules, 500-row premise, synthetic-data limitation, and preview context, but the moved generator and its planted thresholds are absent; no file lists the drift answer or completed feasibility document."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests verify script works on fixture CSV files; checks and rubric align with request requirements."
+          "note": "The hidden parser tests use the requested CSV path/interface and the fixture's csv reader and infer.js rules; sample paths, row numbering, JSON fields, and all three evidence files exist. The rubric anchors match the requested evidence limits and recommendation behavior."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can implement drift detection using lib/infer.js rules and CSV reading from fixture."
+          "note": "The request, product one-pager, README, inference implementation, tests, and sample files give enough information to implement a general path-reading measurement script and derive the report without hidden tests or the solution."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "pilot": {

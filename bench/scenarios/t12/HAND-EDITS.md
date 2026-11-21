@@ -129,3 +129,13 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   - Fourth recheck (owner-approved, deepseek-3.2, given the owner's rulings on the two disputed points: the product
     request is the spec task's input, and unsettled points are meant for openQuestions): 4 of 4 recheck items and 5 of
     5 review checks pass. `review` now holds this recheck; `pilot.decision` keep, blocker cleared.
+
+## Round 6 recheck fix (2026-11-21, mate recheck worker, claude)
+
+The round 6 gpt-5.6-luna recheck (L2) failed `t12-handoff-export-dates` on no-method-or-decoy: the request laid out the
+second step as a process ("as a second, separate piece of work: whoever does it starts with nothing but the hand-off,
+reads only ..."). Under the owner rule for the other two T12 tasks (D-127 b), the request now states the outcome: the
+fix is finished, it needed nothing but the hand-off and its context.files, it changed only those files and left the
+hand-off as written, and `docs/handoff/BILL-1187-result.md` records that with the same fields. The pull request line
+now says the owner opens it. Prompt only; hidden tests, checks, key and answers unchanged, so the free gates are
+unchanged (100 / 0 / 27.3 / 100). Version 2 to 3. One writer-family fix; a gpt-5.6-luna recheck follows.
