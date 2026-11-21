@@ -35,7 +35,7 @@
       "path": "requirements",
       "match": {
         "all": [
-          "starter",
+          "starter|\\b(each|every|all|any) plan\\b",
           "\\b90\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
         ]
       }
@@ -47,7 +47,7 @@
       "path": "requirements",
       "match": {
         "all": [
-          "studio",
+          "studio|\\b(each|every|all|any) plan\\b",
           "\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
         ]
       }
@@ -179,7 +179,7 @@
       "match": {
         "all": [
           "test",
-          "429|over the limit|over-limit|exceed"
+          "429|over the limit|over-limit|exceed|retry-after|refus|rate_limited"
         ]
       }
     },
@@ -190,7 +190,7 @@
       "path": "tasks",
       "match": {
         "all": [
-          "x-ratelimit-remaining"
+          "x-ratelimit-remaining|\\bremaining\\b"
         ]
       }
     },
