@@ -38,9 +38,18 @@ export const stableRendering: NonNullable<Project['use']> = {
   reducedMotion: 'reduce',
   locale: 'en-US',
   timezoneId: 'UTC',
-  // Rasterise text without host-specific hinting or subpixel (LCD) smoothing.
   launchOptions: {
-    args: ['--font-render-hinting=none', '--disable-lcd-text'],
+    args: [
+      // Rasterise text without host-specific hinting or subpixel (LCD)
+      // smoothing.
+      '--font-render-hinting=none',
+      '--disable-lcd-text',
+      // Draw every tile of a frame from scratch. Otherwise the browser keeps
+      // the pixels it already has and redraws only the part that changed,
+      // which leaves the rounded corner of a card or a button a shade off
+      // from one capture of the same view to the next.
+      '--disable-partial-raster',
+    ],
   },
 };
 
