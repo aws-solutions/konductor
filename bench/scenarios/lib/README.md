@@ -22,7 +22,9 @@ node bench/scenarios/lib/prompt.js --config bench/scenarios/t8/scenario.config.j
 node bench/scenarios/lib/stage.js --config bench/scenarios/t8/scenario.config.js assemble <id>
 ```
 
-A Python task's checks run under Python 3.12, pinned the way the runner pins it (`BENCH_PYTHON`, else `python3.12` on PATH). Point `BENCH_PYTHON` at a real 3.12 binary: a relocatable runtime that finds its libraries from its own path fails when linked (exit 127).
+A Python task's checks run under Python 3.12, pinned the way the runner pins it (`BENCH_PYTHON`, else `python3.12` on PATH). A launcher script (a version manager shim or a runtime wrapper) is run by its real path, not linked, so it still finds its libraries (DEBT D-121).
+
+A `tests` check has one fixed limit, 60 s (`TESTS_TIMEOUT_MS` in `bench/runner/lib/check-matcher.js`), with no per-task override. A key whose tests run longer, such as one that reruns the agent's browser suite per mutant, splits them over several test files with one `tests` check each, every file well under the limit (`t9-e2e-approved-checkout`: ten mutants over three files and three checks, about 15 s each). Keep that pattern rather than adding a longer limit (DEBT D-130).
 
 `map`, `review` and a batch's answer or fix commands call a model and cost credits: run them only under an approved cap.
 
