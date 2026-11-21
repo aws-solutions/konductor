@@ -104,9 +104,13 @@ export function App({
   const [nextRun, setNextRun] = useState<RunLifecycle>(NO_RUN_LIFECYCLE);
   const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
+  // The load the page draws, held by its identity as well as its content: the
+  // editor is opened with it, and the views that keep anything of their own
+  // tell one workflow from another by it.
+  const loaded = result?.ok ? result.workflow : undefined;
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
-  const editor = useEditor(result?.ok ? result.workflow : undefined, scheduler);
+  const editor = useEditor(loaded, scheduler);
   const unsaved = editor ? isDirty(editor.state) : false;
   // The draft lives in the page, so leaving the page loses the changes.
   useLeaveGuard(unsaved, window);
@@ -133,7 +137,7 @@ export function App({
     [saved],
   );
   const nextViews: PageView<ViewId>[] | undefined =
-    nextUi && editor && nextPorts && runs
+    nextUi && editor && nextPorts && runs && loaded
       ? [
           {
             id: 'designer',
@@ -141,7 +145,8 @@ export function App({
             content: (
               <DesignView
                 editor={editor}
-                harness={result?.ok ? result.workflow.harness : ''}
+                loaded={loaded}
+                harness={loaded.harness}
                 validate={nextPorts.validate}
                 scheduler={scheduler}
                 stageFields={next.extras.stageFields}
