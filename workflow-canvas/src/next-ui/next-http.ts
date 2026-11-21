@@ -163,8 +163,9 @@ function textOrFail(value: unknown): string {
 }
 
 // A severity a later release adds is taken as an error, so a finding this
-// page cannot judge never reads as harmless. The rest of the fields the
-// Design view shows must be there.
+// page cannot judge never reads as harmless. Every other field the contract
+// requires must be there, `file` included, though no view shows it: a reply
+// that leaves one out is one this page does not understand.
 function diagnosticOf(value: unknown): CheckAnswer['diagnostics'][number] {
   if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
   const severity = SEVERITIES.find((known) => known === value.severity);
@@ -172,10 +173,11 @@ function diagnosticOf(value: unknown): CheckAnswer['diagnostics'][number] {
   for (const place of places) {
     if (!isWholeAtLeast(value[place], 1)) throw new ApiError(BAD_REPLY, 200);
   }
+  textOrFail(value.file);
   return {
     code: textOrFail(value.code),
     severity: severity ?? ('error' as Severity),
-    path: typeof value.path === 'string' ? value.path : '',
+    path: textOrFail(value.path),
     line: value.line as number,
     column: value.column as number,
     end_line: value.end_line as number,
@@ -187,9 +189,10 @@ function diagnosticOf(value: unknown): CheckAnswer['diagnostics'][number] {
   };
 }
 
-// One stage of the view: its name, and the `kind` and `range` the Design view
-// draws it by. Every other key is kept as it came, because the form shows the
-// keys of the file.
+// One stage of the view: the `name`, `kind`, `agent` and `range` that the
+// contract requires, with `kind` and `range` being what the Design view
+// draws it by. Every other key is kept as it came, because the form shows
+// the keys of the file.
 function viewStageOf(
   value: unknown,
 ): CheckAnswer['view'] extends null
@@ -197,28 +200,28 @@ function viewStageOf(
   : NonNullable<CheckAnswer['view']>['stages'][number] {
   if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
   const name = textOrFail(value.name);
-  if (value.kind !== undefined && typeof value.kind !== 'string') {
+  textOrFail(value.kind);
+  textOrFail(value.agent);
+  const range = value.range;
+  if (
+    !isObject(range) ||
+    !isWholeAtLeast(range.line, 1) ||
+    !isWholeAtLeast(range.end_line, 1) ||
+    (range.end_line as number) < (range.line as number)
+  ) {
     throw new ApiError(BAD_REPLY, 200);
-  }
-  if (value.range !== undefined) {
-    const range = value.range;
-    if (
-      !isObject(range) ||
-      !isWholeAtLeast(range.line, 1) ||
-      !isWholeAtLeast(range.end_line, 1) ||
-      (range.end_line as number) < (range.line as number)
-    ) {
-      throw new ApiError(BAD_REPLY, 200);
-    }
   }
   return { ...value, name };
 }
 
 // The parsed workflow of the answer. `parse.ts` has `parseCheckResult` for
 // this body, but it drops the `kind` and the `range` of a stage, which the
-// Design view draws and marks by, so the fields are read here instead.
+// Design view draws and marks by, so the fields are read here instead. The
+// contract requires the field, and allows it to be null, which is what a
+// text with errors answers with; a body that leaves it out altogether is a
+// reply this page does not understand.
 function checkViewOf(value: unknown): CheckAnswer['view'] {
-  if (value === null || value === undefined) return null;
+  if (value === null) return null;
   if (!isObject(value) || !Array.isArray(value.stages)) {
     throw new ApiError(BAD_REPLY, 200);
   }
@@ -248,6 +251,7 @@ function checkAnswerOf(body: unknown): CheckAnswer {
   if (!isObject(body) || !Array.isArray(body.diagnostics)) {
     throw new ApiError(BAD_REPLY, 200);
   }
+  if (!('view' in body)) throw new ApiError(BAD_REPLY, 200);
   const findings = body.diagnostics.map(diagnosticOf);
   return {
     errors: countOf(findings, 'error'),
