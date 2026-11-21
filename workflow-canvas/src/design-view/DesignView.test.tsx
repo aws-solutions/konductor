@@ -6,9 +6,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
-import { useEditor } from '../designer/use-editor';
+import { useEditor, type Editor } from '../designer/use-editor';
+import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
 import { FakeScheduler } from '../test-support/fake-scheduler';
-import { acceptingEdits, type FakeEdits } from '../test-support/fake-edits';
+import {
+  acceptingEdits,
+  viewOfText,
+  SAVED_HASH,
+  type FakeEdits,
+} from '../test-support/fake-edits';
 import { HELLO_DOCUMENT, NO_RUNS } from '../test-support/fixtures';
 import { DesignView, type StageFieldsByKind } from './DesignView';
 import { FINDINGS_PER_PAGE, FINDINGS_SHOWN_MOST } from './findings';
@@ -70,6 +76,59 @@ const withText = (text: string): WorkflowDocument => ({
 
 const WITH_PROMPT = withText(TEXT_WITH_PROMPT);
 const WITH_PROMPT_FILE = withText(TEXT_WITH_PROMPT_FILE);
+
+// The second stage is the one with the prompt, so a save that lands after the
+// first stage was deleted would pair them wrongly by position.
+const PROMPT_SECOND = withText(`format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+stages:
+  - name: draft
+    agent: k-developer
+  - name: review
+    agent: k-quality-assurance
+    prompt: Check the greeting.
+`);
+
+// A file the stage writer cannot edit in place: its stages are a list in the
+// flow form, so a save would write the whole file in the plain layout and
+// drop its params, its comments and its version.
+const FLOW_STAGES = withText(`# The greeting workflow.
+format: konductor/1
+name: hello
+version: 2.3.0
+params:
+  tone:
+    type: string
+    default: friendly
+intent:
+  outcome: Add a greeting to the README
+stages: [{ name: draft, agent: k-developer }, { name: review, agent: k-quality-assurance }]
+`);
+
+// A file whose stage names an agent that `GET /api/agents` does not list.
+const UNLISTED_AGENT: WorkflowDocument = {
+  ...withText(`format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+stages:
+  - name: draft
+    agent: k-legacy
+  - name: review
+    agent: k-quality-assurance
+`),
+  view: {
+    ...HELLO_DOCUMENT.view!,
+    stages: [
+      { name: 'draft', agent: 'k-legacy' },
+      { name: 'review', agent: 'k-quality-assurance' },
+    ],
+  },
+};
 
 // The stages of a text, as the sample lays them out, with the lines they
 // take up and a prompt when the text has one, which a real check works out
@@ -136,6 +195,8 @@ function Harness({
   scheduler,
   validate,
   stageFields = FIELDS,
+  agents,
+  onEditor,
 }: {
   document?: WorkflowDocument;
   edits: FakeEdits;
@@ -145,12 +206,16 @@ function Harness({
     signal: AbortSignal,
   ) => Promise<CheckAnswer>;
   stageFields?: StageFieldsByKind;
+  agents?: readonly { readonly id: string; readonly summary: string }[];
+  /** Hands the editor to the test, which other views of the page also hold. */
+  onEditor?: (editor: Editor) => void;
 }) {
   const workflowRef = useMemo(
     () => ({ harness: 'kiro-cli', document: workflow, edits, runs: NO_RUNS }),
     [workflow, edits],
   );
   const editor = useEditor(workflowRef, scheduler);
+  if (editor) onEditor?.(editor);
   if (!editor) return null;
   return (
     <DesignView
@@ -159,6 +224,7 @@ function Harness({
       validate={validate}
       scheduler={scheduler}
       stageFields={stageFields}
+      {...(agents ? { agents } : {})}
     />
   );
 }
@@ -168,6 +234,7 @@ function drawn({
   answers,
   openedFails,
   openedHeld = false,
+  agents,
 }: {
   document?: WorkflowDocument;
   /** The answers of the checks that follow an edit, in order. */
@@ -176,6 +243,8 @@ function drawn({
   openedFails?: string;
   /** The check of the loaded text never answers, as one in flight. */
   openedHeld?: boolean;
+  /** The agents on offer for the `agent` key. */
+  agents?: readonly { readonly id: string; readonly summary: string }[];
 } = {}) {
   const scheduler = new FakeScheduler();
   const edits = acceptingEdits();
@@ -191,15 +260,26 @@ function drawn({
     }
     return queued.length > 0 ? queued.shift()! : goodAnswer(request.text);
   });
+  // The editor of the page, which another view could edit while this one is
+  // on show.
+  const held: { editor?: Editor } = {};
   render(
     <Harness
       document={workflow}
       edits={edits}
       scheduler={scheduler}
       validate={validate}
+      onEditor={(one) => {
+        held.editor = one;
+      }}
+      {...(agents ? { agents } : {})}
     />,
   );
-  return { scheduler, validate, edits };
+  const editorOf = () => {
+    if (!held.editor) throw new Error('The view has no editor yet.');
+    return held.editor;
+  };
+  return { scheduler, validate, edits, editorOf };
 }
 
 const wrapper = () => createWrapper(document.body);
@@ -261,8 +341,9 @@ async function typeInto(input: HTMLElement, value: string) {
 }
 
 describe('DesignView, the drawing', () => {
-  it('ends the last stage with a stop mark and draws no end node', () => {
+  it('ends the last stage with a stop mark and draws no end node', async () => {
     drawn();
+    await settle();
 
     expect(
       screen.getByRole('img', { name: 'The run ends after review' }),
@@ -270,8 +351,9 @@ describe('DesignView, the drawing', () => {
     expect(screen.queryByTestId('node-end')).toBeNull();
   });
 
-  it('draws each stage of the workflow', () => {
+  it('draws each stage of the workflow', async () => {
     drawn();
+    await settle();
 
     expect(screen.getByTestId('node-stage-draft')).toBeTruthy();
     expect(screen.getByTestId('node-stage-review')).toBeTruthy();
@@ -290,14 +372,16 @@ describe('DesignView, the drawing', () => {
 });
 
 describe('DesignView, the YAML tab', () => {
-  it('shows the text of the workflow', () => {
+  it('shows the text of the workflow', async () => {
     drawn();
+    await settle();
 
     expect(panelOf('YAML').textContent).toContain('name: draft');
   });
 
-  it('says that the text cannot be typed into yet', () => {
+  it('says that the text cannot be typed into yet', async () => {
     drawn();
+    await settle();
 
     expect(screen.getByTestId('raw-edit-note').textContent).toContain(
       'cannot be typed into here yet',
@@ -386,12 +470,13 @@ describe('DesignView, the Properties tab', () => {
     expect(nameInput().value).toBe('draft');
   });
 
-  it('shows no form when the workflow has no stage to pick', () => {
+  it('shows no form when the workflow has no stage to pick', async () => {
     const empty: WorkflowDocument = {
       ...HELLO_DOCUMENT,
       view: { ...HELLO_DOCUMENT.view!, stages: [] },
     };
     drawn({ document: empty });
+    await settle();
 
     expect(
       screen.getByText('Pick a stage in the drawing to edit its keys.'),
@@ -445,8 +530,11 @@ describe('DesignView, the Properties tab', () => {
     ).toBe('review.md');
   });
 
-  it('says while it is reading the keys of each stage', () => {
-    drawn({ document: WITH_PROMPT });
+  it('says while it is reading the keys of each stage', async () => {
+    // The check of the loaded text is held, so the view stays in the state
+    // this test is about and nothing settles behind the assertion.
+    drawn({ document: WITH_PROMPT, openedHeld: true });
+    await settle();
 
     expect(screen.getByTestId('reading-keys')).toBeTruthy();
   });
@@ -484,8 +572,9 @@ describe('DesignView, the Properties tab', () => {
 });
 
 describe('DesignView, undo and redo', () => {
-  it('has nothing to undo before an edit', () => {
+  it('has nothing to undo before an edit', async () => {
     drawn();
+    await settle();
 
     expect(isOff(button('Undo'))).toBe(true);
     expect(isOff(button('Redo'))).toBe(true);
@@ -678,6 +767,77 @@ describe('DesignView, saving', () => {
     expect(edits.save).toHaveBeenCalledTimes(1);
   });
 
+  it('refuses every save of a file the writer would rewrite whole', async () => {
+    const { edits } = drawn({ document: FLOW_STAGES });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    // The params, the comments and the version of such a file would go.
+    expect(edits.save).not.toHaveBeenCalled();
+    const said = screen.getByTestId('save-refused').textContent ?? '';
+    expect(said).toContain('write this whole file in the plain layout');
+    expect(said).toContain('version');
+  });
+
+  it('says so before anything is edited in a file it would rewrite whole', async () => {
+    drawn({ document: FLOW_STAGES });
+    await settle();
+
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'not a list under stages:',
+    );
+  });
+
+  it('refuses a save of a stage renamed while a save of another was in flight', async () => {
+    const { edits, editorOf } = drawn({ document: PROMPT_SECOND });
+    await settle();
+    // The answer of the save is held, so the draft moves on under it.
+    let land: () => void = () => undefined;
+    const sent = new Promise<void>((resolve) => {
+      land = resolve;
+    });
+    edits.save.mockImplementation(async (text: string) => {
+      await sent;
+      return { hash: SAVED_HASH, view: viewOfText(text), diagnostics: [] };
+    });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    // The save of both stages goes out, the first is deleted while it is in
+    // flight, and the answer lands with that edit on the page.
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+    await act(async () => {
+      editorOf().remove('s1');
+    });
+    await act(async () => {
+      land();
+      await sent;
+    });
+    await settle();
+    // The stage with the prompt is the one left. Renaming it must read the
+    // place it has in the file that was written, which is the second, not the
+    // place the deleted stage left behind.
+    await openProperties();
+    await typeInto(nameInput(), 'reviewing');
+
+    edits.save.mockClear();
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'would drop the prompt of reviewing',
+    );
+  });
+
   it('adds a stage to the drawing', async () => {
     drawn();
 
@@ -686,6 +846,190 @@ describe('DesignView, saving', () => {
     });
 
     expect(screen.getByTestId('node-stage-agent-1')).toBeTruthy();
+  });
+});
+
+describe('DesignView, what went wrong with a save', () => {
+  const press = async (label: string) => {
+    await act(async () => {
+      fireEvent.click(button(label));
+    });
+  };
+
+  /** Changes the name of the picked stage and presses Save. */
+  const changeThenSave = async () => {
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await press('Save');
+    await settle();
+  };
+
+  it('says why an ordinary save failed', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(new Error('The server said no.'));
+
+    await changeThenSave();
+
+    const alerts = screen.getByTestId('edit-alerts');
+    expect(alerts.textContent).toContain('The workflow was not saved');
+    expect(alerts.textContent).toContain('The server said no.');
+  });
+
+  it('says a save whose answer was lost may not have finished', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(new SaveLost('The answer was lost.'));
+    edits.reload.mockRejectedValue(new Error('The file could not be read.'));
+
+    await changeThenSave();
+
+    expect(screen.getByTestId('edit-alerts').textContent).toContain(
+      'The save did not finish',
+    );
+  });
+
+  it('says when the server no longer knows the session', async () => {
+    const { edits, scheduler } = drawn();
+    edits.check.mockRejectedValue(new SessionLost('The session is gone.'));
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      scheduler.tick();
+    });
+    await settle();
+
+    expect(screen.getByTestId('edit-alerts').textContent).toContain(
+      'The session is lost',
+    );
+  });
+
+  it('offers to load the file again when it changed on disk', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveConflict('The file changed.', 'c'.repeat(64)),
+    );
+
+    await changeThenSave();
+
+    expect(screen.getByTestId('conflict')).toBeTruthy();
+    expect(button('Load the file again')).toBeTruthy();
+  });
+
+  it('loads the file again when that is asked, and says the draft went', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveConflict('The file changed.', 'c'.repeat(64)),
+    );
+    await changeThenSave();
+
+    await press('Load the file again');
+    await settle();
+
+    expect(edits.reload).toHaveBeenCalled();
+    expect(screen.getByTestId('discarded').textContent).toContain(
+      'replaced by the file as it is now',
+    );
+  });
+
+  it('keeps the draft to take away when the file was loaded again', async () => {
+    const { edits } = drawn();
+    edits.save.mockRejectedValue(
+      new SaveConflict('The file changed.', 'c'.repeat(64)),
+    );
+    await changeThenSave();
+    await press('Load the file again');
+    await settle();
+
+    expect(
+      within(screen.getByTestId('discarded')).getByRole('button', {
+        name: 'Copy my version',
+      }),
+    ).toBeTruthy();
+  });
+});
+
+describe('DesignView, the agent of a stage', () => {
+  const OTHERS = [
+    { id: 'k-developer', summary: 'Writes code.' },
+    { id: 'k-architect', summary: 'Designs systems.' },
+  ];
+
+  const agentOptionIds = () => {
+    const select = wrapper().findSelect()!;
+    return select
+      .findDropdown()
+      .findOptions()
+      .map((option) => option.getElement().textContent ?? '');
+  };
+
+  it('keeps the agent the file names on offer after another is chosen', async () => {
+    // The file names an agent that GET /api/agents no longer lists.
+    drawn({ document: UNLISTED_AGENT, agents: OTHERS });
+    await settle();
+    await openProperties();
+
+    await chooseAgent('k-architect');
+    await act(async () => {
+      wrapper().findSelect()!.openDropdown();
+    });
+
+    expect(agentOptionIds().join(' ')).toContain('k-legacy');
+  });
+
+  it('lets the agent the file names be chosen again', async () => {
+    drawn({ document: UNLISTED_AGENT, agents: OTHERS });
+    await settle();
+    await openProperties();
+    await chooseAgent('k-architect');
+
+    await chooseAgent('k-legacy');
+
+    expect(
+      within(screen.getByTestId('node-stage-draft')).getByTitle(
+        'k-legacy · kiro-cli',
+      ),
+    ).toBeTruthy();
+  });
+});
+
+describe('DesignView, choosing a stage in the drawing', () => {
+  const nodeOf = (name: string) =>
+    screen.getByTestId(`node-stage-${name}`).parentElement!;
+
+  it('opens the keys of a stage activated with the keyboard', async () => {
+    drawn();
+    await settle();
+
+    await act(async () => {
+      fireEvent.keyDown(nodeOf('review'), { key: 'Enter' });
+    });
+
+    expect(panelOf('Properties').hidden).toBe(false);
+    expect(nameInput().value).toBe('review');
+  });
+
+  it('puts the focus in the first key a person can edit', async () => {
+    drawn();
+    await settle();
+
+    await act(async () => {
+      fireEvent.keyDown(nodeOf('review'), { key: 'Enter' });
+    });
+
+    expect(document.activeElement).toBe(nameInput());
+  });
+
+  it('opens the keys of a stage chosen with the pointer', async () => {
+    drawn();
+    await settle();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-review'));
+    });
+
+    expect(panelOf('Properties').hidden).toBe(false);
   });
 });
 
