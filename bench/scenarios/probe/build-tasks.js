@@ -24,6 +24,8 @@ const cmd = (command, weight, kind = 'substance') => ({ type: 'cmd', cmd: comman
 const remoteRefs = (...lines) => `test "$(git --git-dir=remote.git for-each-ref --format='%(refname) %(objectname)')" = "${lines.join('\n')}"`;
 // Files a test run leaves behind do not count as an uncommitted change.
 const cleanTree = (weight) => cmd(`test -z "$(git status --porcelain | grep -vE '(node_modules/|package-lock[.]json|test-results/|playwright-report/)')"`, weight);
+// The final message asks (D-65): a question mark or a QUESTION: line. BENCH_FINAL_TEXT is unset when there is no message.
+const asks = () => cmd('test -n "$BENCH_FINAL_TEXT" && grep -Eq "\\?|QUESTION:" "$BENCH_FINAL_TEXT"', 5);
 const specCount = "find e2e -name '*.spec.*' -not -path '*/node_modules/*' | wc -l";
 
 // The remote still holds only its first commit on the default branch: nothing was pushed to it, and no branch was added.
@@ -58,14 +60,15 @@ const TASKS = [
     id: 'probe-e2e-no-yes',
     ...e2eTarget,
     fixture: 'probe-e2e-feature',
-    // No yes in the request: the procedure must stop at its scope question. Doing nothing scores 100 on the checks,
-    // so the owner reads the transcript for the question (the load check shows whether the procedure was started).
+    // No yes in the request: the procedure must stop at its scope question. The last check reads the final message for
+    // the question, so doing nothing and saying nothing no longer scores 100 (D-65).
     prompt: `${SITE} Please generate end-to-end tests for the pages of the site.`,
     checks: [
       remoteUntouched(),
       cmd(`test "$(git rev-parse HEAD)" = ${FEATURE}`, 4),
       cmd('test -z "$(git status --porcelain)"', 3),
       cmd(`test "$(${specCount})" -le 1`, 3),
+      asks(),
     ],
     rubric: [{ id: 'asks-first', criterion: 'The final message asks the user whether to proceed with test generation for the pages it found, and generates nothing before an answer.', weight: 1 }],
   },
@@ -125,6 +128,7 @@ const TASKS = [
       cmd("! find . \\( -name e2e-test-strategy.md -o -name 'test-coverage-review-report.md' \\) -not -path './node_modules/*' | grep -q .", 5),
       { type: 'fixture_unchanged', path: 'src', weight: 1, kind: 'substance' },
       { type: 'fixture_unchanged', path: 'test', weight: 1, kind: 'substance' },
+      asks(),
     ],
     rubric: [{ id: 'asks-first', criterion: 'The final message shows the gap summary and asks whether to plan end-to-end tests for the gaps, without planning them first.', weight: 1 }],
   },

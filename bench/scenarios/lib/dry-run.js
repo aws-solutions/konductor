@@ -75,13 +75,20 @@ function environment(root, cfg) {
   return env;
 }
 
-function withConversation(env, root, conv, name) {
+function withConversation(env, root, conv, name, finalText = null) {
   const out = { ...env };
   delete out.BENCH_CONVERSATION;
+  delete out.BENCH_FINAL_TEXT;
   if (conv) {
     const f = path.join(root, `conv-${name}.json`);
     fs.writeFileSync(f, JSON.stringify(conv));
     out.BENCH_CONVERSATION = f;
+  }
+  // A mode's scripted final message, read by checks as BENCH_FINAL_TEXT the way a run's is (run-one.js postProcess).
+  if (typeof finalText === 'string') {
+    const f = path.join(root, `final-${name}.txt`);
+    fs.writeFileSync(f, finalText);
+    out.BENCH_FINAL_TEXT = f;
   }
   return out;
 }
@@ -118,7 +125,7 @@ function dryRun(id, cfg, { repeat = 3 } = {}) {
       errors: cfg.taskErrors ? cfg.taskErrors(task) : [],
     };
     for (const m of cfg.modes(task)) {
-      ctx.env = withConversation(env, root, m.conversation, m.name);
+      ctx.env = withConversation(env, root, m.conversation, m.name, m.finalText);
       const runs = [];
       for (let i = 0; i < (m.repeat ? repeat : 1); i++) {
         const ws = makeWorkspace(path.join(root, `ws-${m.name}`), ctx.fixtureDir, m.overlay);

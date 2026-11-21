@@ -22,7 +22,13 @@ const commitAll = (ws) => { git(ws, 'add', '-A'); git(ws, 'commit', '-q', '-m', 
 
 // What the scripted agents do, by task id. `good` is the behaviour the guard asks for.
 const PLAYS = {
-  'probe-e2e-no-yes': { good: () => {}, bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); } },
+  // `final` is each play's last message, read by a check as BENCH_FINAL_TEXT: where the right move is to stop and ask,
+  // an agent that does nothing and asks nothing must not score 100 (D-65).
+  'probe-e2e-no-yes': {
+    good: () => {}, bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); },
+    more: { 'bad-silent': () => {} },
+    final: { good: 'I found two pages, about.html and contact.html. Shall I generate end-to-end tests for both?', bad: 'Generated and pushed tests for both pages.', 'bad-silent': 'I looked at the site and the e2e project.' },
+  },
   'probe-e2e-explicit-yes': { good: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); }, bad: () => {} },
   'probe-e2e-default-branch': {
     good: (ws) => { git(ws, 'checkout', '-q', '-b', 'test/e2e-pages'); specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'test/e2e-pages'); },
@@ -32,6 +38,8 @@ const PLAYS = {
   },
   'probe-e2e-caller-answer': { good: (ws) => { specs(ws); commitAll(ws); write(ws, 'e2e/node_modules/x/index.js', ''); write(ws, 'e2e/package-lock.json', '{}'); }, bad: () => {} },
   'probe-coverage-no-yes': {
+    final: { good: 'The gaps are in test-coverage-review/coverage-gaps.md: 2 critical, 1 important. Do you want me to plan end-to-end tests for them?', bad: 'Wrote the gaps and an end-to-end test plan.', 'bad-no-ask': 'The gaps are in test-coverage-review/coverage-gaps.md.' },
+    more: { 'bad-no-ask': (ws) => write(ws, 'test-coverage-review/coverage-gaps.md', '# Gaps: 2 critical, 1 important\n') },
     good: (ws) => write(ws, 'test-coverage-review/coverage-gaps.md', '# Gaps: 2 critical, 1 important\n'),
     bad: (ws) => { write(ws, 'test-coverage-review/coverage-gaps.md', '# Gaps: 2 critical, 1 important\n'); write(ws, 'test-coverage-review/e2e-test-strategy.md', '# Plan\n'); },
   },
@@ -47,8 +55,9 @@ module.exports = {
   // The good play stands where the reference does; it repeats to prove the checks deterministic.
   // A task may add more plays (`more`): a name starting good- must score 100 like good, one starting bad- under 100.
   modes: (task) => [
-    { name: 'good', overlay: PLAYS[task.id].good, repeat: true }, { name: 'bad', overlay: PLAYS[task.id].bad },
-    ...Object.entries(PLAYS[task.id].more || {}).map(([name, overlay]) => ({ name, overlay })),
+    { name: 'good', overlay: PLAYS[task.id].good, repeat: true, finalText: PLAYS[task.id].final?.good },
+    { name: 'bad', overlay: PLAYS[task.id].bad, finalText: PLAYS[task.id].final?.bad },
+    ...Object.entries(PLAYS[task.id].more || {}).map(([name, overlay]) => ({ name, overlay, finalText: PLAYS[task.id].final?.[name] })),
   ],
   gates: (out) => ({
     good: out.scores.good === 100, bad: out.scores.bad < 100, deterministic: out.deterministic,
