@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-avatar-upload",
-  "version": 4,
+  "version": 5,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -186,7 +186,8 @@
   "handEdited": {
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
-    "log": "HAND-EDITS.md"
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {},

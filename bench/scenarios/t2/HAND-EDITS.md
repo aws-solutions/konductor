@@ -147,3 +147,7 @@ Wave 6 runs scored again with the current grader (no model call): avatar 93.2, c
 price-cache 83, refund-flow 86.4, stock-reserve 90.3, webhook-relay 86.4, jwt-middleware 100 (were 49 to 59). Gates of
 all 16 T2 tasks unchanged: reference 100, stub 7.1, lazy 28.6 to 35.1, alt 100, dump 28.6 to 35.7. Non-Claude recheck:
 pending for the five tasks above.
+
+## Version bump for the 2026-11-21 judge-vs-code edits (mate debt worker, DEBT D-150)
+
+The judge-vs-code edits of 2026-11-21 changed these tasks without a new version, so an older recheck still cleared the lock. Each is now one version up with `handEdited.version` set, and `bench/scenarios/content-lock.json` records it; `scenarios ready` blocks the lock until a non-Claude recheck records that version. No content changed in this step.

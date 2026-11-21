@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 7,
+  "version": 8,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -182,6 +182,7 @@
   "handEdited": {
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
-    "log": "HAND-EDITS.md"
+    "log": "HAND-EDITS.md",
+    "version": 8
   }
 }

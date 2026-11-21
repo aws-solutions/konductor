@@ -520,7 +520,10 @@ test('report-2x2 --prereg accepts tasks that match the lock and refuses a task t
     write(path.join(batch, `${id}.json`), JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), version: 1 }));
     fs.rmSync(file);
   }
-  const freeze = spawnSync(process.execPath, [BENCH_JS, 'scenarios', 'prereg', 'freeze', path.join(root, 'pack'), '--date', '2026-11-19'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: tmp(), TMPDIR: process.env.TMPDIR } });
+  // freeze runs the lint and the coverage gate on a konductor tree first (D-55); an empty one, with the gaps accepted.
+  const tree = path.join(root, 'konductor-tree');
+  fs.mkdirSync(path.join(tree, 'skills'), { recursive: true });
+  const freeze = spawnSync(process.execPath, [BENCH_JS, 'scenarios', 'prereg', 'freeze', path.join(root, 'pack'), '--date', '2026-11-19', '--base', `dir:${tree}`, '--accept-gaps', 'a test pack'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: tmp(), TMPDIR: process.env.TMPDIR } });
   assert.equal(freeze.status, 0, freeze.stderr);
   const lock = path.join(root, 'pack', 'PREREG.json');
   const args = [...flags(bench, d), '--extra-tasks', batch, '--prereg', lock];
