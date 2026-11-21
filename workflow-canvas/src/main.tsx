@@ -11,8 +11,13 @@ import { LaunchWait } from './launch/LaunchWait';
 import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
 import { sessionStorageMemory } from './launch/session-memory';
 import { createSwapRisk, guardOffers } from './launch/swap-guard';
+import { createNextPorts } from './next-ui/next-http';
+import { wantsNextUi } from './next-ui/next-ui';
+import { forgetIfStill } from './next-ui/session-forget';
+import { tapSessions } from './next-ui/session-tap';
 import { installTheme } from './theme/install';
 import { useWorkflowSource } from './workflow/use-workflow-source';
+import type { LoadedWorkflow } from './workflow/load-workflow';
 import { createWorkflowSource } from './workflow/workflow-source';
 
 const root = document.getElementById('root');
@@ -20,11 +25,25 @@ if (!root) throw new Error('Missing #root element');
 
 installTheme(document.body);
 
-const source = createWorkflowSource(
-  createHttpApi(),
-  takeLaunchCode(window),
-  sessionStorageMemory(window),
-);
+const sessions = sessionStorageMemory(window);
+
+// The views being built need calls that the API client does not have yet.
+// Each loaded workflow gets its own, built from the token that workflow was
+// loaded with, so no call of theirs can address another session.
+const nextUi = wantsNextUi(window.location.search);
+const tap = tapSessions(createHttpApi());
+
+const nextPortsFor = (workflow: LoadedWorkflow) => {
+  const token = tap.tokenOf(workflow.document);
+  // A 401 of this token drops the kept session only while it is still that
+  // token's: a call of a workflow that has been replaced can answer after the
+  // new one was kept.
+  return createNextPorts(token, {
+    onSessionLost: forgetIfStill(sessions, token),
+  });
+};
+
+const source = createWorkflowSource(tap.api, takeLaunchCode(window), sessions);
 const swapRisk = createSwapRisk();
 watchLaunchCode(
   window,
@@ -50,6 +69,8 @@ function Root() {
       }
       runMemory={runMemory}
       swapRisk={swapRisk}
+      nextUi={nextUi}
+      nextPortsFor={nextPortsFor}
     />
   );
 }
