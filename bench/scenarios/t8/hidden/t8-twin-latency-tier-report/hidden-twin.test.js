@@ -10,13 +10,18 @@ const logPath = path.join(root, 'logs', 'checkout-api.log');
 const hourlyPath = path.join(root, 'reports', 'checkout-hourly.csv');
 const totalsPath = path.join(root, 'reports', 'checkout-totals.json');
 
-function expectedFromFixture() {
+// The log records request chk-1083-001 twice (a WARN and an INFO line). Counting every /checkout record, as the request
+// says, and counting each request id once are both accepted; the report must use one reading throughout.
+function expectedFromFixture(distinct = false) {
   const hours = new Map();
+  const seen = new Set();
   const lines = fs.readFileSync(logPath, 'utf8').trim().split(/\r?\n/);
   for (const line of lines) {
     const timestamp = line.match(/^(\S+)/)?.[1];
     const route = line.match(/\broute=\S+\s+(\S+)/)?.[1];
     if (!timestamp || route !== '/checkout') continue;
+    const id = line.match(/\brequest_id=(\S+)/)?.[1];
+    if (distinct && id) { if (seen.has(id)) continue; seen.add(id); }
     const status = Number(line.match(/\bstatus=(\d+)/)?.[1]);
     const date = new Date(timestamp);
     date.setUTCMinutes(0, 0, 0);
@@ -47,8 +52,8 @@ function readTotals() {
   return JSON.parse(text);
 }
 
-function expectedTotals() {
-  return expectedFromFixture().reduce(
+function expectedTotals(distinct = reading()) {
+  return expectedFromFixture(distinct).reduce(
     (totals, row) => ({
       requests: totals.requests + row.requests,
       succeeded: totals.succeeded + row.succeeded,
@@ -59,6 +64,15 @@ function expectedTotals() {
 
 // The shape tests count only when the request counts are right: a well-shaped report of wrong numbers is not half an
 // answer. The two count tests stand on their own.
+// true when the report counts each request id once, false when it counts every record (the default when unreadable).
+function reading() {
+  try {
+    const t = readTotals();
+    const once = expectedFromFixture(true).reduce((n, r) => n + r.requests, 0);
+    return t.requests === once && once !== expectedFromFixture(false).reduce((n, r) => n + r.requests, 0);
+  } catch { return false; }
+}
+
 function rightCounts() {
   assert.deepStrictEqual(readTotals(), expectedTotals(), 'the totals must match the /checkout records of the log');
 }
@@ -80,7 +94,7 @@ test('hourly CSV has the requested columns', () => {
 
 test('hourly CSV covers exactly every fixture hour', () => {
   rightCounts();
-  const expected = expectedFromFixture();
+  const expected = expectedFromFixture(reading());
   const actual = readHourly().rows;
   assert.strictEqual(actual.length, expected.length);
 });
@@ -99,7 +113,7 @@ test('hourly rows contain the fixture-derived counts', () => {
     requests: Number(row.requests),
     succeeded: Number(row.succeeded),
   }));
-  assert.deepStrictEqual(actual, expectedFromFixture());
+  assert.deepStrictEqual(actual, expectedFromFixture(reading()));
 });
 
 test('hourly count fields use nonnegative decimal integers', () => {

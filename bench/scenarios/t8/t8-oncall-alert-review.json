@@ -1,7 +1,7 @@
 {
   "id": "t8-oncall-alert-review",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -97,36 +97,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for a practical review but does not prescribe a method or tool; edits.md confirms 'request no longer lists every source'."
+          "note": "Prompt asks to inspect monitoring folder and recommend alert changes; no method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains alert rules, firing history, incidents, and logs but does not state which alerts to keep/change/remove; the developer must infer recommendations from the evidence."
+          "note": "Fixture has alert rules, firings, incidents but doesn't prescribe specific recommendations."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden key checks specific alert names from alert-rules.yml (ApiLatencyP95, ApiCpuSaturation, DbConnectionPoolExhaustion, Api5xxBurst, etc.), dispositions based on the firing history (e.g., ApiNoTraffic fires repeatedly with no incident), and the rubric rewards keeping alerts that caught real incidents."
+          "note": "Key patterns match fixture evidence (ApiNoTraffic frequent firings, Api5xxBurst duplicates ApiHigh5xxRate, etc.)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can analyze alert-firings.csv to find noisy alerts (ApiNoTraffic fires 30+ times with no incident), duplicate alerts (Api5xxBurst same expr as ApiHigh5xxRate), and alerts that caught real incidents (ApiHigh5xxRate, HealthCheckDown, etc. in INC-250218)."
+          "note": "Competent developer can analyze alert patterns against firings/incidents; different valid recommendations could pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -140,10 +140,10 @@
       "stub": 0,
       "lazy": 33.3,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null
 }

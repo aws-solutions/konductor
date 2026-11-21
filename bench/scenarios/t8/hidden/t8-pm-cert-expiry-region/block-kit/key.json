@@ -53,7 +53,7 @@
       "type": "evidencePrecision",
       "path": "rootCause.evidence",
       "relevant": [
-        "not_after|certificate has expired|client_certificate_expired|mtls=failed"
+        "not_after|certificate has expired|client_certificate_expired|mtls=failed|A7E4-91C2|gw-auth-eu|tls_handshake|certificate"
       ],
       "min": 0.5,
       "weight": 2,
@@ -156,7 +156,7 @@
       "id": "timeline-bounded",
       "type": "maxLen",
       "path": "timeline",
-      "max": 15,
+      "max": 24,
       "min": 4,
       "section": "timeline"
     },

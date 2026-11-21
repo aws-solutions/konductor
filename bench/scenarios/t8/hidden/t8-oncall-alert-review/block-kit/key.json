@@ -48,7 +48,7 @@
       "match": {
         "all": [
           "\"name\":\"Api5xxBurst\"",
-          "\"problem\":\"[^\"]*(duplicat|overlap|same as|redundant)",
+          "\"problem\":\"[^\"]*(duplicat|overlap|same as|redundant|identical|same expr)",
           "\"severity\":\"remove\""
         ]
       },
@@ -63,7 +63,7 @@
         "all": [
           "\"name\":\"ApiNoTraffic\"",
           "\"problem\":\"[^\"]*(runbook|ack|ignored|noise|false)",
-          "\"severity\":\"(remove|ticket)\""
+          "\"severity\":\"(remove|ticket)\"|\"change\":\"[^\"]*(increase|rate)\\("
         ]
       },
       "weight": 2,
@@ -76,7 +76,7 @@
       "match": {
         "all": [
           "\"name\":\"RequestTimeoutRate\"",
-          "\"problem\":\"[^\"]*(ticket|non.?urgent|not urgent|page)",
+          "\"problem\":\"[^\"]*(ticket|non.?urgent|not urgent|page|noise|no linked|0 linked)",
           "\"severity\":\"ticket\""
         ]
       },
@@ -103,7 +103,7 @@
       "match": {
         "field": "name",
         "all": [
-          "^(ApiHigh5xxRate|HealthCheckDown|QueueAgeHigh|WorkerErrorRate|CacheHitRateLow|LoginFailureSpike|PaymentProviderLatency|SearchIndexLag|DiskSpaceLow|DeploymentFailure|TLSCertificateExpiry)$"
+          "^(ApiHigh5xxRate|HealthCheckDown|QueueAgeHigh|WorkerErrorRate|CacheHitRateLow|LoginFailureSpike|PaymentProviderLatency|SearchIndexLag|DiskSpaceLow|TLSCertificateExpiry)$"
         ]
       },
       "section": "keeps"
@@ -196,11 +196,12 @@
     },
     {
       "id": "keep-deploy-failure",
-      "type": "some",
-      "path": "keep",
+      "type": "none",
+      "path": "alerts",
       "match": {
         "all": [
-          "^DeploymentFailure$"
+          "\"name\":\"DeploymentFailure\"",
+          "\"severity\":\"(remove|ticket)\""
         ]
       },
       "section": "keeps"

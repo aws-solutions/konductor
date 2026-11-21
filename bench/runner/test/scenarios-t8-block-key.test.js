@@ -88,3 +88,10 @@ test('section scoring: complete 2, one missed 1, more 0; a failed gate scores 0'
   // without sections the gate still zeroes the plain item share
   assert.strictEqual(gradeBlock(doc({ cause: 'disk', a: 'x', b: 'x', c: 'x', d: 'x' }), items, os.tmpdir()).score, 0);
 });
+
+test('a none pattern ignores a sentence that denies the claim, but not a plain claim', () => {
+  const item = { id: 'x', type: 'text', path: 'rootCause.summary', all: ['cert'], none: ['rel-8421', 'caused by the release'] };
+  const at = (summary) => checkItem({ rootCause: { summary } }, item, os.tmpdir()).pass;
+  assert.strictEqual(at('The cert expired. The release rel-8421 was not the cause.'), true);
+  assert.strictEqual(at('The cert expired, caused by the release rel-8421.'), false);
+});

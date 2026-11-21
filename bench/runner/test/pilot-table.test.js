@@ -190,3 +190,17 @@ test('a run the service throttled is broken with a rerun note and raises no too-
     assert.equal(rows[k].flags['too-hard'], undefined);
   }
 });
+
+test('writing the output path the task names (answers/x.json) is not an answer leak; another answers/ path still is', () => {
+  const root = tmp();
+  const pack = path.join(root, 'pack');
+  write(path.join(pack, 't8', 't8-out.json'), json({ id: 't8-out', prompt: 'Write exactly one file at answers/prod-debug.json.', fixture: 't8-out', hidden: 't8-out', checks: [{ type: 'file_exists', path: 'answers/prod-debug.json' }], authorship: { model: 'gpt-5.6-luna' } }));
+  const w = path.join(root, 'w');
+  fakeRun(w, [
+    { task: 't8-out', result: { checks: [tests(4, 4), sub(true)] }, stream: [call("mkdir -p answers && printf '[]' > answers/prod-debug.json")] },
+    { task: 't8-out', rep: 2, result: { checks: [tests(4, 4), sub(true)] }, stream: [call('cat ../answers/t8-out/key.json')] },
+  ]);
+  const rows = byTask(pilotRows([w], { packDir: pack }));
+  assert.equal(rows['t8-out#1'].flags['answer-leak'], undefined);
+  assert.match(rows['t8-out#2'].flags['answer-leak'], /answers\/t8-out/);
+});

@@ -1,7 +1,7 @@
 {
   "id": "t8-tpm-rollout-regions",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "tpm",
   "phases2": [
@@ -166,36 +166,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates signoff quality and expert key coverage for the rollout plan requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal, output format, and constraints without naming methods or pointing at traps; it asks for a signable release plan from folder material.)."
+          "note": "Prompt asks to create rollout plan from folder material; RACI term removed per edits to avoid method prescription."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides schedule, teams, and constraints; no pre-written plan visible. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain constraints and evidence the agent must reason from; stale-launch-notes.md is explicitly marked superseded, and no file lists the expected schedule.)."
+          "note": "Fixture has team lists, RACI, metrics, constraints but doesn't provide complete rollout plan."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric references teams, dates, and decision criteria from fixture; expertKey items match rollout planning requirements. Earlier glm-5 check of the request, fixture and key: pass (All key values match fixture sources: teams from team-list.md, roles from raci.md, metrics from metrics-catalogue.md, freeze times from change-calendar.md, certification date from partner-certification.md, canary percent and bake window from capacity-note.md and rollout-runbook.md.)."
+          "note": "Key patterns reference fixture files (team-list.md, raci.md, metrics-catalogue.md, freeze dates)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different valid rollout structures and milestone organizations can Pass if grounded in fixture data. Earlier glm-5 check of the request, fixture and key: pass (The schema ordering (schema-compatibility.md), API-before-client sequencing (dependency-note.md), region order with holidays and certification constraints (change-calendar.md, partner-certification.md, oncall-rota.md, region-readiness.md), and metric gates follow from the fixture.)."
+          "note": "Competent developer can create rollout plan from constraints; different valid plans could pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -205,13 +205,13 @@
     "reference": 100,
     "stub": 5.7,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 5.7,
-      "lazy": 37.5,
+      "lazy": 39.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     }
   },
   "lockedAt": null

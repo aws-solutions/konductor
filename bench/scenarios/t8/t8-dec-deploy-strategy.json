@@ -1,7 +1,7 @@
 {
   "id": "t8-dec-deploy-strategy",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "decisions",
   "role": "sre",
   "phases2": [
@@ -158,36 +158,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt names the three options (rolling, blue/green, canary) but does not prescribe a method for choosing; edits.md confirms 'constraint and option patterns reduced to number, topic and source file (exact phrases such as \"health signal\" removed)'."
+          "note": "Prompt asks to write a decision record analyzing folder material; no method prescribed or misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains capacity data, cost limits, drain times, and deployment goals but does not state which strategy to choose or describe the finished decision record."
+          "note": "Fixture has capacity reports, finance notes, SLOs but doesn't state which deployment strategy to choose."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden key matches fixture figures (40 hosts, 72% utilization, $2,800/$7,200 costs, 40min drain, 12min revert window, 3 deploys/week) and the rubric's Fail/Partial/Pass anchors tie to those numbers."
+          "note": "Key patterns match fixture numbers (40 hosts, 72%, $2,800/$7,200, 40-min drain, 12-min revert, 3 deploys/week)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A competent developer could compare the three strategies against the capacity, cost, and SLO constraints and choose canary with appropriate rollout rules; the expertKey items (blast-radius, draining, rollback-speed) ask for engineering judgment that follows from the fixture evidence."
+          "note": "Competent developer can analyze trade-offs from fixture constraints; different valid solutions could pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -201,10 +201,10 @@
       "stub": 0,
       "lazy": 25,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null
 }

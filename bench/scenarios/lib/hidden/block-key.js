@@ -60,8 +60,25 @@ const re = (s) => new RegExp(s, 'i');
 const toNum = (v) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v.replace(/[,_%\s]/g, ''))) ? Number(v.replace(/[,_%\s]/g, '')) : NaN);
 const toTime = (v) => (typeof v === 'string' ? Date.parse(v) : NaN);
 
+// A `none` pattern names a claim the answer must not make ("caused by the release"). A sentence that denies it ("rel-8421
+// was not the cause") is correct, so a match counts only when no negation sits within 40 characters of it in the same
+// sentence. An anchored pattern, or one that itself states a negation, is applied to the whole text as written.
+const NEGATION = /\b(?:not|never|no|without|nor|isn't|wasn't|aren't|weren't|doesn't|didn't|don't|cannot|can't|ruled out|unrelated)\b/i;
+function claims(text, src) {
+  const r = re(src);
+  if (/^\^|\$$/.test(src) || /\b(?:no|not|never|without)\b/i.test(src.replace(/\\[a-zA-Z]/g, ' '))) return r.test(text);
+  const g = new RegExp(src, 'gi');
+  for (const s of String(text).split(/(?<=[.!?;])\s+/)) {
+    for (const m of s.matchAll(g)) {
+      if (!NEGATION.test(s.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40))) return true;
+      if (m[0] === '') break;
+    }
+  }
+  return false;
+}
+
 function textOk(text, { all = [], none = [] }) {
-  return all.every((r) => re(r).test(text)) && !none.some((r) => re(r).test(text));
+  return all.every((r) => re(r).test(text)) && !none.some((r) => claims(text, r));
 }
 
 function matches(el, m) {

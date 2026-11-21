@@ -1,7 +1,7 @@
 {
   "id": "t8-pm-cert-expiry-region",
   "class": "hard",
-  "version": 4,
+  "version": 5,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -104,29 +104,29 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for postmortem with JSON block. Edits mention decoy (deploy) designed to be rejected (key has summary-does-not-blame-release check)."
+          "note": "Prompt asks to investigate outage and draft postmortem; no method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains certificate inventory showing EU cert expiry time, gateway logs showing mTLS failures at that time. Answer requires analyzing certificate expiry."
+          "note": "Fixture has certificate inventory, logs, timeline but doesn't state root cause or write postmortem."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "key.json expects evidence from certificate-inventory.csv, gateway-eu.log, auth-eu.log - all exist. Rubric anchors reward narrative coherence."
+          "note": "Key patterns match fixture (A7E4-91C2 expiry at 2025-02-14T11:00:00Z, log patterns, timeline events)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can analyze certificate expiry times, mTLS failures at expiry, regional differences, and identify expired mTLS certificate."
+          "note": "Competent developer can analyze certificate expiry and logs; different valid narratives could pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -140,10 +140,10 @@
       "stub": 0,
       "lazy": 37.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null
 }

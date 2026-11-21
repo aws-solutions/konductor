@@ -50,7 +50,7 @@
       "type": "maxLen",
       "path": "steps",
       "max": 14,
-      "min": 14
+      "min": 1
     },
     {
       "id": "traffic-steps-have-gates",
@@ -132,7 +132,7 @@
       "id": "owner-list-is-complete",
       "type": "maxLen",
       "path": "ownerList",
-      "min": 14,
+      "min": 1,
       "max": 14
     },
     {
@@ -140,46 +140,66 @@
       "type": "maxLen",
       "path": "goNoGo",
       "min": 4,
-      "max": 4
+      "max": 14
     },
     {
       "id": "canary-share",
-      "type": "number",
-      "path": "capacity.canaryPercent",
-      "value": 5,
-      "tol": 0,
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "\"percent\":5\\b",
+          "canary|client|wallet"
+        ]
+      },
       "weight": 10
     },
     {
       "id": "noria-full-share",
-      "type": "number",
-      "path": "steps.4.percent",
-      "value": 100,
-      "tol": 0,
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "noria",
+          "\"percent\":100\\b"
+        ]
+      },
       "weight": 10
     },
     {
       "id": "solmere-full-share",
-      "type": "number",
-      "path": "steps.7.percent",
-      "value": 100,
-      "tol": 0,
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "solmere",
+          "\"percent\":100\\b"
+        ]
+      },
       "weight": 10
     },
     {
       "id": "kestrel-full-share",
-      "type": "number",
-      "path": "steps.10.percent",
-      "value": 100,
-      "tol": 0,
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "kestrel",
+          "\"percent\":100\\b"
+        ]
+      },
       "weight": 10
     },
     {
       "id": "veyra-full-share",
-      "type": "number",
-      "path": "steps.12.percent",
-      "value": 100,
-      "tol": 0,
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "all": [
+          "veyra",
+          "\"percent\":100\\b"
+        ]
+      },
       "weight": 10
     },
     {

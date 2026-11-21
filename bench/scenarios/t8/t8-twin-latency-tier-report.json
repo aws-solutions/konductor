@@ -1,7 +1,7 @@
 {
   "id": "t8-twin-latency-tier-report",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -104,36 +104,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks to pull checkout request counts from a log file; no method or decoy named."
+          "note": "Prompt asks to parse log file and write reports; specifies counting rules but no method/framework."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Log file shows the request pattern; no doc or comment lists the hourly or total counts."
+          "note": "Fixture has log files but doesn't provide the CSV/JSON reports."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests verify counts match /checkout records in logs/checkout-api.log; path, format, and counting rules (status < 400) match request and fixture."
+          "note": "Hidden test reads same log file, checks /checkout path filtering, status < 400, etc."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Parsing logs/checkout-api.log for route=/checkout and status<400 yields correct hourly and total counts."
+          "note": "Competent developer can parse log file; different implementations could pass (deduping logic noted in test)."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -147,10 +147,10 @@
       "stub": 0,
       "lazy": 0,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null
 }

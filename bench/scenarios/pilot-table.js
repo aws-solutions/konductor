@@ -113,7 +113,16 @@ function brokenReasons(r, runDir) {
 }
 
 /** Tool-call inputs from a saved stream.jsonl that name a hidden or answer path. */
-function leakedReads(runDir) {
+// Paths the task itself names for the agent (its checks' paths and the paths in its request), such as answers/x.json
+// in t8-neg-config-question: writing them is the task, not a leak.
+function ownPaths(task) {
+  const out = new Set((task?.checks || []).map((c) => c.path).filter((p) => typeof p === 'string' && p));
+  for (const m of String(task?.prompt || '').matchAll(/[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+/g)) out.add(m[0].replace(/[.,;:]$/, ''));
+  return [...out].sort((a, b) => b.length - a.length);
+}
+
+function leakedReads(runDir, task = null) {
+  const own = ownPaths(task);
   let text;
   try { text = fs.readFileSync(path.join(runDir, 'stream.jsonl'), 'utf8'); } catch { return []; }
   const hits = [];
@@ -127,7 +136,8 @@ function leakedReads(runDir) {
     if (u.toolCallId && seen.has(u.toolCallId)) continue;
     if (u.toolCallId) seen.add(u.toolCallId);
     const input = JSON.stringify(mcpInputOf(u.rawInput) ?? u.rawInput ?? '');
-    if (LEAK_PATH.test(input)) hits.push(`${toolNameOf(u) ?? mcpToolNameOf(u) ?? 'tool'}: ${input.slice(0, 120)}`);
+    const rest = own.reduce((t, p) => t.split(p).join(' '), input);
+    if (LEAK_PATH.test(rest)) hits.push(`${toolNameOf(u) ?? mcpToolNameOf(u) ?? 'tool'}: ${input.slice(0, 120)}`);
   }
   return hits;
 }
@@ -218,7 +228,7 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       // A negative control's right answer is to change (almost) nothing, so its output matching the reference is
       // expected; only reads of hidden or answer paths count as a leak there.
       const negative = entry?.task.controlKind === 'negative';
-      const leak = [...leakedReads(e.dir), ...(negative ? [] : copiedReference(e.dir, entry))];
+      const leak = [...leakedReads(e.dir, entry?.task), ...(negative ? [] : copiedReference(e.dir, entry))];
       if (leak.length) flags['answer-leak'] = leak.join('; ');
       const share = pack.families.get(batch);
       // A batch the owner keeps single-family (authorship.singleFamily) reports it in its own column instead of the flag.
