@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { StageView, WorkflowView } from '../api/types';
 import type { CheckViewStage } from '../designer-view/yaml-draft';
 import { withStages } from '../designer/core/stage-text';
-import { writerKeepsStage } from './stage-item';
+import { writerKeepsStage, writerScalar } from './stage-item';
 
 const VIEW: WorkflowView = {
   name: 'hello',
@@ -104,6 +104,61 @@ function bothOn(text: string, index: number) {
   const line = (stages[index]?.range as { line: number }).line;
   return {
     writerKept: written === onlyTheNameChanged(text, line),
+    readerSaid: writerKeepsStage(text, stages, index),
+    written,
+  };
+}
+
+/** The workflow of a text, as the page holds it once a check has read it. */
+function viewOf(text: string): WorkflowView {
+  return {
+    name: 'hello',
+    intent: { outcome: 'Add a greeting to the README' },
+    stages: checkStagesOf(text).map((stage) => ({
+      name: String(stage.name),
+      agent: String(stage.agent),
+    })),
+  };
+}
+
+/** One edit of one stage: the key that changes, and the value it takes. */
+interface Edit {
+  readonly key: 'name' | 'agent';
+  /** Written plainly, so the file it is expected in holds it as it is. */
+  readonly value: string;
+}
+
+/**
+ * The file as it would read if the writer had changed nothing but that one
+ * value, which the stage writes on the line the key is on: the name on the
+ * line the stage starts at, the agent on the one below it.
+ */
+function onlyThatChanged(text: string, line: number, edit: Edit): string {
+  const lines = brokenLinesOf(text);
+  const at = lines[edit.key === 'name' ? line - 1 : line];
+  if (at) {
+    at.text = at.text.replace(
+      new RegExp(`${edit.key}: .*$`),
+      `${edit.key}: ${edit.value}`,
+    );
+  }
+  return joined(lines);
+}
+
+/**
+ * What the writer did and what the reader said about one edit of the stage at
+ * `index`, for a file whose own stages say what the workflow holds.
+ */
+function bothOnEdit(text: string, index: number, edit: Edit) {
+  const stages = checkStagesOf(text);
+  const view = viewOf(text);
+  const saved = view.stages.map((stage, at) =>
+    at === index ? { ...stage, [edit.key]: edit.value } : { ...stage },
+  );
+  const written = withStages(text, view, saved);
+  const line = (stages[index]?.range as { line: number }).line;
+  return {
+    writerKept: written === onlyThatChanged(text, line, edit),
     readerSaid: writerKeepsStage(text, stages, index),
     written,
   };
@@ -275,6 +330,104 @@ describe('the stage writer and the reader of the lines it keeps', () => {
 
     expect(writerKept).toBe(true);
     expect(readerSaid).toBe(false);
+  });
+
+  // YAML 1.1 reads each of these as a boolean, so the writer quotes them to
+  // keep them text. A file that writes one of them plainly reads back the
+  // same value, which is why it is there, and the writer still rewrites those
+  // bytes when it writes the stage again.
+  const AS_BOOLEANS = ['y', 'n', 'yes', 'no', 'on', 'off'];
+
+  it.each(AS_BOOLEANS)(
+    'refuses a stage whose name the file writes as the plain %s, which the writer quotes',
+    (value) => {
+      const text = `${HEAD}  - name: ${value}
+    agent: k-developer
+  - name: review
+    agent: k-quality-assurance
+`;
+
+      const { writerKept, readerSaid, written } = bothOnEdit(text, 0, {
+        key: 'agent',
+        value: 'k-architect',
+      });
+
+      expect(written).toContain(`- name: "${value}"`);
+      expect(writerKept).toBe(false);
+      expect(readerSaid).toBe(false);
+    },
+  );
+
+  it.each(AS_BOOLEANS)(
+    'refuses a stage whose agent the file writes as the plain %s, which the writer quotes',
+    (value) => {
+      const text = `${HEAD}  - name: draft
+    agent: ${value}
+  - name: review
+    agent: k-quality-assurance
+`;
+
+      const { writerKept, readerSaid, written } = bothOnEdit(text, 0, {
+        key: 'name',
+        value: 'drafting',
+      });
+
+      expect(written).toContain(`agent: "${value}"`);
+      expect(writerKept).toBe(false);
+      expect(readerSaid).toBe(false);
+    },
+  );
+
+  // `writerScalar` is a copy of the writer's own encoder, which the writer
+  // does not export. These cases hold the copy to it value by value: what the
+  // writer puts on the line it writes is what the copy says it will be.
+  it.each([
+    'draft',
+    'k-developer',
+    'two words',
+    'with.dots_and-dashes',
+    'y',
+    'n',
+    'yes',
+    'no',
+    'on',
+    'off',
+    'true',
+    'false',
+    'null',
+    'YES',
+    'Off',
+    '12',
+    '',
+    ' leading space',
+    'trailing space ',
+    'has: a colon',
+    '*star',
+    '- dash',
+    'grüßen',
+  ])('writes the name %p as the writer writes it', (value) => {
+    const text = `${HEAD}  - name: draft
+    agent: k-developer
+`;
+    const view = viewOf(text);
+
+    const written = withStages(text, view, [
+      { name: value, agent: 'k-developer' },
+    ]);
+
+    expect(written).toContain(`  - name: ${writerScalar(value)}\n`);
+  });
+
+  it('writes the agent the same way', () => {
+    const text = `${HEAD}  - name: draft
+    agent: k-developer
+`;
+    const view = viewOf(text);
+
+    const written = withStages(text, view, [{ name: 'draft', agent: 'off' }]);
+
+    expect(written).toContain(`    agent: ${writerScalar('off')}\n`);
+    expect(written).toContain('    agent: "off"\n');
   });
 
   it('says the writer drops a comment inside the stage, so the save is refused', () => {
