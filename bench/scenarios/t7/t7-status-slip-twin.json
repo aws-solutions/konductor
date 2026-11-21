@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 7,
+  "version": 8,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -141,7 +141,7 @@
           "note": "A competent developer can compute the numbers from tickets.csv using the conventions documented in the README (open statuses, Done/Cancelled as closed, blank estimates as zero, trimmed names). Different valid outputs would still pass the key assertions."
         }
       ],
-      "version": 7
+      "version": 8
     }
   },
   "pilot": {
@@ -184,6 +184,6 @@
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 7
+    "version": 8
   }
 }

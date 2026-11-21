@@ -226,3 +226,10 @@ Who: claude (mate spot-review fix worker session), from /tmp/pilot-w8 (pin 7cc81
   safety, the 003 point of no return, the stop rules); deepseek-3.2 failed every item with no evidence. The T8 keys
   judges score well (t8-runbook-db-failover, t8-pm-cache-stampede) all name folder facts. The weak answers are kept.
   The judge-side habit is flagged by `blankExpert` (bench/judge/views.js, D-149).
+
+## Version bump for the 2026-11-21 judge-vs-code edits (mate debt worker, DEBT D-150)
+
+The judge-vs-code edits of 2026-11-21 changed these tasks without a new version, so an older recheck still cleared the lock. Each is now one version up with `handEdited.version` set, and `bench/scenarios/content-lock.json` records it; `scenarios ready` blocks the lock until a non-Claude recheck records that version. No content changed in this step.
+
+Round 6 non-Claude recheck (2026-11-21, qwen3-coder-next, call Q1): t8-rollout-ledger-migration v6 passes 4 of 4, in
+`review.recheck`. The call read the content at v5; the D-150 bump to v6 changed only the version.

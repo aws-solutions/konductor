@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-avatar-upload",
-  "version": 5,
+  "version": 6,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -181,14 +181,14 @@
           "note": "The PR diff, surrounding source, configuration, API/security documentation, and tests provide enough context to identify the findings and report valid file locations without hidden tests or the solution. The key matches locations with slack and does not require the reference's prose, order, or JSON shape."
         }
       ],
-      "version": 5
+      "version": 6
     }
   },
   "handEdited": {
     "family": "claude",
     "editor": "mate recheck worker (2026-11-21): findingsKey k3 text follows the hidden key (round 6 recheck)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   },
   "pilot": {
     "scores": {},

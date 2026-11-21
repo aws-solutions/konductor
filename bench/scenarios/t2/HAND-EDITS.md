@@ -148,6 +148,7 @@ price-cache 83, refund-flow 86.4, stock-reserve 90.3, webhook-relay 86.4, jwt-mi
 all 16 T2 tasks unchanged: reference 100, stub 7.1, lazy 28.6 to 35.1, alt 100, dump 28.6 to 35.7. Non-Claude recheck:
 pending for the five tasks above.
 
+<<<<<<< HEAD
 ## Round 6 non-Claude recheck (2026-11-21, mate recheck worker)
 
 deepseek-3.2 (call D5) passed t2-pr-price-cache v5, t2-gaps-jwt-middleware v5, t2-pr-cursor-pages v4 and
@@ -157,3 +158,12 @@ fixture runs `imghdr` and the hidden key's k3 was already reworded to "trusts th
 bytes". Fixed (claude, by hand): the task file's k3 text now matches the hidden key; version 4 to 5. (2)
 fixture-lists-no-answer: `docs/security.md` lists the upload rules; disposed, because those are the project's existing
 rules the PR must be checked against, and the defects are in `pr/418/changes.diff`. A second gpt-5.6-luna recheck follows.
+=======
+## Version bump for the 2026-11-21 judge-vs-code edits (mate debt worker, DEBT D-150)
+
+The judge-vs-code edits of 2026-11-21 changed these tasks without a new version, so an older recheck still cleared the lock. Each is now one version up with `handEdited.version` set, and `bench/scenarios/content-lock.json` records it; `scenarios ready` blocks the lock until a non-Claude recheck records that version. No content changed in this step.
+>>>>>>> origin/feat/bench-pilot-nk
+
+After the D-150 bumps (9a8697f4, version field only, content unchanged): the round 6 rechecks above move to the bumped
+versions (t2-gaps-jwt-middleware v6, t2-pr-cursor-pages v5, t2-pr-stock-reserve v4). The k3 sync is a content change, so
+t2-pr-avatar-upload goes to v6 (content-lock.json recorded); its gpt-5.6-luna recheck L6 read that content.

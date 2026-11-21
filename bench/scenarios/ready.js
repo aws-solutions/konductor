@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('../runner/lib/schema.js');
 const { v3Errors } = require('../runner/lib/task-v3.js');
+const contentLock = require('./content-lock.js');
 
 const PACK_DIR = __dirname;
 const GATES = [
@@ -49,17 +50,28 @@ function fixReasons(task) {
   return out;
 }
 
+const CONTENT_FLAG = 'content changed, version not bumped';
+
 /**
- * What blocks a lock but not a pilot run: a task with `handEdited` set and no `review.recheck` (plan section 4). When the
- * hand edit records the task `version` it made, a recheck counts only if it records that version or a later one, so a
- * recheck made before the last edit does not clear it.
+ * What blocks a lock but not a pilot run (plan section 4). `content` is the task's content-lock row (content-lock.js
+ * compare), when there is one.
+ * - The content changed while the version stayed (DEBT D-150): the change would ship under the version a recheck read.
+ * - A hand-edited task needs a `review.recheck` of its current version: one that records `version` must record this one
+ *   or a later one; one with no `version` (older rechecks) covers only up to the content lock's `legacyRecheckVersion`,
+ *   or, with no content lock entry, only a hand edit that records no version.
  */
-function lockBlockers(task) {
+function lockBlockers(task, content = null) {
+  const out = content?.problem === 'same-version change' ? [CONTENT_FLAG] : [];
   const h = task.handEdited;
-  if (!h) return [];
+  if (!h) return out;
   const r = task.review?.recheck;
-  if (!r) return [HAND_EDIT_FLAG];
-  return Number.isInteger(h.version) && !(Number.isInteger(r.version) && r.version >= h.version) ? [HAND_EDIT_FLAG] : [];
+  const v = Number.isInteger(task.version) ? task.version : Number.isInteger(h.version) ? h.version : null;
+  let covered;
+  if (!r) covered = false;
+  else if (Number.isInteger(r.version)) covered = v === null || r.version >= v;
+  else if (content?.entry) covered = Number.isInteger(content.entry.legacyRecheckVersion) && v !== null && v <= content.entry.legacyRecheckVersion;
+  else covered = !Number.isInteger(h.version);
+  return covered ? out : [...out, HAND_EDIT_FLAG];
 }
 
 /**
@@ -69,6 +81,7 @@ function lockBlockers(task) {
 function readiness(packDir = PACK_DIR) {
   const schema = loadSchema('task');
   const out = [];
+  const content = new Map(contentLock.compare(packDir, contentLock.readLock(path.join(packDir, 'content-lock.json'))).map((c) => [c.id, c]));
   for (const batch of fs.readdirSync(packDir).filter((d) => /^t\d+$/.test(d)).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)))) {
     const dir = path.join(packDir, batch);
     const rows = [];
@@ -79,7 +92,7 @@ function readiness(packDir = PACK_DIR) {
       if (loadErrors.length) badFiles.push(f);
       const reasons = loadErrors.length ? [`fails the run loader (${loadErrors.length} error(s), first: ${loadErrors[0]})`] : [];
       const fix = fixReasons(task);
-      rows.push({ batch, id: task.id, file: path.join(batch, f), fix, reasons: [...reasons, ...dryRunReasons(task).filter((x) => !/^dry run lazy /.test(x)), ...fix.map((x) => `fix: ${x}`)], lockBlockers: lockBlockers(task) });
+      rows.push({ batch, id: task.id, file: path.join(batch, f), fix, reasons: [...reasons, ...dryRunReasons(task).filter((x) => !/^dry run lazy /.test(x)), ...fix.map((x) => `fix: ${x}`)], lockBlockers: lockBlockers(task, content.get(task.id) ?? null) });
     }
     for (const r of rows) {
       if (badFiles.length && !badFiles.includes(path.basename(r.file))) r.reasons.unshift(`batch folder fails the run loader (${badFiles.length} file(s), first ${badFiles[0]})`);
@@ -122,4 +135,4 @@ function cmdReady(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : render(rows));
 }
 
-module.exports = { readiness, dryRunReasons, fixReasons, lockBlockers, render, cmdReady, GATES, HAND_EDIT_FLAG };
+module.exports = { readiness, dryRunReasons, fixReasons, lockBlockers, render, cmdReady, GATES, HAND_EDIT_FLAG, CONTENT_FLAG };

@@ -1,7 +1,7 @@
 {
   "id": "t7-dev-breakdown",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "planning",
   "role": "developer",
   "questions": "allowed",
@@ -186,7 +186,7 @@
           "note": "A competent developer can read the request, fixture files (README, docs/requests/multi-currency-prices.md, estimate-guide.md, roadmap.csv, team-calendar.csv, work-items.csv), and create a correct plan. Different valid answers (other ticket names, orders) would still pass the key assertions."
         }
       ],
-      "version": 5
+      "version": 6
     }
   },
   "pilot": {
@@ -229,6 +229,6 @@
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   }
 }

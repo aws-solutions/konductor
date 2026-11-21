@@ -1,7 +1,7 @@
 {
   "id": "t8-rollout-ledger-migration",
   "class": "hard",
-  "version": 5,
+  "version": 6,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -165,14 +165,14 @@
           "note": "A competent SRE can derive the rollout plan from fixture files: read the canary failure in logs/ledger-canary.log, the migration steps in migrations/, the release notes, metrics catalog, and calendar. Different valid plans would still pass the key assertions."
         }
       ],
-      "version": 5
+      "version": 6
     }
   },
   "handEdited": {
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   },
   "pilot": {
     "scores": {

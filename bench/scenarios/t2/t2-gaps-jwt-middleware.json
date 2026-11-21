@@ -1,6 +1,6 @@
 {
   "id": "t2-gaps-jwt-middleware",
-  "version": 5,
+  "version": 6,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -176,14 +176,14 @@
           "note": "Security issues like algorithm confusion, time unit mismatch, token replay, role trust from token, token leakage in 401 responses are discoverable through JWT verification code review."
         }
       ],
-      "version": 5
+      "version": 6
     }
   },
   "handEdited": {
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   },
   "pilot": {
     "scores": {},

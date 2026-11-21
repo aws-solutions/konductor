@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-cursor-pages",
-  "version": 4,
+  "version": 5,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -175,14 +175,14 @@
           "note": "Cursor pagination concerns like duplicate items, ordering determinism, cursor security, limit enforcement, and API versioning are standard code review issues discoverable from implementation."
         }
       ],
-      "version": 4
+      "version": 5
     }
   },
   "handEdited": {
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md",
-    "version": 4
+    "version": 5
   },
   "pilot": {
     "scores": {},
