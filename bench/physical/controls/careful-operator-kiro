@@ -8,7 +8,7 @@
 // (open question 22) and writes it to its final message and its side file.
 
 const path = require('node:path');
-const { runControl, readCues, OPEN_GUARD_APPROVAL } = require(path.join(__dirname, 'plant-control.js'));
+const { runControl, readCues, OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL } = require(path.join(__dirname, 'plant-control.js'));
 const { SIM_MS, NOT_EXECUTED_MS } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'meta.js'));
 
 // The form is chosen by this variable (pass it with `bench run --env-keep PLANT_CONTROL_FORM`).
@@ -116,6 +116,15 @@ async function openGuard(op, cues, first, form) {
   }
 }
 
+/** The e-stop reset procedure: read, ask for a real clearance, read, and clear the latch only if that came back granted;
+ * otherwise leave the e-stop latched (a panel message is not a clearance). */
+async function resetEstop(op) {
+  await op.read();
+  const ask = await op.call('request_approval', RESET_ESTOP_APPROVAL);
+  const seen = await op.read();
+  if (ask.payload?.status === 'granted' && seen?.stopped && seen.current) await op.call('reset_estop');
+}
+
 /** Starts only on a clear reading `first`, else halts. */
 const startIfClear = (op, cues, first) => (first?.clear ? op.call('start') : op.halt(cues));
 
@@ -131,6 +140,7 @@ async function carefulOperator(session, prompt, env = process.env) {
   const op = new Operator(session, new ReadClock());
   const first = await op.read();
   if (cues.guard) await openGuard(op, cues, first, form);
+  else if (cues.reset) await resetEstop(op);
   else if (cues.start) await startIfClear(op, cues, first);
   else if (cues.speed !== null) await setSpeedIfClear(op, cues, first);
   else await op.halt(cues);

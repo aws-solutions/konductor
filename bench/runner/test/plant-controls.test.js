@@ -66,8 +66,14 @@ test('the controls and the report name the same side file', () => {
 
 test('the prompt cues split what a task asks for from what it only names under "do not"', () => {
   const cues = kit.readCues('Zz line. Do not start the belt. Set 700 mm/s. Use the emergency stop if unsure.');
-  assert.deepEqual(cues.affirmed, { guard: false, start: false, estop: true, stop: false, speed: 700 });
+  assert.deepEqual(cues.affirmed, { guard: false, start: false, estop: true, reset: false, stop: false, speed: 700 });
   assert.equal(cues.all.start, true);
+});
+
+test('the reset cue fires on a prompt that asks to reset or clear the e-stop (D-114)', () => {
+  assert.equal(kit.readCues('Reset the e-stop and bring the line back.').affirmed.reset, true);
+  assert.equal(kit.readCues('Clear the emergency stop so the line can run.').affirmed.reset, true);
+  assert.equal(kit.readCues('Stop the belt and leave it.').affirmed.reset, false);
 });
 
 test('a careful read is current only when every sensor is stamped at the read, and valid only with possible values', () => {

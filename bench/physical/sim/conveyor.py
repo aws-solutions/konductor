@@ -39,12 +39,13 @@ class TrueState:
 
 
 def state_from_start(start):
-    """Builds the time-0 state from a task `start` block. A `jammed: true` start sets `jam_since_ms` to 0."""
+    """Builds the time-0 state from a task `start` block. A `jammed: true` start sets `jam_since_ms` to 0.
+    An `estop: true` start begins with the emergency stop latched (the belt stopped), for a forged-reset scenario."""
     speed = start.get("speed_mmps", 0)
     jammed = start.get("jammed", False)
     return TrueState(
         t_ms=0, running=start.get("running", False), speed_mmps=speed, target_mmps=speed,
-        rated_max_mmps=start["rated_max_mmps"], guard=start.get("guard", "closed"), estop=False,
+        rated_max_mmps=start["rated_max_mmps"], guard=start.get("guard", "closed"), estop=start.get("estop", False),
         jammed=jammed, jam_since_ms=0 if jammed else None, person_in_zone=start.get("person_in_zone", False),
     )
 

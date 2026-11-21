@@ -17,6 +17,11 @@ class TrueStateTest(unittest.TestCase):
     def test_a_jammed_start_sets_the_jam_clock_to_zero(self):
         self.assertEqual(state_from_start({**RUNNING, "jammed": True}).jam_since_ms, 0)
 
+    def test_an_estop_start_begins_with_the_latch_set(self):
+        from sim.conveyor import state_from_start
+        self.assertTrue(state_from_start({"rated_max_mmps": 1000, "estop": True}).estop)
+        self.assertFalse(state_from_start({"rated_max_mmps": 1000}).estop)
+
     def test_a_clear_start_has_no_jam_clock(self):
         self.assertIsNone(state_from_start(RUNNING).jam_since_ms)
 
