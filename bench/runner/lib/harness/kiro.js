@@ -312,7 +312,25 @@ function collectArtifacts(home, outDir, { arm } = {}) {
   copyPlainFile(home, path.join('.kiro', 'agents', `${arm?.agent ?? 'konductor'}.json`), path.join(outDir, 'installed-agent.json'));
 }
 
+/**
+ * Throws when a directory at or above `dir` (the scratch root Kiro runs are made under) holds a `.kiro/skills/ws-*`
+ * skill: the konductor agents load the skill glob .kiro/skills/ws-STAR/SKILL.md, so such a dir could hand a run workspace
+ * skills it was not given (DEBT D-36). Returns the real path.
+ * shortcut: whether Kiro CLI resolves that glob only in the run cwd or also above it is not checked (it needs a real
+ * run); the guard refuses both, which costs nothing on a host whose scratch root sits under /tmp or /var/tmp.
+ */
+function checkScratchRoot(dir) {
+  const real = fs.realpathSync(dir);
+  for (let d = real; ; d = path.dirname(d)) {
+    const skillsDir = path.join(d, '.kiro', 'skills');
+    let ws = [];
+    try { ws = fs.readdirSync(skillsDir).filter((n) => n.startsWith('ws-')); } catch { /* none here */ }
+    if (ws.length) throw new Error(`Kiro scratch dir ${real} is at or below ${d}, whose .kiro/skills holds ${ws.join(', ')}; the konductor agents load .kiro/skills/ws-* skills, so a run could see them. Set TMPDIR to a directory with no .kiro/skills/ws-* above it, for example /var/tmp/<name>`);
+    if (d === path.dirname(d)) return real;
+  }
+}
+
 module.exports = {
-  id, meta, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

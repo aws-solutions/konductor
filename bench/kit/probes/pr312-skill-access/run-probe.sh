@@ -19,9 +19,9 @@ BUILD_REF=${BUILD_REF:?set BUILD_REF to the konductor ref to test (it must conta
 SOFT_CR=40 CEIL_CR=60
 MODE=${1:-run}
 OUT=$S/kiro
-# the kit's helpers (pins, quiet, take_lock, kiro_login, spent, soft_warn), minus its command switch
+# the kit's helpers (pins, quiet, take_lock, kiro_login, spent, soft_warn), not its command switch
 # shellcheck disable=SC1090
-source <(sed '/^cmd=\${1:-}/,$d' "$KIT_SRC/run-2x2-kiro.sh")
+source "$KIT_SRC/run-2x2-kiro.sh"   # the kit returns before its command switch when sourced
 set -euo pipefail
 
 if [ "$MODE" = --table ]; then python3 "$HERE/table.py" --run "$OUT"; exit 0; fi

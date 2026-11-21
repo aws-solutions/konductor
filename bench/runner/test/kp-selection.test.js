@@ -174,3 +174,18 @@ test('the fake model end to end: a wrong pick shows as a miss and as the skill p
   assert.deepEqual([r.result.triggerPrecision, r.result.triggerRecall], [2 / 3, 2 / 3]);
   assert.deepEqual(confusionCounts, { 'decoy-notes': 3 }, 'load-3 went to the decoy in all three repeats');
 });
+
+test('use in real sessions is its own field, apart from the selection-run use rate (K-6)', (t) => {
+  const { sessionUseOf } = require('../../cap/usage.js');
+  const { selectionProblems } = require('../../cap/kprecord.js');
+  const scan = { runs: [{ loads: { 'plan-review': { count: 1 } } }, { loads: {} }, { loads: {} }, { loads: { 'Plan-Review': {} } }] };
+  assert.deepEqual(sessionUseOf(scan, 'Plan-Review', 'past'), { rate: 0.25, runs: 4, loaded: 1, source: 'past' });
+  assert.equal(sessionUseOf({ runs: [] }, 'x', 'none'), null);
+  const tree = frozenTree(t);
+  const s = runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, runId: 'stub-sel', baselinesDir: tree.baselinesDir, measuredAt: '2026-11-21' });
+  assert.equal(s.result.sessionUse, null, 'not read without --usage-runs');
+  assert.equal(s.result.observedUseRate, 0.5, 'the selection-run share is unchanged');
+  assert.deepEqual(selectionProblems(s.result), []);
+  assert.deepEqual(selectionProblems({ ...s.result, sessionUse: { rate: 0.25, runs: 4, loaded: 1, source: 'past' } }), []);
+  assert.match(selectionProblems({ ...s.result, sessionUse: { rate: 2 } }).join(), /sessionUse must be null/);
+});

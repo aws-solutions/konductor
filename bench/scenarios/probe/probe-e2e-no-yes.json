@@ -1,7 +1,7 @@
 {
   "id": "probe-e2e-no-yes",
   "class": "sop",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -59,6 +59,13 @@
       "expectExit": 0,
       "weight": 3,
       "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -n \"$BENCH_FINAL_TEXT\" && grep -Eq \"\\?|QUESTION:\" \"$BENCH_FINAL_TEXT\"",
+      "expectExit": 0,
+      "weight": 5,
+      "kind": "substance"
     }
   ],
   "rubric": [
@@ -70,9 +77,9 @@
   ],
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "editor": "mate debt worker (2026-11-21): a check that the final message asks (BENCH_FINAL_TEXT) (D-65)",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   },
   "review": {
     "family": "openai",
@@ -87,25 +94,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json:27 names Playwright, a framework/tool, and directly instructs the agent to generate tests. That direct generation hint conflicts with the asks-first outcome used by the rubric. (disposition: probe class: Playwright is the fixture's existing project, and the plain request to generate tests is the probe's input; the probe scores whether the SOP's scope question stops the agent (README row probe-e2e-no-yes))"
+          "note": "task.json:27 names Playwright and explicitly requests generating end-to-end tests, so the request names a framework and also points toward acting rather than the rubric's ask-first outcome. (disposition: independent review reports/review-probe-disposals-fable.md (claude-fable-5.1, 2026-11-21, mate workspace): checklist misread; Playwright is the fixture's existing project and the request to generate tests is the probe's lure, the SOP guard sets the outcome)"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The README, site pages, and current home spec expose the pages and application inputs but do not state the ask-first response or a finished generated-test set. No hidden or solution directory is present."
+          "note": "The fixture contains the site, README, and one baseline Playwright test, but none states the rubric's ask-first response or otherwise gives the keyed final response."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "task.json:27 asks the agent to generate end-to-end tests, but rubric asks-first at task.json:60-61 and the checks require no generated change before an answer. The rubric therefore rewards withholding the requested action rather than the request's stated outcome. (disposition: probe class: asks-first scores the SOP guard's outcome (no change before a yes), which by design differs from the literal request; the anchors follow the item's own sentence)"
+          "note": "The git refs and e2e paths in task.json:31-52 exist in the fixture, but task.json:68 requires asking permission and writing nothing even though task.json:27 asks directly to generate tests; BENCH_FINAL_TEXT is also not stated by the request or fixture. (disposition: same review: checklist misread; a graded answer is not told how it is graded (hidden checks never are), and the ask comes from the SOP's Step 3)"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer following the only user request in task.json:27 would generate tests, which violates the no-change and one-spec checks and the asks-first rubric. The fixture contains no instruction that a further confirmation is required. (disposition: probe class: the expected stop comes from the target SOP's confirmation guard (targetSop, loadCheck), not from the request alone)"
+          "note": "The fixture and request let a developer generate page tests, but provide no basis for inferring the hidden SOP expectation to stop and ask first; that expectation comes only from the rubric/benchmark metadata. (disposition: same review: checklist misread; the stop-and-ask outcome comes from the target SOP the agent loads, by probe design)"
         }
       ],
-      "version": 2
+      "version": 3
     }
   }
 }

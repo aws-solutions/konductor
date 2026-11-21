@@ -233,3 +233,26 @@ The judge-vs-code edits of 2026-11-21 changed these tasks without a new version,
 
 Round 6 non-Claude recheck (2026-11-21, qwen3-coder-next, call Q1): t8-rollout-ledger-migration v6 passes 4 of 4, in
 `review.recheck`. The call read the content at v5; the D-150 bump to v6 changed only the version.
+
+## Key word forms from wave 8 (2026-11-21, mate debt worker, DEBT D-116)
+
+D-116 asked whether section scoring underrates good answers. Rechecking the wave 8 runs of the eight sectioned tasks
+with today's keys showed two key wording misses on runs the judges rated 100, both word forms, not the section rule:
+- `t8-dec-deploy-strategy` `revisit-capacity-threshold`: "Normal (30-day median) fleet CPU reaches 78%" was missed
+  because the item wanted utilisation, capacity, spare or headroom. It now also takes `CPU`.
+- `t8-oncall-alert-review` `stale-pool-metric` took "never fires" but not "Never fired"; `queue-duration` took
+  "for:" but not "for 0m" or "lasting 1 to 3 minutes". Both forms are added.
+After the fix the rerun scores 100 and 83.3 (one real miss left: RequestTimeoutRate kept as a page). Free gates:
+dec-deploy 100 / 0 / 25 / 100, oncall 100 / 0 / 33.3 / 100. Non-Claude recheck: pending (`handEdited.version`).
+
+## t8-dec-deploy-strategy v6 (2026-11-21, mate fixture-fix worker, claude; LITE note)
+
+`reports/lite-run-2026-11-21/notes-t8-dec-deploy-strategy.md`: nothing in the folder ruled rolling out, and
+`docs/compliance-note.md` ("stopping further exposure counts as containment") made a capped rolling plan arguable, so
+the canary gate turned a judgment split into a 0. New fixture file `deploy/fleet-updater.md`: the updater's in-place
+(rolling) mode drains a whole zone at once (18, 12 or 10 hosts), has no smaller batch, and a rollback is another full
+drain (p95 40 minutes). With `docs/capacity-report.md` (3.2 spare host-equivalents at the 80% ceiling) a 10-host zone
+drain does not fit, so rolling is out for a stated reason. The file names no other option. Key, prompt, checks and
+the existing files are unchanged. Gates: reference 100, stub 0, lazy 25, alt 100; a rolling answer (the reference
+with decision rolling) scores 0, failing the `decision-is-canary` gate. Non-Claude recheck: pending
+(`handEdited.version` 6). The LITE run reads its pinned copy, not this branch.

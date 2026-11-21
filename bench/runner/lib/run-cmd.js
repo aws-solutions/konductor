@@ -324,6 +324,8 @@ async function cmdRun(opts, deps = {}) {
   // Claude Code loads every .claude/skills above a run's cwd as project skills. Runs, trial installs and listing probes
   // all make their dirs under os.tmpdir(), so it must sit outside HOME with no .claude above it.
   if (isCc) cc.checkScratchRoot(os.tmpdir());
+  // The konductor agents load .kiro/skills/ws-* skills (D-36): no such dir may sit above the scratch root.
+  if (runtimes[0] === 'kiro-cli') require('./harness/kiro.js').checkScratchRoot(os.tmpdir());
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   // Pins python3 for the agent, the checks and the gateway (S6); refuses when tasks run Python and 3.12 is not found.

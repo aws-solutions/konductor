@@ -89,6 +89,20 @@ for (const kit of KITS) {
     assert.match(r.stderr, /split edited: hard-seat-holds listed DEV/);
   });
 
+  test(`${kit}: reads its pins and caps from its study file and refuses one with a constant left unset (D-49)`, () => {
+    const text = fs.readFileSync(path.join(KIT, kit), 'utf8');
+    for (const re of [/^KBIN_SHA=/m, /^PANEL=/m, /^CAP\d_CR=/m, /^SEED=/m]) assert.doesNotMatch(text, re, `${kit} still sets ${re}`);
+    const env = kit === 'run-2x2.sh' ? 'study-2x2.env' : 'study-2x2-kiro.env';
+    for (const name of ['KBIN_SHA', 'PANEL', 'RUN_CAP_USD']) {
+      const root = tmp();
+      const study = path.join(root, 'study.env');
+      fs.writeFileSync(study, fs.readFileSync(path.join(KIT, env), 'utf8').replace(new RegExp(`^${name}=.*$`, 'm'), `${name}=`));
+      const r = sh(kit, ['split-check'], { S: path.join(root, 's'), STUDY_ENV: study });
+      assert.equal(r.status, 2, name);
+      assert.match(r.stderr, new RegExp(`${name} is not set in`), name);
+    }
+  });
+
   test(`${kit}: with no S or KIT_DIR it refuses to start, and a bare call prints its usage`, () => {
     const none = sh(kit, ['split-check'], {});
     assert.notEqual(none.status, 0);
@@ -258,15 +272,20 @@ test('overnight scripts: --status needs only the study dir; every other mode nee
 });
 
 test('the kit keeps its spend caps and refusals (the approved numbers are not edited by accident)', () => {
+  // The approved caps live in each kit's study file since D-49.
+  const study = fs.readFileSync(path.join(KIT, 'study-2x2.env'), 'utf8');
+  const studyKiro = fs.readFileSync(path.join(KIT, 'study-2x2-kiro.env'), 'utf8');
+  for (const text of [study, studyKiro]) {
+    assert.match(text, /^CAP1_CR=80 CAP1_CC=13 CAP1_JUDGE=7/m);
+    assert.match(text, /^CAP2_CR=440 CAP2_CC=90 CAP2_JUDGE=40/m);
+    assert.match(text, /^RUN_CAP_USD=3$/m);
+  }
+  assert.match(studyKiro, /^CAP3_CR=390 CAP3_JUDGE=20 CEIL3_CR=396 CEIL3_JUDGE=129$/m);
   const full = fs.readFileSync(path.join(KIT, 'run-2x2.sh'), 'utf8');
-  assert.match(full, /CAP1_CR=80 CAP1_CC=13 CAP1_JUDGE=7/);
-  assert.match(full, /CAP2_CR=440 CAP2_CC=90 CAP2_JUDGE=40/);
-  assert.match(full, /RUN_CAP_USD=3/);
   assert.match(full, /ack_cc/);
   assert.match(full, /--allow-small-panel/, 'the comment that forbids it');
   assert.doesNotMatch(full, /--allow-small-panel[^)]/, 'the kit never passes --allow-small-panel');
   const kiro = fs.readFileSync(path.join(KIT, 'run-2x2-kiro.sh'), 'utf8');
-  assert.match(kiro, /CAP3_CR=390 CAP3_JUDGE=20 CEIL3_CR=396 CEIL3_JUDGE=129/);
   for (const text of [full, kiro]) {
     assert.match(text, /--isolate unshare/);
     // the words appear only in the refusal message that tells a person not to use them

@@ -256,3 +256,20 @@ test('in a merge task, a copy of reference text that is on no fixture branch is 
   const rows = byTask(pilotRows([w], { packDir: pack }));
   assert.match(rows['t11-merge2#1'].flags['answer-leak'], /cfg\.txt repeats/);
 });
+
+test('a played solution (PLAY.json step folders) is compared at the workspace path without the step prefix (D-148)', () => {
+  const root = tmp();
+  const pack = path.join(root, 'pack');
+  write(path.join(pack, 't12', 't12-mux.json'), json({ id: 't12-mux', prompt: 'Do it.', fixture: 't12-mux', hidden: 't12-mux', authorship: { model: 'gpt-5.6-luna' } }));
+  write(path.join(pack, 't12', 'fixtures', 't12-mux', 'src', 'inventory.js'), 'module.exports = {};\n');
+  write(path.join(pack, 't12', 'solutions', 't12-mux', 'PLAY.json'), json({ workers: [{ branch: 'mux-1', steps: ['MUX-1'] }] }));
+  write(path.join(pack, 't12', 'solutions', 't12-mux', 'MUX-1', 'src', 'inventory.js'), `${REF}\n`);
+  const w = path.join(root, 'w');
+  fakeRun(w, [
+    { task: 't12-mux', result: { checks: [tests(4, 8), sub(true)] }, files: { 'src/inventory.js': `${REF}\n` } },
+    { task: 't12-mux', rep: 2, result: { checks: [tests(4, 8), sub(true)] }, files: { 'src/inventory.js': 'module.exports = { own: true };\n' } },
+  ]);
+  const rows = byTask(pilotRows([w], { packDir: pack }));
+  assert.match(rows['t12-mux#1'].flags['answer-leak'], /src\/inventory\.js repeats 100% of the reference \(step MUX-1\)/);
+  assert.equal(rows['t12-mux#2'].flags['answer-leak'], undefined);
+});

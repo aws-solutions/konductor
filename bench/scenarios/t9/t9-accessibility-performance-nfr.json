@@ -1,7 +1,7 @@
 {
   "id": "t9-accessibility-performance-nfr",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "nfr",
   "role": "frontend",
   "questions": "allowed",
@@ -155,7 +155,35 @@
         "verdict": "pass",
         "note": "All hidden tests derive from stated requirements: radio group navigation (request says 'Tab reaches it, arrow keys change the choice'), live region count ('N orders shown, where N is every order that matches, not the rows on screen'), debounce (200ms, Enter at once, cancel pending), date validation tied to field. The request explicitly tells agent to reuse existing match helper and date parser, so day-first dates and accent folding are not hidden constraints."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "task.json:8 prescribes the implementation API and mechanism: `src/search.js` must expose `createSearch(...)`, and `schedule(fn, ms)` must provide cancellation. That is a method-specific instruction rather than only a desired outcome. (disposition: independent review reports/review-t9-accessibility-fable.md (claude-fable-5.1, 2026-11-21, mate workspace): checklist misread, no defect; the request names the interface the hidden tests and check 3 import (src/search.js createSearch, schedule returning a cancel), not a way of working)"
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "fixture/docs/architecture.md:21-22 tells the developer that new code should call the existing matching, date, and status helpers instead of reimplementing them. The fixture tests also spell out the accent-folding and every-word matching behavior in fixture/test/match.test.js:25-35, which the hidden search tests repeat. (disposition: independent review reports/review-t9-accessibility-fable.md (claude-fable-5.1, 2026-11-21, mate workspace): checklist misread, no defect; docs/architecture.md:21-22 and test/match.test.js describe the existing helpers the request says must behave as today, and none of the graded work is in the fixture)"
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden paths and behaviors are grounded in task.json:8 and the fixture: the search API and 200 ms delay are stated, the existing filter/date/match helpers are present, and the browser key accepts the accessible status-control variants described by the request. The expert key's report items follow the requested implementation and the explicit request to say what was left out."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A developer can implement the work from the request plus fixture/index.html, fixture/docs/architecture.md, and the existing pure helpers: the DOM controls, data flow, date formats, and matching rules are all available. The hidden browser checks allow different accessible status-control structures, while the required search API is explicitly part of the request."
+        }
+      ],
+      "version": 3
+    }
   },
   "pilot": {
     "scores": {},
@@ -174,8 +202,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate recheck worker (2026-11-21): request states the test count; two expert items take other details (round 6 recheck L8)",
+    "editor": "mate free-items worker (2026-11-21): hidden browser test accepts any accessible single-choice status control (D-154)",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   }
 }

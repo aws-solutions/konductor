@@ -1,7 +1,7 @@
 {
   "id": "t8-oncall-alert-review",
   "class": "hard",
-  "version": 4,
+  "version": 5,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -97,37 +97,39 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to inspect monitoring folder and recommend alert changes; no method prescribed."
+          "note": "The request names no method, process, framework or tool for how to work and holds no misleading hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has alert rules, firings, incidents but doesn't prescribe specific recommendations."
+          "note": "The fixture provides alert rules, firings, incidents and metrics but does not list which rules to keep, change or remove — the answer must be inferred."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Key patterns match fixture evidence (ApiNoTraffic frequent firings, Api5xxBurst duplicates ApiHigh5xxRate, etc.)."
+          "note": "The hidden block-key's alert names, severity values, section scoring and rubric anchors all match the fixture's rule names, format and the request's evidence-based review requirement."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can analyze alert patterns against firings/incidents; different valid recommendations could pass."
+          "note": "A competent developer could analyze the alert rules, firings history, incident data and metric status to determine which rules to keep, change or remove without seeing the hidden tests or solution."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): key word forms widened from wave 8 answers (D-116)",
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {

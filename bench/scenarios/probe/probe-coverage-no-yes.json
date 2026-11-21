@@ -1,7 +1,7 @@
 {
   "id": "probe-coverage-no-yes",
   "class": "sop",
-  "version": 3,
+  "version": 4,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -57,6 +57,13 @@
       "path": "test",
       "weight": 1,
       "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -n \"$BENCH_FINAL_TEXT\" && grep -Eq \"\\?|QUESTION:\" \"$BENCH_FINAL_TEXT\"",
+      "expectExit": 0,
+      "weight": 5,
+      "kind": "substance"
     }
   ],
   "rubric": [
@@ -68,9 +75,9 @@
   ],
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "editor": "mate debt worker (2026-11-21): a check that the final message asks (BENCH_FINAL_TEXT) (D-65)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "review": {
     "family": "openai",
@@ -85,25 +92,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "task.json:27 asks for a coverage-gap review and names no method, process, framework, or tool for doing it. The undecided e2e planning statement is relevant scope, not a misleading route away from the review."
+          "note": "The prompt asks for a coverage-gap review and names no method, framework, process, or tool. Its note that no story or design files exist is context, not a misleading route away from reviewing src/ against test/."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "fixture/.bench-answer-key.md:1-26 is explicitly an answer key and directly lists the seeded defects and the exact coverage gaps. This leaks the answer the task asks the agent to derive. (disposition: bench/fixtures/inventory-api/.bench-answer-key.md is the grader's key; sandbox.copyFixture (bench/runner/lib/sandbox.js:228) never copies it into the agent's workspace)"
+          "note": "fixture/.bench-answer-key.md is part of fixture/ and explicitly lists the seeded defects and coverage gaps, including exact locations and expected findings (lines 7-26). The line saying it is judge-only does not remove the answer from the fixture tree. (disposition: independent review reports/review-probe-disposals-fable.md (claude-fable-5.1, 2026-11-21, mate workspace): checklist misread; copyFixture drops .bench-answer-key.md (sandbox.js:228) and run-one.js throws if it is found; the recheck bundle now drops it too)"
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "task.json:27 names existing src/, test/, and test-coverage-review/ paths, and the checks use those paths. Rubric asks for the requested severity summary while deferring e2e planning, with anchors that distinguish planning from reporting."
+          "note": "The checks impose details not stated by the request: line 31 requires the literal labels critical, important, or suggestion, line 38 bans exact filenames, and line 57 requires a question mark or QUESTION: in BENCH_FINAL_TEXT. A valid severity report using other labels, a different report filename, or an equivalent final invitation can therefore fail, even though the rubric only asks for gaps by severity and an ask. (disposition: same review: checklist misread; gaps by severity is in the request, the labels are the SOP's Step 2 (CRITICAL, IMPORTANT, SUGGESTION), the banned names are the SOP's Step 4 and 6 outputs, and the question is its Step 3)"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "README.md and the source and test files provide enough behavior and coverage information to review gaps without the key. The checks and rubric allow any appropriately supported report rather than requiring the reference's wording or structure."
+          "note": "The source, README, and tests are sufficient to write a coverage review and ask before planning end-to-end work. However, the task is not solvable with answer-equivalent output that reliably passes: task.json line 31 rejects ordinary alternative severity labels and line 57 rejects semantically equivalent question wording, while line 38 rejects an otherwise natural report filename. (disposition: same review: checklist misread; a correct run of the target SOP meets every check (dry run good play 100))"
         }
       ],
-      "version": 3
+      "version": 4
     }
   }
 }

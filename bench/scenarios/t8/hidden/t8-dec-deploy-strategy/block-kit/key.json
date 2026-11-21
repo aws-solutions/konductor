@@ -141,7 +141,7 @@
       "match": {
         "all": [
           "78 ?%",
-          "utili[sz]ation|capacity|spare|headroom"
+          "utili[sz]ation|capacity|spare|headroom|\\bCPU\\b"
         ]
       },
       "section": "decision"

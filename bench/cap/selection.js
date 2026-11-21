@@ -147,15 +147,18 @@ function scoreRun(results, name) {
  * @param {string} [o.measuredAt] the date (YYYY-MM-DD)
  * @returns {object} { triggerPrecision, triggerRecall, observedUseRate, requests, runs, failedLoads, frozen, requestsSha256,
  *   unitSha256, source, measuredAt }. Precision is null when no request loaded the skill (nothing to be precise
- *   about). observedUseRate is the share of all runs, both kinds of request, that loaded the skill.
+ *   about). observedUseRate is the share of the selection runs, both kinds of request, that loaded the skill; it is
+ *   never use in real sessions. `sessionUse` ({ rate, runs, loaded, source } from usage.js sessionUseOf over past real
+ *   runs, or null) is that, kept in its own field so the two are never mixed (DEBT K-6).
  */
-function selectionResult({ scored, set, setSha256, frozen, unitSha256, source, measuredAt = new Date().toISOString().slice(0, 10) }) {
+function selectionResult({ scored, set, setSha256, frozen, unitSha256, source, measuredAt = new Date().toISOString().slice(0, 10), sessionUse = null }) {
   const { score, rows } = scored;
   return {
     triggerPrecision: score.precision.value, triggerRecall: score.recall.value,
     observedUseRate: rows.filter((r) => r.hit).length / rows.length,
     requests: { load: set.requests.filter((r) => r.expect === 'load').length, none: set.requests.filter((r) => r.expect === 'none').length },
     runs: rows.length, failedLoads: scored.failedLoads, frozen, requestsSha256: setSha256, unitSha256, source, measuredAt,
+    sessionUse,
   };
 }
 

@@ -174,6 +174,35 @@
         },
         "panelRulesDate": {
           "type": "string"
+        },
+        "inputs": {
+          "description": "sha256 of each further input the verdict rests on (judge prompts, family map, control files, selection scorer); a record whose input changed is stale (DEBT K-4). Absent on records made before 2026-11-21.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "judgePrompts",
+            "familyMap",
+            "controls",
+            "selectionPolicy"
+          ],
+          "properties": {
+            "judgePrompts": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "familyMap": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "controls": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "selectionPolicy": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
         }
       }
     },
@@ -349,6 +378,38 @@
         "measuredAt": {
           "type": "string",
           "minLength": 1
+        },
+        "sessionUse": {
+          "description": "Load share of the skill in past real runs (cap select --usage-runs), apart from observedUseRate over selection runs (DEBT K-6); null when not read.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "rate",
+            "runs",
+            "loaded",
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "runs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "loaded": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source": {
+              "type": "string"
+            }
+          }
         }
       }
     },

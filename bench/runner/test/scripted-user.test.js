@@ -126,6 +126,17 @@ test('Kiro CLI: checks of a scripted task read the conversation from BENCH_CONVE
   } finally { s.cleanup(); }
 });
 
+test('Kiro CLI: checks read the final message from BENCH_FINAL_TEXT, a file outside the workspace (D-65)', async () => {
+  const s = kiroSetup({ turns: [{ finalText: DONE, credits: 1 }] });
+  try {
+    const probe = "const f=process.env.BENCH_FINAL_TEXT;process.exit(f&&!require('path').resolve(f).startsWith(process.cwd())&&require('fs').readFileSync(f,'utf8')===process.argv[1]?0:1)";
+    const task = { ...s.task, checks: [{ type: 'cmd', cmd: `node -e "${probe}" '${DONE.replace(/'/g, "'\\''")}'` }] };
+    const r = await executeRun({ arm: ARM, task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir, inFlightAtStart: 0 });
+    assert.equal(r.status, 'success', r.error);
+    assert.equal(r.checks[0].passed, true, r.checks[0].detail);
+  } finally { s.cleanup(); }
+});
+
 test('Kiro CLI: an agent that never asks is one turn and every fact stays locked', async () => {
   const s = kiroSetup({ turns: [{ finalText: DONE, credits: 1 }] });
   try {

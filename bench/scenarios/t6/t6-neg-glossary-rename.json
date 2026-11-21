@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-glossary-rename",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -130,50 +130,72 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates honest summary, reader fit, and no-padding without requiring a methodology. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json prompt names the requested files, terms, JSON shapes, and preservation constraints but does not prescribe a method or identify hidden traps.)."
+          "note": "Prompt specifies what to update (glossary entry and PRD metrics table) but names no method, process, framework, or tool for how to work. No misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors reference the rename task (Workspace to Project, metrics table only, PRD context unchanged) which is in the request; not a giveaway. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/docs/glossary.md and fixture/docs/product-prd.md show the current Workspace wording and metric facts, not the requested Project answers; no fixture file lists hidden findings or expected outputs.)."
+          "note": "Fixture contains original Workspace terminology. No Project terminology or finished behavior described. Unchanged references like 'desk workspace' and 'workspaceId' remain as is."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly reference request scope: glossary entry and PRD metrics table only, previous_term kept in JSON, other sections unchanged. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/docs/glossary.md lines 5-17 contain the current term, definition, and previous_term field, while fixture/docs/product-prd.md lines 21-49 contain all three metric names, definitions, baselines, targets, and term_change values that the rename updates without changing facts.)."
+          "note": "Hidden tests check for Project terminology, renamed status, unchanged sections. Checks verify file existence, JSON blocks, specific patterns. Rubric anchors reward requested outcome, follow criteria."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different prose in glossary definition can still Pass if the term change is correct, previous_term is kept, and metrics table uses Project. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json gives precise file-scope and JSON-shape constraints, and fixture/docs/glossary.md plus fixture/docs/product-prd.md provide the complete source wording and metric values needed to perform the rename while preserving the PRD context and requirements sections.)."
+          "note": "Clear request to rename Workspace to Project in specific files/sections. Fixture shows current state. JSON block shapes specified. Different correct implementations would pass tests."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): the three shape tests count only once the rename is made (D-143)",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 15.3,
+    "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
-      "stub": 15.3,
+      "stub": 0,
       "lazy": 30.6,
       "alt": 94.9,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

@@ -186,6 +186,17 @@ function branchTexts(fixDir, rel) {
  * fixture's file of the same name (on disk or on any of its branches), and the share of them found in the run's file
  * of that name.
  */
+/**
+ * The reference files of a solution dir and the workspace path each lands on. A played solution (PLAY.json, the T12
+ * worker tasks) keeps each step's files under a step folder (MUX-1/src/inventory.js); the run's workspace holds them
+ * without the step prefix (src/inventory.js), so the step folder is dropped (DEBT D-148).
+ */
+function referenceFiles(sol) {
+  if (!fs.existsSync(path.join(sol, 'PLAY.json'))) return walkFiles(sol).map((rel) => ({ refFile: path.join(sol, rel), rel, label: '' }));
+  const steps = fs.readdirSync(sol, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  return steps.flatMap((step) => walkFiles(path.join(sol, step)).map((rel) => ({ refFile: path.join(sol, step, rel), rel, label: ` (step ${step})` })));
+}
+
 function copiedReference(runDir, entry) {
   if (!entry) return [];
   const sol = path.join(entry.dir, 'solutions', entry.task.id);
@@ -193,8 +204,8 @@ function copiedReference(runDir, entry) {
   const ws = path.join(runDir, 'workspace');
   if (!fs.existsSync(sol) || !fs.existsSync(ws)) return [];
   const out = [];
-  for (const rel of walkFiles(sol)) {
-    const ref = readText(path.join(sol, rel));
+  for (const { refFile, rel, label } of referenceFiles(sol)) {
+    const ref = readText(refFile);
     const got = readText(path.join(ws, rel));
     if (ref === null || got === null) continue;
     // Only text the reference ADDS counts as its own: lines that are not in the fixture's copy of the file. A fix that
@@ -211,7 +222,7 @@ function copiedReference(runDir, entry) {
     if (own.length < COPY_MIN_SHINGLES) continue;
     const have = shingles(got);
     const share = own.filter((s) => have.has(s)).length / own.length;
-    if (share >= COPY_SHARE) out.push(`${rel} repeats ${Math.round(share * 100)}% of the reference`);
+    if (share >= COPY_SHARE) out.push(`${rel} repeats ${Math.round(share * 100)}% of the reference${label}`);
   }
   return out;
 }
