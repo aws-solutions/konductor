@@ -41,6 +41,7 @@ import {
 import { EditAlerts } from '../designer/EditAlerts';
 import { SaveControls } from '../designer/SaveControls';
 import type { Editor } from '../designer/use-editor';
+import type { LoadedWorkflow } from '../workflow/load-workflow';
 import type { Scheduler } from '../execution/core/ports';
 import { buildGraph, stageNodeId } from '../graph';
 import '../execution/announcements.css';
@@ -206,10 +207,12 @@ function shortcutKeyOf(event: KeyboardEvent): ShortcutKey {
  * the editor has no way to take a whole text, so the YAML tab checks the
  * text and shows what is wrong with it. Undo and redo step through the texts
  * of this session and show them; the workflow changes only through the keys
- * of a stage.
+ * of a stage. Those texts belong to the load in `loaded`: another load is
+ * another workflow, and the history starts over for it.
  */
 export function DesignView({
   editor,
+  loaded,
   harness,
   validate,
   scheduler,
@@ -217,6 +220,12 @@ export function DesignView({
   agents = KNOWN_AGENTS,
 }: {
   editor: Editor;
+  /**
+   * The load the editor was opened with, read by its identity alone: another
+   * one is another workflow, whatever its name, its hash or its text, and the
+   * undo history starts over for it.
+   */
+  loaded: LoadedWorkflow;
   /** The harness that runs the stages, shown on each stage. */
   harness: string;
   /** Checks a text, as `POST /api/validate` does. */
@@ -245,18 +254,19 @@ export function DesignView({
   });
   const { record, reset } = history;
   const { edit } = draft;
-  // Which workflow the history is of: the file, and the version of it the
-  // page loaded. A save gives the next version of the same file, and the text
-  // it wrote is in the history already, so that keeps it; another workflow,
-  // or the file loaded again, starts the history over, because its texts are
-  // of a draft that is gone.
-  const opening = `${state.saved.name}\u0000${state.saved.hash}`;
-  const held = useRef(opening);
+  // The history holds the texts of one draft, so it is of the load that
+  // opened that draft. The load the page hands over says which: a save gives
+  // the next version of the same file under the same load, and the file
+  // loaded again stays under it too, while another workflow is another load
+  // and the texts of the one before it are gone with its draft. The name, the
+  // hash and the text cannot stand in for it, because two workflows can hold
+  // the same bytes under the same name.
+  const held = useRef(loaded);
   useEffect(() => {
-    if (held.current === opening) return;
-    held.current = opening;
-    if (savedText !== sent) reset(savedText);
-  }, [opening, savedText, sent, reset]);
+    if (held.current === loaded) return;
+    held.current = loaded;
+    reset(savedText);
+  }, [loaded, savedText, reset]);
   // The draft opens its text unchecked, so the keys of a stage are read from
   // a check of the file as it was loaded, and where each stage of the draft
   // came from in that same file is read beside it.

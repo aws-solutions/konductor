@@ -7,6 +7,7 @@ import type { WorkflowDocument } from '../api/types';
 import type { StageFieldRule } from '../designer-view/field-rules';
 import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
 import { useEditor, type Editor } from '../designer/use-editor';
+import { textOf } from '../designer/core';
 import { SaveConflict, SaveLost, SessionLost } from '../designer/core/ports';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
@@ -281,6 +282,7 @@ function Harness({
   return (
     <DesignView
       editor={editor}
+      loaded={workflowRef}
       harness="kiro-cli"
       validate={validate}
       scheduler={scheduler}
@@ -715,6 +717,45 @@ describe('DesignView, undo and redo', () => {
     await openYaml();
     expect(panelOf('YAML').textContent).toContain('name: package');
     expect(panelOf('YAML').textContent).not.toContain('drafting');
+  });
+
+  it('starts the history over for another workflow that reads the same', async () => {
+    // Two workflows can hold the same bytes under the same name, so the
+    // history goes by the load the page opened, not by what it reads.
+    const { open } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await open({ ...HELLO_DOCUMENT });
+    await settle();
+
+    expect(isOff(button('Undo'))).toBe(true);
+    await openYaml();
+    expect(panelOf('YAML').textContent).not.toContain('drafting');
+  });
+
+  it('starts the history over for another workflow after a save that failed', async () => {
+    const { open, edits, editorOf } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    const sent = textOf(editorOf().state);
+    edits.save.mockRejectedValue(new Error('The server said no.'));
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+    await settle();
+
+    // The workflow opened next holds the very text that save sent, which is
+    // no reason to keep the history of the one it replaced.
+    await open({ ...HELLO_DOCUMENT, text: sent, hash: 'e'.repeat(64) });
+    await settle();
+
+    expect(isOff(button('Undo'))).toBe(true);
+    await openYaml();
+    expect(panelOf('YAML').textContent).toContain('name: drafting');
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
   });
 
   it('keeps the history through a save of the same workflow', async () => {
