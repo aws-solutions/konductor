@@ -60,7 +60,8 @@ test('full: every section, every chart well-formed, and the existing text tables
   const s = setup({ specs: three(), judged: true });
   try {
     const out = path.join(s.root, 'o');
-    const r = s.cli(['report', '--run', s.runDir, '--bench-dir', s.bench, '--out', out]);
+    // The legacy tables read the stored (lenient) verdicts, so the page is built under the lenient profile to compare them.
+    const r = s.cli(['report', '--run', s.runDir, '--bench-dir', s.bench, '--out', out, '--scoring', path.join(__dirname, '..', '..', 'profiles', 'scoring-lenient-quotes.json')]);
     assert.equal(r.status, 0, r.stderr);
     const md = read(out, 'report.md');
     for (const h of ['## Diligence scorecard', '## Scores with components', '## Cost and effort by arm', '## Per task', '## Judges', '## Spend', '## Appendix: provenance and how to reproduce', '## Detailed tables']) assert.ok(md.includes(h), h);

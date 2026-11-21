@@ -40,3 +40,17 @@ test('a judge pass refuses the paraphrase rule; a scoring profile selects it', (
   assert.equal(checkRule('paraphrase'), 'paraphrase');
   assert.equal(quoteRuleOf(loadScoring(path.join(__dirname, '..', '..', 'profiles', 'scoring-paraphrase.json'))), 'paraphrase');
 });
+
+test('the paraphrase view falls back to the recorded lenient view when the output cannot be rebuilt', () => {
+  const { viewJudgments } = require('../../judge/views.js');
+  const crit = { id: 'c1', verdict: 'pass', verdictRaw: 'pass', verdictScored: 'pass', evidence: 'x', evidenceFound: true, verdictStrict: 'partial', verdictLenient: 'pass', quoteFound: { strict: false, lenient: true } };
+  const rec = { kind: 'rubric', judge: 'j1', armId: 'a', taskId: 't1', replicate: 1, score: 1, scoreStrict: 0.5, scoreLenient: 1, criteria: [crit] };
+  // No run entry, so no workspace to rebuild from.
+  const run = { judgments: { rubric: [rec] }, runs: [] };
+  const tasks = new Map([['t1', { id: 't1', rubric: [{ id: 'c1', weight: 1, criterion: 'c' }] }]]);
+  const v = viewJudgments(run, 'paraphrase', { tasks });
+  assert.equal(v.rule, 'lenient');
+  assert.equal(v.fellBack, 1);
+  assert.equal(v.judgments.rubric[0].score, 1);
+  assert.equal(v.judgments.rubric[0].criteria[0].verdict, 'pass');
+});

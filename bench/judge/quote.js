@@ -52,7 +52,10 @@ const MAX_UNSUPPORTED_LETTERS = 20; // a quote with this many letters or more th
 // A judge pass records the strict and lenient views; 'paraphrase' is a report-time view rebuilt from the saved outputs.
 const JUDGE_QUOTE_RULES = ['strict', 'lenient'];
 const QUOTE_RULES = [...JUDGE_QUOTE_RULES, 'paraphrase'];
-const DEFAULT_QUOTE_RULE = 'lenient';
+// The rule reports and scores use by default (owner decision 2026-11-20: paraphrase, a scoring-policy change before the
+// study freeze). A judge pass records the strict and lenient views and fills its older fields with DEFAULT_JUDGE_QUOTE_RULE.
+const DEFAULT_QUOTE_RULE = 'paraphrase';
+const DEFAULT_JUDGE_QUOTE_RULE = 'lenient';
 const RULE_TEXT = {
   strict: 'strict (every segment between ellipses must appear in the output, in order)',
   lenient: `lenient (tightened: quotes with ${MAX_UNSUPPORTED_LETTERS} or more unsupported letters are rejected)`,
@@ -167,7 +170,7 @@ function paraphraseMatch(outputText, evidence) {
 
 // Returns quote => boolean for one output; the output is normalized once. `lenient` also accepts the cases above; the
 // strict rule is tried first, so a quote the strict rule accepts is never refused. The argument defaults to strict so a
-// caller that wants the pack's rule says nothing; the judge passes the rule it resolved (DEFAULT_QUOTE_RULE unless told).
+// caller that wants the pack's rule says nothing; the judge passes the rule it resolved (DEFAULT_JUDGE_QUOTE_RULE unless told).
 // `paraphrase` (implies lenient) also accepts a faithful restatement (paraphraseMatch).
 function makeQuoteMatcher(outputText, { lenient = false, paraphrase = false } = {}) {
   const haystack = normalize(outputText);
@@ -181,4 +184,4 @@ function makeQuoteMatcher(outputText, { lenient = false, paraphrase = false } = 
   };
 }
 
-module.exports = { makeQuoteMatcher, paraphraseMatch, normalize, segmentsOf, unsupportedLetters, wordsOf, FRAGMENT_MIN_CHARS, INNER_QUOTE_MIN_CHARS, MAX_UNSUPPORTED_LETTERS, QUOTE_RULES, JUDGE_QUOTE_RULES, DEFAULT_QUOTE_RULE, RULE_TEXT };
+module.exports = { makeQuoteMatcher, paraphraseMatch, normalize, segmentsOf, unsupportedLetters, wordsOf, FRAGMENT_MIN_CHARS, INNER_QUOTE_MIN_CHARS, MAX_UNSUPPORTED_LETTERS, QUOTE_RULES, JUDGE_QUOTE_RULES, DEFAULT_QUOTE_RULE, DEFAULT_JUDGE_QUOTE_RULE, RULE_TEXT };

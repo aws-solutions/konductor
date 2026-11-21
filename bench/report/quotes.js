@@ -18,20 +18,32 @@ function applyQuoteRule(run, tasks, rule) {
   if (run.judgmentsStored === undefined) run.judgmentsStored = run.judgments;
   const v = viewJudgments(run, rule, { tasks });
   run.judgments = v.judgments;
-  const state = v.records === 0 ? 'none' : v.missing === 0 ? 'full' : v.missing === v.records && rule === 'lenient' ? 'strict-only' : 'partial';
-  run.quoteView = { requested: rule, rule: v.rule, text: RULE_TEXT[v.rule], state, records: v.records, switched: v.switched, rebuilt: v.rebuilt, missing: v.missing };
+  const state = stateOf(v.records, v.missing, rule, v.fellBack);
+  run.quoteView = { requested: rule, rule: v.rule, text: RULE_TEXT[v.rule], state, records: v.records, switched: v.switched, rebuilt: v.rebuilt, missing: v.missing, fellBack: v.fellBack ?? 0 };
   return run.quoteView;
 }
 
 const STRICT_ONLY = 'strict only: lenient view needs judge --rescore-quotes';
+const LENIENT_ONLY = 'lenient only: the paraphrase view needs the run workspaces';
+// 'none', 'full', 'partial', 'strict-only' (a non-strict rule fell back to strict on every record) or 'lenient-only'
+// (paraphrase fell back to the recorded lenient view on every record).
+function stateOf(records, missing, rule, fellBack = 0) {
+  if (records === 0) return 'none';
+  if (missing === 0) return 'full';
+  if (missing === records && rule === 'paraphrase' && fellBack === missing) return 'lenient-only';
+  if (missing === records && rule !== 'strict') return 'strict-only';
+  return 'partial';
+}
 
 /** The line every report page opens with. `tail` finishes the sensitivity sentence ("see the table below", or the numbers). */
 function ruleLine(quote, tail) {
   const other = otherRule(quote.requested);
-  const cap = other === 'strict' ? 'Strict' : 'Lenient';
+  const cap = other.charAt(0).toUpperCase() + other.slice(1);
   if (quote.state === 'strict-only') return `Evidence-quote rule: ${STRICT_ONLY}. ${cap} sensitivity: not available.`;
+  if (quote.state === 'lenient-only') return `Evidence-quote rule: ${LENIENT_ONLY}. ${cap} sensitivity: not available.`;
+  const fallback = quote.requested === 'paraphrase' ? LENIENT_ONLY : STRICT_ONLY;
   const lead = quote.state === 'partial'
-    ? `Evidence-quote rule: ${RULE_TEXT[quote.requested]} for ${quote.records - quote.missing} of ${quote.records} rubric records; ${STRICT_ONLY} for the other ${quote.missing}.`
+    ? `Evidence-quote rule: ${RULE_TEXT[quote.requested]} for ${quote.records - quote.missing} of ${quote.records} rubric records; ${fallback} for the other ${quote.missing}.`
     : `Evidence-quote rule: ${RULE_TEXT[quote.requested]}.`;
   return `${lead} ${cap} sensitivity: ${tail}`;
 }
@@ -92,8 +104,10 @@ function mergeQuote(quotes) {
   if (quotes.length === 1) return first;
   const records = quotes.reduce((n, q) => n + q.records, 0);
   const missing = quotes.reduce((n, q) => n + q.missing, 0);
-  const state = records === 0 ? 'none' : missing === 0 ? 'full' : missing === records && first.requested === 'lenient' ? 'strict-only' : 'partial';
-  return { ...first, state, rule: state === 'strict-only' ? 'strict' : first.requested, text: RULE_TEXT[state === 'strict-only' ? 'strict' : first.requested], records, switched: quotes.reduce((n, q) => n + q.switched, 0), rebuilt: quotes.reduce((n, q) => n + q.rebuilt, 0), missing };
+  const fellBack = quotes.reduce((n, q) => n + (q.fellBack ?? 0), 0);
+  const state = stateOf(records, missing, first.requested, fellBack);
+  const rule = state === 'strict-only' ? 'strict' : state === 'lenient-only' ? 'lenient' : first.requested;
+  return { ...first, state, rule, text: RULE_TEXT[rule], fellBack, records, switched: quotes.reduce((n, q) => n + q.switched, 0), rebuilt: quotes.reduce((n, q) => n + q.rebuilt, 0), missing };
 }
 
 /**
@@ -140,4 +154,4 @@ function passSensitivity(v, o) {
   return { available: true, rule, other, arms, anyDifferent: arms.some((a) => !a.same) };
 }
 
-module.exports = { applyQuoteRule, ruleLine, compareViews, mergeQuote, platformSensitivity, passSensitivity, STRICT_ONLY };
+module.exports = { applyQuoteRule, ruleLine, compareViews, mergeQuote, platformSensitivity, passSensitivity, STRICT_ONLY, LENIENT_ONLY };

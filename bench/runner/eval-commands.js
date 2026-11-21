@@ -22,7 +22,7 @@ const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging, planJudging } = require('../judge/run.js');
 const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
 const { checkRule } = require('../judge/views.js');
-const { DEFAULT_QUOTE_RULE, RULE_TEXT } = require('../judge/quote.js');
+const { DEFAULT_JUDGE_QUOTE_RULE, JUDGE_QUOTE_RULES, RULE_TEXT } = require('../judge/quote.js');
 const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
@@ -233,7 +233,7 @@ const packOf = (opts) => (opts['criteria-pack'] === undefined ? null : loadPack(
 
 async function cmdJudge(opts) {
   if (opts['rescore-quotes']) return cmdRescoreQuotes(opts);
-  const quoteRule = checkRule(flagValue(opts, 'quote-match') ?? DEFAULT_QUOTE_RULE);
+  const quoteRule = checkRule(flagValue(opts, 'quote-match') ?? DEFAULT_JUDGE_QUOTE_RULE, '--quote-match', JUDGE_QUOTE_RULES);
   const { runDir, benchDir, run, judges, small } = judgePanelFor(opts);
   const packName = opts['criteria-pack'];
   if (packName !== undefined) {
@@ -278,7 +278,7 @@ async function cmdJudge(opts) {
     process.exitCode = 3;
   }
   reportCallerStop(caller);
-  console.log(`evidence-quote rule recorded as the default: ${RULE_TEXT[quoteRule]}; the other rule's verdicts are recorded beside it`);
+  console.log(`evidence-quote rule recorded as the default: ${RULE_TEXT[quoteRule]}; the other rule's verdicts are recorded beside it; reports score with the paraphrase rule unless their scoring file names another`);
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);
 }
 

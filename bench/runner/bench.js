@@ -113,7 +113,7 @@ const USAGE = `Usage:
        On either source, 3 calls in a row that fail on their credentials stop the pass: the remaining calls are recorded as skipped and the command exits 3)
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
        Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/docs/quality-pack.md)
-       (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both
+       (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict; reports score with paraphrase, rebuilt from the outputs, unless the scoring file names another rule. Both rules are applied to every criterion and both
        verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
        fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
        between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json), "lenient", or "paraphrase" (profiles/scoring-paraphrase.json: lenient, or a restatement whose figures and most words are in the output, rebuilt from the saved outputs))
@@ -171,7 +171,7 @@ const USAGE = `Usage:
        [--allow-stale-pack]
        (--criteria-pack quality adds a Quality dimensions table from judgments-quality.json; it is indicative and not part of quality /100.
        --scoring profiles/scoring-all.json scores the checks component as 1 only when every check passed (the old rule); the default is the weighted share of substance checks.
-       The evidence-quote rule is lenient (tightened) unless the scoring file says "quotes": "strict" (profiles/scoring-strict-quotes.json, which reproduces the numbers of earlier reports).
+       The evidence-quote rule is paraphrase (lenient, or a faithful restatement; the default since 2026-11-20) unless the scoring file says "quotes": "lenient" (profiles/scoring-lenient-quotes.json) or "strict" (profiles/scoring-strict-quotes.json, which reproduces the numbers of earlier reports).
        Every page names the rule on its first lines, and a full report, a contrast, report-2x2 and both verdicts show the other rule beside it.
        --profile sets the default detail (quick or full), adds a check of the run against the profile and, for detailed, writes calibration-sample.json and .md.
        --verdict platform writes verdict.md, verdict.html and verdict.json: one page with keep, discard or not enough evidence for each arm against the baseline,

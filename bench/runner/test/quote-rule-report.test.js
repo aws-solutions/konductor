@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The evidence-quote rule in reports: lenient is the default, strict is selectable and reproduces the earlier numbers, every
-// page names the rule, and the strict view is shown beside the default. In-process; no bench.js, no model.
+// The evidence-quote rule in reports: paraphrase is the default (2026-11-20), lenient and strict are selectable and lenient
+// and strict reproduce the earlier numbers, every page names the rule, and the other view is shown beside the one in use.
+// The lenient/strict mechanics below run under the lenient profile. In-process; no bench.js, no model.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,26 +28,29 @@ const { qualityBlocks, PACK_QUOTE_LINE } = require('../../report/quality.js');
 const PROFILES = path.join(__dirname, '..', '..', 'profiles');
 const cleanup = (root) => fs.rmSync(root, { recursive: true, force: true });
 const LENIENT_LINE = 'Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity:';
+const LENIENT_FILE = path.join(__dirname, '..', '..', 'profiles', 'scoring-lenient-quotes.json');
 const STRICT_LINE = 'Evidence-quote rule: strict (every segment between ellipses must appear in the output, in order). Lenient sensitivity:';
 
 // ---- the scoring key ----
 
-test('lenient is the default; strict is selectable and the loaded object carries it only for strict', () => {
+test('paraphrase is the default; lenient and strict are selectable and the loaded object carries them', () => {
   const defaults = loadScoring();
   assert.equal(defaults.quoteMode, undefined);
-  assert.equal(quoteRuleOf(defaults), 'lenient');
-  for (const f of ['scoring.json', 'scoring-fractional.json', 'scoring-quality.json', 'scoring-quality-fractional.json', 'scoring-lenient-quotes.json']) {
-    assert.equal(quoteRuleOf(loadScoring(path.join(PROFILES, f), { allowPack: true })), 'lenient', f);
+  assert.equal(quoteRuleOf(defaults), 'paraphrase');
+  assert.equal(quoteRuleOf(loadScoring(path.join(PROFILES, 'scoring-lenient-quotes.json'))), 'lenient');
+  for (const f of ['scoring.json', 'scoring-fractional.json', 'scoring-quality.json', 'scoring-quality-fractional.json', 'scoring-paraphrase.json']) {
+    assert.equal(quoteRuleOf(loadScoring(path.join(PROFILES, f), { allowPack: true })), 'paraphrase', f);
   }
   const strict = loadScoring(path.join(PROFILES, 'scoring-strict-quotes.json'));
   assert.equal(strict.quoteMode, 'strict');
   assert.equal(quoteRuleOf(strict), 'strict');
   assert.deepEqual({ ...strict, quoteMode: undefined }, { ...defaults, quoteMode: undefined }, 'the strict profile has the default weights');
-  assert.deepEqual(loadScoring(path.join(PROFILES, 'scoring-lenient-quotes.json')), defaults);
+  assert.deepEqual(loadScoring(path.join(PROFILES, 'scoring-paraphrase.json')), defaults);
+  assert.deepEqual({ ...loadScoring(LENIENT_FILE), quoteMode: undefined }, { ...defaults, quoteMode: undefined }, 'the lenient profile has the default weights');
   const root = tmp();
   try {
     write(path.join(root, 'bad.json'), JSON.stringify({ weights: { rubric: 1 }, quotes: 'sloppy' }));
-    assert.throws(() => loadScoring(path.join(root, 'bad.json')), /"quotes" must be one of "strict", "lenient"/);
+    assert.throws(() => loadScoring(path.join(root, 'bad.json')), /"quotes" must be one of "strict", "lenient", "paraphrase"/);
   } finally { cleanup(root); }
 });
 
@@ -89,12 +93,12 @@ function judgedRun({ old = false } = {}) {
   return { root, dir, benchDir };
 }
 
-test('a report under the default rule names it and shows the strict view beside it', () => {
+test('a report under the lenient rule names it and shows the strict view beside it', () => {
   const { root, dir, benchDir } = judgedRun();
   try {
     const tasks = loadTasks(benchDir);
     const out = path.join(root, 'out');
-    const res = generateRunReport({ run: loadRuns([dir]), tasks, baseline: 'vanilla', out, detail: 'full', format: 'md', defaultDir: out });
+    const res = generateRunReport({ run: loadRuns([dir]), tasks, baseline: 'vanilla', out, detail: 'full', format: 'md', scoringFile: LENIENT_FILE, defaultDir: out });
     const md = fs.readFileSync(path.join(out, 'report.md'), 'utf8');
     assert.ok(md.startsWith('# Benchmark report'), 'the title stays first');
     assert.ok(md.includes(LENIENT_LINE), 'the rule line is on the page');
@@ -109,7 +113,7 @@ test('a report under the default rule names it and shows the strict view beside 
     const j1 = res.json.quoteSensitivity.judges.find((j) => j.judge === 'j1');
     assert.equal(j1.rate, 0);
     assert.ok(j1.otherRate > 0);
-    const quick = generateRunReport({ run: loadRuns([dir]), tasks, baseline: 'vanilla', out: path.join(root, 'q'), detail: 'quick', format: 'md', defaultDir: out });
+    const quick = generateRunReport({ run: loadRuns([dir]), tasks, baseline: 'vanilla', out: path.join(root, 'q'), detail: 'quick', format: 'md', scoringFile: LENIENT_FILE, defaultDir: out });
     const qmd = fs.readFileSync(path.join(root, 'q', 'report.md'), 'utf8');
     assert.ok(qmd.includes(LENIENT_LINE));
     assert.match(qmd, /mean quality per arm, lenient to strict: /);
@@ -122,9 +126,9 @@ test('the strict profile gives the strict view numbers, and the default view see
   try {
     const tasks = loadTasks(benchDir);
     const strictFile = path.join(PROFILES, 'scoring-strict-quotes.json');
-    const lenient = analyze({ run: loadRuns([dir]), tasks, baseline: 'vanilla' });
+    const lenient = analyze({ run: loadRuns([dir]), tasks, baseline: 'vanilla', scoringFile: LENIENT_FILE });
     const strict = analyze({ run: loadRuns([dir]), tasks, baseline: 'vanilla', scoringFile: strictFile });
-    const sens = quoteSensitivity({ run: loadRuns([dir]), tasks, baseline: 'vanilla', primary: lenient });
+    const sens = quoteSensitivity({ run: loadRuns([dir]), tasks, baseline: 'vanilla', scoringFile: LENIENT_FILE, primary: lenient });
     for (const arm of ['vanilla', 'head']) {
       assert.equal(sens.arms.find((a) => a.arm === arm).otherQuality, strict.scores.arms[arm].overall.quality.value, `${arm}: the sensitivity equals a strict report`);
       assert.equal(sens.arms.find((a) => a.arm === arm).quality, lenient.scores.arms[arm].overall.quality.value);
@@ -145,8 +149,8 @@ test('rank flips and an order warning appear when the rules order the arms diffe
     // Vanilla scores higher under the lenient rule; the strict rule lowers every vanilla run, which puts head first.
     writeJudged(dir, { lower: (arm) => arm === 'vanilla' });
     const tasks = loadTasks(benchDir);
-    const a = analyze({ run: loadRuns([dir]), tasks, baseline: 'vanilla' });
-    const sens = quoteSensitivity({ run: loadRuns([dir]), tasks, baseline: 'vanilla', primary: a });
+    const a = analyze({ run: loadRuns([dir]), tasks, baseline: 'vanilla', scoringFile: LENIENT_FILE });
+    const sens = quoteSensitivity({ run: loadRuns([dir]), tasks, baseline: 'vanilla', scoringFile: LENIENT_FILE, primary: a });
     assert.equal(sens.orderDiffers, true);
     assert.match(sens.warning, /arm order by quality differs between the rules/);
     assert.ok(sens.arms.some((x) => x.flip));
@@ -183,10 +187,10 @@ test('contrast carries the rule line and the arm table', () => {
   try {
     const tasks = loadTasks(benchDir);
     const run = loadRuns([dir]);
-    const a = analyze({ run, tasks, baseline: 'vanilla' });
+    const a = analyze({ run, tasks, baseline: 'vanilla', scoringFile: LENIENT_FILE });
     const c = contrastRun({ run, tasks, base: 'vanilla', heads: ['head'], minRel: 0.15, rule: 'both', by: 'class' });
     const out = path.join(root, 'o');
-    generateContrast({ run, tasks, c, out, detail: 'quick', format: 'md', defaultDir: out });
+    generateContrast({ run, tasks, c, out, detail: 'quick', format: 'md', scoringFile: LENIENT_FILE, defaultDir: out });
     const md = fs.readFileSync(path.join(out, 'contrast.md'), 'utf8');
     assert.ok(md.includes(LENIENT_LINE));
     assert.match(md, /Mean rubric \(0 to 1\) and quality/);
@@ -204,7 +208,7 @@ test('report --verdict platform accepts either rule and records the strict view 
     });
     writeJudged(dir, { lower: (arm) => arm === 'head' });
     const strictFile = path.join(PROFILES, 'scoring-strict-quotes.json');
-    const v = buildVerdict({ dirs: [dir], benchDir, baseline: 'vanilla' });
+    const v = buildVerdict({ dirs: [dir], benchDir, baseline: 'vanilla', scoringFile: LENIENT_FILE });
     assert.equal(v.quote.requested, 'lenient');
     assert.equal(v.sensitivity.available, true);
     assert.equal(v.sensitivity.other, 'strict');
@@ -215,7 +219,7 @@ test('report --verdict platform accepts either rule and records the strict view 
     const b = w.arms.find((x) => x.label.startsWith('head'));
     assert.equal(a.delta, b.quality.delta, 'the sensitivity of the default is the strict verdict');
     const out = path.join(root, 'out');
-    const res = generateVerdict({ kind: 'platform', dirs: [dir], benchDir, baseline: 'vanilla', out, format: 'md' });
+    const res = generateVerdict({ kind: 'platform', dirs: [dir], benchDir, baseline: 'vanilla', out, format: 'md', scoringFile: LENIENT_FILE });
     const md = fs.readFileSync(path.join(out, 'verdict.md'), 'utf8');
     assert.ok(md.includes(LENIENT_LINE));
     assert.match(md, /## Sensitivity: strict quote rule/);
@@ -231,13 +235,13 @@ test('the orchestrator pass accepts either rule, names it, and shows the strict 
       arms: { vanilla: { sha: 'a', hidden: [8, 9, 8, 9, 8] }, head: { sha: 'b', hidden: [9, 9, 9, 9, 9] } }, reps: 3, tasks: TASKS6.slice(0, 5),
     });
     writeJudged(dir, { lower: (arm) => arm === 'head' });
-    const v = buildOrchestratorPass({ dirs: [dir], benchDir, baseline: 'vanilla' });
+    const v = buildOrchestratorPass({ dirs: [dir], benchDir, baseline: 'vanilla', scoringFile: LENIENT_FILE });
     assert.equal(v.quote.requested, 'lenient');
     assert.equal(v.sensitivity.available, true);
     const w = buildOrchestratorPass({ dirs: [dir], benchDir, baseline: 'vanilla', scoringFile: path.join(PROFILES, 'scoring-strict-quotes.json') });
     assert.equal(w.quote.requested, 'strict');
     const out = path.join(root, 'out');
-    generateVerdict({ kind: 'orchestrator-pass', dirs: [dir], benchDir, baseline: 'vanilla', out, format: 'md' });
+    generateVerdict({ kind: 'orchestrator-pass', dirs: [dir], benchDir, baseline: 'vanilla', out, format: 'md', scoringFile: LENIENT_FILE });
     const md = fs.readFileSync(path.join(out, 'orchestrator-pass.md'), 'utf8');
     assert.ok(md.includes(LENIENT_LINE));
     assert.match(md, /## Sensitivity: strict quote rule/);

@@ -2,5 +2,5 @@
   "description": "The old checks rule, for reports made before 2026-11-19: the checks component is 1 only when every check passed, else 0, and format checks count. Same weights as scoring.json. Select it with --scoring.",
   "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 },
   "checks": "all",
-  "quotes": "lenient"
+  "quotes": "paraphrase"
 }
