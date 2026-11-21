@@ -4,6 +4,11 @@
 They are public stubs, not a signed release (bench/.gitignore keeps release files out of the repo). `write_arm_release(dir)`
 writes them under the file names a release uses; a team signs its own copy, which may differ.
 `python3 arm_release_stub.py DIR` writes the same files into DIR.
+
+An arm run's gateway needs Python 3.12 with these wheels (D-30); a real arm release manifest must pin them in its
+fields file (as `wheels`) so a run records which wheels produced its poses:
+    ARM_WHEELS = {"mujoco": "3.13.0", "numpy": "*", "cedarpy": "*"}
+`numpy` and `cedarpy` float to the versions `mujoco==3.13.0` resolves against; pin exact versions in the signed release.
 """
 import json
 import os
@@ -11,6 +16,9 @@ import sys
 
 import _paths  # noqa: F401
 from arm_truth_rows import render
+
+# The Python wheels an arm gateway needs; a release manifest's fields should carry these under `wheels` (D-30).
+ARM_WHEELS = {"mujoco": "3.13.0", "numpy": "*", "cedarpy": "*"}
 
 CEDAR_POLICY = """\
 // The arm cell's policy. Every rule reads the sensor view the gateway builds, never the true state.

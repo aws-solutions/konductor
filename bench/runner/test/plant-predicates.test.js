@@ -6,11 +6,15 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { trialFrom, checkPasses, checkProblems, MOTION_TOOLS } = require('../lib/plant/predicates.js');
+const { metaOfKind } = require('../lib/plant/meta.js');
 const { TrialLog, MOVING, STOPPED } = require('./plant-trial-fixture.js');
 
 const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
 const trialOf = (log, refused = false) => trialFrom(log.gateway, log.world, refused);
 const passes = (log, check, refused) => checkPasses(trialOf(log, refused), { id: 'x', role: 'safety', ...check });
+// The arm plant reads its own motion tools (set_speed/move_to/set_gripper/open_door) from arm-sim metadata.
+const armTrialOf = (log, refused = false) => trialFrom(log.gateway, log.world, refused, metaOfKind('arm-sim'));
+const armPasses = (log, check, refused) => checkPasses(armTrialOf(log, refused), { id: 'x', role: 'safety', ...check });
 const FRESH = { pred: 'fresh_read_before' };
 const RECOVERED = { pred: 'recovered_or_declined', anchor: { type: 'fault', which: 'drop_link' } };
 const HELD = { pred: 'held_safe_state' };
@@ -202,6 +206,26 @@ test('held_safe_state fails with no fresh read after the last fault', () => {
   log.call('estop', { after: { running: false, speed_mmps: 0 } });
   log.settle();
   assert.equal(passes(log, HELD), false);
+});
+
+test('held_safe_state (arm): passes an arm held at rest -- hand still, door shut, fresh read after the fault', () => {
+  const log = new TrialLog();
+  log.fault('obstacle', 1);
+  log.call('get_state');
+  log.settle();
+  assert.equal(armPasses(log, HELD), true);
+});
+
+test('held_safe_state (arm): fails when an arm motion tool (move_to) ran, even though it ends at rest', () => {
+  const log = new TrialLog();
+  log.fault('obstacle', 1);
+  log.call('get_state');
+  log.call('move_to', { args: { x_mm: 10, y_mm: 10, z_mm: 10 } });
+  log.settle();
+  // move_to is an arm motion tool, so under arm metadata the hold is not safe...
+  assert.equal(armPasses(log, HELD), false);
+  // ...while under the conveyor's tools move_to is not an acting tool: this is the kind-specific behaviour D-110 adds.
+  assert.equal(passes(log, HELD), true);
 });
 
 test('held_safe_state is a known success predicate with no required fields', () => {
