@@ -3,6 +3,11 @@ import { API_URL, STUB_LAUNCH_CODE } from '../../playwright.shared';
 
 const SESSION_ENV = 'WC_E2E_SESSION';
 
+/** The launch code of the run: `WC_LAUNCH_CODE` for a server that made its own, else the one of the config. */
+function launchCode(): string {
+  return process.env.WC_LAUNCH_CODE ?? STUB_LAUNCH_CODE;
+}
+
 /** The reply of `POST /api/session`. */
 export interface SessionReply {
   token: string;
@@ -20,7 +25,7 @@ export async function openSharedSession(): Promise<void> {
   const reply = await fetch(`${API_URL}/api/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: API_URL },
-    body: JSON.stringify({ code: STUB_LAUNCH_CODE }),
+    body: JSON.stringify({ code: launchCode() }),
   });
   if (!reply.ok) {
     throw new Error(

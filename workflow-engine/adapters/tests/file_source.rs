@@ -255,3 +255,35 @@ fn a_prompt_file_path_with_a_dot_or_empty_segment_reads_nothing_even_when_the_fi
         assert_eq!(source.prompt_file_bytes(path), None, "{path:?}");
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn a_replaced_workflow_keeps_its_mode_and_a_new_one_gets_the_default() {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    let dir = TempDir::new("write-mode");
+    let source = FileSource::under(dir.path());
+    let path = dir.path().join(".konductor/workflows/plan.yml");
+    for mode in [0o600, 0o640, 0o644] {
+        dir.write(".konductor/workflows/plan.yml", b"old");
+        fs::set_permissions(&path, fs::Permissions::from_mode(mode)).unwrap();
+        source.write_workflow("plan", b"new", false).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"new");
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            mode
+        );
+    }
+    fs::remove_file(&path).unwrap();
+    source.write_workflow("plan", b"fresh", true).unwrap();
+    let created = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(
+        created & 0o002,
+        0,
+        "a new file is not writable by everyone: {created:o}"
+    );
+    assert_eq!(
+        source.write_workflow("plan", b"again", true),
+        Err(workflow_adapters::file_source::WriteError::Exists)
+    );
+}
