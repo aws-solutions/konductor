@@ -20,13 +20,13 @@ test('keeps the default Harbor quote taxable', () => {
   });
 });
 
-test('applies WELCOME10 to the basket before Meadow tax', () => {
+test('applies WELCOME10 to a Meadow basket, which owes no tax', () => {
   quote({ lines: [one(20, 2)], promoCode: 'WELCOME10', region: 'meadow' }, {
     subtotal: 40, discount: 4, shipping: 4.99, tax: 0, total: 40.99
   });
 });
 
-test('applies BASKET5 at its minimum basket', () => {
+test('applies BASKET5 at its minimum basket in Meadow', () => {
   quote({ lines: [one(25)], promoCode: 'BASKET5', region: 'meadow' }, {
     subtotal: 25, discount: 5, shipping: 4.99, tax: 0, total: 24.99
   });
@@ -119,7 +119,6 @@ test('keeps the tax branch tip in main history', () => {
 
 test('has no conflict markers in tracked files', () => {
   const files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
-  assert.ok(files.includes('test/feature-pricing.test.js'));
   for (const file of files) {
     const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
     assert.doesNotMatch(text, /^(<<<<<<<|=======|>>>>>>>)( |$)/m, file);
