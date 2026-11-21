@@ -1,7 +1,7 @@
 {
   "id": "t8-rollout-ledger-migration",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -73,7 +73,7 @@
       },
       {
         "id": "flag",
-        "text": "Decouples deploy from release with a flag or kill switch so the new write path can be turned off without a redeploy.",
+        "text": "Decouples deploy from release so the new write path can be turned off without a redeploy: a flag or kill switch, or in this folder the ledger-v3 traffic share on ledger-public set to 0 while the 3.0 hosts stay deployed.",
         "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
       }
     ],
@@ -169,7 +169,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
+    "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
