@@ -43,9 +43,11 @@ has). It is compared across all four cells. By default the checks part is the we
 tests, one failed check of five costs 8 points. `--scoring bench/profiles/scoring-all.json` restores the old rule (1 only when every
 check passed), with the same weights; the report names the mode on its weights line when it is not the default.
 
-The rubric part of quality depends on the evidence-quote rule. The default is lenient (tightened: a quote with 20 or more
-unsupported letters is rejected); `--scoring bench/profiles/scoring-strict-quotes.json` selects strict, which reproduces the numbers
-of pilot tables made before lenient became the default. The 2x2 page names the rule on its first lines and shows the quality of
+The rubric part of quality depends on the evidence-quote rule. Since 2026-11-20 the default is paraphrase: the lenient rule,
+plus a restatement whose figures and most content words are in the output. `--scoring bench/profiles/scoring-lenient-quotes.json`
+selects lenient (tightened: a quote with 20 or more unsupported letters is rejected), which reproduces tables made from then back to
+when lenient became the default; `--scoring bench/profiles/scoring-strict-quotes.json` selects strict, which reproduces the numbers
+of pilot tables made before that. The 2x2 page names the rule on its first lines and shows the quality of
 each cell under both rules, with the rank under each and a warning when the order of the cells differs. A pilot table made
 before this change is strict and is not directly comparable with a new one. See the evidence-quote rule in `README.md`.
 

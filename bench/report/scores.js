@@ -23,8 +23,8 @@ const PACK_COMPONENT = 'pack';
 // `checksMode` only when it is 'all', so default weights stay plain.
 const CHECKS_MODES = ['fraction', 'all'];
 const CHECKS_MODE_KEY = 'checksMode';
-// How the judge's evidence quotes are matched: 'lenient' (the default, tightened), 'strict', or 'paraphrase' (lenient, or a
-// faithful restatement; rebuilt from the saved outputs, see judge/quote.js). The strict and lenient views live in the
+// How the judge's evidence quotes are matched: 'paraphrase' (the default since 2026-11-20: lenient, or a faithful
+// restatement; rebuilt from the saved outputs, see judge/quote.js), 'lenient' (tightened) or 'strict'. The strict and lenient views live in the
 // judgments (see judge/views.js); the rule only picks which one the scores read. The loaded weights carry `quoteMode` only
 // when it is not the default, so a default scoring file loads to the same object as before.
 const QUOTE_MODES = QUOTE_RULES;
@@ -58,8 +58,8 @@ const PACK_FORMULA = ' Pack quality (opt-in, set by a weight for "pack" in the s
  * Weights file: { weights: { hidden, checks, rubric, pack? }, checks?: "fraction" | "all" }. Each weight is a number of 0 or more, at
  * least one above 0. A weight above 0 for pack is refused unless the caller can supply pack scores (allowPack), so a command that
  * cannot never drops the component quietly. "checks" names how the checks component is scored (default "fraction"); the returned object
- * gets `checksMode: "all"` only when the file asks for it. "quotes" names the evidence-quote rule ("lenient", the default, or
- * "strict"); the returned object gets `quoteMode: "strict"` only for strict.
+ * gets `checksMode: "all"` only when the file asks for it. "quotes" names the evidence-quote rule ("paraphrase", the default,
+ * "lenient" or "strict"); the returned object gets `quoteMode` only for a rule other than the default.
  */
 function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   let data;

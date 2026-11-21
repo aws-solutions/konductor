@@ -11,7 +11,7 @@ const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f1 = (v) => (fin(v) ? v.toFixed(1) : 'n/a');
 const f3 = (v) => (fin(v) ? v.toFixed(3) : 'n/a');
 const pct = (v) => (fin(v) ? `${(100 * v).toFixed(1)}%` : 'n/a');
-const capOf = (rule) => (rule === 'strict' ? 'strict' : 'lenient');
+const capOf = (rule) => rule;
 
 /** One sentence with the mean quality of every arm under both rules, for pages that have no table of their own. */
 function inlineTail(sens) {
@@ -59,7 +59,7 @@ function ruleBlocks(quote, sens, { tables = 'none', heading = 'Quote-rule sensit
 function sensitivitySection(sens, { level = 2 } = {}) {
   if (!sens?.available) return [];
   const blocks = [D.h(level, 'Quote-rule sensitivity')];
-  blocks.push(D.p(`The scores in this report use the ${capOf(sens.rule)} rule. The same judgments scored under the ${capOf(sens.other)} rule are shown beside them. Lenient raises the rubric component against strict, so a report made under one rule is not directly comparable with one made under the other.`));
+  blocks.push(D.p(`The scores in this report use the ${capOf(sens.rule)} rule. The same judgments scored under the ${capOf(sens.other)} rule are shown beside them. Each rule in the order strict, lenient, paraphrase accepts at least what the one before it accepts, so it can only raise the rubric component; a report made under one rule is not directly comparable with one made under another.`));
   if (sens.judges.length) blocks.push(judgeTable(sens));
   blocks.push(armTable(sens));
   blocks.push(sens.warning ? D.note(`Warning: ${sens.warning}`) : D.p(`The arm order by quality is the same under both rules (${sens.order.join(' > ')}).`));

@@ -10,12 +10,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { unquotedVerdict, rubricScore } = require('./score.js');
-const { makeQuoteMatcher, DEFAULT_QUOTE_RULE, QUOTE_RULES, JUDGE_QUOTE_RULES } = require('./quote.js');
+const { makeQuoteMatcher, DEFAULT_JUDGE_QUOTE_RULE, QUOTE_RULES, JUDGE_QUOTE_RULES } = require('./quote.js');
 const { EXPERT_PREFIX } = require('../runner/lib/expert-rubric.js');
 
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
 
-const otherRule = (rule) => (rule === 'strict' ? 'lenient' : 'strict');
+// The rule a sensitivity table compares with: paraphrase against lenient, lenient against strict, strict against lenient.
+const otherRule = (rule) => (rule === 'paraphrase' ? 'lenient' : rule === 'strict' ? 'lenient' : 'strict');
 
 // A judge pass records the judge rules only; a report view may also ask for 'paraphrase' (rebuilt from the outputs).
 function checkRule(rule, flag = '--quote-match', rules = QUOTE_RULES) {
@@ -47,7 +48,7 @@ function bundleMatcher(bundle, { lenient, paraphrase = false }) {
  * Criteria of one reply with both views. `replyCriteria`: [{ id, verdict (the judge's own), evidence }].
  * The fields older readers use carry the `rule` view.
  */
-function dualCriteria(replyCriteria, matchers, rule = DEFAULT_QUOTE_RULE) {
+function dualCriteria(replyCriteria, matchers, rule = DEFAULT_JUDGE_QUOTE_RULE) {
   return replyCriteria.map((c) => {
     const raw = c.verdictRaw ?? c.verdict;
     const evidence = c.evidence ?? '';
@@ -93,7 +94,9 @@ const keyOf = (r) => `${r.armId}\u0000${r.taskId}\u0000${r.replicate}`;
  * Judgments of `run` as the `rule` view reads them. A record with both views is switched to the rule. A record from before
  * the dual view is strict as stored; for the lenient rule it is matched again against the output rebuilt from the run
  * directory, with no model call. Records whose output cannot be rebuilt stay strict and are counted in `missing`.
- * Returns { judgments, rule, requested, rebuilt, missing, records, switched }; judgments is null when the run has none.
+ * The paraphrase view is always rebuilt from the run directory; a record that cannot be rebuilt takes its recorded lenient
+ * view (counted in `missing` and `fellBack`).
+ * Returns { judgments, rule, requested, rebuilt, missing, records, switched, fellBack }; judgments is null when the run has none.
  * The caller's run is not changed.
  */
 function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
@@ -128,6 +131,7 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
   let missing = 0;
   let records = 0;
   let switched = 0;
+  let fellBack = 0;
   const rubric = (j.rubric || []).map((rec) => {
     if (rec.judgeError || !rec.criteria?.length) return rec;
     records++;
@@ -136,12 +140,14 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
     if (hasViews(rec) && rule !== 'paraphrase') { switched++; return selectView(rec, rule, task?.rubric || []); }
     if (rule === 'strict') return rec;
     const found = rebuild && task ? matcherFor(rec) : null;
-    if (!found) { missing++; return rec; }
+    // A paraphrase view that cannot be rebuilt (no workspace) falls back to the recorded lenient view.
+    if (!found) { missing++; if (rule === 'paraphrase' && hasViews(rec)) { fellBack++; return selectView(rec, 'lenient', task?.rubric || []); } return rec; }
     rebuilt++;
     const criteria = rescoredCriteria(rec.criteria, found);
     return { ...rec, criteria, score: rubricScore(task.rubric, criteria) };
   });
-  return { judgments: { ...j, rubric }, rule: missing === records && records > 0 && rule !== 'strict' ? 'strict' : rule, requested: rule, rebuilt, missing, records, switched };
+  const allMissing = missing === records && records > 0 && rule !== 'strict';
+  return { judgments: { ...j, rubric }, rule: allMissing ? (rule === 'paraphrase' && fellBack === missing ? 'lenient' : 'strict') : rule, requested: rule, rebuilt, missing, records, switched, fellBack };
 }
 
 module.exports = { dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };

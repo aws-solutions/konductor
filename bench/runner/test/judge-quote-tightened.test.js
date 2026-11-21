@@ -27,8 +27,8 @@ const A = 'the migration is additive and idempotent so the old version keeps wor
 const B = 'fifty reserve requests fire at the same moment and exactly ten succeed';
 const OUT_ORDERED = `Notes.\n${A}.\nMore text between them.\n${B}.\n`;
 
-test('the default rule is lenient and strict stays selectable', () => {
-  assert.equal(DEFAULT_QUOTE_RULE, 'lenient');
+test('the default rule is paraphrase (2026-11-20); lenient and strict stay selectable', () => {
+  assert.equal(DEFAULT_QUOTE_RULE, 'paraphrase');
   assert.deepEqual(QUOTE_RULES, ['strict', 'lenient', 'paraphrase']);
   assert.equal(MAX_UNSUPPORTED_LETTERS, 20);
 });
