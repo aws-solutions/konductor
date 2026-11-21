@@ -81,15 +81,18 @@ export function sourceStageOf(
 
 /**
  * The stage of `view` that `picked` is, or `undefined` when it cannot be
- * told. The position decides when the view has as many stages as the draft,
- * because a name is not unique while a person types: a stage renamed to the
- * name of another one would otherwise resolve to that other stage. A name
- * match is taken only when the view has another number of stages, where a
- * position means nothing.
+ * told.
  *
  * This reads a view of the text as it is now, whose stages are in the order
- * of the draft. The file as it was loaded is read by `sourceStageOf`, which
- * takes the place a stage was loaded from instead.
+ * of the draft, so the place in the draft names the stage. A view of another
+ * number of stages is of another text: it is of no use here, because a stage
+ * added or deleted since has moved every stage after it, and the name cannot
+ * stand in for the place, as a person renaming a stage to the name of another
+ * one would then be shown that other stage. Such a view leaves the stage
+ * untold until a check of this text answers.
+ *
+ * The file as it was loaded is read by `sourceStageOf` instead, which takes
+ * the place a stage was loaded from, the same identity the save guard holds.
  */
 export function pickedStageOf(
   view: CheckView | null | undefined,
@@ -98,7 +101,7 @@ export function pickedStageOf(
   if (view === null || view === undefined) return undefined;
   return view.stages.length === picked.total
     ? view.stages[picked.index]
-    : checkStageOf(view, picked.name);
+    : undefined;
 }
 
 /**
