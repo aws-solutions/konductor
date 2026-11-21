@@ -333,3 +333,12 @@ Standard limit. Free gates after: reference 100, stub 0, lazy 6, alt 100. Needs 
 - key-matches-fixture and solvable-from-fixture: `hidden/options.test.js:8-14` needs the ids `composite-optimized` or
   `two-table-normalized`, but the fixture names the options A-D (`README.md:38-42`) or 1-3 (`prototype-results.md`).
   The rubric uses the same ids. This is the D-127 finding that dropped the task before; `pilot.decision` now reads keep.
+
+## t3-db-order-history v7 (2026-11-21, mate free-fix worker, claude; Fable review D2)
+
+`reports/review-probe-disposals-fable.md` D2: the hidden tests read the option ids `composite-optimized` and
+`two-table-normalized` and the limits keys `storage_tb`, `iops`, `throughput_mbps` and `monthly_budget_usd`, but no
+fixture file or the prompt named them. The prompt now has one sentence naming the three option ids (mapped to Options
+1 to 3 of `prototype-results.md`) and the four limits keys, the way the nine D-127 siblings were fixed (for example
+t3-adr-db-engine). It names no choice. Key, checks and fixture unchanged. Gates: reference 100, stub 0, lazy 6, alt
+100. Non-Claude recheck: pending (`handEdited.version` 7).
