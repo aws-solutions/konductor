@@ -227,6 +227,7 @@
   "handEdited": {
     "family": "claude",
     "editor": "mate judge-vs-code worker (2026-11-21)",
-    "log": "HAND-EDITS.md"
+    "log": "HAND-EDITS.md",
+    "version": 5
   }
 }
