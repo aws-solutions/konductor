@@ -6,6 +6,10 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+Skill, agent and SOP names in an entry are the names they had when the entry was written. The
+entry that renames or removes one says so, so an old name in this file is history, not a live
+reference.
+
 ## [Unreleased]
 
 ### Added
