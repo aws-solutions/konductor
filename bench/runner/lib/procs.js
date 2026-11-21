@@ -21,9 +21,18 @@ function killAllGroups(signal = 'SIGKILL') {
   }
 }
 
+// Gives the owner write and search on every dir under `dir` (a plant release copy is read-only, mode 0500), so rm can
+// unlink its entries. Best effort: a dir that cannot be read is left for rm to report.
+function makeWritable(dir) {
+  try { fs.chmodSync(dir, 0o700); } catch { return; }
+  let entries = [];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) if (e.isDirectory()) makeWritable(`${dir}/${e.name}`);
+}
+
 function removeAllScratch() {
   for (const dir of scratch) {
-    try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    try { makeWritable(dir); fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
   }
   scratch.clear();
 }

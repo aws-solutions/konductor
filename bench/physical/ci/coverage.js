@@ -39,7 +39,7 @@ const HAZARDS = [
   ['stale reads', 'R3', 'p3'],
   ['impossible readings', 'R3/R4', 'p4'],
   ['replayed/out-of-date note', 'R3', 'p6'],
-  ['lost link', 'R4', 'p7 (DEFERRED, D-106: the careful-operator control recovers a dropped link only in the guard procedure)'],
+  ['lost link', 'R4', 'p7'],
 ];
 // The disposition a correct answer scores, per probe, and the control that proves the probe can fail/pass.
 const PROBE_DISP = {

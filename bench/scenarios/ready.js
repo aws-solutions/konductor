@@ -37,6 +37,7 @@ function dryRunReasons(task) {
 }
 
 const HAND_EDIT_FLAG = 'hand-edited, recheck missing';
+const VERSION_FLAG = 'version ahead of its recheck';
 
 /** Why a task is marked fix (owner rule): a recorded lazy score over 40, or pilot.decision "fix" or "drop". [] when none. */
 function fixReasons(task) {
@@ -59,11 +60,17 @@ const CONTENT_FLAG = 'content changed, version not bumped';
  * - A hand-edited task needs a `review.recheck` of its current version: one that records `version` must record this one
  *   or a later one; one with no `version` (older rechecks) covers only up to the content lock's `legacyRecheckVersion`,
  *   or, with no content lock entry, only a hand edit that records no version.
+ * - A task with no `handEdited` whose version is past the version its own `review.recheck` or `review` records: the
+ *   version was bumped without the hand-edit record, so nothing else would ask for a recheck (the version-without-
+ *   recheck class, D-150 and D-156).
  */
 function lockBlockers(task, content = null) {
   const out = content?.problem === 'same-version change' ? [CONTENT_FLAG] : [];
   const h = task.handEdited;
-  if (!h) return out;
+  if (!h) {
+    const seen = [task.review?.recheck?.version, task.review?.version].filter(Number.isInteger);
+    return Number.isInteger(task.version) && seen.length && Math.max(...seen) < task.version ? [...out, VERSION_FLAG] : out;
+  }
   const r = task.review?.recheck;
   const v = Number.isInteger(task.version) ? task.version : Number.isInteger(h.version) ? h.version : null;
   let covered;
@@ -135,4 +142,4 @@ function cmdReady(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : render(rows));
 }
 
-module.exports = { readiness, dryRunReasons, fixReasons, lockBlockers, render, cmdReady, GATES, HAND_EDIT_FLAG, CONTENT_FLAG };
+module.exports = { readiness, dryRunReasons, fixReasons, lockBlockers, render, cmdReady, GATES, HAND_EDIT_FLAG, CONTENT_FLAG, VERSION_FLAG };

@@ -193,16 +193,16 @@
       "legacyRecheckVersion": 1
     },
     "t12-handoff-export-dates": {
-      "version": 3,
-      "sha256": "678aaab3148e0c15ec402825adf84f6966ca87ebe7d31e38689877a99e5efc17"
+      "version": 4,
+      "sha256": "7a6bcac881cea8843906f477f0bb99cce8cc768fb5b29cf6902c7c4f4c5aa88e"
     },
     "t12-mux-parallel-merge": {
       "version": 1,
       "sha256": "49ced470d14dc5cb6c71f0e26dc7c4b6dac3697ee86958c0358ed7930e86e09e"
     },
     "t12-parallel-backlog": {
-      "version": 4,
-      "sha256": "de43f86f666a47ca5cb446ca99b87d6ff64df6ef4f28907c3439ac479fc2f2b2"
+      "version": 5,
+      "sha256": "9577cd69267c9a925ff185405d646157ce0fff7fb66e17105c5360d95ce83c98"
     },
     "t12-sdlc-contact-import": {
       "version": 4,
@@ -358,8 +358,8 @@
       "legacyRecheckVersion": 3
     },
     "t3-db-order-history": {
-      "version": 5,
-      "sha256": "918d674d9ca08b887a358f289f536e65e5bc3d053a3d82819fe828d25697b66c",
+      "version": 8,
+      "sha256": "ba05fd162a8126439dc60e418335191c99f7f982acaac2bb73e6a1ac1c8dddf4",
       "legacyRecheckVersion": 5
     },
     "t3-db-tenant-isolation": {
@@ -526,8 +526,8 @@
       "sha256": "1f794b728741f5aa16c316d4ecc04ebacff2e52a7c9052beda7f9779a24a8de7"
     },
     "t6-idea-churn-signal": {
-      "version": 3,
-      "sha256": "c6cfaa9facc9f35e7e7b675eb3d90ade3bc3afe9246adcd2e89f1901d32fd447",
+      "version": 4,
+      "sha256": "802262b7537cc0af3260fb8c897fa0ac09aea424b04de120f3aa31c6b45eb989",
       "legacyRecheckVersion": 2
     },
     "t6-idea-feature-bets": {
@@ -536,13 +536,13 @@
       "legacyRecheckVersion": 4
     },
     "t6-idea-onboarding-dropoff": {
-      "version": 3,
-      "sha256": "45f99184db5bbf41038f0b79510c17876c92b3d2bce265e47cde372bfd566106",
+      "version": 4,
+      "sha256": "0e0ca26be5f9ada3b7e866a4c5b1c9eb9a8a8b7b13427afa20fc849232150b2a",
       "legacyRecheckVersion": 3
     },
     "t6-idea-pricing-test": {
-      "version": 4,
-      "sha256": "740dadee779f4241817a5e717b51968f6a52c3e8597873524838a39db2c5a05e",
+      "version": 5,
+      "sha256": "7fb9271a3d32f375e4da3841aac74ff1583dcdb05a927cf149bedbda449ac0b7",
       "legacyRecheckVersion": 3
     },
     "t6-neg-glossary-rename": {
@@ -674,8 +674,8 @@
       "legacyRecheckVersion": 3
     },
     "t8-dec-deploy-strategy": {
-      "version": 5,
-      "sha256": "cb86ace7e5bb3383abd5a9eb7bcadb6a3ee2c07021bd865009d4bbdb3ef72047",
+      "version": 6,
+      "sha256": "050bcdee5295e9090e7ce044e5911eb1b28f157fbca1364937ea744273d214b8",
       "legacyRecheckVersion": 4
     },
     "t8-heldout-incident-handoff": {

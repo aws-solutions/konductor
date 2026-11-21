@@ -1,7 +1,7 @@
 {
   "id": "t8-dec-deploy-strategy",
   "class": "hard",
-  "version": 5,
+  "version": 6,
   "phase": "decisions",
   "role": "sre",
   "phases2": [
@@ -160,36 +160,37 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to write a decision record analyzing folder material; no method prescribed or misleading hints."
+          "note": "Request asks to write decision record and choose among three deployment strategies, no method mandated or decoy present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has capacity reports, finance notes, SLOs but doesn't state which deployment strategy to choose."
+          "note": "Fixture provides constraints (capacity, cost, drain times) but doesn't prescribe answer or describe finished behavior hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Key patterns match fixture numbers (40 hosts, 72%, $2,800/$7,200, 40-min drain, 12-min revert, 3 deploys/week)."
+          "note": "Key items reference specific data from fixture files (40 hosts, 72%, 40 min drain, $2,800/$7,200 costs, etc.) and rubric anchors reward outcome request asks for."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can analyze trade-offs from fixture constraints; different valid solutions could pass."
+          "note": "Competent developer can analyze constraints, choose canary (cost prevents blue/green, broad exposure prevents rolling), and write valid decision record differing from reference."
         }
-      ]
+      ],
+      "version": 6
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): key word forms widened from wave 8 answers (D-116)",
+    "editor": "mate fixture-fix worker (2026-11-21): deploy/fleet-updater.md rules in-place rolling out (LITE note)",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   },
   "pilot": {
     "scores": {
@@ -202,6 +203,18 @@
       "stub": 0,
       "lazy": 25,
       "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
       "date": "2026-11-21"
     },
     "decision": "keep",

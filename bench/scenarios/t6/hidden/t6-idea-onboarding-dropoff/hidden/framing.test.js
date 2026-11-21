@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { blockOf, itemTexts } = require('./doc-key');
+const { blockOf, itemTexts, contradicts } = require('./doc-key');
 
 const doc = 'docs/framing.md';
 const block = () => blockOf(doc);
@@ -75,6 +75,6 @@ test('defines a backend verification measure with the 84 percent baseline', () =
 
 test('does not call the analytics outage the cause and keeps the option list bounded', () => {
   const t = `${String(block().main_problem || '')} ${String(block().recommendation || '')}`.toLowerCase();
-  assert.doesNotMatch(t, /(tracking|analytics|instrumentation).{0,50}(caused|cause|root cause)/);
+  assert.ok(!contradicts(t, /(tracking|analytics|instrumentation).{0,50}(caused|cause|root cause)/), 'states the claim (a sentence that denies it is fine)');
   assert.ok(options().length >= 3 && options().length <= 5, `expected 3 to 5 options, got ${options().length}`);
 });

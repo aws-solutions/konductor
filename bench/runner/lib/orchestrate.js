@@ -40,6 +40,16 @@ function existingResults(plan, outDir) {
   return plan.filter((item) => fs.existsSync(path.join(runDirOf(outDir, item), 'result.json')));
 }
 
+/** Renames cell folder `dir` to the first free `<dir>.resumed-N`, its result.json to attempt-result.json; returns the new path. */
+function moveAside(dir) {
+  let n = 1;
+  while (fs.existsSync(`${dir}.resumed-${n}`)) n++;
+  const aside = `${dir}.resumed-${n}`;
+  fs.renameSync(dir, aside);
+  if (fs.existsSync(path.join(aside, 'result.json'))) fs.renameSync(path.join(aside, 'result.json'), path.join(aside, 'attempt-result.json'));
+  return aside;
+}
+
 /**
  * --resume: the planned cells that still need a run. A cell with no result.json runs, and so does one whose result says
  * it never ran (budget_skipped). An errored cell runs again only with `errors`. Every other result is kept as it is.
@@ -284,6 +294,12 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     const { task, arm, replicate } = item;
     if (!prepErrors.has(arm.id) && !(await loginStillValid())) return onSkip(item);
     const dir = path.join(outDir, arm.id, task.id, String(replicate));
+    // --resume reruns a cell an earlier command left unfinished (killed mid-trial: plant logs and no result.json), never
+    // ran or errored. Its folder is kept beside the cell as <replicate>.resumed-N, never deleted, so the rerun starts in
+    // an empty folder (a plant cell refuses a folder that already holds plant logs, D-19). Any old result.json becomes
+    // attempt-result.json there, so no report or spend count reads it.
+    const aside = resume && fs.existsSync(dir) ? moveAside(dir) : null;
+    if (aside) log(`resume: kept the earlier attempt of ${arm.id} / ${task.id} / #${replicate} as ${path.basename(aside)}`);
     let r;
     if (prepErrors.has(arm.id)) {
       r = errorResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, message: `arm preparation failed: ${prepErrors.get(arm.id)}`, meta: { agentStarted: false } });
@@ -336,6 +352,10 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       const spent = unit === 'usd' ? r.costUsd : r.credits;
       const censored = unit === 'usd' ? r.costCensored : r.creditsCensored;
       log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.authFailure ? ' (login failure, no turn ran, charged 0)' : ''}${r.launchFailure ? ' (agent binary could not be launched, no turn ran, charged 0)' : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
+    }
+    if (aside) {
+      r.resumedFrom = path.basename(aside);
+      writeResult(outDir, arm, task, replicate, r);
     }
     state.results.push(r);
     return r;

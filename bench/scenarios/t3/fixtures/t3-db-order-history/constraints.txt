@@ -42,21 +42,6 @@ All 7 query patterns in query-patterns.sql must be supported:
 - Must include proper documentation in docs/decision.md
 - Decision must include JSON block with cost calculations
 
-## Validation Requirements
-- Hidden tests will verify:
-  - No full table scans (must use index search)
-  - All constraints present (PK, FK, NOT NULL, UNIQUE)
-  - Storage calculations within limits
-  - Cost calculations accurate within 10%
-  - Chosen option meets all hard limits
-
-## Important Notes
-- The "tempting" option is indexing every column separately (7+ indexes)
-- This approach uses approximately 3.1 TB total storage
-- 3.1 TB exceeds the 2.5 TB Standard volume limit
-- Exceeding 2.5 TB would require Premium volume class ($150/month base fee)
-- Premium volume would push total cost over $300/month budget
-
 ## Risk Areas
 1. Underestimating index storage overhead
 2. Missing composite index opportunities

@@ -1,7 +1,7 @@
 {
   "id": "t12-handoff-export-dates",
   "class": "orchestration",
-  "version": 3,
+  "version": 4,
   "phase": "multi-phase",
   "phases2": [
     "planning",
@@ -114,9 +114,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate recheck worker (2026-11-21): the request states the outcome, not the process (D-127 b)",
+    "editor": "mate debt worker (2026-11-21): hidden work test reads the untouched fixture through @pristine and the shared work-kit.js; no hand-kept .bench-base copy (D-120)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "pilot": {
     "scores": {},
@@ -127,10 +127,22 @@
       "stub": 0,
       "lazy": 27.3,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null,
   "review": {
@@ -146,25 +158,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt names the BILL-1187 outcome and required hand-off/result fields, but no framework, tool, or prescribed working method. It does not point to the unrelated BILL-842 ticket."
+          "note": "The request specifies the hand-off and result formats and the required outcome, but does not prescribe a working method, framework, or tool. BILL-842 is explicitly identified as out of scope rather than a misleading path to the fix."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains the bug report, diagnosis, constraints, and baseline test, but no completed hand-off, result, fix, or added regression test. Those files provide the task's source facts rather than a finished deliverable."
+          "note": "fixture/docs/notes/sam-diagnosis.md:5-6 gives the exact cause and says the UTC getters should fix it. fixture/test/export.test.js:12-15 also states the finished UTC-date outputs, so the fixture exposes the answer and checked behavior. (disposition: independent review reports/review-probe-disposals-fable.md (claude-fable-5.1, 2026-11-21, mate workspace, t12-handoff-export-dates v4): by design, checklist misread; Sam's notes are the half-done work the hand-off must absorb)"
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The requested paths and JSON fields match the fixture and hidden checks: BILL-1187, src/format-date.js, test/export.test.js, the frozen legacy area, both time zones, and the PR handoff. The expert key and rubric reward the UTC-date fix, honest scope/evidence, and existing repository rules."
+          "note": "The hidden checks use paths and behavior present in the fixture or required by the request: format-date, export and test files, the frozen legacy exporter, UTC/Auckland runs, the hand-off/result JSON fields, and INV-3001 evidence. The rubric rewards the requested hand-off, scoped fix, regression test, and owner-owned pull request."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture supplies the cause, reproduction, UTC-date requirement, due-date implication, CI explanation, column contract, frozen legacy rule, branch rule, and deadline. A developer can implement and test the fix from those files and the prompt, while alternatives such as toISOString-based formatting remain viable."
+          "note": "The request, contributing rules, bug report, diagnosis, source, and tests provide enough information to write the hand-off, change the UTC getters, add a UTC-sensitive regression test, and record the result. The hidden checks are primarily behavioral and allow different test structure or wording that satisfies the same requirements."
         }
       ],
-      "version": 3
+      "version": 4
     }
   }
 }

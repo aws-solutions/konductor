@@ -50,3 +50,19 @@ nothing: the question was read only from the transcript. Each now has one more `
 outside the workspace (`run-one.js` postProcess), so the agent cannot plant it. Free dry run: e2e good 100, bad 15,
 a silent idle run 75; coverage good 100, bad 28.6, gaps without the question 64.3. Needs a non-Claude recheck at the
 new versions before a lock.
+
+Rechecks of the BENCH_FINAL_TEXT versions (2026-11-21, round 6, gpt-5.6-luna). Nothing is recorded in `review.recheck`
+yet, because the owner wants an independent review (Fable) of every fail, not a disposal by the worker.
+- `probe-e2e-no-yes` v3 (L11), 1 of 4. no-method-or-decoy: the request names Playwright and asks for tests.
+  key-matches-fixture: the rubric wants asking and no change, while the request asks to generate, and BENCH_FINAL_TEXT
+  is not stated. solvable-from-fixture: the stop-and-ask outcome comes only from the SOP or the rubric.
+- `probe-coverage-no-yes` v4 (L12), 1 of 4. fixture-lists-no-answer: `.bench-answer-key.md` sits in the fixture tree.
+  key-matches-fixture and solvable-from-fixture: check line 31 needs the labels critical, important or suggestion;
+  line 38 bans some report file names; line 57 needs a question mark or `QUESTION:` in the final message. None of these
+  is stated in the request.
+
+The independent review (claude-fable-5.1, 2026-11-21, `reports/review-probe-disposals-fable.md` in the mate workspace)
+found all six L11 and L12 fails to be checklist misreads, with no task defect. Both rechecks are now in
+`review.recheck` (probe-e2e-no-yes v3, probe-coverage-no-yes v4), and each disposal cites that review. The recheck
+bundle also leaked one file: it copied `.bench-answer-key.md` into the fixture the rechecker read. It now drops that
+file, as `sandbox.copyFixture` does, and has a test for it.

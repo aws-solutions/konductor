@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-churn-signal",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -136,31 +136,32 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric assesses problem framing and evidence discipline without requiring a methodology not in the request. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes a task goal (framing note with specific fields), a data source (June snapshot), and constraints (compare three paths, define measurable starting point), but does not name a method, technique, tool, or decoy.)."
+          "note": "Prompt asks for framing note with JSON structure, no method prescribed. Edits show removed sentence that leaked answer."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (612 losses, 402 failed-payment, 156 voluntary, 517 events) come from fixture; the distinction between problem types is agent work. Earlier glm-5 check of the request, fixture and key: pass (The fixture files contain raw data and evidence (CSVs, policies, notes) but no file states outright that the main problem is failed payments, lists the 402/156 split as the answer, or gives the recommendation; the agent must analyze and reason from the data.)."
+          "note": "Fixture has raw data (CSV files with 612, 402, 156, etc.) and context definitions, no explicit answer or description of finished behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite fixture figures: 612 total losses, 402 failed-payment (65.7%), 156 voluntary, 517 events vs 448 subscribers. Earlier glm-5 check of the request, fixture and key: pass (All hidden test expectations (612 total loss, 402 failed-payment, 156 voluntary, 65.7% share, 517 events, 214 survey responses, June 10-16 tracking gap, no processor retries) are present in fixture/exports/product_metrics.csv and fixture/docs/event-tracking-notes.md.)."
+          "note": "Hidden tests check numbers and concepts (612, 402, 156, 517, 65.7%, failed payment, voluntary, survey sample, June 10-16 gap) all present in fixture or request. Rubric anchors reward evidence-based problem framing as requested."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different wording and option ordering can still Pass if failed-payment is identified as main problem and payment recovery is recommended first. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can derive the failed-payment problem as primary from product_metrics.csv showing 402 of 612 losses, see the no-retry policy in billing-and-access.md, identify the survey bias from cancellation-survey.md and the tracking gap from event-tracking-notes.md, and synthesize a valid recommendation.)."
+          "note": "Competent developer can analyze product_metrics.csv to identify 402/612 failed payments as main problem, create options, and pass tests with different wording/structure."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "expertKey": {
@@ -205,9 +206,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): the problem and options precision tests need a problem and an option (D-143)",
+    "editor": "mate debt worker (2026-11-21): price-cause precision test is denial-safe (contradicts) (D-158)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "pilot": {
     "scores": {},

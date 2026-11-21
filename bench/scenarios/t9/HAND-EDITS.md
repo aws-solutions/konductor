@@ -67,3 +67,7 @@ because the radio, select or listbox fix holds. Two other items fail. no-method-
 `createSearch(...)` API and the cancelling `schedule`. fixture-lists-no-answer: `docs/architecture.md:21-22` says to
 reuse the existing helpers, and `test/match.test.js` shows the matching rules. Not recorded in `review.recheck` and
 not disposed (owner rule: on a second fail, stop). The owner decides whether these are defects.
+
+The independent review of those two L10 fails (claude-fable-5.1, 2026-11-21, `reports/review-t9-accessibility-fable.md`
+in the mate workspace) found both to be checklist misreads with no defect. The L10 recheck is now in `review.recheck`
+at version 3, with the two items disposed in their notes. D-154 is closed.

@@ -44,6 +44,11 @@
         }
       }
     },
+    "resumedFrom": {
+      "description": "Under --resume, the folder name (<replicate>.resumed-N) the earlier unfinished, never-run or errored attempt of this cell was kept in before the rerun (orchestrate.js moveAside).",
+      "type": "string",
+      "pattern": "^\\d+\\.resumed-\\d+$"
+    },
     "armId": {
       "type": "string"
     },

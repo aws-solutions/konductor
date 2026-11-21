@@ -1,4 +1,6 @@
 {
   "block-kit/block-key.js": "block-key.js",
-  "block.test.js": "block.test.js"
+  "block.test.js": "block.test.js",
+  "work-kit.js": "work-kit.js",
+  ".bench-base": "@pristine"
 }

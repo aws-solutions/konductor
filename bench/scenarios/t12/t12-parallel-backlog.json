@@ -1,7 +1,7 @@
 {
   "id": "t12-parallel-backlog",
   "class": "orchestration",
-  "version": 4,
+  "version": 5,
   "phase": "multi-phase",
   "phases2": [
     "planning",
@@ -115,8 +115,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): hidden work test reads the untouched fixture through @pristine and the shared work-kit.js; no hand-kept .bench-base copy (D-120)",
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {},
@@ -127,10 +128,22 @@
       "stub": 0,
       "lazy": 20,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null,
   "review": {
@@ -146,25 +159,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the release outcome and required records, but names no framework, tool, or prescribed solution method. It contains no misleading hint away from the repository's backlog and code-sharing problem."
+          "note": "The prompt states the release outcome and required records, but names no prescribed method, framework or tool; its concurrency and review language describes the desired result rather than a way to achieve it. It contains no misleading decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture supplies the backlog requirements and the current repository structure, including the code's existing shared files and configuration path. It contains no completed release plan, package work, merge log, or finished implementation that gives the hidden-test answer."
+          "note": "The fixture documents the existing files, owners and backlog requirements, and its code exposes the current implementation. It does not state the completed currency, configuration, login-limit, CI, package, or merge-log behavior checked by the hidden tests."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden key and work checks use backlog ids A1-A7 and paths and behaviors present in the fixture or prompt: invoice fields and CSV export, config migration, login limits, CLI help, CI zones, package records, and green merges. The hidden login-setting check accepts the unspecified configurable key, and the rubric anchors reward code-derived dependencies, isolated handoffs, and the requested release outcome rather than reference names."
+          "note": "The hidden key and work checks use paths and structures named by the prompt and present in the fixture, including FIELDS, config/app.ini to app.json, login configuration, CLI help, CI, package work folders and merge records. The key accepts the request's unspecified setting name and the rubric anchors reward dependency-aware parallel work, isolated reviewable packages and green merges rather than reference-only names."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The backlog, team constraints, README, source files, and existing tests identify the affected files, dependencies, independent work, and required outcomes. A developer can choose different package names or equivalent implementation structure while satisfying the stated plan, work, report, and merge requirements."
+          "note": "A competent developer can infer the required changes and code-sharing dependencies from the backlog, README and source, then produce the explicitly requested plan, package files, reports and merge log without hidden tests or the solution. The checks allow alternate package names, structures and login-setting paths while enforcing the requested outcomes."
         }
       ],
-      "version": 4
+      "version": 5
     }
   }
 }

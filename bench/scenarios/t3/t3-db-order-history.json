@@ -2,7 +2,7 @@
   "id": "t3-db-order-history",
   "class": "design",
   "target": null,
-  "prompt": "Design the SQLite schema for ShopFast's order history database. We need to support 900 million order lines with the query patterns described in the requirements. The schema must fit within a 2.5 TB storage volume and stay under $300/month in storage costs.\n\nDeliver two files:\n1. `db/schema.sql` - The complete SQLite schema with tables, indexes, and constraints\n2. `docs/decision.md` - Your design rationale, tradeoffs considered, and final decision\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the id of your chosen option\n- \"options\": array of option ids you considered  \n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the inputs\n- \"monthly_cost_usd\": the monthly cost of your chosen option calculated from the price sheet\n\nBase your calculations on the numbers in the fixture files. Consider both storage efficiency and query performance. Validate that your schema avoids full table scans for the main query patterns.",
+  "prompt": "Design the SQLite schema for ShopFast's order history database. We need to support 900 million order lines with the query patterns described in the requirements. The schema must fit within a 2.5 TB storage volume and stay under $300/month in storage costs.\n\nDeliver two files:\n1. `db/schema.sql` - The complete SQLite schema with tables, indexes, and constraints\n2. `docs/decision.md` - Your design rationale, tradeoffs considered, and final decision\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the id of your chosen option\n- \"options\": array of option ids you considered  \n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the inputs\n- \"monthly_cost_usd\": the monthly cost of your chosen option calculated from the price sheet\n\nBase your calculations on the numbers in the fixture files. The three schema options in `prototype-results.md` have these ids: Option 1 = `single-column-all`, Option 2 = `composite-optimized`, Option 3 = `two-table-normalized`. Use these exact `limits` keys for the hard limits: `storage_tb`, `iops`, `throughput_mbps` and `monthly_budget_usd`. Consider both storage efficiency and query performance. Validate that your schema avoids full table scans for the main query patterns.",
   "fixture": "t3-db-order-history",
   "timeoutSec": 900,
   "hidden": "t3-db-order-history",
@@ -74,8 +74,8 @@
     "scores": {},
     "reference": 100,
     "stub": 0,
-    "decision": "fix",
-    "date": "2026-11-20",
+    "decision": "keep",
+    "date": "2026-11-21",
     "blockers": [
       "recheck-failed: fixture-lists-no-answer: fixture/constraints.txt lines 53-58 explicitly identify the tempting 7+ index approach, its approximately 3.1 TB size, the storage violation, and the Premium-cost consequence. fixture/prototype-results.md lines 17-20 and 97-114 also name Option 2 as the primary recommendation and explicitly reject Option 1 with the expected storage and cost."
     ],
@@ -84,10 +84,24 @@
       "stub": 0,
       "lazy": 6,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     }
   },
-  "version": 5,
+  "version": 8,
   "targetSkills": [
     "trade-off-evaluator",
     "decision-writing"
@@ -213,7 +227,8 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate free-fix worker (2026-11-21): prompt maps Option 1-3 to ids; prototype-results.md gives numbers only, no pick (recheck of v7)",
+    "log": "HAND-EDITS.md",
+    "version": 8
   }
 }

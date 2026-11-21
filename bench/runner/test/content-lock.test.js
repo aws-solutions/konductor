@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
 const cl = require('../../scenarios/content-lock.js');
-const { readiness, lockBlockers, CONTENT_FLAG, HAND_EDIT_FLAG } = require('../../scenarios/ready.js');
+const { readiness, lockBlockers, CONTENT_FLAG, HAND_EDIT_FLAG, VERSION_FLAG } = require('../../scenarios/ready.js');
 
 test('every pack task matches bench/scenarios/content-lock.json (bump the version and run content-lock.js --write after a change)', () => {
   const off = cl.compare().filter((r) => r.problem);
@@ -58,4 +58,11 @@ test('a recheck with no version covers only up to legacyRecheckVersion', () => {
   assert.deepEqual(lockBlockers(t, { problem: null, entry: { version: 4, legacyRecheckVersion: 3 } }), [HAND_EDIT_FLAG]);
   assert.deepEqual(lockBlockers(t, { problem: null, entry: { version: 4 } }), [HAND_EDIT_FLAG]);
   assert.deepEqual(lockBlockers({ ...t, review: { recheck: { version: 4 } } }, { problem: null, entry: { version: 4 } }), []);
+});
+
+test('a version bumped past its recheck with no handEdited record still blocks the lock (D-156)', () => {
+  assert.deepEqual(lockBlockers({ version: 3, review: { recheck: { version: 2 } } }), [VERSION_FLAG]);
+  assert.deepEqual(lockBlockers({ version: 3, review: { version: 2, verdicts: [] } }), [VERSION_FLAG]);
+  assert.deepEqual(lockBlockers({ version: 3, review: { version: 2, recheck: { version: 3 } } }), []);
+  assert.deepEqual(lockBlockers({ version: 1 }), [], 'a task no review has read yet has nothing to be ahead of');
 });

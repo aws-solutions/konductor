@@ -164,3 +164,24 @@ fix is finished, it needed nothing but the hand-off and its context.files, it ch
 hand-off as written, and `docs/handoff/BILL-1187-result.md` records that with the same fields. The pull request line
 now says the owner opens it. Prompt only; hidden tests, checks, key and answers unchanged, so the free gates are
 unchanged (100 / 0 / 27.3 / 100). Version 2 to 3. One writer-family fix; a gpt-5.6-luna recheck follows.
+
+## No hand-kept fixture copy in the delegation work tests (2026-11-21, mate debt worker, DEBT D-120)
+
+`t12-handoff-export-dates` (v4) and `t12-parallel-backlog` (v5) replayed the agent's work against `.bench-base/`, a
+copy of the fixture's code kept in sync by hand, and each carried its own copy of three process helpers. Now each
+`.bench-lib.json` maps `.bench-base` to `@pristine`, so the `tests` check copies the untouched fixture in at run time
+(replacing anything the agent left at that path), and maps `work-kit.js` (`files`, `node`, `withTemp`) from
+`bench/scenarios/lib/hidden`. The two `.bench-base/` dirs are deleted. No assertion changed. Free gates after:
+references 100, stubs 0, lazy 27.3 and 20, alternatives 100, shallow 0 (the same as before). Each needs a non-Claude
+recheck at its new version before a lock.
+
+## Round 6 recheck of t12-handoff-export-dates v4 (2026-11-21, gpt-5.6-luna, call L14)
+
+3 of 4 pass, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+fixture-lists-no-answer: `docs/notes/sam-diagnosis.md:5-6` gives the cause and says the UTC getters fix it, and
+`test/export.test.js:12-15` shows the UTC outputs. The task is a half-done fix to hand off, so this may be its input.
+t12-parallel-backlog v5 (L15) passes 4 of 4 and is recorded.
+
+Independent review (claude-fable-5.1, `reports/review-probe-disposals-fable.md` in the mate workspace): the L14 fail
+is by design, since Sam's notes are the half-done work the hand-off must absorb. The L14 recheck is now in
+`review.recheck` at version 4, with that disposal in its note.

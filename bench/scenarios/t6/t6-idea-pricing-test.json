@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-pricing-test",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -172,36 +172,37 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for launch framing based on test data; field name leaks were fixed per edits.md."
+          "note": "Request asks to write docs/framing.md based on reading specific files; specifies structure but no specific method/framework/tool."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains test data files but does not state calculated values or expert key findings."
+          "note": "Fixture contains raw data files, briefs, and notes but not the analysis solution; slide notes show draft numbers but label them as incomplete."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check for values derivable from data; refund policy ambiguity handled per edits.md with multiple valid interpretations."
+          "note": "Hidden tests check numbers from fixture files (assignment counts, refunds, campaign dates); rubric anchors reference request requirements; refund calculation accepts both readings per edits.md."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM can analyze A/B test data to identify issues; different valid interpretations of refund policy could pass."
+          "note": "All required numbers calculable from CSV files; structure defined in prompt; multiple valid interpretations (58 vs 34 refunds) accepted."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): the issues precision test needs issues; fixture_unchanged on data is format (D-143)",
+    "editor": "mate debt worker (2026-11-21): campaign and refund cause precision tests are denial-safe (D-158)",
     "log": "HAND-EDITS.md",
-    "version": 4
+    "version": 5
   },
   "pilot": {
     "scores": {},

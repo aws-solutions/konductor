@@ -195,6 +195,32 @@ test('the file rules find a none pattern in a block key, a bare node --test dire
   assert.match(res.findings[0].detail, /node --test test\/.*use test\/\*\.test\.js/);
 });
 
+test('fixture-tells: a fixture file that lists the hidden tests or names the tempting option is flagged; the answer key file and git dirs are not (D-155)', () => {
+  const dir = tmp();
+  const task = (id) => write(path.join(dir, `${id}.json`), JSON.stringify({ id, prompt: 'Design it.', fixture: id }));
+  task('tells');
+  write(path.join(dir, 'fixtures/tells/constraints.txt'), '## Validation\n- Hidden tests will verify the indexes\n');
+  write(path.join(dir, 'fixtures/tells/notes.md'), 'The "tempting" option is one index per column.\n');
+  write(path.join(dir, 'fixtures/tells/.bench-answer-key.md'), 'hidden tests: the decoy is option B\n');
+  write(path.join(dir, 'fixtures/tells/dotgit/COMMIT_EDITMSG'), 'add hidden tests\n');
+  task('clean');
+  write(path.join(dir, 'fixtures/clean/README.md'), 'Tests live in test/. Run npm test.\n');
+  const res = lintDir(dir, CATALOG);
+  assert.deepEqual(res.findings.map((x) => [x.taskId, x.rule, x.where]), [['tells', 'fixture-tells', 'constraints.txt'], ['tells', 'fixture-tells', 'notes.md']]);
+});
+
+test('claim-negation: a doesNotMatch or substance not_contains on a cause pattern is flagged; contradicts(), a format check and a plain word are not (D-158)', () => {
+  const dir = tmp();
+  write(path.join(dir, 'blames.json'), JSON.stringify({ id: 'blames', prompt: 'Frame it.', hidden: 'blames', checks: [
+    { type: 'not_contains', path: 'd.md', pattern: 'outage.{0,20}caused', kind: 'substance' },
+    { type: 'not_contains', path: 'd.md', pattern: 'outage.{0,20}caused', kind: 'format' },
+    { type: 'not_contains', path: 'd.md', pattern: 'TODO', kind: 'substance' },
+  ] }));
+  write(path.join(dir, 'hidden/blames/hidden/a.test.js'), 'assert.doesNotMatch(t, /analytics.{0,50}cause/);\nassert.ok(!contradicts(t, /analytics.{0,50}cause/));\nassert.doesNotMatch(t, /lorem/);\n');
+  const res = lintDir(dir, CATALOG);
+  assert.deepEqual(res.findings.map((x) => [x.rule, x.where]), [['claim-negation', 'checks[0]'], ['claim-negation', 'hidden/a.test.js:1']]);
+});
+
 test('a key graded by the shared block-key.js skips denials in none lists; a none item is flagged unless it has its own denial guard', () => {
   const dir = filePack();
   write(path.join(dir, 'hidden/keyed/.bench-lib.json'), JSON.stringify({ 'block-kit/block-key.js': 'block-key.js' }));
@@ -217,7 +243,7 @@ test('a baseline entry marks a finding known; an entry that no longer matches is
 test('the repository lint baseline is shrink-only data: every entry names a DEBT row or a review', () => {
   const { known } = JSON.parse(fs.readFileSync(path.join(__dirname, '../../scenarios/lint-baseline.json'), 'utf8'));
   for (const [k, why] of Object.entries(known)) {
-    assert.match(k, /^[a-z0-9-]+\|(key-negation|bare-test-dir|solution-link|judge-share|names-unit|method-term|no-ask|authorship)\|/, k);
+    assert.match(k, /^[a-z0-9-]+\|(key-negation|bare-test-dir|solution-link|fixture-tells|claim-negation|rubric-anchor|judge-share|names-unit|method-term|no-ask|authorship)\|/, k);
     assert.match(why, /^D-\d+|^not a defect: /, k);
   }
 });

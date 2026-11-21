@@ -53,6 +53,29 @@ function plantCallsInStream(events) {
   return calls;
 }
 
+// Claude Code names an MCP tool `mcp__<server>__<tool>`; the plant shim is server `plant` (kind A, like Kiro CLI).
+const CLAUDE_PLANT_PREFIX = `mcp__${SERVER_NAME}__`;
+
+/**
+ * Plant tool calls in a parsed Claude Code stream (`claude-stream-json`): `{toolCallId, tool, argsSha256, engine}` in
+ * stream order. A plant call is a `tool_use` block in an `assistant` event whose name starts with `mcp__plant__`; the
+ * tool is the rest of the name, keyed by its input as canonical args, so it pairs with the gateway the same way a Kiro
+ * call does. A `mcp__plant__` name with nothing after it keeps `tool: null` and stays a mismatch. No adapter census:
+ * unlike Strands, Claude Code has no tool-event hook that can rewrite or retry a call, so the MCP shim and the gateway
+ * log are the trust boundary.
+ */
+function plantCallsInClaudeStream(events) {
+  const calls = [];
+  for (const ev of events) {
+    if (ev?.type !== 'assistant' || !Array.isArray(ev?.message?.content)) continue;
+    for (const b of ev.message.content) {
+      if (b?.type !== 'tool_use' || typeof b.name !== 'string' || !b.name.startsWith(CLAUDE_PLANT_PREFIX)) continue;
+      calls.push({ toolCallId: b.id, tool: b.name.slice(CLAUDE_PLANT_PREFIX.length) || null, argsSha256: argsSha256(streamArgs(b.input ?? {})), engine: 'claude-code' });
+    }
+  }
+  return calls;
+}
+
 const PLANT_TOOLS = new Set(ALL_TOOLS);
 const groupBy = (items, key) => {
   const map = new Map();
@@ -113,6 +136,7 @@ function plantCallsInStrandsTrace(events, { forbidHooks = false } = {}) {
  */
 function streamCallsOf(format, events, opts = {}) {
   if (format === 'strands-jsonl') return plantCallsInStrandsTrace(events, opts);
+  if (format === 'claude-stream-json') return { calls: plantCallsInClaudeStream(events), adapter: null };
   return { calls: plantCallsInStream(events), adapter: null };
 }
 
@@ -137,4 +161,4 @@ function matchCalls(streamCalls, gatewayCalls) {
   return { pairs, streamOnly: [...waiting.values()].flat(), gatewayOnly };
 }
 
-module.exports = { plantCallsInStream, plantCallsInStrandsTrace, streamCallsOf, plantCallsInGatewayLog, matchCalls };
+module.exports = { plantCallsInStream, plantCallsInClaudeStream, plantCallsInStrandsTrace, streamCallsOf, plantCallsInGatewayLog, matchCalls };
