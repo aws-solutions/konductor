@@ -21,7 +21,7 @@ describe('stageStateWord', () => {
     ['pending', false, 'Queued'],
     ['pending', true, 'Not run'],
     ['running', false, 'Running'],
-    ['running', true, 'Running'],
+    ['running', true, 'Not finished'],
     ['passed', true, 'Passed'],
     ['blocked', true, 'Blocked'],
   ] as const)(

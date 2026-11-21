@@ -122,6 +122,51 @@ describe('runProgress', () => {
   });
 });
 
+describe('runProgress with the run over and no last event', () => {
+  it('shows no stage at work', () => {
+    const run = runOf([
+      { seq: 1, type: 'stage_state', stage: 'draft', status: 'running' },
+    ]);
+
+    const progress = runProgress(run, { startedAt: START }, clockAt(3_000), {
+      ended: true,
+    });
+
+    expect(progress.running).toBeUndefined();
+    expect(progress.ended).toBe(true);
+  });
+
+  it('keeps the blocked stage it did read', () => {
+    const run = runOf([
+      {
+        seq: 1,
+        type: 'stage_state',
+        stage: 'draft',
+        status: 'blocked',
+        reason: 'RESULT_MISSING',
+      },
+    ]);
+
+    const progress = runProgress(run, { startedAt: START }, clockAt(3_000), {
+      ended: true,
+    });
+
+    expect(progress.blocked?.name).toBe('draft');
+  });
+
+  it('leaves the stage at work alone when the run said how it ended', () => {
+    const run = runOf([
+      { seq: 1, type: 'stage_state', stage: 'draft', status: 'passed' },
+      { seq: 2, type: 'stage_state', stage: 'review', status: 'running' },
+    ]);
+
+    const progress = runProgress(run, { startedAt: START }, clockAt(3_000));
+
+    expect(progress.running).toBe('review');
+    expect(progress).not.toHaveProperty('ended');
+  });
+});
+
 describe('progressText', () => {
   const base: RunProgress = { passed: 1, total: 3, elapsedMs: 0 };
 
@@ -140,6 +185,11 @@ describe('progressText', () => {
       'a blocked stage before the end event',
       { ...base, blocked: { name: 'review' } },
       'Blocked at review. 1 of 3 stages passed.',
+    ],
+    [
+      'a run that is over with no last event',
+      { ...base, ended: true as const },
+      'The run ended. 1 of 3 stages passed.',
     ],
     [
       'a halted run',
