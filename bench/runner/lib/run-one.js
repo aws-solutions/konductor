@@ -201,6 +201,14 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
     fs.writeFileSync(convFile, JSON.stringify({ questions: conv.questions }));
     env.BENCH_CONVERSATION = convFile;
   }
+  // A check may read the agent's final message from BENCH_FINAL_TEXT (D-65: a task whose right answer is to stop and
+  // ask checks that the message asks). The file is outside the workspace, so the agent cannot plant it.
+  if (typeof acc.agg?.finalText === 'string') {
+    const finalFile = path.join(runRoot, 'check-scratch', 'final-text.txt');
+    fs.mkdirSync(path.dirname(finalFile), { recursive: true });
+    fs.writeFileSync(finalFile, acc.agg.finalText);
+    env.BENCH_FINAL_TEXT = finalFile;
+  }
   acc.checks = runChecks(cwd, task.checks, {
     pristineDir: task.real ? real.pristineDir(task, { cache: ctx.realCache }) : task.fixtureDir,
     env,

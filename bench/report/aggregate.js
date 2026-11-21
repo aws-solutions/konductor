@@ -413,6 +413,11 @@ function rawFromCriteria(rec, task) {
   return rubricScore(task.rubric, rec.criteria.map((c) => ({ id: c.id, verdict: c.verdictRaw ?? c.judgeVerdict ?? c.verdict })));
 }
 
+function flagCounts(recs) {
+  const n = { blankExpert: recs.filter((r) => r.blankExpert).length, reasked: recs.filter((r) => r.reask).length, reaskStill: recs.filter((r) => r.reask?.still).length };
+  return n.blankExpert || n.reasked ? n : {};
+}
+
 function judgingSummary(j, isStale, stale, resultByKey = new Map()) {
   const backends = j.backends ?? [j.backend ?? 'kiro'];
   const out = {
@@ -437,6 +442,10 @@ function judgingSummary(j, isStale, stale, resultByKey = new Map()) {
       ...(j.spentUsd !== undefined ? { usd: j.spentUsdByJudge?.[judge] ?? live.reduce((s, c) => s + (c.usd || 0), 0) } : {}),
       medianLatencyMs: lat.length ? median(lat) : null,
       evidenceDowngraded: own.filter((c) => c.evidenceDowngraded).length,
+      // A rubric reply that failed every expert item with no evidence on a long deliverable (D-149), and the replies the
+      // judge pass asked once more; `reaskStill` counts those whose second reply was flagged too.
+      // Present only when non-zero, so a report of a pass with none keeps its shape.
+      ...flagCounts(j.rubric.filter((r) => r.judge === judge && !isStale(r))),
       evidenceQuoteFoundRate: evidence.length ? evidence.filter((c) => c.evidenceFound).length / evidence.length : null,
       unverifiedQuoteRate: evidence.length ? evidence.filter((c) => !c.evidenceFound).length / evidence.length : null,
     };

@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-release-notes-csv",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -159,21 +159,42 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): tests over the CSV rows need at least one row (D-143)",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 18.6,
+    "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
-      "stub": 18.6,
+      "stub": 0,
       "lazy": 34.2,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

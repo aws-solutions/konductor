@@ -233,3 +233,14 @@ The judge-vs-code edits of 2026-11-21 changed these tasks without a new version,
 
 Round 6 non-Claude recheck (2026-11-21, qwen3-coder-next, call Q1): t8-rollout-ledger-migration v6 passes 4 of 4, in
 `review.recheck`. The call read the content at v5; the D-150 bump to v6 changed only the version.
+
+## Key word forms from wave 8 (2026-11-21, mate debt worker, DEBT D-116)
+
+D-116 asked whether section scoring underrates good answers. Rechecking the wave 8 runs of the eight sectioned tasks
+with today's keys showed two key wording misses on runs the judges rated 100, both word forms, not the section rule:
+- `t8-dec-deploy-strategy` `revisit-capacity-threshold`: "Normal (30-day median) fleet CPU reaches 78%" was missed
+  because the item wanted utilisation, capacity, spare or headroom. It now also takes `CPU`.
+- `t8-oncall-alert-review` `stale-pool-metric` took "never fires" but not "Never fired"; `queue-duration` took
+  "for:" but not "for 0m" or "lasting 1 to 3 minutes". Both forms are added.
+After the fix the rerun scores 100 and 83.3 (one real miss left: RequestTimeoutRate kept as a page). Free gates:
+dec-deploy 100 / 0 / 25 / 100, oncall 100 / 0 / 33.3 / 100. Non-Claude recheck: pending (`handEdited.version`).

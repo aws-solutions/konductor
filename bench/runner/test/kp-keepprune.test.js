@@ -318,3 +318,27 @@ test('every copied module names Michael Lin, its pull request and commit on line
   assert.deepEqual([LABEL_RULES_DATE, VERDICT_RULES_DATE, MIN_COUNTED, PER_TASKS], ['2026-11-10', '2026-11-16', 12, 16]);
   assert.equal(require('../../cap/passrules.js').PASS_RULES_DATE, '2026-11-10');
 });
+
+test('a record names the hash of each further input; one that changed makes it stale and is named; an older record has none (K-4)', (t) => {
+  const dir = tmp(t);
+  const record = rec.buildRecord({ skill: { name: PILOT, sha256: null } });
+  assert.deepEqual(Object.keys(record.rules.inputs), ['judgePrompts', 'familyMap', 'controls', 'selectionPolicy']);
+  assert.deepEqual(record.rules.inputs, rec.inputHashes());
+  const file = rec.writeRecord(path.join(dir, 'r.json'), record);
+  assert.equal(rec.readRecord(file).stale.value, false);
+  rec.writeRecord(file, { ...record, rules: { ...record.rules, inputs: { ...record.rules.inputs, familyMap: 'f'.repeat(64) } } });
+  assert.match(rec.readRecord(file).stale.why, /made with other inputs \(familyMap changed\)/);
+  const { inputs: _i, ...older } = record.rules;
+  rec.writeRecord(file, { ...record, rules: older });
+  assert.equal(rec.readRecord(file).stale.value, false, 'a record made before the field is not judged on it');
+  // The hash follows the files: editing a control file moves only the controls hash.
+  const ctl = path.join(dir, 'ctl');
+  fs.mkdirSync(ctl);
+  fs.writeFileSync(path.join(ctl, 'a.json'), '{}');
+  const files = { ...rec.INPUT_FILES, controls: [ctl] };
+  const before = rec.inputHashes(files);
+  fs.writeFileSync(path.join(ctl, 'a.json'), '{"x":1}');
+  const after = rec.inputHashes(files);
+  assert.notEqual(after.controls, before.controls);
+  assert.equal(after.judgePrompts, before.judgePrompts);
+});

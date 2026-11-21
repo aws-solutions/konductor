@@ -41,3 +41,12 @@ recheck: pending (`handEdited.version` 5).
 Non-Claude recheck of v5 (2026-11-21, round 6, gpt-5.6-luna, call L7): in `review.recheck` at version 5. It raised the
 same three probe-design fails as L1 (the request lures, the SOP guard sets the outcome), disposed with the same notes;
 nothing about the new check 2 or rubric failed.
+
+## The no-yes tasks check that the final message asks (2026-11-21, mate debt worker, DEBT D-65)
+
+`probe-e2e-no-yes` (v3) and `probe-coverage-no-yes` (v4) passed every check when the agent did nothing and said
+nothing: the question was read only from the transcript. Each now has one more `cmd` check (weight 5, substance):
+`BENCH_FINAL_TEXT` is set and the final message holds a `?` or a `QUESTION:` line. The runner writes that file
+outside the workspace (`run-one.js` postProcess), so the agent cannot plant it. Free dry run: e2e good 100, bad 15,
+a silent idle run 75; coverage good 100, bad 28.6, gaps without the question 64.3. Needs a non-Claude recheck at the
+new versions before a lock.

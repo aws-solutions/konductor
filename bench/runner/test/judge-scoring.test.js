@@ -185,3 +185,20 @@ test('the report shows scored and raw rubric scores per judge, the unverified-qu
     assert.match(renderMarkdown(stale), /earlier version of the rubric/);
   } finally { rm(root); }
 });
+
+test('the Judging section counts blank expert replies and re-asks per judge, and stays as it was without them (D-149)', async () => {
+  const { root, bench, common, runDir } = fixture();
+  try {
+    const caller = stub(({ prompt }) => rubricReply(prompt, { c1: { verdict: 'pass', evidence: 'reservation is 7 days' }, c2: { verdict: 'pass', evidence: 'reservation is 7 days' } }));
+    await runJudging({ ...common, caller });
+    const report = () => buildReport({ run: loadRun(runDir), tasks: loadTasks(bench), baseline: 'vanilla' }).report;
+    assert.doesNotMatch(renderMarkdown(report()), /Blank expert replies/);
+    const file = path.join(runDir, 'judgments.json');
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    j.rubric[0] = { ...j.rubric[0], blankExpert: true, reask: { reason: 'blank', first: null, still: 'blank' } };
+    fs.writeFileSync(file, JSON.stringify(j));
+    const s = report().judging.byJudge['gpt-test'];
+    assert.deepEqual([s.blankExpert, s.reasked, s.reaskStill], [1, 1, 1]);
+    assert.match(renderMarkdown(report()), /Blank expert replies .*: gpt-test 1 blank, 1 re-asked \(1 still blank\)/);
+  } finally { rm(root); }
+});

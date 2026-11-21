@@ -38,6 +38,26 @@ const RULES = Object.freeze({
   sha256: sha256([LABEL_RULES, VERDICT_RULES, PASS_RULES, DEEP_RULES, PANEL_RULES].join('\n\u0000\n')),
 });
 
+// The inputs a verdict also rests on besides the rule texts (DEBT K-4): the judge prompts, the judge family map, the
+// control files and the selection scorer. Each is hashed into a new record's `rules.inputs`; a record whose input hash
+// differs from today's is stale and names the input. Records made before this field have none and are not judged on it.
+const INPUT_FILES = Object.freeze({
+  judgePrompts: [path.join(__dirname, '..', 'judge', 'prompts.js')],
+  familyMap: [path.join(__dirname, '..', 'judge', 'family.js')],
+  controls: [path.join(__dirname, 'controls')],
+  selectionPolicy: [path.join(__dirname, 'selection.js'), path.join(__dirname, 'selectrun.js')],
+});
+function filesOf(p) {
+  if (!fs.existsSync(p)) return [];
+  if (!fs.statSync(p).isDirectory()) return [p];
+  return fs.readdirSync(p).sort().flatMap((n) => filesOf(path.join(p, n)));
+}
+/** { judgePrompts, familyMap, controls, selectionPolicy }: the sha256 of each input's files, path and bytes. */
+function inputHashes(files = INPUT_FILES) {
+  const root = path.join(__dirname, '..');
+  return Object.fromEntries(Object.entries(files).map(([k, ps]) => [k, sha256(ps.flatMap(filesOf).map((f) => `${path.relative(root, f)}\u0000${fs.readFileSync(f, 'utf8')}`).join('\n\u0000\n'))]));
+}
+
 const gapOf = (reading) => (reading && reading.tasks ? { mean: reading.mean_gap, tInterval: reading.t_interval, bootstrapInterval: reading.bootstrap_interval } : null);
 
 /** The panel scores of a check as record rows: one per judged answer, its median and each judge's score and family. */
@@ -108,7 +128,7 @@ function blockFromDecision(decision, meta = {}) {
 }
 
 /** The fields of a selection result (selection.js selectionResult), in record order. */
-const SELECTION_FIELDS = Object.freeze(['triggerPrecision', 'triggerRecall', 'observedUseRate', 'requests', 'runs', 'failedLoads', 'frozen', 'requestsSha256', 'unitSha256', 'source', 'measuredAt']);
+const SELECTION_FIELDS = Object.freeze(['triggerPrecision', 'triggerRecall', 'observedUseRate', 'requests', 'runs', 'failedLoads', 'frozen', 'requestsSha256', 'unitSha256', 'source', 'measuredAt', 'sessionUse']);
 const HEX64 = /^[0-9a-f]{64}$/;
 const isRate = (v) => typeof v === 'number' && v >= 0 && v <= 1;
 const isCount = (v) => Number.isInteger(v) && v >= 0;
@@ -130,6 +150,8 @@ function selectionProblems(s) {
   if (typeof s.frozen !== 'boolean') problems.push('frozen must be true or false');
   for (const k of ['requestsSha256', 'unitSha256']) if (!HEX64.test(String(s[k]))) problems.push(`${k} must be a SHA-256`);
   for (const k of ['source', 'measuredAt']) if (typeof s[k] !== 'string' || !s[k].trim()) problems.push(`${k} must be a non-empty string`);
+  const u = s.sessionUse;
+  if (u !== undefined && u !== null && !(isRate(u.rate) && isCount(u.runs) && u.runs > 0 && isCount(u.loaded) && typeof u.source === 'string')) problems.push('sessionUse must be null or { rate, runs, loaded, source } from past real runs');
   const extra = Object.keys(s).filter((k) => !SELECTION_FIELDS.includes(k));
   if (extra.length) problems.push(`unknown field(s): ${extra.join(', ')}`);
   return problems;
@@ -172,7 +194,7 @@ function buildRecord({ skill, unit = null, baseline = null, identity = null, sel
     schema: SCHEMA_ID, createdAt,
     skill: { name: skill.name, sha256: skill.sha256 ?? null },
     unit: unit ? { manifestSha256: unit.manifestSha256, paths: [...unit.paths], unresolved: [...unit.unresolved], source: unit.source ?? null } : null,
-    scope, rules: { ...RULES },
+    scope, rules: { ...RULES, inputs: inputHashes() },
     baseline: { manifestSha256: baseline?.manifestSha256 ?? null, legacy: baseline?.legacy ?? null, unitSha256: baseline?.unitSha256 ?? null, source: baseline?.source ?? null },
     identity,
     selection,
@@ -216,6 +238,11 @@ function readRecord(file, { skillSha256 = null, skillsDir = null } = {}) {
   if (problems.length) throw new Error(`${file}: ${problems.join('; ')}`);
   const why = record.stale.value ? [record.stale.why] : [];
   if (record.rules.sha256 !== RULES.sha256) why.push(`made under other rules (labels ${record.rules.labelRulesDate}, verdicts ${record.rules.verdictRulesDate}); never read again under the current ones`);
+  if (record.rules.inputs) {
+    const now = inputHashes();
+    const moved = Object.keys(now).filter((k) => record.rules.inputs[k] !== now[k]);
+    if (moved.length) why.push(`made with other inputs (${moved.join(', ')} changed); never read again as current`);
+  }
   if (skillSha256 && record.skill.sha256 !== skillSha256) why.push('SKILL.md changed after the record was made');
   if (skillsDir) {
     const now = subjectManifest({ skillsDir, name: record.identity?.replacedBy ?? record.skill.name }).sha256;
@@ -244,10 +271,10 @@ function renderRecord(record) {
     row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
     `Loaded unit: ${record.unit ? `${record.unit.manifestSha256.slice(0, 12)} over ${record.unit.paths.join(', ')}` : 'not recorded'}. Source: ${src?.commit ?? 'unknown'}${src?.dirty ? ' (with uncommitted changes)' : ''}.`,
     `Stale: ${record.stale.value ? `YES: ${record.stale.why}` : 'no'}.`,
-    `Selection: ${sel ? `precision ${sel.triggerPrecision ?? 'n/a (never loaded)'}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} over ${sel.runs} runs, ${sel.frozen ? 'frozen' : 'draft'} requests (${sel.source})` : 'not measured'}.`,
+    `Selection: ${sel ? `precision ${sel.triggerPrecision ?? 'n/a (never loaded)'}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} over ${sel.runs} selection runs, use in real sessions ${sel.sessionUse ? `${sel.sessionUse.rate} over ${sel.sessionUse.runs} runs` : 'not read'}, ${sel.frozen ? 'frozen' : 'draft'} requests (${sel.source})` : 'not measured'}.`,
     record.wholeSkill ? `Whole-skill call: ${record.wholeSkill.status}: ${record.wholeSkill.why.join('; ')}.` : '',
     `Agree: ${record.agree === null ? 'one depth only' : record.agree ? 'yes' : 'NO: the verdicts differ, a person decides'}. Sign-off: ${record.signoff.by ?? 'none yet'}.`, '',
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
 
-module.exports = { SCHEMA_ID, MAJOR, RULES, WHOLE, NO_SELECTION, blockFromCheck, blockFromDecision, selectionProblems, wholeSkillGate, buildRecord, recordProblems, writeRecord, readRecord, renderRecord };
+module.exports = { SCHEMA_ID, MAJOR, RULES, INPUT_FILES, inputHashes, WHOLE, NO_SELECTION, blockFromCheck, blockFromDecision, selectionProblems, wholeSkillGate, buildRecord, recordProblems, writeRecord, readRecord, renderRecord };

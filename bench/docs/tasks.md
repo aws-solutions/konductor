@@ -56,7 +56,7 @@ Checks run in the scratch directory after the run. They need no model.
 - `labelled_findings`: `path` must hold at least `min` distinct severity-labelled findings (optional `labels`, default critical, high, important, major, medium, moderate, minor, low). Severity may sit in a section heading, a `Severity: X` line, a table cell or an inline label; the same finding listed in a table and a heading counts once. Use it instead of counting severity words.
 - `tests`: hidden acceptance tests, see Hard tasks.
 - `fixture_unchanged`: the file or directory at `path` is byte-identical to the pristine fixture. Used wherever the prompt says not to change tests or source.
-- `cmd`: run with `sh -c`, passes when the exit code equals `expectExit` (default 0). Only `node`, `sh` and POSIX tools (`grep`, `awk`, `sort`, `wc`).
+- `cmd`: run with `sh -c`, passes when the exit code equals `expectExit` (default 0). Only `node`, `sh` and POSIX tools (`grep`, `awk`, `sort`, `wc`). `BENCH_FINAL_TEXT` names a file outside the workspace that holds the agent's final message (unset when the run produced none), so a task whose right move is to stop and ask can check that the message asks.
 
 Substance checks for reports use `cmd` where counting needs more than a regex:
 

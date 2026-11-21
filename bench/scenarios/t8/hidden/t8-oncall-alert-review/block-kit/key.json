@@ -35,7 +35,7 @@
       "match": {
         "all": [
           "\"name\":\"DbConnectionPoolExhaustion\"",
-          "\"problem\":\"[^\"]*(missing|absent|stale|renamed|does not exist|no longer|never fires|no data)"
+          "\"problem\":\"[^\"]*(missing|absent|stale|renamed|does not exist|no longer|never fire[sd]?|no data)"
         ]
       },
       "weight": 2,
@@ -90,7 +90,7 @@
       "match": {
         "all": [
           "\"name\":\"QueueDepthSpike\"",
-          "\"problem\":\"[^\"]*(duration|flap|brief|short|for:|transient)"
+          "\"problem\":\"[^\"]*(duration|flap|brief|short|for:|for \\d+m|lasting|transient)"
         ]
       },
       "weight": 2,

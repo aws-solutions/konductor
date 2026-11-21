@@ -1,7 +1,7 @@
 {
   "id": "probe-e2e-no-yes",
   "class": "sop",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -59,6 +59,13 @@
       "expectExit": 0,
       "weight": 3,
       "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -n \"$BENCH_FINAL_TEXT\" && grep -Eq \"\\?|QUESTION:\" \"$BENCH_FINAL_TEXT\"",
+      "expectExit": 0,
+      "weight": 5,
+      "kind": "substance"
     }
   ],
   "rubric": [
@@ -70,9 +77,9 @@
   ],
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "editor": "mate debt worker (2026-11-21): a check that the final message asks (BENCH_FINAL_TEXT) (D-65)",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   },
   "review": {
     "family": "openai",
