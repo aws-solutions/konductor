@@ -2,6 +2,20 @@
   "outputFile": "docs/requirements/room-booking.md",
   "items": [
     {
+      "id": "revision-notes-applied",
+      "weight": 1,
+      "gate": true,
+      "type": "some",
+      "path": "requirements",
+      "match": {
+        "field": "text",
+        "all": [
+          "\\b(30|thirty)\\b[^.]{0,20}days?|\\b(3|three)\\b[^.]{0,20}hours?"
+        ]
+      },
+      "min": 1
+    },
+    {
       "id": "active-member",
       "weight": 2,
       "type": "some",
