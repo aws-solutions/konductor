@@ -59,4 +59,10 @@ that says 4 hours was, or is replaced by, the old value is not counted. A plain 
 | alt | 100 | 100 |
 | other (names the old 4 hours) | 95.9 | 100 |
 
-Non-Claude recheck: pending (paid; the `handEdited` mark blocks a lock until it is done).
+Non-Claude recheck: pending (paid; `handEdited.version` 2 blocks a lock until a recheck records it).
+
+## t11-media-returns-whiteboard v3 (2026-11-21, mate debt worker, DEBT D-119)
+
+The fixture's `npm test`, CI line and README ran `node --test test/`, which fails on Node 22 and later (Node reads the
+directory as one file), so an untouched fixture looked broken. All three now run `node --test test/*.test.js`. Free
+gates unchanged: reference 100, stub 17.5, lazy 23.8, alt 100. Non-Claude recheck: pending (`handEdited.version` 3).

@@ -6,7 +6,7 @@ A small internal service for return requests attached to individual order lines.
 
 The service has no third-party runtime packages. Run the checks with:
 
-    node --test test/
+    node --test test/*.test.js
 
 The sample HTTP adapter is a thin boundary for a future shop application. It is not a production server and does not own payment credentials.
 

@@ -7,8 +7,8 @@
 //                  pattern, or a `none` item. A correct answer that denies the wrong cause ("not caused by REL-8421")
 //                  matches too and loses the item (DEBT D-136). A pattern anchored to the whole value (^...$) is exempt.
 //   bare-test-dir  a fixture script or CI file that runs `node --test DIR` on a plain directory. Node 22 and later read
-//                  DIR as one file, so the suite fails on an untouched fixture (DEBT D-119). A DIR whose package.json
-//                  names a main file (the test/index.js shim) resolves and is exempt.
+//                  DIR as one file, so the suite fails on an untouched fixture (DEBT D-119). A DIR that resolves as a
+//                  module (a package.json main or an index.js, the test/index.js shim) is exempt.
 //   solution-link  a check that links `solution` to the workspace (`ln -s . solution`) without first moving an
 //                  agent-made solution/ aside: ln fails and the whole suite reads as unparsed (DEBT D-144).
 // Each finding has a `where` (the key item or file) so lint-baseline.json can hold the known ones by name.
@@ -63,7 +63,8 @@ function keyNegationFindings(hiddenDir) {
   return found;
 }
 
-const NODE_TEST_ARGS = /\bnode(?:\s+-\S+)*\s+--test((?:\s+[^\s;&|<>()]+)*)/g;
+// One command line: arguments never run on past a newline (a YAML `run:` line is followed by the next key).
+const NODE_TEST_ARGS = /\bnode(?:[ \t]+-\S+)*[ \t]+--test((?:[ \t]+[^\s;&|<>()]+)*)/g;
 
 // The plain-directory arguments of each `node --test` in `text` that do not resolve in `root`.
 function bareTestDirs(text, root) {
@@ -75,7 +76,8 @@ function bareTestDirs(text, root) {
       const full = path.join(root, arg);
       let st;
       try { st = fs.statSync(full); } catch { continue; }
-      if (st.isDirectory() && !fs.existsSync(path.join(full, 'package.json'))) out.push(arg);
+      // Node loads DIR as a module: a package.json main or an index.js makes it resolve (the test/index.js shim).
+      if (st.isDirectory() && !fs.existsSync(path.join(full, 'package.json')) && !fs.existsSync(path.join(full, 'index.js'))) out.push(arg);
     }
   }
   return out;

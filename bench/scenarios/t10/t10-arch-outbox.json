@@ -1,7 +1,7 @@
 {
   "id": "t10-arch-outbox",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "multi-phase",
   "role": "architect",
   "phases2": [
@@ -255,7 +255,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): fixture test script and CI line use test/*.test.js, which Node 22 and later need (D-119)",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

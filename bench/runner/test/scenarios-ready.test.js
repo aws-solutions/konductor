@@ -38,6 +38,9 @@ test('a hand-edited task with no review.recheck is blocked from lock; a dry run 
   assert.deepEqual(lockBlockers({ handEdited: { family: 'claude' } }), ['hand-edited, recheck missing']);
   assert.deepEqual(lockBlockers({ handEdited: { family: 'claude' }, review: { recheck: { family: 'glm' } } }), []);
   assert.deepEqual(lockBlockers({ handEdited: null }), []);
+  assert.deepEqual(lockBlockers({ handEdited: { version: 3 }, review: { recheck: { family: 'glm' } } }), ['hand-edited, recheck missing'], 'a recheck from before the v3 edit');
+  assert.deepEqual(lockBlockers({ handEdited: { version: 3 }, review: { recheck: { version: 2 } } }), ['hand-edited, recheck missing']);
+  assert.deepEqual(lockBlockers({ handEdited: { version: 3 }, review: { recheck: { version: 3 } } }), []);
   assert.deepEqual(dryRunReasons({ pilot: { scores: { dryRun: { reference: 100, stub: 7, alt: 100 } } } }),
     ['dry run kept in pilot.scores.dryRun, not pilot.dryRun', 'dry run has no lazy score']);
 });

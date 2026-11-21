@@ -1052,6 +1052,11 @@
                   }
                 }
               }
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The task version the recheck read."
             }
           }
         },
@@ -1167,6 +1172,11 @@
         "log": {
           "type": "string",
           "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The task version this hand edit made; a review.recheck must record it or a later one to clear the lock (scenarios ready)."
         }
       }
     }

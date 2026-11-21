@@ -38,3 +38,10 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   and `rollback-preserves-old` fail only "remove it now/immediately". expertKey: 8 items (adds serialised promotions;
   the history-vs-small-state item had no fixture anchor and is gone). Rubric `plan-follows-policy` added. New
   `answers/.../other`. Free gates: reference 100, stub 5.7, lazy 28.8, alt 100, other 100.
+
+## t10-arch-outbox v3 (2026-11-21, mate debt worker, DEBT D-119)
+
+The fixture's `npm test` and CI line ran `node --test test/`, which fails on Node 22 and later (Node reads the
+directory as one file), so an untouched fixture looked broken. Both now run `node --test test/*.test.js`, as the
+reference and answers already did. Free gates unchanged: reference 100, stub 3.6, lazy 34, alt 100, other 100.
+Non-Claude recheck: pending (`handEdited.version` 3).

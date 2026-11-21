@@ -136,6 +136,7 @@
   "handEdited": {
     "family": "claude",
     "editor": "mate debt worker (2026-11-21): old-duration-absent skips a requirement that names 4 hours as the old value (D-136)",
-    "log": "HAND-EDITS.md"
+    "log": "HAND-EDITS.md",
+    "version": 2
   }
 }

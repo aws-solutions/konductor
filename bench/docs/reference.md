@@ -1256,7 +1256,7 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   `none` pattern, so a correct denial of the wrong cause loses it; a pattern anchored as `^...$` is exempt; a key graded by the shared
   `block-key.js`, which skips a denied claim in `none` lists, is checked only for `none` items, and a `none` item with its own `match.none`
   denial guard is exempt), `bare-test-dir` (a fixture's
-  `package.json` script or CI file runs `node --test DIR`, which Node 22 and later read as one file, unless DIR has a `package.json` naming a main
+  `package.json` script or CI file runs `node --test DIR`, which Node 22 and later read as one file, unless DIR has an `index.js` or a `package.json` naming a main
   file) and `solution-link` (a check runs `ln -s . solution` without moving an agent-made `solution/` aside first). Known findings are listed in
   `bench/scenarios/lint-baseline.json`, each with its DEBT row: they print as `known` and do not fail. Exit 1 on a new finding, or on a baseline
   entry of a linted task that no longer matches (remove it: the baseline only shrinks).

@@ -7,6 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: node --test test/
+      - run: node --test test/*.test.js
       - run: node scripts/check-json.js
       - run: node scripts/check-docs.js

@@ -49,8 +49,18 @@ function fixReasons(task) {
   return out;
 }
 
-/** What blocks a lock but not a pilot run: a task with `handEdited` set and no `review.recheck` (plan section 4). */
-const lockBlockers = (task) => (task.handEdited && !task.review?.recheck ? [HAND_EDIT_FLAG] : []);
+/**
+ * What blocks a lock but not a pilot run: a task with `handEdited` set and no `review.recheck` (plan section 4). When the
+ * hand edit records the task `version` it made, a recheck counts only if it records that version or a later one, so a
+ * recheck made before the last edit does not clear it.
+ */
+function lockBlockers(task) {
+  const h = task.handEdited;
+  if (!h) return [];
+  const r = task.review?.recheck;
+  if (!r) return [HAND_EDIT_FLAG];
+  return Number.isInteger(h.version) && !(Number.isInteger(r.version) && r.version >= h.version) ? [HAND_EDIT_FLAG] : [];
+}
 
 /**
  * [{ batch, id, file, ready, fix, reasons, lockBlockers }] for every task of every t* folder under `packDir`.
