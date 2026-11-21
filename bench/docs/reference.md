@@ -1295,7 +1295,10 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   because each Playwright run takes about 690 MB. Wave 11 includes the fresh-session task, which needs the Kiro CLI or Claude Code arm. Wave 12 leaves
   out `t12-mux-parallel-merge` when tmux is not on PATH and `t12-cmux-parallel-merge` when cmux is not (DEBT D-126), with a message. After a paid wave,
   `bench/scenarios/wave-retry.js` lists the runs the service throttled, and the script reruns them once into `OUT-retry` within what is left of the
-  ceiling (DEBT D-138).
+  ceiling (DEBT D-138). `run` itself already reruns a throttled run once, a minute later, while the budget and the guards allow a launch
+  (`orchestrate.js` `DEFAULT_THROTTLE_RETRY`; plant cells excepted): the refused attempt is charged and kept as `<replicate>.throttled-1` with its
+  `attempt-result.json`, the cell's `result.json` lists it in `throttleRetries`, and no report reads it. The pilot table gives a throttled run its
+  own `throttled` flag, not `broken`.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

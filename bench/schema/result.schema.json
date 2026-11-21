@@ -29,6 +29,21 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "throttleRetries": {
+      "description": "Attempts the model service refused (a throttle) before this run, each kept as <replicate>.throttled-N with its own attempt-result.json (orchestrate.js DEFAULT_THROTTLE_RETRY).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dir", "status", "charged"],
+        "additionalProperties": false,
+        "properties": {
+          "dir": { "type": "string" },
+          "status": { "type": "string" },
+          "error": { "type": ["string", "null"] },
+          "charged": { "type": "number" }
+        }
+      }
+    },
     "armId": {
       "type": "string"
     },

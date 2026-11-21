@@ -7,6 +7,8 @@
 //
 // Flags (plan 8a):
 //   broken        the run ended in an error or a timeout, or a hidden test suite did not parse
+//   throttled     the model service refused the run (a throttle), so it never reached the task: rerun it, never a
+//                 task defect (counted apart from broken)
 //   too-easy      code score 90 or more
 //   too-hard      code score 15 or less, or the task's recorded dry run has a reference under 95
 //   answer-leak   a tool call named a hidden or answer path, or an output file repeats most of the reference's own text
@@ -101,10 +103,11 @@ function throttled(r, runDir) {
   try { return THROTTLE.test(runErrorOf(parseStream(fs.readFileSync(path.join(runDir, 'stream.jsonl'), 'utf8')).events) ?? ''); } catch { return false; }
 }
 
+// A throttled run is reported by its own flag (see throttled), never as broken: its empty hidden result follows from it.
 function brokenReasons(r, runDir) {
   const out = [];
+  if (r.status !== 'success' && r.status !== 'timeout' && throttled(r, runDir)) return out;
   if (r.status === 'timeout') out.push('timeout');
-  else if (throttled(r, runDir)) out.push(`${r.status}: throttled by the service, rerun it`);
   else if (r.status && r.status !== 'success') out.push(r.status);
   if (r.infraError) out.push('infra error');
   if (hiddenOf(r)?.unparsed) out.push('hidden suite did not parse');
@@ -220,7 +223,8 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       const broken = brokenReasons(r, e.dir);
       if (broken.length) flags.broken = broken.join(', ');
       // A throttled run never reached the task, so its score raises no too-easy or too-hard flag.
-      const refused = throttled(r, e.dir);
+      const refused = throttled(r, e.dir) && r.status !== 'success';
+      if (refused) flags.throttled = `${r.status}: refused by the model service, rerun it`;
       if (!refused && finite(score) && score >= EASY) flags['too-easy'] = `score ${score.toFixed(0)}`;
       const ref = entry?.task.pilot?.dryRun?.reference;
       if (!refused && finite(score) && score <= HARD) flags['too-hard'] = `score ${score.toFixed(0)}`;
@@ -258,7 +262,7 @@ const fmt = (v, d = 0) => (finite(v) ? v.toFixed(d) : 'n/a');
 // The lazy and alternative scores in pilot.dryRun come from a script, so the table says what they can and cannot show.
 const NOTE_DRY_RUN = 'Dry-run note: the shallow (lazy) and alternative answers behind pilot.dryRun are script-made copies of the reference, not independent attempts. For T4 code tasks the shallow answer equals the empty answer, so the shallow gate says nothing there (D-102).';
 
-const FLAG_NAMES = ['broken', 'too-easy', 'too-hard', 'answer-leak', 'second-family', 'noisy', 'fix', 'hand-edited, recheck missing'];
+const FLAG_NAMES = ['broken', 'throttled', 'too-easy', 'too-hard', 'answer-leak', 'second-family', 'noisy', 'fix', 'hand-edited, recheck missing'];
 
 /** Per batch: runs, distinct tasks, and for each flag the number of distinct tasks with at least one flagged run. */
 function batchSummary(rows) {
@@ -293,7 +297,7 @@ function renderTable(rows) {
   const rerun = [...new Set(rows.filter((r) => r.flags.noisy).map((r) => r.task))];
   L.push('', `${rows.length} run(s), ${total.toFixed(2)} credits. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
   L.push('', ...renderBatches(batchSummary(rows)));
-  L.push(`Flagged runs: broken ${count('broken')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, fix ${count('fix')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
+  L.push(`Flagged runs: broken ${count('broken')}, throttled ${count('throttled')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, fix ${count('fix')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
   L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
   L.push(NOTE_DRY_RUN);
   return `${L.join('\n')}\n`;

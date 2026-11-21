@@ -174,7 +174,7 @@ test('a negative control that repeats its reference is not an answer leak; a hid
   assert.match(rows['t6-neg#2'].flags['answer-leak'], /hidden\/t6-neg/);
 });
 
-test('a run the service throttled is broken with a rerun note and raises no too-hard flag', () => {
+test('a run the service throttled gets its own throttled flag, is not broken and raises no too-hard flag (D-138)', () => {
   const root = tmp();
   const pack = path.join(root, 'pack');
   write(path.join(pack, 't6', 't6-req.json'), json({ id: 't6-req', prompt: 'Do it.', fixture: 't6-req', hidden: 't6-req', authorship: { model: 'gpt-5.6-luna' } }));
@@ -186,7 +186,8 @@ test('a run the service throttled is broken with a rerun note and raises no too-
   ]);
   const rows = byTask(pilotRows([w], { packDir: pack }));
   for (const k of ['t6-req#1', 't6-req#2']) {
-    assert.match(rows[k].flags.broken, /throttled by the service, rerun it/);
+    assert.match(rows[k].flags.throttled, /error: refused by the model service, rerun it/);
+    assert.equal(rows[k].flags.broken, undefined);
     assert.equal(rows[k].flags['too-hard'], undefined);
   }
 });
