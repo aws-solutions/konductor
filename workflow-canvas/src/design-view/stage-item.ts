@@ -30,6 +30,26 @@ const BOM = '\uFEFF';
 // comment. The writer finds the block by this same line.
 const STAGES_KEY = /^(?:stages|"stages"|'stages'):[ \t]*(?:#.*)?$/;
 
+// A value that a plain YAML scalar reads back as the same text, and the words
+// YAML 1.1 reads as booleans or null, which are left out of it.
+const PLAIN = /^[A-Za-z](?:[A-Za-z0-9 _.,()/-]*[A-Za-z0-9_.,()/-])?$/;
+const NOT_TEXT = /^(?:true|false|null|y|n|yes|no|on|off)$/i;
+
+/**
+ * A value as the writer writes it: plain where that reads back as the same
+ * text, double-quoted where it would not.
+ *
+ * This is a copy of the writer's own encoder, which it does not export, and
+ * the only thing here that says what the bytes of a line it writes are. A
+ * copy can drift, so writer-contract.test.ts holds this one to the writer
+ * value by value, through what `withStages` actually writes.
+ */
+export function writerScalar(value: string): string {
+  return PLAIN.test(value) && !NOT_TEXT.test(value)
+    ? value
+    : JSON.stringify(value);
+}
+
 /**
  * The break that the writer would end a line of its own with: the one of the
  * `stages:` key, or `\n` when that key ends the file. `undefined` for a file
@@ -79,15 +99,16 @@ export function itemTextOf(
  * changes.
  *
  * The writer keeps the lines of a stage it did not change, and writes a stage
- * it did change as two lines of its own: the name and the agent, each a plain
- * scalar, with the agent indented two spaces past the dash, each ended with
- * `eol`, the break of the `stages:` key. So an item that is already exactly
- * those two lines, for the name and the agent the file holds, and ended the
- * way the writer ends them, loses nothing. Anything else in it goes: a
- * comment inside the item, a blank line, another key, a quoted or folded
- * value, the two keys the other way round, a value written on a line of its
- * own, or a break that is not the one the key has, the missing break at the
- * end of a file included.
+ * it did change as two lines of its own: the name and the agent as
+ * `writerScalar` writes them, with the agent indented two spaces past the
+ * dash, each ended with `eol`, the break of the `stages:` key. So an item
+ * that is already exactly those two lines, for the name and the agent the
+ * file holds, loses nothing. Anything else in it goes: a comment inside the
+ * item, a blank line, another key, the two keys the other way round, a value
+ * written on a line of its own, a break that is not the one the key has, the
+ * missing break at the end of a file included, or a value written in any
+ * other way than the writer would write it, such as a plain `yes`, which the
+ * writer quotes to keep it from reading as a boolean.
  */
 export function writerKeepsItem(
   item: string | undefined,
@@ -100,8 +121,9 @@ export function writerKeepsItem(
   const lines = brokenLinesOf(item);
   if (lines.length !== 2) return false;
   const dash = /^([ \t]*)- name: (.*)$/.exec(lines[0]?.text ?? '');
-  if (!dash || dash[2] !== name) return false;
-  if (lines[1]?.text !== `${dash[1]}  agent: ${agent}`) return false;
+  if (!dash || dash[2] !== writerScalar(name)) return false;
+  const agentLine = `${dash[1]}  agent: ${writerScalar(agent)}`;
+  if (lines[1]?.text !== agentLine) return false;
   return lines.every((line) => line.eol === eol);
 }
 
