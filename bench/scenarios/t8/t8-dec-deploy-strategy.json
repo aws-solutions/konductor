@@ -165,25 +165,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks to review material and choose one of three deployment strategies without prescribing how to analyze or what method to use. No misleading hints."
+          "note": "Request asks to write decision record and choose among three deployment strategies, no method mandated or decoy present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides constraints (capacity, cost, drain times) and incident data but does not explicitly state which strategy to choose. Documents support analysis rather than giving answer."
+          "note": "Fixture provides constraints (capacity, cost, drain times) but doesn't prescribe answer or describe finished behavior hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Key validates decision is canary and checks for specific constraints from fixture files (40 hosts, 72%, 40 min drain, etc.). Rubric anchors reference fixture numbers and expertKey items align with concepts needed."
+          "note": "Key items reference specific data from fixture files (40 hosts, 72%, 40 min drain, $2,800/$7,200 costs, etc.) and rubric anchors reward outcome request asks for."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can deduce canary from constraints: blue/green rejected due to capacity/cost, rolling rejected due to exposure and drain times, canary fits spare capacity and allows early detection."
+          "note": "Competent developer can analyze constraints, choose canary (cost prevents blue/green, broad exposure prevents rolling), and write valid decision record differing from reference."
         }
       ],
-      "version": 5
+      "version": 6
     }
   },
   "handEdited": {
