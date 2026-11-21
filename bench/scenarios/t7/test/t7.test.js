@@ -91,6 +91,17 @@ test('date and number tolerances', () => {
   assert.throws(() => g({ op: 'date', path: 'revised_launch_date', value: 'soon' }));
 });
 
+test('guideTotal: guide sizes added up, inside the band; off-guide sizes, a wrong sum or a total out of band fail', () => {
+  const a = { op: 'guideTotal', path: 'total', items: 'tickets', field: 'days', allowed: [0.5, 1, 2, 3, 5], value: 17, minPct: 50, maxPct: 150 };
+  const plan = (days, total) => ({ tickets: days.map((d) => ({ days: d })), total });
+  assert.ok(gradeAssertion(plan([2, 1, 2, 1, 2, 1, 0.5], 9.5), a).ok);
+  assert.ok(gradeAssertion(plan([2, 1, 2, 1, 2, 1, 0.5], 10), a).ok, 'rounded up after adding');
+  assert.ok(!gradeAssertion(plan([2, 1, 2, 1, 2, 1, 0.5], 12), a).ok, 'total is not the sum');
+  assert.ok(!gradeAssertion(plan([4, 4, 4], 12), a).ok, '4 days is not a guide size');
+  assert.ok(!gradeAssertion(plan([1, 1, 1], 3), a).ok, 'below half the reference');
+  assert.ok(!gradeAssertion(plan([5, 5, 5, 5, 5, 3], 28), a).ok, 'above one and a half times the reference');
+});
+
 test('equals ignores case; precision caps a padded list', () => {
   assert.ok(g({ op: 'equals', path: 'overall', value: 'RED' }).ok);
   assert.ok(g({ op: 'equals', path: 'overall', oneOf: ['amber', 'red'] }).ok);
