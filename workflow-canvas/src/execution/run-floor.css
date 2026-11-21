@@ -1,0 +1,121 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The run floor, for the light and the dark mode. A test
+ * (run-floor-contrast.test.ts) checks that these colours are the theme's and
+ * reach WCAG AA in both modes.
+ */
+.wf-floor {
+  --wf-floor-bg: #ffffff;
+  --wf-floor-text: #16131f;
+  --wf-floor-text-muted: #56516a;
+  --wf-floor-edge: #7a7490;
+  --wf-floor-current-bg: #efebff;
+  --wf-floor-current-edge: #6236f0;
+  --wf-floor-focus: #6236f0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 16px;
+  align-items: start;
+  color: var(--wf-floor-text);
+}
+
+:root[data-theme='dark'] .wf-floor {
+  --wf-floor-bg: #171331;
+  --wf-floor-text: #f5f3ee;
+  --wf-floor-text-muted: #9c93b8;
+  --wf-floor-edge: #8f86ad;
+  --wf-floor-current-bg: #1f1a44;
+  --wf-floor-current-edge: #a78bfa;
+  --wf-floor-focus: #a78bfa;
+}
+
+.wf-floor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wf-floor-stages {
+  display: grid;
+  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.wf-floor-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wf-floor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wf-floor-stage {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--wf-floor-edge);
+  border-radius: 8px;
+  background: var(--wf-floor-bg);
+  color: var(--wf-floor-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.wf-floor-stage[aria-current='true'] {
+  border-color: var(--wf-floor-current-edge);
+  box-shadow: inset 3px 0 0 var(--wf-floor-current-edge);
+  background: var(--wf-floor-current-bg);
+}
+
+.wf-floor-stage:focus-visible {
+  outline: 2px solid var(--wf-floor-focus);
+  outline-offset: 2px;
+}
+
+.wf-floor-stage-name {
+  overflow-wrap: anywhere;
+}
+
+.wf-floor-stage-state,
+.wf-floor-note {
+  color: var(--wf-floor-text-muted);
+}
+
+.wf-floor-note {
+  margin: 0;
+}
+
+.wf-floor-side {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .wf-floor,
+  .wf-floor-stages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (forced-colors: active) {
+  .wf-floor-stage[aria-current='true'] {
+    border-width: 3px;
+  }
+
+  .wf-floor-stage:focus-visible {
+    outline-color: Highlight;
+  }
+}
