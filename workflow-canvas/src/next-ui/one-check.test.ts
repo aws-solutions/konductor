@@ -144,6 +144,64 @@ describe('oneCheck', () => {
     expect(server.calls[0]?.signal.aborted).toBe(true);
   });
 
+  it('holds the call for the other reader when one gives up', async () => {
+    // The page takes the Design view off while the editor is still waiting
+    // for the answer that says whether the draft may be saved.
+    const server = held();
+    const shared = oneCheck(server.validate);
+    const mine = signalOf();
+    const drawn = shared.validate({ text: 'one' }, mine.signal);
+    const judged = shared.check('one');
+
+    mine.abort();
+    server.answers[0]?.(answerOf());
+
+    expect(server.calls).toHaveLength(1);
+    expect(server.calls[0]?.signal.aborted).toBe(false);
+    expect((await judged).diagnostics).toHaveLength(1);
+    await expect(drawn).resolves.toBeDefined();
+  });
+
+  it('aborts the call once the last reader of it has given up', async () => {
+    const server = held();
+    const shared = oneCheck(server.validate);
+    const first = signalOf();
+    const second = signalOf();
+    void shared.validate({ text: 'one' }, first.signal);
+    void shared.validate({ text: 'one' }, second.signal);
+
+    first.abort();
+    expect(server.calls[0]?.signal.aborted).toBe(false);
+    second.abort();
+
+    expect(server.calls[0]?.signal.aborted).toBe(true);
+  });
+
+  it('makes the call again for a text whose readers all gave up', async () => {
+    const server = held();
+    const shared = oneCheck(server.validate);
+    const mine = signalOf();
+    void shared.validate({ text: 'one' }, mine.signal);
+    mine.abort();
+
+    const judged = shared.check('one');
+    server.answers[1]?.(answerOf());
+
+    expect(server.calls).toHaveLength(2);
+    expect((await judged).diagnostics).toHaveLength(1);
+  });
+
+  it('still aborts a call that newer text replaces, whoever waits for it', async () => {
+    const server = held();
+    const shared = oneCheck(server.validate);
+    void shared.check('one');
+
+    void shared.validate({ text: 'two' }, signalOf().signal);
+
+    expect(server.calls[0]?.signal.aborted).toBe(true);
+    expect(server.calls[1]?.signal.aborted).toBe(false);
+  });
+
   it('makes the call again for a text whose call failed', async () => {
     const server = held();
     const shared = oneCheck(server.validate);
