@@ -214,15 +214,29 @@ function viewStageOf(
   return { ...value, name };
 }
 
+/** The most stages a workflow may have, as the contract allows. */
+const STAGES_MOST = 40;
+
 // The parsed workflow of the answer. `parse.ts` has `parseCheckResult` for
 // this body, but it drops the `kind` and the `range` of a stage, which the
 // Design view draws and marks by, so the fields are read here instead. The
 // contract requires the field, and allows it to be null, which is what a
 // text with errors answers with; a body that leaves it out altogether is a
 // reply this page does not understand.
+//
+// A workflow has an intent and one to forty stages. A key the contract leaves
+// room for, such as `params` or one a later release adds, is kept as it came:
+// the form shows the keys of the file, and a key this page does not know is
+// not a reply it cannot read.
 function checkViewOf(value: unknown): CheckAnswer['view'] {
   if (value === null) return null;
-  if (!isObject(value) || !Array.isArray(value.stages)) {
+  if (
+    !isObject(value) ||
+    !isObject(value.intent) ||
+    !Array.isArray(value.stages) ||
+    value.stages.length < 1 ||
+    value.stages.length > STAGES_MOST
+  ) {
     throw new ApiError(BAD_REPLY, 200);
   }
   return {

@@ -217,6 +217,43 @@ describe('createNextPorts, the check of a text', () => {
     expect(checked.view?.stages[0]?.prompt).toBe('Write it.');
   });
 
+  it('reads a view with the keys the contract leaves room for', async () => {
+    const view = {
+      ...answer.view,
+      params: { tone: { type: 'string' } },
+      stages: [{ ...stage, done_when: ['draft-exists'], surprise: 7 }],
+      surprise: 'a key of a later release',
+    };
+    const { fetchFn } = serverOf({ body: { view, diagnostics: [] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const checked = await ports.validate(
+      { text: '' },
+      new AbortController().signal,
+    );
+
+    expect(checked.view?.stages[0]?.done_when).toEqual(['draft-exists']);
+    expect(checked.view?.stages).toHaveLength(1);
+  });
+
+  it('reads a view with as many stages as a workflow may have', async () => {
+    const stages = Array.from({ length: 40 }, (_one, index) => ({
+      ...stage,
+      name: `stage-${index}`,
+    }));
+    const { fetchFn } = serverOf({
+      body: { view: { ...answer.view, stages }, diagnostics: [] },
+    });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const checked = await ports.validate(
+      { text: '' },
+      new AbortController().signal,
+    );
+
+    expect(checked.view?.stages).toHaveLength(40);
+  });
+
   it('takes a severity it does not know as an error', async () => {
     const { fetchFn } = serverOf({
       body: {
@@ -301,6 +338,22 @@ describe('createNextPorts, the check of a text', () => {
     ['a view with no name', { ...answer.view, name: 7 }],
     ['a view with no format', { ...answer.view, format: undefined }],
     ['a view with no version', { ...answer.view, version: undefined }],
+    ['a view with no intent', { ...answer.view, intent: undefined }],
+    [
+      'a view whose intent is not a mapping',
+      { ...answer.view, intent: 'Ship' },
+    ],
+    ['a view with no stage at all', { ...answer.view, stages: [] }],
+    [
+      'a view with more stages than a workflow may have',
+      {
+        ...answer.view,
+        stages: Array.from({ length: 41 }, (_one, index) => ({
+          ...stage,
+          name: `stage-${index}`,
+        })),
+      },
+    ],
   ])('refuses %s', async (_, view) => {
     const { fetchFn } = serverOf({ body: { view, diagnostics: [] } });
     const ports = createNextPorts(TOKEN, { fetchFn });
