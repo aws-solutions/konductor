@@ -99,7 +99,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "git-work.js checks are thorough: detects merge commits, verifies each ticket has own branch/merge, regression tests fail without fix, suite passes after each merge, cleanup verified. Would catch doing all work on main branch."
+        "note": "git-work.js checks are thorough: detects merge commits, verifies each ticket has own branch/merge, regression tests fail without fix, suite passes after each merge, cleanup verified. Would catch doing all work on main branch. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 100 in pilot wave 12, while the dry run keeps the lazy answer at 27.3 (shallow 0) and the stub at 0, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",

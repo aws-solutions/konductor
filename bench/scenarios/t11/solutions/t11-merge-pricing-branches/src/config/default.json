@@ -10,6 +10,6 @@
   "regions": {
     "harbor": { "rate": 0.0825, "taxShipping": false },
     "ridge": { "rate": 0.05, "taxShipping": true },
-    "meadow": { "rate": 0.03, "taxShipping": false }
+    "meadow": { "rate": 0, "taxShipping": false }
   }
 }

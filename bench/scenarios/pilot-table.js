@@ -154,9 +154,35 @@ function shingles(s) {
 }
 const { readTextOrNull: readText } = require('../runner/lib/util.js');
 
+// Text of `rel` on every branch of a fixture's own git repository (fixtures/<id>/dotgit), so a merge task whose branches
+// already hold the answer's lines (t11-merge-pricing-branches) is not flagged for merging them. Cached per fixture.
+const branchTextCache = new Map();
+function branchTexts(fixDir, rel) {
+  if (!fs.existsSync(path.join(fixDir, 'dotgit'))) return '';
+  if (!branchTextCache.has(fixDir)) {
+    const { copyFixture } = require('../runner/lib/sandbox.js');
+    const { execFileSync } = require('node:child_process');
+    const os = require('node:os');
+    const tmp = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'pt-git-'));
+    const files = new Map();
+    try {
+      copyFixture(fixDir, tmp);
+      const git = (...a) => execFileSync('git', ['-C', tmp, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      for (const ref of git('for-each-ref', '--format=%(refname)').split('\n').filter(Boolean)) {
+        for (const p of git('ls-tree', '-r', '--name-only', ref).split('\n').filter(Boolean)) {
+          try { files.set(p, `${files.get(p) ?? ''}\n${git('show', `${ref}:${p}`)}`); } catch { /* binary or gone */ }
+        }
+      }
+    } catch { /* not a usable repository: no branch text */ } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+    branchTextCache.set(fixDir, files);
+  }
+  return branchTextCache.get(fixDir).get(rel) ?? '';
+}
+
 /**
  * Output files that repeat most of the reference's own text: for each reference file, the shingles that are not in the
- * fixture's file of the same name, and the share of them found in the run's file of that name.
+ * fixture's file of the same name (on disk or on any of its branches), and the share of them found in the run's file
+ * of that name.
  */
 function copiedReference(runDir, entry) {
   if (!entry) return [];
@@ -172,9 +198,10 @@ function copiedReference(runDir, entry) {
     // Only text the reference ADDS counts as its own: lines that are not in the fixture's copy of the file. A fix that
     // only deletes or reorders fixture lines (t5-qa-flaky-fix's helpers.js) has no own text, so a correct answer that
     // makes the same deletion is not a copy.
-    const fixtureLines = new Set((readText(path.join(fix, rel)) ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+    const known = `${readText(path.join(fix, rel)) ?? ''}\n${branchTexts(fix, rel)}`;
+    const fixtureLines = new Set(known.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
     const added = ref.split(/\r?\n/).filter((l) => l.trim() && !fixtureLines.has(l.trim())).join('\n');
-    const base = shingles(readText(path.join(fix, rel)) ?? '');
+    const base = shingles(known);
     const own = [...shingles(added)].filter((s) => !base.has(s));
     if (own.length < COPY_MIN_SHINGLES) continue;
     const have = shingles(got);

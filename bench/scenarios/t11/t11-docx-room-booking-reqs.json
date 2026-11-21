@@ -109,7 +109,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A lazy answer (copying table values like 21 days, 4 hours, using 'could' for wishlist items) would fail tests: old-duration-absent (catches '4 hours'), advance-window (needs '30 calendar days'), no-wishlist-priority (catches 'could'), youth-conflict (must be in openQuestions)."
+        "note": "A lazy answer (copying table values like 21 days, 4 hours, using 'could' for wishlist items) would fail tests: old-duration-absent (catches '4 hours'), advance-window (needs '30 calendar days'), no-wishlist-priority (catches 'could'), youth-conflict (must be in openQuestions). Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 96 in pilot wave 11, while the dry run keeps the lazy answer at 39.5 and the stub at 4.8, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",

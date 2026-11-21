@@ -111,7 +111,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "The task is appropriately difficult. A quick wrong answer (like the lazy implementation that skips MANAGER_REVIEW, EXPIRED, REJECTED states, inspectionAttempts, proper fee calculation) would be caught by at least 12 of 18 hidden tests including: day 30/31 boundary, manager review for amounts over 50000, inspection recheck loop, restocking fee percentage and minimum, crossed-out reinspect event, and missing states."
+        "note": "The task is appropriately difficult. A quick wrong answer (like the lazy implementation that skips MANAGER_REVIEW, EXPIRED, REJECTED states, inspectionAttempts, proper fee calculation) would be caught by at least 12 of 18 hidden tests including: day 30/31 boundary, manager review for amounts over 50000, inspection recheck loop, restocking fee percentage and minimum, crossed-out reinspect event, and missing states. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 92 in pilot wave 11, while the dry run keeps the lazy answer at 23.8 and the stub at 17.5, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",

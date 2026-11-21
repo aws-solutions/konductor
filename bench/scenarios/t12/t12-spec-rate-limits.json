@@ -1,7 +1,7 @@
 {
   "id": "t12-spec-rate-limits",
   "class": "orchestration",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "phases2": [
     "architecture",
@@ -191,7 +191,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
+    "editor": "mate wave 11/12 fix worker (2026-11-21)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -203,10 +203,24 @@
       "stub": 0,
       "lazy": 0,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "lockedAt": null,
   "adjudication": [

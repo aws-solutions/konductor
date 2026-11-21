@@ -206,3 +206,25 @@ test('writing the output path the task names (answers/x.json) is not an answer l
   assert.equal(rows['t8-out#1'].flags['answer-leak'], undefined);
   assert.match(rows['t8-out#2'].flags['answer-leak'], /answers\/t8-out/);
 });
+
+test('a merge task whose fixture branches already hold the reference lines is not an answer leak', () => {
+  const root = tmp();
+  const pack = path.join(root, 'pack');
+  const fix = path.join(pack, 't11', 'fixtures', 't11-merge');
+  write(path.join(pack, 't11', 't11-merge.json'), json({ id: 't11-merge', prompt: 'Merge the branch.', fixture: 't11-merge', hidden: 't11-merge', authorship: { model: 'gpt-5.6-luna' } }));
+  write(path.join(fix, 'cfg.txt'), 'start\n');
+  const git = (...a) => spawnSync('git', ['-C', fix, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { encoding: 'utf8' });
+  git('init', '-q', '-b', 'main');
+  git('add', '.');
+  git('commit', '-qm', 'base');
+  git('checkout', '-qb', 'feature');
+  write(path.join(fix, 'cfg.txt'), `start\n${REF}\n`);
+  git('commit', '-qam', 'feature');
+  git('checkout', '-q', 'main');
+  require('node:fs').renameSync(path.join(fix, '.git'), path.join(fix, 'dotgit'));
+  write(path.join(pack, 't11', 'solutions', 't11-merge', 'cfg.txt'), `start\n${REF}\n`);
+  const w = path.join(root, 'w');
+  fakeRun(w, [{ task: 't11-merge', result: { checks: [tests(4, 8), sub(true)] }, files: { 'cfg.txt': `start\n${REF}\n` } }]);
+  const rows = byTask(pilotRows([w], { packDir: pack }));
+  assert.equal(rows['t11-merge#1'].flags['answer-leak'], undefined);
+});

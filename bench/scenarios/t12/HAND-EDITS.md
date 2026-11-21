@@ -129,3 +129,18 @@ Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconcil
   - Fourth recheck (owner-approved, deepseek-3.2, given the owner's rulings on the two disputed points: the product
     request is the spec task's input, and unsettled points are meant for openQuestions): 4 of 4 recheck items and 5 of
     5 review checks pass. `review` now holds this recheck; `pilot.decision` keep, blocker cleared.
+
+## Wave 11/12 fixes (2026-11-21, mate wave 11/12 fix worker, claude)
+
+No model call. Pilot wave 12 scored a complete, well-traced vanilla spec 25.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-spec-rate-limits v4 | 2026-11-21 | key only: `starter-figure` and `studio-figure` also accept a requirement for "each/every/all/any plan" with the figure from `config/plans.json`; `test-task` also accepts Retry-After, "refus" or `rate_limited` as the over-limit behaviour; `remaining-header-task` also accepts a task naming the remaining count ("remaining") | The wave 12 answer states one rule for each plan's `requestsPerMinute` read from `config/plans.json` (correct, and what the folder wants: figures are not copied), a task of limiter unit tests covering Retry-After, and a task that computes the remaining count, and failed all three items for not repeating the plan name, "429" or the header name. Gates after: reference 100, stub 0, lazy 0, alt 100, other 100, shallow 0; the wave 12 answer passes every item. |
+
+Easy by design (no change to tests). Pilot wave 12 scored these 91 to 100; in the dry run the lazy answer stays low, so
+a lazy answer does not pass. Their ceiling notes are in the task review where the task has one; these two have no
+author review, so the note is here:
+
+- `t12-parallel-backlog`: vanilla 100, lazy 20, shallow 0, stub 0. A plain planning and merge job a careful developer finishes.
+- `t12-sdlc-contact-import`: vanilla 91, lazy 36.4, shallow 0, stub 0. A plain importer job a careful developer finishes.
