@@ -217,3 +217,12 @@ Who: claude (mate spot-review fix worker session), from /tmp/pilot-w8 (pin 7cc81
   quoted it and still failed the item. The judged 0 on both runs has a second cause that is not the key:
   deepseek-3.2 and qwen3-coder-next answered "(nothing in the output)" for all six items, although the plan addresses
   at least four of them (see `reports/judge-vs-code-gaps-2026-11-21.md` and DEBT D-149). No check or fixture changed.
+- `t8-rollout-ledger-migration` v5: five expert items (expand-contract, canary-compare, data-rollback, gates-before,
+  timing) keep their points and now state them with this folder's facts, as the other T8 keys do: the migration file
+  names and the release-notes rule for 003, the cohort=canary / cohort=stable log tags, settlement_code as what 2.x
+  reads and 003 as the step that cannot be undone, the metric files, and the freeze (2025-11-21 18:00) and
+  contingency (2025-11-19 13:00) times. After v4, qwen3-coder-next failed every item because the plan "does not quote
+  any passage" stating the textbook sentence, while quoting the plan's own lines on the same point (the 001/002/003
+  safety, the 003 point of no return, the stop rules); deepseek-3.2 failed every item with no evidence. The T8 keys
+  judges score well (t8-runbook-db-failover, t8-pm-cache-stampede) all name folder facts. The weak answers are kept.
+  The judge-side habit is flagged by `blankExpert` (bench/judge/views.js, D-149).
