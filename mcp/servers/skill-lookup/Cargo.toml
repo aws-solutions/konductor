@@ -29,11 +29,11 @@ skill-lookup-core = { path = "../../lib/skill-lookup-core" }
 # redirect-header-leak fix and rejects unparsable messages instead of
 # responding to them. No 1.x release carries these fixes.
 rmcp = { version = "=2.1.0", features = ["server", "transport-io"] }
-tokio = { version = "=1.44.2", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }
+tokio = { version = "=1.54.1", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }
 schemars = "=0.8.22"
 # Same version as cli/konductor-rs/Cargo.toml's clap pin, for consistency
 # across this repo's Rust CLIs. Used for --skills-dir arg parsing.
-clap = { version = "=4.6.2", features = ["derive"] }
+clap = { version = "=4.6.9", features = ["derive"] }
 # Exact-pinned per repo convention. Already resolved transitively at this
 # exact version via schemars/rmcp's own dependency graph (see Cargo.lock);
 # promoted to a direct dependency because the frontmatter reader
@@ -45,7 +45,7 @@ clap = { version = "=4.6.2", features = ["derive"] }
 # binary also uses serde_json::json! directly in main.rs (tool schemas),
 # so it stays a direct dependency here too, not solely a transitive one
 # via skill-lookup-core.
-serde_json = "=1.0.150"
+serde_json = "=1.0.154"
 # Wire-format DTOs for the find_skills/get_skill/reload_skills tool
 # responses (main.rs). Already resolved transitively at this exact
 # version via rmcp/schemars/serde_yaml's own dependency graph (see
@@ -56,7 +56,7 @@ serde = { version = "=1.0.229", features = ["derive"] }
 [dev-dependencies]
 # Used by tests/initialize_handshake.rs to spawn the built binary as a
 # child process and exercise the stdio initialize handshake end-to-end.
-tokio = { version = "=1.44.2", features = ["process", "io-util", "time"] }
+tokio = { version = "=1.54.1", features = ["process", "io-util", "time"] }
 # serde_json is already a direct [dependencies] entry above (used by
 # frontmatter.rs); tests/initialize_handshake.rs uses that same
 # dependency to build/parse the raw JSON-RPC initialize request/response,

@@ -17,15 +17,13 @@ path = "src/lib.rs"
 # servers/skill-lookup/Cargo.toml). serde_json::Value is the frontmatter
 # parse target (see frontmatter.rs's module doc comment for why an
 # untyped intermediate is required).
-serde_json = "=1.0.150"
+serde_json = "=1.0.154"
 # YAML deserialization for SKILL.md-style frontmatter. Same pin as
 # servers/skill-lookup/Cargo.toml's serde_yaml dependency.
 serde_yaml = "=0.9.34"
 # Telemetry module: deserializing
 # .konductor/telemetry-id.json's identity record. Same pin as
-# servers/skill-lookup/Cargo.toml's own serde dependency (1.0.229, not
-# cli/konductor-rs's 1.0.228 -- the two differ; matching the sibling
-# crate this one is actually linked into avoids a version conflict).
+# servers/skill-lookup/Cargo.toml's own serde dependency.
 serde = { version = "=1.0.229", features = ["derive"] }
 # Telemetry module: sha256_hex()'s own shape validation
 # (^[a-f0-9]{64}$) needs no hashing here (this crate never generates a
@@ -36,7 +34,7 @@ sha2 = "=0.10.8"
 # and tokio::process::Command (for zombie-free detached spawns of the
 # curl-wrapping script) -- same pin as servers/skill-lookup/Cargo.toml's
 # existing tokio dependency.
-tokio = { version = "=1.44.2", features = ["process", "time", "rt-multi-thread", "macros", "io-util"] }
+tokio = { version = "=1.54.1", features = ["process", "time", "rt-multi-thread", "macros", "io-util"] }
 # Host-allowlist DNS classification, DNS-rebinding pin construction,
 # the timeout-vs-failure resolution decision (telemetry.rs), and
 # shared identity primitives (nil-UUID sentinel, UUID-shape validation,
