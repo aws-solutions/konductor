@@ -378,6 +378,38 @@
         "measuredAt": {
           "type": "string",
           "minLength": 1
+        },
+        "sessionUse": {
+          "description": "Load share of the skill in past real runs (cap select --usage-runs), apart from observedUseRate over selection runs (DEBT K-6); null when not read.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "rate",
+            "runs",
+            "loaded",
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "runs": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "loaded": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source": {
+              "type": "string"
+            }
+          }
         }
       }
     },

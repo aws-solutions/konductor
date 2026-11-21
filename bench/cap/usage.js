@@ -152,4 +152,15 @@ function tallyUsage(runs, caps, listedBy, harnesses) {
   return out;
 }
 
-module.exports = { scanRunDirs, tallyUsage, exposureOf, expandGlob, refOf };
+/**
+ * How often a skill was loaded in past real runs (not selection runs): { rate, runs, loaded, source } over the
+ * konductor runs of `scan` (scanRunDirs' result; vanilla arms are already left out), or null with no run (DEBT K-6).
+ */
+function sessionUseOf(scan, name, source) {
+  const runs = scan.runs.length;
+  if (!runs) return null;
+  const loaded = scan.runs.filter((r) => r.loads[String(name).toLowerCase()]).length;
+  return { rate: loaded / runs, runs, loaded, source };
+}
+
+module.exports = { scanRunDirs, tallyUsage, exposureOf, expandGlob, refOf, sessionUseOf };

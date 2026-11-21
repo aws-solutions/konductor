@@ -128,7 +128,7 @@ function blockFromDecision(decision, meta = {}) {
 }
 
 /** The fields of a selection result (selection.js selectionResult), in record order. */
-const SELECTION_FIELDS = Object.freeze(['triggerPrecision', 'triggerRecall', 'observedUseRate', 'requests', 'runs', 'failedLoads', 'frozen', 'requestsSha256', 'unitSha256', 'source', 'measuredAt']);
+const SELECTION_FIELDS = Object.freeze(['triggerPrecision', 'triggerRecall', 'observedUseRate', 'requests', 'runs', 'failedLoads', 'frozen', 'requestsSha256', 'unitSha256', 'source', 'measuredAt', 'sessionUse']);
 const HEX64 = /^[0-9a-f]{64}$/;
 const isRate = (v) => typeof v === 'number' && v >= 0 && v <= 1;
 const isCount = (v) => Number.isInteger(v) && v >= 0;
@@ -150,6 +150,8 @@ function selectionProblems(s) {
   if (typeof s.frozen !== 'boolean') problems.push('frozen must be true or false');
   for (const k of ['requestsSha256', 'unitSha256']) if (!HEX64.test(String(s[k]))) problems.push(`${k} must be a SHA-256`);
   for (const k of ['source', 'measuredAt']) if (typeof s[k] !== 'string' || !s[k].trim()) problems.push(`${k} must be a non-empty string`);
+  const u = s.sessionUse;
+  if (u !== undefined && u !== null && !(isRate(u.rate) && isCount(u.runs) && u.runs > 0 && isCount(u.loaded) && typeof u.source === 'string')) problems.push('sessionUse must be null or { rate, runs, loaded, source } from past real runs');
   const extra = Object.keys(s).filter((k) => !SELECTION_FIELDS.includes(k));
   if (extra.length) problems.push(`unknown field(s): ${extra.join(', ')}`);
   return problems;
@@ -269,7 +271,7 @@ function renderRecord(record) {
     row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
     `Loaded unit: ${record.unit ? `${record.unit.manifestSha256.slice(0, 12)} over ${record.unit.paths.join(', ')}` : 'not recorded'}. Source: ${src?.commit ?? 'unknown'}${src?.dirty ? ' (with uncommitted changes)' : ''}.`,
     `Stale: ${record.stale.value ? `YES: ${record.stale.why}` : 'no'}.`,
-    `Selection: ${sel ? `precision ${sel.triggerPrecision ?? 'n/a (never loaded)'}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} over ${sel.runs} runs, ${sel.frozen ? 'frozen' : 'draft'} requests (${sel.source})` : 'not measured'}.`,
+    `Selection: ${sel ? `precision ${sel.triggerPrecision ?? 'n/a (never loaded)'}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} over ${sel.runs} selection runs, use in real sessions ${sel.sessionUse ? `${sel.sessionUse.rate} over ${sel.sessionUse.runs} runs` : 'not read'}, ${sel.frozen ? 'frozen' : 'draft'} requests (${sel.source})` : 'not measured'}.`,
     record.wholeSkill ? `Whole-skill call: ${record.wholeSkill.status}: ${record.wholeSkill.why.join('; ')}.` : '',
     `Agree: ${record.agree === null ? 'one depth only' : record.agree ? 'yes' : 'NO: the verdicts differ, a person decides'}. Sign-off: ${record.signoff.by ?? 'none yet'}.`, '',
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');

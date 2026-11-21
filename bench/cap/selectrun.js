@@ -13,6 +13,7 @@ const path = require('node:path');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
 const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const { loadRun } = require('../report/load.js');
+const { scanRunDirs, sessionUseOf } = require('./usage.js');
 const { loadBaseline, BASELINES_DIR } = require('./frozen.js');
 const { loadChecked } = require('./baselineformats.js');
 const { assertSkillSubject } = require('./subjectunit.js');
@@ -57,7 +58,7 @@ function stubBehaviour(behaviour, repo) {
  * @param {string} [o.measuredAt] the date to record
  * @returns {{ result, file, scored }}
  */
-function runSelect({ name, repo, outDir, runId = null, fromRun = null, reps = 3, behaviour = 'correct', requestsFile = null, baselinesDir = BASELINES_DIR, measuredAt }) {
+function runSelect({ name, repo, outDir, runId = null, fromRun = null, reps = 3, behaviour = 'correct', requestsFile = null, baselinesDir = BASELINES_DIR, measuredAt, usageRuns = [] }) {
   // As in kprun.js: a name with a baseline but no skill folder is checked by its identity entry in the loader.
   if (!fs.existsSync(path.join(baselinesDir, name)) || fs.existsSync(path.join(repo, 'skills', name))) assertSkillSubject({ repo, name });
   const req = requestsOf({ name, repo, baselinesDir, requestsFile });
@@ -75,7 +76,8 @@ function runSelect({ name, repo, outDir, runId = null, fromRun = null, reps = 3,
     source = runId;
   }
   const scored = sel.scoreRun(results, name);
-  const result = sel.selectionResult({ scored, set: req.set, setSha256: req.sha256, frozen: req.frozen, unitSha256: req.unitSha256, source, measuredAt });
+  const sessionUse = usageRuns.length ? sessionUseOf(scanRunDirs(usageRuns), name, usageRuns.join(',')) : null;
+  const result = sel.selectionResult({ scored, set: req.set, setSha256: req.sha256, frozen: req.frozen, unitSha256: req.unitSha256, source, measuredAt, sessionUse });
   const file = path.join(folder, 'selection', `${name}.json`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(result, null, 2)}\n`);
@@ -104,10 +106,11 @@ function cmdSelect(opts) {
     name, repo, requestsFile, reps, behaviour: val(opts['stub-behaviour']) ?? 'correct',
     runId: val(opts.run) ?? null, fromRun: val(opts['from-run']) ? path.resolve(val(opts['from-run'])) : null,
     outDir: path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'keep-prune')),
+    usageRuns: val(opts['usage-runs']) ? String(val(opts['usage-runs'])).split(',').filter(Boolean).map((d) => path.resolve(d)) : [],
   });
   if (opts.json) { console.log(JSON.stringify(r.result, null, 2)); return; }
   const x = r.result;
-  console.log(`selection of ${name}: precision ${f2(x.triggerPrecision)}, recall ${f2(x.triggerRecall)}, observed use ${f2(x.observedUseRate)} over ${x.runs} runs (${x.requests.load} should load, ${x.requests.none} should not; ${x.failedLoads} failed loads; ${x.frozen ? 'frozen' : 'draft'} requests)`);
+  console.log(`selection of ${name}: precision ${f2(x.triggerPrecision)}, recall ${f2(x.triggerRecall)}, observed use ${f2(x.observedUseRate)} over ${x.runs} selection runs, use in real sessions ${x.sessionUse ? `${f2(x.sessionUse.rate)} over ${x.sessionUse.runs} runs` : 'not read (--usage-runs DIR)'} (${x.requests.load} should load, ${x.requests.none} should not; ${x.failedLoads} failed loads; ${x.frozen ? 'frozen' : 'draft'} requests)`);
   const instead = Object.entries(r.scored.score.confusionCounts).map(([n, k]) => `${n} (${k})`).join(', ');
   if (instead) console.log(`picked instead on a wrong answer: ${instead}`);
   console.log(`wrote ${r.file}; pass it to cap keep-prune --selection${opts['from-run'] ? '' : ' (stub data: never a measurement)'}`);
