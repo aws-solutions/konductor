@@ -185,13 +185,16 @@ function copiedReference(runDir, entry) {
 }
 
 /** Per-check results of a dry run where the reference and the stub agreed, by check index: Map(index -> passed). */
+// The per-check record of the shared dry run (pilot.dryRun.checks: booleans in check order), else T2's own
+// authoring/<id>/dry-run.json ("pass ..." strings).
 function insensitiveChecks(entry) {
-  const dry = readJsonOr(path.join(entry.dir, 'authoring', entry.task.id, 'dry-run.json'));
-  const ref = dry?.reference?.checks;
-  const stub = dry?.stub?.checks;
+  const recorded = entry.task.pilot?.dryRun?.checks;
+  const dry = recorded ? null : readJsonOr(path.join(entry.dir, 'authoring', entry.task.id, 'dry-run.json'));
+  const ref = recorded?.reference ?? dry?.reference?.checks;
+  const stub = recorded?.stub ?? dry?.stub?.checks;
   const out = new Map();
   if (!Array.isArray(ref) || !Array.isArray(stub) || ref.length !== stub.length) return out;
-  const passed = (s) => /^pass\b/i.test(String(s));
+  const passed = (s) => s === true || /^pass\b/i.test(String(s));
   ref.forEach((s, i) => { if (passed(s) === passed(stub[i])) out.set(i, passed(s)); });
   return out;
 }

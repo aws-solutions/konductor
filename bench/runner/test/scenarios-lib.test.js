@@ -104,7 +104,7 @@ test('the dry run scores reference, stub, lazy and alternative answers and recor
     assert.equal(res.gates.lazy, false);
     assert.equal(res.pass, false);
     const pilot = record(cfg, res, '2026-11-19');
-    assert.deepEqual(pilot.dryRun, { reference: 100, stub: 0, lazy: 52.4, alt: 100, date: '2026-11-19' });
+    assert.deepEqual(pilot.dryRun, { reference: 100, stub: 0, lazy: 52.4, alt: 100, checks: { reference: [true, true], stub: [false, false] }, date: '2026-11-19' });
     assert.equal(cfg.readTask('tx-a').pilot.decision, 'fix');
     assert.equal(pilotWith(null, { scores: { reference: 1, stub: 0 }, pass: true }, 'd'), null, 'no record without all four scores');
     assert.deepEqual(fs.readdirSync(root).filter((n) => n.startsWith('dry-')), [], 'scratch is removed');
@@ -227,6 +227,15 @@ test('a stopped call counts at the abort limit, a refused call throws, and the r
     for (const [k, v] of [['TY_AUTH', was.a], ['TY_RUN', was.r]]) if (v === undefined) delete process.env[k]; else process.env[k] = v;
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('pilot.dryRun records per check, in task order, whether the reference and the stub passed it (D-88)', () => {
+  const r = (i, passed) => ({ i, type: 'cmd', passed });
+  const res = { scores: { reference: 100, stub: 5, lazy: 20, alt: 90 }, pass: true, modes: { reference: { results: [r(1, true), r(0, true)] }, stub: { results: [r(0, false), r(1, true)] } } };
+  assert.deepEqual(pilotWith(null, res, 'd').dryRun.checks, { reference: [true, true], stub: [false, true] });
+  assert.equal(pilotWith(null, { ...res, modes: undefined }, 'd').dryRun.checks, undefined);
+  const { validate, loadSchema } = require('../lib/schema.js');
+  assert.deepEqual(validate(loadSchema('task').properties.pilot, pilotWith(null, res, '2026-11-21')), []);
 });
 
 test('pilot.dryRun takes the higher of the lazy and the shallow score', () => {

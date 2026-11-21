@@ -206,10 +206,26 @@
       "stub": 4.8,
       "lazy": 28.6,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-21"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-21"
   },
   "handEdited": {
     "family": "claude",
