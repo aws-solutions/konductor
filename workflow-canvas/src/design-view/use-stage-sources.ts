@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { DraftStage } from '../designer/core/draft';
 import type { StageSource } from './view-stage';
 
@@ -14,7 +14,9 @@ export interface StageSources {
   of(id: string): StageSource;
 }
 
-function sourcesOf(stages: readonly DraftStage[]): ReadonlyMap<string, number> {
+type Places = ReadonlyMap<string, number>;
+
+function placesOf(stages: readonly DraftStage[]): Places {
   return new Map(stages.map((stage, index) => [stage.id, index]));
 }
 
@@ -22,44 +24,72 @@ function sourcesOf(stages: readonly DraftStage[]): ReadonlyMap<string, number> {
  * Where each stage of the draft came from in the file, for as long as that
  * file is the one being edited.
  *
- * The places are read once, from the draft as the editor opens a file: the
- * draft is then the stages of the file, in its order. The editor keeps a
+ * The places are read from the draft that made the file: the stages of a file
+ * the editor has just opened are its draft, in its order. The editor keeps a
  * stage's id through a rename, an add and a delete, so the id goes on naming
  * the place the stage was loaded from however the draft is edited after that,
  * which neither its name nor its current position does. A stage whose id was
  * not there when the file was read was added since, and the file has no stage
  * for it.
  *
- * `text` is the file the places belong to. A new one, as another workflow, a
- * reload or a save gives, is read again: the editor builds its draft from the
- * stages of that file, so the two are in step again. `text` is what
- * `useInitialCheck` reads, so the places and the keys of the stages are
- * always of the same file.
+ * A save is the one case where the file arrives after the draft that made it
+ * has moved on, because the editor takes edits while a save is in flight and
+ * keeps them when the answer comes. So the places of the submitted draft are
+ * held from the moment the save starts, and installed when its text becomes
+ * the file. Without that, a stage would take the place it holds in the newer
+ * draft, which is another stage of the file it was saved into.
+ *
+ * `text` is the file the places belong to. Another one, as another workflow
+ * or a reload gives, is read again from the draft the editor built for it.
+ * `text` is what `useInitialCheck` reads, so the places and the keys of the
+ * stages are always of the same file.
  */
 export function useStageSources({
   text,
   stages,
+  submitted,
 }: {
   /** The text of the file as it was loaded. */
   readonly text: string;
-  /** The stages of the draft, in the render that first has this text. */
+  /** The stages of the draft now. */
   readonly stages: readonly DraftStage[];
+  /**
+   * The text a save has in flight, which is about to become the file, or
+   * `undefined` when no save is going on.
+   */
+  readonly submitted?: string;
 }): StageSources {
-  // Taken in the render, not in an effect: the places must be those of the
-  // draft that opened this text, and an effect would first let a render pass
-  // with the places of the file before it. Reading the same text again gives
-  // the same places, so a render that React throws away leaves nothing behind.
-  const taken = useRef<{
-    readonly text: string;
-    readonly sources: ReadonlyMap<string, number>;
-  }>(undefined);
+  // Held in an effect, so the places are those of the draft that was
+  // submitted, not of a draft edited while the save was in flight. The
+  // effect of a save runs before any answer to it can arrive, and it runs
+  // again only for another save, so a later edit leaves the places alone.
+  const sent = useRef<{ text: string; places: Places }>(undefined);
+  const drafted = useRef(stages);
+  useEffect(() => {
+    drafted.current = stages;
+  });
+  useEffect(() => {
+    if (submitted !== undefined) {
+      sent.current = { text: submitted, places: placesOf(drafted.current) };
+    }
+  }, [submitted]);
+
+  // Taken in the render, not in an effect: the places must be there in the
+  // first render of a file, before anything reads a stage. Reading the same
+  // file again gives the same places, so a render React throws away leaves
+  // nothing behind.
+  const taken = useRef<{ text: string; places: Places }>(undefined);
   if (taken.current?.text !== text) {
-    taken.current = { text, sources: sourcesOf(stages) };
+    const held = sent.current;
+    taken.current = {
+      text,
+      places: held?.text === text ? held.places : placesOf(stages),
+    };
   }
-  const { sources } = taken.current;
+  const { places } = taken.current;
   return {
     of: (id) => {
-      const index = sources.get(id);
+      const index = places.get(id);
       return index === undefined ? ADDED : { kind: 'loaded', index };
     },
   };

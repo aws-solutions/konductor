@@ -74,14 +74,18 @@ describe('pickedStageOf', () => {
     expect(pickedStageOf(view, at('review', 0))?.agent).toBe('k-developer');
   });
 
-  it('takes the stage of that name when the counts differ', () => {
-    expect(pickedStageOf(view, at('review', 0, 3))?.agent).toBe(
-      'k-quality-assurance',
-    );
+  it('takes no stage when the counts differ, however the names read', () => {
+    // A view of another number of stages is of another text.
+    expect(pickedStageOf(view, at('review', 0, 3))).toBeUndefined();
+    expect(pickedStageOf(view, at('draft', 0, 3))).toBeUndefined();
+    expect(pickedStageOf(view, at('wrap-up', 0, 3))).toBeUndefined();
   });
 
-  it('takes no stage when the counts differ and no name matches', () => {
-    expect(pickedStageOf(view, at('wrap-up', 0, 3))).toBeUndefined();
+  it('shows no other stage after a stage is added and this one renamed to its name', () => {
+    // The person added a third stage and renamed the first to `review`, the
+    // name the second already has, before the next check answered. The stale
+    // view must not answer with that second stage.
+    expect(pickedStageOf(view, at('review', 0, 3))).toBeUndefined();
   });
 
   it('takes no stage without a view', () => {
