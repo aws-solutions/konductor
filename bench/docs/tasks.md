@@ -219,8 +219,7 @@ No fixture: `real` names an entry in `real/manifest.json` (pinned base and merge
 command, FAIL_TO_PASS in full, PASS_TO_PASS as a count, a hash and `real/p2p/<id>.txt.gz`).
 - Setup: `node bench/real/fetch.js` fetches the pinned commits (read-only https, the only networked step) into
   `$XDG_STATE_HOME/konductor-bench/realrepos`, else `~/.local/state/konductor-bench/realrepos` (`$BENCH_REAL_CACHE` or
-  `--real-cache` override it; the old default `/tmp/konductor-bench/realrepos` is used while it exists and the new one does
-  not), outside the repo. A run writes the base tree (no `.git`) from the cache into its cwd, checks the hash against the
+  `--real-cache` override it; the old shared default `/tmp/konductor-bench/realrepos` is no longer read), outside the repo. A run writes the base tree (no `.git`) from the cache into its cwd, checks the hash against the
   manifest and records the cache and the hashes in run-config; judge, recheck and report read that cache from run-config.
 - Check `{"type":"tests","manifest":true}`: the PR's test files (`tasks/hidden/<id>/overlay/`, unchanged, with LICENSE and
   NOTICE) are laid over a scratch copy and the manifest command runs without a network in the run's namespace.

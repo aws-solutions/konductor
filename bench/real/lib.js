@@ -18,12 +18,11 @@ const REPO_ROOT = path.resolve(BENCH_DIR, '..');
 const MANIFEST_FILE = path.join(REAL_DIR, 'manifest.json');
 const P2P_DIR = path.join(REAL_DIR, 'p2p');
 // The per-user state directory the bench scripts use (scripts/state-dir.sh), so the cache survives a /tmp cleanup and
-// a run, its judge and its recheck all find it without BENCH_REAL_CACHE. The old /tmp default is still used when it
-// exists and the new one does not.
+// a run, its judge and its recheck all find it without BENCH_REAL_CACHE. The old shared /tmp default is no longer
+// read (DEBT #21-legacy): a host that only has it fetches again with real/fetch.js.
 const STATE_HOME = process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state');
 const DEFAULT_CACHE = path.join(STATE_HOME, 'konductor-bench', 'realrepos');
-const LEGACY_CACHE = '/tmp/konductor-bench/realrepos';
-const defaultCache = () => (!fs.existsSync(DEFAULT_CACHE) && fs.existsSync(LEGACY_CACHE) ? LEGACY_CACHE : DEFAULT_CACHE);
+const defaultCache = () => DEFAULT_CACHE;
 const ANSWER_KEY = '.bench-answer-key.md';
 const SHA_RE = /^[0-9a-f]{40}$/;
 
