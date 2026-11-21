@@ -174,3 +174,10 @@ copy of the fixture's code kept in sync by hand, and each carried its own copy o
 `bench/scenarios/lib/hidden`. The two `.bench-base/` dirs are deleted. No assertion changed. Free gates after:
 references 100, stubs 0, lazy 27.3 and 20, alternatives 100, shallow 0 (the same as before). Each needs a non-Claude
 recheck at its new version before a lock.
+
+## Round 6 recheck of t12-handoff-export-dates v4 (2026-11-21, gpt-5.6-luna, call L14)
+
+3 of 4 pass, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+fixture-lists-no-answer: `docs/notes/sam-diagnosis.md:5-6` gives the cause and says the UTC getters fix it, and
+`test/export.test.js:12-15` shows the UTC outputs. The task is a half-done fix to hand off, so this may be its input.
+t12-parallel-backlog v5 (L15) passes 4 of 4 and is recorded.

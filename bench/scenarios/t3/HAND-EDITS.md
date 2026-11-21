@@ -324,3 +324,12 @@ section said "The "tempting" option is indexing every column separately", with i
 Both sections are gone from the fixture and from the hidden `_pristine` copy. The facts the agent needs are still in
 the fixture: `prototype-results.md` projects 3.1 TB at 900M rows and `pricing-guide.md` gives the Premium fee and the
 Standard limit. Free gates after: reference 100, stub 0, lazy 6, alt 100. Needs a non-Claude recheck at v6.
+
+## Round 6 recheck of t3-db-order-history v6 (2026-11-21, gpt-5.6-luna, call L13)
+
+1 of 4 passes, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+- fixture-lists-no-answer: `prototype-results.md:55-62` gives the query plans of the recommended option, and
+  lines 97-104 call Option 2 the primary recommendation.
+- key-matches-fixture and solvable-from-fixture: `hidden/options.test.js:8-14` needs the ids `composite-optimized` or
+  `two-table-normalized`, but the fixture names the options A-D (`README.md:38-42`) or 1-3 (`prototype-results.md`).
+  The rubric uses the same ids. This is the D-127 finding that dropped the task before; `pilot.decision` now reads keep.
