@@ -157,4 +157,14 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
   return { judgments: { ...j, rubric }, rule: allMissing ? (rule === 'paraphrase' && fellBack === missing ? 'lenient' : 'strict') : rule, requested: rule, rebuilt, missing, records, switched, fellBack };
 }
 
-module.exports = { dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };
+// D-149: a reply that fails every expert: criterion with no evidence, while the deliverables hold text, read as a judge
+// that did not look (deepseek-3.2 and qwen3-coder-next on t8-rollout-ledger-migration, both runs). It is flagged on the
+// record (blankExpert) so a report can show or re-ask it; the score is left as the judge gave it.
+const BLANK_MIN_CHARS = 2000;
+function blankExpert(criteria, deliverables) {
+  const expert = (criteria || []).filter((c) => isExpert(c.id));
+  if (!expert.length || String(deliverables ?? '').length < BLANK_MIN_CHARS) return false;
+  return expert.every((c) => (c.verdictRaw ?? c.verdict) === 'fail' && NO_EVIDENCE.test(String(c.evidence ?? '').trim()));
+}
+
+module.exports = { blankExpert, dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };

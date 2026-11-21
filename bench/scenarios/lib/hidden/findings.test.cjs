@@ -42,7 +42,11 @@ const key = spec.items.map((it) => ({ id: it.id, location: locations(it, it.slac
 let text = '';
 try { text = fs.readFileSync(path.resolve(spec.output), 'utf8'); } catch { /* no output: every test fails */ }
 const reported = readFindingsBlock(text);
-const grade = gradeFindings(reported, key);
+// A careful review lists real defects the key does not seed (tests, docs, changelog), so a review list may be
+// REVIEW_ALLOWANCE times the key before the length term scales it down (the grader's default, 1.5, cut every wave 6
+// review that found all seeded items to about 60). The dump baseline still lists far more and stays gated.
+const REVIEW_ALLOWANCE = 3;
+const grade = gradeFindings(reported, key, { lengthAllowance: spec.lengthAllowance ?? REVIEW_ALLOWANCE });
 
 const summary = JSON.stringify({ score: grade.score, recall: grade.recall, precision: grade.precision, reported: grade.reported, matched: grade.matched, missed: grade.missed, error: grade.error });
 

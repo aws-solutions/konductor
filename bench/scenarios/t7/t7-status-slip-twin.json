@@ -1,7 +1,7 @@
 {
   "id": "t7-status-slip-twin",
   "class": "design",
-  "version": 5,
+  "version": 7,
   "phase": "planning",
   "role": "tpm",
   "questions": "allowed",
@@ -51,7 +51,7 @@
   "rubric": [
     {
       "id": "finance-bottom-line",
-      "criterion": "The prose gives the requester the reporting period and the three requested figures plainly before any brief counting note, without adding status, risks, or recommendations. Fail: no figures up front, or the text adds status, risks or recommendations. Partial: the three figures are present but the period (S29 and S30) or the counting basis is missing. Pass: the first lines state the period S29 and S30, closed points by assignee, open tickets per epic and total open points (597), then one short note on the conventions used (blank estimates count zero, the reopened ticket is excluded, names trimmed, documented open statuses), and nothing about risk or recommendations. (code cannot check this because it only parses the fenced JSON block).",
+      "criterion": "The text of reports/finance-numbers.md around the numbers block gives the counting basis briefly and nothing else, as the request asks (the request puts the figures in the block and limits the surrounding text to the counting basis, so figures need not be repeated in prose). Judge that file only: a remark in the agent's chat reply is not part of the requester-facing answer. Fail: the file's text adds status, risks or recommendations, or gives no counting basis at all. Partial: a basis is given but it omits the period (S29 and S30) or one of the conventions that change the figures. Pass: a short note in the file names the period S29 and S30 and the conventions used (Done and Cancelled both count as closed, blank estimates add no points, names are matched after trimming spaces, open means To Do, In Progress or Blocked), the block or the text gives total open points 597, and nothing about status, risks or recommendations is added. (code cannot check this because it only parses the fenced JSON block).",
       "weight": 1
     }
   ],
@@ -181,7 +181,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
+    "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md"
   }
 }

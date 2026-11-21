@@ -14,7 +14,7 @@ const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('.
 const { withCache, hasCachedReply } = require('./model.js');
 const { cacheSaltOf } = require('./opencode.js');
 const { DEFAULT_JUDGE_QUOTE_RULE, JUDGE_QUOTE_RULES } = require('./quote.js');
-const { dualCriteria, dualScores, matchersFor, checkRule } = require('./views.js');
+const { dualCriteria, dualScores, matchersFor, checkRule, blankExpert } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 const { writeAtomic } = require('../runner/lib/owned.js');
@@ -277,6 +277,7 @@ async function runJudging(o) {
         score: views ? views[quoteRule] : null, scoreStrict: views ? views.strict : null, scoreLenient: views ? views.lenient : null,
         scoreRaw: out.error ? null : rubricScore(task.rubric, criteria.map((c) => ({ id: c.id, verdict: c.verdictRaw }))), criteria,
         judgeError: out.error ?? null, parseFailures: out.parseFailures, calls: out.calls,
+        ...(out.error || !blankExpert(criteria, bundle.expertText) ? {} : { blankExpert: true }),
         redactionsFired: bundle.fired, truncatedFiles: bundle.meta.truncatedFiles,
       });
     } else if (u.kind === 'graded') {

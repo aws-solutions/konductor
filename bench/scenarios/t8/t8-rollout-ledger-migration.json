@@ -1,7 +1,7 @@
 {
   "id": "t8-rollout-ledger-migration",
   "class": "hard",
-  "version": 3,
+  "version": 5,
   "phase": "release-ops",
   "role": "sre",
   "phases2": [
@@ -48,32 +48,32 @@
     "items": [
       {
         "id": "expand-contract",
-        "text": "Explains why each schema step is safe for the code version running at that moment, and how rows written during the rollout are handled by the backfill.",
+        "text": "Explains why each schema step is safe for the code then running: 001_expand and 002_prepare while 2.x hosts still serve, 003_contract only after every host runs 3.0 (docs/release-notes.md); and how rows written during the rollout get settlement_code, since 002_prepare fixes only rows that exist when it runs (for example a re-run, a check that 3.0 fills it, or a stop until that is confirmed).",
         "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
       },
       {
         "id": "canary-compare",
-        "text": "Judges the canary against a control group on the same metrics over enough traffic and time, not against fixed absolute numbers alone.",
+        "text": "Judges the canary against the stable 2.x cohort on the same metrics (the canary log tags each line cohort=canary or cohort=stable) over a stated amount of traffic and time, not against fixed absolute thresholds alone.",
         "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
         "id": "data-rollback",
-        "text": "States what a rollback does to rows already written by the new version and which step cannot be undone, and keeps the old version able to read them.",
+        "text": "States what rolling the image back does to rows 3.0 already wrote (2.x must still read them: settlement_code present, settlement_route ignored) and names 003_contract, which drops settlement_code, as the step that cannot be undone by a rollback.",
         "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
       },
       {
         "id": "gates-before",
-        "text": "Fixes gate metrics and thresholds before the rollout starts, tied to user or money impact, and names who decides go or stop.",
+        "text": "Fixes each gate (metric from metrics/metrics-catalogue.csv or config/alerts.yaml, operator, threshold, window) before the rollout starts, ties the gates to failed writes, errors or money impact, and names who decides go or stop.",
         "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
         "id": "timing",
-        "text": "Says what happens when a gate fails late, close to the freeze: where the stop point is, and who decides to wait for the contingency window instead of pushing on.",
+        "text": "Says what happens when a gate fails late, close to the month-end freeze (2025-11-21 18:00, docs/change-calendar.md): where the stop point is, and who decides to wait for the contingency window (2025-11-19 13:00) or the next week instead of pushing on.",
         "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
         "id": "flag",
-        "text": "Decouples deploy from release with a flag or kill switch so the new write path can be turned off without a redeploy.",
+        "text": "Decouples deploy from release so the new write path can be turned off without a redeploy: a flag or kill switch, or in this folder the ledger-v3 traffic share on ledger-public set to 0 while the 3.0 hosts stay deployed.",
         "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
       }
     ],
@@ -169,7 +169,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (CV-FIX worker session, 2026-11-20)",
+    "editor": "mate judge-vs-code worker (2026-11-21)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

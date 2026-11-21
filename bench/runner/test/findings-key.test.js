@@ -99,3 +99,24 @@ test('gradeFindingsFile reads the output file and never throws', () => {
     assert.equal(gradeFindingsFile(path.join(root, 'none.md'), KEY).error, 'output file missing');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('fix keywords match the same words written as code or out of order, not a generic remark', () => {
+  const key = [{ id: 'k1', location: 'svc.js:11', severity: 'critical', fix: ['tenant id', 'remove token'], fixRequired: true }];
+  const hit = (fix) => gradeFindings([{ location: 'svc.js:11', severity: 'critical', issue: 'cache key', fix }], key).matched;
+  assert.deepEqual(hit('Build the key from tenantId and listId'), ['k1']);
+  assert.deepEqual(hit('Remove the token field from the 401 body'), ['k1']);
+  assert.deepEqual(hit('add tests and handle errors'), []);
+});
+
+test('pairing finds the most pairs: an earlier item does not take the only finding a later item can use', () => {
+  const key = [
+    { id: 'a', location: ['f.js:20', 'f.js:21'], severity: 'high', fix: ['offset'], fixRequired: true },
+    { id: 'b', location: ['f.js:21'], severity: 'medium', fix: ['offset'], fixRequired: true },
+  ];
+  const reported = [
+    // The f.js:21 finding fits item a best (same severity), but it is the only one item b can use.
+    { location: 'f.js:21', severity: 'high', issue: 'drops the offset parameter', fix: 'keep offset' },
+    { location: 'f.js:20', severity: 'medium', issue: 'repeats the last row', fix: 'advance the offset' },
+  ];
+  assert.deepEqual(gradeFindings(reported, key).matched.sort(), ['a', 'b']);
+});

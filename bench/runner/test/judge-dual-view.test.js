@@ -179,3 +179,13 @@ test('when the output cannot be rebuilt the old record stays strict and is count
     assert.equal(noTasks.rule, 'strict');
   } finally { cleanup(s.root); }
 });
+
+test('blankExpert flags a reply that fails every expert item with no evidence on a real deliverable (D-149)', () => {
+  const { blankExpert } = require('../../judge/views.js');
+  const doc = 'x'.repeat(3000);
+  const nothing = (id) => ({ id, verdict: 'fail', evidence: '(nothing in the output)' });
+  assert.equal(blankExpert([nothing('expert:a'), nothing('expert:b'), { id: 'own', verdict: 'pass', evidence: 'q' }], doc), true);
+  assert.equal(blankExpert([nothing('expert:a'), { id: 'expert:b', verdict: 'partial', evidence: 'a quote' }], doc), false, 'one item judged');
+  assert.equal(blankExpert([nothing('expert:a')], 'short'), false, 'an empty deliverable may well say nothing');
+  assert.equal(blankExpert([{ id: 'own', verdict: 'fail', evidence: '(nothing in the output)' }], doc), false, 'no expert items');
+});
