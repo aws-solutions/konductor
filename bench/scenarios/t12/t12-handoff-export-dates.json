@@ -132,5 +132,39 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "review": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "verdicts": [],
+    "recheck": {
+      "family": "openai",
+      "model": "gpt-5.6-luna",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt names the BILL-1187 outcome and required hand-off/result fields, but no framework, tool, or prescribed working method. It does not point to the unrelated BILL-842 ticket."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains the bug report, diagnosis, constraints, and baseline test, but no completed hand-off, result, fix, or added regression test. Those files provide the task's source facts rather than a finished deliverable."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The requested paths and JSON fields match the fixture and hidden checks: BILL-1187, src/format-date.js, test/export.test.js, the frozen legacy area, both time zones, and the PR handoff. The expert key and rubric reward the UTC-date fix, honest scope/evidence, and existing repository rules."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The fixture supplies the cause, reproduction, UTC-date requirement, due-date implication, CI explanation, column contract, frozen legacy rule, branch rule, and deadline. A developer can implement and test the fix from those files and the prompt, while alternatives such as toISOString-based formatting remain viable."
+        }
+      ],
+      "version": 3
+    }
+  }
 }

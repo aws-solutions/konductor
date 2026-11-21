@@ -120,31 +120,32 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt only names the public entry point (src/index.js) and its exported functions (calculateOrder, loadConfig); no internal methods or decoy functions are specified."
+          "note": "Request asks to merge feature branches into main without prescribing specific methods. No misleading hints or decoys present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture directory contains source files, tests, and docs but no reference answers or expected outputs beyond what the tests themselves verify."
+          "note": "Fixture contains starting main branch and two feature branches with separate implementations. No combined solution or answer shown."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden tests in hidden/hidden-behaviour.test.js (16 tests) cover the same functionality as the fixture's visible tests (pricing, config, catalog, etc.) and add feature-branch integration checks (merge-ancestor verification, conflict markers, working-tree cleanliness) that mirror the fixture's scope."
+          "note": "Hidden tests check for combined functionality using promo codes and regions from feature branches. Rubric rewards readable history and proper documentation as requested."
         },
         {
           "check": "solvable-from-fixture",
-          "verdict": "fail",
-          "note": "The fixture test/feature-pricing.test.js file referenced in the check (and task notes) does not exist in fixture/test/; the fixture's pricing.test.js only has 3 tests and lacks the promo/tax region coverage tests that the hidden tests require. Without the missing feature tests in the fixture, solvers cannot verify their implementation matches the hidden expectations. (worker: the promo and tax-region code and tests live on the two feature branches in the fixture repository, which the request asks to merge; the old file-name check was the one this edit removed)"
+          "verdict": "pass",
+          "note": "Competent developer can examine feature branches, merge them, resolve conflicts, implement combined functionality, and add tests. Different solutions (test names, merge strategy) could still pass."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "handEdited": {
