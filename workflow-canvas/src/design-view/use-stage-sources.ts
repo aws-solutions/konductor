@@ -63,15 +63,23 @@ export function useStageSources({
   // submitted, not of a draft edited while the save was in flight. The
   // effect of a save runs before any answer to it can arrive, and it runs
   // again only for another save, so a later edit leaves the places alone.
+  //
+  // The end of the save drops them, after the render that installed them for
+  // a save that worked. A save that ended without its text becoming the file,
+  // as a refusal or a conflict does, leaves nothing behind: the file a later
+  // load brings has a draft of its own, with its own ids, and the places of
+  // the draft that was sent would say nothing about it even when the text it
+  // holds is the same.
   const sent = useRef<{ text: string; places: Places }>(undefined);
   const drafted = useRef(stages);
   useEffect(() => {
     drafted.current = stages;
   });
   useEffect(() => {
-    if (submitted !== undefined) {
-      sent.current = { text: submitted, places: placesOf(drafted.current) };
-    }
+    sent.current =
+      submitted === undefined
+        ? undefined
+        : { text: submitted, places: placesOf(drafted.current) };
   }, [submitted]);
 
   // Taken in the render, not in an effect: the places must be there in the

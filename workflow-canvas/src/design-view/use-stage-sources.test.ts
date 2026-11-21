@@ -95,6 +95,24 @@ describe('useStageSources', () => {
     expect(result.current.of('s2')).toEqual({ kind: 'loaded', index: 0 });
   });
 
+  it('drops the places of a save that ended without its text becoming the file', () => {
+    const SENT = 'sent.yml';
+    const { result, rerender } = editing({ text: FILE, stages: LOADED });
+
+    // A structural edit goes out: the first stage was deleted and one added.
+    const edited = [stage('s2', 'review'), stage('s3', 'agent-3')];
+    rerender({ text: FILE, stages: edited });
+    rerender({ text: FILE, stages: edited, submitted: SENT });
+    // The save is refused, so the file is unchanged, and the person loads it
+    // again. The reload builds a draft of its own, with its own ids, and the
+    // file on disk now holds the very text that was sent.
+    rerender({ text: FILE, stages: edited });
+    rerender({ text: SENT, stages: LOADED });
+
+    expect(result.current.of('s1')).toEqual({ kind: 'loaded', index: 0 });
+    expect(result.current.of('s2')).toEqual({ kind: 'loaded', index: 1 });
+  });
+
   it('holds the places of each save, so a second save of the same text is its own', () => {
     const SENT = 'sent.yml';
     const { result, rerender } = editing({ text: FILE, stages: LOADED });
