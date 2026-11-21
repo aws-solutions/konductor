@@ -113,10 +113,6 @@ serde_yaml = "=0.9.34"
 # `unlock` API is exactly the small, stable surface this needs. Exact-
 # pinned per repo convention.
 fs2 = "=0.4.3"
-# SHA-256 artifact-checksum verification for `konductor install` (task
-# 3.1). Exact-pinned per repo convention; verified fetchable against
-# the internal crates.io mirror.
-sha2 = "=0.10.8"
 # Unicode canonical (NFC) normalization for the case-insensitive
 # collision-detection fold shared by `parse_canonical.rs`/`path_safety.rs`
 # (see `path_safety::case_insensitive_fold_key`). `str::to_lowercase`

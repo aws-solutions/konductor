@@ -186,12 +186,11 @@ fn normalize_race_dependent_fields(json: &serde_json::Value) -> serde_json::Valu
 /// so a torn manifest write is still caught after `sha256` is
 /// normalized out of the cross-target comparison.
 fn assert_hashes_match_disk(target: &Path, manifest: &serde_json::Value, label: &str) {
-    use sha2::Digest as _;
     for slot in manifest["strategies"].as_array().unwrap() {
         for file in slot["files"].as_array().unwrap() {
             let path = file["path"].as_str().unwrap();
             let bytes = std::fs::read(target.join(path)).unwrap();
-            let actual = format!("{:x}", sha2::Sha256::digest(&bytes));
+            let actual = konductor_telemetry::sha256_hex(&bytes);
             assert_eq!(
                 file["sha256"].as_str(),
                 Some(actual.as_str()),
