@@ -92,6 +92,57 @@ stages:
     prompt: Check the greeting.
 `);
 
+// A comment inside the stage that is edited: the writer builds that stage
+// from its name and its agent, so the comment would go with the save.
+const COMMENT_INSIDE = withText(`format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+stages:
+  - name: draft
+    # The one that writes it.
+    agent: k-developer
+  - name: review
+    agent: k-quality-assurance
+`);
+
+// A comment in front of a later stage, which the writer reads as part of
+// that stage and drops when it writes it again.
+const COMMENT_BEFORE = withText(`format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+stages:
+  - name: draft
+    agent: k-developer
+  # The one that checks it.
+  - name: review
+    agent: k-quality-assurance
+`);
+
+// Another workflow, as the page opens when a second address is pasted.
+const OTHER_WORKFLOW: WorkflowDocument = {
+  ...HELLO_DOCUMENT,
+  name: 'ship',
+  hash: 'd'.repeat(64),
+  text: `format: konductor/1
+name: ship
+version: 0.1.0
+intent:
+  outcome: Ship the greeting
+stages:
+  - name: package
+    agent: k-developer
+`,
+  view: {
+    ...HELLO_DOCUMENT.view!,
+    name: 'ship',
+    stages: [{ name: 'package', agent: 'k-developer' }],
+  },
+};
+
 // A file the stage writer cannot edit in place: its stages are a list in the
 // flow form, so a save would write the whole file in the plain layout and
 // drop its params, its comments and its version.
@@ -138,17 +189,27 @@ function stagesOf(text: string) {
   return lines.flatMap((line, index) => {
     const name = /^ {2}- name: (.+)$/.exec(line)?.[1];
     if (name === undefined) return [];
-    const agent = /^ {4}agent: (.+)$/.exec(lines[index + 1] ?? '')?.[1] ?? '';
-    const prompt = /^ {4}prompt: (.+)$/.exec(lines[index + 2] ?? '')?.[1];
-    const file = /^ {4}prompt_file: (.+)$/.exec(lines[index + 2] ?? '')?.[1];
+    // The keys of the stage are the lines under it, up to the next item.
+    const body: string[] = [];
+    for (let at = index + 1; at < lines.length; at += 1) {
+      const next = lines[at] ?? '';
+      if (!/^ {4}\S/.test(next) && !/^ {4}#/.test(next)) break;
+      body.push(next);
+    }
+    const keyed = (key: string) =>
+      body
+        .map((one) => new RegExp(`^ {4}${key}: (.+)$`).exec(one)?.[1])
+        .find((one) => one !== undefined);
+    const prompt = keyed('prompt');
+    const file = keyed('prompt_file');
     return [
       {
         name,
         kind: 'agent',
-        agent,
+        agent: keyed('agent') ?? '',
         ...(prompt === undefined ? {} : { prompt }),
         ...(file === undefined ? {} : { prompt_file: file }),
-        range: { line: index + 1, end_line: index + 2 },
+        range: { line: index + 1, end_line: index + 1 + body.length },
       },
     ];
   });
@@ -263,7 +324,7 @@ function drawn({
   // The editor of the page, which another view could edit while this one is
   // on show.
   const held: { editor?: Editor } = {};
-  render(
+  const view = render(
     <Harness
       document={workflow}
       edits={edits}
@@ -279,7 +340,23 @@ function drawn({
     if (!held.editor) throw new Error('The view has no editor yet.');
     return held.editor;
   };
-  return { scheduler, validate, edits, editorOf };
+  /** Draws the page again with another workflow, as opening one does. */
+  const open = (next: WorkflowDocument) =>
+    act(async () => {
+      view.rerender(
+        <Harness
+          document={next}
+          edits={edits}
+          scheduler={scheduler}
+          validate={validate}
+          onEditor={(one) => {
+            held.editor = one;
+          }}
+          {...(agents ? { agents } : {})}
+        />,
+      );
+    });
+  return { scheduler, validate, edits, editorOf, open };
 }
 
 const wrapper = () => createWrapper(document.body);
@@ -624,6 +701,38 @@ describe('DesignView, undo and redo', () => {
     expect(panelOf('YAML').textContent).toContain('name: draft');
   });
 
+  it('starts the history over when the page opens another workflow', async () => {
+    const { open } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await open(OTHER_WORKFLOW);
+    await settle();
+
+    // The texts of the workflow that was left are gone with its draft.
+    expect(isOff(button('Undo'))).toBe(true);
+    await openYaml();
+    expect(panelOf('YAML').textContent).toContain('name: package');
+    expect(panelOf('YAML').textContent).not.toContain('drafting');
+  });
+
+  it('keeps the history through a save of the same workflow', async () => {
+    const { edits } = drawn();
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+    await settle();
+
+    // The save gives the next version of the same file, with a new hash, and
+    // the text it wrote is in the history already.
+    expect(edits.save).toHaveBeenCalledTimes(1);
+    expect(isOff(button('Undo'))).toBe(false);
+  });
+
   it('leaves another key press to the browser', async () => {
     drawn();
     await openProperties();
@@ -791,6 +900,55 @@ describe('DesignView, saving', () => {
     expect(screen.getByTestId('save-refused').textContent).toContain(
       'not a list under stages:',
     );
+  });
+
+  it('refuses a save of a stage whose file holds a comment inside it', async () => {
+    const { edits } = drawn({ document: COMMENT_INSIDE });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'the lines the file holds for it say more than that',
+    );
+  });
+
+  it('refuses a save of a stage whose file holds a comment in front of it', async () => {
+    const { edits } = drawn({ document: COMMENT_BEFORE });
+    await settle();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-review'));
+    });
+    await openProperties();
+    await typeInto(nameInput(), 'reviewing');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    // The writer reads that comment as part of the stage that follows it.
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'A comment, a blank line or a value not written plainly',
+    );
+  });
+
+  it('lets a save go ahead for the stage the comment is not part of', async () => {
+    const { edits } = drawn({ document: COMMENT_BEFORE });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a save of a stage renamed while a save of another was in flight', async () => {

@@ -5,7 +5,14 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
-import { useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { WorkflowCanvas, type CanvasSelection } from '../canvas/WorkflowCanvas';
 import {
   DesignerLayout,
@@ -45,6 +52,7 @@ import {
   saveRefusal,
   sourceStageOf,
 } from './view-stage';
+import { writerKeepsStage } from './stage-item';
 import { useInitialCheck } from './use-initial-check';
 import { useStageSources, type StageSources } from './use-stage-sources';
 
@@ -89,6 +97,13 @@ const EARLIER_TEXT_NOTE =
 // cost, so no save of such a file is made from this view yet.
 const REWRITE_REFUSAL =
   'A save would write this whole file in the plain layout, because its stages are not a list under stages:, and its other keys, its comments and its version would be lost. So it is refused. Edit the file by hand until a save can keep them.';
+
+// The writer builds a stage it changed from its name and its agent alone, so
+// anything else the file wrote inside that stage goes with the save: a
+// comment, a blank line, a quoted value. None of it is in the parsed stage,
+// so only the lines of the file say whether a save would keep them.
+const itemRefusal = (name: string) =>
+  `A save would write ${name} as its name and its agent alone, and the lines the file holds for it say more than that, so it is refused. A comment, a blank line or a value not written plainly inside the stage would be lost. Edit the file by hand until a save can keep them.`;
 
 const STATUS_WORDS: Readonly<Record<DraftStatus, string>> = {
   unchecked: 'Not checked yet',
@@ -228,8 +243,20 @@ export function DesignView({
     validate,
     scheduler,
   });
-  const { record } = history;
+  const { record, reset } = history;
   const { edit } = draft;
+  // Which workflow the history is of: the file, and the version of it the
+  // page loaded. A save gives the next version of the same file, and the text
+  // it wrote is in the history already, so that keeps it; another workflow,
+  // or the file loaded again, starts the history over, because its texts are
+  // of a draft that is gone.
+  const opening = `${state.saved.name}\u0000${state.saved.hash}`;
+  const held = useRef(opening);
+  useEffect(() => {
+    if (held.current === opening) return;
+    held.current = opening;
+    if (savedText !== sent) reset(savedText);
+  }, [opening, savedText, sent, reset]);
   // The draft opens its text unchecked, so the keys of a stage are read from
   // a check of the file as it was loaded, and where each stage of the draft
   // came from in that same file is read beside it.
@@ -255,7 +282,11 @@ export function DesignView({
   useEffect(() => edit(history.text), [edit, history.text]);
 
   const answer = draft.answer;
-  const checked = answer?.view ? answer : (draft.lastGood ?? opened.answer);
+  // The view of the text as it is now, when a check of it has answered with
+  // one. Anything else is a view of an earlier text, which names the stages
+  // of this draft only while no stage was added, deleted or moved since.
+  const ofNow = answer?.view ? answer : undefined;
+  const checked = ofNow ?? draft.lastGood ?? opened.answer;
   const spec = useMemo(
     () => ({
       name: state.saved.view.name,
@@ -327,16 +358,25 @@ export function DesignView({
   // are not known yet is refused too, rather than saved in the dark. A file
   // the writer cannot edit in place is refused whatever its stages hold.
   const changed = changedStageIds(state, sources);
+  const guarded = state.draft.stages.map((one) => ({
+    draft: one,
+    source: sources.of(one.id),
+    changed: changed.has(one.id),
+  }));
+  // The changed stage whose lines the writer would not write back as the file
+  // has them. Read from the file itself, because what would be lost, such as
+  // a comment, is not in the parsed stage.
+  const rewritten = guarded.find(
+    (one) =>
+      one.changed &&
+      one.source.kind === 'loaded' &&
+      fileView !== null &&
+      !writerKeepsStage(savedText, fileView.stages, one.source.index),
+  );
   const refusal = willRewriteWhole(savedText)
     ? REWRITE_REFUSAL
-    : saveRefusal(
-        state.draft.stages.map((one) => ({
-          draft: one,
-          source: sources.of(one.id),
-          changed: changed.has(one.id),
-        })),
-        fileView,
-      );
+    : (saveRefusal(guarded, fileView) ??
+      (rewritten ? itemRefusal(rewritten.draft.name) : undefined));
 
   const onKeyDown = (event: KeyboardEvent) => {
     const asked = undoShortcut(shortcutKeyOf(event));
@@ -347,7 +387,10 @@ export function DesignView({
   };
 
   const marked = pickedPlace
-    ? markedStageOf(checked?.view, pickedPlace)
+    ? markedStageOf(checked?.view, pickedPlace, {
+        stale: ofNow === undefined,
+        sources: guarded.map((one) => one.source),
+      })
     : undefined;
   const showingEarlier = history.text !== text;
 
