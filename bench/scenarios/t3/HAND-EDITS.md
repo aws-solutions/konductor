@@ -342,3 +342,11 @@ fixture file or the prompt named them. The prompt now has one sentence naming th
 1 to 3 of `prototype-results.md`) and the four limits keys, the way the nine D-127 siblings were fixed (for example
 t3-adr-db-engine). It names no choice. Key, checks and fixture unchanged. Gates: reference 100, stub 0, lazy 6, alt
 100. Non-Claude recheck: pending (`handEdited.version` 7).
+
+## Round 6 recheck of t3-db-order-history v7 (2026-11-21, gpt-5.6-luna, call L16)
+
+2 of 4 pass, so nothing is recorded in `review.recheck`; listed for the fixing worker and Fable.
+- key-matches-fixture: the request says `prototype-results.md` names the ids (`composite-optimized`,
+  `two-table-normalized`), but that file only says Option 1/2/3 (lines 11-25) and `README.md:38-42` says A-D.
+- fixture-lists-no-answer: `prototype-results.md:55-62` and 97-104 mark Option 2 as the recommendation, with its
+  indexes, cost and query plans.
