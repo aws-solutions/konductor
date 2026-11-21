@@ -103,9 +103,11 @@ test('calls out the June 10 through 16 cancellation tracking gap', () => {
 
 test('does not present the survey price count as the overall churn cause', () => {
   const problem = String(block().problem || '');
+  assert.ok(problem.trim(), 'the framing block states no problem');
   assert.doesNotMatch(problem, /(?:price|92).{0,35}(?:main|primary|largest|major\s+cause)/i);
 });
 
 test('keeps the option set bounded', () => {
+  assert.ok(itemTexts(block().options).length >= 1, 'the framing block lists no options');
   assert.ok(itemTexts(block().options).length <= 5, 'too many options make the framing unfocused');
 });

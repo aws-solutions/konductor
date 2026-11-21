@@ -346,3 +346,19 @@ Who: claude (mate spot-review fix worker session), from /tmp/pilot-w3c (pin 249e
 `t6-developer-feasibility-spike` v3 (`scope-of-evidence`, `decision-use`, `honest-summary`) had judged rubric items with
 no Fail / Partial / Pass anchor; each now has the three, written from the item's own sentence. No check, key, fixture
 or answer changed, so the free gates are unchanged. Non-Claude recheck: pending (`handEdited.version` 3).
+
+## Empty-answer free points (2026-11-21, mate debt worker, DEBT D-143 (b))
+
+The untouched fixture still scored above 7 on four live tasks: hidden tests passed with no deliverable.
+
+- `t6-neg-release-notes-csv` v4 (18.6 to 0): six tests checked "every row" of a CSV that did not exist (no rows, so
+  nothing failed). Every row test now reads the rows through `rowsOf()`, which fails on a missing or empty CSV.
+- `t6-neg-glossary-rename` v4 (15.3 to 0): three shape tests (glossary fields, three PRD metrics, metric fields) passed
+  on the fixture's own blocks. Each now also needs the rename: term Project, `term_change.to` Project, no metric that
+  still says Workspace.
+- `t6-idea-pricing-test` v4 (12.6 to 0): the "does not claim the campaign caused" test passed on no issues and now
+  needs at least one; `fixture_unchanged` on `data` is now `format`, as on the req tasks (2026-11-20).
+- `t6-idea-churn-signal` v3 (9.5 to 0): the problem and option-count precision tests now need a problem and an option.
+
+Free gates after: references 100, alternatives 94.9 to 100, lazy 20.5 to 34.2, stub 0. Each needs a non-Claude recheck
+at its new version before a lock.

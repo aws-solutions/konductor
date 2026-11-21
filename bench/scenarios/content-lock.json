@@ -526,8 +526,8 @@
       "sha256": "1f794b728741f5aa16c316d4ecc04ebacff2e52a7c9052beda7f9779a24a8de7"
     },
     "t6-idea-churn-signal": {
-      "version": 2,
-      "sha256": "3c1a9255d33fda71571856e38f4edca672384ba2bf181ab31077b9e8d589ceaf",
+      "version": 3,
+      "sha256": "c6cfaa9facc9f35e7e7b675eb3d90ade3bc3afe9246adcd2e89f1901d32fd447",
       "legacyRecheckVersion": 2
     },
     "t6-idea-feature-bets": {
@@ -541,18 +541,18 @@
       "legacyRecheckVersion": 3
     },
     "t6-idea-pricing-test": {
-      "version": 3,
-      "sha256": "72f744a3acc1bde61266a3788e3bfe8c4e5049622c1cf71151561110d485faad",
+      "version": 4,
+      "sha256": "740dadee779f4241817a5e717b51968f6a52c3e8597873524838a39db2c5a05e",
       "legacyRecheckVersion": 3
     },
     "t6-neg-glossary-rename": {
-      "version": 3,
-      "sha256": "37a509dd7ead9b1a35fd855c9d1758b3e354ab5ec0193b20c74f8bd36f9c766e",
+      "version": 4,
+      "sha256": "1a3cc431fef25f37616cfcd33b784f5ff18666c575002f656562eb00f4a4d88f",
       "legacyRecheckVersion": 3
     },
     "t6-neg-release-notes-csv": {
-      "version": 3,
-      "sha256": "cdb03d55d14ea501eae525cdbbd571fc6dabcf3d3918c0e6404ddb9d1c030639",
+      "version": 4,
+      "sha256": "4eea21d7a7d4e5cc77c77d1f1b0bce0f64d9a52f270c81eaba60c0d8b5646357",
       "legacyRecheckVersion": 3
     },
     "t6-req-arch-webhooks": {

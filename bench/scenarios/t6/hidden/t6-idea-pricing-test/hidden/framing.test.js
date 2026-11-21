@@ -126,6 +126,7 @@ test('next step names the measure and its baseline', () => {
 
 test('does not claim the campaign caused the assignment mismatch', () => {
   const t = issueText();
+  assert.ok(t.trim(), 'the framing block lists no issues');
   assert.doesNotMatch(t, /campaign.{0,60}(caused|created|produced).{0,60}(assign|ratio|split)/i);
   assert.doesNotMatch(t, /refund.{0,60}(caused|created|produced).{0,60}(assign|ratio|split)/i);
 });

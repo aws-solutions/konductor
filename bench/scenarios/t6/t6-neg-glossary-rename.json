@@ -1,7 +1,7 @@
 {
   "id": "t6-neg-glossary-rename",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -159,21 +159,42 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): the three shape tests count only once the rename is made (D-143)",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 15.3,
+    "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
-      "stub": 15.3,
+      "stub": 0,
       "lazy": 30.6,
       "alt": 94.9,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

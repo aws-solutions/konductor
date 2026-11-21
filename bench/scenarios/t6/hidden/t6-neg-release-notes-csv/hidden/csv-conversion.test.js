@@ -41,6 +41,13 @@ function readCSV() {
   }
 }
 
+// Rows of the CSV; a missing or empty file fails here, so a check over every row cannot pass on no rows (DEBT D-143).
+function rowsOf() {
+  const { rows } = readCSV();
+  assert.ok(rows.length > 0, 'docs/release-notes.csv has no rows');
+  return rows;
+}
+
 test('CSV file exists', () => {
   assert.ok(readFileSync(CSV_PATH, 'utf8').length > 0, 'CSV file should exist and not be empty');
 });
@@ -51,7 +58,7 @@ test('CSV has correct headers', () => {
 });
 
 test('CSV has correct number of rows', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   // Count from release notes: Let's count manually from our solution
   // 6.2.0: 12 rows, 6.1.3: 6 rows, 6.1.2: 3 rows, 6.1.1: 5 rows, 6.1.0: 9 rows, 
   // 6.0.5: 5 rows, 6.0.4: 7 rows, 5.9.0: 9 rows, 5.7.2: 5 rows, 5.7.1: 6 rows
@@ -60,14 +67,14 @@ test('CSV has correct number of rows', () => {
 });
 
 test('Dates are normalized to ISO format', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   const invalidDates = rows.filter(row => !dateRegex.test(row.date));
   assert.strictEqual(invalidDates.length, 0, `All dates should be in ISO format (YYYY-MM-DD). Found: ${invalidDates.map(r => r.date).join(', ')}`);
 });
 
 test('Version 6.1.3 date is correctly normalized', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const versionRows = rows.filter(row => row.version === '6.1.3');
   // Original date was "Jan 28, 2024" - should be normalized to "2024-01-28"
   const hasCorrectDate = versionRows.every(row => row.date === '2024-01-28');
@@ -75,7 +82,7 @@ test('Version 6.1.3 date is correctly normalized', () => {
 });
 
 test('Quoted text with commas is preserved', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   // Look for the row about accounts with special characters
   const specialRow = rows.find(row => row.summary && row.summary.includes('quotes, commas, and other punctuation'));
   assert.ok(specialRow, 'Should have row about accounts with "quotes, commas, and other punctuation"');
@@ -84,7 +91,7 @@ test('Quoted text with commas is preserved', () => {
 });
 
 test('Multi-line bullet points are concatenated', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   // In the original markdown, some bullet points wrap to next line with 2-space indent
   // We need to check if they're properly concatenated
   const allSummaries = rows.map(row => row.summary).join(' ');
@@ -93,14 +100,14 @@ test('Multi-line bullet points are concatenated', () => {
 });
 
 test('Each row has valid type category', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const validTypes = ['New Features', 'Improvements', 'Bug Fixes', 'Security Updates', 'Documentation'];
   const invalidRows = rows.filter(row => !validTypes.includes(row.type));
   assert.strictEqual(invalidRows.length, 0, `All rows should have valid type. Invalid: ${invalidRows.map(r => r.type).join(', ')}`);
 });
 
 test('Version grouping is correct', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   // Count rows per version
   const versionCounts = {};
   rows.forEach(row => {
@@ -114,7 +121,7 @@ test('Version grouping is correct', () => {
 });
 
 test('Summary fields are properly escaped', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const csvContent = readFileSync(CSV_PATH, 'utf8');
   const lines = csvContent.trim().split('\n');
   
@@ -140,7 +147,7 @@ test('Summary fields are properly escaped', () => {
 });
 
 test('No empty fields', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const emptyFields = rows.filter(row => 
     !row.version || !row.date || !row.type || !row.summary
   );
@@ -148,7 +155,7 @@ test('No empty fields', () => {
 });
 
 test('Type categories match source headings', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   // Check a specific case: 6.0.4 has "Documentation" type
   const docRows = rows.filter(row => row.version === '6.0.4' && row.type === 'Documentation');
   assert.strictEqual(docRows.length, 2, 'Version 6.0.4 should have 2 Documentation rows');
@@ -159,14 +166,14 @@ test('Type categories match source headings', () => {
 });
 
 test('All versions from source are included', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const uniqueVersions = [...new Set(rows.map(row => row.version))].sort();
   const expectedVersions = ['5.7.1', '5.7.2', '5.9.0', '6.0.4', '6.0.5', '6.1.0', '6.1.1', '6.1.2', '6.1.3', '6.2.0'].sort();
   assert.deepStrictEqual(uniqueVersions, expectedVersions, 'All versions from source should be included');
 });
 
 test('Date ordering is consistent within version', () => {
-  const { rows } = readCSV();
+  const rows = rowsOf();
   const versions = [...new Set(rows.map(row => row.version))];
   
   for (const version of versions) {

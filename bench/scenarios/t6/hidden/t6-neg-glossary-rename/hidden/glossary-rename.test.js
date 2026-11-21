@@ -28,6 +28,7 @@ test('glossary definition describes the shared notes container', () => {
 
 test('glossary structured block has the required fields', () => {
   const block = glossary();
+  assert.match(String(block.term || ''), /project/i, 'the shape counts once the entry is renamed');
   assert.deepEqual(Object.keys(block).sort(), ['definition', 'previous_term', 'status', 'term']);
 });
 
@@ -35,6 +36,7 @@ test('PRD metrics block exists with three metrics', () => {
   const block = prd();
   assert.ok(Array.isArray(block.metrics));
   assert.equal(block.metrics.length, 3);
+  assert.match(String(block.term_change?.to || ''), /^project$/i, 'the count counts once the rename is recorded');
   assert.ok(block.metrics.length <= 3, 'the metrics list must not grow with unrelated items');
 });
 
@@ -123,6 +125,7 @@ test('workspaceId code identifier remains unchanged', () => {
 
 test('each PRD metric keeps the documented metric fields', () => {
   const block = prd();
+  assert.ok(!/workspace/i.test(JSON.stringify(block.metrics || [])), 'the fields count once the metrics are renamed');
   assert.ok(block.metrics.every((metric) => {
     assert.deepEqual(Object.keys(metric).sort(), ['baseline', 'definition', 'name', 'target']);
     return true;
