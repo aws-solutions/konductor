@@ -29,7 +29,9 @@ const VERSION_PROBE = 'import sys, importlib.metadata as m; print(m.version("str
  * strands-agents version and prefixes. Throws when the interpreter cannot import strands-agents.
  */
 function resolveStrands({ python = 'python3', agentFile = null } = {}) {
-  const r = spawnSync(python, ['-I', '-c', VERSION_PROBE], { encoding: 'utf8', env: { PATH: process.env.PATH ?? '/usr/bin:/bin' } });
+  const probeEnv = { PATH: process.env.PATH ?? '/usr/bin:/bin' };
+  if (process.env.LD_LIBRARY_PATH) probeEnv.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH;
+  const r = spawnSync(python, ['-I', '-c', VERSION_PROBE], { encoding: 'utf8', env: probeEnv });
   if (r.status !== 0) throw new Error(`${python} has no strands-agents (${(r.stderr || r.error?.message || '').trim().split('\n').at(-1)}); pass --strands-python <venv>/bin/python`);
   const [version, prefix, basePrefix] = r.stdout.trim().split('\n');
   if (agentFile && !fs.existsSync(agentFile)) throw new Error(`--strands-agent ${agentFile} does not exist`);
