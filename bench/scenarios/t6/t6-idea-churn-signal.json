@@ -136,31 +136,32 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric assesses problem framing and evidence discipline without requiring a methodology not in the request. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes a task goal (framing note with specific fields), a data source (June snapshot), and constraints (compare three paths, define measurable starting point), but does not name a method, technique, tool, or decoy.)."
+          "note": "Prompt asks to identify problem and evidence but names no specific method or framework; edits.md says previous version leaked answer but current version doesn't have misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (612 losses, 402 failed-payment, 156 voluntary, 517 events) come from fixture; the distinction between problem types is agent work. Earlier glm-5 check of the request, fixture and key: pass (The fixture files contain raw data and evidence (CSVs, policies, notes) but no file states outright that the main problem is failed payments, lists the 402/156 split as the answer, or gives the recommendation; the agent must analyze and reason from the data.)."
+          "note": "Fixture contains data files (CSV, notes) but doesn't state the analysis conclusion; provides raw evidence without interpretation."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite fixture figures: 612 total losses, 402 failed-payment (65.7%), 156 voluntary, 517 events vs 448 subscribers. Earlier glm-5 check of the request, fixture and key: pass (All hidden test expectations (612 total loss, 402 failed-payment, 156 voluntary, 65.7% share, 517 events, 214 survey responses, June 10-16 tracking gap, no processor retries) are present in fixture/exports/product_metrics.csv and fixture/docs/event-tracking-notes.md.)."
+          "note": "Rubric references numbers from product_metrics.csv (612, 402, 156, 517, 65.7%); checks and rubric reward what the request asks for, not reference specifics."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different wording and option ordering can still Pass if failed-payment is identified as main problem and payment recovery is recommended first. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can derive the failed-payment problem as primary from product_metrics.csv showing 402 of 612 losses, see the no-retry policy in billing-and-access.md, identify the survey bias from cancellation-survey.md and the tracking gap from event-tracking-notes.md, and synthesize a valid recommendation.)."
+          "note": "Competent developer can analyze CSV data and create framing note; different correct answers with same substantive content would pass the checks."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "expertKey": {

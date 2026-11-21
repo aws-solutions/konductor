@@ -172,29 +172,30 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for launch framing based on test data; field name leaks were fixed per edits.md."
+          "note": "Prompt asks for launch framing without specifying method/tool. Edits.md shows field names changed to remove leaked 'traps', improving neutrality."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains test data files but does not state calculated values or expert key findings."
+          "note": "Fixture contains raw data (CSVs, calendar, notes) but doesn't state the analysis or framing solution. Slide notes mention 'Variant B won' but lack required detailed synthesis."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check for values derivable from data; refund policy ambiguity handled per edits.md with multiple valid interpretations."
+          "note": "Hidden tests check numbers from fixture files (5,584/5,256 assignment, 381/409 payments, 22/58 refunds, 15-18 April campaign). Rubric anchors align with prompt issues: assignment mismatch, campaign overlap, refund asymmetry."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM can analyze A/B test data to identify issues; different valid interpretations of refund policy could pass."
+          "note": "All data exists in CSVs and documents. Prompt specifies what to analyze. Tests accept either refund interpretation (all 58 or 34 within 7 days), allowing different correct approaches."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "handEdited": {

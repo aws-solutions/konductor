@@ -130,31 +130,32 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates CSV formatting, edge-case handling, and honest summary without imposing a method. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt asks for a CSV conversion, names the output columns, and defines the type field, but does not prescribe a method or point to hidden traps.)."
+          "note": "The prompt asks to convert release notes to CSV with columns version, date, type, summary without naming any method or framework. No misleading hints or decoys."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (comma in quoted text, odd date format, wrapped lines) reference edge cases visible in fixture; the correct handling is not given. Earlier gpt-5.6-luna check of the request, fixture and key: pass (fixture/docs/release-notes.md contains the source release notes and their ordinary bullet content, including the comma-containing phrase and alternate date; it does not state a solution or hidden-test answer key.)."
+          "note": "The fixture contains docs/release-notes.md as source, but nothing in the fixture (comments, docs, tests, names) lists release-notes.csv or describes the finished CSV behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly reference fixture: 'quotes, commas, and other punctuation' field, Jan 28 date format vs others, potential wrapped bullets. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expected versions, dates, headings, 67 bullet rows, wrapped content, and quoted comma-containing summary all appear in fixture/docs/release-notes.md (release sections begin at lines 3-123).)."
+          "note": "The checks (file_exists, header, quoting, date 2024-01-28 for 6.1.3, 67 rows) and rubric (clean-conversion, handles-edge-cases, honest-summary) all match the fixture (docs/release-notes.md has all versions, bullets, special characters) and request (convert to CSV)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different date format choices and quoting styles can still Pass if all edge cases are handled correctly and format is consistent. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json provides the destination path, four columns, row and type rules, while fixture/docs/release-notes.md provides all values needed to produce the reference CSV; no hidden information is required.)."
+          "note": "A developer can read docs/release-notes.md and create release-notes.csv per the prompt (version,date,type,summary columns, one row per bullet). The tricky cases (commas, date format, line wrapping) are deterministically deducible from the source."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "handEdited": {

@@ -160,29 +160,30 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to write a decision record analyzing folder material; no method prescribed or misleading hints."
+          "note": "Request asks to review material and choose one of three deployment strategies without prescribing how to analyze or what method to use. No misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has capacity reports, finance notes, SLOs but doesn't state which deployment strategy to choose."
+          "note": "Fixture provides constraints (capacity, cost, drain times) and incident data but does not explicitly state which strategy to choose. Documents support analysis rather than giving answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Key patterns match fixture numbers (40 hosts, 72%, $2,800/$7,200, 40-min drain, 12-min revert, 3 deploys/week)."
+          "note": "Key validates decision is canary and checks for specific constraints from fixture files (40 hosts, 72%, 40 min drain, etc.). Rubric anchors reference fixture numbers and expertKey items align with concepts needed."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can analyze trade-offs from fixture constraints; different valid solutions could pass."
+          "note": "Competent developer can deduce canary from constraints: blue/green rejected due to capacity/cost, rolling rejected due to exposure and drain times, canary fits spare capacity and allows early detection."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "handEdited": {
