@@ -28,6 +28,8 @@ export interface LayoutStage {
   readonly values: FieldValues;
   /** The `agent` of the stage when it was loaded, before any edit. */
   readonly originalAgent?: string;
+  /** The keys that cannot be changed yet; they are shown as they are. */
+  readonly readOnlyKeys?: readonly string[];
 }
 
 const TABS = [
@@ -92,6 +94,7 @@ export function DesignerLayout({
         agents={agents}
         originalAgent={stage.originalAgent}
         values={stage.values}
+        {...(stage.readOnlyKeys ? { readOnlyKeys: stage.readOnlyKeys } : {})}
         onChange={onStageChange}
       />
     ) : (
