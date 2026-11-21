@@ -10,10 +10,17 @@
       "fix": [
         "exclusive",
         "advance cursor",
-        "greater than"
+        "greater than",
+        "after the last row"
       ],
       "finding": "The next cursor is encoded from the last row while the next query includes that row with a greater-or-equal comparison, so every non-final page repeats its last item.",
-      "slack": 1
+      "slack": 1,
+      "also": [
+        {
+          "file": "src/api/issues.js",
+          "line": 20
+        }
+      ]
     },
     {
       "id": "k2",
@@ -24,10 +31,17 @@
       "fix": [
         "tie-breaker",
         "stable ordering",
-        "createdAt and id"
+        "createdAt and id",
+        "tiebreaker"
       ],
       "finding": "Sorting only by createdAt leaves equal-time rows without a deterministic order, so inserts or store order changes can make cursor pages skip or repeat issues.",
-      "slack": 1
+      "slack": 1,
+      "also": [
+        {
+          "file": "src/pagination/cursor.js",
+          "line": 3
+        }
+      ]
     },
     {
       "id": "k3",

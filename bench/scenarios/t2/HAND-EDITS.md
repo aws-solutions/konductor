@@ -127,3 +127,23 @@ The fixture's `test/store.test.mjs` made a `catalog-test-` dir in TMPDIR and nev
 visible suite left one behind. The test now removes it in `t.after`. The pull request under review does not touch this
 file, and no key item reads it. Free gates unchanged: reference 100, stub 7.1, lazy 32, alt 100, dump 28.6. A case in
 `bench/runner/test/temp-leaks.test.js` fails on the old file. Non-Claude recheck: pending (`handEdited.version` 4).
+
+## Judge-vs-code fixes (2026-11-21, mate judge-vs-code worker, claude)
+
+From `reports/judged-pilot-waves-4-12-2026-11-21.md`: every wave 6 pr- review got 100 from the three judges and 49 to
+58 on code. Read against the reviews, the grader was at fault: literal keyword phrases, greedy pairing and a 1.5x
+length cap (fixed in the shared grader, `139a3665` and `3447c9d7`), and key items that named one line where the
+defect shows at two. The key edits below accept the other place or the reviewer's words; no item was dropped.
+
+| Date | Task | Who | What changed | Why |
+| --- | --- | --- | --- | --- |
+| 2026-11-21 | t2-pr-price-cache v5 | claude (mate judge-vs-code worker) | `key.json`: k3 also at `src/services/price-service.mjs:14`; k5 also at `price-service.mjs:12-15` | k3 (seconds passed as milliseconds) shows where `set` gets `this.ttlSeconds`; k5 (cached array returned by reference) shows where `list` returns it. The wave 6 review named those lines. |
+| 2026-11-21 | t2-pr-avatar-upload v4 | claude (mate judge-vs-code worker) | `key.json`: k2 also at `user_handler.py:239`; k3 also at `image_helpers.py:32`, finding rewritten, fix words structural / signature / decode added; k7 also at `user_handler.py:278`, fix words docs / delete the previous added | k3's finding said only the Content-Type is checked, but `validate_image_file` does sniff the bytes with `imghdr` (line 32); the real defect is that the sniff is weak (polyglots pass), which the review said. k2 (no size limit) shows where Content-Length is read; k7 (docs promise deletion) can be fixed in the code or the docs. |
+| 2026-11-21 | t2-pr-cursor-pages v4 | claude (mate judge-vs-code worker) | `key.json`: k1 also at `src/api/issues.js:20`, fix words after the last row; k2 also at `src/pagination/cursor.js:3`, fix word tiebreaker | k1's repeated row comes from the cursor encoded at line 20 as much as the `>=` at 18; k2 (no stable order) was named at the offset cursor with "id as a sort tiebreaker". |
+| 2026-11-21 | t2-pr-stock-reserve v3 | claude (mate judge-vs-code worker) | `key.json`: k6 fix words inject a clock | The review's fix for the 15 ms real-time wait was "Inject a clock". |
+| 2026-11-21 | t2-gaps-jwt-middleware v5 | claude (mate judge-vs-code worker) | `key.json`: k4 also at `src/middleware/bearer-auth.js:29-30` | The role claim is taken from the token where the middleware returns `verified.payload`, which is where the review named it. |
+
+Wave 6 runs scored again with the current grader (no model call): avatar 93.2, cursor 76.2, orders-migration 80.5,
+price-cache 83, refund-flow 86.4, stock-reserve 90.3, webhook-relay 86.4, jwt-middleware 100 (were 49 to 59). Gates of
+all 16 T2 tasks unchanged: reference 100, stub 7.1, lazy 28.6 to 35.1, alt 100, dump 28.6 to 35.7. Non-Claude recheck:
+pending for the five tasks above.

@@ -38,7 +38,13 @@
         "convert seconds",
         "multiply by 1000"
       ],
-      "finding": "The configured TTL is named and stored in seconds but is passed into a cache setter that interprets the value as milliseconds, making the advertised 30-second lifetime about 30 milliseconds."
+      "finding": "The configured TTL is named and stored in seconds but is passed into a cache setter that interprets the value as milliseconds, making the advertised 30-second lifetime about 30 milliseconds.",
+      "also": [
+        {
+          "file": "src/services/price-service.mjs",
+          "line": 14
+        }
+      ]
     },
     {
       "id": "k4",
@@ -64,7 +70,14 @@
         "copy",
         "defensive"
       ],
-      "finding": "Cache hits return the stored object directly, so a caller that edits a price response mutates the cached value and changes later responses without a store write."
+      "finding": "Cache hits return the stored object directly, so a caller that edits a price response mutates the cached value and changes later responses without a store write.",
+      "also": [
+        {
+          "file": "src/services/price-service.mjs",
+          "line": 12,
+          "endLine": 15
+        }
+      ]
     },
     {
       "id": "k6",
