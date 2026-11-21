@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { CanvasGraph } from './model';
+import type { CanvasGraph, StopMarkState } from './model';
+
+export type { StopMarkState };
 
 /**
  * The ids of the stage nodes that no other stage follows, in the order of the
@@ -22,9 +24,6 @@ export type LeafStageStatus = 'pending' | 'running' | 'passed' | 'blocked';
 
 /** The status of a run, as the API gives it. */
 export type LeafRunStatus = 'running' | 'passed' | 'halted';
-
-/** What the stop mark of a leaf stage shows once its part of the run is over. */
-export type StopMarkState = 'passed' | 'blocked' | 'not-reached';
 
 /**
  * The state of the stop mark of a leaf stage: `passed` or `blocked` once the
