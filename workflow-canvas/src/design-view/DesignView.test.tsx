@@ -1,0 +1,727 @@
+// SPDX-License-Identifier: Apache-2.0
+import createWrapper from '@cloudscape-design/components/test-utils/dom';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { useMemo } from 'react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { WorkflowDocument } from '../api/types';
+import type { StageFieldRule } from '../designer-view/field-rules';
+import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
+import { useEditor } from '../designer/use-editor';
+import { FakeScheduler } from '../test-support/fake-scheduler';
+import { acceptingEdits, type FakeEdits } from '../test-support/fake-edits';
+import { HELLO_DOCUMENT, NO_RUNS } from '../test-support/fixtures';
+import { DesignView, type StageFieldsByKind } from './DesignView';
+import { FINDINGS_PER_PAGE, FINDINGS_SHOWN_MOST } from './findings';
+
+const settle = () => act(async () => {});
+
+// These tests wrap their updates in `act`, which React only accepts when the
+// environment says so.
+const actFlag = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+const actBefore = actFlag.IS_REACT_ACT_ENVIRONMENT;
+beforeAll(() => {
+  actFlag.IS_REACT_ACT_ENVIRONMENT = true;
+});
+afterAll(() => {
+  actFlag.IS_REACT_ACT_ENVIRONMENT = actBefore;
+});
+
+const RULES: readonly StageFieldRule[] = [
+  { key: 'name', type: 'name', required: true, max_length: 64 },
+  { key: 'agent', type: 'name', required: true, max_length: 64 },
+  { key: 'prompt', type: 'text', required: false, min_length: 1 },
+  { key: 'prompt_file', type: 'path', required: false },
+];
+
+const FIELDS: StageFieldsByKind = { agent: RULES };
+
+const TEXT_WITH_PROMPT = `format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+stages:
+  - name: draft
+    agent: k-developer
+    prompt: Write the greeting to README.md.
+  - name: review
+    agent: k-quality-assurance
+`;
+
+const TEXT_WITH_PROMPT_FILE = `format: konductor/1
+name: hello
+version: 0.1.0
+intent:
+  outcome: Add a greeting to the README
+stages:
+  - name: draft
+    agent: k-developer
+    prompt_file: review.md
+  - name: review
+    agent: k-quality-assurance
+`;
+
+// A loaded workflow whose first stage has a key that only the file holds:
+// the parsed view the page keeps has the name and the agent only.
+const withText = (text: string): WorkflowDocument => ({
+  ...HELLO_DOCUMENT,
+  text,
+});
+
+const WITH_PROMPT = withText(TEXT_WITH_PROMPT);
+const WITH_PROMPT_FILE = withText(TEXT_WITH_PROMPT_FILE);
+
+// The stages of a text, as the sample lays them out, with the lines they
+// take up and a prompt when the text has one, which a real check works out
+// from the whole file.
+function stagesOf(text: string) {
+  const lines = text.split('\n');
+  return lines.flatMap((line, index) => {
+    const name = /^ {2}- name: (.+)$/.exec(line)?.[1];
+    if (name === undefined) return [];
+    const agent = /^ {4}agent: (.+)$/.exec(lines[index + 1] ?? '')?.[1] ?? '';
+    const prompt = /^ {4}prompt: (.+)$/.exec(lines[index + 2] ?? '')?.[1];
+    const file = /^ {4}prompt_file: (.+)$/.exec(lines[index + 2] ?? '')?.[1];
+    return [
+      {
+        name,
+        kind: 'agent',
+        agent,
+        ...(prompt === undefined ? {} : { prompt }),
+        ...(file === undefined ? {} : { prompt_file: file }),
+        range: { line: index + 1, end_line: index + 2 },
+      },
+    ];
+  });
+}
+
+function goodAnswer(text: string): CheckAnswer {
+  return {
+    errors: 0,
+    warnings: 0,
+    infos: 0,
+    view: {
+      format: 'konductor/1',
+      version: '0.1.0',
+      name: 'hello',
+      intent: { outcome: 'Add a greeting to the README' },
+      stages: stagesOf(text),
+    },
+    diagnostics: [],
+  };
+}
+
+const badAnswer: CheckAnswer = {
+  errors: 1,
+  warnings: 0,
+  infos: 0,
+  view: null,
+  diagnostics: [
+    {
+      code: 'INVALID_NAME',
+      severity: 'error',
+      path: 'stages[0].name',
+      line: 13,
+      column: 11,
+      end_line: 13,
+      end_column: 13,
+      message: 'A stage name is lower case letters, digits and hyphens.',
+    },
+  ],
+};
+
+function Harness({
+  document: workflow = HELLO_DOCUMENT,
+  edits,
+  scheduler,
+  validate,
+  stageFields = FIELDS,
+}: {
+  document?: WorkflowDocument;
+  edits: FakeEdits;
+  scheduler: FakeScheduler;
+  validate: (
+    request: CheckRequest,
+    signal: AbortSignal,
+  ) => Promise<CheckAnswer>;
+  stageFields?: StageFieldsByKind;
+}) {
+  const workflowRef = useMemo(
+    () => ({ harness: 'kiro-cli', document: workflow, edits, runs: NO_RUNS }),
+    [workflow, edits],
+  );
+  const editor = useEditor(workflowRef, scheduler);
+  if (!editor) return null;
+  return (
+    <DesignView
+      editor={editor}
+      harness="kiro-cli"
+      validate={validate}
+      scheduler={scheduler}
+      stageFields={stageFields}
+    />
+  );
+}
+
+function drawn({
+  document: workflow = HELLO_DOCUMENT,
+  answers,
+  openedFails,
+}: {
+  document?: WorkflowDocument;
+  /** The answers of the checks that follow an edit, in order. */
+  answers?: CheckAnswer[];
+  /** The check of the loaded text fails with this message. */
+  openedFails?: string;
+} = {}) {
+  const scheduler = new FakeScheduler();
+  const edits = acceptingEdits();
+  const queued = [...(answers ?? [])];
+  const savedText = workflow.text ?? '';
+  // The check of the text as loaded is its own call; the queued answers are
+  // for the checks that follow an edit.
+  const validate = vi.fn(async (request: CheckRequest) => {
+    if (request.text === savedText) {
+      if (openedFails !== undefined) throw new Error(openedFails);
+      return goodAnswer(request.text);
+    }
+    return queued.length > 0 ? queued.shift()! : goodAnswer(request.text);
+  });
+  render(
+    <Harness
+      document={workflow}
+      edits={edits}
+      scheduler={scheduler}
+      validate={validate}
+    />,
+  );
+  return { scheduler, validate, edits };
+}
+
+const wrapper = () => createWrapper(document.body);
+const tab = (name: string) => screen.getByRole('tab', { name });
+const panelOf = (name: string) =>
+  screen.getByRole('tabpanel', { name }) as HTMLElement;
+const nameInput = () =>
+  within(panelOf('Properties')).getByRole('textbox', {
+    name: 'name',
+  }) as HTMLInputElement;
+const promptInput = () =>
+  within(panelOf('Properties')).getByRole('textbox', {
+    name: 'prompt',
+  }) as HTMLTextAreaElement;
+const button = (label: string) =>
+  screen.getByRole('button', { name: label }) as HTMLButtonElement;
+const isOff = (element: HTMLElement) =>
+  element.hasAttribute('disabled') ||
+  element.getAttribute('aria-disabled') === 'true';
+
+async function openProperties() {
+  await act(async () => {
+    fireEvent.click(tab('Properties'));
+  });
+}
+
+async function openYaml() {
+  await act(async () => {
+    fireEvent.click(tab('YAML'));
+  });
+}
+
+async function chooseAgent(id: string) {
+  await act(async () => {
+    wrapper().findSelect()!.openDropdown();
+  });
+  const select = wrapper().findSelect()!;
+  const index = select
+    .findDropdown()
+    .findOptions()
+    .findIndex((option) => option.getElement().textContent?.startsWith(id));
+  if (index < 0) throw new Error(`The agent ${id} is not offered.`);
+  await act(async () => {
+    select.selectOption(index + 1);
+  });
+}
+
+async function checkNow(scheduler: FakeScheduler) {
+  await act(async () => {
+    scheduler.tick();
+  });
+  await act(async () => {});
+}
+
+async function typeInto(input: HTMLElement, value: string) {
+  await act(async () => {
+    fireEvent.change(input, { target: { value } });
+  });
+}
+
+describe('DesignView, the drawing', () => {
+  it('ends the last stage with a stop mark and draws no end node', () => {
+    drawn();
+
+    expect(
+      screen.getByRole('img', { name: 'The run ends after review' }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('node-end')).toBeNull();
+  });
+
+  it('draws each stage of the workflow', () => {
+    drawn();
+
+    expect(screen.getByTestId('node-stage-draft')).toBeTruthy();
+    expect(screen.getByTestId('node-stage-review')).toBeTruthy();
+  });
+
+  it('picks the stage that is clicked', async () => {
+    drawn();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-review'));
+    });
+    await openProperties();
+
+    expect(nameInput().value).toBe('review');
+  });
+});
+
+describe('DesignView, the YAML tab', () => {
+  it('shows the text of the workflow', () => {
+    drawn();
+
+    expect(panelOf('YAML').textContent).toContain('name: draft');
+  });
+
+  it('says that the text cannot be typed into yet', () => {
+    drawn();
+
+    expect(screen.getByTestId('raw-edit-note').textContent).toContain(
+      'cannot be typed into here yet',
+    );
+  });
+
+  it('marks the lines of the picked stage once the check answers', async () => {
+    const { scheduler } = drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('are stage drafting');
+  });
+
+  it('says where the check of the text is', async () => {
+    const { scheduler } = drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    expect(screen.getByTestId('yaml-check-status').textContent).toContain(
+      'The text is valid',
+    );
+  });
+
+  it('lists what the check found wrong with the text', async () => {
+    const { scheduler } = drawn({ answers: [badAnswer] });
+    await openProperties();
+    await typeInto(nameInput(), 'Not A Name');
+    await checkNow(scheduler);
+
+    expect(screen.getByTestId('yaml-problems').textContent).toContain(
+      'A stage name is lower case letters, digits and hyphens.',
+    );
+  });
+
+  it('keeps the marks of the last good check while the text has problems', async () => {
+    const { scheduler } = drawn({
+      answers: [goodAnswer(HELLO_DOCUMENT.text ?? ''), badAnswer],
+    });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+    await typeInto(nameInput(), 'Not A Name');
+    await checkNow(scheduler);
+
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('are stage Not A Name');
+  });
+
+  it('says so when the text could not be checked', async () => {
+    const scheduler = new FakeScheduler();
+    const validate = vi.fn(() =>
+      Promise.reject(new Error('The check failed.')),
+    );
+    render(
+      <Harness
+        edits={acceptingEdits()}
+        scheduler={scheduler}
+        validate={validate}
+      />,
+    );
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    expect(screen.getByTestId('yaml-check-status').textContent).toContain(
+      'The check failed.',
+    );
+  });
+});
+
+describe('DesignView, the Properties tab', () => {
+  it('shows the keys that stage_fields names', async () => {
+    drawn();
+    await settle();
+
+    await openProperties();
+
+    const fields = within(panelOf('Properties')).getAllByRole('textbox');
+    expect(fields).toHaveLength(3);
+    expect(nameInput().value).toBe('draft');
+  });
+
+  it('shows no form when the workflow has no stage to pick', () => {
+    const empty: WorkflowDocument = {
+      ...HELLO_DOCUMENT,
+      view: { ...HELLO_DOCUMENT.view!, stages: [] },
+    };
+    drawn({ document: empty });
+
+    expect(
+      screen.getByText('Pick a stage in the drawing to edit its keys.'),
+    ).toBeTruthy();
+  });
+
+  it('sends a new name to the editor, which draws it', async () => {
+    drawn();
+    await openProperties();
+
+    await typeInto(nameInput(), 'drafting');
+
+    expect(screen.getByTestId('node-stage-drafting')).toBeTruthy();
+  });
+
+  it('sends a new agent to the editor', async () => {
+    drawn();
+    await openProperties();
+
+    await chooseAgent('k-architect');
+
+    expect(
+      within(screen.getByTestId('node-stage-draft')).getByTitle(
+        'k-architect · kiro-cli',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('shows the keys the file has before anything is edited', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+
+    await openProperties();
+
+    expect(promptInput().value).toBe('Write the greeting to README.md.');
+    expect(nameInput().value).toBe('draft');
+  });
+
+  it('shows a prompt file the same way', async () => {
+    drawn({ document: WITH_PROMPT_FILE });
+    await settle();
+
+    await openProperties();
+
+    expect(
+      (
+        within(panelOf('Properties')).getByRole('textbox', {
+          name: 'prompt_file',
+        }) as HTMLInputElement
+      ).value,
+    ).toBe('review.md');
+  });
+
+  it('says while it is reading the keys of each stage', () => {
+    drawn({ document: WITH_PROMPT });
+
+    expect(screen.getByTestId('reading-keys')).toBeTruthy();
+  });
+
+  it('says so when the keys could not be read', async () => {
+    drawn({ document: WITH_PROMPT, openedFails: 'The server said no.' });
+    await settle();
+
+    expect(screen.getByTestId('reading-keys-failed').textContent).toContain(
+      'The server said no.',
+    );
+  });
+
+  it('shows a key that only the file has as read-only, with a note', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    expect(promptInput().readOnly).toBe(true);
+    expect(panelOf('Properties').textContent).toContain(
+      'edited in a later step',
+    );
+  });
+
+  it('leaves the name and the agent editable', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    expect(nameInput().readOnly).toBe(false);
+    await typeInto(nameInput(), 'drafting');
+
+    expect(screen.getByTestId('node-stage-drafting')).toBeTruthy();
+  });
+});
+
+describe('DesignView, undo and redo', () => {
+  it('has nothing to undo before an edit', () => {
+    drawn();
+
+    expect(isOff(button('Undo'))).toBe(true);
+    expect(isOff(button('Redo'))).toBe(true);
+  });
+
+  it('goes back to the text before the edit', async () => {
+    drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Undo'));
+    });
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('name: draft');
+    expect(screen.getByTestId('earlier-text-note')).toBeTruthy();
+  });
+
+  it('comes back to the edited text with Redo', async () => {
+    drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await act(async () => {
+      fireEvent.click(button('Undo'));
+    });
+
+    await act(async () => {
+      fireEvent.click(button('Redo'));
+    });
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('name: drafting');
+    expect(screen.queryByTestId('earlier-text-note')).toBeNull();
+  });
+
+  it('undoes on the keyboard shortcut', async () => {
+    drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.keyDown(nameInput(), { key: 'z', ctrlKey: true });
+    });
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('name: draft');
+  });
+
+  it('leaves another key press to the browser', async () => {
+    drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.keyDown(nameInput(), { key: 'z' });
+    });
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('name: drafting');
+  });
+});
+
+describe('DesignView, saving', () => {
+  it('writes the text of the stages when Save is pressed', async () => {
+    const { edits } = drawn();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).toHaveBeenCalledTimes(1);
+    expect(edits.save.mock.calls[0]?.[0]).toContain('name: drafting');
+  });
+
+  it('refuses a save that would drop the prompt of the stage it changed', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'would drop the prompt of drafting',
+    );
+  });
+
+  it('refuses a save that would drop a prompt file', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT_FILE });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'prompt_file',
+    );
+  });
+
+  it('says nothing about a save while nothing is changed', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+
+    expect(screen.queryByTestId('save-refused')).toBeNull();
+  });
+
+  it('lets a save of another stage with no other key go ahead', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-review'));
+    });
+    await openProperties();
+    await typeInto(nameInput(), 'reviewing');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds a stage to the drawing', async () => {
+    drawn();
+
+    await act(async () => {
+      fireEvent.click(button('Add agent-1'));
+    });
+
+    expect(screen.getByTestId('node-stage-agent-1')).toBeTruthy();
+  });
+});
+
+describe('DesignView, many problems in the text', () => {
+  const manyFindings = (count: number): CheckAnswer => ({
+    errors: count,
+    warnings: 0,
+    infos: 0,
+    view: null,
+    diagnostics: Array.from({ length: count }, (_, index) => ({
+      code: 'UNKNOWN_KEY',
+      severity: 'error' as const,
+      path: `stages[${index}]`,
+      line: index + 1,
+      column: 1,
+      end_line: index + 1,
+      end_column: 2,
+      message: `Problem ${index + 1}.`,
+    })),
+  });
+
+  const findingItems = () =>
+    within(screen.getByTestId('yaml-problems')).getAllByRole('listitem');
+
+  it('shows a page of problems and says how many are left', async () => {
+    const { scheduler } = drawn({ answers: [manyFindings(500)] });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    expect(findingItems()).toHaveLength(FINDINGS_PER_PAGE);
+    expect(screen.getByTestId('yaml-problems-left').textContent).toContain(
+      '480 more problems',
+    );
+  });
+
+  it('shows another page when the person asks', async () => {
+    const { scheduler } = drawn({ answers: [manyFindings(500)] });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    await act(async () => {
+      fireEvent.click(button(`Show ${FINDINGS_PER_PAGE} more`));
+    });
+
+    expect(findingItems()).toHaveLength(FINDINGS_PER_PAGE * 2);
+  });
+
+  it('never shows more than its own limit, however many the server sends', async () => {
+    const { scheduler } = drawn({ answers: [manyFindings(5_000)] });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    for (let page = 1; page * FINDINGS_PER_PAGE < FINDINGS_SHOWN_MOST; page++) {
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: /^Show [\d,]+ more$/ }),
+        );
+      });
+    }
+
+    expect(findingItems()).toHaveLength(FINDINGS_SHOWN_MOST);
+    expect(screen.getByTestId('yaml-problems-left').textContent).toContain(
+      'Fix these and check again',
+    );
+  });
+
+  it('shows every problem of a short list with nothing left', async () => {
+    const { scheduler } = drawn({ answers: [manyFindings(3)] });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+    await checkNow(scheduler);
+
+    expect(findingItems()).toHaveLength(3);
+    expect(screen.queryByTestId('yaml-problems-left')).toBeNull();
+  });
+});
+
+describe('DesignView, a stage renamed to the name of another one', () => {
+  it('keeps the keys of the stage that is picked, not the one of that name', async () => {
+    drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(nameInput(), 'review');
+
+    expect(promptInput().value).toBe('Write the greeting to README.md.');
+  });
+
+  it('marks the lines of the stage that is picked', async () => {
+    const { scheduler } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await openProperties();
+
+    await typeInto(nameInput(), 'review');
+    await checkNow(scheduler);
+    await openYaml();
+
+    expect(panelOf('YAML').textContent).toContain('Lines 7 to 8 are stage');
+  });
+});
