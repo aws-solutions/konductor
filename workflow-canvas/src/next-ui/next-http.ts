@@ -217,6 +217,25 @@ function viewStageOf(
 /** The most stages a workflow may have, as the contract allows. */
 const STAGES_MOST = 40;
 
+/** The longest outcome of an intent, as the contract allows. */
+const OUTCOME_LONGEST = 300;
+
+// The intent of a workflow, whose outcome says what the run is for: one line
+// of at most three hundred characters, as the contract gives it. Every other
+// key of the intent, such as the checks of `accept`, is kept as it came.
+function intentOrFail(value: unknown): unknown {
+  if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
+  const outcome = textOrFail(value.outcome);
+  if (
+    outcome === '' ||
+    outcome.length > OUTCOME_LONGEST ||
+    /[\r\n]/.test(outcome)
+  ) {
+    throw new ApiError(BAD_REPLY, 200);
+  }
+  return value;
+}
+
 // The parsed workflow of the answer. `parse.ts` has `parseCheckResult` for
 // this body, but it drops the `kind` and the `range` of a stage, which the
 // Design view draws and marks by, so the fields are read here instead. The
@@ -224,15 +243,15 @@ const STAGES_MOST = 40;
 // text with errors answers with; a body that leaves it out altogether is a
 // reply this page does not understand.
 //
-// A workflow has an intent and one to forty stages. A key the contract leaves
-// room for, such as `params` or one a later release adds, is kept as it came:
-// the form shows the keys of the file, and a key this page does not know is
-// not a reply it cannot read.
+// A workflow has an intent, with the outcome of its run, and one to forty
+// stages. Every other key of the answer is kept as it came, the `params` of a
+// file and the keys a later release may add among them: the form shows the
+// keys of the file, and a key this page does not know is not a reply it
+// cannot read.
 function checkViewOf(value: unknown): CheckAnswer['view'] {
   if (value === null) return null;
   if (
     !isObject(value) ||
-    !isObject(value.intent) ||
     !Array.isArray(value.stages) ||
     value.stages.length < 1 ||
     value.stages.length > STAGES_MOST
@@ -240,10 +259,11 @@ function checkViewOf(value: unknown): CheckAnswer['view'] {
     throw new ApiError(BAD_REPLY, 200);
   }
   return {
+    ...value,
     format: textOrFail(value.format),
     version: textOrFail(value.version),
     name: textOrFail(value.name),
-    intent: value.intent,
+    intent: intentOrFail(value.intent),
     stages: value.stages.map(viewStageOf),
   };
 }

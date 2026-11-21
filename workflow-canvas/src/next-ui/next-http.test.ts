@@ -232,8 +232,29 @@ describe('createNextPorts, the check of a text', () => {
       new AbortController().signal,
     );
 
+    // The keys of the answer come through as they came, at the top of the
+    // view and on a stage alike; the fields this page reads are checked.
+    expect(checked.view?.params).toEqual({ tone: { type: 'string' } });
+    expect(checked.view?.surprise).toBe('a key of a later release');
+    expect(checked.view?.intent).toEqual({ outcome: 'Add a greeting' });
     expect(checked.view?.stages[0]?.done_when).toEqual(['draft-exists']);
+    expect(checked.view?.stages[0]?.surprise).toBe(7);
     expect(checked.view?.stages).toHaveLength(1);
+  });
+
+  it('reads an intent with the longest outcome the contract allows', async () => {
+    const outcome = 'a'.repeat(300);
+    const view = { ...answer.view, intent: { outcome, accept: [] } };
+    const { fetchFn } = serverOf({ body: { view, diagnostics: [] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const checked = await ports.validate(
+      { text: '' },
+      new AbortController().signal,
+    );
+
+    // Every other key of the intent comes through with it.
+    expect(checked.view?.intent).toEqual({ outcome, accept: [] });
   });
 
   it('reads a view with as many stages as a workflow may have', async () => {
@@ -342,6 +363,23 @@ describe('createNextPorts, the check of a text', () => {
     [
       'a view whose intent is not a mapping',
       { ...answer.view, intent: 'Ship' },
+    ],
+    ['an intent with no outcome', { ...answer.view, intent: { accept: [] } }],
+    [
+      'an intent whose outcome is not text',
+      { ...answer.view, intent: { outcome: 7 } },
+    ],
+    [
+      'an intent whose outcome is empty',
+      { ...answer.view, intent: { outcome: '' } },
+    ],
+    [
+      'an intent whose outcome is longer than the contract allows',
+      { ...answer.view, intent: { outcome: 'a'.repeat(301) } },
+    ],
+    [
+      'an intent whose outcome runs over two lines',
+      { ...answer.view, intent: { outcome: 'Add a greeting\nto the README' } },
     ],
     ['a view with no stage at all', { ...answer.view, stages: [] }],
     [
