@@ -1,7 +1,7 @@
 {
   "id": "t8-oncall-alert-review",
   "class": "hard",
-  "version": 4,
+  "version": 5,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
@@ -126,8 +126,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): key word forms widened from wave 8 answers (D-116)",
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {
