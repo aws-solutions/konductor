@@ -20,7 +20,7 @@ const stage = (line: number, endLine: number) => ({
 describe('itemTextOf', () => {
   it('takes the lines the range names', () => {
     expect(itemTextOf(FILE, stage(5, 6))).toBe(
-      '  - name: draft\n    agent: k-developer',
+      '  - name: draft\n    agent: k-developer\n',
     );
   });
 
@@ -52,8 +52,22 @@ describe('itemTextOf', () => {
     expect(itemTextOf(FILE, undefined)).toBeUndefined();
   });
 
-  it('reads a file whose lines end with carriage returns', () => {
-    const text = 'stages:\r\n  - name: draft\r\n    agent: k-developer\r\n';
+  // The break that ends a line is part of the bytes of it: a save that ends
+  // that line another way has changed the file.
+  it.each([
+    ['carriage returns and line feeds', '\r\n'],
+    ['carriage returns alone', '\r'],
+    ['line feeds', '\n'],
+  ])('keeps the break of each line it takes, with %s', (_, eol) => {
+    const text = `stages:${eol}  - name: draft${eol}    agent: k-developer${eol}`;
+
+    expect(itemTextOf(text, stage(2, 3))).toBe(
+      `  - name: draft${eol}    agent: k-developer${eol}`,
+    );
+  });
+
+  it('takes no break for the last line of a file that ends without one', () => {
+    const text = 'stages:\n  - name: draft\n    agent: k-developer';
 
     expect(itemTextOf(text, stage(2, 3))).toBe(
       '  - name: draft\n    agent: k-developer',
@@ -62,7 +76,10 @@ describe('itemTextOf', () => {
 });
 
 describe('writerKeepsItem', () => {
-  const kept = (item: string) => writerKeepsItem(item, 'draft', 'k-developer');
+  // The items below are written with line feeds, so the break of the key
+  // they are read against is one too, and the last line brings its own.
+  const kept = (item: string) =>
+    writerKeepsItem(`${item}\n`, 'draft', 'k-developer', '\n');
 
   it('keeps an item that is the two lines the writer writes', () => {
     expect(kept('  - name: draft\n    agent: k-developer')).toBe(true);
@@ -109,7 +126,45 @@ describe('writerKeepsItem', () => {
   });
 
   it('keeps no item whose lines could not be read', () => {
-    expect(writerKeepsItem(undefined, 'draft', 'k-developer')).toBe(false);
+    expect(writerKeepsItem(undefined, 'draft', 'k-developer', '\n')).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    ['carriage returns and line feeds', '\r\n'],
+    ['carriage returns alone', '\r'],
+  ])('keeps an item ended the way the key is, with %s', (_, eol) => {
+    const item = `  - name: draft${eol}    agent: k-developer${eol}`;
+
+    expect(writerKeepsItem(item, 'draft', 'k-developer', eol)).toBe(true);
+  });
+
+  // The writer ends both lines it writes with the break of the `stages:`
+  // key, so an item ended any other way is written with other bytes.
+  it.each([
+    [
+      'its lines end another way than the key',
+      '  - name: draft\n    agent: k-developer\n',
+      '\r\n',
+    ],
+    [
+      'its first line alone ends another way',
+      '  - name: draft\r\n    agent: k-developer\n',
+      '\n',
+    ],
+    [
+      'its last line alone ends another way',
+      '  - name: draft\n    agent: k-developer\r\n',
+      '\n',
+    ],
+    [
+      'it ends with no break, as the last line of a file can',
+      '  - name: draft\n    agent: k-developer',
+      '\n',
+    ],
+  ])('does not keep an item where %s', (_, item, eol) => {
+    expect(writerKeepsItem(item, 'draft', 'k-developer', eol)).toBe(false);
   });
 });
 
@@ -189,5 +244,42 @@ describe('writerKeepsStage', () => {
 
   it('keeps no later stage when the one before it has no place', () => {
     expect(writerKeepsStage(FILE, [{ name: 'draft' }, SECOND], 1)).toBe(false);
+  });
+
+  it.each([
+    ['carriage returns and line feeds', '\r\n'],
+    ['carriage returns alone', '\r'],
+    ['line feeds', '\n'],
+  ])('keeps a stage of a file written throughout with %s', (_, eol) => {
+    const text = `stages:${eol}  - name: draft${eol}    agent: k-developer${eol}`;
+
+    expect(writerKeepsStage(text, [at(2, 3)], 0)).toBe(true);
+  });
+
+  it.each([
+    [
+      'the stage ends its lines another way than the key',
+      'stages:\r\n  - name: draft\n    agent: k-developer\n',
+    ],
+    [
+      'the key ends its line another way than the stage',
+      'stages:\n  - name: draft\r\n    agent: k-developer\r\n',
+    ],
+    [
+      'the stage ends its lines with a lone carriage return',
+      'stages:\n  - name: draft\r    agent: k-developer\r',
+    ],
+    [
+      'the file ends inside the stage with no break',
+      'stages:\n  - name: draft\n    agent: k-developer',
+    ],
+  ])('does not keep a stage where %s', (_, text) => {
+    expect(writerKeepsStage(text, [at(2, 3)], 0)).toBe(false);
+  });
+
+  it('keeps no stage of a file with no stages key to read a break from', () => {
+    const text = 'steps:\n  - name: draft\n    agent: k-developer\n';
+
+    expect(writerKeepsStage(text, [at(2, 3)], 0)).toBe(false);
   });
 });
