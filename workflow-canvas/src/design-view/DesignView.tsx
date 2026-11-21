@@ -29,7 +29,9 @@ import {
   MAX_STAGES,
   nextStageName,
   textOf,
+  willRewriteWhole,
 } from '../designer/core';
+import { EditAlerts } from '../designer/EditAlerts';
 import { SaveControls } from '../designer/SaveControls';
 import type { Editor } from '../designer/use-editor';
 import type { Scheduler } from '../execution/core/ports';
@@ -80,6 +82,13 @@ const RAW_EDIT_NOTE =
 
 const EARLIER_TEXT_NOTE =
   'YAML shows an earlier text. The drawing and Properties show the workflow as it is now, and a save writes that; press Redo to come back.';
+
+// A file whose stages are not a list of items under a top-level `stages:`
+// key is written whole by the stage writer, in the plain layout: its params,
+// its comments and its `version` would go. That is more than a stage edit may
+// cost, so no save of such a file is made from this view yet.
+const REWRITE_REFUSAL =
+  'A save would write this whole file in the plain layout, because its stages are not a list under stages:, and its other keys, its comments and its version would be lost. So it is refused. Edit the file by hand until a save can keep them.';
 
 const STATUS_WORDS: Readonly<Record<DraftStatus, string>> = {
   unchecked: 'Not checked yet',
@@ -208,6 +217,9 @@ export function DesignView({
   const headingId = useId();
   const savedText = state.saved.text;
   const text = useMemo(() => textOf(state), [state]);
+  // The text the save in flight sent, kept so a later edit does not change
+  // what the places of the stages are read for.
+  const [sent, setSent] = useState<string>();
   const history = useEditHistory(savedText);
   const draft = useYamlDraft({
     initialText: savedText,
@@ -229,6 +241,13 @@ export function DesignView({
   const sources = useStageSources({
     text: savedText,
     stages: state.draft.stages,
+    // The text of the save in flight, which is about to become the file. The
+    // editor takes edits while it is in flight, so the places of the stages
+    // must come from the draft that sent it, not from the one on the page
+    // when its answer arrives.
+    ...(state.save.phase === 'saving' && sent !== undefined
+      ? { submitted: sent }
+      : {}),
   });
   // A change of the stages makes a text; the text shown is the one the
   // history points at, and that is the text the check reads.
@@ -250,6 +269,9 @@ export function DesignView({
     [spec, harness],
   );
   const { select } = editor;
+  // Counts the times a stage has been chosen in the drawing, so the side
+  // column opens its keys each time, as the drawing says it will.
+  const [opens, setOpens] = useState(0);
   const selection = useMemo<CanvasSelection>(
     () => ({
       selectedId: stageNodeId(state.selectedId),
@@ -257,7 +279,9 @@ export function DesignView({
         const stage = state.draft.stages.find(
           (candidate) => stageNodeId(candidate.id) === nodeId,
         );
-        if (stage) select(stage.id);
+        if (!stage) return;
+        select(stage.id);
+        setOpens((count) => count + 1);
       },
     }),
     [state.selectedId, state.draft.stages, select],
@@ -292,21 +316,27 @@ export function DesignView({
     name: picked.name,
     rules,
     values,
-    originalAgent: picked.agent,
+    // The agent the file names, which stays on offer even when the list of
+    // agents does not have it; `values` holds the one chosen since.
+    originalAgent:
+      typeof viewStage?.agent === 'string' ? viewStage.agent : picked.agent,
     readOnlyKeys,
   };
   // A save of a changed stage that has other keys in the file would drop
   // them, so it is refused until the writer keeps them. A stage whose keys
-  // are not known yet is refused too, rather than saved in the dark.
+  // are not known yet is refused too, rather than saved in the dark. A file
+  // the writer cannot edit in place is refused whatever its stages hold.
   const changed = changedStageIds(state, sources);
-  const refusal = saveRefusal(
-    state.draft.stages.map((one) => ({
-      draft: one,
-      source: sources.of(one.id),
-      changed: changed.has(one.id),
-    })),
-    fileView,
-  );
+  const refusal = willRewriteWhole(savedText)
+    ? REWRITE_REFUSAL
+    : saveRefusal(
+        state.draft.stages.map((one) => ({
+          draft: one,
+          source: sources.of(one.id),
+          changed: changed.has(one.id),
+        })),
+        fileView,
+      );
 
   const onKeyDown = (event: KeyboardEvent) => {
     const asked = undoShortcut(shortcutKeyOf(event));
@@ -357,6 +387,7 @@ export function DesignView({
           </Alert>
         )}
         <CheckLine status={draft.status} failure={draft.failure} />
+        <EditAlerts state={state} onReload={editor.reload} />
         <Findings answer={answer} />
         <DesignerLayout
           drawing={<WorkflowCanvas graph={graph} selection={selection} />}
@@ -367,6 +398,7 @@ export function DesignView({
           }}
           stage={stage}
           agents={agents}
+          openProperties={opens}
           onStageChange={({ values: next }) => {
             if (!picked) return;
             const name = next.name ?? '';
@@ -379,7 +411,9 @@ export function DesignView({
             <SaveControls
               state={state}
               onSave={() => {
-                if (refusal === undefined) editor.save();
+                if (refusal !== undefined) return;
+                setSent(text);
+                editor.save();
               }}
             />
             <Button
