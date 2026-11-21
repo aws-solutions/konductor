@@ -363,3 +363,13 @@ The v7 recheck failed 2 of 4: the prompt said `prototype-results.md` names the o
 - Key, checks and the other fixture files are unchanged. Gates: reference 100, stub 0, lazy 6, alt 100.
 
 One-fix rule: if the v8 recheck fails, the task leaves the lock list.
+
+## Last recheck of t3-db-order-history v8 (2026-11-21, gpt-5.6-luna, call L17)
+
+2 of 4 pass, so nothing is recorded in `review.recheck`. Under the one-fix rule (owner), the task is dropped from the
+lock list.
+- fixture-lists-no-answer: `prototype-results.md:17-20` marks the composite option as the 2.5 TB, good-performance
+  result, and lines 51-67 map its indexes to the query patterns.
+- key-matches-fixture: `hidden/meta.json:3` and `hidden/options.test.js:8-14` accept `two-table-normalized`, but
+  `prototype-results.md:22-26` gives it 2.6 TB, and `constraints.txt:4-7` rules it out. The `query-pattern-coverage`
+  Pass anchor allows unoptimized patterns, which `constraints.txt:13` and 22-30 forbid.
