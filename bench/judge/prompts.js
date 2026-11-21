@@ -107,4 +107,14 @@ function retrySuffix(reason) {
   return `\n\n---\nYour previous reply could not be used: ${reason}. Reply again with only the JSON object described above.`;
 }
 
-module.exports = { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix, fenced };
+// D-149: the one re-ask of a rubric reply that failed every expert: criterion without quoting the output. It points the
+// judge back at the deliverables and restates the existing rules; it does not suggest any verdict.
+function reaskSuffix(reason) {
+  const what = reason === 'blank' ? 'gave "(nothing in the output)" for every expert: criterion' : 'failed every expert: criterion saying the output does not quote a passage';
+  return `\n\n---\nYour previous reply ${what}, but the "Files created or changed" section holds the agent's deliverable. `
+    + 'Read that section again and grade each criterion once more. For an expert: criterion, quote the deliverable\'s own '
+    + 'words that make the point (they need not repeat the criterion\'s wording); use partial when they make part of it, '
+    + 'and fail with "(nothing in the output)" only when no passage of the deliverable speaks to it. Reply again with only the JSON object described above.';
+}
+
+module.exports = { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix, reaskSuffix, fenced };
