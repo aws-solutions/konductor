@@ -1,7 +1,7 @@
 {
   "id": "t9-review-checkout-ui",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "code-review",
   "role": "frontend",
   "questions": "allowed",
@@ -51,7 +51,7 @@
   "rubric": [
     {
       "id": "actionable-review",
-      "criterion": "The prose explains why the findings matter and gives a developer enough context to act (code cannot check this because it cannot judge clarity or usefulness).",
+      "criterion": "The prose explains why the findings matter and gives a developer enough context to act (code cannot check this because it cannot judge clarity or usefulness). Fail: findings are listed with no reason they matter or no place to act (no file or line, no shopper or release effect), or the prose mostly restates the diff. Partial: most findings say why they matter and where, but one or two leave the developer to guess the fix or the impact. Pass: every finding names where it is, what goes wrong for a shopper or the 2.4 release, and what to change, in that order, with no padding.",
       "weight": 2
     }
   ],
@@ -258,5 +258,11 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the one judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }

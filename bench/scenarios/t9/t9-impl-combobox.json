@@ -1,7 +1,7 @@
 {
   "id": "t9-impl-combobox",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "frontend",
   "questions": "allowed",
@@ -37,7 +37,7 @@
   "rubric": [
     {
       "id": "voice",
-      "criterion": "The registration page keeps a clear, welcoming event voice (code cannot check this because prose quality requires human judgment).",
+      "criterion": "The registration page keeps a clear, welcoming event voice (code cannot check this because prose quality requires human judgment). Fail: the page loses its event voice (a generic form, a removed or rewritten welcome, error text that blames the person). Partial: the voice stays but a new hint, empty-result or error message is curt, technical or inconsistent with the rest of the page. Pass: the new text (hint, no-match and error messages) reads as the same welcoming event page and tells the person what to do next.",
       "weight": 1
     }
   ],
@@ -124,8 +124,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (T9 worker session)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the one judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 2
   },
   "pilot": {
     "scores": {},

@@ -1,7 +1,7 @@
 {
   "id": "t9-impl-cart-summary",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "implementation",
   "role": "frontend",
   "questions": "allowed",
@@ -64,7 +64,7 @@
   "rubric": [
     {
       "id": "copy",
-      "criterion": "The promo and progress messages read naturally for a compact storefront cart (code cannot check this because wording quality requires human judgement).",
+      "criterion": "The promo and progress messages read naturally for a compact storefront cart (code cannot check this because wording quality requires human judgement). Fail: a message is missing, shows a raw code, status word or minor-unit number to the shopper, or contradicts the cart (says free delivery while a gap remains). Partial: every message is correct but one is stiff, too long for a compact cart, or repeats the label next to it. Pass: each promo and progress message is short, plain and specific (it names the amount left or the discount), and no two messages say the same thing.",
       "weight": 1
     }
   ],
@@ -144,5 +144,11 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the one judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }
