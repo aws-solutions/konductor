@@ -64,8 +64,29 @@ test('pinPython puts a python3 link to the 3.12 interpreter first on PATH and re
   assert.equal(pin.version, '3.12.15');
   assert.equal(pin.sandboxVersion, '3.12.15');
   assert.equal(env.PATH.split(':')[0], pin.binDir);
-  for (const n of ['python3', 'python', 'python3.12']) assert.equal(fs.readlinkSync(path.join(pin.binDir, n)), shim);
+  for (const n of ['python3', 'python', 'python3.12']) assert.match(fs.readFileSync(path.join(pin.binDir, n), 'utf8'), new RegExp(`^#!/bin/sh\\nexec '${shim}' "\\$@"\\n$`), 'a launcher script is run by its real path, not linked');
   assert.deepEqual(fs.readdirSync(d.scratchDir), ['python-bin'], 'the probe HOME is removed');
+});
+
+test('a python3.12 wrapper that finds its interpreter next to itself still works once pinned (D-121)', (t) => {
+  const d = setup(t);
+  const wrapper = path.join(d.shim, 'python3.12');
+  fs.mkdirSync(d.shim, { recursive: true });
+  // Like the Kiro Crew runtime: the wrapper execs the interpreter beside it, which reports the wrapper as sys.executable.
+  fs.writeFileSync(path.join(d.shim, 'real-py'), `#!/bin/sh\necho "${wrapper}"\necho "3.12.15"\n`, { mode: 0o755 });
+  fs.writeFileSync(wrapper, '#!/bin/sh\nexec "$(/usr/bin/dirname "$0")/real-py" "$@"\n', { mode: 0o755 });
+  const env = { PATH: `${d.sys}:${d.shim}` };
+  const pin = pinPython({ tasks: [pyTask], scratchDir: d.scratchDir, benchDir: BENCH, env });
+  assert.equal(pin.sandboxVersion, '3.12.15', 'python3 under the scratch HOME runs the wrapper from its own directory');
+});
+
+test('a real interpreter binary is linked, not wrapped', (t) => {
+  const d = setup(t);
+  const { linkPython } = require('../lib/python-pin.js');
+  const bin = path.join(d.root, 'python3.12');
+  fs.writeFileSync(bin, '\x7fELF fake');
+  const dir = linkPython(d.scratchDir, bin, '3.12.15');
+  assert.equal(fs.readlinkSync(path.join(dir, 'python3')), bin);
 });
 
 test('pinPython refuses when tasks run Python and no 3.12 is found, and does nothing when none does', (t) => {
