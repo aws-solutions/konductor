@@ -104,7 +104,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A shallow fix adding the 3 missing columns without timestamp normalization would fail tests #5-8. Missing formula neutralization would fail tests #9-10. Missing CSV quoting would fail test #8. The hidden tests provide good coverage depth."
+        "note": "A shallow fix adding the 3 missing columns without timestamp normalization would fail tests #5-8. Missing formula neutralization would fail tests #9-10. Missing CSV quoting would fail test #8. The hidden tests provide good coverage depth. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 100 in pilot wave 11, while the dry run keeps the lazy answer at 23.8 and the stub at 14.3, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",

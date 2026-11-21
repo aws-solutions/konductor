@@ -112,7 +112,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "Quick wrong answers (fixing on main, skipping tests, or merging incorrectly) are caught by git-work.js checking for separate worker merges and the rubric's requirement for reviewed separate work."
+        "note": "Quick wrong answers (fixing on main, skipping tests, or merging incorrectly) are caught by git-work.js checking for separate worker merges and the rubric's requirement for reviewed separate work. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 100 in pilot wave 12, while the dry run keeps the lazy answer at 33.3 (shallow 0) and the stub at 0, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
       },
       {
         "check": "floor",
