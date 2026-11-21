@@ -116,31 +116,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for 'plain-number reconciliation' without specifying method; use documented conventions"
+          "note": "The request names no method or process for counting; it only asks for plain-number reconciliation. There is no decoy or misleading hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has tickets.csv, roadmap.md, metadata but doesn't list answer; edits show dropped 'could never fail' assertions"
+          "note": "The fixture (tickets.csv, README, roadmap.md, etc.) contains raw ticket data but no precomputed numbers, story points by assignee, open tickets by epic, or total open points that the hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Edits show fixed Done vs Done+Cancelled issue; cmd check numbers derivable from tickets.csv; rubric mentions S29/S30 from roadmap"
+          "note": "The hidden key checks ticket statuses, sprint labels (S29/S30), epic names, and assignee names that exist in the fixture tickets.csv and README conventions. The rubric's Fail/Partial/Pass anchors reward the counting basis described in the request."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent analyst could parse CSV, filter by S29/S30, count points; different conventions (Done only vs Done+Cancelled) both accepted"
+          "note": "A competent developer can compute the numbers from tickets.csv using the conventions documented in the README (open statuses, Done/Cancelled as closed, blank estimates as zero, trimmed names). Different valid outputs would still pass the key assertions."
         }
-      ]
+      ],
+      "version": 7
     }
   },
   "pilot": {

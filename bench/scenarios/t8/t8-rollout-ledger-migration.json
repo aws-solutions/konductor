@@ -140,31 +140,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks for rollout plan with JSON block. Edits mention decoy patterns widened. No prescribed method."
+          "note": "The request names no method, process, framework, or tool for how to create the rollout plan. The fixture contains operational logs, metrics, migrations, and docs to derive the answer; there is no decoy."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains canary logs showing null violation on settlement_code, metrics catalogue, migration docs. Answer requires analyzing schema compatibility issue."
+          "note": "The fixture (logs, metrics, migrations, docs) lists no pre-built rollout plan or answer. The canary log shows failure evidence but doesn't state the root cause or rollback steps the hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "key.json expects evidence from ledger-canary.log, metrics from catalogue, proper step ordering. Rubric uses expertKey for engineering judgment."
+          "note": "The hidden block-kit key checks paths and metrics that exist in the fixture: logs/ledger-canary.log, metrics/metrics-catalogue.csv, docs/release-notes.md, docs/change-calendar.md, migration files 001_expand through 003_contract. The key's metrics, thresholds, and times match fixture data."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can analyze null violation errors, design expand-prepare-contract migration, use metrics for gates, address coverage gap."
+          "note": "A competent SRE can derive the rollout plan from fixture files: read the canary failure in logs/ledger-canary.log, the migration steps in migrations/, the release notes, metrics catalog, and calendar. Different valid plans would still pass the key assertions."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "handEdited": {

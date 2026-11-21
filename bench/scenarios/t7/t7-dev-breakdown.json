@@ -161,31 +161,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for 'pick-up-ready plan' without specifying method; no misleading hints"
+          "note": "The request asks for a plan without naming a method, process, framework, or tool for how to create it. There is no decoy pointing away from the real problem (multi-currency product prices implementation)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has request, estimate guide, codebase but doesn't list answer; 17 days derived from calculation"
+          "note": "The fixture (Node service, tests, migrations, docs, estimates, roadmap, calendar, work-items) lists no answer or finished behavior the hidden tests check. It contains source files and planning context only."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Edits show checks accept any db/migrations/005 file; rubric mentions 17 days matching estimate guide; expertKey matches rollout focus"
+          "note": "The hidden key, checks, expertKey and rubric all reference paths and files that exist in the fixture: db/migrations/005, src/storage/product-repository.js, src/services/catalog-service.js, src/http/products-route.js, src/cache/product-cache.js, src/export/products-csv.js, src/notifications/price-email.js, tests/helpers/product-fixture.js. The rubric's Fail/Partial/Pass anchors reward the outcome requested (day estimate and sequencing)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer could calculate 17 days, identify required files, create dependency order; different valid answers possible"
+          "note": "A competent developer can read the request, fixture files (README, docs/requests/multi-currency-prices.md, estimate-guide.md, roadmap.csv, team-calendar.csv, work-items.csv), and create a correct plan. Different valid answers (other ticket names, orders) would still pass the key assertions."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "pilot": {

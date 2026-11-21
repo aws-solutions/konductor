@@ -158,25 +158,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks to review PR 508 for cache implementation, check behavior preservation and test/config sense. Doesn't prescribe review method or contain misleading hints."
+          "note": "Request asks to review PR 508 for catalog API cache addition, no specific review method prescribed, no misleading hints pointing away from real problems."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains PR description and diff but doesn't list the specific findings. FindingsKey in task.json is for evaluation, not in fixture."
+          "note": "Fixture contains PR description and diff showing implementation, but does not list the specific security flaws (tenant isolation, TTL mismatch, mutation, deduplication, eviction, invalidation) that are key findings."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "FindingsKey lists 6 specific cache issues discoverable from code review. Rubric r1 has Fail/Partial/Pass anchors checking concrete vs generic findings as requested."
+          "note": "Key items reference specific lines in fixture files (price-service.mjs, app.mjs, price-cache.mjs) that exist; rubric anchors ask for concrete consequences and actionable fixes matching request focus."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent reviewer can find cache issues (tenant isolation, invalidation, TTL units, race conditions, mutation, eviction) by examining code changes, config, and tests."
+          "note": "Competent developer could identify cache tenant isolation, TTL unit mismatch, cache mutation, missing deduplication, missing eviction, and bulk replace invalidation issues from code review."
         }
       ],
-      "version": 4
+      "version": 5
     }
   },
   "handEdited": {

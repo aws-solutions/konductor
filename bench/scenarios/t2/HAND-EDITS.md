@@ -147,3 +147,13 @@ Wave 6 runs scored again with the current grader (no model call): avatar 93.2, c
 price-cache 83, refund-flow 86.4, stock-reserve 90.3, webhook-relay 86.4, jwt-middleware 100 (were 49 to 59). Gates of
 all 16 T2 tasks unchanged: reference 100, stub 7.1, lazy 28.6 to 35.1, alt 100, dump 28.6 to 35.7. Non-Claude recheck:
 pending for the five tasks above.
+
+## Round 6 non-Claude recheck (2026-11-21, mate recheck worker)
+
+deepseek-3.2 (call D5) passed t2-pr-price-cache v5, t2-gaps-jwt-middleware v5, t2-pr-cursor-pages v4 and
+t2-pr-stock-reserve v3, 4 of 4 each. gpt-5.6-luna (call L5) failed t2-pr-avatar-upload v4 on two items. (1)
+key-matches-fixture: `findingsKey` k3 in the task file still said the upload checks only the Content-Type, while the
+fixture runs `imghdr` and the hidden key's k3 was already reworded to "trusts the Content-Type and only sniffs the leading
+bytes". Fixed (claude, by hand): the task file's k3 text now matches the hidden key; version 4 to 5. (2)
+fixture-lists-no-answer: `docs/security.md` lists the upload rules; disposed, because those are the project's existing
+rules the PR must be checked against, and the defects are in `pr/418/changes.diff`. A second gpt-5.6-luna recheck follows.
