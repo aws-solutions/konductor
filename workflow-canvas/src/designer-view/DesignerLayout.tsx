@@ -89,6 +89,8 @@ export function DesignerLayout({
   const tabs = useRef(new Map<TabId, HTMLButtonElement>());
   const properties = useRef<HTMLDivElement>(null);
   const asked = useRef(openProperties);
+  // An ask for the keys of a stage that the focus has not answered yet.
+  const [wanted, setWanted] = useState(false);
   const sideId = `${id}-side`;
   const tabId = (tabName: TabId) => `${id}-${tabName}-tab`;
   const panelId = (tabName: TabId) => `${id}-${tabName}-panel`;
@@ -98,14 +100,18 @@ export function DesignerLayout({
     asked.current = openProperties;
     setTab('properties');
     setFolded(false);
+    setWanted(true);
   }, [openProperties]);
 
-  // After the panel is on show, so the field to focus is in the page.
+  // The focus moves for an ask that has not been answered yet, and the ask is
+  // spent by that: every other way of reaching this tab, the arrow keys among
+  // them, leaves the focus where the person put it.
   useEffect(() => {
-    if (openProperties === 0 || tab !== 'properties' || folded) return;
+    if (!wanted || tab !== 'properties' || folded) return;
+    setWanted(false);
     const panel = properties.current;
     (panel?.querySelector<HTMLElement>(EDITABLE) ?? panel)?.focus();
-  }, [openProperties, tab, folded]);
+  }, [wanted, tab, folded]);
 
   const onKeyDown = (event: KeyboardEvent) => {
     const index = TABS.findIndex((one) => one.id === tab);

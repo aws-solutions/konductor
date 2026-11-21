@@ -1220,6 +1220,24 @@ describe('DesignView, choosing a stage in the drawing', () => {
     expect(document.activeElement).toBe(nameInput());
   });
 
+  it('leaves the focus on the tab when the keyboard reaches Properties', async () => {
+    drawn();
+    await settle();
+    // A stage was picked, so its keys were opened once and the focus moved.
+    await act(async () => {
+      fireEvent.keyDown(nodeOf('review'), { key: 'Enter' });
+    });
+    await openYaml();
+
+    // The arrow keys walk the tabs, and the focus stays on the one reached.
+    await act(async () => {
+      fireEvent.keyDown(tab('YAML'), { key: 'ArrowRight' });
+    });
+
+    expect(panelOf('Properties').hidden).toBe(false);
+    expect(document.activeElement).toBe(tab('Properties'));
+  });
+
   it('opens the keys of a stage chosen with the pointer', async () => {
     drawn();
     await settle();
