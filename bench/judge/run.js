@@ -8,15 +8,21 @@ const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
-const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
+const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix, reaskSuffix } = require('./prompts.js');
 const { parseJsonReply, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
 const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { cacheSaltOf } = require('./opencode.js');
 const { DEFAULT_JUDGE_QUOTE_RULE, JUDGE_QUOTE_RULES } = require('./quote.js');
-const { dualCriteria, dualScores, matchersFor, checkRule, blankExpert } = require('./views.js');
+const { dualCriteria, dualScores, matchersFor, checkRule, blankExpert, reaskReason } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
+
+// The worst case the spend guard counts for one D-149 re-ask: 15 credits (the owner's rule for any paid call), or on the
+// opencode backend USD 0.05. shortcut: the USD figure is ten times the waves 4-12 mean call (USD 0.005); measure it
+// per judge model when the observed-cost data covers re-asks.
+const REASK_WORST_CREDITS = 15;
+const REASK_WORST_USD = 0.05;
 const { writeAtomic } = require('../runner/lib/owned.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
@@ -238,7 +244,24 @@ async function runJudging(o) {
   const maxPromptBytes = promptBytesFor(backend);
   const worker = async (u) => {
     const { prompt, check } = specOf(u);
-    const out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check });
+    let out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check });
+    // D-149: a rubric reply that failed every expert: item without quoting the deliverable is asked once more before its
+    // verdict counts. The re-ask is paid for like any call, so it starts only when its worst case still fits the guard.
+    const why = u.kind === 'rubric' && !out.error ? reaskReason(out.value.criteria, bundles.get(runKey(u.run)).expertText) : null;
+    if (why) {
+      const first = out.value.criteria.map((c) => ({ id: c.id, verdict: c.verdict, evidence: c.evidence }));
+      const fits = study.canAfford ? study.canAfford(usdMode ? REASK_WORST_USD : REASK_WORST_CREDITS) : !study.shouldStop();
+      if (!fits || callerStop()) {
+        out = { ...out, reask: { reason: why, skipped: callerStop() ?? 'the worst case of one more call does not fit the spend guard', first: null } };
+      } else {
+        const again = await judgeOnce({ caller, model: u.judge, prompt: prompt + reaskSuffix(why), maxPromptBytes, check });
+        const calls = [...out.calls, ...again.calls.map((c) => ({ ...c, reask: true }))];
+        const parseFailures = out.parseFailures + again.parseFailures;
+        out = again.error
+          ? { ...out, calls, parseFailures, reask: { reason: why, error: again.error, first: null } }
+          : { value: again.value, calls, parseFailures, reask: { reason: why, first, still: reaskReason(again.value.criteria, bundles.get(runKey(u.run)).expertText) } };
+      }
+    }
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.credits ?? 0), 0);
     spent += live;
     spentByJudge[u.judge] = (spentByJudge[u.judge] || 0) + live;
@@ -278,6 +301,7 @@ async function runJudging(o) {
         scoreRaw: out.error ? null : rubricScore(task.rubric, criteria.map((c) => ({ id: c.id, verdict: c.verdictRaw }))), criteria,
         judgeError: out.error ?? null, parseFailures: out.parseFailures, calls: out.calls,
         ...(out.error || !blankExpert(criteria, bundle.expertText) ? {} : { blankExpert: true }),
+        ...(out.reask ? { reask: out.reask } : {}),
         redactionsFired: bundle.fired, truncatedFiles: bundle.meta.truncatedFiles,
       });
     } else if (u.kind === 'graded') {
