@@ -6,8 +6,6 @@
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
-// The one seeded generator of the repository (main's statistics scripts); bench draws from it too.
-const { mulberry32 } = require('../../../tests/scripts/stats.js');
 
 /** The sha256 of a string or buffer, as hex. */
 const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex');
@@ -30,6 +28,21 @@ function groupBy(items, keyOf) {
     groups.get(k).push(item);
   }
   return groups;
+}
+
+/**
+ * A seeded random number generator in [0, 1). The same numbers as tests/scripts/stats.js `mulberry32` (a test checks
+ * it), kept here because bench is copied and run without the rest of the repository.
+ */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /** A copy of `items` in the order `rand` gives (Fisher-Yates). */

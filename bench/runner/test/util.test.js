@@ -35,6 +35,9 @@ test('groupBy keeps first-seen key order; seededShuffle is a seeded permutation 
   assert.notDeepEqual(a, u.seededShuffle(list, 8));
   assert.deepEqual([...a].sort((x, y) => x - y), list);
   assert.deepEqual(list, [...Array(20).keys()], 'the input is not changed');
+  const main = require('../../../tests/scripts/stats.js').mulberry32(7);
+  const ours = u.mulberry32(7);
+  for (let i = 0; i < 1000; i++) assert.equal(ours(), main(), 'the same draws as the repository statistics scripts');
   // The plan order of a run comes from these; a change would reorder every recorded study.
   assert.deepEqual(u.seededShuffle([1, 2, 3, 4, 5, 6], 1), require('../lib/orchestrate.js').shuffle([1, 2, 3, 4, 5, 6], require('../lib/orchestrate.js').mulberry32(1)));
 });
