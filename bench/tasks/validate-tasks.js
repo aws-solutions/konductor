@@ -569,11 +569,15 @@ function main() {
     if (fs.existsSync(path.join(dir, '.skilleval'))) skillevalDirs.add(dir);
     if (fs.existsSync(path.join(dir, '.skilleval-import'))) importDirs.add(dir);
   }
+  const skippedV3 = [];
+  const v3Dirs = new Set();
   for (const src of sources) {
     R = src.roots;
     for (const f of src.files) {
       const t = readJson(path.join(src.dir, f), src.roots.extra ? `${path.basename(src.dir)}/${f}` : f);
       if (!t) continue;
+      // A v3 scenario task (one with a `phase`) has its own rules: `scenarios lint` and the batch dry run (DEBT D-80).
+      if (src.roots.extra && t.phase !== undefined) { skippedV3.push(t.id); v3Dirs.add(src.dir); continue; }
       validateShape(f, t, skillevalDirs.has(src.dir) || importDirs.has(src.dir), importDirs.has(src.dir) ? IMPORT_RUBRIC_MAX : 6);
       if (seen.has(t.id)) err(f, `duplicate id "${t.id}" (also ${seen.get(t.id)})`);
       seen.set(t.id, f);
@@ -595,6 +599,7 @@ function main() {
     if (!fs.existsSync(fx)) continue;
     R = extraRoots(dir);
     const own = tasks.filter((t) => rootsOf.get(t).dir === dir);
+    if (!own.length && v3Dirs.has(dir)) continue; // a scenario batch: its fixtures are the dry run's to check
     const usedHere = new Set(own.map((t) => t.fixture).filter(isStr));
     validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, importDirs.has(dir));
   }
@@ -805,6 +810,7 @@ function main() {
     if (Array.isArray(s.judges)) console.log(`suite ${name}: judges ${s.judges.join(', ')}; tasks ${s.tasks.length}`);
   }
   warnings.forEach((w) => console.log(`warning: ${w}`));
+  if (skippedV3.length) console.log(`skipped ${skippedV3.length} v3 scenario task(s) (${skippedV3.slice(0, 3).join(', ')}${skippedV3.length > 3 ? ', ...' : ''}): check them with \`bench.js scenarios lint DIR\` and the batch dry run`);
   if (errors.length) {
     errors.forEach((e) => console.error(`error: ${e}`));
     console.error(`FAILED with ${errors.length} error(s)`);

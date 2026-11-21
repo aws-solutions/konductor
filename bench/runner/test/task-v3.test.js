@@ -39,6 +39,12 @@ test('the schema accepts a full v3 task and still accepts an old one', () => {
   assert.deepEqual(v3Errors(OLD), []);
 });
 
+test('a v3 task without a version is refused; an old task needs none (D-42)', () => {
+  const { version: _v, ...noVersion } = V3;
+  assert.deepEqual(v3Errors(noVersion), ['a v3 task (one with a phase) needs "version"; bump it whenever its checks, key or fixture change']);
+  assert.equal(OLD.version, undefined);
+});
+
 test('the schema rejects bad v3 values', () => {
   const schema = loadSchema('task');
   for (const bad of [{ questions: 'maybe' }, { controlKind: 'other' }, { phase: 'lunch' }, { role: 'cto' }, { limits: { softSec: 1 } }, { pilot: { scores: {}, decision: 'later', date: '2026-11-19' } }, { review: { family: 'x', date: '2026-11-19', verdicts: [{ check: 'vibes', verdict: 'pass' }] } }]) {

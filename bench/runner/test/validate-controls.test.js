@@ -39,6 +39,18 @@ const validate = (root, dir) => {
 const EXISTS = { type: 'file_exists', path: 'out.txt' };
 const VACUOUS = { type: 'cmd', cmd: '! grep -q zzz missing.txt', expectExit: 0 };
 
+test('--only-extra skips v3 scenario tasks and their fixtures and names them, instead of applying the old rules (D-80)', () => {
+  const root = tmp();
+  try {
+    const dir = path.join(root, 'pack');
+    write(path.join(dir, 'fixtures', 'vf', 'a.txt'), 'no answer key, too few rubric items: fine for a v3 task\n');
+    write(path.join(dir, 'v1.json'), JSON.stringify({ id: 'v1', version: 1, phase: 'bugfix', prompt: 'Fix it.', fixture: 'vf', checks: [], rubric: [] }));
+    const r = validate(root, dir);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /skipped 1 v3 scenario task\(s\) \(v1\): check them with `bench.js scenarios lint DIR`/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the validator rejects a check that passes on an empty workspace', () => {
   const root = tmp();
   try {
