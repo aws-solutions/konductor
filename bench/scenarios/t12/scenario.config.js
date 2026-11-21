@@ -5,8 +5,8 @@
 // config for the shared scenario tools (bench/scenarios/lib/config.js lists the fields).
 //   node bench/scenarios/lib/dry-run.js --config bench/scenarios/t12/scenario.config.js [id ...] [--record]
 // Besides the reference, stub, lazy and alternative answers, a task may keep a hand-written shallow fake in
-// answers/<id>/shallow/ (a short answer that uses the right words without doing the work); the dry run scores it with
-// the shallow gate (40).
+// answers/<id>/shallow/ (a short answer that uses the right words without doing the work), and more in
+// answers/<id>/shallow-<name>/; the dry run scores each with the shallow gate (40).
 // An answer dir holding PLAY.json is a scripted agent doing git work in the workspace (the worker tasks, see play());
 // one holding APPLY.sh runs that script (bench/scenarios/lib/git-answers.js); any other is a plain file overlay.
 
@@ -84,8 +84,11 @@ module.exports = {
   answers: { orderedKeys: /path|order|chain|sequence|milestones|steps|timeline|tasks|waves|merge/i },
   modes: (task, cfg) => defaultModes(task, cfg).map((m) => ({ ...m, overlay: answer(m.overlay) })),
   variants: (task, cfg) => {
-    const d = cfg.answerDir(task.id, 'shallow');
-    return fs.existsSync(d) ? [{ name: 'shallow', overlay: d }] : [];
+    const parent = path.dirname(cfg.answerDir(task.id, 'shallow'));
+    if (!fs.existsSync(parent)) return [];
+    return fs.readdirSync(parent).filter((n) => /^shallow(-[a-z0-9-]+)?$/.test(n)).sort().map((n) => ({ name: n, overlay: path.join(parent, n) }));
   },
+  // Every extra shallow fake (shallow-<name>) gets the shallow gate too.
+  gates: (out, d) => ({ ...d, ...Object.fromEntries(Object.entries(out.scores).filter(([k]) => k.startsWith('shallow-')).map(([k, v]) => [k, v !== null && v <= 40])) }),
   play,
 };

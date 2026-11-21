@@ -29,26 +29,26 @@
       }
     },
     {
-      "id": "starter-figure",
+      "id": "named-plan-figure",
       "section": "requirements",
       "type": "some",
       "path": "requirements",
       "match": {
         "all": [
-          "starter|\\b(each|every|all|any) plan\\b",
-          "\\b90\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
+          "starter|studio",
+          "\\b90\\b|\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
         ]
       }
     },
     {
-      "id": "studio-figure",
+      "id": "every-plan-figure",
       "section": "requirements",
       "type": "some",
       "path": "requirements",
       "match": {
         "all": [
-          "studio|\\b(each|every|all|any) plan\\b",
-          "\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
+          "starter|studio|\\b(each|every|all|any) plans?\\b",
+          "\\b90\\b|\\b720\\b|config/plans\\.json|plans\\.json|requestsPerMinute"
         ]
       }
     },
@@ -179,7 +179,7 @@
       "match": {
         "all": [
           "test",
-          "429|over the limit|over-limit|exceed|retry-after|refus|rate_limited"
+          "429|over the limit|over-limit|exceed|retry-after|rate_limited"
         ]
       }
     },
@@ -191,6 +191,9 @@
       "match": {
         "all": [
           "x-ratelimit-remaining|\\bremaining\\b"
+        ],
+        "none": [
+          "remaining (tasks?|work|items?|instances?|tickets?|steps?|issues?|questions?|edge cases?|parts?)\\b"
         ]
       }
     },

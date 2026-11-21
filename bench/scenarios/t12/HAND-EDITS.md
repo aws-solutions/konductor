@@ -144,3 +144,12 @@ author review, so the note is here:
 
 - `t12-parallel-backlog`: vanilla 100, lazy 20, shallow 0, stub 0. A plain planning and merge job a careful developer finishes.
 - `t12-sdlc-contact-import`: vanilla 91, lazy 36.4, shallow 0, stub 0. A plain importer job a careful developer finishes.
+
+## Review fixes of the wave 11/12 edits (2026-11-21, mate wave 11/12 review-fix worker, claude)
+
+From `reports/review-wave11-12-edits-claude-opus-5.5.md` and `reports/review-wave11-12-edits-claude-fable-5.1.md`.
+No model call. Probe answers scored with the bench's own check code.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-spec-rate-limits v5 | 2026-11-21 | key: `starter-figure` / `studio-figure` became `named-plan-figure` (a requirement names starter or studio with its figure source) and `every-plan-figure` (the same, or a rule for each/every/all/any plan or plans); `test-task` no longer takes "refus"; `remaining-header-task` keeps "remaining" but not "remaining tasks/work/items/instance/edge cases/..."; new shallow fake `answers/.../shallow-paste` (the request pasted in as requirements, three generic tasks) gated at 40 by the batch config | v4 let a pasted request finish the requirements section (50), missed "all plans", passed "the remaining instance" and "Refuse requests whose key is unknown" plus a test file. Now: paste 25, a rule for every plan with no plan named 75 (one item), "all plans" 75, the wave 12 answer and the reference 100. |
