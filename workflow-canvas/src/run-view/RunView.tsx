@@ -220,10 +220,16 @@ export function RunView({
       })
     : undefined;
   // What the page outside this view needs: whether a run would be lost, and
-  // the sentences for the one live region it keeps.
+  // the sentences for the one live region it keeps. A start whose outcome is
+  // unknown counts as a run at risk: the server may have taken it, and this
+  // is the only view that could pick it up again, so the page must still warn
+  // before it swaps the workflow away.
+  const atRisk =
+    start.kind === 'starting' ||
+    start.kind === 'going' ||
+    start.kind === 'unsure';
   const lifecycle: RunLifecycle = {
-    active:
-      (start.kind === 'starting' || start.kind === 'going') && !runFinished,
+    active: atRisk && !runFinished,
     status: progress ? progressText(progress) : '',
     ...(notice ? { error: `${notice.header} ${notice.message}` } : {}),
     ...(follow.status.kind === 'failed' || gone

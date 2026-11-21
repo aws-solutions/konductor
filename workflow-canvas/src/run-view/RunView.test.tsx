@@ -17,6 +17,7 @@ import {
   running,
 } from '../test-support/held-events';
 import { RunView, type RunViewPorts } from './RunView';
+import type { RunLifecycle } from './run-start';
 
 const RUN_ID = '20261024-0412-a7b3c';
 const STAGES = ['draft', 'review'];
@@ -57,6 +58,7 @@ function drawn({
   goalDefault = GOAL_DEFAULT,
   noGoalDefault = false,
   clock,
+  onRunState,
 }: {
   startResult?: Promise<string>;
   runs?: readonly RunSummaryRow[];
@@ -68,6 +70,8 @@ function drawn({
   noGoalDefault?: boolean;
   /** A clock the test moves, for the elapsed time. */
   clock?: { now: () => number };
+  /** Told where the run is, as the page is. */
+  onRunState?: (state: RunLifecycle) => void;
 } = {}) {
   const events = new HeldEvents();
   const waits = new EventWaits();
@@ -91,6 +95,7 @@ function drawn({
       ports={ports}
       {...(memory ? { runMemory: memory } : {})}
       {...(reasonSentence ? { reasonSentence } : {})}
+      {...(onRunState ? { onRunState } : {})}
     />
   );
   const { rerender } = render(view);
@@ -278,6 +283,21 @@ describe('RunView when a run starts', () => {
       'Reload the page',
     );
     expect(isOff(runButton())).toBe(true);
+  });
+
+  it('tells the page a run may be going when a start is unsure', async () => {
+    const told: RunLifecycle[] = [];
+    drawn({
+      startResult: Promise.reject(new RunStartUnsure('No answer.')),
+      onRunState: (state) => told.push(state),
+    });
+
+    await press();
+
+    // The server may have taken the start, so the swap guard must still warn.
+    const last = told.at(-1);
+    expect(last?.active).toBe(true);
+    expect(last?.error).toContain('No answer.');
   });
 });
 
