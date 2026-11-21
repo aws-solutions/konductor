@@ -40,24 +40,31 @@ import {
   SAVABLE_KEYS,
   fieldValuesOf,
   markedStageOf,
-  pickedStageOf,
   saveRefusal,
+  sourceStageOf,
 } from './view-stage';
 import { useInitialCheck } from './use-initial-check';
+import { useStageSources, type StageSources } from './use-stage-sources';
 
 /** The editable keys of a stage, by kind, as `stage_fields` gives them. */
 export type StageFieldsByKind = Readonly<
   Record<string, readonly StageFieldRule[]>
 >;
 
-// The stages of the draft that differ from the saved workflow, by id. A
-// stage the person added has no saved stage, and counts as changed.
-function changedStageIds(state: Editor['state']): ReadonlySet<string> {
+// The stages of the draft that differ from the stage of the file they were
+// loaded from, by id. A stage the person added has no stage in the file, and
+// counts as changed.
+function changedStageIds(
+  state: Editor['state'],
+  sources: StageSources,
+): ReadonlySet<string> {
   const saved = state.saved.view.stages;
   return new Set(
     state.draft.stages
-      .filter((stage, index) => {
-        const was = saved[index];
+      .filter((stage) => {
+        const source = sources.of(stage.id);
+        if (source.kind === 'added') return true;
+        const was = saved[source.index];
         return (
           was === undefined ||
           was.name !== stage.name ||
@@ -212,11 +219,16 @@ export function DesignView({
   const { record } = history;
   const { edit } = draft;
   // The draft opens its text unchecked, so the keys of a stage are read from
-  // a check of the file as it was loaded.
+  // a check of the file as it was loaded, and where each stage of the draft
+  // came from in that same file is read beside it.
   const opened = useInitialCheck({
     text: savedText,
     name: state.saved.name,
     validate,
+  });
+  const sources = useStageSources({
+    text: savedText,
+    stages: state.draft.stages,
   });
   // A change of the stages makes a text; the text shown is the one the
   // history points at, and that is the text the check reads.
@@ -261,11 +273,12 @@ export function DesignView({
   };
   // The keys of the picked stage come from the check of the file as it was
   // loaded: that is what the file holds, and a save of a changed stage would
-  // drop whatever the editor cannot write. The stage is taken by its position,
-  // so a name a person is still typing points nowhere else.
+  // drop whatever the editor cannot write. The stage is taken from the place
+  // it was loaded from, which a rename or another stage being added or
+  // deleted does not move.
   const fileView = opened.answer?.view ?? null;
-  const viewStage = pickedPlace
-    ? pickedStageOf(fileView, pickedPlace)
+  const viewStage = picked
+    ? sourceStageOf(fileView, sources.of(picked.id))
     : undefined;
   const values = picked ? fieldValuesOf(viewStage, picked) : {};
   const kindOf = typeof viewStage?.kind === 'string' ? viewStage.kind : 'agent';
@@ -283,18 +296,16 @@ export function DesignView({
     readOnlyKeys,
   };
   // A save of a changed stage that has other keys in the file would drop
-  // them, so it is refused until the writer keeps them.
-  const changed = changedStageIds(state);
+  // them, so it is refused until the writer keeps them. A stage whose keys
+  // are not known yet is refused too, rather than saved in the dark.
+  const changed = changedStageIds(state, sources);
   const refusal = saveRefusal(
-    state.draft.stages.map((one, index) => ({
+    state.draft.stages.map((one) => ({
       draft: one,
-      saved: pickedStageOf(fileView, {
-        name: one.name,
-        index,
-        total: state.draft.stages.length,
-      }),
+      source: sources.of(one.id),
       changed: changed.has(one.id),
     })),
+    fileView,
   );
 
   const onKeyDown = (event: KeyboardEvent) => {

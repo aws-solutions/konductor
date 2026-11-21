@@ -167,12 +167,15 @@ function drawn({
   document: workflow = HELLO_DOCUMENT,
   answers,
   openedFails,
+  openedHeld = false,
 }: {
   document?: WorkflowDocument;
   /** The answers of the checks that follow an edit, in order. */
   answers?: CheckAnswer[];
   /** The check of the loaded text fails with this message. */
   openedFails?: string;
+  /** The check of the loaded text never answers, as one in flight. */
+  openedHeld?: boolean;
 } = {}) {
   const scheduler = new FakeScheduler();
   const edits = acceptingEdits();
@@ -182,6 +185,7 @@ function drawn({
   // for the checks that follow an edit.
   const validate = vi.fn(async (request: CheckRequest) => {
     if (request.text === savedText) {
+      if (openedHeld) return new Promise<CheckAnswer>(() => undefined);
       if (openedFails !== undefined) throw new Error(openedFails);
       return goodAnswer(request.text);
     }
@@ -596,6 +600,66 @@ describe('DesignView, saving', () => {
     await settle();
 
     expect(screen.queryByTestId('save-refused')).toBeNull();
+  });
+
+  it('refuses a save of a stage changed before the keys of the file are read', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT, openedHeld: true });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    // The keys of the file are unknown, so the prompt it may hold is too.
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'are not known',
+    );
+  });
+
+  it('refuses a save of a stage changed when the keys could not be read', async () => {
+    const { edits } = drawn({
+      document: WITH_PROMPT,
+      openedFails: 'The server said no.',
+    });
+    await settle();
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'are not known',
+    );
+  });
+
+  it('refuses a save of the stage it renamed after another was added', async () => {
+    const { edits } = drawn({ document: WITH_PROMPT });
+    await settle();
+    await act(async () => {
+      fireEvent.click(button('Add agent-1'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('node-stage-draft'));
+    });
+    await openProperties();
+    await typeInto(nameInput(), 'drafting');
+
+    await act(async () => {
+      fireEvent.click(button('Save'));
+    });
+
+    // Neither the count of the stages nor the name finds the stage the file
+    // holds the prompt for; where it was loaded from does.
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.getByTestId('save-refused').textContent).toContain(
+      'would drop the prompt of drafting',
+    );
   });
 
   it('lets a save of another stage with no other key go ahead', async () => {
