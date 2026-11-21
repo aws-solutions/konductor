@@ -31,28 +31,24 @@
 
 | Query Pattern | Option 1 | Option 2 | Option 3 |
 |---------------|----------|----------|----------|
-| Customer orders | 85ms | **42ms** | 128ms |
-| Order lookup | 18ms | **15ms** | 22ms |
-| Order lines | 35ms | **28ms** | 41ms |
-| Warehouse open | 92ms | **65ms** | 105ms |
-| Date range | 185ms | **210ms** | 195ms |
-
-**Note**: Option 2 shows best overall performance except for date range queries where it's slightly slower but still within requirements.
+| Customer orders | 85ms | 42ms | 128ms |
+| Order lookup | 18ms | 15ms | 22ms |
+| Order lines | 35ms | 28ms | 41ms |
+| Warehouse open | 92ms | 65ms | 105ms |
+| Date range | 185ms | 210ms | 195ms |
 
 ### Storage Efficiency
 
 | Metric | Option 1 | Option 2 | Option 3 |
 |--------|----------|----------|----------|
 | Data size | 0.86 TB | 0.86 TB | 0.86 TB |
-| Index size | 0.86 TB | **0.53 TB** | 0.59 TB |
-| **Total** | **1.72 TB** | **1.39 TB** | 1.45 TB |
-| Projected to 900M | **3.10 TB** | **2.50 TB** | 2.61 TB |
-
-**Critical finding**: Option 1 exceeds the 2.5 TB storage limit when scaled to production volume.
+| Index size | 0.86 TB | 0.53 TB | 0.59 TB |
+| Total | 1.72 TB | 1.39 TB | 1.45 TB |
+| Projected to 900M | 3.10 TB | 2.50 TB | 2.61 TB |
 
 ### EXPLAIN QUERY PLAN Analysis
 
-#### Option 2 (Recommended) Query Plans:
+#### Option 2 Query Plans:
 - **Pattern 1**: `SEARCH order_history USING INDEX idx_customer_order_date (customer_id=?)`
 - **Pattern 2**: `SEARCH order_history USING INDEX idx_order_number (order_number=?)`
 - **Pattern 3**: `SEARCH order_history USING INDEX idx_order_id (order_id=?)`
@@ -93,29 +89,3 @@ Average row composition:
 - Composite index (3 columns): ~85 bytes
 
 **Key insight**: Composite indexes are only slightly larger than single-column indexes but serve multiple queries.
-
-## Recommendations
-
-### Primary Recommendation: Option 2
-- Single denormalized table
-- 5 carefully designed indexes (3 composite, 2 single-column)
-- **Total storage**: 2.5 TB (at limit but acceptable)
-- **Performance**: Meets all latency requirements
-- **Cost**: Within $300/month budget
-
-### Alternative: Option 3 with Optimization
-- Could work with additional denormalization
-- Would require careful index tuning
-- Slightly over budget at 2.61 TB
-
-### Reject: Option 1
-- **Storage**: 3.1 TB (exceeds 2.5 TB limit)
-- **Cost**: Would require Premium volume class ($150/month base fee)
-- **Monthly cost**: ~$359 (exceeds $300 budget)
-
-## Next Steps for Production
-1. Finalize schema based on Option 2
-2. Create migration plan from legacy system
-3. Implement monitoring for index usage
-4. Plan for data growth beyond 3 years
-5. Establish index maintenance procedures

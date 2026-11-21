@@ -350,3 +350,16 @@ t3-adr-db-engine). It names no choice. Key, checks and fixture unchanged. Gates:
   `two-table-normalized`), but that file only says Option 1/2/3 (lines 11-25) and `README.md:38-42` says A-D.
 - fixture-lists-no-answer: `prototype-results.md:55-62` and 97-104 mark Option 2 as the recommendation, with its
   indexes, cost and query plans.
+
+## t3-db-order-history v8 (2026-11-21, mate free-fix worker, claude; last fix after the v7 recheck)
+
+The v7 recheck failed 2 of 4: the prompt said `prototype-results.md` names the option ids, but it only says Option 1,
+2 and 3; and that file marked Option 2 as the pick. v8:
+- The prompt maps the ids directly: Option 1 = `single-column-all`, Option 2 = `composite-optimized`, Option 3 =
+  `two-table-normalized`, and names the four limits keys. It does not say which to choose.
+- `prototype-results.md` (and its `_pristine` copy) gives numbers only: the "Recommended" label, the bold Option 2
+  cells, the "best overall" and "critical finding" notes, and the Recommendations and Next steps sections are gone.
+  The choice follows from the numbers: projected storage 3.10, 2.50 and 2.61 TB against the 2.5 TB limit.
+- Key, checks and the other fixture files are unchanged. Gates: reference 100, stub 0, lazy 6, alt 100.
+
+One-fix rule: if the v8 recheck fails, the task leaves the lock list.
