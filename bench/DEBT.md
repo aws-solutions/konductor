@@ -2,7 +2,7 @@
 
 Known debt in the bench code. Every item has an owner, a next action and a due date. Fix an item in the same stretch of work that touches it, or add a row here. Never leave it silent.
 
-Last review: 2026-11-20 (debt triage: 25 rows closed, of them 8 merged into the row with the same cause; report kept outside the repo). Last code review: bench review and refactor pass (2026-11-18, kept outside the repo), after plant code review 1 (2026-11-15). Next code review due by 2026-12-02.
+Last review: 2026-11-20 (debt triage: 25 rows closed, of them 8 merged into the row with the same cause; report kept outside the repo). Last code review: bench review and refactor pass (2026-11-18, kept outside the repo), after plant code review 1 (2026-11-15). Next code review due by 2026-12-02. Owner decisions: one page lists the 13 rows that wait on the owner, each with a recommended choice and the cost of each option (2026-11-21, kept outside the repo as reports/owner-decisions-2026-11-21.md).
 
 ## Week by week
 
