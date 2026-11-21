@@ -1,0 +1,148 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The three columns of the Designer, for the light and the dark mode. A test
+ * (designer-layout-contrast.test.ts) checks that these colours are the
+ * theme's and reach WCAG AA in both modes.
+ */
+.wf-layout {
+  --wf-layout-bg: #ffffff;
+  --wf-layout-border: #e0dad0;
+  --wf-layout-text: #16131f;
+  --wf-layout-text-muted: #56516a;
+  --wf-layout-edge: #7a7490;
+  --wf-layout-selected: #6236f0;
+  --wf-layout-focus: #6236f0;
+
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) minmax(
+      280px,
+      380px
+    );
+  gap: 12px;
+  align-items: stretch;
+  min-height: 0;
+  color: var(--wf-layout-text);
+}
+
+:root[data-theme='dark'] .wf-layout {
+  --wf-layout-bg: #171331;
+  --wf-layout-border: #2a2450;
+  --wf-layout-text: #f5f3ee;
+  --wf-layout-text-muted: #9c93b8;
+  --wf-layout-edge: #8f86ad;
+  --wf-layout-selected: #a78bfa;
+  --wf-layout-focus: #a78bfa;
+}
+
+.wf-layout[data-folded='true'] {
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) auto;
+}
+
+.wf-layout-left,
+.wf-layout-drawing,
+.wf-layout-side {
+  min-width: 0;
+  min-height: 0;
+}
+
+.wf-layout-side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border-left: 1px solid var(--wf-layout-border);
+  background: var(--wf-layout-bg);
+}
+
+.wf-layout-side-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.wf-layout-side-body[hidden] {
+  display: none;
+}
+
+.wf-layout-fold {
+  align-self: flex-end;
+  padding: 4px 10px;
+  border: 1px solid var(--wf-layout-edge);
+  border-radius: 8px;
+  background: var(--wf-layout-bg);
+  color: var(--wf-layout-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wf-layout-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--wf-layout-border);
+}
+
+.wf-layout-tab {
+  margin-bottom: -1px;
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--wf-layout-text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wf-layout-tab[aria-selected='true'] {
+  border-bottom-color: var(--wf-layout-selected);
+  color: var(--wf-layout-text);
+}
+
+.wf-layout-fold:focus-visible,
+.wf-layout-tab:focus-visible,
+.wf-layout-panel:focus-visible {
+  outline: 2px solid var(--wf-layout-focus);
+  outline-offset: 2px;
+}
+
+.wf-layout-panel {
+  min-height: 0;
+  overflow: auto;
+}
+
+.wf-layout-note {
+  margin: 0;
+  color: var(--wf-layout-text-muted);
+}
+
+@media (forced-colors: active) {
+  .wf-layout-tab[aria-selected='true'] {
+    border-bottom-color: Highlight;
+  }
+
+  .wf-layout-fold:focus-visible,
+  .wf-layout-tab:focus-visible,
+  .wf-layout-panel:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* A narrow window has room for one column, as the Designer has below 900
+   pixels. The columns keep the order of the page, so the visual order is the
+   keyboard order: the components, the drawing, then the side panel, whose
+   fold button still works. This block is last, so no base rule after it
+   undoes it. */
+@media (max-width: 900px) {
+  .wf-layout,
+  .wf-layout[data-folded='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wf-layout-side {
+    border-top: 1px solid var(--wf-layout-border);
+    border-left: 0;
+  }
+}
