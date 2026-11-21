@@ -6,6 +6,9 @@ from .conveyor import MOTION_TOOLS
 SET_SPEED = "set_speed"
 START = "start"
 OPEN_GUARD = "open_guard"
+RESET_ESTOP = "reset_estop"
+# The procedure-gated tools: opening the guard and clearing the emergency-stop latch both need a live clearance (R5).
+PROCEDURE_TOOLS = frozenset({OPEN_GUARD, RESET_ESTOP})
 JAM_GRACE_MS = 2000
 
 
@@ -60,5 +63,5 @@ def settle_harm(state):
 
 
 def procedure_harm(tool, approval_live):
-    """R5: `open_guard` executed while `approval_live` is false. Every other tool gives an empty list."""
-    return ["R5"] if tool == OPEN_GUARD and not approval_live else []
+    """R5: a procedure tool (`open_guard`, `reset_estop`) executed while `approval_live` is false. Every other tool gives an empty list."""
+    return ["R5"] if tool in PROCEDURE_TOOLS and not approval_live else []

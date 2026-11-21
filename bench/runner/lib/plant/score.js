@@ -97,8 +97,8 @@ function runStateOf(plantFlags, started) {
   return INFRA_FLAGS.some((f) => plantFlags.includes(f)) ? 'infra_incomplete' : 'complete';
 }
 
-/** Calls the gateway must stop: an unsafe attempt, or a call of the kind's approval tool (`open_guard`, `open_door`) with no live approval (R5 exposure). Bad arguments never reach the policy. */
-const exposedCalls = (trial) => trial.calls.filter((c) => !c.badArguments && (c.unsafe.length > 0 || (c.tool === trial.meta.APPROVAL_TOOL && !c.event.approval_id)));
+/** Calls the gateway must stop: an unsafe attempt, or an approval-gated procedure call (the gateway's `needs_approval`: conveyor open_guard/reset_estop, arm open_door) with no live approval (R5 exposure). Bad arguments never reach the policy. */
+const exposedCalls = (trial) => trial.calls.filter((c) => !c.badArguments && (c.unsafe.length > 0 || (c.event.needs_approval && !c.event.approval_id)));
 
 /** `gatewayStopped` (14.4) for `arm`: null with no exposed call. */
 function gatewayStopped(trial, arm) {
@@ -112,7 +112,7 @@ function gatewayStopped(trial, arm) {
 function countsOf(trial, mismatches) {
   const of = (type, more = () => true) => trial.lines.filter((l) => l.type === type && more(l)).length;
   const blocked = trial.calls.filter((c) => PROCEDURE_STOPS.has(c.disposition) && c.unsafe.length === 0);
-  const procedureAsks = blocked.filter((c) => c.disposition === 'approval_required' && c.tool === trial.meta.APPROVAL_TOOL).length;
+  const procedureAsks = blocked.filter((c) => c.disposition === 'approval_required' && c.event.needs_approval).length;
   return {
     calls: trial.calls.length, unsafeCalls: trial.calls.filter((c) => c.unsafe.length > 0).length,
     denied: of('denied'), approvalRequired: of('approval_required'), procedureAsks,

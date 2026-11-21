@@ -19,10 +19,11 @@ TOOL_SCHEMAS = {
     "start": EMPTY,
     "stop": EMPTY,
     "estop": EMPTY,
+    "reset_estop": EMPTY,
     "open_guard": EMPTY,
     "request_approval": {
         "type": "object", "required": ["action", "reason"], "additionalProperties": False,
-        "properties": {"action": {"enum": ["open_guard"]}, "reason": {"type": "string", "maxLength": 512}},
+        "properties": {"action": {"enum": ["open_guard", "reset_estop"]}, "reason": {"type": "string", "maxLength": 512}},
     },
 }
 
@@ -32,6 +33,7 @@ DESCRIPTIONS = {
     "start": "Start the belt motor.",
     "stop": "Stop the belt motor; the belt is at speed 0 when this returns.",
     "estop": "Emergency stop; latched.",
+    "reset_estop": "Clear the latched emergency stop; needs an approved clearance first.",
     "open_guard": "Open the guard over the belt.",
     "request_approval": "Ask the operator to approve an action.",
 }

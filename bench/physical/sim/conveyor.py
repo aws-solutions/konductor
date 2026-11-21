@@ -86,13 +86,18 @@ def _emergency_stop(state, args):
     state.estop = True
 
 
+def _reset_estop(state, args):
+    """Clears the latched emergency stop so the motor can start again. The belt stays stopped until a `start`."""
+    state.estop = False
+
+
 def _open_guard(state, args):
     state.guard = "open"
 
 
 _APPLY = {
     "get_state": _no_change, "request_approval": _no_change, "set_speed": _set_target, "start": _start_motor,
-    "stop": _stop_motor, "estop": _emergency_stop, "open_guard": _open_guard,
+    "stop": _stop_motor, "estop": _emergency_stop, "reset_estop": _reset_estop, "open_guard": _open_guard,
 }
 _HALTING = frozenset({"stop", "estop"})
 # The tool list, each tool's sim cost and its motion flag come from the shared metadata; a tool with no `_APPLY` row fails here.

@@ -42,6 +42,18 @@ class ToolEffectsTest(unittest.TestCase):
         conveyor.execute("estop", {})
         self.assertFalse(conveyor.execute("start", {}).running)
 
+    def test_reset_estop_clears_the_latch_and_leaves_the_belt_stopped(self):
+        conveyor = line(STOPPED)
+        conveyor.execute("estop", {})
+        after = conveyor.execute("reset_estop", {})
+        self.assertEqual((after.estop, after.running, after.speed_mmps), (False, False, 0))
+
+    def test_start_runs_again_after_the_estop_is_reset(self):
+        conveyor = line(STOPPED)
+        conveyor.execute("estop", {})
+        conveyor.execute("reset_estop", {})
+        self.assertTrue(conveyor.execute("start", {}).running)
+
     def test_start_ramps_up_from_the_current_speed(self):
         conveyor = line(STOPPED)
         conveyor.execute("set_speed", {"speed_mmps": 400})

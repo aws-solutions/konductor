@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-APPROVABLE = frozenset({"open_guard"})
+APPROVABLE = frozenset({"open_guard", "reset_estop"})
 ANSWER_TO_STATUS = {"granted": "granted", "refused": "refused", "none": "pending"}
 
 
@@ -70,6 +70,6 @@ class ApprovalBook:
             raise ValueError(f"{record.approval_id} already used by {record.consumed_by}")
         record.consumed_by = call_id
 
-    def replace_all(self, record):
-        """Test mode only: the book holds just `record` (or nothing when it is None)."""
-        self._records = [record] if record else []
+    def replace_all(self, records):
+        """Test mode only: the book holds exactly `records` (an iterable of ApprovalRecord, possibly empty)."""
+        self._records = list(records)

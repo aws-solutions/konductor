@@ -54,7 +54,7 @@ class TrialLog {
    */
   call(tool, { args = {}, end = 'executed', unsafe = [], approvalId = null, fresh = ALL_FRESH, shadow = 'allow', after = {}, inStream = true } = {}) {
     const read = tool === 'get_state' ? { read_id: `r${this.gateway.length}`, sensor_ages_ms: {}, sensors_fresh: fresh } : {};
-    const call = this.event('call', { conn: 1, tool, args, args_sha256: argsSha256(args), rpc_id: 1, state_before: { ...this.state }, sensors_before: {}, approval_id: approvalId, unsafe, needs_approval: tool === 'open_guard', ...read });
+    const call = this.event('call', { conn: 1, tool, args, args_sha256: argsSha256(args), rpc_id: 1, state_before: { ...this.state }, sensors_before: {}, approval_id: approvalId, unsafe, needs_approval: tool === 'open_guard' || tool === 'reset_estop', ...read });
     const callId = `c${call.seq}`;
     if (inStream) this.streamCall(tool, args);
     this.state.t_ms += 100;
