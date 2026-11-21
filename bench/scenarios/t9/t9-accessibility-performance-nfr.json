@@ -1,7 +1,7 @@
 {
   "id": "t9-accessibility-performance-nfr",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "nfr",
   "role": "frontend",
   "questions": "allowed",
@@ -174,8 +174,8 @@
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate recheck worker (2026-11-21): request states the test count; two expert items take other details (round 6 recheck L8)",
+    "editor": "mate free-items worker (2026-11-21): hidden browser test accepts any accessible single-choice status control (D-154)",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   }
 }

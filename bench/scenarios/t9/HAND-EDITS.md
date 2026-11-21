@@ -49,3 +49,15 @@ four options with `getByRole('radio')`. The fixture's status filter is plain `di
 for keyboard use, arrow keys and spoken labels. So a correct native select or listbox fails that test. Not fixed
 here: the writer family has had its one fix attempt (owner rule). Next step: either the request names the radio
 group, or the test also accepts a select or listbox; then one more non-Claude recheck.
+
+## t9-accessibility-performance-nfr v3 (2026-11-21, mate free-items worker, claude; DEBT D-154)
+
+The hidden `browser.test.js` now finds the status filter as any accessible single-choice control the request allows:
+a radio group (native or ARIA `role="radio"`), a native `select`, or a single-select `listbox`. One helper,
+`statusFilter(page)`, reports the selected choice, whether keyboard focus is on the control, the arrow keys that move
+the choice (Left/Right for radios, Up/Down for a select or listbox) and how a keyboard user picks one; every test uses
+it, and the page-ready wait accepts any of the three. The bar is the same for each kind: Tab from the search box lands
+on the control, arrow keys move the choice and filter the list, the live region updates. The request is unchanged and
+still names no control. New correct answer `answers/.../alt-select`: the reference with a native select in place of
+the radios. Free gates: reference 100, stub 3.6, lazy 21.4, alt 100, alt-select 100 (the old test failed it at the
+page-ready wait). Not run in a browser: a listbox answer. Non-Claude recheck: not ordered (owner).

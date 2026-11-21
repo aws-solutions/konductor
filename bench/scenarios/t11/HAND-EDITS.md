@@ -85,9 +85,12 @@ No model call. Probe answers scored with the bench's own check code.
 | t11-docx-room-booking-reqs v4 | key: new gate item `revision-notes-applied` (some requirement states 30 days or 3 hours; when none does, every hidden test fails); checks: `file_exists`, `min_matches`, `contains` and `fixture_unchanged` are `format` (were `substance`); new `answers/.../shallow`: the Booking limits table copied as written, no revision, no open question; ceiling note rewritten | A realistic lazy answer scored 79.6 (Opus F8): the traps were 10 of 35 weights, and any requirements file earned about 30 points from shape checks (Fable). Now that answer scores 0, one revision applied 86.1, no open question 91.7, reference, alt and other 100. Stub 4.8 -> 0. |
 | t11-merge-pricing-branches v4 | hidden test: "has no conflict markers in tracked files" no longer asserts that `test/feature-pricing.test.js` exists; check 4 counts test cases in committed files (`git grep ... HEAD -- test`) and needs 14, not 11; two hidden tests renamed ("applies WELCOME10 to a Meadow basket, which owes no tax", "applies BASKET5 at its minimum basket in Meadow") | The request names no test file, and the wave 11 answer lost a hidden test for naming its tests `test/combined.test.js` (Fable F5). Main has 8 test cases and the two branches add 2 each, so the merge alone reached 12 and passed "add focused tests" (Fable F6). With Meadow at rate 0 the two old names no longer described what they test (Opus F9). Probes: tests under another name 100, merge with no new test 88.6 (fails check 4), `-X theirs` / `-X ours` 29.3, the wrong answers of the review unchanged. |
 
-## t11-media-returns-whiteboard v4 (2026-11-21, mate debt worker, DEBT D-153)
+## t11-media-returns-whiteboard v4 (2026-11-21, mate free-items worker, claude; DEBT D-153)
 
-The one judge item, `image-legibility`, asked whether the whiteboard image is readable. The judges read text only, so
-the item was never really scored, and it rated the input picture, not the agent's work. It is dropped: the task is now
-scored by code only (hidden tests and checks), which the 70/30 rule allows. No check, key or fixture changed.
-Non-Claude recheck: pending (`handEdited.version` 4).
+The only judge item, `image-legibility`, asked whether the whiteboard image keeps its states, labels, guards and
+money note readable. That image is the task's input (`docs/design/returns-whiteboard.png`, kept by a
+`fixture_unchanged` check), so the item graded the fixture, not the agent's work, and the judges read text only: all
+three answered "(nothing in the output)" in the judged pass. The item is dropped (`rubric: []`); the image's
+legibility was already fixed and checked when it was rendered (the CSS rule row above). The task is now scored on code
+alone, like the five tasks with no judge part. No check, key, fixture or answer changed; gates unchanged: reference
+100, stub 17.5, lazy 23.8, alt 100. Non-Claude recheck: pending (`handEdited.version` 4).
