@@ -79,17 +79,37 @@ export function sourceStageOf(
   return file?.stages[source.index];
 }
 
+/** How far a view of the text can be trusted to name the draft's stages. */
+export interface ViewStanding {
+  /** The view is not of the text as it is now, but of an earlier one. */
+  readonly stale: boolean;
+  /** Where each stage of the draft came from, in the order of the draft. */
+  readonly sources: readonly StageSource[];
+}
+
+// Whether the draft still holds the stages of the file, each in its own
+// place: no stage added, none deleted, none moved. Only then is a view of an
+// earlier text of this session a view of these stages, because the only edits
+// since are names and agents, which do not move a stage.
+function keepsTheFilesStages(sources: readonly StageSource[]): boolean {
+  return sources.every(
+    (source, index) => source.kind === 'loaded' && source.index === index,
+  );
+}
+
 /**
  * The stage of `view` that `picked` is, or `undefined` when it cannot be
  * told.
  *
- * This reads a view of the text as it is now, whose stages are in the order
- * of the draft, so the place in the draft names the stage. A view of another
- * number of stages is of another text: it is of no use here, because a stage
- * added or deleted since has moved every stage after it, and the name cannot
- * stand in for the place, as a person renaming a stage to the name of another
- * one would then be shown that other stage. Such a view leaves the stage
- * untold until a check of this text answers.
+ * A view of the text as it is now has the stages of the draft, in its order,
+ * so the place in the draft names the stage. An earlier view is read by that
+ * place only while the draft still holds the stages of the file, each where
+ * the file has it: a stage added or deleted since has moved the stages after
+ * it, and deleting one and adding another leaves the count alone while naming
+ * other stages, so such a view is of no use here. Nor is the name, which a
+ * person renaming a stage to the name of another one would be shown that
+ * other stage by. The stage is then untold until the check of this text
+ * answers.
  *
  * The file as it was loaded is read by `sourceStageOf` instead, which takes
  * the place a stage was loaded from, the same identity the save guard holds.
@@ -97,11 +117,14 @@ export function sourceStageOf(
 export function pickedStageOf(
   view: CheckView | null | undefined,
   picked: PickedStage,
+  standing: ViewStanding,
 ): CheckViewStage | undefined {
   if (view === null || view === undefined) return undefined;
-  return view.stages.length === picked.total
-    ? view.stages[picked.index]
-    : undefined;
+  if (view.stages.length !== picked.total) return undefined;
+  if (standing.stale && !keepsTheFilesStages(standing.sources)) {
+    return undefined;
+  }
+  return view.stages[picked.index];
 }
 
 /**
@@ -112,8 +135,9 @@ export function pickedStageOf(
 export function markedStageOf(
   view: CheckView | null | undefined,
   picked: PickedStage,
+  standing: ViewStanding,
 ): MarkedStage | undefined {
-  const stage = pickedStageOf(view, picked);
+  const stage = pickedStageOf(view, picked, standing);
   if (stage === undefined) return undefined;
   const range = stage.range;
   if (typeof range !== 'object' || range === null) return undefined;

@@ -10,7 +10,12 @@ import {
   pickedStageOf,
   saveRefusal,
   sourceStageOf,
+  type StageSource,
+  type ViewStanding,
 } from './view-stage';
+
+/** A stage the person added since the file was loaded. */
+const ADDED: StageSource = { kind: 'added' };
 
 const view: CheckView = {
   format: 'konductor/1',
@@ -54,6 +59,25 @@ describe('checkStageOf', () => {
   });
 });
 
+// The stages of the draft as they were loaded, each in its own place.
+const asLoaded = (count: number): StageSource[] =>
+  Array.from({ length: count }, (_, index) => ({
+    kind: 'loaded' as const,
+    index,
+  }));
+
+/** A view of the text as it is now, which the draft's places name. */
+const ofNow = (count = 2): ViewStanding => ({
+  stale: false,
+  sources: asLoaded(count),
+});
+
+/** A view of an earlier text, with the draft unchanged since the load. */
+const earlier = (count = 2): ViewStanding => ({
+  stale: true,
+  sources: asLoaded(count),
+});
+
 describe('pickedStageOf', () => {
   const at = (name: string, index: number, total = 2) => ({
     name,
@@ -62,34 +86,74 @@ describe('pickedStageOf', () => {
   });
 
   it('takes the stage in the picked place when the counts match', () => {
-    expect(pickedStageOf(view, at('draft', 0))?.agent).toBe('k-developer');
+    expect(pickedStageOf(view, at('draft', 0), ofNow())?.agent).toBe(
+      'k-developer',
+    );
   });
 
   it('keeps the picked stage while its name is being typed', () => {
-    expect(pickedStageOf(view, at('drafting', 0))?.agent).toBe('k-developer');
+    expect(pickedStageOf(view, at('drafting', 0), ofNow())?.agent).toBe(
+      'k-developer',
+    );
   });
 
   it('does not follow a name that now belongs to another stage', () => {
     // The first stage was renamed to the second one's name.
-    expect(pickedStageOf(view, at('review', 0))?.agent).toBe('k-developer');
+    expect(pickedStageOf(view, at('review', 0), ofNow())?.agent).toBe(
+      'k-developer',
+    );
   });
 
   it('takes no stage when the counts differ, however the names read', () => {
     // A view of another number of stages is of another text.
-    expect(pickedStageOf(view, at('review', 0, 3))).toBeUndefined();
-    expect(pickedStageOf(view, at('draft', 0, 3))).toBeUndefined();
-    expect(pickedStageOf(view, at('wrap-up', 0, 3))).toBeUndefined();
+    expect(pickedStageOf(view, at('review', 0, 3), ofNow(3))).toBeUndefined();
+    expect(pickedStageOf(view, at('draft', 0, 3), ofNow(3))).toBeUndefined();
+    expect(pickedStageOf(view, at('wrap-up', 0, 3), ofNow(3))).toBeUndefined();
   });
 
   it('shows no other stage after a stage is added and this one renamed to its name', () => {
     // The person added a third stage and renamed the first to `review`, the
     // name the second already has, before the next check answered. The stale
     // view must not answer with that second stage.
-    expect(pickedStageOf(view, at('review', 0, 3))).toBeUndefined();
+    expect(pickedStageOf(view, at('review', 0, 3), earlier(3))).toBeUndefined();
+  });
+
+  it('reads an earlier view while the draft still holds the stages of the file', () => {
+    expect(pickedStageOf(view, at('drafting', 0), earlier())?.agent).toBe(
+      'k-developer',
+    );
+  });
+
+  it('takes no stage from an earlier view once a stage was added', () => {
+    const sources: StageSource[] = [{ kind: 'loaded', index: 0 }, ADDED];
+
+    expect(
+      pickedStageOf(view, at('agent-2', 1, 2), { stale: true, sources }),
+    ).toBeUndefined();
+  });
+
+  it('takes no stage from an earlier view after a delete and an add keep the count', () => {
+    // `draft` was deleted and a stage added, so the draft is [review, agent-3]
+    // and the earlier view is [draft, review]: both hold two stages, and every
+    // place of the view names another stage.
+    const sources: StageSource[] = [{ kind: 'loaded', index: 1 }, ADDED];
+    const standing = { stale: true, sources };
+
+    expect(pickedStageOf(view, at('review', 0, 2), standing)).toBeUndefined();
+    expect(pickedStageOf(view, at('agent-3', 1, 2), standing)).toBeUndefined();
+  });
+
+  it('reads the view of the text as it is now after such an edit', () => {
+    // Its stages are the stages of this draft, so the place names them.
+    const sources: StageSource[] = [{ kind: 'loaded', index: 1 }, ADDED];
+
+    expect(
+      pickedStageOf(view, at('review', 0, 2), { stale: false, sources })?.name,
+    ).toBe('draft');
   });
 
   it('takes no stage without a view', () => {
-    expect(pickedStageOf(null, at('draft', 0))).toBeUndefined();
+    expect(pickedStageOf(null, at('draft', 0), ofNow())).toBeUndefined();
   });
 });
 
@@ -101,25 +165,33 @@ describe('markedStageOf', () => {
   });
 
   it('gives the lines of the stage', () => {
-    expect(markedStageOf(view, at('draft', 0))).toEqual({
+    expect(markedStageOf(view, at('draft', 0), ofNow())).toEqual({
       name: 'draft',
       range: { line: 10, end_line: 12 },
     });
   });
 
   it('marks the stage in its place while its name is being typed', () => {
-    expect(markedStageOf(view, at('drafting', 0))).toEqual({
+    expect(markedStageOf(view, at('drafting', 0), ofNow())).toEqual({
       name: 'drafting',
       range: { line: 10, end_line: 12 },
     });
   });
 
   it('marks nothing when the view has another number of stages', () => {
-    expect(markedStageOf(view, at('drafting', 0, 3))).toBeUndefined();
+    expect(markedStageOf(view, at('drafting', 0, 3), ofNow(3))).toBeUndefined();
+  });
+
+  it('marks nothing from an earlier view after a delete and an add', () => {
+    const sources: StageSource[] = [{ kind: 'loaded', index: 1 }, ADDED];
+
+    expect(
+      markedStageOf(view, at('review', 0, 2), { stale: true, sources }),
+    ).toBeUndefined();
   });
 
   it('marks nothing without a view', () => {
-    expect(markedStageOf(undefined, at('draft', 0))).toBeUndefined();
+    expect(markedStageOf(undefined, at('draft', 0), ofNow())).toBeUndefined();
   });
 
   it.each([
@@ -131,7 +203,7 @@ describe('markedStageOf', () => {
   ])('marks nothing for a stage with %s', (_, over) => {
     const one: CheckView = { ...view, stages: [stageOf(over)] };
 
-    expect(markedStageOf(one, at('draft', 0, 1))).toBeUndefined();
+    expect(markedStageOf(one, at('draft', 0, 1), ofNow(1))).toBeUndefined();
   });
 });
 
