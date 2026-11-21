@@ -67,7 +67,8 @@ test('the full explanation shows each check with what was observed, the rubric p
   const root = tmp();
   try {
     const { bench, runDir } = multiArm(root);
-    const text = explain(root, runDir, bench, { filter: { arm: 'vanilla', rep: 1 } });
+    // The explanation of the lenient rule's downgrade (paraphrase, the default since 2026-11-20, is tested in judge-quote-paraphrase).
+    const text = explain(root, runDir, bench, { filter: { arm: 'vanilla', rep: 1 }, scoringFile: path.join(__dirname, '..', '..', 'profiles', 'scoring-lenient-quotes.json') });
     assert.match(text, /2\. CHECKS {2}\(1 of 2 passed\)/);
     assert.match(text, /FAIL .*type=contains .*OBSERVED: pattern not found in a\.txt/);
     assert.match(text, /3\. HIDDEN TESTS\n {3}absent/);
@@ -101,7 +102,7 @@ test('the all-or-nothing scoring file changes the checks term and the label', ()
   try {
     const { bench, runDir } = multiArm(root);
     const all = path.join(root, 'all.json');
-    write(all, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, checks: 'all' }));
+    write(all, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, checks: 'all', quotes: 'lenient' }));
     const text = explain(root, runDir, bench, { filter: { arm: 'vanilla', rep: 1 }, scoringFile: all });
     assert.match(text, /Component score \(all-or-nothing\): checks = 0/);
     assert.match(text, /\(checks scored as all\)/);

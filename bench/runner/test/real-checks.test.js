@@ -86,6 +86,21 @@ test('a tree that cannot be collected gives an unparsed result with the known to
   } finally { s.b.done(); }
 });
 
+test('a node-test run that times out keeps the tests that finished and fails the check (D-40)', () => {
+  const root = tmp('rc-timeout-');
+  try {
+    write(path.join(root, 'work/test/a.test.js'), "const test = require('node:test');\ntest('adds', () => {});\ntest('subtracts', () => {});\n");
+    write(path.join(root, 'hidden/overlay/test/b.test.js'), "require('node:test')('hangs', () => new Promise(() => { setInterval(() => {}, 1000); }));\n");
+    const spec = { runner: 'node-test', cmd: 'node --test --test-reporter={reporter} test/*.test.js', timeoutSec: 5 };
+    const failToPass = ['test/a.test.js::adds', 'test/b.test.js::hangs'];
+    const [r] = runChecks(path.join(root, 'work'), [CHECK], { real: { spec, failToPass, passToPass: ['test/a.test.js::subtracts'] }, hiddenDir: path.join(root, 'hidden'), scratchDir: path.join(root, 'scratch') });
+    assert.equal(r.passed, false);
+    assert.deepEqual(r.tests, { passed: 1, total: 2, unparsed: false }, 'the finished test counts; the hung one does not');
+    assert.deepEqual(r.regression, { passed: 1, total: 1 });
+    assert.match(r.detail, /FAIL_TO_PASS 1\/2, PASS_TO_PASS 1\/1 \(timed out; tests that finished are counted\)/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a missing manifest entry or hidden directory is an unparsed result, not a crash', () => {
   const s = setup();
   try {

@@ -11,7 +11,7 @@ const path = require('node:path');
 const { tmp, write, makeBench } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { recordGroups, groupGone } = require('./agent-groups.js');
-const { executeRun } = require('../lib/run-one.js');
+const { executeRun, dropStaleLease } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { parseStream } = require('../lib/stream.js');
 const { validateResult } = require('../lib/result.js');
@@ -298,4 +298,17 @@ test('kiroArgs adds --resume-id before the reply, or --resume when no session id
   const b = kiroArgs({ arm: { agent: null, vanilla: true }, task: { prompt: 'first' }, config: CONFIG, resume: { sessionId: null, prompt: 'go' } });
   assert.deepEqual(b.slice(-2), ['--resume', 'go']);
   assert.equal(kiroArgs({ arm: { agent: null, vanilla: true }, task: { prompt: 'first' }, config: CONFIG }).at(-1), 'first');
+});
+
+test('a resumed turn drops the stale session lease turn 1 left in the scratch HOME, and only that one', () => {
+  const home = tmp();
+  const dir = path.join(home, '.kiro', 'session-leases');
+  write(path.join(dir, 'sess_a.lease'), '{"pid":71}');
+  write(path.join(dir, 'sess_a.lease.lock'), '');
+  write(path.join(dir, 'sess_b.lease'), '{"pid":72}');
+  dropStaleLease(home, 'sess_a');
+  assert.deepEqual(fs.readdirSync(dir), ['sess_b.lease']);
+  dropStaleLease(home, '../sess_b');
+  dropStaleLease(null, 'sess_b');
+  assert.deepEqual(fs.readdirSync(dir), ['sess_b.lease']);
 });

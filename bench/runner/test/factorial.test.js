@@ -496,13 +496,13 @@ test('the 2x2 page names the evidence-quote rule and shows the cells under both 
   try {
     const bench = benchWith(root);
     const res = buildFactorial({ dirs: four(root, bench), benchDir: bench });
-    assert.equal(res.quote.requested, 'lenient');
+    assert.equal(res.quote.requested, 'paraphrase', 'paraphrase is the default since 2026-11-20');
     assert.equal(res.sensitivity.available, true);
-    assert.equal(res.sensitivity.other, 'strict');
+    assert.equal(res.sensitivity.other, 'lenient');
     assert.equal(res.sensitivity.cells.length, 4);
     const md = toMarkdown(renderFactorial(res));
-    assert.match(md, /Evidence-quote rule: lenient \(tightened: quotes with 20 or more unsupported letters are rejected\)\. Strict sensitivity: see the table below\./);
-    assert.match(md, /Quality per cell under both quote rules \(lenient is the one in use\)/);
+    assert.match(md, /Evidence-quote rule: paraphrase \(lenient, or a restatement whose figures and most content words are in the output\)\. Lenient sensitivity: see the table below\./);
+    assert.match(md, /Quality per cell under both quote rules \(paraphrase is the one in use\)/);
     const strict = buildFactorial({ dirs: four(root, bench), benchDir: bench, scoringFile: path.join(__dirname, '..', '..', 'profiles', 'scoring-strict-quotes.json') });
     assert.equal(strict.quote.requested, 'strict');
     assert.match(toMarkdown(renderFactorial(strict)), /Evidence-quote rule: strict \(every segment between ellipses/);

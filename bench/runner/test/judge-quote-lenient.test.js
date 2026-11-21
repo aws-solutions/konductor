@@ -176,7 +176,7 @@ test('a strict recheck reproduces the stored verdicts and writes nothing', () =>
   } finally { cleanup(s.root); }
 });
 
-test('the scoring key "quotes" defaults to lenient and accepts strict in every command', () => {
+test('the scoring key "quotes" defaults to paraphrase and accepts lenient and strict in every command', () => {
   const root = tmp();
   try {
     const lenientFile = path.join(root, 'l.json');
@@ -185,9 +185,13 @@ test('the scoring key "quotes" defaults to lenient and accepts strict in every c
     write(strictFile, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, quotes: 'strict' }));
     const bad = path.join(root, 'b.json');
     write(bad, JSON.stringify({ weights: { rubric: 1 }, quotes: 'sloppy' }));
-    assert.deepEqual(loadScoring(), loadScoring(lenientFile), 'lenient adds nothing to the loaded weights');
+    const paraphraseFile = path.join(root, 'p.json');
+    write(paraphraseFile, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, quotes: 'paraphrase' }));
+    // Paraphrase is the default since 2026-11-20: it adds nothing to the loaded weights; lenient and strict are carried.
+    assert.deepEqual(loadScoring(), loadScoring(paraphraseFile), 'paraphrase adds nothing to the loaded weights');
+    assert.equal(loadScoring(lenientFile).quoteMode, 'lenient');
     assert.equal(loadScoring(strictFile).quoteMode, 'strict');
-    assert.throws(() => loadScoring(bad), /"quotes" must be one of "strict", "lenient"/);
+    assert.throws(() => loadScoring(bad), /"quotes" must be one of "strict", "lenient", "paraphrase"/);
   } finally { cleanup(root); }
 });
 
@@ -197,7 +201,7 @@ test('a report builds the lenient view of old judgments from the output, and the
     const tasks = loadTasks(s.bench);
     const stored = fs.readFileSync(path.join(s.runDir, 'judgments.json'), 'utf8');
     const build = (scoringFile, out) => generateRunReport({ run: loadRuns([s.runDir]), tasks, baseline: 'vanilla', out: path.join(s.root, out), detail: 'full', format: 'md', scoringFile, defaultDir: path.join(s.root, out) });
-    const lenient = build(undefined, 'out-l');
+    const lenient = build(path.join(__dirname, '..', '..', 'profiles', 'scoring-lenient-quotes.json'), 'out-l');
     const strict = build(path.join(__dirname, '..', '..', 'profiles', 'scoring-strict-quotes.json'), 'out-s');
     const md = fs.readFileSync(path.join(s.root, 'out-l', 'report.md'), 'utf8');
     assert.match(md, /Evidence-quote rule: lenient \(tightened/);

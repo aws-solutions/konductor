@@ -458,7 +458,7 @@
      },
      {
       "t": "p",
-      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
+      "text": "Evidence-quote rule: paraphrase (lenient, or a restatement whose figures and most content words are in the output). Lenient sensitivity: no call differs, see the Sensitivity block below."
      },
      {
       "t": "h",
@@ -595,20 +595,20 @@
      {
       "t": "h",
       "level": 2,
-      "text": "Sensitivity: strict quote rule"
+      "text": "Sensitivity: lenient quote rule"
      },
      {
       "t": "p",
-      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+      "text": "The same judgments scored under the lenient rule, run through the same rules. No call depends on the quote rule."
      },
      {
       "t": "table",
       "head": [
        "arm",
-       "call, lenient (in use)",
-       "call, strict",
-       "quality difference [interval], strict",
-       "A/A band, strict",
+       "call, paraphrase (in use)",
+       "call, lenient",
+       "quality difference [interval], lenient",
+       "A/A band, lenient",
        "compared"
       ],
       "rows": [
@@ -723,7 +723,7 @@
      },
      {
       "t": "p",
-      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
+      "text": "Evidence-quote rule: paraphrase (lenient, or a restatement whose figures and most content words are in the output). Lenient sensitivity: no call differs, see the Sensitivity block below."
      },
      {
       "t": "h",
@@ -850,21 +850,21 @@
      {
       "t": "h",
       "level": 2,
-      "text": "Sensitivity: strict quote rule"
+      "text": "Sensitivity: lenient quote rule"
      },
      {
       "t": "p",
-      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+      "text": "The same judgments scored under the lenient rule, run through the same rules. No call depends on the quote rule."
      },
      {
       "t": "table",
       "head": [
        "cell",
        "arm",
-       "call, lenient (in use)",
-       "call, strict",
-       "quality difference [interval], strict",
-       "A/A band, strict",
+       "call, paraphrase (in use)",
+       "call, lenient",
+       "quality difference [interval], lenient",
+       "A/A band, lenient",
        "compared"
       ],
       "rows": [
@@ -1318,7 +1318,7 @@
      },
      {
       "t": "p",
-      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
+      "text": "Evidence-quote rule: paraphrase (lenient, or a restatement whose figures and most content words are in the output). Lenient sensitivity: no call differs, see the Sensitivity block below."
      },
      {
       "t": "h",
@@ -1455,20 +1455,20 @@
      {
       "t": "h",
       "level": 2,
-      "text": "Sensitivity: strict quote rule"
+      "text": "Sensitivity: lenient quote rule"
      },
      {
       "t": "p",
-      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+      "text": "The same judgments scored under the lenient rule, run through the same rules. No call depends on the quote rule."
      },
      {
       "t": "table",
       "head": [
        "arm",
-       "call, lenient (in use)",
-       "call, strict",
-       "quality difference [interval], strict",
-       "A/A band, strict",
+       "call, paraphrase (in use)",
+       "call, lenient",
+       "quality difference [interval], lenient",
+       "A/A band, lenient",
        "compared"
       ],
       "rows": [
@@ -1583,7 +1583,7 @@
      },
      {
       "t": "p",
-      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
+      "text": "Evidence-quote rule: paraphrase (lenient, or a restatement whose figures and most content words are in the output). Lenient sensitivity: no call differs, see the Sensitivity block below."
      },
      {
       "t": "h",
@@ -1710,21 +1710,21 @@
      {
       "t": "h",
       "level": 2,
-      "text": "Sensitivity: strict quote rule"
+      "text": "Sensitivity: lenient quote rule"
      },
      {
       "t": "p",
-      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+      "text": "The same judgments scored under the lenient rule, run through the same rules. No call depends on the quote rule."
      },
      {
       "t": "table",
       "head": [
        "cell",
        "arm",
-       "call, lenient (in use)",
-       "call, strict",
-       "quality difference [interval], strict",
-       "A/A band, strict",
+       "call, paraphrase (in use)",
+       "call, lenient",
+       "quality difference [interval], lenient",
+       "A/A band, lenient",
        "compared"
       ],
       "rows": [

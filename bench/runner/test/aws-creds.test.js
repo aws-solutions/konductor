@@ -94,12 +94,12 @@ test('run --aws-profile and judge --aws-export-profile share one export and one 
     const base = { PATH: process.env.PATH, AWS_SECRET_ACCESS_KEY: 'old', AWS_DEFAULT_PROFILE: 'other', HOME: root };
     const syncOut = exportCredentials(PROFILE, { awsBin: aws, baseEnv: base });
     const syncSeen = JSON.parse(fs.readFileSync(seen, 'utf8'));
-    const asyncOut = await awsExport(PROFILE, { bin: aws, env: base });
+    const asyncOut = await awsExport(PROFILE, { awsBin: aws, baseEnv: base });
     const asyncSeen = JSON.parse(fs.readFileSync(seen, 'utf8'));
     assert.equal(syncOut, asyncOut);
     assert.deepEqual(asyncSeen, syncSeen, 'both paths run aws with the same arguments and the same stripped environment');
     for (const k of ['AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_PROFILE']) assert.equal(asyncSeen.keys.includes(k), false, k);
-    const judge = makeExportedCredentials({ profile: PROFILE, exporter: (p) => awsExport(p, { bin: aws, env: base }) });
+    const judge = makeExportedCredentials({ profile: PROFILE, exporter: (p) => awsExport(p, { awsBin: aws, baseEnv: base }) });
     const run = profileCredentials(PROFILE, { read: (p) => exportCredentials(p, { awsBin: aws, baseEnv: base }) });
     const j = await judge.current();
     assert.deepEqual(run.current(), { AWS_ACCESS_KEY_ID: j.accessKeyId, AWS_SECRET_ACCESS_KEY: j.secretAccessKey, AWS_SESSION_TOKEN: j.sessionToken });
@@ -107,9 +107,11 @@ test('run --aws-profile and judge --aws-export-profile share one export and one 
     assert.throws(() => parseExport(JSON.stringify({ AccessKeyId: 'A', SecretAccessKey: 'B', Expiration: 'soon' })), /expiry that is not a date/);
     assert.equal(isProfileName('bench'), true);
     assert.equal(isProfileName('a b'), false);
+    assert.equal(require('../lib/aws-creds.js').REFRESH_BEFORE_MS, undefined, 'no alias of REFRESH_WITHIN_MS (D-26)');
+    assert.equal(exportCredentials.toString().includes('EXPORT_TIMEOUT_MS') && awsExport.toString().includes('EXPORT_TIMEOUT_MS'), true, 'both exports use one timeout (D-26)');
     write(aws, '#!/bin/sh\necho "The config profile (bench) could not be found" >&2\nexit 255\n');
-    await assert.rejects(awsExport(PROFILE, { bin: aws }), /export-credentials --profile bench failed: The config profile \(bench\) could not be found/);
+    await assert.rejects(awsExport(PROFILE, { awsBin: aws }), /export-credentials --profile bench failed: The config profile \(bench\) could not be found/);
     write(aws, '#!/bin/sh\necho AKIDLEAKED0001\nexit 3\n');
-    await assert.rejects(awsExport(PROFILE, { bin: aws }), (e) => /failed: exit 3/.test(e.message) && !e.message.includes('AKIDLEAKED'));
+    await assert.rejects(awsExport(PROFILE, { awsBin: aws }), (e) => /failed: exit 3/.test(e.message) && !e.message.includes('AKIDLEAKED'));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

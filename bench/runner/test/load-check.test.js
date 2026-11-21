@@ -69,6 +69,19 @@ test('Claude Code: an SOP loaded through the Skill tool after a write is late, a
   assert.deepEqual(lc.mustLoad, [{ unit: 'k-plan', loaded: true, beforeFirstWrite: false }]);
 });
 
+test('Kiro: a forced SOP read of the installed k-plan.sop.md is a loaded SOP k-plan (D-52)', () => {
+  for (const first of [
+    call('r', 'fs_read', { operations: [{ mode: 'Line', path: '/scratch/home/.kiro/sops/k-plan.sop.md' }] }, null),
+    call('r', 'execute_bash', { command: 'cat /scratch/home/.kiro/sops/k-plan.sop.md' }, null),
+  ]) {
+    const read = { type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call_update', toolCallId: 'r', status: 'completed', content: [{ type: 'content', content: { type: 'text', text: '# k-plan\nsteps' } }] } } };
+    const stream = [first, read, call('w', 'fs_write', { path: 'a.js', command: 'create', file_text: 'x' }, null), done('w', { items: [] })];
+    const lc = loadCheckOf({ order: loadOrderOf(stream, 'kiro-cli'), extraction: extractSkills(stream, 'kiro-cli'), task: task({ targets: { targetSkills: [], targetSop: 'k-plan' } }), arm: {} });
+    assert.deepEqual(lc.loaded, [{ unit: 'k-plan', kind: 'sop', firstAt: 0, beforeFirstWrite: true }]);
+    assert.deepEqual(lc.mustLoad, [{ unit: 'k-plan', loaded: true, beforeFirstWrite: true }]);
+  }
+});
+
 test('unitKey drops kind and sop- prefixes', () => {
   assert.deepEqual(['skill:Backend-Review', 'sop-k-plan', 'agent:k-tpm', 'k-plan'].map(unitKey), ['backend-review', 'k-plan', 'k-tpm', 'k-plan']);
 });

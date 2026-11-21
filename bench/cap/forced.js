@@ -34,8 +34,7 @@ const KINDS = ['skill', 'sop', 'agent'];
 
 /**
  * The first-turn instruction for one harness and kind of unit. Plain text, no dashes, the unit named once in quotes.
- * shortcut: Kiro CLI's SOP read is a file read of `<name>.sop.md`, which load-check.js does not yet see (it reads SKILL.md
- * files and skill calls), so a forced SOP shows in the run's stream but not in its loadCheck; see DEBT.md.
+ * Kiro CLI's SOP read is a file read of `<name>.sop.md`, which load-check.js counts as a load of that SOP.
  */
 function forcedPrefix({ name, harness = 'kiro-cli', kind = 'skill' }) {
   if (!HARNESSES.includes(harness)) throw new Error(`forced load supports ${HARNESSES.join(' and ')} (got "${harness}")`);

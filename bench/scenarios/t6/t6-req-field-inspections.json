@@ -1,7 +1,7 @@
 {
   "id": "t6-req-field-inspections",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -201,22 +201,22 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to read material and create concrete requirements, no specific method prescribed."
+          "note": "Prompt asks for product requirements for tablet app replacement without prescribing a specific method, framework, or tool."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains paper process, asset catalog, operating notes but not synthesized requirements."
+          "note": "Fixture contains operational notes, interview transcripts, and draft documents but not the specific finished requirements that would pass hidden tests."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check patterns matching scripted facts; rubric aligns with prompt and fixture."
+          "note": "Rubric and hidden tests reference requirements that can be inferred from fixture (safety concerns, offline needs) or obtained from scripted facts. All names/paths exist."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM could create requirements from fixture; different implementation would pass if captures essentials."
+          "note": "Scripted facts provide specific answers when asked; fixture contains enough operational context. Different correct implementations would pass hidden tests."
         }
       ]
     }
@@ -231,13 +231,13 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 14.3,
       "alt": 100,
-      "date": "2026-11-20"
+      "date": "2026-11-21"
     }
   }
 }

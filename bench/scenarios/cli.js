@@ -8,7 +8,7 @@ const path = require('node:path');
 const { resolveBase } = require('../cap/source.js');
 const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
 const { repoRootOf, textFlag } = require('../runner/lib/flag-values.js');
-const { lintDir, catalogOfScan } = require('./lint.js');
+const { lintDir, catalogOfScan, readBaseline } = require('./lint.js');
 const { loadTaskFiles } = require('./files.js');
 const { buildCoverage, renderCoverageMd } = require('./coverage.js');
 const prereg = require('./prereg.js');
@@ -34,13 +34,17 @@ function dirArg(opts, sub, at = 1) {
 
 function cmdLint(opts) {
   const dir = dirArg(opts, 'lint');
-  const res = withTree(opts, (scan, b) => ({ ...lintDir(dir, catalogOfScan(scan)), base: b.label }));
+  const baseline = readBaseline();
+  const res = withTree(opts, (scan, b) => ({ ...lintDir(dir, catalogOfScan(scan), { baseline }), base: b.label }));
+  const fresh = res.findings.filter((f) => !f.known);
   if (opts.json) console.log(JSON.stringify(res, null, 2));
   else {
-    for (const f of res.findings) console.log(`${f.taskId}: ${f.rule}: ${f.detail} (${f.file})`);
-    console.log(`${res.tasks} task(s) checked against ${res.base}: ${res.findings.length ? `${res.findings.length} finding(s)` : 'clean'}`);
+    for (const f of res.findings) console.log(`${f.known ? 'known ' : ''}${f.taskId}: ${f.rule}: ${f.detail} (${f.file})${f.known ? ` [${f.known}]` : ''}`);
+    for (const k of res.stale) console.log(`stale baseline entry (fixed? remove it from bench/scenarios/lint-baseline.json): ${k}`);
+    const known = res.findings.length - fresh.length;
+    console.log(`${res.tasks} task(s) checked against ${res.base}: ${fresh.length ? `${fresh.length} finding(s)` : 'clean'}${known ? `, ${known} known (lint-baseline.json)` : ''}${res.stale.length ? `, ${res.stale.length} stale baseline entr${res.stale.length === 1 ? 'y' : 'ies'}` : ''}`);
   }
-  if (res.findings.length) process.exitCode = 1;
+  if (fresh.length || res.stale.length) process.exitCode = 1;
 }
 
 // The owner-approved list of units with no fair scenario: { "skill:name": "reason" }. --selection-only FILE, else DIR/selection-only.json when present.

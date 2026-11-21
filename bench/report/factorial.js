@@ -381,7 +381,7 @@ function factorialRuleBlocks(res) {
   const sens = res.sensitivity;
   const blocks = [D.p(ruleLine(res.quote, sens?.available ? 'see the table below.' : 'not available.'))];
   if (!sens?.available) return blocks;
-  const cap = (r) => (r === 'strict' ? 'strict' : 'lenient');
+  const cap = (r) => r;
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : 'n/a');
   const signedNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}` : 'n/a');
   blocks.push(D.table(

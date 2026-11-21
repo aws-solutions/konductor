@@ -70,9 +70,10 @@ function sheetMarkdown(items) {
 }
 
 // Writes sheet.json (blinded, editable), sheet.md (readable copy) and key.json (item -> arm).
-function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, redactions, outDir, criteriaPack = null }) {
+// `extraDirs` are the run's --extra-tasks directories, so tasks outside bench/tasks (sdlc, the scenario pack) resolve.
+function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, redactions, outDir, criteriaPack = null, extraDirs = [] }) {
   const run = loadRun(runDir);
-  const tasks = loadTasks(benchDir);
+  const tasks = loadTasks(benchDir, { extraDirs });
   const picked = drawSample(run.runs, n, seed);
   const items = [];
   const key = { runDir: run.dir, seed, items: {} };

@@ -33,7 +33,7 @@ scriptedSuite(test, assert, {
     { 
       id: 'F6', 
       all: [/\bdelegat.*advance|\bset.*up.*advance|\bpre.*set.*delegat/i, /\baway|\babsent|\bholiday|\bcover/i],
-      wrong: [/\bautomatic.*delegat|\bauto.*assign/i, /\bno\s+(?:delegation|delegate)\b|delegation\s+is\s+not\s+(?:allowed|supported)/i]
+      wrong: [/automatic(?:ally)?\s+(?:assign|creat|pick|choos|appoint)\w*\s+(?:a\s+|the\s+)?(?:deputy|delegate)|auto[- ]assign\w*\s+(?:a\s+|the\s+)?(?:deputy|delegate)/i, /\bno\s+delegation\b|delegation\s+is\s+not\s+(?:allowed|supported)/i]
     }
   ], 
   ground: [

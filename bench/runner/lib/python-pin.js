@@ -51,14 +51,28 @@ function resolvePython({ flag = null, env = process.env, want = DEFAULT_WANT } =
   return { executable: null, version: null, source: null, tried };
 }
 
+// A launcher script (a version manager shim or a runtime wrapper, which starts `#!`) finds the real interpreter from
+// its own path, so a link to it under another name breaks it (exit 127, DEBT D-121); such an executable gets a small
+// script that execs it by its real path instead of a link.
+function isScript(file) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    try { const b = Buffer.alloc(2); return fs.readSync(fd, b, 0, 2, 0) === 2 && b.toString('latin1') === '#!'; } finally { fs.closeSync(fd); }
+  } catch { return false; }
+}
+const shQuote = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+
 /** Links `executable` as python3, python and python<major.minor> in <scratchDir>/python-bin and returns that dir. */
 function linkPython(scratchDir, executable, version) {
   const dir = path.join(scratchDir, 'python-bin');
   fs.mkdirSync(dir, { recursive: true });
   const minor = version.split('.').slice(0, 2).join('.');
+  const script = isScript(executable);
   for (const name of ['python3', 'python', `python${minor}`]) {
-    fs.rmSync(path.join(dir, name), { force: true });
-    fs.symlinkSync(executable, path.join(dir, name));
+    const file = path.join(dir, name);
+    fs.rmSync(file, { force: true });
+    if (script) fs.writeFileSync(file, `#!/bin/sh\nexec ${shQuote(executable)} "$@"\n`, { mode: 0o755 });
+    else fs.symlinkSync(executable, file);
   }
   return dir;
 }

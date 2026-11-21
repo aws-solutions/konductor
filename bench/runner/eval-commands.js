@@ -22,7 +22,7 @@ const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging, planJudging } = require('../judge/run.js');
 const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
 const { checkRule } = require('../judge/views.js');
-const { DEFAULT_QUOTE_RULE, RULE_TEXT } = require('../judge/quote.js');
+const { DEFAULT_JUDGE_QUOTE_RULE, JUDGE_QUOTE_RULES, RULE_TEXT } = require('../judge/quote.js');
 const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
@@ -164,7 +164,7 @@ function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir, log = () => {} }) {
   if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
   if (credsFile) readProfile(credsFile, awsProfile);
   const awsBin = process.env.BENCH_AWS_BIN || 'aws';
-  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { bin: awsBin }), log }) : null;
+  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { awsBin }), log }) : null;
   const cacheDir = path.resolve(flagValue(opts, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
   const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(opts, 'opencode-bin') });
   return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir });
@@ -233,7 +233,7 @@ const packOf = (opts) => (opts['criteria-pack'] === undefined ? null : loadPack(
 
 async function cmdJudge(opts) {
   if (opts['rescore-quotes']) return cmdRescoreQuotes(opts);
-  const quoteRule = checkRule(flagValue(opts, 'quote-match') ?? DEFAULT_QUOTE_RULE);
+  const quoteRule = checkRule(flagValue(opts, 'quote-match') ?? DEFAULT_JUDGE_QUOTE_RULE, '--quote-match', JUDGE_QUOTE_RULES);
   const { runDir, benchDir, run, judges, small } = judgePanelFor(opts);
   const packName = opts['criteria-pack'];
   if (packName !== undefined) {
@@ -278,7 +278,7 @@ async function cmdJudge(opts) {
     process.exitCode = 3;
   }
   reportCallerStop(caller);
-  console.log(`evidence-quote rule recorded as the default: ${RULE_TEXT[quoteRule]}; the other rule's verdicts are recorded beside it`);
+  console.log(`evidence-quote rule recorded as the default: ${RULE_TEXT[quoteRule]}; the other rule's verdicts are recorded beside it; reports score with the paraphrase rule unless their scoring file names another`);
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);
 }
 
@@ -582,6 +582,7 @@ function cmdCalibrate(opts) {
       runDir: path.resolve(need(opts, 'run')), benchDir: benchDirOf(opts),
       n: numOpt(opts, 'n', 25, { int: true }), seed: seedOf(opts),
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out, criteriaPack: packOf(opts),
+      extraDirs: extraDirsOf(opts),
     });
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). Label sheet.json, then run: calibrate score --labels ${r.sheetPath}`);
   } else if (sub === 'export-reference') {

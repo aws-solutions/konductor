@@ -33,6 +33,14 @@ test('contradicts ignores a wrong claim the requirement denies, and keeps a patt
   assert.equal(key.contradicts('Cards are not shown. Include payment card data.', /include payment card/i), true);
 });
 
+test('contradicts reads each sentence and sees a negation after the match; statesFact takes up to three requirements', () => {
+  assert.equal(key.contradicts('Delivery is at least once, and exactly-once delivery shall not be promised.', /exactly[- ]once/i), false);
+  assert.equal(key.contradicts('Only the bracket is stored. The birth date is not stored.', /store.*birth.*date/i), false);
+  assert.equal(key.contradicts('We store the birth date.', /store.*birth.*date/i), true);
+  assert.equal(key.statesFact(['One ZIP with CSV files.', 'All times are UTC.'], [/ZIP/i, /CSV/i, /UTC/i]), true);
+  assert.equal(key.statesFact(['One ZIP.', 'CSV files.', 'UTC times.', 'x'], [/ZIP/i, /CSV/i, /UTC/i, /JSON/i]), false);
+});
+
 test('numbersIn normalises thousands and skips 0 and 1', () => {
   assert.deepEqual(key.numbersIn('2,000 orders, 1 site, 0 errors, 3.5 hours, R12'), ['2000', '3.5']);
 });

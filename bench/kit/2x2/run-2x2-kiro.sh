@@ -323,8 +323,9 @@ report() { # 3: the Kiro-only report; the paired per-task interval and the cost 
   # Why did the long runs run long, and the same result if the limit had been 600 or 1200 s (read only)
   python3 "$KIT_SRC/timeline.py" --run "$KD" --min-sec 600 --out "$S/report-rerun-kiro/timelines" || say "WARNING: timeline step failed"
   BENCH_ROOT="$R/bench" node "$KIT_SRC/rescore-by-limit.js" --run "$KD" --baseline vanilla --variant konductor --limits 600,1200,1800 --extra-tasks "$X" --out "$S/report-rerun-kiro/rescore-by-limit.md" >/dev/null || say "WARNING: rescore step failed"
-  # `calibrate export` ignores --extra-tasks (bench bug, debt row D-47) and stops on an sdlc task: a warning, not a stop.
-  node "$BJ" calibrate export --run "$KD" --n 25 --seed 1 || say "WARNING: calibration sample not exported (calibrate export cannot find sdlc tasks); a person cannot label a sample from this run yet"
+  # `calibrate export` takes --extra-tasks since D-47 was fixed; a bench at R older than that fix still stops on an sdlc
+  # task, so a failed export stays a warning, not a stop.
+  node "$BJ" calibrate export --run "$KD" --n 25 --seed 1 --extra-tasks "$X" || say "WARNING: calibration sample not exported (a bench at R older than the D-47 fix cannot find sdlc tasks); a person cannot label a sample from this run yet"
   say "table: $S/report-rerun-kiro/report.md"
 }
 

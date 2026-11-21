@@ -19,20 +19,18 @@ test('the default cache follows XDG_STATE_HOME, else ~/.local/state, and BENCH_R
   try {
     const home = path.join(root, 'home');
     fs.mkdirSync(home);
-    // A host that still has the old /tmp cache keeps using it while the new one does not exist.
-    const legacy = '/tmp/konductor-bench/realrepos';
-    const expected = fs.existsSync(legacy) ? fs.realpathSync(legacy) : path.join(fs.realpathSync(home), '.local', 'state', 'konductor-bench', 'realrepos');
-    assert.equal(resolveIn({ HOME: home }).stdout.trim(), expected);
+    // The old shared /tmp cache is never read, even where it still exists (DEBT #21-legacy).
+    assert.equal(resolveIn({ HOME: home }).stdout.trim(), path.join(fs.realpathSync(home), '.local', 'state', 'konductor-bench', 'realrepos'));
     const xdg = path.join(root, 'xdg');
     fs.mkdirSync(xdg);
-    assert.equal(resolveIn({ HOME: home, XDG_STATE_HOME: xdg }).stdout.trim(), fs.existsSync(legacy) ? fs.realpathSync(legacy) : path.join(fs.realpathSync(xdg), 'konductor-bench', 'realrepos'));
+    assert.equal(resolveIn({ HOME: home, XDG_STATE_HOME: xdg }).stdout.trim(), path.join(fs.realpathSync(xdg), 'konductor-bench', 'realrepos'));
     const own = path.join(root, 'own');
     fs.mkdirSync(own);
     assert.equal(resolveIn({ HOME: home, BENCH_REAL_CACHE: own }).stdout.trim(), fs.realpathSync(own));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('two users on one host get two default caches, each under their own home', { skip: fs.existsSync('/tmp/konductor-bench/realrepos') && 'the old shared /tmp cache exists here, so both users still use it (DEBT #21-legacy)' }, () => {
+test('two users on one host get two default caches, each under their own home', () => {
   const root = tmp();
   try {
     const homes = ['alice', 'bob'].map((u) => { const h = path.join(root, u); fs.mkdirSync(h); return h; });

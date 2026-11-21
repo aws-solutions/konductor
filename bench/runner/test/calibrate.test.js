@@ -73,6 +73,19 @@ test('export writes a blinded sheet, a separate key, and is deterministic for a 
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
+test('export finds a task that lives in an --extra-tasks directory (D-47)', () => {
+  const f = fixture(4);
+  try {
+    const extra = path.join(f.root, 'extra');
+    fs.mkdirSync(extra);
+    fs.renameSync(path.join(f.bench, 'tasks/t1.json'), path.join(extra, 't1.json'));
+    assert.throws(() => exportSheet({ ...common(f), n: 2, seed: 1, outDir: path.join(f.root, 'no-extra') }), /task "t1" is not in/);
+    const r = exportSheet({ ...common(f), n: 2, seed: 1, outDir: path.join(f.root, 'cal'), extraDirs: [extra] });
+    assert.equal(r.n, 2);
+    assert.equal(Object.keys(JSON.parse(fs.readFileSync(path.join(f.root, 'cal/key.json'), 'utf8')).items).length, 2);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
 test('a run whose scrub failed, whose output files were replaced, or that had an infrastructure error is never sampled', () => {
   const root = tmp();
   try {

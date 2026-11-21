@@ -43,6 +43,8 @@ function targetsOf(task, catalog) {
 function v3Errors(task) {
   const errors = [];
   if (task.target === undefined && !hasV3Targets(task)) errors.push('needs "target" (old form) or one of targetSkills, targetSop, targetAgent');
+  // A v3 task's checks change when it is repaired; `version` is what a report and a recheck compare (DEBT D-42).
+  if (task.phase !== undefined && task.version === undefined) errors.push('a v3 task (one with a phase) needs "version"; bump it whenever its checks, key or fixture change');
   // `target: null` (the schema allows it) names no target, so it may sit beside the v3 fields.
   if (task.target != null && hasV3Targets(task)) errors.push('"target" and the v3 target fields cannot both be set');
   // A findings key item is graded by `location` (runner/lib/findings-key.js) or judged by its prose `finding`.

@@ -58,14 +58,35 @@ const matchesAll = (text, all) => all.every((re) => re.test(text));
 const NEGATION = /\b(?:not|never|no|without|nor|excluded?|excluding|isn't|aren't|doesn't|don't|won't|cannot|can't|instead of|rather than)\b/i;
 const statesNegation = (re) => /\b(?:no|not|never|without|cannot)\b/i.test(re.source.replace(/\\[a-zA-Z]/g, ' '));
 
-/** True when `text` makes the claim of the wrong pattern `re` (see NEGATION). */
+/**
+ * True when `text` makes the claim of the wrong pattern `re` (see NEGATION). Each sentence is read on its own, so a
+ * pattern with `.*` does not join two sentences; a negation within 40 characters before or after the match, in the same
+ * sentence, makes it a denial ("exactly-once delivery shall not be promised").
+ */
 function contradicts(text, re) {
-  if (statesNegation(re)) return re.test(text);
-  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
-  for (const m of String(text).matchAll(g)) {
-    const from = Math.max(0, m.index - 40, String(text).lastIndexOf('.', m.index - 1) + 1, String(text).lastIndexOf(';', m.index - 1) + 1);
-    if (!NEGATION.test(String(text).slice(from, m.index) + m[0])) return true;
-    if (m[0] === '') break;
+  for (const s of String(text).split(/(?<=[.!?;])\s+/)) {
+    if (statesNegation(re)) { if (re.test(s)) return true; continue; }
+    const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+    for (const m of s.matchAll(g)) {
+      if (!NEGATION.test(s.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40))) return true;
+      if (m[0] === '') break;
+    }
+  }
+  return false;
+}
+
+/**
+ * True when the requirements state the fact: every pattern of `all` matches one requirement, or together at most
+ * three requirements (a correct document may put the format and the time zone of an export in two requirements).
+ */
+function statesFact(reqs, all) {
+  if (reqs.some((t) => matchesAll(t, all))) return true;
+  const hits = reqs.map((t) => all.map((re) => re.test(t)));
+  const n = reqs.length;
+  const covers = (...ix) => all.every((_, k) => ix.some((i) => hits[i][k]));
+  for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) {
+    if (covers(a, b)) return true;
+    for (let c = b + 1; c < n; c++) if (covers(a, b, c)) return true;
   }
   return false;
 }
@@ -111,7 +132,7 @@ function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), 
   const reqs = () => requirementTexts(blockOf(doc));
   for (const f of facts) {
     test(`states ${f.id}`, () => {
-      assert.ok(reqs().some((t) => matchesAll(t, f.all)), `${f.id}: no requirement matches ${f.all.map(String).join(' and ')}`);
+      assert.ok(statesFact(reqs(), f.all), `${f.id}: no one to three requirements match ${f.all.map(String).join(' and ')}`);
     });
   }
   test('no requirement contradicts a fact the user holds', () => {
@@ -135,4 +156,4 @@ function scriptedSuite(test, assert, { doc, facts, answers = scriptedAnswers(), 
   });
 }
 
-module.exports = { ROOT, readDoc, lastJsonBlock, blockOf, itemTexts, requirementTexts, matchesAll, contradicts, numbersIn, conversation, questionCount, scriptedAnswers, scriptedSuite };
+module.exports = { ROOT, readDoc, lastJsonBlock, blockOf, itemTexts, requirementTexts, matchesAll, contradicts, statesFact, numbersIn, conversation, questionCount, scriptedAnswers, scriptedSuite };
