@@ -1,7 +1,7 @@
 {
   "id": "t11-media-returns-whiteboard",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -149,8 +149,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): fixture test script and CI line use test/*.test.js, which Node 22 and later need (D-119)",
+    "log": "HAND-EDITS.md",
+    "version": 3
   },
   "pilot": {
     "scores": {},

@@ -1253,8 +1253,10 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks.
   It also checks bug classes that reviews found more than once (`bench/scenarios/lint-files.js`): `judge-share` (a v3 task's judges carry more than
   30% of its score under the default weights, for example no `tests` check), `key-negation` (a block key item fails an answer whose text matches a
-  `none` pattern, so a correct denial of the wrong cause loses it; a pattern anchored as `^...$` is exempt), `bare-test-dir` (a fixture's
-  `package.json` script or CI file runs `node --test DIR`, which Node 22 and later read as one file, unless DIR has a `package.json` naming a main
+  `none` pattern, so a correct denial of the wrong cause loses it; a pattern anchored as `^...$` is exempt; a key graded by the shared
+  `block-key.js`, which skips a denied claim in `none` lists, is checked only for `none` items, and a `none` item with its own `match.none`
+  denial guard is exempt), `bare-test-dir` (a fixture's
+  `package.json` script or CI file runs `node --test DIR`, which Node 22 and later read as one file, unless DIR has an `index.js` or a `package.json` naming a main
   file) and `solution-link` (a check runs `ln -s . solution` without moving an agent-made `solution/` aside first). Known findings are listed in
   `bench/scenarios/lint-baseline.json`, each with its DEBT row: they print as `known` and do not fail. Exit 1 on a new finding, or on a baseline
   entry of a linted task that no longer matches (remove it: the baseline only shrinks).
@@ -1293,7 +1295,10 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   because each Playwright run takes about 690 MB. Wave 11 includes the fresh-session task, which needs the Kiro CLI or Claude Code arm. Wave 12 leaves
   out `t12-mux-parallel-merge` when tmux is not on PATH and `t12-cmux-parallel-merge` when cmux is not (DEBT D-126), with a message. After a paid wave,
   `bench/scenarios/wave-retry.js` lists the runs the service throttled, and the script reruns them once into `OUT-retry` within what is left of the
-  ceiling (DEBT D-138).
+  ceiling (DEBT D-138). `run` itself already reruns a throttled run once, a minute later, while the budget and the guards allow a launch
+  (`orchestrate.js` `DEFAULT_THROTTLE_RETRY`; plant cells excepted): the refused attempt is charged and kept as `<replicate>.throttled-1` with its
+  `attempt-result.json`, the cell's `result.json` lists it in `throttleRetries`, and no report reads it. The pilot table gives a throttled run its
+  own `throttled` flag, not `broken`.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

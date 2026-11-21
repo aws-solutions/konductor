@@ -162,6 +162,12 @@ function filePack() {
   write(path.join(dir, 'fixtures/baredir/package.json'), JSON.stringify({ scripts: { test: 'node --test test/', lint: 'node --test test/*.test.js' } }));
   write(path.join(dir, 'fixtures/baredir/test/a.test.js'), '');
   write(path.join(dir, 'fixtures/baredir/.github/workflows/ci.yml'), 'jobs:\n  t:\n    steps:\n      - run: node --test test\n');
+  task('indexed');
+  write(path.join(dir, 'fixtures/indexed/package.json'), JSON.stringify({ scripts: { test: 'node --test test/' } }));
+  write(path.join(dir, 'fixtures/indexed/test/index.js'), '');
+  write(path.join(dir, 'fixtures/indexed/test/a.test.js'), '');
+  write(path.join(dir, 'fixtures/indexed/config/x.json'), '{}');
+  write(path.join(dir, 'fixtures/indexed/.github/workflows/ci.yml'), 'steps:\n  - run: node --test\n  - name: config\n    run: node scripts/check.js config\n');
   task('shimmed');
   write(path.join(dir, 'fixtures/shimmed/package.json'), JSON.stringify({ scripts: { test: 'node --test test/' } }));
   write(path.join(dir, 'fixtures/shimmed/test/package.json'), JSON.stringify({ main: 'index.js' }));
@@ -169,7 +175,7 @@ function filePack() {
   return dir;
 }
 
-test('the file rules find a none pattern in a block key, a bare node --test directory and an unguarded solution link', () => {
+test('the file rules find a none pattern in a block key, a bare node --test directory and an unguarded solution link; a test/index.js shim and a YAML line break are not bare dirs', () => {
   const res = lintDir(filePack(), CATALOG);
   assert.deepEqual(res.findings.map((f) => [f.taskId, f.rule, f.where]), [
     ['baredir', 'bare-test-dir', 'package.json'],
@@ -179,6 +185,16 @@ test('the file rules find a none pattern in a block key, a bare node --test dire
     ['linked', 'solution-link', 'checks[0]'],
   ]);
   assert.match(res.findings[0].detail, /node --test test\/.*use test\/\*\.test\.js/);
+});
+
+test('a key graded by the shared block-key.js skips denials in none lists; a none item is flagged unless it has its own denial guard', () => {
+  const dir = filePack();
+  write(path.join(dir, 'hidden/keyed/.bench-lib.json'), JSON.stringify({ 'block-kit/block-key.js': 'block-key.js' }));
+  const key = JSON.parse(fs.readFileSync(path.join(dir, 'hidden/keyed/block-kit/key.json'), 'utf8'));
+  key.items.push({ id: 'guarded', type: 'none', path: 'items', match: { all: ['ip'], none: ['\\bnot\\b'] } });
+  write(path.join(dir, 'hidden/keyed/block-kit/key.json'), JSON.stringify(key));
+  const res = lintDir(dir, CATALOG);
+  assert.deepEqual(res.findings.filter((f) => f.taskId === 'keyed').map((f) => f.where), ['block-kit/key.json#no-pdf-item']);
 });
 
 test('a baseline entry marks a finding known; an entry that no longer matches is stale; the CLI fails on a new finding only', () => {

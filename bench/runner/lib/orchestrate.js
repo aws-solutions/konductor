@@ -245,7 +245,10 @@ function preflightTable(arms, prepared, errors) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ')).join('\n');
 }
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS }) {
+// One rerun of a run the model service refused (a throttle), after a minute (DEBT D-138; pilot-wave.sh reruns any left).
+const DEFAULT_THROTTLE_RETRY = Object.freeze({ max: 1, waitMs: 60000 });
+
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS, throttleRetry = DEFAULT_THROTTLE_RETRY }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
   // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
   const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
@@ -304,14 +307,36 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       writeResult(outDir, arm, task, replicate, r);
     } else {
       log(`run  ${arm.id} / ${task.id} / #${replicate}`);
-      const inFlightAtStart = active;
-      active++;
-      try {
-        const args = { arm, task, replicate, ctx, prepared: prepared.get(arm.id), outDir: dir, inFlightAtStart };
-        r = await (arm.plant ? runPlantCell(executeRun, args) : executeRun(args));
-      } finally {
-        active--;
+      const runIt = async () => {
+        const inFlightAtStart = active;
+        active++;
+        try {
+          const args = { arm, task, replicate, ctx, prepared: prepared.get(arm.id), outDir: dir, inFlightAtStart };
+          return await (arm.plant ? runPlantCell(executeRun, args) : executeRun(args));
+        } finally {
+          active--;
+        }
+      };
+      r = await runIt();
+      // A run the model service refused (a throttle) never reached the task: wait and run it again, up to
+      // throttleRetry.max times, while the budget and the guards still allow a launch. Each refused attempt is charged
+      // and kept beside the cell as <replicate>.throttled-N (its result in attempt-result.json, so no report reads it).
+      // Plant cells are left to the plant runner's own resume.
+      const refused = [];
+      while (!arm.plant && r.status !== 'success' && (r.flags || []).includes('throttled') && refused.length < throttleRetry.max && !shouldSkip(item)) {
+        const charged = ledger.add(r);
+        const seen = costOf(r);
+        study.record({ kind: 'run', unit, arm: arm.id, task: task.id, replicate, status: r.status, credits: seen.known ? seen.observed : null, charged, censored: seen.censored, throttled: true });
+        const aside = `${dir}.throttled-${refused.length + 1}`;
+        fs.renameSync(dir, aside);
+        fs.rmSync(path.join(aside, 'result.json'), { force: true });
+        fs.writeFileSync(path.join(aside, 'attempt-result.json'), `${JSON.stringify({ ...r, [unit === 'usd' ? 'costUsdCharged' : 'creditsCharged']: charged }, null, 2)}\n`);
+        refused.push({ dir: path.basename(aside), status: r.status, error: r.error ?? null, charged });
+        log(`throttled ${arm.id} / ${task.id} / #${replicate}: the service refused the run; kept as ${path.basename(aside)}, running it again in ${Math.round(throttleRetry.waitMs / 1000)} s`);
+        await new Promise((res) => setTimeout(res, throttleRetry.waitMs));
+        r = await runIt();
       }
+      if (refused.length) r.throttleRetries = refused;
       const charge = ledger.add(r);
       if (unit === 'usd') r.costUsdCharged = charge; else r.creditsCharged = charge;
       const seen = costOf(r);
@@ -355,5 +380,5 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
 }
 
 module.exports = {
-  CREDITS, USD, runAll, planRuns, existingResults, resumePlan, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
+  CREDITS, USD, runAll, DEFAULT_THROTTLE_RETRY, planRuns, existingResults, resumePlan, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
 };

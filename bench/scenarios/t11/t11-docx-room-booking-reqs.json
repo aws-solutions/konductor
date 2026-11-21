@@ -1,7 +1,7 @@
 {
   "id": "t11-docx-room-booking-reqs",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "requirements",
   "role": "pm",
   "questions": "allowed",
@@ -132,5 +132,11 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): old-duration-absent skips a requirement that names 4 hours as the old value (D-136)",
+    "log": "HAND-EDITS.md",
+    "version": 2
+  }
 }

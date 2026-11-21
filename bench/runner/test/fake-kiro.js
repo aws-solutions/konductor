@@ -41,6 +41,14 @@ if (tc.missingBinary) { console.error('sh: 1: ' + process.argv[1] + ': No such f
 if (tc.exitCode) { if (tc.stderrText) console.error(tc.stderrText); process.exit(tc.exitCode); }
 if (tc.sleepSec) { setTimeout(() => {}, tc.sleepSec * 1000); return; }
 const ev = (type, data) => console.log(JSON.stringify({ type, data }));
+// throttleOnce: the first invocation (across runs) is refused by the model service, the way pilot wave 7 saw it.
+if (cfg.throttleOnce && !fs.existsSync(path.join(cfg.dir, 'throttled-once'))) {
+  fs.writeFileSync(path.join(cfg.dir, 'throttled-once'), '');
+  ev('runStarted', { engine });
+  ev('runError', { stage: 'prompt', message: 'ModelThrottleError: the model is experiencing high traffic' });
+  if (cfg.throttleLingerMs) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, cfg.throttleLingerMs);
+  process.exit(1);
+}
 fs.writeFileSync('out.txt', 'done\\n');
 // --introspect: a request dump, the way engine v3 writes one, recording where it was written from.
 if (tc.dumpRequests && process.env.KIRO_DUMP_REQUESTS_DIR) {
