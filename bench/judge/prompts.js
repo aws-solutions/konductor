@@ -28,8 +28,15 @@ function weakAnswerLines(task) {
   return `\n\nWEAK ANSWERS (judge only; an output that makes an expert: point only in one of these ways fails that criterion):\n${weak.map((w) => `- ${w}`).join('\n')}`;
 }
 
+// The task's adjudication guide (`adjudication`): rules for the places two judges would split on this task.
+function adjudicationLines(task) {
+  const rules = task.adjudication ?? [];
+  if (!rules.length) return '';
+  return `\n\nADJUDICATION RULES (judge only; apply them when a verdict is borderline):\n${rules.map((r) => `- ${r}`).join('\n')}`;
+}
+
 function head(task, answerKey) {
-  return `TASK GIVEN TO THE AGENT:\n${task.prompt}\n\nRUBRIC:\n${rubricLines(task.rubric)}${weakAnswerLines(task)}\n\nANSWER KEY (judge only):\n${answerKey ?? '(none provided)'}`;
+  return `TASK GIVEN TO THE AGENT:\n${task.prompt}\n\nRUBRIC:\n${rubricLines(task.rubric)}${weakAnswerLines(task)}${adjudicationLines(task)}\n\nANSWER KEY (judge only):\n${answerKey ?? '(none provided)'}`;
 }
 
 function rubricPrompt({ task, answerKey, bundleText }) {

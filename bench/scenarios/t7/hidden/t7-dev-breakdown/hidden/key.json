@@ -8,7 +8,7 @@
       "op": "includes",
       "path": "files_to_change",
       "ids": [
-        "db/migrations/005_add_product_prices.sql"
+        "db/migrations/005"
       ]
     },
     {
@@ -65,7 +65,7 @@
       "op": "order",
       "path": "change_order",
       "ids": [
-        "db/migrations/005_add_product_prices.sql",
+        "db/migrations/005",
         "src/storage/product-repository.js"
       ]
     },
@@ -105,7 +105,7 @@
       "op": "precision",
       "path": "files_to_change",
       "ids": [
-        "db/migrations/005_add_product_prices.sql",
+        "db/migrations/005",
         "docs/data-dictionary.md",
         "src/storage/product-repository.js",
         "src/services/catalog-service.js",

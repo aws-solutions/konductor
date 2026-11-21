@@ -20,12 +20,23 @@
 #   OUT    the wave's output dir (default: /tmp/pilot-wN)
 #   KBIN_SHA256  the pin to check KBIN against (default: the pinned 3.5.0 copy); tests set it for a stub
 # The paid run uses vanilla Kiro CLI, claude-sonnet-5.5, effort high, 1 replicate, one run at a time.
+# A run the service throttled (ClientThrottleError and the like, DEBT D-138) is rerun once into OUT-retry, within
+# what is left of the wave's ceiling; its table is OUT-retry-table.md.
+# Waves 9 to 12 (the batches added on 2026-11-20):
+#   9  t9   browser tasks: the whole wave holds /var/tmp/konductor-heavy.lock, and each Playwright run takes about
+#           690 MB, so its per-run limit is low (10) and runs stay one at a time.
+#   10 t10  long multi-phase tasks: the highest per-run limit (25).
+#   11 t11  t11-fresh-session-memory opens a fresh second session, which only the Kiro CLI and Claude Code arms
+#           support; this script's arm is vanilla Kiro CLI, so it runs.
+#   12 t12  t12-mux-parallel-merge needs tmux and t12-cmux-parallel-merge needs cmux; a task whose tool is not on
+#           PATH is left out with a message (cmux is not on the bench host: DEBT D-126).
 
 set -euo pipefail
 
 PIN_DEFAULT=e1bf38eb89e06d90ffb872565f3f191590e148c2da0b68e5d5ac31b7ca49a70e
 # wave -> batch, soft cap, ceiling (--budget-credits), per-run limit (--run-credit-limit; it flags a run, it does
-# not stop one, so each ceiling keeps 25% margin: DEBT D-67)
+# not stop one, so each ceiling keeps 25% margin: DEBT D-67). Waves 9 to 12 are sized from waves 1 to 7, which spent
+# about 2 to 9 credits per task (wave 3: 14 runs, 55 credits): ready tasks x about 6, plus margin.
 WAVES='1 t4 100 125 20
 2 t5 60 75 15
 3 t6 145 180 45
@@ -33,7 +44,11 @@ WAVES='1 t4 100 125 20
 5 t1 65 80 15
 6 t2 90 110 15
 7 t7 55 70 10
-8 t8 65 80 15'
+8 t8 65 80 15
+9 t9 60 75 10
+10 t10 60 75 25
+11 t11 60 75 15
+12 t12 90 115 20'
 
 stop() { printf 'STOP: %s\n' "$*" >&2; exit 1; }
 say() { printf '%s\n' "$*"; }
@@ -58,7 +73,7 @@ while [ "$#" -gt 0 ]; do
     --out) need "$@"; OUT_OPT=$2; shift ;;
     --list) usage; exit 0 ;;
     -h|--help) usage; exit 0 ;;
-    [1-8]) WAVE=$1 ;;
+    [1-9]|1[0-2]) WAVE=$1 ;;
     *) usage >&2; exit 64 ;;
   esac
   shift
@@ -155,7 +170,22 @@ if [ -n "$ONLY" ]; then
   [ -n "$keep" ] || stop "none of the chosen tasks is ready in $B"
   TASKS=$keep
 fi
+# A task whose orchestrator tool is not on this host would only fail: leave it out and say why.
+for pair in t12-mux-parallel-merge:tmux t12-cmux-parallel-merge:cmux; do
+  t=${pair%%:*}; tool=${pair##*:}
+  case ",$TASKS," in *",$t,"*)
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      TASKS=$(printf '%s' ",$TASKS," | sed "s/,$t,/,/; s/^,//; s/,$//")
+      say "skipped $t: $tool is not on PATH on this host (DEBT D-126); install $tool to run it"
+    fi ;;
+  esac
+done
+[ -n "$TASKS" ] || stop "no runnable task left in $B"
 say "ready tasks ($(printf '%s' "$TASKS" | tr ',' '\n' | grep -c .)): $TASKS"
+
+# Browser waves hold the heavy lock for the whole run, so no other Playwright job shares the host's memory.
+LOCK=()
+[ "$B" != t9 ] || LOCK=(flock -x /var/tmp/konductor-heavy.lock)
 
 RUN=(run --suite pilot --tasks "$TASKS" --arms vanilla --replicates 1 --parallel 1
   --extra-tasks "$R/bench/scenarios/$B" --repo-root "$R" --hide "$R" --isolate unshare --seed 20261119
@@ -166,6 +196,7 @@ if [ "$PREP" = 1 ]; then
   PO=$(mktemp -d /tmp/pilot-prep.XXXXXX)
   say "prepare-only (no agent started), out $PO:"
   nice -n 10 "${BJ[@]}" "${RUN[@]}" --out "$PO" --prepare-only
+  [ "${#LOCK[@]}" = 0 ] || say "(the paid run holds ${LOCK[*]})"
   rm -r -- "$PO"
   say "prepare-only passed. Paid run: bash $R/bench/scripts/pilot-wave.sh$ARGS_NO_PREP"
   exit 0
@@ -174,14 +205,36 @@ fi
 unshare -Urm true 2>/dev/null || stop "user namespaces are blocked in this shell (--isolate unshare needs them): run from your own terminal"
 
 say "paid run starts now (ceiling $CEIL credits). Log: $OUT.log"
+[ "${#LOCK[@]}" = 0 ] || say "holding ${LOCK[*]} for the whole wave"
 set +e
-nice -n 10 "${BJ[@]}" "${RUN[@]}" --out "$OUT" 2>&1 | tee "$OUT.log"
+"${LOCK[@]}" nice -n 10 "${BJ[@]}" "${RUN[@]}" --out "$OUT" 2>&1 | tee "$OUT.log"
 rc=${PIPESTATUS[0]}
 set -e
 "${BJ[@]}" scenarios pilot-table "$OUT" | tee "$OUT-table.md" || say "WARNING: pilot-table failed; paste $OUT.log"
+
+# Retry once: the runs the service throttled, within what is left of the ceiling (DEBT D-138).
+retry=$(node "$R/bench/scenarios/wave-retry.js" "$OUT" --ceiling "$CEIL" || true)
+rtasks=$(printf '%s' "$retry" | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).tasks.join(","))}catch{}})')
+rleft=$(printf '%s' "$retry" | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).left))}catch{process.stdout.write("0")}})')
+if [ -n "$rtasks" ]; then
+  if [ "$rleft" -ge "$RUNLIM" ] && [ ! -e "$OUT-retry" ]; then
+    say "throttled by the service: $rtasks. Retrying once into $OUT-retry (ceiling $rleft credits)"
+    RETRY_RUN=("${RUN[@]}")
+    for i in "${!RETRY_RUN[@]}"; do
+      case "${RETRY_RUN[$i]}" in --tasks) RETRY_RUN[i+1]=$rtasks ;; --budget-credits) RETRY_RUN[i+1]=$rleft ;; esac
+    done
+    set +e
+    "${LOCK[@]}" nice -n 10 "${BJ[@]}" "${RETRY_RUN[@]}" --out "$OUT-retry" 2>&1 | tee "$OUT-retry.log"
+    set -e
+    "${BJ[@]}" scenarios pilot-table "$OUT-retry" | tee "$OUT-retry-table.md" || say "WARNING: pilot-table failed on $OUT-retry"
+  else
+    say "throttled by the service: $rtasks. Not retried ($rleft credits left of the ceiling, or $OUT-retry exists): rerun with --tasks $rtasks --out $OUT-retry"
+  fi
+fi
 say ""
 say "run exit code $rc. Paste back to the lead:"
 say "  $OUT-table.md"
+[ ! -e "$OUT-retry-table.md" ] || say "  $OUT-retry-table.md"
 say "  the last 40 lines of $OUT.log"
 say "  $OUT/run-config.json (or the newest $OUT/run-configs/*.json)"
 say "Table again: ${BJ[*]} scenarios pilot-table $OUT"

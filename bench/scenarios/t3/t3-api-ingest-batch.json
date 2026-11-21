@@ -2,7 +2,7 @@
   "id": "t3-api-ingest-batch",
   "class": "design",
   "target": null,
-  "prompt": "Review the sensor-ingest materials in `fixture/` and design the API contract and decision record for this service. Write the OpenAPI document to `api/openapi.json` and the architecture decision to `docs/decision.md`. The decision document must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (an array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the fleet traffic, gateway, reliability, and pricing data to compute the selected option's values rather than repeating a raw input. Include a batch ingest POST operation with per-item outcome reporting, a client idempotency header, and a GET operation for batch status in the API document. Explain the tradeoffs among the options and how the selected design meets the operating constraints.",
+  "prompt": "Review the sensor-ingest materials in `fixture/` and design the API contract and decision record for this service. Write the OpenAPI document to `api/openapi.json` and the architecture decision to `docs/decision.md`. The decision document must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (an array of option ids considered), `limits` (an object mapping each hard-limit name to {\"limit\": number, \"value\": number}), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the exact `limits` keys `max_request_body_bytes`, `p99_latency_ms`, `throughput_readings_per_second`, `monthly_budget_usd`, `rpo_seconds`, and `rto_minutes`. Use option id `buffered-batch` for the buffered batch with durable queue option, `direct-large-batch` for the direct writer with large batches option, and `replicated-stream` for the replicated stream with small batches option, and list all three ids in `options`. Use the fleet traffic, gateway, reliability, and pricing data to compute the selected option's values rather than repeating a raw input. Include a batch ingest POST operation with per-item outcome reporting, a client idempotency header, and a GET operation for batch status in the API document. Explain the tradeoffs among the options and how the selected design meets the operating constraints. In `api/openapi.json` use the paths `/v1/ingest-batches` (POST, ingest a batch: a `readings` array in the request body, an `Idempotency-Key` header, and a 207 or 200 response with a `results` array) and `/v1/ingest-batches/{batchId}` (GET, batch status: a `batchId` path parameter and a response schema with required `state` and `results`).",
   "fixture": "t3-api-ingest-batch",
   "timeoutSec": 900,
   "hidden": "t3-api-ingest-batch",
@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution && node --test hidden/*.test.js",
       "min": 19
     },
     {
@@ -82,12 +82,9 @@
       "lazy": 37,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit name max_request_body_bytes is not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 3,
+  "version": 6,
   "targetSkills": [
     "decision-writing",
     "smithy-modeling"
@@ -134,29 +131,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to design an API with batch decision, naming no framework or tool; fixture docs/current-api.md's mention of superseded 1 MiB pilot limit is a legitimate trap (direct-large-batch with 1,000 items exceeds 256 KiB), not a decoy pointing away from the real problem."
+          "note": "Request specifies OpenAPI paths and required fields but doesn't prescribe implementation method. 1 MiB pilot limit in current-api.md is a decoy pointing to wrong answer (should use 256 KiB production limit)."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides data/options.json (max_items per option), data/gateway.json (256 KiB limit = 262,144 bytes), data/traffic.json (reading_bytes = 380), pricing/price-sheet.json - the agent must compute 512 + 1000 x 380 = 380,512 bytes > 262,144 to reject direct-large-batch."
+          "note": "Fixture provides data (options.json, gateway.json, etc.) but doesn't state which option to choose. Requirements mention constraints but not the decision."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden test api-ingest.test.js reads fixture files and verifies chosen option is buffered-batch or replicated-stream (not direct-large-batch), computed body bytes, monthly cost, and limits against derived values; rubric's Pass anchor specifies showing 512 + 1000 x 380 = 380,512 bytes exceeds 256 KiB gateway limit, matching fixture data."
+          "note": "Prompt specifies limit keys that match fixture data fields (max_request_body_bytes from gateway.json, etc.). Edits.md shows keys were added after D-127 fix to match fixture field names."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can compute batch body size from options.json max_items x traffic.json reading_bytes + gateway.json batch_envelope_bytes against production_max_body_bytes, derive monthly cost from price-sheet.json rates and options.json usage, and choose buffered-batch or replicated-stream; alternative valid API designs with correct batch sizes would pass."
+          "note": "Competent developer can compute which option violates gateway limit (direct-large-batch: 512 + 1000*380 = 380,512 > 262,144). Must choose between buffered-batch and replicated-stream using cost/recovery tradeoffs."
         }
       ]
     }
@@ -214,7 +211,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

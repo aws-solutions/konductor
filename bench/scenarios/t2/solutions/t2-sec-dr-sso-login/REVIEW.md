@@ -64,12 +64,6 @@ The design needs substantial revision to meet security requirements while mainta
     "severity": "high",
     "issue": "Wildcard redirect URI pattern allows any subdomain to receive authentication codes, enabling open redirect attacks.",
     "fix": "Use explicit redirect URIs or implement strict validation against allowed subdomains list."
-  },
-  {
-    "location": "3.5.2",
-    "severity": "low",
-    "issue": "State parameter described as 32 bytes while industry practice recommends at least 16 bytes (128 bits) for cryptographic security.",
-    "fix": "Clarify that 32 bytes (256 bits) exceeds minimum requirements and is acceptable, or standardize on 16-32 byte range."
   }
 ]
 ```

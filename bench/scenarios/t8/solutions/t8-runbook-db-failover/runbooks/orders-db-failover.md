@@ -40,91 +40,56 @@ The incident-time storage and commit signals are in the QuorumCtl and database l
       "id": "observe-primary",
       "action": "Correlate primary storage I/O wait with commit latency before making a role change.",
       "command": "quorumctl status --cluster orders-prod",
-      "verify": {
-        "check": "orders-db-a is degraded and the storage wait and commit latency signals agree with the observed write failures.",
-        "expected": "The primary is unhealthy for database reasons, and the lease holder is still orders-db-a.",
-        "evidence": [
-          "logs/quorum-replicator.log:80",
-          "logs/quorum-replicator.log:81",
-          "logs/orders-db.log:80",
-          "logs/orders-db.log:81"
-        ]
-      },
+      "verify": "Check orders-db-a is degraded and the storage wait and commit latency signals agree with the observed write failures.. Expected: The primary is unhealthy for database reasons, and the lease holder is still orders-db-a.",
       "abortIf": "The cluster view is ambiguous or the lease holder is not orders-db-a."
     },
     {
       "id": "check-candidate-lag",
       "action": "Check replication lag and replay position on the orders-db-b candidate before promotion.",
       "command": "quorumctl inspect --node orders-db-b",
-      "verify": {
-        "check": "replication_lag_seconds for orders-db-b",
-        "expected": "Lag is 19 seconds at the apply check and remains below the 120-second RPO.",
-        "evidence": [
-          "logs/quorum-replicator.log:82",
-          "logs/quorum-replicator.log:83",
-          "logs/orders-db.log:83"
-        ]
-      },
+      "verify": "Check replication_lag_seconds for orders-db-b. Expected: Lag is 19 seconds at the apply check and remains below the 120-second RPO.",
       "abortIf": "The candidate lag is greater than 120 seconds, replay is stopped, or the candidate is not promotion-eligible."
     },
     {
       "id": "fence-old-primary",
       "action": "Fence orders-db-a and revoke its write lease before any promotion.",
       "command": "quorumctl fence --cluster orders-prod --node orders-db-a --confirm",
-      "verify": {
-        "check": "Cluster status and the node service state",
-        "expected": "The old lease is revoked and orders-db-a is stopped and cannot accept writes."
-      },
+      "verify": "Check cluster status and the node service state. Expected: The old lease is revoked and orders-db-a is stopped and cannot accept writes.",
       "abortIf": "The fence command fails, the lease remains active, or orders-db-a still accepts a connection."
     },
     {
       "id": "promote-candidate",
       "action": "Promote the eligible orders-db-b replica after the lag and fence checks pass.",
       "command": "quorumctl promote --cluster orders-prod --node orders-db-b --confirm",
-      "verify": {
-        "check": "Cluster role and lease holder",
-        "expected": "orders-db-b is primary and holds the only active write lease."
-      },
+      "verify": "Check cluster role and lease holder. Expected: orders-db-b is primary and holds the only active write lease.",
       "abortIf": "The manager refuses promotion or reports more than one lease holder."
     },
     {
       "id": "repoint-clients",
       "action": "Repoint orders-db.service.internal to orders-db-b and allow the configured 30-second DNS TTL to expire before reopening normal traffic.",
       "command": "quorumctl reconfigure --service orders-api --endpoint orders-db-b",
-      "verify": {
-        "check": "The client endpoint and new connection targets",
-        "expected": "orders-db.service.internal resolves to orders-db-b after 30 seconds, and clients do not use orders-db-a."
-      },
+      "verify": "Check the client endpoint and new connection targets. Expected: orders-db.service.internal resolves to orders-db-b after 30 seconds, and clients do not use orders-db-a.",
       "abortIf": "The endpoint still resolves to orders-db-a after the TTL or clients cannot establish fresh connections."
     },
     {
       "id": "verify-writes",
       "action": "Verify a harmless order write and read-back through the repointed client path.",
       "command": "quorumctl verify --cluster orders-prod --writes",
-      "verify": {
-        "check": "A single approved test order write and read-back",
-        "expected": "The write succeeds once, the read returns the same order, and write success remains healthy."
-      },
+      "verify": "Check a single approved test order write and read-back. Expected: The write succeeds once, the read returns the same order, and write success remains healthy.",
       "abortIf": "The write fails, duplicates, or is served by the old primary."
     },
     {
       "id": "monitor-new-primary",
       "action": "Monitor the new primary, replication lag, write success, and client errors for five minutes.",
       "command": "quorumctl status --cluster orders-prod",
-      "verify": {
-        "check": "Role, lag, and write health",
-        "expected": "orders-db-b remains the lease holder and lag stays within the data policy."
-      },
+      "verify": "Check role, lag, and write health. Expected: orders-db-b remains the lease holder and lag stays within the data policy.",
       "abortIf": "The new primary loses its lease or the lag crosses the abort threshold."
     },
     {
       "id": "keep-old-fenced",
       "action": "Keep orders-db-a fenced if it returns and inspect it without reconnecting it to the cluster.",
       "command": "quorumctl inspect --node orders-db-a",
-      "verify": {
-        "check": "Old-primary lease and service state",
-        "expected": "orders-db-a cannot accept writes and its volume remains intact for approved recovery."
-      },
+      "verify": "Check old-primary lease and service state. Expected: orders-db-a cannot accept writes and its volume remains intact for approved recovery.",
       "abortIf": "The old node accepts writes or anyone proposes reusing it before owner approval."
     }
   ],

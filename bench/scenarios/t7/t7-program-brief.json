@@ -1,7 +1,7 @@
 {
   "id": "t7-program-brief",
   "class": "design",
-  "version": 4,
+  "version": 5,
   "phase": "ideation",
   "role": "tpm",
   "questions": "allowed",
@@ -23,7 +23,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/program-brief.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"program\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"2027-08-27\",\"365 days\",\"atlas\",\"beacon\",\"identity services\",\"oidc\",\"req-012\",\"req-068\"];process.exit(items.filter(named).length>=7?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/program-brief.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?program(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"2027-08-27\",\"365 days\",\"atlas\",\"beacon\",\"identity services\",\"oidc\",\"req-012\",\"req-068\"];process.exit(items.filter(named).length>=7?0:1)'",
       "expectExit": 0,
       "weight": 4,
       "kind": "substance"
@@ -43,7 +43,7 @@
     {
       "type": "contains",
       "path": "docs/program-brief.md",
-      "pattern": "```\\s*program",
+      "pattern": "```[ \\t]*(json[ \\t]+)?program",
       "weight": 1,
       "kind": "format"
     }
@@ -214,7 +214,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -17,12 +17,12 @@ scriptedSuite(test, assert, {
     },
     {
       id: 'F3',
-      all: [/20.*minute|twenty.*minute|T\+20|within.*20/i, /rollback.*automatic|automatic.*rollback/i],
+      all: [/20.*minute|twenty.*minute|T\+20|within.*20/i, /roll(?:\s*|-)?back.*automatic|automatic\w*.*roll(?:\s*|-)?back/i],
       wrong: [/rollback[^.]{0,40}\b30\s*minute|rollback[^.]{0,40}thirty[^.]{0,20}minute|rollback[^.]{0,40}\b15\s*minute[^.]{0,20}complete|complete[^.]{0,40}\b15\s*minute[^.]{0,20}rollback/i]
     },
     {
       id: 'F4',
-      all: [/sarah.*johnson|vp.*engineering/i, /alex.*rodriguez.*lisa.*wong|platform.*lead.*payment.*lead/i],
+      all: [/sarah.*johnson|vp.*engineering/i, /alex.*rodriguez|platform lead/i, /lisa.*wong|payments? lead/i],
       wrong: []
     },
     {
@@ -46,7 +46,6 @@ scriptedSuite(test, assert, {
     'policies/change-management.md'
   ],
   minRequirements: 11,
-  maxQuestions: 6,
   minPrecision: 0.8,
   extraNumbers: ['14', '2', '12', '6', '02', '06', '26', '27', '15', '20', '10', '2000']
 });

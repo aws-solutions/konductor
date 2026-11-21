@@ -57,7 +57,7 @@ After analyzing all options against the constraints:
 * Implement Flink/Kafka streaming pipeline
 * Near-real-time processing, no batch window concern
 * **Analysis**: Eliminates window constraint, provides real-time benefits
-* **Cost**: ~$1,824/month at Q4 2025 volume (well within budget)
+* **Cost**: ~$1,824/month at Q3 2025 volume (well within budget)
 * **Consideration**: Requires team training (~60 hours, $7,000 investment)
 
 ### Option C: Batch Processing with 3× Cluster Scaling  : notes
@@ -80,7 +80,7 @@ After analyzing all options against the constraints:
 
 ### Business Considerations: notes
 * Current data: 1.4 TB daily
-* Q4 2025 projected data: 4.65 TB daily
+* Q3 2025 projected data: 4.65 TB daily
 * Team expertise in batch processing (Spark)
 * Streaming would require training investment
 * 30-day data retention requirement
@@ -90,14 +90,14 @@ After analyzing all options against the constraints:
 2. **Monthly Budget**: ≤ $10,000 infrastructure cost
 3. **Data Accuracy**: ≥ 99.9% accuracy
 4. **System Uptime**: ≥ 99.5% monthly availability
-5. **Growth Support**: Must handle 35% quarterly growth through Q4 2025
+5. **Growth Support**: Must handle 35% quarterly growth through Q3 2025
 
 ## Decision Drivers: notes
 
 ## Context: notes
 The nightly reporting pipeline currently processes 1.4 TB of transaction data in 2.1 hours using an 8-node Spark batch processing cluster. The pipeline must complete processing within a 4-hour window (2:00 AM - 6:00 AM) to deliver business intelligence reports by 6:00 AM daily.
 
-Data volume is growing at 35% per quarter, and we need an architecture that can handle this growth through Q4 2025 while meeting all Service Level Agreements (SLAs) and constraints.
+Data volume is growing at 35% per quarter, and we need an architecture that can handle this growth through Q3 2025 while meeting all Service Level Agreements (SLAs) and constraints.
 
 ## Status: notes
 Accepted
@@ -105,17 +105,17 @@ Accepted
 ## Compliance Validation: notes
 
 All hard constraints are met:
-1. **Processing Window**: 3.6 hours at Q4 2025 volume ≤ 4.0 hours ✓
+1. **Processing Window**: 3.6 hours at Q3 2025 volume ≤ 4.0 hours ✓
 2. **Monthly Budget**: $8,632 ≤ $10,000 ✓
 3. **Data Accuracy**: Existing 99.92% maintained ✓
 4. **System Uptime**: Existing 99.7% maintained ✓
-5. **Growth Support**: Handles 4.65 TB at Q4 2025 ✓
+5. **Growth Support**: Handles 4.65 TB at Q3 2025 ✓
 
 ```decision
 {
     "monthly_cost_usd": 8632,
     "limits": {
-        "data_volume_tb_q4_2025": {
+        "data_volume_tb_q3_2025": {
             "value": 4.65,
             "limit": 4.65
         },

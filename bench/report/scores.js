@@ -23,12 +23,12 @@ const PACK_COMPONENT = 'pack';
 // `checksMode` only when it is 'all', so default weights stay plain.
 const CHECKS_MODES = ['fraction', 'all'];
 const CHECKS_MODE_KEY = 'checksMode';
-// How the judge's evidence quotes are matched: 'lenient' (the default, tightened) or 'strict'. Both views live in the
+// How the judge's evidence quotes are matched: 'lenient' (the default, tightened), 'strict', or 'paraphrase' (lenient, or a
+// faithful restatement; rebuilt from the saved outputs, see judge/quote.js). The strict and lenient views live in the
 // judgments (see judge/views.js); the rule only picks which one the scores read. The loaded weights carry `quoteMode` only
-// when it is 'strict', the non-default, so a default scoring file loads to the same object as before.
+// when it is not the default, so a default scoring file loads to the same object as before.
 const QUOTE_MODES = QUOTE_RULES;
 const QUOTE_MODE_KEY = 'quoteMode';
-const STRICT_QUOTES = 'strict';
 const ALL_CHECKS = 'all';
 const componentsOf = (weights) => (weights[PACK_COMPONENT] > 0 ? [...COMPONENTS, PACK_COMPONENT] : COMPONENTS);
 const DEFAULT_PROFILE = path.join(__dirname, '..', 'profiles', 'scoring.json');
@@ -81,7 +81,7 @@ function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   if (mode === ALL_CHECKS) out[CHECKS_MODE_KEY] = mode;
   const quotes = data.quotes ?? DEFAULT_QUOTE_RULE;
   if (!QUOTE_MODES.includes(quotes)) throw new Error(`scoring profile ${file}: "quotes" must be one of ${QUOTE_MODES.map((m) => `"${m}"`).join(', ')}`);
-  if (quotes === STRICT_QUOTES) out[QUOTE_MODE_KEY] = quotes;
+  if (quotes !== DEFAULT_QUOTE_RULE) out[QUOTE_MODE_KEY] = quotes;
   return out;
 }
 

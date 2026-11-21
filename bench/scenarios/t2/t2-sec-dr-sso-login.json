@@ -1,6 +1,6 @@
 {
   "id": "t2-sec-dr-sso-login",
-  "version": 2,
+  "version": 3,
   "class": "design",
   "phase": "design-review",
   "phases2": [],
@@ -94,18 +94,13 @@
       "id": "k7",
       "finding": "Wildcard redirect URI pattern allows any subdomain to receive authentication codes, enabling potential open redirect attacks if subdomains are compromised.",
       "weight": 1
-    },
-    {
-      "id": "k8",
-      "finding": "State parameter described as 32 bytes but RFC 6749 recommends a minimum of 128 bits (16 bytes) with 256 bits (32 bytes) being reasonable for high-security applications, though not strictly a violation.",
-      "weight": 1
     }
   ],
   "expertKey": {
     "items": [
       {
         "id": "e1",
-        "text": "Asks why PKCE is not mentioned for the SPA authorization code flow despite being a security best practice for public clients.",
+        "text": "Asks how the PKCE code verifier is generated, where it is kept between the redirect and the callback, and how it is bound to the browser session; section 1 says the flow uses PKCE, but the design never says how.",
         "source": "RFC 9700, Best Current Practice for OAuth 2.0 Security, https://www.rfc-editor.org/rfc/rfc9700 (IETF Trust Legal Provisions)"
       },
       {
@@ -213,36 +208,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric aligns with request for 'concrete problems that affect security, compliance, or reliability'. Earlier minimax-m2.5 check of the request, fixture and key: pass (Prompt asks to 'look through' design and context files, no review method, checklist, or process named. No planted problem, decoy, or number of problems mentioned.)."
+          "note": "The request specifies the review subject, inputs, output path, required JSON fields, and scope, but no workflow method or tool; no decoy is present in the prompt or hidden key."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Judge-only rubric; no finding content in criterion text. Earlier minimax-m2.5 check of the request, fixture and key: pass (Design document describes proposed solution as correct. Security policy states requirements without marking violations. Incident report describes past event without linking to current design. No comments, tests, or file names state planted problems.)."
+          "note": "The fixture contains the design and contextual policies that a reviewer must analyze, but no answer key, expected finding list, hidden test, or finished review output; the edits only remove the non-defect k8 item."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Verified: security-policy.yaml has max_duration_days:30, local_storage:prohibited, back_channel_revocation_check required. Design doc shows localStorage, 90 days, wildcard redirect - matches findingsKey. Earlier minimax-m2.5 check of the request, fixture and key: pass (k1:3.2 - nonce omitted from authorization request (OIDC required). k2:3.3 - email matching without email_verified check (security policy requires email_verification_required). k3:3.4 - localStorage for tokens (prohibited by policy). k4:3.4 - 90-day session (policy max is 30). k5:3.4 - no back-channel revocation (policy requires if supported). k6:3.5.1 - JWKS cached indefinitely vs 24h in section 5)."
+          "note": "Hidden key items k1-k7 map to explicit design sections 3.2-3.5.2 and policy/config facts, while the checks use the requested REVIEW.md, fenced JSON, and section-number format; r1 rewards grounded consequences and actionable fixes as requested."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different correct security reviews can Pass; rubric judges grounding and actionability. Earlier minimax-m2.5 check of the request, fixture and key: pass (Security policy provides explicit requirements (max_duration_days:30, local_storage:prohibited, email_verification_required:true, back_channel_revocation_check:required). Design doc shows each problematic pattern (localStorage, 90 days, no revocation check, indefinite JWKS cache, wildcard redirect). Contradiction between 3.5.1 and 5.3 on JWKS caching is findable within the document. Requires domai)."
+          "note": "A developer can derive nonce, verified-email, token storage, session duration/revocation, JWKS refresh, and redirect URI findings from the design plus context files, and the matcher accepts reordered findings and non-reference wording/structure."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {

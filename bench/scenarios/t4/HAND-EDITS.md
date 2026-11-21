@@ -286,3 +286,21 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t4-policy-fix-accessdenied | glm-5 (r4, rubric) | confirmed |  |
 | t4-secrets-in-repo | glm-5 (r4, rubric) | confirmed |  |
 | t4-threat-model-webhooks | glm-5 (r4, rubric) | confirmed |  |
+
+## Spot-review fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md).
+
+- `t4-iam-bucket-policy-oac` (version 5):
+  - The hidden tests fixed the log-writer principal as `delivery.logs.amazonaws.com` for S3 server access logs too, which the fixture never names and AWS does not use (S3 server access logs come from `logging.s3.amazonaws.com`). Now CloudFront logs must reach `cloudfront-logs/` from `delivery.logs.amazonaws.com`, S3 access logs must reach `s3-access-logs/` from either principal, and every log negative test (wrong account, no source, outside the prefixes) runs for both principals. The S3 request carries `aws:SourceArn` of the stage's assets bucket as well as `aws:SourceAccount`, so a policy may condition on either.
+  - The request now says log delivery from CloudFront and from S3 must keep working "into the log prefixes of the logs buckets" (the prefix-only test had no basis in the request; the prefixes are in `docs/architecture.md:51`).
+  - Removed the empty test "CDN must use HTTPS for assets" and three "(negative test)" cases that repeated earlier tests (anonymous read, HTTP read, cross-stage read). The fourth, a CDN read with no `aws:SourceArn`, is the only test of that case, so it stays as "CDN read without a SourceArn is denied". 31 tests to 27; the `tests` check `min` is 27.
+  - The reference `logs-policy.json` grants S3 access logs to `logging.s3.amazonaws.com`. The old reference (delivery.logs for both) still scores 100, and a second correct answer in another style (no CDN ListBucket, no bucket grant for the same-account deploy role, a source-bucket condition for S3 logs) scores 100. Stub and lazy 15.9.
+
+## Delegated-read fix (2026-11-20, mate spot-review fix worker)
+
+- `t4-iam-ci-deploy-role-twin` (version 4): the request now says a missing or unreadable manifest (any read error) means nothing is skipped, which is what the weight-2 check's `--manifest-path /dev/null/none.json` (ENOTDIR) needs. The reference ignores a manifest written for the other stage, so a production deploy after a staging one uploads everything; no test checks the stage, so a shared manifest is still accepted (the old reference scores 100). Free gates: reference 100, lazy 19.7, alt 100; the stub is 19.7 (unchanged: the fixture's own tests and format checks pass on it).
+
+## Stub band (2026-11-20, mate spot-review fix worker)
+
+- `t4-iam-ci-deploy-role-twin` (version 5): the empty answer scored 19.7. The fixture's own test suite check (`node --test test/*.test.js`) passes untouched, so it is now `kind: format`; two hidden regression tests ("a failed deploy does not write the manifest", "production deploy still invalidates the CDN") passed on a deploy with no manifest at all, so each also checks that a successful deploy writes its manifest, as the request asks. Gates: reference 100, empty 0, lazy 0, old reference (shared manifest) 100.

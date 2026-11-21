@@ -2,7 +2,7 @@
   "id": "t3-adr-queue-choice",
   "class": "design",
   "target": null,
-  "prompt": "We need to choose a managed queue service for our event processing pipeline. Review the requirements, technical design, pricing information, and operational context in the fixture/ directory.\n\nBased on the analysis, select the most appropriate queue service that meets all requirements while staying within budget. Consider message size, throughput needs, ordering requirements, and operational complexity.\n\nCreate an Architecture Decision Record (ADR) at docs/adr/0001-queue.md documenting your decision. The ADR should include:\n- Context and problem statement\n- Considered options with pros and cons\n- Decision and rationale\n- Consequences and implementation notes\n\nInclude a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the selected option id (e.g., \"sqs_standard\", \"sqs_fifo\", \"kinesis_streams\")\n- \"options\": array of all option ids considered\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements\n- \"monthly_cost_usd\": the chosen option's monthly cost computed from the pricing data\n\nEnsure your cost calculations account for message size, chunk billing, and all operations needed for the complete message lifecycle. Verify that the chosen option meets all throughput limits and stays within the $900 monthly budget.",
+  "prompt": "We need to choose a managed queue service for our event processing pipeline. Review the requirements, technical design, pricing information, and operational context in the fixture/ directory.\n\nBased on the analysis, select the most appropriate queue service that meets all requirements while staying within budget. Consider message size, throughput needs, ordering requirements, and operational complexity.\n\nCreate an Architecture Decision Record (ADR) at docs/adr/0001-queue.md documenting your decision. The ADR should include:\n- Context and problem statement\n- Considered options with pros and cons\n- Decision and rationale\n- Consequences and implementation notes\n\nInclude a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the ID of the selected option (must be one of: sqs_standard, sqs_fifo, kinesis_streams)\n- \"options\": array of all option IDs you considered (must include all of: sqs_standard, sqs_fifo, kinesis_streams)\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements. The limit keys you must use are: fifo_throughput_per_queue, monthly_budget_usd, peak_throughput_per_second\n- \"monthly_cost_usd\": the chosen option's monthly cost computed from the pricing data\n\nEnsure your cost calculations account for message size, chunk billing, and all operations needed for the complete message lifecycle. Verify that the chosen option meets all throughput limits and stays within the $900 monthly budget.",
   "fixture": "t3-adr-queue-choice",
   "timeoutSec": 900,
   "hidden": "t3-adr-queue-choice",
@@ -12,8 +12,8 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
-      "min": 43
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
+      "min": 42
     },
     {
       "type": "file_exists",
@@ -27,7 +27,7 @@
   "rubric": [
     {
       "id": "reasoning_quality",
-      "criterion": "Quality of reasoning and tradeoff analysis. Fail: picks on price, or cost uses one request per message. Partial: rejects SQS FIFO but the cost model misses chunking or the delete and receive calls. Pass: rejects SQS FIFO because 300 messages/s per group cannot carry the 400 events/s peak (not the outdated 500), bills 90 KB messages as 2 chunks of 64 KB on SQS and 4 units of 25 KB on Kinesis, counts send, receive and delete as three operations, and shows the chosen cost under the $900 budget. (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
+      "criterion": "Quality of reasoning and tradeoff analysis. Fail: picks on price, or cost uses one request per message. Partial: rejects SQS FIFO but the cost model misses chunking or the delete and receive calls. Pass: rejects SQS FIFO because 300 messages/s per queue cannot carry the 400 events/s peak (not the outdated 500), bills 90 KB messages as 2 chunks of 64 KB on SQS and 4 units of 25 KB on Kinesis, counts send, receive and delete as three operations, and shows the chosen cost under the $900 budget. (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
       "weight": 1
     },
     {
@@ -71,14 +71,11 @@
       "reference": 100,
       "stub": 0,
       "lazy": 5,
-      "alt": 81,
+      "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit names peak_throughput_per_second, fifo_throughput_per_group, monthly_budget_usd are not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 4,
+  "version": 7,
   "targetSkills": [
     "decision-research",
     "decision-writing",
@@ -126,29 +123,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates reasoning quality and tradeoff consideration for queue selection, within the ADR scope requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks to analyze and select a queue service without naming a specific method, skill, or tool, and does not reveal the SQS FIFO throughput trap or the correct answer.)."
+          "note": "The prompt specifies the decision and ADR deliverable but does not prescribe a working method, framework, or tool. The only conflicting-looking 500/s figure is explicitly labeled outdated in fixture/technical-design.md:85, rather than being a misleading instruction in the request."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides requirements and pricing; no correct option explicitly stated. Earlier glm-5 check of the request, fixture and key: pass (No fixture file states the correct answer; agent must reason from throughput limits, pricing data, and cost calculations to reach the decision.)."
+          "note": "The fixture supplies requirements, comparative measurements, pricing inputs, and a sample calculator, but it never selects a service or states the finished ADR decision. The Kinesis and FIFO observations in fixture/operations-runbook.md:72-75 are source evidence for the analysis, not a prewritten answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (400 events/s peak, 90 KB messages, 64KB/25KB chunk billing, 3 operations per message, $900 budget) match fixture data. Earlier glm-5 check of the request, fixture and key: pass (All hidden test values (11M events/day, 400 events/s peak, 90KB size, $900 budget, 300/s FIFO limit, 64KB SQS chunks, 25KB Kinesis units) exist in fixture files.)."
+          "note": "The prompt explicitly states the option IDs, deliverable path, decision-block format, and three limit keys (task.json:5); corresponding services, limits, prices, and requirements exist in the fixture. The edits record confirms the prior unsupported key name and rigid heading assertions were corrected (edits.md:14-28)."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Either SQS Standard or Kinesis can be chosen with valid fixture-based reasoning; different tradeoff analyses can Pass. Earlier glm-5 check of the request, fixture and key: pass (Engineer can eliminate SQS FIFO (300/s limit < 400/s requirement from pricing-data.json and technical-design.md), then calculate costs using pricing-data.json and cost-calculator.js to determine Kinesis is acceptable and within budget.)."
+          "note": "A developer can derive the choice from the 400/s, 90KB, 11-million-events/day, and $900 constraints in fixture/requirements.md:15-29, the pricing formulas in fixture/pricing-guide.md:8-40, and the service limits in fixture/technical-design.md:17-25. The remaining tests validate the stated JSON and substantive content flexibly, so alternate valid section names, ordering, and prose are not tied to the reference."
         }
       ]
     }
@@ -157,7 +154,7 @@
     "items": [
       {
         "id": "e1",
-        "text": "States that SQS FIFO cannot meet the 400 events/second peak throughput requirement due to its 300 messages/second per message group limit, making it an invalid option regardless of its lower per-request cost.",
+        "text": "States that SQS FIFO cannot meet the 400 events/second peak throughput requirement due to its 300 messages/second per queue limit, making it an invalid option regardless of its lower per-request cost.",
         "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
       },
       {
@@ -211,7 +208,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

@@ -37,6 +37,7 @@ New tasks may add these top-level fields (all optional; old tasks keep working).
 - `controlKind`: `none`, `twin` (needs `twinOf`, another task's id) or `negative`.
 - `loadCheck`: `mustLoad` (units that must load before the first file write) and `mustNotLoad`. No unit may be in both.
 - `authorship`: `family`, `model`, `date` and `source`. `source` is `"original"` or `{url, licence, licenceCheckedAt, use}`, where `use` is `idea`, `structure` or `quoted`. A task with a `phase` (a v3 task) must have it; old tasks are exempt.
+- `adjudication`: optional judge-only list of rules that settle where two judges would split on this task (a figure's tolerance, an accepted equivalent, how to read a negation); the judge prompt shows them after the weak answers. The agent never sees it.
 - `effectSubset`, `limits` (`softSec` at most `hardSec`, optional `maxTurns`), `review` (its `family` must differ from the author's; it may name the reviewer `model`), `pilot`, `lockedAt`.
 
 A task keeps its own tier and may also carry `"pilot"` (for example `["lite", "full", "pilot"]`). `suites/pilot.json` lists the pilot tasks, and the validator requires the file and the tag to agree.

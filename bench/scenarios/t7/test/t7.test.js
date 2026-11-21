@@ -33,6 +33,18 @@ test('readBlock takes the first block with the info string that parses', () => {
   assert.strictEqual(readBlock(text, 'plan'), null);
 });
 
+test('readBlock also takes the name after a json language tag, but not a json block with no name', () => {
+  assert.deepStrictEqual(readBlock('```json status\n{"overall":"red"}\n```\n', 'status'), { overall: 'red' });
+  assert.deepStrictEqual(readBlock('```JSON  Status \n{"overall":"red"}\n```\n', 'status'), { overall: 'red' });
+  assert.strictEqual(readBlock('```json\n{"overall":"red"}\n```\n', 'status'), null);
+  assert.strictEqual(readBlock('```yaml status\n{"overall":"red"}\n```\n', 'status'), null);
+});
+
+test('cites: a list in where accepts any of its values', () => {
+  assert.ok(g({ op: 'cites', path: 'risks', field: 'tickets', ids: ['CHK-40'], where: { kind: ['schedule', 'other'] } }).ok);
+  assert.ok(!g({ op: 'cites', path: 'risks', field: 'tickets', ids: ['CHK-40'], where: { kind: ['schedule', 'scope'] } }).ok);
+});
+
 test('getPath matches keys ignoring case and indexes lists', () => {
   assert.strictEqual(getPath(doc, 'reasoning.sprints_needed'), 3);
   assert.strictEqual(getPath(doc, 'critical_path.1'), 'PAY-212');

@@ -1,0 +1,7 @@
+time,service,version,by,notes
+2026-11-12T10:20:00Z,invoice-api,2.40.0,mrossi,release
+2026-11-13T15:02:00Z,render-worker,5.8.1,lnovak,release
+2026-11-17T09:45:00Z,billing-scheduler,3.12.0,jporter,release
+2026-11-18T11:30:00Z,invoice-api,2.40.3,mrossi,patch
+2026-11-19T16:10:00Z,flag-service,1.9.2,sre-bot,patch
+2026-11-20T13:50:00Z,invoice-api,2.41.0,mrossi,release

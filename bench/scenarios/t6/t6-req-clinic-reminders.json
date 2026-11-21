@@ -1,7 +1,7 @@
 {
   "id": "t6-req-clinic-reminders",
   "class": "design",
-  "version": 2,
+  "version": 5,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -114,7 +114,7 @@
       "type": "fixture_unchanged",
       "path": "archive",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -210,48 +210,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates requirement implementability and completeness without demanding a methodology not requested. Earlier glm-5 check of the request, fixture and key: pass (The prompt states the goal, deliverable location, and output format without naming methods, tools, or pointing at specific answers the tests look for.)."
+          "note": "Prompt asks to read working folder and create requirements, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (72h and 24h reminders, 20:00-08:00 quiet hours, English/Spanish templates, STOP suppression, rollout dates) are from scripted user; not a giveaway. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source material (meeting notes, data exports, policies) but no document lists the hidden facts or test answers outright.)."
+          "note": "Fixture contains clinic profiles, booking process, exports but not synthesized requirements."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: two reminders at 72h/24h, quiet hours 20:00-08:00 local time, Cedar Grove and Harbor Point March 3, Northgate March 17. Earlier glm-5 check of the request, fixture and key: pass (All scriptedUser facts are reasonable decisions a user could make; clinic names, timezones, consent fields, and appointment statuses exist in fixture files like clinic-directory.csv, appointment-export.csv, and data-dictionary.md.)."
+          "note": "Hidden tests check patterns matching scripted facts; rubric aligns with prompt and fixture content."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement structure can still Pass if rules are testable, confirmed vs open are separated, and rollout dates are correct. Earlier glm-5 check of the request, fixture and key: pass (The fixture provides clinic data, privacy constraints, booking process, open decisions, and enough context to write requirements that pass the hidden tests with scripted user answers.)."
+          "note": "Competent PM could create requirements from fixture; different structure would pass if captures essentials."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 10.3,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 10.3,
-      "lazy": 19.8,
+      "stub": 0,
+      "lazy": 11.4,
       "alt": 100,
       "date": "2026-11-20"
     }

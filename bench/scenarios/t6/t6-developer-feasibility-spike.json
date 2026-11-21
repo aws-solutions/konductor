@@ -1,0 +1,216 @@
+{
+  "id": "t6-developer-feasibility-spike",
+  "class": "design",
+  "version": 2,
+  "phase": "ideation",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Maren wants a go or no-go on the import preview at Thursday's design review, and the whole design rests on the premise in docs/product-one-pager.md (column types are stable after the first 500 rows). Before she decides I need to know whether that premise is true on the data we have, with numbers rather than a hunch, and what the design should do about it.\n\nWrite spike/measure.js. `node spike/measure.js <csv path>` prints one JSON object on stdout with `rows` (number of data rows, header not counted) and `first_drift_rows`: an object keyed by column name. Each value is the 1-based data row where that column's type first differs from the type it had after the first 500 data rows, or null if it never does. Types are the ones this repo's import code assigns.\n\nThen write docs/feasibility.md with what you found. It must end with one ```json block:\n{ \"premise\": string, \"verdict\": \"holds\" | \"rejected\" | \"conditional\", \"evidence\": [ { \"file\": string, \"rows\": number, \"first_drift_rows\": { column: row number or null } } ] (one entry per file in data/), \"recommendation\": string, \"conditions\": [string] }\n\n`conditions` lists what has to be true for the premise to hold. `recommendation` must say whether a preview built from the first 500 rows can be shown to the customer as final, and what the preview has to do about rows after that. Leave lib/ and data/ as they are.",
+  "fixture": "t6-developer-feasibility-spike",
+  "hidden": "t6-developer-feasibility-spike",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 15,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/feasibility.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "spike/measure.js",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node spike/measure.js data/sample-c.csv | node -e \"const j=JSON.parse(require('fs').readFileSync(0,'utf8'));process.exit(j.rows===42000&&typeof j.first_drift_rows==='object'?0:1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/feasibility.md",
+      "pattern": "```json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "lib",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "scope-of-evidence",
+      "criterion": "The document says plainly that the evidence is three synthetic files, so it shows what can happen and not how often it happens in customer files, and it does not state a rate or a share of customer files that drift. (code cannot check this because judging whether a caveat is stated honestly and in the right place takes reading the prose.)",
+      "weight": 1
+    },
+    {
+      "id": "decision-use",
+      "criterion": "The recommendation tells Maren and the designer what to do on Thursday in terms they can act on: what the preview may promise, what it must not promise, and what the screen needs for a column whose type changes later. (code cannot check this because usefulness to the decision-maker is a judgement about the writing.)",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "reproducible",
+        "text": "Says how to rerun the measurement (command, input, expected output) so someone else can reproduce the evidence.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "limits-of-evidence",
+        "text": "Says what three sample files cannot show about real customer files, and how a wider sample would be gathered.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-alternative",
+        "text": "Weighs the cost of the alternative (read more rows, or the whole file) against the preview promise instead of only rejecting the premise.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "decision-owner",
+        "text": "Gives the product owner a plain choice with a recommendation, in terms the owner can act on.",
+        "source": "GOV.UK Service Manual, How the alpha phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Says the premise holds because the first 500 rows of one file looked stable.",
+      "Reports timing figures with no input size or command.",
+      "Rejects the premise with no number from the data.",
+      "Writes the measure script to print the fixture's numbers without reading its argument."
+    ]
+  },
+  "targetSkills": [
+    "pre-planning-analysis",
+    "verification"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:pre-planning-analysis",
+      "skill:verification",
+      "agent:k-developer"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "claude",
+    "model": "claude-sonnet-5.5",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://www.gov.uk/service-manual/agile-delivery/how-the-alpha-phase-works",
+      "licence": "OGL-3.0 (GOV.UK Service Manual, Open Government Licence v3.0 stated in the page footer)",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "openai",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request specifies the required files, CLI interface, output schema, and unchanged paths, but does not prescribe an implementation method or tell the agent how to investigate."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The deliverables, row-number convention, baseline comparison, evidence fields, and per-file scope are explicit. The hidden tests match the stated interface and the reference satisfies them."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires a streaming CSV-aware implementation, repo-specific type inference, a full-file scan, and evidence-based prose; a quick answer will not score near full marks. No scripted-user facts are present to guess or read from the fixture."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The generated hidden cases are answerable through the fixture's CSV reader and inference rules, and the reference passes all 15 hidden tests."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture states the premise and implementation rules but does not reveal the drift results or identify the drifting file; the request contains no answer key."
+      }
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request specifies output format but not implementation method; no misleading hints found."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture provides CSV files and inference library but doesn't reveal where type changes occur (generator removed per edits.md)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests verify script works on fixture CSV files; checks and rubric align with request requirements."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer can implement drift detection using lib/infer.js rules and CSV reading from fixture."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 35.7,
+      "alt": 95.2,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-D2 t6 fix worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  }
+}

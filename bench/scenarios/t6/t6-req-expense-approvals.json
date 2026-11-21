@@ -1,7 +1,7 @@
 {
   "id": "t6-req-expense-approvals",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -232,48 +232,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates vendor-actionable requirements and charity context understanding without imposing a method. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The task.json prompt field states the goal, source-document categories, output path, and scope constraint, but names no method, tool, checklist, trap, or answer.)."
+          "note": "task.json asks for a vendor-facing requirements document from the supplied materials and specifies its JSON ending, but names no requirements method or framework and gives no misleading process hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (£1,000 second approver, £100 self-approval, 30-day submission, 7-year retention, payment run dates) are from scripted user; synthesis required. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture contains evidence, outdated policy context, and explicit open questions rather than a hidden-answer list; for example, draft-requirements-v1.md lines 85-90 leave self-approval and receipt standards unresolved.)."
+          "note": "The fixture contains policy, audit, grant, data, and draft source material with unresolved or older values; it does not contain a finished requirements document listing the scripted answers as the answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: second Finance approver over £1,000, self-approval up to £100, 30-day submission deadline, 7-year retention, payment runs 10th and 25th. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The grounded hidden expectations are supported by fixture/handbook/finance-policy-excerpt.md lines 21, 28, and 61 and fixture/grants-list.md line 50; the remaining six facts are explicitly available as scriptedUser facts in task.json.)."
+          "note": "The grounded tests reference existing fixture paths such as handbook/finance-policy-excerpt.md, grants-list.md and audit findings, while the remaining current decisions are stated in task.json scriptedUser; rubric R1 and R2 reward those requested vendor requirements."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement organization can still Pass if all limits are testable and grant compliance is addressed. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can derive the grounded requirements from the handbook, grants, org chart, audit/data notes, and meetings, then ask the six unresolved stakeholder questions represented by task.json scriptedUser; the required output format is explicit in task.json prompt.)."
+          "note": "A developer can extract the baseline controls from fixture/handbook, fixture/audit and fixture/grants-list.md and ask the scripted questions for changed values; the tests allow equivalent requirement wording and do not depend on reference ordering."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 5.5,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 5.5,
-      "lazy": 34.1,
+      "stub": 0,
+      "lazy": 28.6,
       "alt": 100,
       "date": "2026-11-20"
     }

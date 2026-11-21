@@ -71,7 +71,7 @@ Alarms:
 
 ### Throughput Limits Observed
 - **SQS Standard**: Handled 1000 messages/second without issue
-- **SQS FIFO**: Reached limit at 300 messages/second (single message group)
+- **SQS FIFO**: Reached limit at 300 messages/second (the same with 1 and with 8 message groups)
 - **Kinesis (4 shards)**: Sustained 400 messages/second at 65% capacity
 
 *Note: The stress test at 600 messages/second exceeded our requirements but was conducted to understand system limits. Actual production peak is 400 messages/second.*

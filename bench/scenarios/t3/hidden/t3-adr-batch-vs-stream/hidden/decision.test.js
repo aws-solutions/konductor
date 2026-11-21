@@ -97,7 +97,7 @@ test('all required limits are present', () => {
     'monthly_budget_usd', 
     'data_accuracy_percent',
     'system_uptime_percent',
-    'data_volume_tb_q4_2025'
+    'data_volume_tb_q3_2025'
   ];
   
   requiredLimits.forEach(limitName => {
@@ -168,13 +168,13 @@ test('monthly cost matches calculated cost for chosen option', () => {
   );
 });
 
-test('Q4 2025 data volume limit is correctly specified', () => {
+test('Q3 2025 data volume limit is correctly specified', () => {
   const file = path.join(R, 'solution', 'docs', 'adr', '0001-processing.md');
   const decision = readDecision(file);
   
-  // From traffic-analysis.md: 4.65 TB at Q3 2025 (which is Q4 of planning horizon)
-  const q4Data = dataGrowth.find(d => d.quarter === '2025-Q3');
-  assert.strictEqual(decision.limits.data_volume_tb_q4_2025.limit, q4Data.data_tb);
+  // From traffic-analysis.md: 4.65 TB at Q3 2025
+  const q3Data = dataGrowth.find(d => d.quarter === '2025-Q3');
+  assert.strictEqual(decision.limits.data_volume_tb_q3_2025.limit, q3Data.data_tb);
 });
 
 test('data accuracy limit is correctly specified', () => {

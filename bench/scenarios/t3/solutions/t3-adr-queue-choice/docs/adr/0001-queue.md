@@ -38,7 +38,7 @@ We need to select a managed AWS queue service that provides reliable buffering, 
 - Built-in message deduplication
 
 **Cons:**
-- Throughput limited to 300 messages/second per message group
+- Throughput limited to 300 messages/second per queue
 - Requires message group design for parallel processing
 - Higher latency than standard queues
 
@@ -66,7 +66,7 @@ We select **Amazon Kinesis Data Streams (kinesis_streams)** as our queue service
 
 4. **Future Growth**: Kinesis scales easily by adding shards, supporting our projected 25% growth over 6 months.
 
-The tempting alternative was SQS FIFO Queue, which appears cheaper at first glance ($891 vs $990 for standard), but it fails the 400 events/second throughput requirement due to its 300 messages/second per message group limit. SQS Standard also exceeds the $900 budget at $990/month.
+The tempting alternative was SQS FIFO Queue, which appears cheaper at first glance ($891 vs $990 for standard), but it fails the 400 events/second throughput requirement due to its 300 messages/second per queue limit. SQS Standard also exceeds the $900 budget at $990/month.
 
 ### Cost Calculation Details
 - **Messages per month**: 11,000,000/day × 30 days = 330,000,000
@@ -127,7 +127,7 @@ This decision meets all stated requirements:
       "limit": 400,
       "value": 400
     },
-    "fifo_throughput_per_group": {
+    "fifo_throughput_per_queue": {
       "limit": 300,
       "value": 0
     }

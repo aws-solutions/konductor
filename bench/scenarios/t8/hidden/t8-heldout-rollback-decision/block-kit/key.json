@@ -1,0 +1,28 @@
+{
+  "outputFile": "release/decisions/4.18.0-rollback.md",
+  "items": [
+    { "id": "decision-rollback", "type": "text", "path": "decision", "all": ["^\\s*roll[- ]?back\\s*$"], "weight": 2, "section": "decision", "gate": true },
+    { "id": "target-previous-version", "type": "text", "path": "targetVersion", "all": ["^\\s*v?4\\.17\\.3\\s*$"], "section": "decision" },
+    { "id": "forward-rejected-no-green-build", "type": "some", "path": "rejected", "match": { "all": ["forward|4\\.18\\.1", "\\bci\\b|build|test|fail|red|green|unverified|untested|integration"] }, "section": "decision" },
+    { "id": "hold-rejected-for-harm", "type": "some", "path": "rejected", "match": { "all": ["hold|half|pause|stay", "declin|customer|checkout|payment|fail|harm|budget|slo"] }, "section": "decision" },
+    { "id": "rollback-safe", "type": "text", "path": "rollbackSafe", "all": ["^true$"], "section": "decision" },
+    { "id": "risk-migration-additive", "type": "some", "path": "rollbackRisks", "match": { "all": ["0042|promo_code|promo_redemptions|migration|schema", "additive|add(s|ed)?\\b|nullable|expand|ignor|backward|compatib|new (column|table)"] }, "section": "decision" },
+    { "id": "risk-promo-feature-lost", "type": "some", "path": "rollbackRisks", "match": { "all": ["promo|campaign|marketing", "18:00|18 ?utc|email|lose|lost|remov|go(es)? away|unavailable|not available|without|disabl|until"] }, "section": "decision" },
+    { "id": "cause-reused-key", "type": "text", "path": "cause", "all": ["idempoten|\\bkey(s|ed)?\\b", "reus|already (used|seen)|same key|cart|different amount"], "weight": 2, "section": "diagnosis", "gate": true },
+    { "id": "evidence-chain", "type": "evidence", "path": "evidence", "groups": [{ "all": ["reason=idempotency_key_reused"], "file": "orders-api" }, { "all": ["IDEMPOTENCY_KEY_REUSED"], "file": "payments-gateway" }], "section": "diagnosis" },
+    { "id": "evidence-precise", "type": "evidencePrecision", "path": "evidence", "relevant": ["idempotency_key_reused", "IDEMPOTENCY_KEY_REUSED", "PAY-2291", "4\\.18\\.0,2,"], "min": 0.5, "section": "diagnosis" },
+    { "id": "latency-not-release", "type": "some", "path": "notCausedByRelease", "match": { "all": ["latency|p99|slow|slot|504", "maps|geo|vendor|both versions|4\\.17\\.3|every host|all (four )?hosts|old version|all versions"] }, "section": "diagnosis" },
+    { "id": "green-5xx-explained", "type": "some", "path": "notCausedByRelease", "match": { "all": ["5xx|error rate|dashboard|green|alert", "\\b200\\b|soft|not (an? )?(http )?error|cannot show|does not show|doesn't show|not (counted|visible|shown)|hid|invisible|blind"] }, "section": "diagnosis" },
+    { "id": "harm-metric", "type": "text", "path": "harm.metric", "all": ["^\\s*payment_auth_soft_decline_rate\\s*$"], "section": "numbers" },
+    { "id": "harm-new-version-rate", "type": "number", "path": "harm.newVersionPct", "value": 2.436, "tol": 0.2, "section": "numbers" },
+    { "id": "harm-old-version-rate", "type": "number", "path": "harm.oldVersionPct", "value": 0.418, "tol": 0.2, "section": "numbers" },
+    { "id": "harm-affected-checkouts", "type": "number", "path": "harm.affectedCheckouts", "value": 82, "tolPct": 8, "section": "numbers" },
+    { "id": "watch-metric", "type": "text", "path": "watchMetric", "all": ["^\\s*payment_auth_soft_decline_rate\\s*$"], "section": "numbers" },
+    { "id": "tell-marketing", "type": "some", "path": "stakeholders", "match": { "field": "audience", "all": ["marketing"] }, "section": "comms" },
+    { "id": "marketing-campaign-message", "type": "some", "path": "stakeholders", "match": { "all": ["marketing", "18:00|18 ?utc|campaign|email|promo", "hold|delay|pause|postpone|without|remov|reword|not (be )?(available|live|work)|drop|move|rolled? back|roll(ing)? back"] }, "section": "comms" },
+    { "id": "support-message", "type": "some", "path": "stakeholders", "match": { "all": ["support", "declin|card|payment|checkout|refused", "retry|try again|again|not charged|no charge|charged|refund"] }, "section": "comms" },
+    { "id": "orders-team-fix", "type": "some", "path": "stakeholders", "match": { "all": ["orders team|orders-dev|orders", "idempoten|request key|PAY-2291|middleware|retry_after_cart_edit", "fix|green|pass|test|build|before"] }, "section": "comms" },
+    { "id": "stakeholders-bounded", "type": "maxLen", "path": "stakeholders", "min": 3, "max": 6, "section": "comms" }
+  ],
+  "scoring": "sections"
+}

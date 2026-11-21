@@ -130,7 +130,34 @@
         "verdict": "pass",
         "note": "The task is achievable: the reference solution passes all 16 hidden tests and all 7 checks. The requirements are internally consistent and build on the existing callback infrastructure. No contradictory constraints, flaky tests, or timing-dependent behaviors were observed."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Request specifies async migration without prescribing specific method or framework, no misleading hints."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows callback-based implementation; no comments/docs mention async/promises or solution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Prompt says all 4 exports need callback/promise dual support, but hidden tests only check FileStore and runPipeline; edits.md confirms discrepancy. (disposition: misread: hidden/api.test.js also tests retry (lines 70-89) and processFile (line 123), so all four exports are checked; no change made)"
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Competent developer could add async/await while maintaining callback compatibility from fixture and requirements."
+        }
+      ]
+    }
   },
   "pilot": {
     "scores": {},

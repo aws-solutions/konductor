@@ -1,0 +1,5 @@
+{
+  "description": "The default weights with the paraphrase evidence rule: a judge's evidence counts when the lenient rule finds it, or when it restates the output faithfully (every figure of two or more digits it names is in the output, and most of its content words are). A fabricated or absent point still fails. The view is rebuilt from the saved outputs, so it needs the run's workspaces. Select it with --scoring on report, report-2x2, contrast and report --verdict.",
+  "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 },
+  "quotes": "paraphrase"
+}

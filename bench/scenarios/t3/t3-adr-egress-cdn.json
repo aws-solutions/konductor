@@ -2,7 +2,7 @@
   "id": "t3-adr-egress-cdn",
   "class": "design",
   "target": null,
-  "prompt": "Read the architecture packet under `fixture/` and choose the production delivery option. Write the architecture decision record to `docs/adr/0001-delivery.md`. Explain the cost calculation, measured limits, alternatives, and the tradeoff behind the choice. The output must contain a fenced block whose info string is exactly `decision`, containing JSON with exactly these keys: `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the option ID, `options` to the array of option IDs considered, and set `monthly_cost_usd` to the chosen option's computed monthly price. Set `limits` to an object with one entry per hard limit in the inputs, where each entry has `limit` and `value` numbers and `value` is the computed figure for the chosen option.",
+  "prompt": "Read the architecture packet under `fixture/` and choose the production delivery option. Write the architecture decision record to `docs/adr/0001-delivery.md`. Explain the cost calculation, measured limits, alternatives, and the tradeoff behind the choice. The output must contain a fenced block whose info string is exactly `decision`, containing JSON with exactly these keys: `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the option ID, `options` to the array of option IDs considered, and set `monthly_cost_usd` to the chosen option's computed monthly price. Set `limits` to an object with one entry per hard limit in the inputs, where each entry has `limit` and `value` numbers and `value` is the computed figure for the chosen option. Use these exact option IDs: `cdn-committed` for the CDN with a committed plan option, `cdn-payg` for the CDN with usage-based egress option, and `object-direct` for the direct object-store delivery option. Use these exact `limits` keys for the hard limits: `data_size_tb`, `monthly_cost_usd`, `p95_start_ms`, `rpo_minutes`, `rto_minutes`, and `sustained_throughput_gbps`.",
   "fixture": "t3-adr-egress-cdn",
   "timeoutSec": 900,
   "hidden": "t3-adr-egress-cdn",
@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution && node --test hidden/*.test.js",
       "min": 20
     },
     {
@@ -68,12 +68,9 @@
       "lazy": 25,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit name data_size_tb is not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 3,
+  "version": 5,
   "targetSkills": [
     "trade-off-evaluator",
     "cost-estimation"
@@ -120,29 +117,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks to choose an option and write an ADR, naming no framework or tool; fixture README and architecture-notes warn about superseded 120 TB pilot figure, which is a legitimate trap the task tests for, not a decoy pointing away from the real problem."
+          "note": "Prompt asks to read architecture packet and choose delivery option without prescribing specific method. No misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture provides traffic.json (180 TB), price-sheet.json (tiered rates), performance.csv (measurements), requirements.md (constraints), and service-levels.json (limits) - inputs for calculation, not the answer; the correct choice requires comparing latency limits and computing tiered costs."
+          "note": "Fixture lists options in price-sheet.json and performance.csv but doesn't indicate which is correct or provide calculations that reveal answer."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden test decision.test.js reads fixture files (traffic.json, service-levels.json, price-sheet.json, performance.csv) and verifies the chosen option's limits and monthly cost against those derived values; rubric's Pass anchor specifies rejecting object-direct for 1,400 ms vs 800 ms limit and computing tiered cost ~USD 8,600 under USD 9,500 ceiling, matching fixture data exactly."
+          "note": "Limit key 'data_size_tb' not in fixture (has 'monthly_delivery_tb': 180 TB in traffic.json). Also 'p95_start_ms' vs fixture's 'p95_start_time_max_ms', 'sustained_throughput_gbps' vs 'sustained_throughput_min_gbps' naming mismatches. (disposition: the request now states this limit key (D-127 fix), and the item passes a name the request states; the reviewer compared it with the fixture's own field name)"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can compute tiered egress cost from price-sheet.json, compare performance.csv p95 values against service-levels.json limits, and reject object-direct for exceeding latency; alternative cost calculations and option IDs matching fixture would pass tests."
+          "note": "Developer can calculate tiered costs for each option, check performance metrics from performance.csv against limits, compare cdn-committed vs cdn-payg vs object-direct."
         }
       ]
     }

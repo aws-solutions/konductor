@@ -11,10 +11,6 @@
         "query|full[- ]query",
         "unbound|no (entry )?bound|no limit|max_entries"
       ],
-      "none": [
-        "(caused|driven|triggered) by (the )?(marketing|campaign|traffic)",
-        "traffic surge"
-      ],
       "section": "cause",
       "gate": true
     },

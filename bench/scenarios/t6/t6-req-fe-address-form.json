@@ -1,7 +1,7 @@
 {
   "id": "t6-req-fe-address-form",
   "class": "design",
-  "version": 2,
+  "version": 3,
   "phase": "requirements",
   "role": "frontend",
   "questions": "scripted",
@@ -219,48 +219,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates requirement clarity and coverage without imposing a frontend methodology. Earlier glm-5 check of the request, fixture and key: pass (The prompt describes the goal (requirements document), output format (markdown with JSON block), and topic areas, but does not name any specific method, tool, or decoy to use.)."
+          "note": "Prompt asks for 'clear set of requirements for redesigning' - no specific method or framework, no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (US/Canada/UK only, 3 lookups max, WCAG 2.2 AA, 360px viewport, 48px controls) are from scripted user; not a giveaway. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain source material like validation code, event schemas, design notes, and data exports, but none list the expected requirements or hidden answers directly.)."
+          "note": "Fixture contains project materials but not the finished requirements document."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: US/Canada/UK with Australia deferred to 2026-04-15, 3 lookups then manual entry, WCAG 2.2 AA, 360px viewport, 48px touch targets. Earlier glm-5 check of the request, fixture and key: pass (All hidden test expectations are either from scriptedUser.facts (which provide authoritative answers via conversation) or grounded.test.js checks that reference fixture files (privacy policy for logging, address.js for core fields, events.json for analytics names).)."
+          "note": "Tests check scripted facts F1-F8 from prompt; rubric anchors reference same facts; all match fixture content."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement structure can still Pass if all constraints appear as testable frontend requirements with assumptions separated. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can derive all requirements from the prompt, fixture source material (code, data, notes), and scripted user's factual answers without seeing hidden/ or solution/.)."
+          "note": "Competent frontend engineer could create requirements from project materials; edits.md shows pattern fixes for variant wording."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 5.1,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 5.1,
-      "lazy": 14.6,
+      "stub": 0,
+      "lazy": 9.5,
       "alt": 100,
       "date": "2026-11-20"
     }

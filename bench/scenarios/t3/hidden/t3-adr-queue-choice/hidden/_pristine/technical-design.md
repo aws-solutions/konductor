@@ -17,7 +17,7 @@ We are evaluating three AWS managed queue services:
 2. **Amazon SQS FIFO Queue**
    - Exactly-once processing
    - First-In-First-Out delivery
-   - Limited to 300 messages per second per message group
+   - Limited to 300 messages per second per queue, however many message groups are used (high-throughput mode is not enabled in this account)
    - Supports message deduplication
 
 3. **Amazon Kinesis Data Streams**
@@ -58,7 +58,7 @@ Based on historical data from our staging environment:
 
 ### Throughput Limits
 - SQS Standard: No inherent throughput limits
-- SQS FIFO: 300 messages/second per message group (important!)
+- SQS FIFO: 300 messages/second per queue, with any number of message groups (important!)
 - Kinesis: Depends on shard count (each shard supports 1 MB/sec input)
 
 ## Cost Drivers

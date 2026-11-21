@@ -116,7 +116,7 @@ const USAGE = `Usage:
        (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both
        verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
        fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
-       between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json) or "lenient")
+       between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json), "lenient", or "paraphrase" (profiles/scoring-paraphrase.json: lenient, or a restatement whose figures and most words are in the output, rebuilt from the saved outputs))
        (--rescore-quotes matches the stored evidence quotes of --run again with no model call, for judgments made before both views were recorded, and writes judgments-lenient.json beside
        judgments.json (judgments.json is untouched), then prints the share of verdicts downgraded per judge before and after and the mean rubric per arm. With --quote-match strict it only
        checks that the strict rule reproduces the stored values. Reports build the lenient view of old judgments in memory and no longer read that file)
@@ -264,7 +264,7 @@ const USAGE = `Usage:
        dry-run reference under 95), answer-leak (a tool call named a hidden or answer path, or an output repeats the reference's own text),
        second-family (under 1 in 3 tasks of the batch from a second author family), noisy (a check differs between replicates, or flips against a
        per-check dry run where reference and stub agreed), hand-edited, recheck missing (handEdited set and no review.recheck; blocks a lock), fix (the task
-       file records a lazy score over 40 or pilot.decision fix). A handEdited column gives the editor's family or no, for the hand-edit split, and a
+       file records a lazy score over 40 or pilot.decision fix or drop). A handEdited column gives the editor's family or no, for the hand-edit split, and a
        singleFamily column shows single-family-authored for a task whose authorship.singleFamily is set (then no second-family flag). A per-batch table follows:
        runs, distinct tasks, and for each flag the number of distinct tasks with a flagged run. --pack is the scenario pack, default bench/scenarios. Reads files only; no credits)
   node bench/runner/bench.js scenarios ready [DIR] [--batch tN] [--ids [--late]] [--json]
@@ -272,11 +272,12 @@ const USAGE = `Usage:
        and alternative >= 80. Prints per-batch counts (tasks, ready, fix, not ready; ready plus not ready is every task, fix is part of
        not ready) with an all row, the ready list and each not-ready task with its reasons (wave W9 late). --ids prints the ready ids
        as a comma list for the tasks flag of run; with --late the not-ready ones. A task with a lazy score
-       over 40 or pilot.decision fix is listed as fix and is not ready. Hand-edited tasks with no review.recheck are listed apart as lock blocked;
+       over 40 or pilot.decision fix or drop is listed as fix and is not ready. Hand-edited tasks with no review.recheck are listed apart as lock blocked;
        they may still run in the pilot. DIR defaults to bench/scenarios. No credits)
   node bench/runner/bench.js scenarios spot-review [DIR] [--seed N] [--out FILE]
-       (the owner's spot-review sample: per batch a seeded shuffle of the task ids, the first 10% rounded up and at least one, as markdown with links;
-       default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
+       (the owner's spot-review sample: per batch a shuffle of the task ids with its own seed (base seed plus the batch number), dropped tasks
+       left out, the first 10% rounded up and at least one, as markdown with links; DIR/spot-review.json pins samples already read and marks
+       batches pending until final. Default seed 20261119, the sample in bench/scenarios/SPOT-REVIEW.md. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger

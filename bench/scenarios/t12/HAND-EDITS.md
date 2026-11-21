@@ -83,3 +83,49 @@ gpt-5.6-luna verdicts are recorded here and not in the task files. c06 (all four
 t12-spec-rate-limits pass all four items; t12-parallel-backlog and t12-sdlc-contact-import fail key-matches-fixture and
 solvable-from-fixture (fixed above). s1 (the two fixed tasks): key-matches-fixture, fixture-lists-no-answer and
 solvable-from-fixture pass; no-method-or-decoy fails because the request lays out the process (D-127).
+
+## Prompts state the outcome, not the process (2026-11-20, mate hand-edit recheck worker, claude)
+
+Owner decision on D-127 (b): the request must not name the method. Prompt only; hidden tests, key and answers
+unchanged; versions 3 to 4. Free gates after the change are unchanged (t12-parallel-backlog 100 / 0 / 20 / 100,
+t12-sdlc-contact-import 100 / 0 / 36.4 / 100), and the scenarios lint is clean.
+
+| Task | Date | What changed | Why |
+| --- | --- | --- | --- |
+| t12-parallel-backlog | 2026-11-20 | "Plan the work ... then carry the plan out", "do each package as its own separate piece of work" and "merge the packages one at a time" replaced by the outcome (every item that can ship merged by the freeze, the work split to run at the same time, each part reviewable before its merge) and the same delivered files (release plan block, work/P/ with REPORT.md, merge log in mergeOrder, tests green after every merge) | gpt-5.6-luna (s1) failed no-method-or-decoy: the request laid out the process |
+| t12-sdlc-contact-import | 2026-11-20 | "from request to done, the way you would before handing it to review: pin down the requirements, decide the design, build it, test it" replaced by "Customers need the contact import ..., ready to hand to review"; the API, files and feature-note block are unchanged | the same finding |
+
+## Non-Claude recheck, round 2 (D-108, D-127, 2026-11-20, mate hand-edit recheck worker)
+
+These rows replace the round 1 rows above for the same tasks.
+
+| Task | Recheck | Result | Note |
+| --- | --- | --- | --- |
+| t12-parallel-backlog | gpt-5.6-luna (c17, full) | confirmed after fix | gpt-5.6-luna found the login-only key match unfair (fixed, hidden test) and then the process named in the request (prompt rewritten to the outcome, owner decision); gpt-5.6-luna (c17) passes all four; verdicts in HAND-EDITS.md (no author review to hold them) |
+| t12-sdlc-contact-import | gpt-5.6-luna (c17, full) | confirmed after fix | gpt-5.6-luna found the blank-line rule unfair (fixed, hidden test) and then the process named in the request (prompt rewritten to the outcome, owner decision); gpt-5.6-luna (c17) passes all four; verdicts in HAND-EDITS.md (no author review to hold them) |
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
+(reports/key-improve/reconciled.md in the mate workspace). `t12-sop-route-choice` is kept as it is (owner ruling).
+
+- `t12-spec-rate-limits` (version 3): `block-kit/key.json`: `limit-per-key-not-ip` is no longer a gate (one missing
+  negation word zeroed the task: "Unlike the 2025 proposal to throttle by client IP..." failed it); it is a weight-2
+  item whose `none` list also takes unlike, replaces, old, previous, former, earlier, 2025, no longer, retired.
+  `over-limit-429` reads 429, Retry-After and rate_limited over the whole requirements list, so a spec that splits them
+  into three requirements passes. expertKey: 8 single-point items (adds store-down as its own item and one more open
+  question: header scope, whether rejected requests count, unknown plan, Retry-After rounding or clock skew).
+  `adjudication` added. New `answers/.../other`: the reference with the "Unlike the 2025 proposal" wording, the 429
+  rule split in three, fail closed and other open questions. Free gates: reference 100, stub 0, lazy 0, alt 100,
+  shallow 0, other 100.
+  - After the gpt-5.6-luna recheck (key-matches-fixture fail: the hidden `maxLen` caps of 14 requirements, 14 tasks and
+    8 open questions were never stated): the request now states those caps; after the second gpt-5.6-luna recheck (unstated minimums of 5 requirements and 3 tasks) it states the full bounds: 5 to 14 requirements, 3 to 14 tasks, 1 to 8 open questions. Gates unchanged.
+  - Third gpt-5.6-luna recheck: fails fixture-lists-no-answer, key-matches-fixture and solvable-from-fixture.
+    Fixed: `store-failure-task` now reads the whole block (a store-down choice in an open question or a requirement
+    counts, not only in a task), because the folder never asks for it. Disputed, not changed: the product request
+    listing the rules is the input a spec task works from, and burst and the window type are left open on purpose
+    (the request asks for open questions). `pilot.decision` is fix with a blocker until a fourth non-Claude recheck.
+    Gates unchanged: reference 100, stub 0, lazy 0, alt 100, shallow 0, other 100.
+  - Fourth recheck (owner-approved, deepseek-3.2, given the owner's rulings on the two disputed points: the product
+    request is the spec task's input, and unsettled points are meant for openQuestions): 4 of 4 recheck items and 5 of
+    5 review checks pass. `review` now holds this recheck; `pilot.decision` keep, blocker cleared.

@@ -99,7 +99,7 @@ The nightly reporting pipeline is critical for daily business operations. Leader
 - Reduce manual intervention by 50%
 - Establish multi-vendor strategy
 
-### Long-term (Q4 2025+)
+### Long-term (Q3 2025+)
 - Support 4.65 TB processing
 - Achieve 30% cost efficiency improvement
 - Implement full automation

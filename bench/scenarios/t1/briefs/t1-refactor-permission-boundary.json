@@ -1,0 +1,17 @@
+{
+  "id": "t1-refactor-permission-boundary",
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "node",
+  "size": "25 to 35",
+  "source": {
+    "url": "https://github.com/casbin/node-casbin",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor. Role: developer. Repo kind: a Node.js 24 document-sharing HTTP API (node:http only, no dependencies; about 30 files) with an exported createApp(). Permission checks are copied inline into each route handler, each written a little differently (role string comparisons, an owner check, an admin shortcut, a suspended-user check in some routes and not others). Inspiration (idea only): public access-control libraries that keep every permission rule in one policy. Build a task where the owner asks to move every permission decision into one module whose path and exported function the request names exactly, with the handlers calling it, and states that who can do what must NOT change: the request lists the roles, the actions and the current allowed and denied outcomes as a table, including one surprising current outcome the owner says must be kept as it is. Denied requests keep their current status codes and error body. The fixture's existing tests must keep passing. Hidden tests should check the full role by action outcome table through createApp, the named policy function directly, and that the route files no longer compare roles themselves (a source scan, only if the request states that rule). The named policy function must receive everything a decision needs (the user, the action and the document or resource), so the owner rule can be decided inside it. Each rubric criterion must carry three anchors written as `Fail: ... Partial: ... Pass: ...` inside the criterion text, before the closing \"(code cannot check this because ...)\" clause.",
+  "economy": true
+}

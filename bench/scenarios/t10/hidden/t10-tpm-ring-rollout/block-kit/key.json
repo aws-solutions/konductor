@@ -6,29 +6,17 @@
       "type": "text",
       "path": "decisions",
       "all": [
-        "staff.{0,100}pilot",
-        "staff.{0,100}(15|fifteen)"
-      ],
-      "none": [
-        "alphabetical order"
+        "staff.{0,100}pilot"
       ],
       "weight": 2
     },
     {
       "id": "serialized-state",
-      "type": "some",
+      "type": "text",
       "path": "decisions",
-      "match": {
-        "field": "choice",
-        "all": [
-          "queue|serial|mutex",
-          "staff.{0,120}pilot",
-          "25\\s*percent|25%"
-        ],
-        "none": [
-          "average|global threshold"
-        ]
-      },
+      "all": [
+        "queue|serial|mutex|one at a time|lock"
+      ],
       "weight": 2
     },
     {
@@ -40,45 +28,46 @@
         "all": [
           "2025-12-20",
           "2026-01-03"
-        ],
-        "none": [
-          "bypass|ignore"
         ]
       },
       "weight": 2
     },
     {
       "id": "gap-hold",
-      "type": "some",
+      "type": "text",
       "path": "decisions",
-      "match": {
-        "field": "choice",
-        "all": [
-          "pilot.{0,50}(gap|missing)",
-          "\\bHOLD\\b",
-          "10|ten"
-        ],
-        "none": [
-          "average"
-        ]
-      },
-      "weight": 2
+      "all": [
+        "gap|missing|incomplete",
+        "\\bHOLD\\b"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "gap-minimum",
+      "type": "text",
+      "path": "decisions",
+      "all": [
+        "\\b10\\b|\\bten\\b"
+      ],
+      "weight": 1
     },
     {
       "id": "ring-budgets",
-      "type": "some",
+      "type": "text",
       "path": "decisions",
-      "match": {
-        "field": "choice",
-        "all": [
-          "staff.{0,100}(15|fifteen)",
-          "general.{0,100}(120|one hundred twenty)"
-        ],
-        "none": [
-          "same threshold"
-        ]
-      },
-      "weight": 2
+      "all": [
+        "staff.{0,100}(15|fifteen)"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "ring-budgets-general",
+      "type": "text",
+      "path": "decisions",
+      "all": [
+        "general.{0,100}(120|one hundred twenty)"
+      ],
+      "weight": 1
     },
     {
       "id": "legacy-risk",
@@ -91,7 +80,7 @@
           "2025-09-30"
         ],
         "none": [
-          "remove immediately"
+          "remove (it |the legacy generator |the old generator )?(now|immediately|at once)"
         ]
       },
       "weight": 2

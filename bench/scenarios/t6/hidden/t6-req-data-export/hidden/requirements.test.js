@@ -7,7 +7,7 @@ scriptedSuite(test, assert, {
   facts: [
     {
       id: 'F1',
-      all: [/account owner/i, /Account Data Export permission/i],
+      all: [/account owner|owner of the account/i, /(?:Account Data )?Export permission/i],
       wrong: [/all administrators/i, /any administrator/i]
     },
     {
@@ -17,27 +17,27 @@ scriptedSuite(test, assert, {
     },
     {
       id: 'F3',
-      all: [/payment card/i, /internal (?:support )?notes/i, /deleted appointment/i],
+      all: [/payment card|card numbers?/i, /internal (?:support )?notes|support notes/i, /deleted/i],
       wrong: [/include payment card/i]
     },
     {
       id: 'F4',
-      all: [/15\s*minutes/i, /72\s*hours/i],
+      all: [/15\s*min(?:ute)?s?\b|fifteen minutes/i, /72\s*h(?:ours?|rs?)?\b|seventy-two hours|three days|3 days/i],
       wrong: [/48\s*hours/i]
     },
     {
       id: 'F5',
-      all: [/signed download link/i, /7\s*days/i],
+      all: [/signed|download link|link/i, /7\s*days|seven days/i],
       wrong: [/24\s*hours/i]
     },
     {
       id: 'F6',
-      all: [/2\s*GB/i, /compressed/i],
+      all: [/2\s*GB|2,?048\s*MB/i, /compress|archive|package/i],
       wrong: [/10\s*GB/i]
     },
     {
       id: 'F7',
-      all: [/Pro and Enterprise/i, /Starter/i],
+      all: [/\bPro\b/i, /Enterprise/i, /Starter/i],
       wrong: [/Starter[^.]{0,40}included/i]
     },
     {

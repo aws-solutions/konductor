@@ -160,22 +160,22 @@ describe('Queue Selection ADR Tests', () => {
     });
 
     it('should include FIFO throughput limit when relevant', () => {
-      const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_group.value;
+      const fifoLimit = pricingData.services.sqs_fifo.limits.throughput_per_queue.value;
       
       if (decision.chosen === 'sqs_fifo') {
         // If they chose FIFO, should show they meet the limit (but they shouldn't choose it!)
         assert(
-          meets(decision.limits, 'fifo_throughput_per_group', fifoLimit, 'max'),
-          'Missing or incorrect fifo_throughput_per_group limit for FIFO choice'
+          meets(decision.limits, 'fifo_throughput_per_queue', fifoLimit, 'max'),
+          'Missing or incorrect fifo_throughput_per_queue limit for FIFO choice'
         );
       } else {
         // For non-FIFO choices, limit should show as not applicable (value = 0)
         assert(
-          decision.limits.fifo_throughput_per_group,
-          'Missing fifo_throughput_per_group limit for non-FIFO choice'
+          decision.limits.fifo_throughput_per_queue,
+          'Missing fifo_throughput_per_queue limit for non-FIFO choice'
         );
         assert.strictEqual(
-          decision.limits.fifo_throughput_per_group.limit,
+          decision.limits.fifo_throughput_per_queue.limit,
           fifoLimit,
           `FIFO limit should be ${fifoLimit}`
         );
@@ -212,7 +212,7 @@ describe('Queue Selection ADR Tests', () => {
     it('if chosen sqs_fifo, should fail throughput test', () => {
       if (decision.chosen === 'sqs_fifo') {
         // FIFO throughput is 300/s, need 400/s
-        const fifoThroughput = pricingData.services.sqs_fifo.limits.throughput_per_group.value;
+        const fifoThroughput = pricingData.services.sqs_fifo.limits.throughput_per_queue.value;
         assert(
           PEAK_THROUGHPUT > fifoThroughput,
           `FIFO throughput ${fifoThroughput}/s should be less than required ${PEAK_THROUGHPUT}/s`

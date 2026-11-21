@@ -10,15 +10,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { unquotedVerdict, rubricScore } = require('./score.js');
-const { makeQuoteMatcher, DEFAULT_QUOTE_RULE, QUOTE_RULES } = require('./quote.js');
+const { makeQuoteMatcher, DEFAULT_QUOTE_RULE, QUOTE_RULES, JUDGE_QUOTE_RULES } = require('./quote.js');
 const { EXPERT_PREFIX } = require('../runner/lib/expert-rubric.js');
 
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
 
 const otherRule = (rule) => (rule === 'strict' ? 'lenient' : 'strict');
 
-function checkRule(rule, flag = '--quote-match') {
-  if (!QUOTE_RULES.includes(rule)) throw new Error(`${flag} takes ${QUOTE_RULES.join(' or ')} (got ${JSON.stringify(rule)})`);
+// A judge pass records the judge rules only; a report view may also ask for 'paraphrase' (rebuilt from the outputs).
+function checkRule(rule, flag = '--quote-match', rules = QUOTE_RULES) {
+  if (!rules.includes(rule)) throw new Error(`${flag} takes ${rules.join(' or ')} (got ${JSON.stringify(rule)})`);
   return rule;
 }
 
@@ -36,9 +37,9 @@ function matchersFor(text, expertText = text) {
 const isExpert = (id) => String(id ?? '').startsWith(EXPERT_PREFIX);
 
 /** (quote, id) => boolean under one rule, over a built bundle: expert: ids match its deliverables only. */
-function bundleMatcher(bundle, { lenient }) {
-  const full = makeQuoteMatcher(bundle.text, { lenient });
-  const expert = makeQuoteMatcher(bundle.expertText ?? bundle.text, { lenient });
+function bundleMatcher(bundle, { lenient, paraphrase = false }) {
+  const full = makeQuoteMatcher(bundle.text, { lenient, paraphrase });
+  const expert = makeQuoteMatcher(bundle.expertText ?? bundle.text, { lenient, paraphrase });
   return (quote, id) => (isExpert(id) ? expert(quote) : full(quote));
 }
 
@@ -116,7 +117,7 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
       if (rebuildable) {
         try {
           red = red ?? loadRedactions(undefined);
-          m = bundleMatcher(buildBundle({ runDir: entry.dir, result: entry.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, j.limits ?? {}, {}), redactions: red }), { lenient: true });
+          m = bundleMatcher(buildBundle({ runDir: entry.dir, result: entry.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, j.limits ?? {}, {}), redactions: red }), { lenient: true, paraphrase: rule === 'paraphrase' });
         } catch { m = null; }
       }
       bundles.set(k, m);
@@ -131,7 +132,8 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
     if (rec.judgeError || !rec.criteria?.length) return rec;
     records++;
     const task = tasks?.get(rec.taskId);
-    if (hasViews(rec)) { switched++; return selectView(rec, rule, task?.rubric || []); }
+    // No judge pass records the paraphrase view, so it is always rebuilt from the saved output.
+    if (hasViews(rec) && rule !== 'paraphrase') { switched++; return selectView(rec, rule, task?.rubric || []); }
     if (rule === 'strict') return rec;
     const found = rebuild && task ? matcherFor(rec) : null;
     if (!found) { missing++; return rec; }
@@ -139,7 +141,7 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
     const criteria = rescoredCriteria(rec.criteria, found);
     return { ...rec, criteria, score: rubricScore(task.rubric, criteria) };
   });
-  return { judgments: { ...j, rubric }, rule: missing === records && records > 0 && rule === 'lenient' ? 'strict' : rule, requested: rule, rebuilt, missing, records, switched };
+  return { judgments: { ...j, rubric }, rule: missing === records && records > 0 && rule !== 'strict' ? 'strict' : rule, requested: rule, rebuilt, missing, records, switched };
 }
 
 module.exports = { dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };

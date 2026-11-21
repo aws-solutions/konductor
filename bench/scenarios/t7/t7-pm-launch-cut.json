@@ -1,7 +1,7 @@
 {
   "id": "t7-pm-launch-cut",
   "class": "design",
-  "version": 4,
+  "version": 7,
   "phase": "planning",
   "role": "pm",
   "questions": "allowed",
@@ -17,13 +17,13 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
-      "min": 14,
+      "min": 13,
       "weight": 3,
       "kind": "substance"
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/launch-scope.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(f+\"launch-scope\");if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"63\",\"f-010\",\"f-014\",\"f-021\",\"f-031\",\"f-038\",\"f-044\",\"f-052\",\"f-063\"];process.exit(items.every(named)?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/launch-scope.md\",\"utf8\");const f=String.fromCharCode(96).repeat(3);const s=t.split(new RegExp(f+\"[ \\\\t]*(?:json[ \\\\t]+)?launch-scope(?![A-Za-z0-9_-])\",\"i\"));if(s.length<2)process.exit(1);const b=s[1].split(f)[0].toLowerCase();const w=(c)=>c!==undefined&&/[a-z0-9]/.test(c);const named=(x)=>{let i=b.indexOf(x);while(i>=0){if(!w(b[i-1])&&!w(b[i+x.length]))return true;i=b.indexOf(x,i+1)}return false};const items=[\"63\",\"f-010\",\"f-014\",\"f-031\",\"f-038\",\"f-044\",\"f-052\",\"f-063\"];process.exit(items.every(named)?0:1)'",
       "expectExit": 0,
       "weight": 8,
       "kind": "substance"
@@ -43,7 +43,7 @@
     {
       "type": "contains",
       "path": "docs/launch-scope.md",
-      "pattern": "```\\s*launch-scope",
+      "pattern": "```[ \\t]*(json[ \\t]+)?launch-scope",
       "weight": 1,
       "kind": "format"
     }
@@ -51,7 +51,7 @@
   "rubric": [
     {
       "id": "director-bottom-line",
-      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail. Fail: no commitment stated, or all High-priority rows listed without a decision. Partial: gives a scope but not the capacity fit or the launch date. Pass: the first paragraph commits to eight features for the 2027-09-20 launch, 58 points against 63 available, a five-point buffer, engineering start on Monday 2027-07-26, and says the signed Northline export (F-014) is in even though its backlog label is Medium. (code cannot check this because it only reads the structured block)",
+      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail. Fail: no commitment stated, or all High-priority rows listed without a decision. Partial: gives a scope but not the capacity fit or the launch date. Pass: the first paragraph commits to a named feature set for the 2027-09-20 launch, states planned points between 58 and 63 against 63 available and the buffer that leaves (the reference plan is eight features, 58 points, a five-point buffer; another set in that range is equally good), engineering start on Monday 2027-07-26, and says the signed Northline export (F-014) is in even though its backlog label is Medium. (code cannot check this because it only reads the structured block)",
       "weight": 2
     },
     {
@@ -163,29 +163,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt asks for scope decisions without prescribing a method; F-044 executive wallboard and F-057 mobile approvals are correctly excluded (out-list and absent assertions), not decoys—they are valid options a PM might choose differently."
+          "note": "Prompt asks to 'decide what is in, what is out' based on analysis - no specific method or framework, no misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains backlog, interviews, and commitments; it does not state which features are in/out or the 63-point capacity total."
+          "note": "Fixture has backlog, brief, roadmap but not the scope decision or JSON block."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The key's assertions reference backlog IDs (F-010, F-014, F-021, F-038, F-052, F-063) and the 63-point capacity from team-capacity.csv; all are in fixture data."
+          "note": "Checks require specific feature IDs from backlog; rubric references capacity, dates from fixture; edits.md shows fix for ambiguous F-021 requirement."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A PM can evaluate customer evidence in interviews, check sales commitments, compare estimates to capacity, identify F-031 as a dependency, and decide scope within the eight-week window."
+          "note": "Competent PM/TPM could analyze backlog, capacity, commitments to make scope decisions; different feature combinations within capacity would pass."
         }
       ]
     }
@@ -203,7 +203,7 @@
     "dryRun": {
       "reference": 100,
       "stub": 2.9,
-      "lazy": 36.3,
+      "lazy": 33.2,
       "alt": 100,
       "date": "2026-11-20"
     },
@@ -212,7 +212,7 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

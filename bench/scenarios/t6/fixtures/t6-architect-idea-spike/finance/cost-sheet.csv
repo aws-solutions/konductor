@@ -1,0 +1,9 @@
+month,pdf_requests,render_worker_compute_usd,object_storage_usd,egress_usd,note
+2025-01,364311,1677,255,401,
+2025-02,379723,1782,266,418,
+2025-03,395685,1842,277,435,"price change on object storage"
+2025-04,405220,1878,284,446,
+2025-05,416909,1954,292,459,
+2025-06,429044,1984,300,472,"worker memory raised after incident"
+2025-07,440514,2056,308,485,
+2025-08,455622,2132,319,501,

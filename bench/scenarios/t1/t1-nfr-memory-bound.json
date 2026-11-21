@@ -1,0 +1,210 @@
+{
+  "id": "t1-nfr-memory-bound",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Please fix the delivery de-duplication store in this repo before the next long-running deployment. Its in-memory table currently grows for every event. Keep the existing public exports and worker behavior compatible, including `WebhookWorker` and `createWebhookWorker` from `src/webhook-worker.js`.\n\nThe exported `DedupeStore` in `src/dedupe-store.js` must accept `{ clock }` in its constructor, where `clock` is a zero-argument millisecond function and the default remains the real clock. Keep `remember(key)`, `has(key)`, and `size()`; `remember` returns true only when it accepts new work and false for a duplicate. Normalize keys by trimming surrounding whitespace and comparing case-insensitively. Remember at most 3 keys. A key expires at age 60,000 ms, and a duplicate does not refresh its age. When full, evict the oldest retained key; equal timestamps use insertion order. Expire old entries before capacity eviction. The duplicate guarantee for a retained key must not weaken inside the window; capacity eviction is the deliberate bound trade-off. Add `stats()` with exactly `remembered`, `max`, `windowMs`, `evictions`, and `expirations`, counting capacity removals and expiry removals separately. Add a regression test under `test/` that would catch unbounded growth, and update the changelog or operational docs. Do not add dependencies or change unrelated behavior.",
+  "fixture": "t1-nfr-memory-bound",
+  "hidden": "t1-nfr-memory-bound",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 12,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test >/dev/null 2>&1 && test \"$(grep -h -E '^[[:space:]]*test\\(' test/*.test.js | wc -l)\" -ge 13",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "bounded|60-second|expiry",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\"(dependencies|devDependencies)\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": ".nvmrc",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "report-cause",
+      "criterion": "The final report accurately explains that unbounded retention caused the memory risk and identifies the intentional capacity-versus-replay trade-off. Fail: it claims an unrelated cause or omits the trade-off. Partial: it mentions bounded storage without explaining the trade-off. Pass: it names unbounded retention and clearly calls out capacity eviction as the deliberate exception. (code cannot check this because it cannot judge the accuracy of the agent's explanation)"
+    },
+    {
+      "weight": 1,
+      "id": "report-verification",
+      "criterion": "The final report states what was verified with the injected clock and distinguishes completed checks from anything not run. Fail: it reports checks that were not run. Partial: it lists verification without the boundary cases or without distinguishing uncertainty. Pass: it truthfully names the deterministic expiry and capacity cases that were verified and any remaining limitation. (code cannot check this because it cannot evaluate the agent's final message)"
+    }
+  ],
+  "targetSkills": [
+    "verification",
+    "backend-development",
+    "backend-review"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "expertKey": {
+    "items": [
+      {
+        "id": "cause",
+        "text": "The final message identifies the old Map retaining every key as the source of the long-run memory risk.",
+        "source": "https://github.com/isaacs/node-lru-cache (BlueOak-1.0.0; idea only, paraphrased)"
+      },
+      {
+        "id": "limit-choice",
+        "text": "The final message explains that the configured bound is an operational memory limit rather than a value inferred from a live traffic benchmark.",
+        "source": "https://github.com/isaacs/node-lru-cache (BlueOak-1.0.0; idea only, paraphrased)"
+      },
+      {
+        "id": "cleanup-design",
+        "text": "The final message notes that cleanup happens during store operations and does not add a timer or background task.",
+        "source": "https://github.com/isaacs/node-lru-cache (BlueOak-1.0.0; idea only, paraphrased)"
+      },
+      {
+        "id": "scope",
+        "text": "The final message notes that persistence across process restarts was left unchanged because the store remains intentionally in memory.",
+        "source": "https://github.com/isaacs/node-lru-cache (BlueOak-1.0.0; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "It is fixed and tests pass.",
+      "I added an LRU cache and improved performance.",
+      "The memory issue was probably caused by Node.js.",
+      "I changed the webhook worker and everything should be fine."
+    ]
+  },
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "backend-development",
+      "backend-review"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/isaacs/node-lru-cache",
+      "licence": "BlueOak-1.0.0",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, CV-F 2026-11-20): the CV-F second-family attempt (qwen3-coder-next, t1-refactor-permission-boundary) was dropped, see DEBT D-122"
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not name a specific algorithm, library, or implementation method. It describes requirements (bounded storage, expiry, normalization, stats) without prescribing how to achieve them."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All key requirements are stated: max 3 keys, 60,000ms window, trim+lowercase normalization, insertion order tie-breaking, capacity eviction after expiry. Hidden tests confirm these behaviors, and no ambiguity exists."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture comments and docs do not reveal the solution. The README and operations.md mention the de-duplication store exists but give no hints about implementation patterns or boundaries."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Worker: the reviewer marked fail but its own note says the task is not too easy; the dry run agrees (lazy 23.8) (reviewer: A naive implementation that merely caps the Map at 3 entries without expiry handling passes some tests but fails hidden tests requiring stats(), expiry at 60s, and eviction-after-expiry ordering. The task is not too easy.)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is achievable: no external dependencies are required, clock injection allows deterministic testing, and the requirements are internally consistent. The hidden tests are deterministic and do not fail for valid alternative solutions that meet the spec."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes the required behavior (bounded memory, expiry, capacity eviction, stats) without prescribing any implementation method or naming a framework. No decoy or misleading hint is present."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's dedupe-store.js shows an unbounded Map implementation. Comments, docs, and tests do not describe bounded behavior, expiry, capacity eviction, or the stats() shape. The task is to add these features."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests use DedupeStore from src/dedupe-store.js, createWebhookWorker and WebhookWorker from src/webhook-worker.js, and the idempotencyKey field—all present in the fixture. The expert key's focus on unbounded retention matches the actual problem."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The prompt specifies all requirements (max 3 keys, 60s expiry, case-insensitive+trimmed keys, stats shape, regression test, changelog update). The fixture provides the existing API and test structure. A developer can implement without hidden tests or solution."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-F worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 14.3,
+    "dryRun": {
+      "reference": 100,
+      "stub": 14.3,
+      "lazy": 23.8,
+      "alt": 81,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  }
+}

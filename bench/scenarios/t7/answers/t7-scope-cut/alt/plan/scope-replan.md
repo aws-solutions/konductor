@@ -4,7 +4,7 @@ The figures below come from the files in this folder; the reasoning follows the 
 
 ```replan
 {
- "date": "2027-06-18",
+ "date": "2027-07-16",
  "cannot_cut": [
   "PRJ-1008"
  ],
@@ -45,4 +45,4 @@ PRJ-1019 and PRJ-1073 are not additional net scope. They are bug splits whose po
 - PRJ-1031, audit event filters: 5 points
 - PRJ-1008, account export permission: 3 points
 The active, net-new tickets created after the 2027-05-07 scope lock total 29 points:
-Keep the launch on **2027-06-18**. The post-lock net-new work is 29 points, while the remaining holiday-adjusted slack is 17 points. We therefore need to remove **12 points** from the planned scope.
+Keep the launch on **2027-07-16**. The post-lock net-new work is 29 points, while the remaining holiday-adjusted slack is 17 points. We therefore need to remove **12 points** from the planned scope.

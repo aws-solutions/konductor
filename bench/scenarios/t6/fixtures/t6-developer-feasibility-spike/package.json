@@ -1,0 +1,10 @@
+{
+  "name": "loadbay-import",
+  "version": "0.4.1",
+  "private": true,
+  "description": "CSV import service for Loadbay: streaming reader and column type inference for the import preview",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

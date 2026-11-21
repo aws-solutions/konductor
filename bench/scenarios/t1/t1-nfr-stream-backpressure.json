@@ -1,0 +1,225 @@
+{
+  "id": "t1-nfr-stream-backpressure",
+  "class": "hard",
+  "version": 1,
+  "phase": "nfr",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "The export endpoint needs a reliability fix in src/export-route.js. Keep interfaces exportRecords({ source, sink, maxBufferedBytes }) and createExportHandler({ source, maxBufferedBytes }); the default maxBufferedBytes is BUFFER_LIMIT_BYTES, which remains 64. A sink has write(string), end(), and once('drain', fn) and once('close', fn); write() returns false when it cannot accept more until a later drain, so wait for drain before another write or page fetch. sink.bufferedBytes counts bytes accepted but not consumed; a real response's writableLength has the same meaning. Never let that value exceed maxBufferedBytes after a write, when output does not fit the remaining space, and do not fetch another page while the sink is full. Empty pages are not end markers; continue fetching later pages. On sink close, stop later writes and fetches, call source.close(), and do not call sink.end(). Call source.close() after normal completion and after fetchPage throws. On a fetchPage error, preserve written bytes, append exactly {\"error\":\"export failed\"} plus a newline, and end exactly once. Set statusCode to 500 only when no record was written; otherwise preserve the existing status. Normal completion ends exactly once and writes no error record. Keep content-type application/x-ndjson and fast-reader bytes byte-for-byte unchanged, including empty pages; keep createPagedSource(pages), pagesFetched, and its closed state usable. Do not add dependencies or use real-time waits. Update relevant documentation or the changelog and add focused tests; all existing tests must continue to pass.",
+  "fixture": "t1-nfr-stream-backpressure",
+  "hidden": "t1-nfr-stream-backpressure",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 16,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test \"$(cat test/*.test.js | grep -c \"^test(\")\" -ge 10",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\"(dependencies|devDependencies)\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "backpressure|client closes|error record",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/api.md",
+      "pattern": "bufferedBytes|drain|64",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "src/export-route.js",
+      "pattern": "maxBufferedBytes|once\\('drain'",
+      "weight": 2,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "GET /export",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "report-cause",
+      "criterion": "The final report identifies the eager page/write loop as the source of unbounded buffering and explains how the byte ceiling was measured with the injected sink. Fail: it only says the export was fixed. Partial: it names backpressure but gives no measurement or cause. Pass: it connects the cause to the bounded write and gives the observable measurement. (code cannot check this because the explanation is in the agent's final message)"
+    },
+    {
+      "weight": 1,
+      "id": "report-scope",
+      "criterion": "The final report states the tests actually run and mentions a deliberate trade-off or behavior left unchanged, such as preserving fast-reader bytes and avoiding timers. Fail: it claims verification without naming what ran. Partial: it lists tests but omits the scope or trade-off. Pass: it accurately states verification and one relevant boundary. (code cannot check this because the final message's accuracy and completeness are not encoded in the repository)"
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "expertKey": {
+    "items": [
+      {
+        "id": "cause",
+        "text": "The report explains that fetching a whole page and continuing after write returned false caused the excess data to accumulate.",
+        "source": "https://github.com/mafintosh/pump (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "measurement",
+        "text": "The report says how the injected sink's byte counter and drain event exposed the high-water mark without using sleeps.",
+        "source": "https://github.com/mafintosh/pump (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "lifecycle",
+        "text": "The report notes that close handling also closes the paged source and removes the listener on ordinary completion.",
+        "source": "https://github.com/mafintosh/pump (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "tradeoff",
+        "text": "The report calls out that the implementation preserves the existing newline bytes and keeps the error message generic rather than exposing source details.",
+        "source": "https://github.com/mafintosh/pump (MIT; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Updated the export to use streams and added tests.",
+      "The endpoint now handles backpressure and disconnects correctly.",
+      "All tests pass and performance is improved.",
+      "Added a limit to prevent memory issues."
+    ]
+  },
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://github.com/mafintosh/pump",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-20",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, CV-F 2026-11-20): the CV-F second-family attempt (qwen3-coder-next, t1-refactor-permission-boundary) was dropped, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the problem (backpressure, client closure, error handling) and the interfaces to use, but does not prescribe implementation methods or tool names. It specifies what behavior is required, not how to achieve it."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt specifies the exact error message format, the byte limit (64), the interface contracts (write, end, once('drain'), once('close')), and expected behaviors for close, error, and normal cases. Hidden tests use these same contracts with a test Sink implementation matching the described interface."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture exports BUFFER_LIMIT_BYTES (64) and the source/sink interfaces, but the existing test only covers basic happy-path output. No fixture comments, stubs, or docs reveal the backpressure, drain-waiting, or close-handling logic required by hidden tests."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive fix that only adds maxBufferedBytes parameter without proper drain waiting would fail the 'stalled sink never receives more than the configured buffered ceiling' test. Skipping client-close handling fails multiple close-related tests. The 16 hidden tests cover backpressure, close handling, error handling, and source lifecycle comprehensively."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The prompt specifies the exact interface contracts (write returns boolean, once('drain'), once('close'), bufferedBytes/writableLength). Hidden tests use deterministic async patterns with explicit drain/close emissions and microtask flushes, no timers or flaky races. The toLine helper and createPagedSource are in the fixture."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt describes desired behavior for backpressure handling without naming a specific method, framework, or tool, and contains no decoy hints pointing away from the real problem."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture's tests only cover basic export and error reporting; nothing in fixture comments, docs, or tests mentions backpressure, drain events, bufferedBytes limits, or the close/error behaviors the hidden tests verify."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests use BUFFER_LIMIT_BYTES (64), exportRecords, createExportHandler, createPagedSource, and interfaces (write, end, once('drain'), once('close'), bufferedBytes, pagesFetched, closed) all present in fixture exports."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "The prompt specifies all interfaces, behaviors, and constraints (64-byte default, drain handling, close behavior, error format) clearly enough that a competent developer could implement the backpressure fix without seeing hidden tests."
+        }
+      ]
+    }
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate CV-F worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 8.9,
+    "dryRun": {
+      "reference": 100,
+      "stub": 8.9,
+      "lazy": 37.5,
+      "alt": 86.6,
+      "date": "2026-11-20"
+    },
+    "decision": "keep",
+    "date": "2026-11-20"
+  }
+}

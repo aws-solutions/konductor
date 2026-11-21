@@ -2,90 +2,65 @@
 
 ## Overall Assessment
 
-The design demonstrates a reasonable approach to achieving active-active deployment across two regions, with clear benefits for availability and latency. However, several critical gaps in the data consistency model, recovery procedures, and cost estimation require addressing before proceeding.
-
-**Primary Risks:**
-1. Data consistency issues could lead to double booking of seats, violating core business rules
-2. Recovery time and point objectives may not be achievable with the proposed architecture
-3. Cost underestimation could impact budget approval and project viability
-4. Missing operational procedures for failback and data reconciliation
+The design should not go ahead as written. Seat inventory can be sold twice, the recovery targets do not match the service targets or the measured data, and the cost case is incomplete.
 
 ## Detailed Findings
 
-### Data Consistency and Conflict Resolution
-The proposed last-write-wins conflict resolution is fundamentally incompatible with the ticket booking domain where double booking must be prevented. The design acknowledges that seat counts could go negative but treats this as an alert condition rather than preventing it. Stronger consistency mechanisms or application-level coordination are needed.
+### Seats can be sold twice
+Both regions write the seat counter and last-write-wins picks one write. In Scenario 1 (3.3) two customers buy seat A-12 and the counter still reads 0, so nothing alerts. The service targets allow zero double bookings and require strong consistency for ticket inventory and payments; asynchronous replication (3.2) cannot give that.
 
-### Recovery Objectives vs. Reality
-Measured replication lag shows P99 values exceeding 60 seconds, yet the RPO target is 60 seconds. This mismatch guarantees data loss will exceed the target during replication spikes. Similarly, DNS TTL + health check timing exceeds the 60-second RTO, making the recovery time objective unachievable.
+### Recovery targets
+The design's RPO is 60 seconds; the service target for transactional data is 30 seconds. The measured P99 lag is 420-720 ms against a < 100 ms target. The design names three recovery times (120 s in 3.2, 90 s in 3.6, 60 s in 6.2), and with a 300-second DNS TTL none of them can hold.
 
-### Budget and Cost Planning
-The budget analysis appears incomplete, missing the doubled database costs for the second region and underestimating cross-region data transfer expenses. The variance calculation shows the project already exceeds budget before accounting for these omissions.
+### Cost
+Storage is priced once for two databases, Multi-AZ standbys are left out, and the one-time cost is already over the approved budget.
 
-### Operational Gaps
-The failback procedure lacks specificity about data consistency verification, gradual traffic shifting, and monitoring during transition. Without detailed steps, operators may cause data corruption or service disruption during recovery operations.
-
-### Global Counters Without Merge Logic
-Maintaining a global seat counter that both regions can update independently, with only last-write-wins conflict resolution, will inevitably lead to inventory discrepancies. The design needs explicit merge semantics or a centralized coordination mechanism.
-
-## Recommendations
-
-1. **Replace last-write-wins** with a stronger consistency model for seat inventory, such as reservation tokens or distributed locks
-2. **Adjust recovery targets** to match achievable metrics based on replication lag measurements and DNS behavior
-3. **Revise budget** to include full infrastructure costs and add contingency for cross-region data transfer
-4. **Detail failback procedures** with specific verification steps, traffic shifting controls, and rollback plans
-5. **Implement inventory coordination** through a consensus protocol or centralized inventory service
-
-The design shows good foundational work but requires substantial revisions to the data consistency and recovery architecture before implementation.
+### Failback
+The failback steps do not say how to check consistency or how to reconcile writes taken during the outage.
 
 ```json
 [
   {
-    "location": "3.2",
+    "location": "3.3",
     "severity": "critical",
-    "issue": "Last-write-wins conflict resolution allows the same seat to be sold in both regions, violating the core business rule against double booking.",
-    "fix": "Implement stronger conflict resolution such as reservation tokens or application-level coordination to prevent double booking"
+    "issue": "Both regions update the seat inventory counter, and last-write-wins resolves the conflict, so the same seat can be sold in both regions: Scenario 1 in 3.3 ends with two buyers for seat A-12 while the counter reads 0. That breaks the zero-tolerance double-booking rule; the counter needs one writer, a conditional reservation or a merge rule.",
+    "fix": "Give the seat counter a single writer per event or a conditional reservation, so a seat is sold once; prevent double booking instead of alerting on it."
   },
   {
     "location": "6.3",
     "severity": "high",
-    "issue": "The claimed RPO of 60 seconds in section 6.3 is smaller than the measured replication lag which exceeds 60 seconds at P99, meaning data loss could exceed the recovery target.",
-    "fix": "Adjust RPO target to match actual replication capabilities or implement synchronous replication for critical data"
+    "issue": "The recovery targets do not match the service targets or the data: the design's RPO of 60 seconds (3.2, 6.3) is twice the 30-second RPO service-targets.md sets for transactional data, and the measured P99 replication lag (420-720 ms, max 2.2 s) is 4-7 times the design's own < 100 ms P99 lag target and success criterion 4.",
+    "fix": "Set the RPO to the 30-second service target, alert on the measured P99 lag, and either fix the lag target to the measured 420-720 ms or replicate seat and payment writes synchronously."
   },
   {
     "location": "6.2",
     "severity": "high",
-    "issue": "DNS TTL of 300 seconds plus health check timing of 60 seconds exceeds the 60-second RTO stated in section 6.2, meaning failover will take longer than the recovery target.",
-    "fix": "Reduce DNS TTL to 30 seconds and implement faster health checks or consider alternative routing mechanisms"
+    "issue": "A DNS TTL of 300 seconds (3.5, dns-config.json) means clients keep resolving the failed region for up to 5 minutes after Route 53 changes, so failover cannot meet the 60-second RTO; the 6.2 breakdown counts only 20 seconds for DNS propagation.",
+    "fix": "Lower the DNS TTL to 30-60 seconds (or use a global accelerator) and recompute the 6.2 breakdown with TTL and health check time."
   },
   {
-    "location": "8.1",
+    "location": "3.9",
     "severity": "medium",
-    "issue": "The budget allocation in section 8.1 omits the doubled database cost for the second region and underestimates cross-region data transfer costs.",
-    "fix": "Update budget to include full RDS instance costs for us-west-2 and increase cross-region transfer estimates based on measured traffic patterns"
+    "issue": "The cost analysis (3.9, with no figures in 8.1) prices 1 TB of database storage once although each of the two RDS instances needs it, leaves out the Multi-AZ standbys, and its one-time total ($48,000; $47,400 in budget-breakdown.yaml) already exceeds the $45,000 approved budget.",
+    "fix": "Price storage for both RDS instances, add the Multi-AZ standby cost, and bring the one-time cost under budget or ask for a larger budget."
   },
   {
     "location": "7.1",
     "severity": "medium",
-    "issue": "The failback procedure in section 7.1 is vague and missing detailed steps for verifying data consistency before returning traffic to the restored region.",
-    "fix": "Create detailed failback runbook with data consistency checks, gradual traffic shifting, and rollback procedures"
+    "issue": "The failback steps (3.7, 7.1) say only 'verify replication has caught up'; they give no check or pass criterion and no step to reconcile writes the surviving region accepted while the other was down, so returning traffic can reintroduce conflicting seat and payment rows.",
+    "fix": "Add failback steps: compare row counts and checksums for seats and payments, reconcile writes taken during the outage, and set a pass criterion before shifting traffic."
   },
   {
-    "location": "3.3",
-    "severity": "high",
-    "issue": "A global seats-left counter updated in both regions with no merge rule will cause inventory discrepancies and potential overselling.",
-    "fix": "Implement proper merge semantics for concurrent updates or use a centralized inventory service with strong consistency"
-  },
-  {
-    "location": "6.1",
+    "location": "3.6",
     "severity": "medium",
-    "issue": "The estimated recovery time in section 6.1 doesn't account for DNS propagation delay beyond TTL, which could extend the actual outage duration.",
-    "fix": "Update recovery time estimates to include DNS propagation and client caching behavior beyond TTL"
+    "issue": "The design states three different recovery times: RTO 120 seconds in 3.2, an estimated 90 seconds in 3.6 and a 60-second RTO in 6.2, so there is no single target to build or test against; only 60 seconds matches service-targets.md.",
+    "fix": "Pick one RTO (60 seconds, the service target), use it in 3.2, 3.6 and 6.2, and test failover against it."
   },
   {
-    "location": "2.2",
-    "severity": "low",
-    "issue": "Asynchronous replication contradicts the strong consistency requirement for seat inventory stated in the product rules, creating dependency compatibility issues.",
-    "fix": "Use synchronous replication for seat inventory tables or implement application-level consistency guarantees"
+    "location": "3.2",
+    "severity": "high",
+    "issue": "Asynchronous replication with eventual consistency for seat counts (3.2, 3.3) contradicts the strong consistency service-targets.md requires for ticket inventory and for payment records.",
+    "fix": "Keep seat inventory and payments on synchronous or single-writer storage to meet the strong consistency requirement; leave asynchronous replication for the rest."
   }
 ]
 ```

@@ -1,0 +1,17 @@
+{
+  "id": "t1-nfr-memory-bound",
+  "phase": "nfr",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "node",
+  "size": "25 to 40",
+  "economy": true,
+  "source": {
+    "url": "https://github.com/isaacs/node-lru-cache",
+    "licence": "BlueOak-1.0.0",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: NFR and performance. Role: developer. Repo kind: a Node.js 24 webhook ingestion worker (no dependencies; about 30 files) that de-duplicates incoming events by an idempotency key so a retried delivery is processed once. Its in-memory record of seen keys never forgets anything, so a long-running worker's memory grows with every event. Inspiration (idea only): public bounded caches that limit entries and evict by age. Build a task where the owner asks for a measurable memory bound and states it in numbers the hidden tests can check deterministically through the module's exported API and an injected clock (no real time): a maximum number of remembered keys, a time window after which a key may be forgotten, and which key goes first when the store is full. The duplicate guarantee inside the window must not weaken, and the existing behaviour and exports stay compatible. Also ask for a regression test in the repo's own test folder that would fail if the store grew without bound again. Add wrinkles of your own design (a re-delivered key refreshes or does not refresh its age, as you state; keys that differ only by case or surrounding whitespace; a stats function whose shape the request states). Each rubric criterion must carry three anchors written as `Fail: ... Partial: ... Pass: ...` inside the criterion text, before the closing \"(code cannot check this because ...)\" clause."
+}

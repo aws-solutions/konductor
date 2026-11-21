@@ -1,0 +1,19 @@
+How the exports in this folder were pulled (Priya, 16 Sep)
+
+pdf-latency.csv
+  - source: render service job log, 25 Aug 06:00 UTC to ~14 Sep
+  - one row per job. `ms` is wall time from worker pickup to PDF written (queue wait not included)
+  - `pages` comes from the finished PDF. A few rows have it blank (job log line was truncated)
+  - `retry` means the job was re-queued once and this is the second attempt
+  - `cold_start` = 1 when the worker had just started
+  - I think a few duplicate lines slipped in when the log shipper restarted. Did not clean.
+  - it is a sample of the log, not every job (log shipper drops some under load)
+
+support-tickets.csv
+  - helpdesk export, tickets created 2 Jun to 15 Sep
+  - `invoice_pages` filled in by support when the ticket is about a specific invoice; blank otherwise
+  - dates are mostly ISO, some agents typed dd/mm/yyyy, left as is
+  - category is a free-pick from the helpdesk dropdown
+
+tenant-plans.csv
+  - from the billing DB, current plan and rough monthly invoice volume

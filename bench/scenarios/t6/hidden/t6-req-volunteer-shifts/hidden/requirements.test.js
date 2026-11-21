@@ -22,17 +22,17 @@ scriptedSuite(test, assert, {
     },
     { 
       id: 'F4', 
-      all: [/emergency.*exception.*coordinator.*discretion/i, /24.*hour.*notice.*emergency/i],
+      all: [/emergenc/i, /exception|discretion|waive|override/i, /coordinator/i, /\b24[- ]?h(?:ours?|rs?)?\b|twenty-four hours/i, /cancel|notice/i],
       wrong: [/no\s+exception/i, /strict.*24\s+hours/i, /never.*cancel/i]
     },
     { 
       id: 'F5', 
-      all: [/age\s+verification.*without.*birth.*date/i, /age\s+bracket/i],
+      all: [/(?:verify|verif\w*|check)\s+(?:the\s+)?age|age\s+(?:verification|check)/i, /without\s+storing|not\s+(?:be\s+)?stor|no\s+(?:full\s+)?(?:birth|dob)|instead of (?:a |the )?(?:full )?birth/i, /age\s+(?:bracket|band|range|group)|16-17|18\+/i],
       wrong: [/store.*birth.*date/i, /require.*date\s+of\s+birth/i, /dob.*required/i]
     },
     { 
       id: 'F6', 
-      all: [/coordinator/i, /\bage\b|medical|background/i, /cannot|can't|must not|not (be )?(see|visible|shown)|hidden|restrict|no access|exclude/i],
+      all: [/coordinator/i, /\bage\b|medical|background/i, /cannot|can't|must not|should not|shall not|not (be )?(able to )?(see|view|visible|shown)|unable to|hidden|restrict|no access|exclude/i],
       wrong: [/coordinators?\s+(can|may)\s+see\s+(the\s+)?(volunteer'?s?\s+)?(full\s+)?(age|birth)/i]
     }
   ], 

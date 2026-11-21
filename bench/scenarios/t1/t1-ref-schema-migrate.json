@@ -131,29 +131,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The request describes the what (split addresses, add migration, update repository, CLI) without prescribing any method, framework, or tool, and contains no misleading hints."
+          "note": "Request specifies address table split with migration requirements, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture documents the current schema and repository interface but does not reveal the split-table design or the specific migration behavior required by hidden tests."
+          "note": "Fixture shows customers table with address columns; no mention of splitting or solution in comments/docs."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "All paths, names, column names, and interfaces referenced in hidden tests (migrations/013-split-customer-address.js, addresses table columns, src/customer-repository.js, src/migrate.js CLI) match the fixture or are explicitly specified in the request."
+          "note": "Hidden tests check table creation, column removal, data migration, idempotence; whitespace address clarification added to prompt per edits.md."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The fixture shows the current customers table schema, the repository interface, and the migration runner pattern, giving a competent developer everything needed to implement the requested changes."
+          "note": "Competent developer could implement migration and repository updates from fixture and requirements."
         }
       ]
     }

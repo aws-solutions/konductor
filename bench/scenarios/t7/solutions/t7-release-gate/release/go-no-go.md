@@ -13,11 +13,12 @@
 ## Required cleanup
 
 - Remove or rewrite the **REL-127** release-note promise. The issue is marked Reverted, so the draft must not claim that the cache-header behavior ships.
+- Hold the **REL-112** fix line and the **REL-104** highlight until their commits are on `release/27.05`: neither is on the branch today, and the notes must describe what the branch ships.
 - Recheck the complete required-job set after the branch contains the intended fixes. `api-contract` is clean in the seven-day summary; the two failing signals still need fresh evidence.
 - For the next slot, the calendar gives a 2027-05-05 17:00 cherry-pick deadline and a 2027-05-10 through 2027-05-12 validation window. If the owners cannot provide branch and CI evidence by those points, move to the following slot rather than treating a stale approval as a go signal.
 
 The open REL-145 row is excluded from this blocker list because the triage record demotes it to the normal maintenance queue. That label alone is not enough to make it a release blocker.
 
 ```release-decision
-{"decision":"no-go","blockers":[{"tickets":["REL-112"],"summary":"Fix is closed on main but the release branch does not contain its commit.","owner":"Mira Sol"},{"tickets":["REL-118"],"summary":"Approved cherry-pick is after the deadline and the commit is not on the release branch.","owner":"Jon Bell"},{"tickets":["REL-131"],"summary":"Required linux-integration has repeated failures beginning at this issue's main commit.","owner":"Asha Nair"}],"failing_jobs":["linux-integration"],"flaky_jobs":["windows-smoke"],"late_cherry_picks":["REL-118"],"notes_corrections":["REL-127"],"earliest_release_date":"2027-05-13"}
+{"decision":"no-go","blockers":[{"tickets":["REL-112"],"summary":"Fix is closed on main but the release branch does not contain its commit.","owner":"Mira Sol"},{"tickets":["REL-118"],"summary":"Approved cherry-pick is after the deadline and the commit is not on the release branch.","owner":"Jon Bell"},{"tickets":["REL-131"],"summary":"Required linux-integration has repeated failures beginning at this issue's main commit.","owner":"Asha Nair"}],"failing_jobs":["linux-integration"],"flaky_jobs":["windows-smoke"],"late_cherry_picks":["REL-118"],"notes_corrections":["REL-127","REL-112","REL-104"],"earliest_release_date":"2027-05-13"}
 ```

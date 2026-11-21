@@ -1,0 +1,1620 @@
+2026-11-20T12:00:01.897Z INFO render-worker job=pdf-624124 rendered pages=4 ms=1298
+2026-11-20T12:00:20.014Z INFO render-worker job=pdf-296835 rendered pages=5 ms=1763
+2026-11-20T12:00:44.931Z INFO render-worker job=pdf-408299 rendered pages=6 ms=782
+2026-11-20T12:01:25.725Z INFO render-worker job=pdf-196102 rendered pages=6 ms=591
+2026-11-20T12:01:37.149Z INFO render-worker job=pdf-855249 rendered pages=6 ms=1385
+2026-11-20T12:01:40.734Z INFO render-worker job=pdf-984072 rendered pages=6 ms=1437
+2026-11-20T12:02:01.050Z INFO render-worker job=pdf-800597 rendered pages=4 ms=1123
+2026-11-20T12:02:09.025Z ERROR render-worker job=pdf-684628 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T12:02:09.721Z INFO render-worker job=pdf-334081 rendered pages=2 ms=770
+2026-11-20T12:02:56.966Z INFO render-worker job=pdf-154053 rendered pages=4 ms=579
+2026-11-20T12:03:09.623Z INFO render-worker job=pdf-611102 rendered pages=6 ms=1131
+2026-11-20T12:03:36.391Z INFO render-worker job=pdf-880501 rendered pages=3 ms=469
+2026-11-20T12:03:40.950Z INFO render-worker job=pdf-551894 rendered pages=6 ms=318
+2026-11-20T12:04:36.180Z INFO render-worker job=pdf-618486 rendered pages=3 ms=1292
+2026-11-20T12:04:40.745Z INFO render-worker job=pdf-335309 rendered pages=2 ms=1384
+2026-11-20T12:04:42.181Z INFO render-worker job=pdf-369971 rendered pages=5 ms=1044
+2026-11-20T12:05:21.018Z INFO render-worker job=pdf-837913 rendered pages=5 ms=1791
+2026-11-20T12:05:24.434Z INFO render-worker job=pdf-835455 rendered pages=2 ms=448
+2026-11-20T12:05:30.050Z INFO render-worker job=pdf-192617 rendered pages=2 ms=1641
+2026-11-20T12:05:56.046Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:06:05.203Z INFO render-worker job=pdf-171000 rendered pages=4 ms=1119
+2026-11-20T12:06:52.370Z INFO render-worker job=pdf-705968 rendered pages=6 ms=566
+2026-11-20T12:06:53.935Z INFO render-worker job=pdf-260290 rendered pages=6 ms=1027
+2026-11-20T12:06:55.895Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:07:12.717Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:07:28.927Z INFO render-worker job=pdf-102128 rendered pages=5 ms=1077
+2026-11-20T12:07:54.072Z INFO render-worker job=pdf-335706 rendered pages=2 ms=1200
+2026-11-20T12:07:58.798Z INFO render-worker job=pdf-876604 rendered pages=6 ms=377
+2026-11-20T12:08:14.161Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:08:18.512Z INFO render-worker job=pdf-193123 rendered pages=1 ms=549
+2026-11-20T12:08:20.009Z INFO render-worker job=pdf-512270 rendered pages=1 ms=950
+2026-11-20T12:08:41.307Z INFO render-worker job=pdf-872866 rendered pages=4 ms=1483
+2026-11-20T12:08:45.346Z ERROR render-worker job=pdf-405899 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T12:09:06.673Z INFO render-worker job=pdf-175315 rendered pages=1 ms=1567
+2026-11-20T12:09:49.914Z INFO render-worker job=pdf-404672 rendered pages=2 ms=1622
+2026-11-20T12:09:57.493Z INFO render-worker job=pdf-516096 rendered pages=3 ms=1338
+2026-11-20T12:10:29.683Z INFO render-worker job=pdf-798097 rendered pages=4 ms=577
+2026-11-20T12:10:41.753Z INFO render-worker job=pdf-266021 rendered pages=2 ms=978
+2026-11-20T12:10:45.016Z INFO render-worker job=pdf-579710 rendered pages=3 ms=713
+2026-11-20T12:11:14.197Z INFO render-worker job=pdf-485703 rendered pages=3 ms=1517
+2026-11-20T12:11:23.776Z INFO render-worker job=pdf-510279 rendered pages=6 ms=1182
+2026-11-20T12:11:42.519Z INFO render-worker job=pdf-312510 rendered pages=1 ms=1546
+2026-11-20T12:12:00.664Z INFO render-worker job=pdf-118307 rendered pages=3 ms=951
+2026-11-20T12:12:21.476Z INFO render-worker job=pdf-705542 rendered pages=4 ms=464
+2026-11-20T12:12:21.717Z INFO render-worker job=pdf-677543 rendered pages=3 ms=1418
+2026-11-20T12:13:01.653Z INFO render-worker job=pdf-159520 rendered pages=2 ms=1500
+2026-11-20T12:13:21.411Z INFO render-worker job=pdf-640721 rendered pages=1 ms=596
+2026-11-20T12:13:23.353Z INFO render-worker job=pdf-762109 rendered pages=2 ms=1495
+2026-11-20T12:14:04.792Z ERROR render-worker job=pdf-239563 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T12:14:14.571Z INFO render-worker job=pdf-276895 rendered pages=3 ms=461
+2026-11-20T12:14:39.272Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:14:47.697Z INFO render-worker job=pdf-167407 rendered pages=2 ms=475
+2026-11-20T12:14:53.258Z INFO render-worker job=pdf-269343 rendered pages=3 ms=341
+2026-11-20T12:15:00.238Z INFO render-worker job=pdf-990265 rendered pages=1 ms=835
+2026-11-20T12:15:03.517Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:15:17.006Z INFO render-worker job=pdf-224762 rendered pages=4 ms=1673
+2026-11-20T12:15:45.671Z INFO render-worker job=pdf-581723 rendered pages=5 ms=773
+2026-11-20T12:16:13.155Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:16:18.450Z INFO render-worker job=pdf-254585 rendered pages=4 ms=1299
+2026-11-20T12:16:31.431Z INFO render-worker job=pdf-706103 rendered pages=5 ms=1091
+2026-11-20T12:16:49.054Z INFO render-worker job=pdf-757442 rendered pages=4 ms=1654
+2026-11-20T12:17:05.976Z INFO render-worker job=pdf-218530 rendered pages=5 ms=467
+2026-11-20T12:17:41.128Z INFO render-worker job=pdf-734189 rendered pages=5 ms=400
+2026-11-20T12:17:46.510Z INFO render-worker job=pdf-441141 rendered pages=6 ms=968
+2026-11-20T12:18:11.993Z INFO render-worker job=pdf-854542 rendered pages=6 ms=1247
+2026-11-20T12:18:12.757Z INFO render-worker job=pdf-483589 rendered pages=3 ms=817
+2026-11-20T12:18:52.302Z INFO render-worker job=pdf-852037 rendered pages=1 ms=389
+2026-11-20T12:19:41.450Z INFO render-worker job=pdf-902167 rendered pages=3 ms=614
+2026-11-20T12:19:48.108Z INFO render-worker job=pdf-755621 rendered pages=3 ms=1227
+2026-11-20T12:19:59.938Z INFO render-worker job=pdf-877219 rendered pages=3 ms=369
+2026-11-20T12:20:11.467Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:20:28.991Z INFO render-worker job=pdf-970610 rendered pages=6 ms=960
+2026-11-20T12:20:37.377Z INFO render-worker job=pdf-777143 rendered pages=6 ms=1156
+2026-11-20T12:20:53.754Z INFO render-worker job=pdf-439175 rendered pages=5 ms=1110
+2026-11-20T12:21:01.893Z INFO render-worker job=pdf-973887 rendered pages=6 ms=410
+2026-11-20T12:21:13.149Z INFO render-worker job=pdf-850834 rendered pages=3 ms=686
+2026-11-20T12:21:30.332Z ERROR render-worker job=pdf-297377 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T12:21:32.017Z INFO render-worker job=pdf-194595 rendered pages=3 ms=775
+2026-11-20T12:21:57.028Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:22:11.651Z INFO render-worker job=pdf-914158 rendered pages=3 ms=582
+2026-11-20T12:22:12.544Z INFO render-worker job=pdf-756898 rendered pages=5 ms=1650
+2026-11-20T12:22:36.583Z ERROR render-worker job=pdf-397788 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T12:22:59.329Z INFO render-worker job=pdf-129351 rendered pages=4 ms=632
+2026-11-20T12:23:11.723Z INFO render-worker job=pdf-874799 rendered pages=6 ms=355
+2026-11-20T12:23:25.133Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:23:37.448Z INFO render-worker job=pdf-279776 rendered pages=3 ms=724
+2026-11-20T12:23:51.864Z INFO render-worker job=pdf-864558 rendered pages=5 ms=819
+2026-11-20T12:24:04.617Z INFO render-worker job=pdf-360678 rendered pages=3 ms=951
+2026-11-20T12:24:29.909Z INFO render-worker job=pdf-482903 rendered pages=4 ms=1683
+2026-11-20T12:24:56.197Z INFO render-worker job=pdf-214281 rendered pages=3 ms=1597
+2026-11-20T12:25:19.517Z INFO render-worker job=pdf-733606 rendered pages=1 ms=1433
+2026-11-20T12:25:42.575Z INFO render-worker job=pdf-263068 rendered pages=5 ms=838
+2026-11-20T12:25:59.832Z INFO render-worker job=pdf-627724 rendered pages=6 ms=804
+2026-11-20T12:26:00.631Z ERROR render-worker job=pdf-549077 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T12:26:21.859Z INFO render-worker job=pdf-587161 rendered pages=4 ms=809
+2026-11-20T12:26:48.485Z INFO render-worker job=pdf-718986 rendered pages=1 ms=1498
+2026-11-20T12:26:50.708Z INFO render-worker job=pdf-833591 rendered pages=1 ms=376
+2026-11-20T12:27:35.464Z INFO render-worker job=pdf-426931 rendered pages=4 ms=338
+2026-11-20T12:27:44.166Z INFO render-worker job=pdf-168553 rendered pages=5 ms=651
+2026-11-20T12:27:58.269Z INFO render-worker job=pdf-710133 rendered pages=3 ms=1228
+2026-11-20T12:28:11.101Z INFO render-worker job=pdf-151242 rendered pages=6 ms=1195
+2026-11-20T12:28:23.132Z INFO render-worker job=pdf-628264 rendered pages=4 ms=884
+2026-11-20T12:28:43.452Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:28:49.189Z INFO render-worker job=pdf-681751 rendered pages=3 ms=947
+2026-11-20T12:29:00.968Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:29:24.401Z INFO render-worker job=pdf-698289 rendered pages=1 ms=1107
+2026-11-20T12:29:47.740Z INFO render-worker job=pdf-473426 rendered pages=6 ms=583
+2026-11-20T12:29:53.283Z INFO render-worker job=pdf-173564 rendered pages=6 ms=926
+2026-11-20T12:30:10.848Z INFO render-worker job=pdf-482093 rendered pages=5 ms=1413
+2026-11-20T12:30:34.766Z INFO render-worker job=pdf-508882 rendered pages=5 ms=1330
+2026-11-20T12:30:43.088Z INFO render-worker job=pdf-901100 rendered pages=6 ms=1241
+2026-11-20T12:30:56.995Z ERROR render-worker job=pdf-166578 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T12:31:53.132Z INFO render-worker job=pdf-785423 rendered pages=5 ms=1122
+2026-11-20T12:31:54.551Z INFO render-worker job=pdf-179435 rendered pages=1 ms=989
+2026-11-20T12:31:56.606Z INFO render-worker job=pdf-729535 rendered pages=6 ms=1516
+2026-11-20T12:32:30.644Z INFO render-worker job=pdf-945395 rendered pages=4 ms=934
+2026-11-20T12:32:47.887Z INFO render-worker job=pdf-608814 rendered pages=1 ms=1119
+2026-11-20T12:32:54.314Z INFO render-worker job=pdf-923573 rendered pages=1 ms=788
+2026-11-20T12:33:35.409Z INFO render-worker job=pdf-549223 rendered pages=5 ms=1160
+2026-11-20T12:33:45.449Z INFO render-worker job=pdf-795500 rendered pages=3 ms=1719
+2026-11-20T12:33:59.243Z INFO render-worker job=pdf-137530 rendered pages=2 ms=472
+2026-11-20T12:34:15.811Z INFO render-worker job=pdf-889706 rendered pages=2 ms=1749
+2026-11-20T12:34:33.210Z INFO render-worker job=pdf-886387 rendered pages=3 ms=1070
+2026-11-20T12:34:37.289Z INFO render-worker job=pdf-563257 rendered pages=5 ms=433
+2026-11-20T12:35:02.292Z INFO render-worker job=pdf-442518 rendered pages=1 ms=980
+2026-11-20T12:35:38.644Z INFO render-worker job=pdf-113145 rendered pages=2 ms=1726
+2026-11-20T12:35:43.709Z INFO render-worker job=pdf-872287 rendered pages=2 ms=1209
+2026-11-20T12:36:38.078Z INFO render-worker job=pdf-769609 rendered pages=6 ms=391
+2026-11-20T12:36:43.214Z INFO render-worker job=pdf-847889 rendered pages=2 ms=717
+2026-11-20T12:36:55.156Z INFO render-worker job=pdf-212817 rendered pages=5 ms=652
+2026-11-20T12:37:04.843Z INFO render-worker job=pdf-996867 rendered pages=3 ms=772
+2026-11-20T12:37:16.827Z INFO render-worker job=pdf-967592 rendered pages=4 ms=425
+2026-11-20T12:37:52.815Z INFO render-worker job=pdf-969014 rendered pages=3 ms=1796
+2026-11-20T12:38:07.399Z INFO render-worker job=pdf-616800 rendered pages=2 ms=883
+2026-11-20T12:38:32.641Z INFO render-worker job=pdf-816521 rendered pages=6 ms=1577
+2026-11-20T12:38:43.292Z INFO render-worker job=pdf-532376 rendered pages=6 ms=1480
+2026-11-20T12:39:16.443Z ERROR render-worker job=pdf-450075 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T12:39:30.026Z INFO render-worker job=pdf-967271 rendered pages=4 ms=1375
+2026-11-20T12:39:31.248Z INFO render-worker job=pdf-330876 rendered pages=5 ms=801
+2026-11-20T12:39:36.454Z INFO render-worker job=pdf-304386 rendered pages=4 ms=836
+2026-11-20T12:39:44.030Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:40:15.575Z INFO render-worker job=pdf-819915 rendered pages=6 ms=711
+2026-11-20T12:40:40.369Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:40:41.213Z INFO render-worker job=pdf-418531 rendered pages=1 ms=1597
+2026-11-20T12:40:49.040Z INFO render-worker job=pdf-358737 rendered pages=1 ms=908
+2026-11-20T12:41:15.274Z INFO render-worker job=pdf-131775 rendered pages=4 ms=787
+2026-11-20T12:41:24.996Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:41:37.863Z INFO render-worker job=pdf-588955 rendered pages=4 ms=311
+2026-11-20T12:41:44.800Z INFO render-worker job=pdf-154064 rendered pages=1 ms=858
+2026-11-20T12:42:06.770Z INFO render-worker job=pdf-156666 rendered pages=1 ms=1701
+2026-11-20T12:42:31.181Z INFO render-worker job=pdf-667797 rendered pages=6 ms=715
+2026-11-20T12:42:46.160Z INFO render-worker job=pdf-401935 rendered pages=5 ms=1529
+2026-11-20T12:43:02.911Z INFO render-worker job=pdf-909918 rendered pages=3 ms=1521
+2026-11-20T12:43:35.236Z INFO render-worker job=pdf-374427 rendered pages=2 ms=361
+2026-11-20T12:43:46.140Z INFO render-worker job=pdf-339646 rendered pages=6 ms=1155
+2026-11-20T12:44:31.601Z INFO render-worker job=pdf-244502 rendered pages=6 ms=1418
+2026-11-20T12:44:35.207Z INFO render-worker job=pdf-107517 rendered pages=1 ms=1342
+2026-11-20T12:44:36.792Z INFO render-worker job=pdf-622174 rendered pages=1 ms=1278
+2026-11-20T12:44:57.788Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:45:18.642Z INFO render-worker job=pdf-163625 rendered pages=4 ms=1140
+2026-11-20T12:45:31.079Z INFO render-worker job=pdf-786898 rendered pages=4 ms=444
+2026-11-20T12:45:53.265Z INFO render-worker job=pdf-533532 rendered pages=6 ms=590
+2026-11-20T12:46:18.225Z INFO render-worker job=pdf-102050 rendered pages=3 ms=814
+2026-11-20T12:46:21.396Z INFO render-worker job=pdf-725782 rendered pages=4 ms=321
+2026-11-20T12:46:25.562Z INFO render-worker job=pdf-368757 rendered pages=2 ms=1110
+2026-11-20T12:47:17.542Z INFO render-worker job=pdf-874397 rendered pages=4 ms=577
+2026-11-20T12:47:38.332Z INFO render-worker job=pdf-307645 rendered pages=6 ms=796
+2026-11-20T12:47:55.156Z INFO render-worker job=pdf-510255 rendered pages=5 ms=1098
+2026-11-20T12:48:19.391Z INFO render-worker job=pdf-563109 rendered pages=5 ms=1568
+2026-11-20T12:48:20.049Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:48:39.753Z INFO render-worker job=pdf-144575 rendered pages=3 ms=1010
+2026-11-20T12:48:55.419Z INFO render-worker job=pdf-902923 rendered pages=2 ms=427
+2026-11-20T12:49:11.685Z INFO render-worker job=pdf-683190 rendered pages=4 ms=470
+2026-11-20T12:49:40.995Z INFO render-worker job=pdf-363138 rendered pages=4 ms=1355
+2026-11-20T12:49:45.122Z INFO render-worker job=pdf-685439 rendered pages=2 ms=1607
+2026-11-20T12:49:53.560Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:50:04.156Z INFO render-worker job=pdf-864108 rendered pages=6 ms=821
+2026-11-20T12:50:04.429Z INFO render-worker job=pdf-216607 rendered pages=3 ms=633
+2026-11-20T12:50:37.286Z INFO render-worker job=pdf-292151 rendered pages=6 ms=1125
+2026-11-20T12:51:09.287Z INFO render-worker job=pdf-149570 rendered pages=3 ms=1227
+2026-11-20T12:51:46.930Z INFO render-worker job=pdf-988198 rendered pages=6 ms=1268
+2026-11-20T12:51:58.012Z INFO render-worker job=pdf-392945 rendered pages=4 ms=377
+2026-11-20T12:52:05.405Z INFO render-worker job=pdf-280073 rendered pages=3 ms=624
+2026-11-20T12:52:19.330Z INFO render-worker job=pdf-838767 rendered pages=5 ms=912
+2026-11-20T12:52:36.850Z INFO render-worker job=pdf-245067 rendered pages=2 ms=1383
+2026-11-20T12:53:22.494Z INFO render-worker job=pdf-669631 rendered pages=6 ms=1154
+2026-11-20T12:53:36.358Z INFO render-worker job=pdf-365024 rendered pages=3 ms=602
+2026-11-20T12:53:52.178Z INFO render-worker job=pdf-279428 rendered pages=2 ms=1686
+2026-11-20T12:54:13.490Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:54:36.614Z INFO render-worker job=pdf-520025 rendered pages=2 ms=910
+2026-11-20T12:54:41.423Z INFO render-worker job=pdf-787629 rendered pages=3 ms=1383
+2026-11-20T12:54:49.427Z INFO render-worker job=pdf-816075 rendered pages=4 ms=442
+2026-11-20T12:55:28.744Z INFO render-worker job=pdf-865330 rendered pages=1 ms=1609
+2026-11-20T12:55:52.342Z INFO render-worker job=pdf-778346 rendered pages=3 ms=682
+2026-11-20T12:55:58.582Z INFO render-worker job=pdf-364571 rendered pages=2 ms=1620
+2026-11-20T12:56:19.063Z INFO render-worker job=pdf-599088 rendered pages=1 ms=394
+2026-11-20T12:56:37.388Z INFO render-worker job=pdf-913603 rendered pages=5 ms=1126
+2026-11-20T12:56:56.229Z INFO render-worker job=pdf-771099 rendered pages=3 ms=881
+2026-11-20T12:57:31.702Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:57:43.408Z INFO render-worker job=pdf-239493 rendered pages=5 ms=1709
+2026-11-20T12:57:46.401Z INFO render-worker job=pdf-502073 rendered pages=3 ms=1550
+2026-11-20T12:57:53.314Z INFO render-worker job=pdf-662844 rendered pages=2 ms=1127
+2026-11-20T12:58:08.696Z INFO render-worker job=pdf-651965 rendered pages=3 ms=1195
+2026-11-20T12:58:17.503Z INFO render-worker job=pdf-596038 rendered pages=5 ms=1452
+2026-11-20T12:58:29.815Z INFO render-worker job=pdf-119077 rendered pages=6 ms=509
+2026-11-20T12:58:36.207Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T12:59:32.272Z INFO render-worker job=pdf-970206 rendered pages=5 ms=890
+2026-11-20T12:59:40.725Z INFO render-worker job=pdf-473451 rendered pages=4 ms=1695
+2026-11-20T12:59:50.601Z INFO render-worker job=pdf-303647 rendered pages=5 ms=1402
+2026-11-20T13:00:16.882Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:00:17.704Z INFO render-worker job=pdf-353374 rendered pages=2 ms=1678
+2026-11-20T13:00:36.737Z INFO render-worker job=pdf-262022 rendered pages=3 ms=1276
+2026-11-20T13:00:36.907Z ERROR render-worker job=pdf-935747 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T13:00:58.523Z INFO render-worker job=pdf-237629 rendered pages=4 ms=1401
+2026-11-20T13:01:19.760Z INFO render-worker job=pdf-887831 rendered pages=2 ms=1020
+2026-11-20T13:01:28.659Z INFO render-worker job=pdf-474772 rendered pages=4 ms=360
+2026-11-20T13:01:47.563Z INFO render-worker job=pdf-550950 rendered pages=3 ms=689
+2026-11-20T13:02:10.385Z INFO render-worker job=pdf-578993 rendered pages=1 ms=464
+2026-11-20T13:02:15.758Z INFO render-worker job=pdf-895774 rendered pages=1 ms=1764
+2026-11-20T13:02:26.580Z INFO render-worker job=pdf-611315 rendered pages=3 ms=1212
+2026-11-20T13:02:47.368Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:03:19.910Z INFO render-worker job=pdf-928666 rendered pages=2 ms=433
+2026-11-20T13:03:23.827Z INFO render-worker job=pdf-939439 rendered pages=4 ms=1633
+2026-11-20T13:03:50.391Z INFO render-worker job=pdf-660843 rendered pages=6 ms=751
+2026-11-20T13:04:23.847Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:04:36.326Z INFO render-worker job=pdf-805933 rendered pages=4 ms=1302
+2026-11-20T13:04:43.817Z INFO render-worker job=pdf-243808 rendered pages=5 ms=1224
+2026-11-20T13:04:52.815Z INFO render-worker job=pdf-752796 rendered pages=2 ms=1289
+2026-11-20T13:05:01.016Z INFO render-worker job=pdf-618350 rendered pages=3 ms=833
+2026-11-20T13:05:24.715Z INFO render-worker job=pdf-100992 rendered pages=6 ms=1269
+2026-11-20T13:05:30.582Z INFO render-worker job=pdf-749981 rendered pages=6 ms=495
+2026-11-20T13:06:09.678Z INFO render-worker job=pdf-560787 rendered pages=3 ms=1107
+2026-11-20T13:06:13.344Z ERROR render-worker job=pdf-690187 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T13:06:33.695Z INFO render-worker job=pdf-151610 rendered pages=1 ms=776
+2026-11-20T13:06:45.046Z INFO render-worker job=pdf-524402 rendered pages=4 ms=665
+2026-11-20T13:07:20.803Z INFO render-worker job=pdf-410362 rendered pages=4 ms=464
+2026-11-20T13:07:39.037Z INFO render-worker job=pdf-858651 rendered pages=3 ms=1586
+2026-11-20T13:07:47.570Z INFO render-worker job=pdf-919338 rendered pages=3 ms=1459
+2026-11-20T13:08:07.540Z INFO render-worker job=pdf-124092 rendered pages=2 ms=809
+2026-11-20T13:08:09.316Z INFO render-worker job=pdf-492380 rendered pages=2 ms=1661
+2026-11-20T13:08:45.892Z INFO render-worker job=pdf-359496 rendered pages=3 ms=1294
+2026-11-20T13:09:38.508Z INFO render-worker job=pdf-182076 rendered pages=4 ms=1418
+2026-11-20T13:09:49.627Z INFO render-worker job=pdf-594669 rendered pages=4 ms=723
+2026-11-20T13:09:57.471Z INFO render-worker job=pdf-194683 rendered pages=4 ms=1584
+2026-11-20T13:10:13.544Z INFO render-worker job=pdf-694884 rendered pages=3 ms=616
+2026-11-20T13:10:26.621Z INFO render-worker job=pdf-657595 rendered pages=3 ms=1439
+2026-11-20T13:10:42.807Z INFO render-worker job=pdf-438024 rendered pages=6 ms=1536
+2026-11-20T13:11:06.803Z INFO render-worker job=pdf-932690 rendered pages=3 ms=1156
+2026-11-20T13:11:20.002Z INFO render-worker job=pdf-840288 rendered pages=5 ms=950
+2026-11-20T13:11:22.325Z INFO render-worker job=pdf-666492 rendered pages=4 ms=1772
+2026-11-20T13:12:07.635Z INFO render-worker job=pdf-361277 rendered pages=3 ms=998
+2026-11-20T13:12:28.921Z ERROR render-worker job=pdf-910337 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T13:12:32.511Z INFO render-worker job=pdf-376407 rendered pages=1 ms=1619
+2026-11-20T13:12:41.627Z INFO render-worker job=pdf-310563 rendered pages=1 ms=945
+2026-11-20T13:13:13.857Z INFO render-worker job=pdf-634355 rendered pages=4 ms=822
+2026-11-20T13:13:18.307Z ERROR render-worker job=pdf-717605 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T13:13:21.982Z INFO render-worker job=pdf-702938 rendered pages=1 ms=680
+2026-11-20T13:13:45.193Z INFO render-worker job=pdf-553117 rendered pages=1 ms=1432
+2026-11-20T13:14:07.074Z INFO render-worker job=pdf-408800 rendered pages=3 ms=929
+2026-11-20T13:14:24.114Z INFO render-worker job=pdf-600925 rendered pages=4 ms=1781
+2026-11-20T13:14:28.959Z INFO render-worker job=pdf-883820 rendered pages=2 ms=1379
+2026-11-20T13:15:02.758Z INFO render-worker job=pdf-948837 rendered pages=4 ms=462
+2026-11-20T13:15:07.547Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:15:13.276Z INFO render-worker job=pdf-264517 rendered pages=3 ms=1488
+2026-11-20T13:15:14.972Z ERROR render-worker job=pdf-891731 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T13:15:17.833Z INFO render-worker job=pdf-625845 rendered pages=6 ms=1752
+2026-11-20T13:16:45.787Z INFO render-worker job=pdf-778439 rendered pages=2 ms=1532
+2026-11-20T13:16:56.034Z INFO render-worker job=pdf-478851 rendered pages=6 ms=682
+2026-11-20T13:16:57.521Z INFO render-worker job=pdf-921475 rendered pages=5 ms=509
+2026-11-20T13:17:06.541Z INFO render-worker job=pdf-263142 rendered pages=3 ms=1621
+2026-11-20T13:17:24.452Z INFO render-worker job=pdf-250390 rendered pages=1 ms=1733
+2026-11-20T13:17:52.080Z INFO render-worker job=pdf-364887 rendered pages=4 ms=590
+2026-11-20T13:18:02.453Z ERROR render-worker job=pdf-218570 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T13:18:25.201Z INFO render-worker job=pdf-713383 rendered pages=3 ms=860
+2026-11-20T13:18:28.234Z INFO render-worker job=pdf-902511 rendered pages=4 ms=723
+2026-11-20T13:18:35.496Z INFO render-worker job=pdf-835489 rendered pages=2 ms=1203
+2026-11-20T13:19:04.565Z INFO render-worker job=pdf-913059 rendered pages=2 ms=1333
+2026-11-20T13:19:08.543Z INFO render-worker job=pdf-359145 rendered pages=1 ms=1163
+2026-11-20T13:19:17.984Z INFO render-worker job=pdf-559315 rendered pages=6 ms=650
+2026-11-20T13:20:17.422Z INFO render-worker job=pdf-331402 rendered pages=2 ms=886
+2026-11-20T13:20:37.553Z INFO render-worker job=pdf-260929 rendered pages=6 ms=677
+2026-11-20T13:20:54.962Z INFO render-worker job=pdf-305741 rendered pages=4 ms=1532
+2026-11-20T13:21:06.960Z INFO render-worker job=pdf-723545 rendered pages=6 ms=669
+2026-11-20T13:21:51.673Z INFO render-worker job=pdf-117902 rendered pages=3 ms=858
+2026-11-20T13:21:53.301Z INFO render-worker job=pdf-241136 rendered pages=5 ms=1211
+2026-11-20T13:22:11.560Z INFO render-worker job=pdf-713047 rendered pages=4 ms=1769
+2026-11-20T13:22:27.369Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:22:42.031Z INFO render-worker job=pdf-595818 rendered pages=5 ms=1467
+2026-11-20T13:22:59.148Z INFO render-worker job=pdf-564797 rendered pages=5 ms=1328
+2026-11-20T13:23:05.105Z INFO render-worker job=pdf-273524 rendered pages=5 ms=1097
+2026-11-20T13:23:20.428Z INFO render-worker job=pdf-923262 rendered pages=5 ms=930
+2026-11-20T13:23:41.475Z INFO render-worker job=pdf-674633 rendered pages=5 ms=964
+2026-11-20T13:24:21.543Z INFO render-worker job=pdf-610202 rendered pages=5 ms=825
+2026-11-20T13:24:31.099Z INFO render-worker job=pdf-201983 rendered pages=2 ms=1366
+2026-11-20T13:24:46.474Z INFO render-worker job=pdf-116267 rendered pages=5 ms=1555
+2026-11-20T13:25:08.459Z ERROR render-worker job=pdf-595472 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T13:25:16.868Z INFO render-worker job=pdf-107809 rendered pages=6 ms=915
+2026-11-20T13:25:26.075Z INFO render-worker job=pdf-718564 rendered pages=2 ms=929
+2026-11-20T13:25:45.439Z INFO render-worker job=pdf-229929 rendered pages=5 ms=568
+2026-11-20T13:26:05.304Z INFO render-worker job=pdf-995884 rendered pages=3 ms=1305
+2026-11-20T13:26:06.725Z INFO render-worker job=pdf-246278 rendered pages=3 ms=401
+2026-11-20T13:26:20.071Z INFO render-worker job=pdf-402110 rendered pages=3 ms=760
+2026-11-20T13:27:18.742Z INFO render-worker job=pdf-745881 rendered pages=2 ms=865
+2026-11-20T13:27:37.684Z INFO render-worker job=pdf-654971 rendered pages=2 ms=746
+2026-11-20T13:27:41.262Z INFO render-worker job=pdf-847085 rendered pages=5 ms=1022
+2026-11-20T13:28:36.284Z INFO render-worker job=pdf-677900 rendered pages=5 ms=1361
+2026-11-20T13:28:36.370Z INFO render-worker job=pdf-776073 rendered pages=5 ms=1038
+2026-11-20T13:28:42.735Z INFO render-worker job=pdf-844713 rendered pages=3 ms=1396
+2026-11-20T13:29:08.381Z INFO render-worker job=pdf-164416 rendered pages=6 ms=1022
+2026-11-20T13:29:37.327Z INFO render-worker job=pdf-745576 rendered pages=2 ms=1234
+2026-11-20T13:29:39.413Z INFO render-worker job=pdf-944932 rendered pages=6 ms=879
+2026-11-20T13:30:15.031Z INFO render-worker job=pdf-840967 rendered pages=5 ms=971
+2026-11-20T13:30:18.126Z INFO render-worker job=pdf-672710 rendered pages=4 ms=353
+2026-11-20T13:30:35.826Z INFO render-worker job=pdf-216832 rendered pages=4 ms=733
+2026-11-20T13:31:37.760Z INFO render-worker job=pdf-669013 rendered pages=2 ms=1063
+2026-11-20T13:31:46.379Z INFO render-worker job=pdf-952703 rendered pages=1 ms=1388
+2026-11-20T13:31:50.861Z INFO render-worker job=pdf-942375 rendered pages=6 ms=918
+2026-11-20T13:32:02.163Z INFO render-worker job=pdf-819931 rendered pages=5 ms=1508
+2026-11-20T13:32:49.986Z INFO render-worker job=pdf-239482 rendered pages=3 ms=1359
+2026-11-20T13:32:52.542Z INFO render-worker job=pdf-103472 rendered pages=2 ms=406
+2026-11-20T13:33:10.247Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:33:36.273Z INFO render-worker job=pdf-915671 rendered pages=4 ms=488
+2026-11-20T13:33:42.614Z INFO render-worker job=pdf-902902 rendered pages=5 ms=1367
+2026-11-20T13:33:51.750Z INFO render-worker job=pdf-147726 rendered pages=1 ms=668
+2026-11-20T13:34:10.589Z INFO render-worker job=pdf-993563 rendered pages=4 ms=614
+2026-11-20T13:34:20.785Z INFO render-worker job=pdf-991574 rendered pages=5 ms=1725
+2026-11-20T13:34:29.962Z INFO render-worker job=pdf-747585 rendered pages=5 ms=522
+2026-11-20T13:35:02.999Z INFO render-worker job=pdf-998565 rendered pages=3 ms=1274
+2026-11-20T13:35:06.374Z INFO render-worker job=pdf-387889 rendered pages=2 ms=1575
+2026-11-20T13:35:36.984Z ERROR render-worker job=pdf-414509 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T13:35:47.937Z INFO render-worker job=pdf-451790 rendered pages=4 ms=509
+2026-11-20T13:36:17.492Z ERROR render-worker job=pdf-469628 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T13:36:19.954Z INFO render-worker job=pdf-694555 rendered pages=3 ms=1378
+2026-11-20T13:36:49.262Z INFO render-worker job=pdf-934245 rendered pages=6 ms=599
+2026-11-20T13:36:50.788Z INFO render-worker job=pdf-518904 rendered pages=2 ms=1164
+2026-11-20T13:37:00.172Z INFO render-worker job=pdf-488919 rendered pages=4 ms=1531
+2026-11-20T13:37:17.547Z INFO render-worker job=pdf-341831 rendered pages=4 ms=467
+2026-11-20T13:37:48.814Z INFO render-worker job=pdf-246749 rendered pages=4 ms=584
+2026-11-20T13:38:01.212Z INFO render-worker job=pdf-477653 rendered pages=2 ms=538
+2026-11-20T13:38:04.149Z INFO render-worker job=pdf-123795 rendered pages=4 ms=1090
+2026-11-20T13:38:31.184Z INFO render-worker job=pdf-580874 rendered pages=5 ms=849
+2026-11-20T13:39:13.748Z INFO render-worker job=pdf-390361 rendered pages=6 ms=1012
+2026-11-20T13:39:20.857Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:39:26.077Z INFO render-worker job=pdf-184975 rendered pages=5 ms=967
+2026-11-20T13:39:37.088Z INFO render-worker job=pdf-656992 rendered pages=1 ms=323
+2026-11-20T13:40:06.779Z INFO render-worker job=pdf-953861 rendered pages=4 ms=605
+2026-11-20T13:40:25.804Z INFO render-worker job=pdf-809137 rendered pages=4 ms=782
+2026-11-20T13:40:52.098Z INFO render-worker job=pdf-953343 rendered pages=5 ms=1727
+2026-11-20T13:41:00.519Z INFO render-worker job=pdf-226380 rendered pages=4 ms=1560
+2026-11-20T13:41:20.545Z INFO render-worker job=pdf-148652 rendered pages=1 ms=362
+2026-11-20T13:41:58.275Z INFO render-worker job=pdf-141892 rendered pages=1 ms=872
+2026-11-20T13:42:13.205Z INFO render-worker job=pdf-590760 rendered pages=4 ms=1136
+2026-11-20T13:42:19.042Z INFO render-worker job=pdf-887727 rendered pages=1 ms=1033
+2026-11-20T13:42:33.273Z INFO render-worker job=pdf-696165 rendered pages=6 ms=425
+2026-11-20T13:43:12.320Z INFO render-worker job=pdf-587172 rendered pages=4 ms=1129
+2026-11-20T13:43:30.419Z INFO render-worker job=pdf-628501 rendered pages=3 ms=380
+2026-11-20T13:43:44.144Z INFO render-worker job=pdf-824807 rendered pages=6 ms=661
+2026-11-20T13:44:05.034Z INFO render-worker job=pdf-184266 rendered pages=6 ms=955
+2026-11-20T13:44:26.074Z INFO render-worker job=pdf-717524 rendered pages=6 ms=1017
+2026-11-20T13:44:47.294Z INFO render-worker job=pdf-838432 rendered pages=5 ms=1569
+2026-11-20T13:45:27.507Z INFO render-worker job=pdf-812465 rendered pages=1 ms=1148
+2026-11-20T13:45:39.694Z INFO render-worker job=pdf-762062 rendered pages=1 ms=1234
+2026-11-20T13:45:41.068Z INFO render-worker job=pdf-838718 rendered pages=2 ms=1645
+2026-11-20T13:45:53.959Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:46:02.053Z INFO render-worker job=pdf-837838 rendered pages=3 ms=1064
+2026-11-20T13:46:38.386Z INFO render-worker job=pdf-688377 rendered pages=5 ms=928
+2026-11-20T13:46:44.121Z INFO render-worker job=pdf-233846 rendered pages=4 ms=1697
+2026-11-20T13:47:16.913Z INFO render-worker job=pdf-756360 rendered pages=6 ms=1367
+2026-11-20T13:47:44.983Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:47:46.094Z INFO render-worker job=pdf-358199 rendered pages=5 ms=758
+2026-11-20T13:47:56.140Z INFO render-worker job=pdf-364989 rendered pages=1 ms=615
+2026-11-20T13:48:16.027Z INFO render-worker job=pdf-118960 rendered pages=1 ms=1035
+2026-11-20T13:48:19.360Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:48:27.415Z INFO render-worker job=pdf-529602 rendered pages=2 ms=584
+2026-11-20T13:48:49.281Z INFO render-worker job=pdf-681928 rendered pages=2 ms=1788
+2026-11-20T13:49:01.716Z INFO render-worker job=pdf-916308 rendered pages=4 ms=647
+2026-11-20T13:49:33.632Z INFO render-worker job=pdf-969815 rendered pages=1 ms=1787
+2026-11-20T13:49:36.938Z INFO render-worker job=pdf-967479 rendered pages=5 ms=1069
+2026-11-20T13:50:45.798Z INFO render-worker job=pdf-852444 rendered pages=2 ms=1664
+2026-11-20T13:50:54.231Z INFO render-worker job=pdf-821496 rendered pages=6 ms=719
+2026-11-20T13:50:58.444Z INFO render-worker job=pdf-822754 rendered pages=5 ms=530
+2026-11-20T13:51:03.163Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:51:11.910Z INFO render-worker job=pdf-639315 rendered pages=2 ms=848
+2026-11-20T13:51:27.153Z INFO render-worker job=pdf-946909 rendered pages=5 ms=1536
+2026-11-20T13:51:34.034Z INFO render-worker job=pdf-316682 rendered pages=3 ms=683
+2026-11-20T13:52:00.820Z INFO render-worker job=pdf-389423 rendered pages=1 ms=402
+2026-11-20T13:52:03.997Z INFO render-worker job=pdf-772071 rendered pages=6 ms=715
+2026-11-20T13:52:19.507Z INFO render-worker job=pdf-422366 rendered pages=2 ms=1787
+2026-11-20T13:52:58.106Z ERROR render-worker job=pdf-965677 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T13:53:20.585Z INFO render-worker job=pdf-905518 rendered pages=5 ms=496
+2026-11-20T13:53:28.496Z INFO render-worker job=pdf-956382 rendered pages=5 ms=1694
+2026-11-20T13:53:32.923Z INFO render-worker job=pdf-471209 rendered pages=6 ms=1297
+2026-11-20T13:53:36.767Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:54:07.116Z INFO render-worker job=pdf-363300 rendered pages=6 ms=716
+2026-11-20T13:54:28.354Z INFO render-worker job=pdf-527094 rendered pages=1 ms=920
+2026-11-20T13:54:42.517Z INFO render-worker job=pdf-419581 rendered pages=2 ms=335
+2026-11-20T13:55:23.609Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T13:55:25.096Z INFO render-worker job=pdf-515699 rendered pages=6 ms=540
+2026-11-20T13:55:39.854Z INFO render-worker job=pdf-961572 rendered pages=2 ms=663
+2026-11-20T13:55:40.890Z INFO render-worker job=pdf-608233 rendered pages=3 ms=1412
+2026-11-20T13:56:00.683Z INFO render-worker job=pdf-551916 rendered pages=3 ms=919
+2026-11-20T13:56:06.976Z INFO render-worker job=pdf-699435 rendered pages=6 ms=410
+2026-11-20T13:56:48.550Z INFO render-worker job=pdf-537910 rendered pages=3 ms=625
+2026-11-20T13:57:06.381Z INFO render-worker job=pdf-759899 rendered pages=3 ms=724
+2026-11-20T13:57:07.692Z INFO render-worker job=pdf-965217 rendered pages=2 ms=1675
+2026-11-20T13:57:36.446Z INFO render-worker job=pdf-228471 rendered pages=3 ms=511
+2026-11-20T13:58:06.013Z INFO render-worker job=pdf-548474 rendered pages=6 ms=1468
+2026-11-20T13:58:55.230Z INFO render-worker job=pdf-117294 rendered pages=5 ms=965
+2026-11-20T13:58:55.844Z INFO render-worker job=pdf-100087 rendered pages=6 ms=637
+2026-11-20T13:59:20.256Z INFO render-worker job=pdf-744025 rendered pages=1 ms=1410
+2026-11-20T13:59:21.845Z INFO render-worker job=pdf-307881 rendered pages=3 ms=354
+2026-11-20T13:59:29.759Z INFO render-worker job=pdf-464384 rendered pages=6 ms=1377
+2026-11-20T14:00:03.133Z INFO render-worker job=pdf-699438 rendered pages=3 ms=1042
+2026-11-20T14:00:04.980Z INFO render-worker job=pdf-441324 rendered pages=5 ms=679
+2026-11-20T14:00:25.679Z INFO render-worker job=pdf-360461 rendered pages=4 ms=489
+2026-11-20T14:01:14.039Z INFO render-worker job=pdf-660619 rendered pages=3 ms=1614
+2026-11-20T14:01:28.408Z INFO render-worker job=pdf-327767 rendered pages=1 ms=657
+2026-11-20T14:01:43.339Z INFO render-worker job=pdf-810499 rendered pages=4 ms=483
+2026-11-20T14:02:51.770Z INFO render-worker job=pdf-567766 rendered pages=1 ms=959
+2026-11-20T14:02:54.117Z INFO render-worker job=pdf-220558 rendered pages=2 ms=624
+2026-11-20T14:02:59.950Z INFO render-worker job=pdf-713550 rendered pages=2 ms=1175
+2026-11-20T14:03:02.473Z ERROR render-worker job=pdf-913792 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:03:14.606Z ERROR render-worker job=pdf-675443 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:03:23.458Z INFO render-worker job=pdf-377990 rendered pages=2 ms=1029
+2026-11-20T14:03:26.888Z ERROR render-worker job=pdf-177994 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:03:41.967Z INFO render-worker job=pdf-192418 rendered pages=3 ms=1721
+2026-11-20T14:03:49.788Z INFO render-worker job=pdf-501458 rendered pages=5 ms=1694
+2026-11-20T14:04:14.477Z ERROR render-worker job=pdf-509061 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:04:17.356Z INFO render-worker job=pdf-810621 rendered pages=3 ms=941
+2026-11-20T14:04:28.935Z INFO render-worker job=pdf-725606 rendered pages=6 ms=421
+2026-11-20T14:04:41.623Z INFO render-worker job=pdf-237780 rendered pages=3 ms=667
+2026-11-20T14:04:51.019Z ERROR render-worker job=pdf-620595 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:04:53.275Z ERROR render-worker job=pdf-645368 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:04:54.048Z ERROR render-worker job=pdf-310871 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:05:02.940Z ERROR render-worker job=pdf-607941 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:05:10.230Z ERROR render-worker job=pdf-511344 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:05:12.966Z INFO render-worker job=pdf-643828 rendered pages=5 ms=442
+2026-11-20T14:05:15.292Z ERROR render-worker job=pdf-816595 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:05:17.797Z ERROR render-worker job=pdf-853960 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:05:20.099Z INFO render-worker job=pdf-392914 rendered pages=3 ms=1716
+2026-11-20T14:05:42.315Z ERROR render-worker job=pdf-857652 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:05:51.815Z ERROR render-worker job=pdf-721847 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:05:55.542Z ERROR render-worker job=pdf-327530 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:05:56.661Z INFO render-worker job=pdf-559871 rendered pages=3 ms=520
+2026-11-20T14:06:03.588Z ERROR render-worker job=pdf-502576 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:06:06.946Z ERROR render-worker job=pdf-842213 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:06:41.459Z INFO render-worker job=pdf-930903 rendered pages=2 ms=602
+2026-11-20T14:06:48.573Z INFO render-worker job=pdf-362464 rendered pages=6 ms=859
+2026-11-20T14:06:52.410Z ERROR render-worker job=pdf-409343 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:06:59.631Z INFO render-worker job=pdf-475438 rendered pages=3 ms=474
+2026-11-20T14:07:13.665Z ERROR render-worker job=pdf-402420 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:07:14.047Z INFO render-worker job=pdf-684162 rendered pages=5 ms=533
+2026-11-20T14:07:19.657Z INFO render-worker job=pdf-777213 rendered pages=6 ms=1427
+2026-11-20T14:07:23.423Z INFO render-worker job=pdf-275480 rendered pages=4 ms=1615
+2026-11-20T14:07:26.696Z ERROR render-worker job=pdf-710732 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:07:34.966Z ERROR render-worker job=pdf-665420 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:07:36.804Z ERROR render-worker job=pdf-277274 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:07:43.703Z ERROR render-worker job=pdf-269221 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:07:55.511Z ERROR render-worker job=pdf-360924 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:07:57.909Z ERROR render-worker job=pdf-702547 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:08:09.952Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:08:10.456Z INFO render-worker job=pdf-219393 rendered pages=4 ms=1527
+2026-11-20T14:08:23.845Z INFO render-worker job=pdf-884598 rendered pages=2 ms=1088
+2026-11-20T14:08:36.449Z INFO render-worker job=pdf-128349 rendered pages=5 ms=450
+2026-11-20T14:08:42.455Z ERROR render-worker job=pdf-510050 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:08:42.526Z ERROR render-worker job=pdf-413908 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:08:49.184Z ERROR render-worker job=pdf-685683 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:09:04.357Z ERROR render-worker job=pdf-792480 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:09:14.838Z INFO render-worker job=pdf-935594 rendered pages=6 ms=720
+2026-11-20T14:09:18.107Z ERROR render-worker job=pdf-961476 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:09:18.749Z INFO render-worker job=pdf-484890 rendered pages=2 ms=863
+2026-11-20T14:09:27.879Z ERROR render-worker job=pdf-430812 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:09:32.350Z INFO render-worker job=pdf-668577 rendered pages=1 ms=795
+2026-11-20T14:09:41.400Z ERROR render-worker job=pdf-554793 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:09:57.359Z ERROR render-worker job=pdf-657133 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:10:05.545Z INFO render-worker job=pdf-153413 rendered pages=3 ms=601
+2026-11-20T14:10:08.732Z INFO render-worker job=pdf-839243 rendered pages=4 ms=1732
+2026-11-20T14:10:41.232Z ERROR render-worker job=pdf-801574 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:10:47.915Z ERROR render-worker job=pdf-629517 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:10:57.135Z INFO render-worker job=pdf-725098 rendered pages=5 ms=675
+2026-11-20T14:10:58.350Z ERROR render-worker job=pdf-344956 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:11:13.176Z INFO render-worker job=pdf-510439 rendered pages=5 ms=523
+2026-11-20T14:11:16.234Z ERROR render-worker job=pdf-678442 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:11:20.389Z INFO render-worker job=pdf-852021 rendered pages=6 ms=1229
+2026-11-20T14:11:21.952Z ERROR render-worker job=pdf-841049 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:11:37.004Z ERROR render-worker job=pdf-490068 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:11:42.657Z ERROR render-worker job=pdf-607174 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:11:46.930Z INFO render-worker job=pdf-526131 rendered pages=3 ms=1770
+2026-11-20T14:11:52.267Z ERROR render-worker job=pdf-835019 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:12:04.212Z INFO render-worker job=pdf-673276 rendered pages=5 ms=592
+2026-11-20T14:12:06.266Z ERROR render-worker job=pdf-105884 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:12:06.331Z ERROR render-worker job=pdf-152615 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:12:12.748Z ERROR render-worker job=pdf-148335 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:12:35.996Z INFO render-worker job=pdf-325626 rendered pages=1 ms=1394
+2026-11-20T14:12:36.153Z ERROR render-worker job=pdf-576553 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:12:46.105Z ERROR render-worker job=pdf-362314 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:12:48.766Z ERROR render-worker job=pdf-920899 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:12:52.932Z INFO render-worker job=pdf-988540 rendered pages=3 ms=434
+2026-11-20T14:13:09.823Z INFO render-worker job=pdf-816723 rendered pages=4 ms=1487
+2026-11-20T14:13:16.831Z INFO render-worker job=pdf-455851 rendered pages=1 ms=696
+2026-11-20T14:13:22.972Z ERROR render-worker job=pdf-157944 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:13:24.367Z ERROR render-worker job=pdf-642222 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:13:33.992Z INFO render-worker job=pdf-347284 rendered pages=5 ms=1423
+2026-11-20T14:13:34.400Z ERROR render-worker job=pdf-433542 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:13:51.445Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:14:01.618Z INFO render-worker job=pdf-627305 rendered pages=4 ms=1752
+2026-11-20T14:14:05.747Z INFO render-worker job=pdf-336785 rendered pages=6 ms=426
+2026-11-20T14:14:07.939Z ERROR render-worker job=pdf-318498 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:14:23.643Z ERROR render-worker job=pdf-153031 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:14:35.940Z ERROR render-worker job=pdf-541875 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:14:54.673Z ERROR render-worker job=pdf-460718 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:14:57.563Z ERROR render-worker job=pdf-769450 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:14:58.170Z INFO render-worker job=pdf-258927 rendered pages=3 ms=620
+2026-11-20T14:14:59.501Z ERROR render-worker job=pdf-251448 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:15:02.437Z INFO render-worker job=pdf-524293 rendered pages=3 ms=1509
+2026-11-20T14:15:10.452Z ERROR render-worker job=pdf-493335 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:15:25.943Z ERROR render-worker job=pdf-982402 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:15:28.100Z ERROR render-worker job=pdf-995708 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:15:30.741Z INFO render-worker job=pdf-337608 rendered pages=2 ms=649
+2026-11-20T14:15:32.246Z INFO render-worker job=pdf-249212 rendered pages=2 ms=1790
+2026-11-20T14:15:48.718Z ERROR render-worker job=pdf-138863 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:15:55.042Z ERROR render-worker job=pdf-388768 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:16:06.868Z ERROR render-worker job=pdf-278433 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:16:08.207Z ERROR render-worker job=pdf-400334 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:16:08.663Z INFO render-worker job=pdf-874796 rendered pages=1 ms=896
+2026-11-20T14:16:30.327Z INFO render-worker job=pdf-641316 rendered pages=5 ms=631
+2026-11-20T14:16:31.939Z ERROR render-worker job=pdf-560903 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:16:42.573Z ERROR render-worker job=pdf-782259 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:16:45.579Z INFO render-worker job=pdf-240721 rendered pages=5 ms=455
+2026-11-20T14:16:46.300Z ERROR render-worker job=pdf-518758 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:16:47.099Z ERROR render-worker job=pdf-829009 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:16:47.385Z ERROR render-worker job=pdf-325301 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:17:10.264Z ERROR render-worker job=pdf-388288 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:17:12.209Z ERROR render-worker job=pdf-860908 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:17:14.551Z INFO render-worker job=pdf-476536 rendered pages=3 ms=517
+2026-11-20T14:17:14.577Z INFO render-worker job=pdf-950362 rendered pages=6 ms=1538
+2026-11-20T14:17:15.277Z ERROR render-worker job=pdf-532158 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:17:17.733Z ERROR render-worker job=pdf-698804 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:17:25.185Z ERROR render-worker job=pdf-177937 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:17:32.393Z ERROR render-worker job=pdf-456029 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:17:39.663Z ERROR render-worker job=pdf-347742 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:17:55.278Z INFO render-worker job=pdf-596709 rendered pages=4 ms=497
+2026-11-20T14:18:03.486Z ERROR render-worker job=pdf-482008 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:18:12.893Z INFO render-worker job=pdf-164529 rendered pages=6 ms=648
+2026-11-20T14:18:21.681Z ERROR render-worker job=pdf-968798 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:18:26.538Z ERROR render-worker job=pdf-759276 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:18:30.818Z INFO render-worker job=pdf-821494 rendered pages=3 ms=721
+2026-11-20T14:18:40.158Z INFO render-worker job=pdf-558892 rendered pages=1 ms=915
+2026-11-20T14:19:00.584Z INFO render-worker job=pdf-652422 rendered pages=1 ms=1689
+2026-11-20T14:19:10.987Z ERROR render-worker job=pdf-775505 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:19:27.721Z INFO render-worker job=pdf-803444 rendered pages=2 ms=978
+2026-11-20T14:19:48.236Z ERROR render-worker job=pdf-371955 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:19:51.435Z INFO render-worker job=pdf-726274 rendered pages=3 ms=655
+2026-11-20T14:19:51.490Z ERROR render-worker job=pdf-198841 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:19:57.938Z ERROR render-worker job=pdf-378003 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:20:09.189Z INFO render-worker job=pdf-134145 rendered pages=5 ms=1596
+2026-11-20T14:20:24.765Z ERROR render-worker job=pdf-648276 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:20:33.755Z ERROR render-worker job=pdf-233760 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:20:42.040Z INFO render-worker job=pdf-354632 rendered pages=2 ms=1091
+2026-11-20T14:20:45.342Z ERROR render-worker job=pdf-422376 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:20:46.189Z ERROR render-worker job=pdf-377083 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:20:46.664Z INFO render-worker job=pdf-101091 rendered pages=1 ms=877
+2026-11-20T14:20:53.269Z ERROR render-worker job=pdf-694653 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:21:07.429Z ERROR render-worker job=pdf-760692 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:21:14.790Z INFO render-worker job=pdf-547559 rendered pages=3 ms=621
+2026-11-20T14:21:27.288Z INFO render-worker job=pdf-769162 rendered pages=6 ms=1732
+2026-11-20T14:21:31.116Z ERROR render-worker job=pdf-425693 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:21:41.453Z ERROR render-worker job=pdf-664616 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:21:55.645Z INFO render-worker job=pdf-277307 rendered pages=3 ms=1703
+2026-11-20T14:22:17.246Z INFO render-worker job=pdf-445164 rendered pages=4 ms=670
+2026-11-20T14:22:17.928Z ERROR render-worker job=pdf-992246 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:22:22.998Z ERROR render-worker job=pdf-482319 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:22:23.027Z INFO render-worker job=pdf-645490 rendered pages=1 ms=1464
+2026-11-20T14:22:33.742Z INFO render-worker job=pdf-533299 rendered pages=4 ms=1505
+2026-11-20T14:22:46.309Z ERROR render-worker job=pdf-613587 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:22:49.478Z ERROR render-worker job=pdf-600153 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:23:00.695Z ERROR render-worker job=pdf-659845 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:23:03.433Z ERROR render-worker job=pdf-535757 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:23:04.873Z ERROR render-worker job=pdf-902444 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:23:15.115Z INFO render-worker job=pdf-214771 rendered pages=4 ms=1112
+2026-11-20T14:23:16.130Z ERROR render-worker job=pdf-174622 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:23:18.852Z INFO render-worker job=pdf-855392 rendered pages=1 ms=1074
+2026-11-20T14:23:19.214Z ERROR render-worker job=pdf-843541 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:23:46.799Z ERROR render-worker job=pdf-522892 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:23:50.742Z ERROR render-worker job=pdf-310619 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:23:56.789Z INFO render-worker job=pdf-825156 rendered pages=4 ms=547
+2026-11-20T14:24:02.037Z ERROR render-worker job=pdf-453569 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:24:06.148Z INFO render-worker job=pdf-298357 rendered pages=5 ms=1657
+2026-11-20T14:24:34.844Z INFO render-worker job=pdf-364622 rendered pages=5 ms=1498
+2026-11-20T14:24:37.275Z ERROR render-worker job=pdf-588248 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:24:44.455Z ERROR render-worker job=pdf-442359 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:24:50.669Z INFO render-worker job=pdf-915929 rendered pages=5 ms=1241
+2026-11-20T14:25:05.604Z INFO render-worker job=pdf-607321 rendered pages=4 ms=469
+2026-11-20T14:25:07.521Z ERROR render-worker job=pdf-202994 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:25:20.016Z ERROR render-worker job=pdf-775279 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:25:21.260Z INFO render-worker job=pdf-261907 rendered pages=2 ms=1740
+2026-11-20T14:25:34.856Z ERROR render-worker job=pdf-611287 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:25:38.162Z INFO render-worker job=pdf-395393 rendered pages=6 ms=1327
+2026-11-20T14:25:48.311Z ERROR render-worker job=pdf-669139 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:25:51.503Z ERROR render-worker job=pdf-399606 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:25:57.429Z ERROR render-worker job=pdf-152508 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:25:59.748Z ERROR render-worker job=pdf-762970 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:26:13.289Z INFO render-worker job=pdf-260427 rendered pages=5 ms=1640
+2026-11-20T14:26:13.549Z ERROR render-worker job=pdf-157980 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:26:17.174Z ERROR render-worker job=pdf-638044 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:26:17.463Z ERROR render-worker job=pdf-945945 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:26:29.274Z ERROR render-worker job=pdf-932096 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:26:30.137Z ERROR render-worker job=pdf-870622 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:26:36.328Z INFO render-worker job=pdf-848615 rendered pages=2 ms=904
+2026-11-20T14:26:39.733Z INFO render-worker job=pdf-152577 rendered pages=6 ms=464
+2026-11-20T14:26:58.355Z ERROR render-worker job=pdf-507935 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:27:00.796Z ERROR render-worker job=pdf-172534 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:27:03.201Z INFO render-worker job=pdf-114366 rendered pages=3 ms=1451
+2026-11-20T14:27:03.296Z ERROR render-worker job=pdf-930205 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:27:12.477Z INFO render-worker job=pdf-633141 rendered pages=2 ms=301
+2026-11-20T14:27:19.503Z ERROR render-worker job=pdf-388123 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:27:32.784Z ERROR render-worker job=pdf-384696 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:27:46.046Z ERROR render-worker job=pdf-427162 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:27:57.474Z INFO render-worker job=pdf-936971 rendered pages=1 ms=1368
+2026-11-20T14:28:08.682Z ERROR render-worker job=pdf-367205 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:28:18.104Z INFO render-worker job=pdf-980387 rendered pages=3 ms=1216
+2026-11-20T14:28:28.521Z ERROR render-worker job=pdf-418148 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:28:37.040Z ERROR render-worker job=pdf-486120 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:28:40.352Z ERROR render-worker job=pdf-839849 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:28:42.641Z INFO render-worker job=pdf-150202 rendered pages=1 ms=1407
+2026-11-20T14:28:56.992Z ERROR render-worker job=pdf-202482 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:28:57.347Z ERROR render-worker job=pdf-786976 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:28:59.293Z INFO render-worker job=pdf-271816 rendered pages=6 ms=1583
+2026-11-20T14:29:02.594Z ERROR render-worker job=pdf-694816 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:29:07.002Z ERROR render-worker job=pdf-399306 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:29:09.186Z INFO render-worker job=pdf-474294 rendered pages=1 ms=769
+2026-11-20T14:29:16.004Z ERROR render-worker job=pdf-727611 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:29:22.234Z INFO render-worker job=pdf-321582 rendered pages=3 ms=1644
+2026-11-20T14:29:35.851Z INFO render-worker job=pdf-165193 rendered pages=4 ms=758
+2026-11-20T14:29:54.094Z ERROR render-worker job=pdf-875891 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:29:58.623Z ERROR render-worker job=pdf-573924 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:30:13.407Z ERROR render-worker job=pdf-737934 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:30:18.481Z ERROR render-worker job=pdf-955153 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:30:25.494Z ERROR render-worker job=pdf-898619 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:30:42.332Z INFO render-worker job=pdf-975979 rendered pages=5 ms=438
+2026-11-20T14:30:43.956Z ERROR render-worker job=pdf-285765 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:30:46.100Z INFO render-worker job=pdf-803764 rendered pages=3 ms=926
+2026-11-20T14:30:58.991Z INFO render-worker job=pdf-487854 rendered pages=1 ms=1618
+2026-11-20T14:31:12.104Z ERROR render-worker job=pdf-209224 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:31:13.984Z ERROR render-worker job=pdf-856277 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:31:33.245Z ERROR render-worker job=pdf-962586 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:31:35.783Z ERROR render-worker job=pdf-346529 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:31:38.978Z INFO render-worker job=pdf-461291 rendered pages=4 ms=969
+2026-11-20T14:31:45.084Z INFO render-worker job=pdf-556535 rendered pages=2 ms=1333
+2026-11-20T14:31:46.168Z INFO render-worker job=pdf-519406 rendered pages=4 ms=1400
+2026-11-20T14:31:46.516Z ERROR render-worker job=pdf-724103 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:31:53.379Z ERROR render-worker job=pdf-800158 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:32:11.629Z ERROR render-worker job=pdf-557244 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:32:24.517Z INFO render-worker job=pdf-607475 rendered pages=2 ms=917
+2026-11-20T14:32:30.061Z ERROR render-worker job=pdf-485215 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:32:33.235Z ERROR render-worker job=pdf-646627 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:32:47.472Z INFO render-worker job=pdf-386211 rendered pages=5 ms=336
+2026-11-20T14:32:56.014Z INFO render-worker job=pdf-840147 rendered pages=6 ms=1526
+2026-11-20T14:33:09.076Z ERROR render-worker job=pdf-211755 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:33:10.988Z ERROR render-worker job=pdf-252574 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:33:18.588Z INFO render-worker job=pdf-812150 rendered pages=2 ms=780
+2026-11-20T14:33:24.580Z ERROR render-worker job=pdf-413798 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:33:30.797Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:33:34.987Z ERROR render-worker job=pdf-584380 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:33:44.576Z INFO render-worker job=pdf-725033 rendered pages=6 ms=1274
+2026-11-20T14:33:56.812Z INFO render-worker job=pdf-702679 rendered pages=6 ms=685
+2026-11-20T14:34:10.193Z ERROR render-worker job=pdf-820447 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:34:10.606Z ERROR render-worker job=pdf-653702 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:34:11.719Z ERROR render-worker job=pdf-909264 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:34:17.287Z INFO render-worker job=pdf-123499 rendered pages=2 ms=1642
+2026-11-20T14:34:27.433Z INFO render-worker job=pdf-633484 rendered pages=2 ms=1453
+2026-11-20T14:34:37.905Z ERROR render-worker job=pdf-964846 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:34:47.522Z INFO render-worker job=pdf-213089 rendered pages=3 ms=986
+2026-11-20T14:34:54.299Z ERROR render-worker job=pdf-102243 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:34:59.287Z ERROR render-worker job=pdf-204711 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:34:59.702Z ERROR render-worker job=pdf-850097 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:35:01.720Z INFO render-worker job=pdf-564923 rendered pages=2 ms=1482
+2026-11-20T14:35:04.474Z ERROR render-worker job=pdf-909038 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:35:13.663Z INFO render-worker job=pdf-414162 rendered pages=5 ms=1570
+2026-11-20T14:35:18.106Z ERROR render-worker job=pdf-528991 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:35:28.666Z ERROR render-worker job=pdf-977566 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:35:30.632Z ERROR render-worker job=pdf-713466 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:35:46.407Z ERROR render-worker job=pdf-279736 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:35:49.170Z INFO render-worker job=pdf-404417 rendered pages=5 ms=1540
+2026-11-20T14:36:02.216Z ERROR render-worker job=pdf-156143 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:36:08.404Z INFO render-worker job=pdf-132692 rendered pages=6 ms=594
+2026-11-20T14:36:12.116Z INFO render-worker job=pdf-714026 rendered pages=5 ms=577
+2026-11-20T14:36:14.081Z ERROR render-worker job=pdf-898670 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:36:18.211Z ERROR render-worker job=pdf-894116 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:36:23.550Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:36:30.718Z ERROR render-worker job=pdf-324923 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:36:31.600Z ERROR render-worker job=pdf-805925 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:36:44.096Z INFO render-worker job=pdf-575652 rendered pages=2 ms=976
+2026-11-20T14:37:01.563Z ERROR render-worker job=pdf-674704 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:37:04.536Z ERROR render-worker job=pdf-215084 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:37:09.867Z INFO render-worker job=pdf-420504 rendered pages=4 ms=637
+2026-11-20T14:37:15.774Z ERROR render-worker job=pdf-307673 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:37:36.944Z INFO render-worker job=pdf-276015 rendered pages=2 ms=549
+2026-11-20T14:37:50.425Z INFO render-worker job=pdf-562968 rendered pages=4 ms=1330
+2026-11-20T14:37:50.556Z ERROR render-worker job=pdf-401692 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:38:18.917Z INFO render-worker job=pdf-962185 rendered pages=2 ms=1436
+2026-11-20T14:38:26.693Z ERROR render-worker job=pdf-196108 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:38:30.895Z ERROR render-worker job=pdf-728983 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:38:48.281Z INFO render-worker job=pdf-684709 rendered pages=6 ms=1786
+2026-11-20T14:38:48.663Z INFO render-worker job=pdf-766412 rendered pages=3 ms=1268
+2026-11-20T14:38:53.990Z ERROR render-worker job=pdf-704266 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:39:00.101Z ERROR render-worker job=pdf-571288 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:39:02.173Z INFO render-worker job=pdf-417835 rendered pages=4 ms=364
+2026-11-20T14:39:02.480Z ERROR render-worker job=pdf-184905 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:39:13.278Z ERROR render-worker job=pdf-565649 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:39:20.407Z INFO render-worker job=pdf-217975 rendered pages=2 ms=521
+2026-11-20T14:39:31.254Z ERROR render-worker job=pdf-544049 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:39:44.198Z ERROR render-worker job=pdf-276486 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:39:47.895Z INFO render-worker job=pdf-443538 rendered pages=1 ms=1358
+2026-11-20T14:40:05.049Z INFO render-worker job=pdf-270598 rendered pages=1 ms=1145
+2026-11-20T14:40:09.158Z ERROR render-worker job=pdf-512117 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:40:24.722Z ERROR render-worker job=pdf-947867 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:40:24.778Z ERROR render-worker job=pdf-498086 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:40:33.666Z INFO render-worker job=pdf-449281 rendered pages=4 ms=1194
+2026-11-20T14:40:37.744Z INFO render-worker job=pdf-535025 rendered pages=1 ms=528
+2026-11-20T14:40:50.118Z ERROR render-worker job=pdf-671044 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:40:51.567Z ERROR render-worker job=pdf-502927 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:40:57.017Z ERROR render-worker job=pdf-298061 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:40:59.262Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:41:00.532Z ERROR render-worker job=pdf-739391 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:41:19.587Z ERROR render-worker job=pdf-491552 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:41:23.251Z INFO render-worker job=pdf-355566 rendered pages=1 ms=457
+2026-11-20T14:41:42.723Z INFO render-worker job=pdf-610304 rendered pages=1 ms=1546
+2026-11-20T14:41:48.999Z ERROR render-worker job=pdf-285485 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:41:50.749Z ERROR render-worker job=pdf-617244 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:41:59.209Z INFO render-worker job=pdf-874427 rendered pages=4 ms=912
+2026-11-20T14:42:01.178Z ERROR render-worker job=pdf-924212 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:42:05.115Z ERROR render-worker job=pdf-860250 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:42:08.012Z ERROR render-worker job=pdf-871073 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:42:19.084Z INFO render-worker job=pdf-729274 rendered pages=5 ms=1310
+2026-11-20T14:42:56.694Z INFO render-worker job=pdf-813336 rendered pages=4 ms=410
+2026-11-20T14:42:58.040Z INFO render-worker job=pdf-477785 rendered pages=3 ms=1036
+2026-11-20T14:43:00.195Z ERROR render-worker job=pdf-905822 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:43:01.966Z ERROR render-worker job=pdf-586014 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:43:04.104Z ERROR render-worker job=pdf-322918 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:43:05.979Z INFO render-worker job=pdf-972249 rendered pages=1 ms=1064
+2026-11-20T14:43:08.878Z INFO render-worker job=pdf-518630 rendered pages=6 ms=360
+2026-11-20T14:43:22.680Z ERROR render-worker job=pdf-938346 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:43:25.531Z ERROR render-worker job=pdf-314576 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:43:48.167Z ERROR render-worker job=pdf-546724 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:43:55.200Z INFO render-worker job=pdf-156159 rendered pages=6 ms=707
+2026-11-20T14:44:01.217Z INFO render-worker job=pdf-120116 rendered pages=4 ms=841
+2026-11-20T14:44:06.716Z ERROR render-worker job=pdf-760562 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:44:18.655Z ERROR render-worker job=pdf-217138 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:44:34.746Z ERROR render-worker job=pdf-866284 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:44:37.383Z ERROR render-worker job=pdf-816933 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:44:50.440Z INFO render-worker job=pdf-933501 rendered pages=4 ms=1663
+2026-11-20T14:44:54.768Z INFO render-worker job=pdf-603867 rendered pages=5 ms=1718
+2026-11-20T14:44:55.097Z ERROR render-worker job=pdf-838198 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:44:59.576Z ERROR render-worker job=pdf-544864 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:45:01.094Z INFO render-worker job=pdf-921023 rendered pages=4 ms=522
+2026-11-20T14:45:03.965Z ERROR render-worker job=pdf-171203 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:45:08.522Z INFO render-worker job=pdf-684511 rendered pages=1 ms=1234
+2026-11-20T14:45:13.076Z ERROR render-worker job=pdf-759733 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:45:15.313Z ERROR render-worker job=pdf-334965 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:45:25.570Z INFO render-worker job=pdf-989877 rendered pages=4 ms=1309
+2026-11-20T14:45:34.910Z ERROR render-worker job=pdf-191165 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:45:41.928Z ERROR render-worker job=pdf-492090 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:45:42.748Z ERROR render-worker job=pdf-171061 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:45:42.962Z ERROR render-worker job=pdf-937777 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:46:27.140Z ERROR render-worker job=pdf-142587 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:46:29.004Z ERROR render-worker job=pdf-519688 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:46:39.977Z INFO render-worker job=pdf-789493 rendered pages=3 ms=906
+2026-11-20T14:46:41.284Z ERROR render-worker job=pdf-256466 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:46:44.156Z ERROR render-worker job=pdf-487519 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:46:44.529Z INFO render-worker job=pdf-514959 rendered pages=5 ms=1695
+2026-11-20T14:46:44.693Z INFO render-worker job=pdf-835395 rendered pages=2 ms=1304
+2026-11-20T14:46:48.370Z ERROR render-worker job=pdf-803460 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:46:54.770Z ERROR render-worker job=pdf-636799 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:47:08.422Z INFO render-worker job=pdf-540627 rendered pages=6 ms=1161
+2026-11-20T14:47:18.241Z ERROR render-worker job=pdf-550496 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:47:37.171Z ERROR render-worker job=pdf-369071 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:47:42.626Z INFO render-worker job=pdf-428265 rendered pages=2 ms=1420
+2026-11-20T14:47:44.908Z ERROR render-worker job=pdf-624323 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:47:49.836Z INFO render-worker job=pdf-391231 rendered pages=1 ms=643
+2026-11-20T14:47:54.945Z ERROR render-worker job=pdf-185247 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:47:59.882Z ERROR render-worker job=pdf-670698 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:48:07.074Z ERROR render-worker job=pdf-605729 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:48:15.763Z INFO render-worker job=pdf-449252 rendered pages=6 ms=367
+2026-11-20T14:48:17.076Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:48:31.268Z INFO render-worker job=pdf-956200 rendered pages=4 ms=759
+2026-11-20T14:48:34.341Z INFO render-worker job=pdf-623605 rendered pages=4 ms=467
+2026-11-20T14:48:34.792Z ERROR render-worker job=pdf-373676 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:48:50.990Z ERROR render-worker job=pdf-158207 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:48:55.905Z ERROR render-worker job=pdf-490930 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:49:05.717Z ERROR render-worker job=pdf-894764 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:49:06.473Z ERROR render-worker job=pdf-277662 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:49:11.193Z INFO render-worker job=pdf-838864 rendered pages=4 ms=1211
+2026-11-20T14:49:14.939Z INFO render-worker job=pdf-245930 rendered pages=6 ms=594
+2026-11-20T14:49:30.369Z ERROR render-worker job=pdf-238995 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:49:42.559Z ERROR render-worker job=pdf-229116 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:49:54.670Z INFO render-worker job=pdf-635482 rendered pages=1 ms=826
+2026-11-20T14:49:55.418Z ERROR render-worker job=pdf-454450 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:49:59.725Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:50:04.731Z ERROR render-worker job=pdf-455370 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:50:24.679Z ERROR render-worker job=pdf-150451 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:50:25.415Z INFO render-worker job=pdf-927146 rendered pages=2 ms=1416
+2026-11-20T14:50:27.936Z INFO render-worker job=pdf-237183 rendered pages=3 ms=980
+2026-11-20T14:50:31.553Z INFO render-worker job=pdf-389871 rendered pages=2 ms=1304
+2026-11-20T14:50:40.199Z ERROR render-worker job=pdf-103931 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:50:41.571Z ERROR render-worker job=pdf-110969 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:50:59.495Z ERROR render-worker job=pdf-407286 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:51:09.023Z ERROR render-worker job=pdf-530665 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:51:12.677Z ERROR render-worker job=pdf-776477 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:51:24.017Z ERROR render-worker job=pdf-228416 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:51:28.038Z ERROR render-worker job=pdf-782496 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:51:34.460Z ERROR render-worker job=pdf-458031 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:51:35.326Z INFO render-worker job=pdf-819866 rendered pages=4 ms=1757
+2026-11-20T14:51:50.369Z INFO render-worker job=pdf-554036 rendered pages=3 ms=1359
+2026-11-20T14:51:50.830Z INFO render-worker job=pdf-550736 rendered pages=2 ms=1195
+2026-11-20T14:52:02.865Z ERROR render-worker job=pdf-835033 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:52:20.135Z ERROR render-worker job=pdf-833769 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:52:43.346Z ERROR render-worker job=pdf-913539 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:52:44.174Z INFO render-worker job=pdf-291202 rendered pages=1 ms=912
+2026-11-20T14:52:46.833Z ERROR render-worker job=pdf-908836 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:52:50.642Z INFO render-worker job=pdf-406345 rendered pages=4 ms=652
+2026-11-20T14:52:51.112Z INFO render-worker job=pdf-899938 rendered pages=3 ms=1684
+2026-11-20T14:52:51.855Z ERROR render-worker job=pdf-953297 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:53:00.396Z INFO render-worker job=pdf-275053 rendered pages=3 ms=1403
+2026-11-20T14:53:12.456Z ERROR render-worker job=pdf-941452 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:53:16.804Z INFO render-worker job=pdf-172939 rendered pages=3 ms=1035
+2026-11-20T14:53:19.099Z ERROR render-worker job=pdf-464072 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:53:20.341Z INFO render-worker job=pdf-425761 rendered pages=2 ms=1139
+2026-11-20T14:53:33.748Z ERROR render-worker job=pdf-858845 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:54:01.970Z ERROR render-worker job=pdf-893062 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:54:03.381Z INFO render-worker job=pdf-132039 rendered pages=4 ms=1033
+2026-11-20T14:54:21.171Z ERROR render-worker job=pdf-486397 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:54:24.470Z ERROR render-worker job=pdf-953198 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:54:29.946Z ERROR render-worker job=pdf-232551 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:54:34.187Z ERROR render-worker job=pdf-961190 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:54:39.722Z INFO render-worker job=pdf-235550 rendered pages=6 ms=498
+2026-11-20T14:54:42.811Z ERROR render-worker job=pdf-657610 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:54:49.515Z ERROR render-worker job=pdf-484792 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:54:56.896Z INFO render-worker job=pdf-795711 rendered pages=5 ms=677
+2026-11-20T14:55:12.501Z ERROR render-worker job=pdf-530242 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:55:16.172Z ERROR render-worker job=pdf-774091 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:55:26.115Z ERROR render-worker job=pdf-134455 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:55:30.280Z ERROR render-worker job=pdf-844292 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:55:41.082Z INFO render-worker job=pdf-687890 rendered pages=5 ms=1208
+2026-11-20T14:55:46.843Z INFO render-worker job=pdf-637884 rendered pages=2 ms=1235
+2026-11-20T14:55:48.400Z INFO render-worker job=pdf-674684 rendered pages=5 ms=1189
+2026-11-20T14:55:51.022Z ERROR render-worker job=pdf-853586 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:56:00.770Z INFO render-worker job=pdf-700196 rendered pages=1 ms=589
+2026-11-20T14:56:01.657Z ERROR render-worker job=pdf-952434 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:56:08.434Z INFO render-worker job=pdf-988460 rendered pages=5 ms=1616
+2026-11-20T14:56:22.767Z ERROR render-worker job=pdf-236761 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:56:38.733Z ERROR render-worker job=pdf-445993 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:56:49.969Z INFO render-worker job=pdf-914435 rendered pages=2 ms=748
+2026-11-20T14:56:56.383Z ERROR render-worker job=pdf-710854 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:57:05.932Z ERROR render-worker job=pdf-690674 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:57:06.548Z INFO render-worker job=pdf-502060 rendered pages=5 ms=1357
+2026-11-20T14:57:23.011Z INFO render-worker job=pdf-816815 rendered pages=2 ms=1047
+2026-11-20T14:57:31.689Z ERROR render-worker job=pdf-267298 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:57:41.507Z ERROR render-worker job=pdf-167755 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:57:46.347Z INFO render-worker job=pdf-256466 rendered pages=5 ms=546
+2026-11-20T14:57:46.761Z ERROR render-worker job=pdf-557058 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:57:47.706Z ERROR render-worker job=pdf-886999 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:57:52.197Z ERROR render-worker job=pdf-154594 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:57:57.838Z ERROR render-worker job=pdf-815133 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:58:02.462Z INFO render-worker job=pdf-637870 rendered pages=3 ms=1363
+2026-11-20T14:58:08.230Z INFO render-worker job=pdf-547508 rendered pages=4 ms=1074
+2026-11-20T14:58:13.461Z ERROR render-worker job=pdf-534415 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:58:26.600Z ERROR render-worker job=pdf-996098 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:58:32.340Z ERROR render-worker job=pdf-679118 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:58:36.867Z INFO render-worker job=pdf-295085 rendered pages=1 ms=1060
+2026-11-20T14:58:48.857Z ERROR render-worker job=pdf-436222 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:58:51.278Z ERROR render-worker job=pdf-417797 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T14:58:58.857Z ERROR render-worker job=pdf-912727 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:59:01.855Z ERROR render-worker job=pdf-632350 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:59:04.645Z ERROR render-worker job=pdf-253423 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:59:16.961Z INFO render-worker job=pdf-824861 rendered pages=2 ms=1767
+2026-11-20T14:59:19.529Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T14:59:29.276Z ERROR render-worker job=pdf-481339 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:59:39.533Z ERROR render-worker job=pdf-969256 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T14:59:41.367Z ERROR render-worker job=pdf-129154 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:59:45.883Z ERROR render-worker job=pdf-229866 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T14:59:48.054Z INFO render-worker job=pdf-354202 rendered pages=2 ms=584
+2026-11-20T14:59:51.814Z INFO render-worker job=pdf-960726 rendered pages=2 ms=857
+2026-11-20T14:59:59.113Z ERROR render-worker job=pdf-211484 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:00:05.667Z ERROR render-worker job=pdf-496999 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:00:06.898Z INFO render-worker job=pdf-766746 rendered pages=2 ms=1526
+2026-11-20T15:00:18.202Z ERROR render-worker job=pdf-863807 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:00:26.009Z INFO render-worker job=pdf-260228 rendered pages=4 ms=1280
+2026-11-20T15:00:27.245Z INFO render-worker job=pdf-945674 rendered pages=4 ms=1653
+2026-11-20T15:00:43.268Z ERROR render-worker job=pdf-582309 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:00:47.974Z ERROR render-worker job=pdf-631198 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:01:21.326Z INFO render-worker job=pdf-369991 rendered pages=3 ms=718
+2026-11-20T15:01:22.248Z ERROR render-worker job=pdf-380538 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:01:25.305Z INFO render-worker job=pdf-610505 rendered pages=6 ms=1575
+2026-11-20T15:01:26.892Z ERROR render-worker job=pdf-290821 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:01:36.558Z INFO render-worker job=pdf-778219 rendered pages=1 ms=1784
+2026-11-20T15:01:38.558Z ERROR render-worker job=pdf-428223 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:01:39.804Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:01:56.034Z ERROR render-worker job=pdf-711662 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:02:12.397Z ERROR render-worker job=pdf-346372 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:02:13.808Z ERROR render-worker job=pdf-295030 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:02:16.008Z INFO render-worker job=pdf-866042 rendered pages=6 ms=1153
+2026-11-20T15:02:19.713Z ERROR render-worker job=pdf-335976 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:02:31.486Z INFO render-worker job=pdf-672257 rendered pages=6 ms=362
+2026-11-20T15:02:37.281Z ERROR render-worker job=pdf-321181 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:02:39.605Z ERROR render-worker job=pdf-386920 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:02:52.805Z ERROR render-worker job=pdf-193205 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:02:58.394Z INFO render-worker job=pdf-529000 rendered pages=2 ms=554
+2026-11-20T15:02:59.997Z ERROR render-worker job=pdf-974689 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:03:10.855Z ERROR render-worker job=pdf-634880 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:03:12.821Z INFO render-worker job=pdf-176728 rendered pages=4 ms=751
+2026-11-20T15:03:14.741Z ERROR render-worker job=pdf-679848 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:03:16.632Z INFO render-worker job=pdf-498845 rendered pages=6 ms=332
+2026-11-20T15:03:16.988Z ERROR render-worker job=pdf-493859 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:03:22.335Z ERROR render-worker job=pdf-744069 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:03:31.106Z ERROR render-worker job=pdf-327104 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:03:36.917Z ERROR render-worker job=pdf-441553 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:03:44.007Z INFO render-worker job=pdf-388305 rendered pages=4 ms=1146
+2026-11-20T15:03:53.342Z ERROR render-worker job=pdf-146354 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:04:22.335Z INFO render-worker job=pdf-397391 rendered pages=3 ms=822
+2026-11-20T15:04:24.007Z INFO render-worker job=pdf-286370 rendered pages=4 ms=412
+2026-11-20T15:04:25.070Z ERROR render-worker job=pdf-210105 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:04:31.559Z ERROR render-worker job=pdf-973206 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:04:41.031Z INFO render-worker job=pdf-913952 rendered pages=4 ms=1053
+2026-11-20T15:04:42.272Z ERROR render-worker job=pdf-839888 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:04:52.218Z ERROR render-worker job=pdf-109489 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:04:56.486Z ERROR render-worker job=pdf-780684 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:05:07.968Z INFO render-worker job=pdf-267468 rendered pages=3 ms=1782
+2026-11-20T15:05:14.193Z INFO render-worker job=pdf-989015 rendered pages=2 ms=420
+2026-11-20T15:05:24.076Z ERROR render-worker job=pdf-144917 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:05:32.951Z INFO render-worker job=pdf-367477 rendered pages=5 ms=783
+2026-11-20T15:05:42.411Z ERROR render-worker job=pdf-533182 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:05:51.176Z ERROR render-worker job=pdf-689234 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:05:53.386Z ERROR render-worker job=pdf-163753 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:05:56.378Z ERROR render-worker job=pdf-817556 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:06:00.078Z INFO render-worker job=pdf-392307 rendered pages=1 ms=1454
+2026-11-20T15:06:11.938Z ERROR render-worker job=pdf-525336 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:06:17.525Z INFO render-worker job=pdf-767478 rendered pages=1 ms=392
+2026-11-20T15:06:30.289Z ERROR render-worker job=pdf-717565 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:06:33.187Z ERROR render-worker job=pdf-297448 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:06:40.408Z INFO render-worker job=pdf-890002 rendered pages=1 ms=390
+2026-11-20T15:06:43.261Z ERROR render-worker job=pdf-246403 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:06:43.424Z ERROR render-worker job=pdf-696435 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:06:49.107Z ERROR render-worker job=pdf-993884 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:06:56.633Z ERROR render-worker job=pdf-661574 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:07:17.547Z ERROR render-worker job=pdf-399523 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:07:25.389Z ERROR render-worker job=pdf-806344 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:07:25.651Z ERROR render-worker job=pdf-125020 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:07:34.909Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:07:35.055Z INFO render-worker job=pdf-732742 rendered pages=2 ms=885
+2026-11-20T15:07:43.012Z INFO render-worker job=pdf-697397 rendered pages=6 ms=1141
+2026-11-20T15:07:48.200Z ERROR render-worker job=pdf-378130 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:07:49.915Z INFO render-worker job=pdf-250606 rendered pages=4 ms=901
+2026-11-20T15:07:56.453Z ERROR render-worker job=pdf-376456 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:08:03.739Z ERROR render-worker job=pdf-427637 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:08:04.473Z ERROR render-worker job=pdf-873473 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:08:05.622Z ERROR render-worker job=pdf-663018 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:08:13.639Z INFO render-worker job=pdf-166850 rendered pages=5 ms=792
+2026-11-20T15:08:14.176Z ERROR render-worker job=pdf-292913 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:08:24.595Z ERROR render-worker job=pdf-622808 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:08:28.564Z INFO render-worker job=pdf-558486 rendered pages=2 ms=611
+2026-11-20T15:08:55.789Z INFO render-worker job=pdf-478300 rendered pages=3 ms=1782
+2026-11-20T15:09:06.332Z INFO render-worker job=pdf-884644 rendered pages=6 ms=1129
+2026-11-20T15:09:06.583Z ERROR render-worker job=pdf-108934 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:09:07.881Z INFO render-worker job=pdf-219933 rendered pages=6 ms=1100
+2026-11-20T15:09:21.380Z INFO render-worker job=pdf-784547 rendered pages=1 ms=493
+2026-11-20T15:09:31.032Z ERROR render-worker job=pdf-972828 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:09:32.693Z ERROR render-worker job=pdf-300282 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:09:33.840Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:09:50.828Z ERROR render-worker job=pdf-435338 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:09:51.926Z ERROR render-worker job=pdf-898357 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:10:13.611Z INFO render-worker job=pdf-996535 rendered pages=3 ms=374
+2026-11-20T15:10:27.183Z ERROR render-worker job=pdf-961656 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:10:29.523Z INFO render-worker job=pdf-518137 rendered pages=5 ms=1178
+2026-11-20T15:10:44.676Z ERROR render-worker job=pdf-419600 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:10:50.480Z ERROR render-worker job=pdf-887296 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:10:51.573Z ERROR render-worker job=pdf-993001 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:10:51.937Z INFO render-worker job=pdf-899453 rendered pages=4 ms=1259
+2026-11-20T15:10:54.210Z ERROR render-worker job=pdf-605344 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:11:07.328Z ERROR render-worker job=pdf-313851 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:11:18.851Z ERROR render-worker job=pdf-160992 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:11:19.259Z ERROR render-worker job=pdf-140562 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:11:26.683Z INFO render-worker job=pdf-260587 rendered pages=2 ms=721
+2026-11-20T15:11:30.915Z ERROR render-worker job=pdf-169433 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:11:37.150Z INFO render-worker job=pdf-750552 rendered pages=4 ms=392
+2026-11-20T15:11:46.860Z INFO render-worker job=pdf-858618 rendered pages=1 ms=1449
+2026-11-20T15:11:56.052Z ERROR render-worker job=pdf-887290 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:11:57.143Z ERROR render-worker job=pdf-683119 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:12:01.636Z INFO render-worker job=pdf-483178 rendered pages=1 ms=574
+2026-11-20T15:12:22.784Z ERROR render-worker job=pdf-278564 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:12:30.039Z ERROR render-worker job=pdf-141003 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:12:40.893Z ERROR render-worker job=pdf-818351 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:12:46.560Z INFO render-worker job=pdf-120677 rendered pages=5 ms=1758
+2026-11-20T15:12:55.336Z INFO render-worker job=pdf-305501 rendered pages=6 ms=308
+2026-11-20T15:13:14.702Z INFO render-worker job=pdf-162170 rendered pages=2 ms=379
+2026-11-20T15:13:19.302Z ERROR render-worker job=pdf-790815 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:13:23.721Z ERROR render-worker job=pdf-359428 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:13:28.621Z INFO render-worker job=pdf-827917 rendered pages=4 ms=1276
+2026-11-20T15:13:34.166Z ERROR render-worker job=pdf-778169 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:13:35.509Z ERROR render-worker job=pdf-662919 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:13:39.069Z ERROR render-worker job=pdf-703386 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:13:54.833Z ERROR render-worker job=pdf-880862 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:13:59.710Z INFO render-worker job=pdf-850396 rendered pages=2 ms=1234
+2026-11-20T15:14:18.304Z ERROR render-worker job=pdf-374915 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:14:30.288Z ERROR render-worker job=pdf-632485 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:14:44.158Z INFO render-worker job=pdf-699056 rendered pages=2 ms=1652
+2026-11-20T15:14:44.315Z ERROR render-worker job=pdf-457413 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:14:45.747Z INFO render-worker job=pdf-961209 rendered pages=3 ms=381
+2026-11-20T15:14:52.618Z INFO render-worker job=pdf-783004 rendered pages=3 ms=1479
+2026-11-20T15:14:56.049Z ERROR render-worker job=pdf-665146 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:15:06.106Z ERROR render-worker job=pdf-530039 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:15:06.633Z ERROR render-worker job=pdf-831956 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:15:07.342Z ERROR render-worker job=pdf-930631 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:15:12.954Z INFO render-worker job=pdf-952485 rendered pages=3 ms=745
+2026-11-20T15:15:18.284Z INFO render-worker job=pdf-283291 rendered pages=5 ms=1102
+2026-11-20T15:15:24.544Z ERROR render-worker job=pdf-633770 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:15:25.418Z ERROR render-worker job=pdf-524665 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:15:32.012Z INFO render-worker job=pdf-719942 rendered pages=6 ms=1528
+2026-11-20T15:15:35.119Z ERROR render-worker job=pdf-256344 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:15:35.395Z ERROR render-worker job=pdf-805318 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:16:04.028Z ERROR render-worker job=pdf-127175 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:16:23.506Z INFO render-worker job=pdf-178976 rendered pages=6 ms=703
+2026-11-20T15:16:27.197Z INFO render-worker job=pdf-213340 rendered pages=4 ms=1174
+2026-11-20T15:16:27.529Z INFO render-worker job=pdf-264745 rendered pages=5 ms=1765
+2026-11-20T15:16:45.067Z ERROR render-worker job=pdf-284907 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:16:59.418Z ERROR render-worker job=pdf-618695 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:17:06.003Z INFO render-worker job=pdf-640281 rendered pages=1 ms=940
+2026-11-20T15:17:08.352Z ERROR render-worker job=pdf-557238 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:17:16.315Z ERROR render-worker job=pdf-698018 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:17:16.486Z ERROR render-worker job=pdf-594259 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:17:17.787Z ERROR render-worker job=pdf-421443 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:17:20.488Z INFO render-worker job=pdf-226353 rendered pages=4 ms=1444
+2026-11-20T15:17:43.854Z ERROR render-worker job=pdf-271287 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:17:50.583Z ERROR render-worker job=pdf-359245 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:17:58.677Z INFO render-worker job=pdf-468267 rendered pages=4 ms=792
+2026-11-20T15:18:01.017Z ERROR render-worker job=pdf-154783 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:18:05.777Z ERROR render-worker job=pdf-206844 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:18:09.872Z ERROR render-worker job=pdf-187009 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:18:10.198Z ERROR render-worker job=pdf-155843 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:18:10.719Z INFO render-worker job=pdf-577432 rendered pages=1 ms=1116
+2026-11-20T15:18:14.406Z ERROR render-worker job=pdf-196769 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:18:18.639Z INFO render-worker job=pdf-103107 rendered pages=4 ms=591
+2026-11-20T15:18:31.536Z ERROR render-worker job=pdf-599933 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:18:56.373Z ERROR render-worker job=pdf-261197 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:18:57.622Z INFO render-worker job=pdf-138293 rendered pages=3 ms=659
+2026-11-20T15:19:07.274Z INFO render-worker job=pdf-711192 rendered pages=4 ms=441
+2026-11-20T15:19:15.238Z ERROR render-worker job=pdf-941693 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:19:18.904Z ERROR render-worker job=pdf-974462 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:19:25.928Z ERROR render-worker job=pdf-569105 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:19:27.114Z ERROR render-worker job=pdf-751811 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:19:35.664Z ERROR render-worker job=pdf-935404 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:19:37.427Z ERROR render-worker job=pdf-508867 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:19:51.423Z INFO render-worker job=pdf-739896 rendered pages=1 ms=1077
+2026-11-20T15:19:55.683Z ERROR render-worker job=pdf-707486 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:19:56.837Z INFO render-worker job=pdf-511947 rendered pages=1 ms=1789
+2026-11-20T15:20:11.128Z INFO render-worker job=pdf-739078 rendered pages=3 ms=1451
+2026-11-20T15:20:12.859Z ERROR render-worker job=pdf-623507 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:20:15.906Z ERROR render-worker job=pdf-301680 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:20:30.027Z INFO render-worker job=pdf-278038 rendered pages=5 ms=1407
+2026-11-20T15:20:30.934Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:20:39.120Z ERROR render-worker job=pdf-853299 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:20:39.524Z ERROR render-worker job=pdf-804391 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:20:39.837Z ERROR render-worker job=pdf-513858 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:20:55.624Z INFO render-worker job=pdf-660133 rendered pages=3 ms=1179
+2026-11-20T15:21:12.729Z ERROR render-worker job=pdf-602745 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:21:19.160Z ERROR render-worker job=pdf-182375 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:21:21.001Z INFO render-worker job=pdf-482202 rendered pages=1 ms=536
+2026-11-20T15:21:22.681Z ERROR render-worker job=pdf-809363 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:21:30.631Z ERROR render-worker job=pdf-980811 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:21:30.832Z INFO render-worker job=pdf-899484 rendered pages=3 ms=873
+2026-11-20T15:21:33.164Z ERROR render-worker job=pdf-102689 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:21:36.435Z INFO render-worker job=pdf-349686 rendered pages=6 ms=1472
+2026-11-20T15:21:42.812Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:21:43.945Z ERROR render-worker job=pdf-291116 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:22:12.649Z INFO render-worker job=pdf-807470 rendered pages=4 ms=563
+2026-11-20T15:22:13.146Z ERROR render-worker job=pdf-675396 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:22:14.055Z ERROR render-worker job=pdf-439172 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:22:23.529Z ERROR render-worker job=pdf-802375 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:22:49.986Z ERROR render-worker job=pdf-846480 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:22:53.208Z ERROR render-worker job=pdf-609647 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:22:53.843Z INFO render-worker job=pdf-851034 rendered pages=6 ms=992
+2026-11-20T15:22:56.890Z ERROR render-worker job=pdf-583430 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:22:58.268Z INFO render-worker job=pdf-617418 rendered pages=1 ms=1507
+2026-11-20T15:23:02.301Z ERROR render-worker job=pdf-579557 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:23:05.135Z ERROR render-worker job=pdf-766856 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:23:08.619Z ERROR render-worker job=pdf-151968 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:23:09.392Z ERROR render-worker job=pdf-348400 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:23:26.833Z INFO render-worker job=pdf-762503 rendered pages=1 ms=1262
+2026-11-20T15:23:26.917Z ERROR render-worker job=pdf-963678 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:23:46.770Z INFO render-worker job=pdf-203001 rendered pages=4 ms=1255
+2026-11-20T15:23:46.787Z ERROR render-worker job=pdf-411321 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:23:54.352Z ERROR render-worker job=pdf-648686 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:23:55.346Z INFO render-worker job=pdf-240147 rendered pages=2 ms=504
+2026-11-20T15:24:04.642Z INFO render-worker job=pdf-174137 rendered pages=3 ms=340
+2026-11-20T15:24:07.010Z ERROR render-worker job=pdf-558931 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:24:10.710Z ERROR render-worker job=pdf-453043 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:24:15.199Z ERROR render-worker job=pdf-322064 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:24:41.699Z INFO render-worker job=pdf-887607 rendered pages=1 ms=1188
+2026-11-20T15:24:43.373Z ERROR render-worker job=pdf-776389 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:24:50.349Z ERROR render-worker job=pdf-723801 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:24:59.365Z INFO render-worker job=pdf-224531 rendered pages=6 ms=434
+2026-11-20T15:25:10.474Z ERROR render-worker job=pdf-815591 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:25:20.532Z INFO render-worker job=pdf-643166 rendered pages=3 ms=1299
+2026-11-20T15:25:27.045Z INFO render-worker job=pdf-584955 rendered pages=1 ms=1660
+2026-11-20T15:25:28.416Z INFO render-worker job=pdf-149372 rendered pages=3 ms=1474
+2026-11-20T15:25:30.703Z ERROR render-worker job=pdf-607300 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:25:33.509Z ERROR render-worker job=pdf-913766 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:25:44.764Z ERROR render-worker job=pdf-802125 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:26:16.670Z ERROR render-worker job=pdf-712084 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:26:30.992Z ERROR render-worker job=pdf-554595 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:26:36.107Z INFO render-worker job=pdf-576154 rendered pages=2 ms=1752
+2026-11-20T15:26:37.050Z ERROR render-worker job=pdf-272922 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:26:45.268Z INFO render-worker job=pdf-543276 rendered pages=1 ms=1664
+2026-11-20T15:26:48.264Z ERROR render-worker job=pdf-832940 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:26:53.890Z ERROR render-worker job=pdf-116141 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:26:59.759Z INFO render-worker job=pdf-385529 rendered pages=4 ms=873
+2026-11-20T15:27:07.939Z INFO render-worker job=pdf-266270 rendered pages=5 ms=1116
+2026-11-20T15:27:16.241Z ERROR render-worker job=pdf-300255 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:27:28.640Z ERROR render-worker job=pdf-277696 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:27:30.311Z INFO render-worker job=pdf-130707 rendered pages=5 ms=814
+2026-11-20T15:27:31.478Z ERROR render-worker job=pdf-873377 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:27:31.519Z INFO render-worker job=pdf-268193 rendered pages=2 ms=1135
+2026-11-20T15:27:33.073Z ERROR render-worker job=pdf-923360 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:27:41.978Z ERROR render-worker job=pdf-809305 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:27:51.188Z ERROR render-worker job=pdf-198637 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:27:57.992Z ERROR render-worker job=pdf-584440 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:28:11.240Z ERROR render-worker job=pdf-672178 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:28:16.101Z ERROR render-worker job=pdf-999600 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:28:25.131Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:28:27.971Z ERROR render-worker job=pdf-668684 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:28:35.665Z INFO render-worker job=pdf-410048 rendered pages=3 ms=670
+2026-11-20T15:28:44.762Z INFO render-worker job=pdf-628906 rendered pages=6 ms=809
+2026-11-20T15:28:48.551Z INFO render-worker job=pdf-877395 rendered pages=1 ms=990
+2026-11-20T15:29:05.393Z INFO render-worker job=pdf-399915 rendered pages=3 ms=1502
+2026-11-20T15:29:12.778Z INFO render-worker job=pdf-405075 rendered pages=5 ms=1370
+2026-11-20T15:29:30.946Z ERROR render-worker job=pdf-480964 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:29:33.776Z INFO render-worker job=pdf-689528 rendered pages=2 ms=566
+2026-11-20T15:29:39.383Z ERROR render-worker job=pdf-183429 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:29:50.357Z ERROR render-worker job=pdf-905224 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:30:07.560Z ERROR render-worker job=pdf-592174 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:30:21.769Z ERROR render-worker job=pdf-542127 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:30:26.534Z ERROR render-worker job=pdf-329849 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:30:32.864Z ERROR render-worker job=pdf-517691 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:30:33.021Z INFO render-worker job=pdf-963679 rendered pages=1 ms=1024
+2026-11-20T15:30:36.372Z INFO render-worker job=pdf-517436 rendered pages=2 ms=757
+2026-11-20T15:30:37.085Z INFO render-worker job=pdf-943049 rendered pages=5 ms=1611
+2026-11-20T15:30:53.093Z ERROR render-worker job=pdf-946029 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:30:57.048Z ERROR render-worker job=pdf-878854 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:31:03.410Z ERROR render-worker job=pdf-495686 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:31:04.003Z INFO render-worker job=pdf-655930 rendered pages=5 ms=504
+2026-11-20T15:31:05.708Z ERROR render-worker job=pdf-655159 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:31:11.807Z ERROR render-worker job=pdf-249986 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:31:49.641Z ERROR render-worker job=pdf-723270 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:31:52.951Z INFO render-worker job=pdf-960718 rendered pages=3 ms=1237
+2026-11-20T15:31:54.323Z ERROR render-worker job=pdf-100488 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:31:57.148Z INFO render-worker job=pdf-596248 rendered pages=1 ms=773
+2026-11-20T15:32:03.806Z ERROR render-worker job=pdf-739555 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:32:12.408Z INFO render-worker job=pdf-762324 rendered pages=4 ms=514
+2026-11-20T15:32:20.229Z ERROR render-worker job=pdf-985902 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:32:22.307Z INFO render-worker job=pdf-155915 rendered pages=4 ms=1449
+2026-11-20T15:32:31.187Z INFO render-worker job=pdf-246425 rendered pages=4 ms=1698
+2026-11-20T15:32:32.858Z ERROR render-worker job=pdf-775536 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:32:37.405Z ERROR render-worker job=pdf-814655 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:32:44.485Z ERROR render-worker job=pdf-341166 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:32:58.052Z ERROR render-worker job=pdf-469110 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:33:16.549Z ERROR render-worker job=pdf-110712 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:33:22.817Z INFO render-worker job=pdf-982342 rendered pages=4 ms=779
+2026-11-20T15:33:27.881Z ERROR render-worker job=pdf-359432 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:33:35.135Z INFO render-worker job=pdf-545542 rendered pages=4 ms=549
+2026-11-20T15:33:36.157Z ERROR render-worker job=pdf-156916 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:33:40.496Z INFO render-worker job=pdf-297300 rendered pages=1 ms=854
+2026-11-20T15:33:47.648Z ERROR render-worker job=pdf-642823 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:34:02.923Z ERROR render-worker job=pdf-160609 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:34:24.265Z INFO render-worker job=pdf-695270 rendered pages=3 ms=829
+2026-11-20T15:34:28.596Z ERROR render-worker job=pdf-741330 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:34:31.563Z ERROR render-worker job=pdf-686759 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:34:31.843Z INFO render-worker job=pdf-227379 rendered pages=1 ms=330
+2026-11-20T15:34:33.030Z ERROR render-worker job=pdf-893463 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:34:48.373Z INFO render-worker job=pdf-565631 rendered pages=5 ms=1385
+2026-11-20T15:35:13.650Z ERROR render-worker job=pdf-803968 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:35:14.362Z INFO render-worker job=pdf-782172 rendered pages=2 ms=1186
+2026-11-20T15:35:19.833Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:35:26.430Z ERROR render-worker job=pdf-395496 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:35:41.257Z ERROR render-worker job=pdf-581071 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:35:50.889Z INFO render-worker job=pdf-541828 rendered pages=3 ms=777
+2026-11-20T15:35:55.123Z ERROR render-worker job=pdf-721317 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:35:55.496Z INFO render-worker job=pdf-336180 rendered pages=1 ms=886
+2026-11-20T15:35:56.625Z ERROR render-worker job=pdf-985938 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:36:03.094Z ERROR render-worker job=pdf-816041 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:36:16.145Z ERROR render-worker job=pdf-734876 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:36:18.158Z INFO render-worker job=pdf-557693 rendered pages=2 ms=1117
+2026-11-20T15:36:40.966Z ERROR render-worker job=pdf-837807 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:36:41.592Z INFO render-worker job=pdf-776428 rendered pages=4 ms=357
+2026-11-20T15:36:47.688Z ERROR render-worker job=pdf-545263 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:36:49.004Z INFO render-worker job=pdf-365900 rendered pages=6 ms=1324
+2026-11-20T15:36:50.380Z ERROR render-worker job=pdf-928116 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:36:54.873Z ERROR render-worker job=pdf-854818 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:36:59.867Z ERROR render-worker job=pdf-218273 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:37:06.539Z INFO render-worker job=pdf-640085 rendered pages=6 ms=1482
+2026-11-20T15:37:28.634Z ERROR render-worker job=pdf-894744 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:37:37.449Z ERROR render-worker job=pdf-489597 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:37:48.882Z INFO render-worker job=pdf-783260 rendered pages=2 ms=1405
+2026-11-20T15:37:49.920Z ERROR render-worker job=pdf-572633 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:37:53.559Z ERROR render-worker job=pdf-543981 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:37:55.569Z ERROR render-worker job=pdf-458401 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:37:56.921Z INFO render-worker job=pdf-703001 rendered pages=2 ms=1507
+2026-11-20T15:38:06.382Z ERROR render-worker job=pdf-638804 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:38:11.371Z INFO render-worker job=pdf-868056 rendered pages=4 ms=1440
+2026-11-20T15:38:26.003Z ERROR render-worker job=pdf-701400 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:38:32.313Z INFO render-worker job=pdf-649566 rendered pages=1 ms=1306
+2026-11-20T15:38:38.824Z ERROR render-worker job=pdf-132520 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:38:46.513Z ERROR render-worker job=pdf-131800 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:38:48.586Z ERROR render-worker job=pdf-436489 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:38:54.227Z INFO render-worker job=pdf-678852 rendered pages=3 ms=973
+2026-11-20T15:39:11.123Z INFO render-worker job=pdf-298012 rendered pages=6 ms=320
+2026-11-20T15:39:17.667Z ERROR render-worker job=pdf-798299 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:39:19.677Z INFO render-worker job=pdf-849509 rendered pages=3 ms=1108
+2026-11-20T15:39:20.115Z INFO render-worker job=pdf-704519 rendered pages=2 ms=1558
+2026-11-20T15:39:29.468Z ERROR render-worker job=pdf-717611 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:39:33.417Z ERROR render-worker job=pdf-293027 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:39:41.050Z ERROR render-worker job=pdf-425132 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:39:47.253Z ERROR render-worker job=pdf-804212 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:39:50.389Z ERROR render-worker job=pdf-415629 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:39:51.335Z ERROR render-worker job=pdf-180740 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:40:03.272Z INFO render-worker job=pdf-322124 rendered pages=4 ms=1431
+2026-11-20T15:40:03.273Z ERROR render-worker job=pdf-219471 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:40:30.924Z ERROR render-worker job=pdf-984261 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:40:36.400Z ERROR render-worker job=pdf-837441 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:40:38.411Z INFO render-worker job=pdf-210256 rendered pages=1 ms=1739
+2026-11-20T15:40:43.001Z ERROR render-worker job=pdf-417496 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:40:44.389Z ERROR render-worker job=pdf-820557 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:40:58.092Z INFO render-worker job=pdf-672767 rendered pages=6 ms=1622
+2026-11-20T15:41:04.535Z INFO render-worker job=pdf-170065 rendered pages=6 ms=1336
+2026-11-20T15:41:14.170Z INFO render-worker job=pdf-185369 rendered pages=3 ms=1280
+2026-11-20T15:41:15.338Z ERROR render-worker job=pdf-892225 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:41:20.197Z INFO render-worker job=pdf-833579 rendered pages=4 ms=1651
+2026-11-20T15:41:28.255Z ERROR render-worker job=pdf-784589 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:41:36.092Z ERROR render-worker job=pdf-871212 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:41:41.794Z ERROR render-worker job=pdf-420522 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:41:50.326Z ERROR render-worker job=pdf-196594 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:41:53.623Z ERROR render-worker job=pdf-221408 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:42:09.370Z ERROR render-worker job=pdf-187574 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:42:17.789Z ERROR render-worker job=pdf-185010 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:42:20.304Z INFO render-worker job=pdf-277892 rendered pages=2 ms=907
+2026-11-20T15:42:21.326Z INFO render-worker job=pdf-328430 rendered pages=5 ms=1629
+2026-11-20T15:42:27.111Z ERROR render-worker job=pdf-385983 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:42:42.188Z ERROR render-worker job=pdf-353154 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:42:51.614Z INFO render-worker job=pdf-268450 rendered pages=1 ms=797
+2026-11-20T15:42:58.154Z ERROR render-worker job=pdf-736151 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:43:03.036Z ERROR render-worker job=pdf-803105 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:43:09.158Z INFO render-worker job=pdf-634902 rendered pages=6 ms=1559
+2026-11-20T15:43:10.602Z INFO render-worker job=pdf-337468 rendered pages=2 ms=839
+2026-11-20T15:43:12.711Z INFO render-worker job=pdf-508814 rendered pages=2 ms=1301
+2026-11-20T15:43:14.110Z ERROR render-worker job=pdf-344055 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:43:15.775Z ERROR render-worker job=pdf-641000 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:43:26.028Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:43:35.979Z ERROR render-worker job=pdf-449588 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:43:41.994Z ERROR render-worker job=pdf-887925 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:44:07.990Z ERROR render-worker job=pdf-558268 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:44:14.576Z ERROR render-worker job=pdf-580660 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:44:19.118Z ERROR render-worker job=pdf-945462 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:44:23.853Z ERROR render-worker job=pdf-912983 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:44:35.923Z INFO render-worker job=pdf-751550 rendered pages=2 ms=762
+2026-11-20T15:44:57.495Z INFO render-worker job=pdf-157776 rendered pages=4 ms=605
+2026-11-20T15:44:57.787Z INFO render-worker job=pdf-828814 rendered pages=4 ms=558
+2026-11-20T15:44:59.253Z ERROR render-worker job=pdf-468173 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:45:06.788Z ERROR render-worker job=pdf-822425 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:45:14.198Z ERROR render-worker job=pdf-200074 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:45:31.849Z ERROR render-worker job=pdf-811300 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:45:39.280Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:45:43.097Z ERROR render-worker job=pdf-757357 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:45:46.294Z ERROR render-worker job=pdf-280135 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:45:49.101Z INFO render-worker job=pdf-153213 rendered pages=1 ms=621
+2026-11-20T15:45:50.648Z INFO render-worker job=pdf-291082 rendered pages=6 ms=1743
+2026-11-20T15:45:50.729Z INFO render-worker job=pdf-888651 rendered pages=4 ms=536
+2026-11-20T15:45:53.289Z ERROR render-worker job=pdf-174965 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:46:04.407Z INFO render-worker job=pdf-443174 rendered pages=3 ms=649
+2026-11-20T15:46:18.440Z INFO render-worker job=pdf-916982 rendered pages=1 ms=807
+2026-11-20T15:46:23.996Z ERROR render-worker job=pdf-935193 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:46:27.753Z ERROR render-worker job=pdf-818847 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:46:28.760Z ERROR render-worker job=pdf-837953 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:46:45.984Z INFO render-worker job=pdf-649074 rendered pages=1 ms=1539
+2026-11-20T15:46:49.763Z ERROR render-worker job=pdf-706873 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:47:14.716Z INFO render-worker job=pdf-562655 rendered pages=4 ms=472
+2026-11-20T15:47:30.368Z ERROR render-worker job=pdf-170536 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:47:31.322Z INFO render-worker job=pdf-396048 rendered pages=3 ms=1497
+2026-11-20T15:47:35.090Z ERROR render-worker job=pdf-631090 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:47:44.548Z INFO render-worker job=pdf-933811 rendered pages=1 ms=471
+2026-11-20T15:47:55.779Z ERROR render-worker job=pdf-593455 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:48:09.537Z INFO render-worker job=pdf-879612 rendered pages=2 ms=1464
+2026-11-20T15:48:22.646Z ERROR render-worker job=pdf-697519 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:48:25.956Z ERROR render-worker job=pdf-893229 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:48:27.622Z ERROR render-worker job=pdf-294492 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:48:32.654Z INFO render-worker job=pdf-951183 rendered pages=3 ms=499
+2026-11-20T15:48:40.771Z ERROR render-worker job=pdf-644450 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:48:42.912Z ERROR render-worker job=pdf-413306 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:48:43.430Z ERROR render-worker job=pdf-614932 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:48:47.175Z INFO render-worker job=pdf-565157 rendered pages=4 ms=1673
+2026-11-20T15:48:50.146Z ERROR render-worker job=pdf-687550 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:49:02.502Z ERROR render-worker job=pdf-292847 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:49:18.590Z INFO render-worker job=pdf-531182 rendered pages=3 ms=1003
+2026-11-20T15:49:26.406Z ERROR render-worker job=pdf-298945 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:49:35.778Z ERROR render-worker job=pdf-302261 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:49:40.987Z ERROR render-worker job=pdf-141091 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:49:43.133Z INFO render-worker job=pdf-666161 rendered pages=6 ms=368
+2026-11-20T15:49:49.128Z ERROR render-worker job=pdf-196467 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:49:49.883Z ERROR render-worker job=pdf-317297 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:49:56.086Z INFO render-worker job=pdf-559658 rendered pages=2 ms=1110
+2026-11-20T15:49:56.983Z ERROR render-worker job=pdf-927784 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:50:05.397Z INFO render-worker job=pdf-495962 rendered pages=1 ms=467
+2026-11-20T15:50:06.496Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:50:07.864Z ERROR render-worker job=pdf-807241 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:50:18.619Z ERROR render-worker job=pdf-139864 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:50:26.613Z INFO render-worker job=pdf-397960 rendered pages=4 ms=1187
+2026-11-20T15:50:27.220Z ERROR render-worker job=pdf-904318 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:50:28.358Z INFO render-worker job=pdf-750981 rendered pages=5 ms=638
+2026-11-20T15:50:49.033Z ERROR render-worker job=pdf-756330 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:50:57.852Z ERROR render-worker job=pdf-223627 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:51:08.064Z ERROR render-worker job=pdf-694088 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:51:10.040Z INFO render-worker job=pdf-465736 rendered pages=4 ms=1517
+2026-11-20T15:51:13.160Z ERROR render-worker job=pdf-922282 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:51:15.714Z ERROR render-worker job=pdf-841941 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:51:20.520Z ERROR render-worker job=pdf-583997 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:51:30.065Z INFO render-worker job=pdf-574686 rendered pages=4 ms=764
+2026-11-20T15:51:52.160Z INFO render-worker job=pdf-999319 rendered pages=4 ms=1061
+2026-11-20T15:52:08.591Z INFO render-worker job=pdf-401250 rendered pages=1 ms=1108
+2026-11-20T15:52:12.021Z INFO render-worker job=pdf-695748 rendered pages=2 ms=1650
+2026-11-20T15:52:22.149Z ERROR render-worker job=pdf-334073 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:52:34.263Z INFO render-worker job=pdf-976148 rendered pages=6 ms=1335
+2026-11-20T15:52:49.016Z ERROR render-worker job=pdf-918456 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:52:50.174Z ERROR render-worker job=pdf-643811 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:52:50.801Z ERROR render-worker job=pdf-340140 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:52:55.712Z ERROR render-worker job=pdf-205712 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:53:00.420Z ERROR render-worker job=pdf-218899 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:53:02.997Z INFO render-worker job=pdf-602003 rendered pages=4 ms=1123
+2026-11-20T15:53:29.524Z ERROR render-worker job=pdf-974413 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:53:33.930Z ERROR render-worker job=pdf-851675 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:53:47.125Z ERROR render-worker job=pdf-287051 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:53:50.227Z INFO render-worker job=pdf-109550 rendered pages=4 ms=512
+2026-11-20T15:53:52.518Z INFO render-worker job=pdf-207758 rendered pages=2 ms=1384
+2026-11-20T15:53:59.357Z ERROR render-worker job=pdf-627763 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:54:05.263Z ERROR render-worker job=pdf-831148 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:54:14.895Z ERROR render-worker job=pdf-388516 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:54:17.169Z INFO render-worker job=pdf-588227 rendered pages=4 ms=886
+2026-11-20T15:54:22.998Z INFO render-worker job=pdf-200599 rendered pages=3 ms=433
+2026-11-20T15:54:38.174Z ERROR render-worker job=pdf-791686 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:54:59.041Z INFO render-worker job=pdf-880636 rendered pages=1 ms=663
+2026-11-20T15:55:08.348Z ERROR render-worker job=pdf-254079 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:55:13.096Z ERROR render-worker job=pdf-594232 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:55:22.810Z INFO render-worker job=pdf-478343 rendered pages=2 ms=416
+2026-11-20T15:55:29.967Z INFO render-worker job=pdf-556712 rendered pages=2 ms=808
+2026-11-20T15:55:35.067Z ERROR render-worker job=pdf-443320 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:55:46.053Z ERROR render-worker job=pdf-665459 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:55:47.658Z ERROR render-worker job=pdf-732632 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:55:58.580Z INFO render-worker job=pdf-579924 rendered pages=4 ms=1456
+2026-11-20T15:56:04.821Z INFO render-worker job=pdf-647762 rendered pages=2 ms=847
+2026-11-20T15:56:08.005Z INFO render-worker job=pdf-564951 rendered pages=4 ms=1296
+2026-11-20T15:56:16.609Z ERROR render-worker job=pdf-603572 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:56:27.160Z ERROR render-worker job=pdf-849866 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:56:42.916Z ERROR render-worker job=pdf-105289 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:56:44.207Z INFO render-worker job=pdf-125268 rendered pages=4 ms=1370
+2026-11-20T15:57:04.034Z ERROR render-worker job=pdf-559917 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:57:07.482Z INFO render-worker job=pdf-492618 rendered pages=5 ms=1396
+2026-11-20T15:57:14.932Z ERROR render-worker job=pdf-477406 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:57:17.511Z INFO render-worker job=pdf-463796 rendered pages=5 ms=311
+2026-11-20T15:57:46.970Z ERROR render-worker job=pdf-888124 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:57:47.421Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T15:57:53.171Z INFO render-worker job=pdf-492839 rendered pages=3 ms=838
+2026-11-20T15:57:58.979Z ERROR render-worker job=pdf-861602 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:58:00.836Z INFO render-worker job=pdf-899493 rendered pages=5 ms=1687
+2026-11-20T15:58:10.417Z INFO render-worker job=pdf-934035 rendered pages=1 ms=428
+2026-11-20T15:58:17.803Z ERROR render-worker job=pdf-513320 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T15:58:23.665Z ERROR render-worker job=pdf-805186 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:58:25.438Z ERROR render-worker job=pdf-572160 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T15:58:35.579Z INFO render-worker job=pdf-561316 rendered pages=6 ms=1676
+2026-11-20T15:58:57.208Z ERROR render-worker job=pdf-815041 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:59:01.683Z INFO render-worker job=pdf-145959 rendered pages=2 ms=1087
+2026-11-20T15:59:15.372Z INFO render-worker job=pdf-158285 rendered pages=5 ms=1261
+2026-11-20T15:59:30.126Z ERROR render-worker job=pdf-283960 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:59:37.603Z INFO render-worker job=pdf-959720 rendered pages=1 ms=1005
+2026-11-20T15:59:47.223Z ERROR render-worker job=pdf-557871 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T15:59:51.113Z ERROR render-worker job=pdf-375928 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:00:06.274Z INFO render-worker job=pdf-775693 rendered pages=6 ms=573
+2026-11-20T16:00:08.146Z ERROR render-worker job=pdf-343549 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:00:13.600Z INFO render-worker job=pdf-492719 rendered pages=1 ms=306
+2026-11-20T16:00:26.894Z INFO render-worker job=pdf-208626 rendered pages=2 ms=301
+2026-11-20T16:00:31.821Z ERROR render-worker job=pdf-467041 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:00:33.708Z ERROR render-worker job=pdf-743577 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:00:36.158Z ERROR render-worker job=pdf-300043 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:00:41.661Z ERROR render-worker job=pdf-422447 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:00:56.714Z ERROR render-worker job=pdf-590406 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:01:03.100Z ERROR render-worker job=pdf-762624 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:01:12.833Z INFO render-worker job=pdf-932676 rendered pages=4 ms=344
+2026-11-20T16:01:13.884Z ERROR render-worker job=pdf-655670 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:01:14.721Z ERROR render-worker job=pdf-375516 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:01:18.416Z INFO render-worker job=pdf-554780 rendered pages=6 ms=1077
+2026-11-20T16:01:21.444Z ERROR render-worker job=pdf-464639 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:01:29.281Z INFO render-worker job=pdf-306567 rendered pages=6 ms=1166
+2026-11-20T16:02:03.221Z ERROR render-worker job=pdf-489282 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:02:09.556Z INFO render-worker job=pdf-721106 rendered pages=6 ms=1134
+2026-11-20T16:02:14.371Z INFO render-worker job=pdf-603250 rendered pages=3 ms=1335
+2026-11-20T16:02:18.712Z ERROR render-worker job=pdf-276518 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:02:23.553Z ERROR render-worker job=pdf-301281 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:02:28.010Z ERROR render-worker job=pdf-315230 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:02:28.557Z INFO render-worker job=pdf-253331 rendered pages=5 ms=1354
+2026-11-20T16:02:31.934Z ERROR render-worker job=pdf-807454 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:02:49.303Z ERROR render-worker job=pdf-607007 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:02:54.324Z ERROR render-worker job=pdf-392302 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:03:00.269Z ERROR render-worker job=pdf-535460 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:03:05.834Z ERROR render-worker job=pdf-118834 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:03:24.066Z INFO render-worker job=pdf-494137 rendered pages=2 ms=1063
+2026-11-20T16:03:25.975Z ERROR render-worker job=pdf-625695 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:03:33.976Z INFO render-worker job=pdf-652970 rendered pages=1 ms=1362
+2026-11-20T16:03:42.034Z ERROR render-worker job=pdf-710801 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:03:44.301Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:03:53.701Z INFO render-worker job=pdf-942524 rendered pages=1 ms=1015
+2026-11-20T16:03:57.151Z ERROR render-worker job=pdf-499302 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:03:57.349Z ERROR render-worker job=pdf-737880 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:04:08.164Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:04:21.508Z ERROR render-worker job=pdf-647257 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:04:29.179Z ERROR render-worker job=pdf-571298 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:04:34.645Z ERROR render-worker job=pdf-387631 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:04:35.816Z INFO render-worker job=pdf-484812 rendered pages=4 ms=319
+2026-11-20T16:04:39.636Z INFO render-worker job=pdf-656852 rendered pages=6 ms=565
+2026-11-20T16:04:43.044Z INFO render-worker job=pdf-368174 rendered pages=6 ms=1365
+2026-11-20T16:05:06.549Z INFO render-worker job=pdf-582418 rendered pages=4 ms=1234
+2026-11-20T16:05:09.314Z ERROR render-worker job=pdf-904621 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:05:09.708Z ERROR render-worker job=pdf-256139 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:05:11.687Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:05:27.666Z ERROR render-worker job=pdf-801908 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:05:41.500Z INFO render-worker job=pdf-918556 rendered pages=4 ms=1410
+2026-11-20T16:05:46.892Z INFO render-worker job=pdf-967804 rendered pages=4 ms=1108
+2026-11-20T16:06:18.880Z ERROR render-worker job=pdf-120843 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:06:24.334Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:06:25.929Z INFO render-worker job=pdf-827587 rendered pages=6 ms=387
+2026-11-20T16:06:39.474Z ERROR render-worker job=pdf-135500 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:06:44.867Z INFO render-worker job=pdf-568074 rendered pages=6 ms=395
+2026-11-20T16:06:54.659Z ERROR render-worker job=pdf-780016 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:06:57.240Z INFO render-worker job=pdf-677733 rendered pages=5 ms=717
+2026-11-20T16:07:00.218Z ERROR render-worker job=pdf-965533 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:07:13.963Z INFO render-worker job=pdf-108654 rendered pages=2 ms=877
+2026-11-20T16:07:14.546Z INFO render-worker job=pdf-744466 rendered pages=2 ms=1102
+2026-11-20T16:07:33.723Z ERROR render-worker job=pdf-331377 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:07:34.085Z INFO render-worker job=pdf-385466 rendered pages=5 ms=1759
+2026-11-20T16:07:35.247Z ERROR render-worker job=pdf-134862 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:07:36.631Z ERROR render-worker job=pdf-885981 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:07:41.196Z ERROR render-worker job=pdf-588432 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:07:51.513Z ERROR render-worker job=pdf-181845 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:08:09.754Z ERROR render-worker job=pdf-479990 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:08:10.242Z ERROR render-worker job=pdf-286148 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:08:18.804Z ERROR render-worker job=pdf-530141 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:08:20.188Z ERROR render-worker job=pdf-848425 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:08:23.427Z INFO render-worker job=pdf-812403 rendered pages=1 ms=864
+2026-11-20T16:08:24.259Z ERROR render-worker job=pdf-290713 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:08:28.715Z ERROR render-worker job=pdf-774076 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:08:37.299Z INFO render-worker job=pdf-659963 rendered pages=6 ms=1725
+2026-11-20T16:08:49.351Z INFO render-worker job=pdf-873610 rendered pages=5 ms=1278
+2026-11-20T16:08:55.492Z ERROR render-worker job=pdf-381076 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:09:00.598Z ERROR render-worker job=pdf-686575 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:09:01.173Z ERROR render-worker job=pdf-273288 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:09:14.871Z ERROR render-worker job=pdf-264762 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:09:15.825Z INFO render-worker job=pdf-602789 rendered pages=1 ms=431
+2026-11-20T16:09:30.034Z ERROR render-worker job=pdf-506139 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:09:36.791Z INFO render-worker job=pdf-986830 rendered pages=3 ms=631
+2026-11-20T16:09:40.446Z INFO render-worker job=pdf-151462 rendered pages=1 ms=1686
+2026-11-20T16:09:53.821Z ERROR render-worker job=pdf-682572 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:10:16.195Z ERROR render-worker job=pdf-227616 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:10:24.477Z INFO render-worker job=pdf-394803 rendered pages=1 ms=877
+2026-11-20T16:10:35.573Z ERROR render-worker job=pdf-660201 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:10:37.237Z ERROR render-worker job=pdf-846680 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:10:48.947Z INFO render-worker job=pdf-813728 rendered pages=2 ms=706
+2026-11-20T16:10:56.646Z INFO render-worker job=pdf-149563 rendered pages=4 ms=1509
+2026-11-20T16:11:00.367Z ERROR render-worker job=pdf-570331 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:11:15.800Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:11:29.320Z INFO render-worker job=pdf-354719 rendered pages=4 ms=641
+2026-11-20T16:11:37.795Z INFO render-worker job=pdf-233369 rendered pages=5 ms=1395
+2026-11-20T16:11:38.549Z ERROR render-worker job=pdf-670650 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:11:53.489Z INFO render-worker job=pdf-459673 rendered pages=1 ms=1752
+2026-11-20T16:11:57.695Z ERROR render-worker job=pdf-533011 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:12:02.247Z ERROR render-worker job=pdf-143635 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:12:02.488Z INFO render-worker job=pdf-602939 rendered pages=4 ms=343
+2026-11-20T16:12:16.240Z INFO render-worker job=pdf-356025 rendered pages=4 ms=916
+2026-11-20T16:12:16.266Z ERROR render-worker job=pdf-877613 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:12:19.587Z ERROR render-worker job=pdf-372416 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:12:21.816Z ERROR render-worker job=pdf-536248 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:12:40.464Z INFO render-worker job=pdf-592411 rendered pages=6 ms=680
+2026-11-20T16:12:53.354Z ERROR render-worker job=pdf-456142 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:13:04.198Z INFO render-worker job=pdf-585541 rendered pages=4 ms=1113
+2026-11-20T16:13:22.001Z ERROR render-worker job=pdf-745243 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:13:26.777Z ERROR render-worker job=pdf-216090 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:13:37.144Z ERROR render-worker job=pdf-693233 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:13:37.658Z INFO render-worker job=pdf-580747 rendered pages=2 ms=898
+2026-11-20T16:13:48.864Z INFO render-worker job=pdf-754241 rendered pages=3 ms=426
+2026-11-20T16:13:50.997Z ERROR render-worker job=pdf-354536 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:14:01.197Z INFO render-worker job=pdf-702502 rendered pages=2 ms=480
+2026-11-20T16:14:17.816Z ERROR render-worker job=pdf-455354 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:14:18.175Z ERROR render-worker job=pdf-729429 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:14:29.311Z ERROR render-worker job=pdf-580321 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:14:30.842Z ERROR render-worker job=pdf-231600 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:14:45.627Z ERROR render-worker job=pdf-913533 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:14:48.050Z ERROR render-worker job=pdf-130515 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:14:52.227Z ERROR render-worker job=pdf-920308 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:14:54.215Z INFO render-worker job=pdf-113008 rendered pages=2 ms=561
+2026-11-20T16:14:57.566Z INFO render-worker job=pdf-487556 rendered pages=2 ms=1261
+2026-11-20T16:15:00.190Z INFO render-worker job=pdf-521805 rendered pages=1 ms=1530
+2026-11-20T16:15:00.705Z ERROR render-worker job=pdf-806153 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:15:07.926Z INFO render-worker job=pdf-711215 rendered pages=4 ms=1666
+2026-11-20T16:15:19.934Z ERROR render-worker job=pdf-610561 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:15:23.018Z ERROR render-worker job=pdf-737062 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:15:37.377Z INFO render-worker job=pdf-497372 rendered pages=1 ms=684
+2026-11-20T16:15:50.675Z ERROR render-worker job=pdf-780141 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:15:52.990Z ERROR render-worker job=pdf-979749 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:16:15.062Z INFO render-worker job=pdf-573509 rendered pages=6 ms=1479
+2026-11-20T16:16:33.059Z INFO render-worker job=pdf-373889 rendered pages=5 ms=1077
+2026-11-20T16:16:38.655Z ERROR render-worker job=pdf-229531 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:16:56.078Z ERROR render-worker job=pdf-629745 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:16:57.827Z ERROR render-worker job=pdf-333306 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:16:59.436Z ERROR render-worker job=pdf-983446 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:16:59.705Z INFO render-worker job=pdf-605883 rendered pages=1 ms=1157
+2026-11-20T16:17:15.839Z INFO render-worker job=pdf-697301 rendered pages=1 ms=731
+2026-11-20T16:17:17.565Z ERROR render-worker job=pdf-978415 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:17:23.226Z ERROR render-worker job=pdf-462294 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:17:25.363Z INFO render-worker job=pdf-741281 rendered pages=5 ms=700
+2026-11-20T16:17:30.560Z INFO render-worker job=pdf-259111 rendered pages=5 ms=1122
+2026-11-20T16:17:33.054Z ERROR render-worker job=pdf-589765 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:17:47.164Z ERROR render-worker job=pdf-191179 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:17:48.307Z ERROR render-worker job=pdf-824202 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:18:02.740Z INFO render-worker job=pdf-698064 rendered pages=3 ms=826
+2026-11-20T16:18:08.323Z ERROR render-worker job=pdf-594369 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:18:16.372Z INFO render-worker job=pdf-966661 rendered pages=2 ms=1303
+2026-11-20T16:18:30.545Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:18:31.929Z INFO render-worker job=pdf-497585 rendered pages=1 ms=1212
+2026-11-20T16:18:46.632Z ERROR render-worker job=pdf-900149 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:18:58.185Z ERROR render-worker job=pdf-315104 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:19:15.071Z ERROR render-worker job=pdf-160248 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:19:26.602Z ERROR render-worker job=pdf-119295 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:19:29.682Z ERROR render-worker job=pdf-410365 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:19:31.039Z INFO render-worker job=pdf-551777 rendered pages=3 ms=1332
+2026-11-20T16:19:35.639Z INFO render-worker job=pdf-452151 rendered pages=1 ms=1741
+2026-11-20T16:19:37.833Z ERROR render-worker job=pdf-538386 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:19:49.861Z ERROR render-worker job=pdf-393882 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:19:52.491Z INFO render-worker job=pdf-677246 rendered pages=3 ms=1004
+2026-11-20T16:20:25.413Z ERROR render-worker job=pdf-853794 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:20:26.331Z ERROR render-worker job=pdf-680289 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:20:26.832Z ERROR render-worker job=pdf-804395 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:20:34.231Z ERROR render-worker job=pdf-217656 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:20:37.360Z INFO render-worker job=pdf-808595 rendered pages=5 ms=539
+2026-11-20T16:20:44.275Z INFO render-worker job=pdf-301531 rendered pages=6 ms=357
+2026-11-20T16:20:44.530Z INFO render-worker job=pdf-429768 rendered pages=4 ms=551
+2026-11-20T16:20:46.186Z ERROR render-worker job=pdf-448792 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:21:01.706Z ERROR render-worker job=pdf-858763 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:21:07.445Z INFO render-worker job=pdf-755612 rendered pages=6 ms=1293
+2026-11-20T16:21:07.965Z ERROR render-worker job=pdf-120632 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:21:09.223Z INFO render-worker job=pdf-626487 rendered pages=2 ms=755
+2026-11-20T16:21:16.636Z ERROR render-worker job=pdf-820233 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:21:17.730Z ERROR render-worker job=pdf-665057 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:21:17.839Z ERROR render-worker job=pdf-352319 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:21:45.008Z ERROR render-worker job=pdf-454811 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:21:50.490Z ERROR render-worker job=pdf-732168 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:21:56.474Z INFO render-worker job=pdf-484519 rendered pages=5 ms=1752
+2026-11-20T16:22:02.190Z INFO render-worker job=pdf-441392 rendered pages=5 ms=1544
+2026-11-20T16:22:05.264Z ERROR render-worker job=pdf-737091 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:22:12.167Z ERROR render-worker job=pdf-471246 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:22:16.722Z ERROR render-worker job=pdf-507897 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:22:26.801Z ERROR render-worker job=pdf-478019 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:22:30.870Z INFO render-worker job=pdf-984855 rendered pages=5 ms=1198
+2026-11-20T16:22:39.487Z INFO render-worker job=pdf-667419 rendered pages=1 ms=1564
+2026-11-20T16:22:54.433Z ERROR render-worker job=pdf-485776 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:23:05.567Z ERROR render-worker job=pdf-175744 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:23:15.073Z ERROR render-worker job=pdf-656690 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:23:20.353Z ERROR render-worker job=pdf-550293 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:23:22.283Z ERROR render-worker job=pdf-184430 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:23:25.519Z INFO render-worker job=pdf-110598 rendered pages=4 ms=1284
+2026-11-20T16:23:26.019Z INFO render-worker job=pdf-118202 rendered pages=2 ms=1572
+2026-11-20T16:23:29.331Z ERROR render-worker job=pdf-968198 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:23:35.527Z ERROR render-worker job=pdf-414987 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:23:42.788Z ERROR render-worker job=pdf-856366 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:23:58.196Z INFO render-worker job=pdf-509321 rendered pages=6 ms=544
+2026-11-20T16:24:10.516Z ERROR render-worker job=pdf-248690 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:24:16.110Z INFO render-worker job=pdf-351734 rendered pages=2 ms=1197
+2026-11-20T16:24:19.088Z ERROR render-worker job=pdf-819940 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:24:25.180Z INFO render-worker job=pdf-337298 rendered pages=5 ms=1252
+2026-11-20T16:24:32.725Z ERROR render-worker job=pdf-808063 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:24:34.928Z INFO render-worker job=pdf-486792 rendered pages=2 ms=1786
+2026-11-20T16:24:42.456Z ERROR render-worker job=pdf-241073 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:24:42.560Z WARN render-worker font cache rebuilt (fonts=212)
+2026-11-20T16:24:42.672Z ERROR render-worker job=pdf-908136 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:25:02.371Z INFO render-worker job=pdf-212545 rendered pages=5 ms=909
+2026-11-20T16:25:12.051Z ERROR render-worker job=pdf-702868 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:25:12.581Z ERROR render-worker job=pdf-899113 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:25:45.525Z INFO render-worker job=pdf-458056 rendered pages=5 ms=1682
+2026-11-20T16:25:50.591Z INFO render-worker job=pdf-100772 rendered pages=1 ms=469
+2026-11-20T16:25:50.774Z ERROR render-worker job=pdf-490759 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:25:53.764Z ERROR render-worker job=pdf-512258 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:25:57.391Z ERROR render-worker job=pdf-272259 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:26:06.676Z ERROR render-worker job=pdf-186431 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:26:29.124Z ERROR render-worker job=pdf-485140 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:26:36.449Z INFO render-worker job=pdf-531087 rendered pages=4 ms=1324
+2026-11-20T16:26:49.734Z INFO render-worker job=pdf-608484 rendered pages=6 ms=1786
+2026-11-20T16:26:54.581Z ERROR render-worker job=pdf-194509 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:26:59.735Z INFO render-worker job=pdf-814014 rendered pages=4 ms=1097
+2026-11-20T16:27:07.179Z ERROR render-worker job=pdf-803766 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:27:14.849Z INFO render-worker job=pdf-947105 rendered pages=4 ms=1661
+2026-11-20T16:27:15.467Z ERROR render-worker job=pdf-382275 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:27:17.379Z ERROR render-worker job=pdf-860703 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:27:31.334Z INFO render-worker job=pdf-958087 rendered pages=1 ms=769
+2026-11-20T16:27:52.708Z ERROR render-worker job=pdf-276932 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3
+2026-11-20T16:27:54.086Z INFO render-worker job=pdf-573580 rendered pages=5 ms=1720
+2026-11-20T16:28:05.374Z ERROR render-worker job=pdf-815647 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:28:08.478Z INFO render-worker job=pdf-105602 rendered pages=4 ms=1497
+2026-11-20T16:28:25.691Z ERROR render-worker job=pdf-536975 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:28:31.437Z INFO render-worker job=pdf-605895 rendered pages=2 ms=1298
+2026-11-20T16:28:46.628Z INFO render-worker job=pdf-976814 rendered pages=6 ms=1562
+2026-11-20T16:28:50.956Z ERROR render-worker job=pdf-424033 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:29:06.168Z ERROR render-worker job=pdf-153284 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 3/3
+2026-11-20T16:29:10.366Z ERROR render-worker job=pdf-129270 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 2/3
+2026-11-20T16:29:23.475Z INFO render-worker job=pdf-472859 rendered pages=4 ms=784
+2026-11-20T16:29:27.514Z INFO render-worker job=pdf-135720 rendered pages=6 ms=634
+2026-11-20T16:29:54.870Z INFO render-worker job=pdf-562752 rendered pages=1 ms=440
+2026-11-20T16:29:59.837Z ERROR render-worker job=pdf-348934 fetch invoice from invoice-api failed: timeout after 10000 ms; retry 1/3

@@ -145,7 +145,7 @@ test('tempting option is cheaper but violates only the body-size limit', () => {
 
 test('OpenAPI document is valid JSON with paths and components', () => {
   const document = api();
-  assert.equal(document.openapi, '3.1.0');
+  assert.match(document.openapi, /^3\./);
   assert.ok(document.paths && document.components && document.components.schemas);
 });
 

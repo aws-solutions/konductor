@@ -2,7 +2,7 @@
   "id": "t3-arch-notification-pipeline",
   "class": "design",
   "target": null,
-  "prompt": "Review the files under `fixture/` and make the production architecture decision for the notification fan-out pipeline. Write the decision to `docs/architecture.md`, including a components table and a concise explanation of the tradeoffs among all candidate options. The document must contain a fenced block whose info string is exactly `decision`; that block must contain JSON with exactly these keys: `chosen` (the option id), `options` (the array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`, with one entry per hard limit in the inputs and the chosen option's computed value), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the traffic schedule, service quotas, recovery objectives, and billing inputs together rather than relying on a single headline figure. Make the reported figures clear enough to audit against the source files. Keep the architecture practical for the stated peak and operational objectives.",
+  "prompt": "Review the files under `fixture/` and make the production architecture decision for the notification fan-out pipeline. Write the decision to `docs/architecture.md`, including a components table and a concise explanation of the tradeoffs among all candidate options. The document must contain a fenced block whose info string is exactly `decision`; that block must contain JSON with exactly these keys: `chosen` (the option id), `options` (the array of option ids considered), `limits` (an object mapping each hard-limit name to {\"limit\": number, \"value\": number}, with one entry per hard limit in the inputs and the chosen option's computed value), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use these exact `limits` keys: `throughput_msg_s`, `p99_delivery_seconds`, `monthly_budget_usd`, `payload_bytes`, `rpo_seconds`, and `rto_minutes`. Use option id `single-queue-pool` for the one managed queue with a consumer pool option, `topic-regional-queues` for the one topic with a queue in each service region option, and `stream-partitions` for the partitioned stream with independent delivery workers option, and list all three ids in `options`. Use the traffic schedule, service quotas, recovery objectives, and billing inputs together rather than relying on a single headline figure. Make the reported figures clear enough to audit against the source files. Keep the architecture practical for the stated peak and operational objectives.",
   "fixture": "t3-arch-notification-pipeline",
   "timeoutSec": 900,
   "hidden": "t3-arch-notification-pipeline",
@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 17
     },
     {
@@ -27,7 +27,7 @@
   "rubric": [
     {
       "id": "tradeoff-analysis",
-      "criterion": "Explains why the selected design balances quota headroom, delivery latency, recovery targets, operational complexity, and cost better than the alternatives. Fail: picks on cost or keeps single-queue-pool. Partial: rejects single-queue-pool for throughput but does not weigh the two workable options on latency, recovery and cost. Pass: shows single-queue-pool tops out at 3,000 msg/s against the 6,000 msg/s peak (and extra workers do not raise the per-queue quota), notes topic-regional-queues (3 x 3,000 = 9,000 msg/s) and stream-partitions (8 x 1,000 = 8,000 msg/s) both clear the peak, and weighs the chosen one on the 3-second p99 (not the superseded 8 s), the 60-second RPO, the 15-minute RTO and the 4,500 USD budget. (not code-checkable: Tests can recompute limits and cost but cannot judge whether the comparison is technically convincing or whether the tradeoff reasoning is complete.)",
+      "criterion": "Explains why the selected design balances quota headroom, delivery latency, recovery targets, operational complexity, and cost better than the alternatives. Fail: picks on cost or keeps single-queue-pool, or sizes on the 2,500 msg/s sandbox quota or the 8 s p99. Partial: rejects single-queue-pool for throughput but does not weigh the two workable options on latency, recovery and cost. Pass: shows single-queue-pool tops out at 3,000 msg/s against the 6,000 msg/s peak (and extra workers do not raise the per-queue quota), notes topic-regional-queues (3 x 3,000 = 9,000 msg/s) and stream-partitions (8 x 1,000 = 8,000 msg/s) both clear the peak, weighs the chosen one on the 3-second p99, the 60-second RPO, the 15-minute RTO and the 4,500 USD budget, and says whether its capacity depends on how traffic spreads. (not code-checkable: Tests can recompute limits and cost but cannot judge whether the comparison is technically convincing or whether the tradeoff reasoning is complete.)",
       "weight": 1
     },
     {
@@ -68,12 +68,9 @@
       "lazy": 12,
       "alt": 100,
       "date": "2026-11-20"
-    },
-    "blockers": [
-      "key-names: limit name throughput_msg_s is not in the fixture or prompt (free key scan 2026-11-20, D-127)"
-    ]
+    }
   },
-  "version": 4,
+  "version": 7,
   "targetSkills": [
     "cost-estimation",
     "trade-off-evaluator"
@@ -120,29 +117,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates tradeoff analysis and architecture coherence within the decision scope requested. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json prompt names the fixture sources, required deliverable structure, and constraints but does not prescribe a method or disclose a candidate answer or hidden trap.)."
+          "note": "Prompt specifies option IDs and limit keys as naming conventions; no misleading hints about approach."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides requirements and options; no pre-selected answer visible. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture provides source facts and explicitly labels the staging and sandbox figures as superseded in requirements.md and service-limits.md, but contains no answer key or findings list.)."
+          "note": "Fixture provides traffic schedule, quotas, objectives but not the decision; developer must evaluate tradeoffs."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric figures match fixture: 3,000 msg/s per-queue quota (not sandbox 2,500), 6,000 msg/s peak, 3-second p99 (not superseded 8s), $4,500 budget. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The expected capacity, production quotas, objectives, traffic schedule, recovery values, and pricing all appear in traffic.csv, service-limits.json, requirements-limits.json, options.json, and price-sheet.json; the expected cost follows from those values.)."
+          "note": "Prompt states exact limit keys per edits.md fix; expertKey references throughput, latency, recovery calculations from fixture; rubric anchors on quota analysis."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Either topic-regional-queues or stream-partitions can be chosen with valid reasoning; different component tables and tradeoffs can Pass. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can compare all three options, derive capacity and traffic-weighted monthly cost, and populate the requested decision block from the prompt and fixture alone.)."
+          "note": "Developer can evaluate three options against throughput, latency, recovery, cost objectives using provided data."
         }
       ]
     }
@@ -151,56 +148,60 @@
     "items": [
       {
         "id": "e1",
-        "text": "States that single-queue-pool cannot meet the peak ingress requirement because its capacity (3,000 messages per second from one queue) is below the peak rate of 6,000 messages per second.",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "States that single-queue-pool tops out at 3,000 msg/s against the 6,000 msg/s peak, and that adding workers does not raise the per-queue quota. Either half alone is Partial. Weak: 'single queue does not scale'."
       },
       {
         "id": "e2",
-        "text": "Rejects the superseded 2,500 messages per second sandbox quota figure from service-limits.md, explaining that production quota is 3,000 messages per second per queue.",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "States that both other options clear the peak: topic-regional-queues 3 x 3,000 = 9,000 msg/s and stream-partitions 8 x 1,000 = 8,000 msg/s. Weak: gives only the winner's capacity. Do not require both products if one is shown and the other is said to clear."
       },
       {
         "id": "e3",
-        "text": "Rejects the superseded 8-second p99 latency objective from requirements.md, using the production requirement of 3 seconds p99 instead.",
-        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Says the topic design's 9,000 msg/s holds only if peak spreads across the three regions, because each regional queue has its own 3,000 msg/s quota, and that the packet gives no regional split (or that a region above 3,000 msg/s overflows). Also counts: the same point for stream partition keys. Weak: '9,000 is enough'. Do not require a numeric split."
       },
       {
         "id": "e4",
-        "text": "Computes monthly cost using the traffic schedule (2 peak hours at 6,000 msg/s plus 22 baseline hours at 1,800 msg/s per day for 30 days) rather than assuming peak rate across all 720 hours.",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Shows the month from the schedule: (6,000 x 2 h + 1,800 x 22 h) x 3,600 x 30 = about 5.57 billion messages, and the chosen option's cost from it (topic about 3,539 USD, stream about 3,846 USD, within 2%). Weak: cost at peak for 720 hours. Do not require the other options' costs to the cent."
       },
       {
         "id": "e5",
-        "text": "Verifies the chosen option's monthly cost is within the 4,500 USD budget ceiling and reports the computed value in the decision block.",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only",
+        "text": "States the chosen option's p99, RPO and RTO against 3 s, 60 s and 15 minutes with its own numbers (topic 2.4 s, 30 s, 12 min; stream 2.1 s, 20 s, 8 min). Also counts: a table. Weak: 'meets all objectives'. Do not require the word 'superseded'."
       },
       {
         "id": "e6",
-        "text": "Confirms the chosen option meets all four service objectives: p99 delivery latency under 3 seconds, monthly spend under 4,500 USD, recovery point under 60 seconds, and recovery time under 15 minutes.",
-        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Names the deciding trade between the two workable options with figures: topic is about 300 USD a month cheaper, stream has lower p99 (2.1 vs 2.4 s), RPO (20 vs 30 s) and RTO (8 vs 12 min); or an operational reason from the packet (on-call can add a regional queue without changing the contract). Weak: 'stream adds complexity' with no figure. Do not require a particular winner."
       },
       {
         "id": "e7",
-        "text": "Explains that adding workers to single-queue-pool does not increase the per-queue ingress quota, so worker scaling cannot overcome the 3,000 messages per second throughput ceiling.",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
-      },
-      {
-        "id": "e8",
-        "text": "Notes that topic-regional-queues provides 9,000 msg/s capacity (3 queues at 3,000 each) and stream-partitions provides 8,000 msg/s capacity (8 partitions at 1,000 each), both sufficient for the 6,000 msg/s peak.",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "States the chosen design's main downside: topic has the weaker recovery of the two and depends on regional spread; stream adds workers, about 300 USD and a partition-key choice. Weak: no downside stated. Do not require both."
       }
     ],
     "weakAnswers": [
       "Picks single-queue-pool as the cheapest option without checking that its 3,000 msg/s capacity fails the 6,000 msg/s peak requirement.",
-      "Uses the superseded 2,500 msg/s sandbox quota or 8-second p99 latency objective instead of the production figures.",
       "Computes monthly cost by multiplying peak rate (6,000 msg/s) across all 720 hours instead of using the traffic schedule with 2 peak hours and 22 baseline hours per day.",
       "Assumes adding workers to single-queue-pool increases throughput capacity, missing that the quota is per-queue and workers do not affect ingress limits.",
-      "Reports monthly cost without showing the traffic-weighted calculation, making it impossible to audit against the source files."
+      "Says the chosen option meets every objective without its own p99, RPO and RTO figures."
     ]
   },
+  "adjudication": [
+    "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
+    "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
+    "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
+    "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
+    "Both topic-regional-queues and stream-partitions are correct; never fail an answer for picking one over the other when e6 is argued with figures.",
+    "payload_bytes: the packet makes the 2,048-byte contract the hard target (service-limits.md); an answer that reports the 4,096-byte broker maximum as the limit is Partial on the judge side, and the hidden test wants 2,048.",
+    "rto_minutes given in seconds with the unit stated is credited by the judge; the hidden test wants minutes.",
+    "A cost within 10% with one part missing (for example transfer) is Partial on e4."
+  ],
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   }
 }

@@ -13,7 +13,7 @@ const { parseJsonReply, validateRubricReply, validatePairReply, validateGradedRe
 const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { cacheSaltOf } = require('./opencode.js');
-const { DEFAULT_QUOTE_RULE } = require('./quote.js');
+const { DEFAULT_QUOTE_RULE, JUDGE_QUOTE_RULES } = require('./quote.js');
 const { dualCriteria, dualScores, matchersFor, checkRule } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
@@ -223,7 +223,7 @@ async function runJudging(o) {
   if (o.plan) throw new Error('runJudging makes model calls and cannot honor --plan; call planJudging instead');
   const { concurrency, budgetCredits, budgetUsd = null, judges, modes, baseline, limits, redactions, log = () => {} } = o;
   const backendInfo = o.backendInfo ?? null;
-  const quoteRule = checkRule(o.quoteRule ?? DEFAULT_QUOTE_RULE);
+  const quoteRule = checkRule(o.quoteRule ?? DEFAULT_QUOTE_RULE, '--quote-match', JUDGE_QUOTE_RULES);
   const { run, tasks, backend, usdMode, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf } = prepareJudging(o);
   // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
   const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);

@@ -72,6 +72,9 @@ Key prompt (2026-11-20): two second-family key calls (t1-bug-money-rounding, t1-
 | t1-nfr-bounded-fanout | qwen3-coder-next | second-family task: the single-step author stopped at its cap; in its one fix attempt (two-step) the key's checks used `kind` and the check name as the type, so no check could run; dropped, not hand-fixed | see the calls table for credits |
 | t1-nfr-cache-bound | qwen3-coder-next | second-family (two-step) task: the first key call stopped at its cap; after its one fix attempt by its own family the untouched fixture scores 75 (stub gate 20 or less) and the alternative 78.6; dropped, not hand-fixed | see the calls table for credits |
 | t1-ref-package-split | qwen3-coder-next | second-family (two-step) task: the first key call stopped at its 150-tool-call cap; after its one fix attempt by its own family the reference scored 28.6; dropped, not hand-fixed | see the calls table for credits |
+| t1-refactor-permission-boundary (CV-F) | qwen3-coder-next | second-family (two-step) task: the first data call wrote repository files outside fixture/ and stopped at its 150-tool-call cap with failing fixture tests and no task-draft.json; its one fix attempt (data step again, with a fix note) wrote a draft whose policy signature `checkPermission(userId, userRole, action)` cannot express the owner rule the request lists; the key call then stopped at its 90-tool-call cap with no key-draft.json; dropped, not hand-fixed | see the CV-F calls table; drafts kept in scratch only |
+| t1-refactor-permission-boundary (CV-F, second try) | gpt-5.6-luna | re-authored under the same id (never landed) after the qwen3-coder-next drop. After its one fix round the free gates gave reference 100, stub 0, lazy 100, alt 100: the fixture already keeps every rule in one `allowed()` function in `src/routes/documents.js`, so moving that function is the whole task and the lazy answer is complete. The brief asked for checks copied inline and written differently per handler. Not landed; DEBT row added | see the CV-F calls table |
+| t1-refactor-logging-migration (CV-F) | gpt-5.6-luna | moved from minimax-m2.5 two-step to gpt-5.6-luna before any call, for wall time. After its one fix round: reference 100, stub 5.1, shallow 5.1, alt 100, lazy 79.6, and 74.5 with a second answer-writer run (the first lazy answer changed four code files, against its rules). Five of the 14 hidden tests check level filtering of one function, which any logger passes; redaction, event fields and the stdout/stderr split carry too little. Not landed; DEBT row added | see the CV-F calls table |
 
 Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 
@@ -234,3 +237,39 @@ Drafts of dropped tasks are kept outside the repo (scratch), not in the tree.
 | t1-ref-package-split | map | glm-5 | 0.17 |
 | t1-ref-package-split | review | gpt-5.6-luna | 1.11 |
 | t1-ref-package-split | lazy+alt answers | gpt-5.6-luna | 3.14 |
+
+## CV-F calls
+
+Coverage-review additions (owner-approved 2026-11-20): t1-nfr-stream-backpressure, t1-nfr-memory-bound, t1-refactor-permission-boundary, t1-refactor-logging-migration. CV-F stop: 185 credits (estimate 180). Before every call the run script adds 15 to the CV-F credits logged below and refuses the call if that passes 185; it waits while the 1-minute load is 6 or more, runs one call at a time, and stops a call at a per-model tool-call cap of about 15 credits. Same isolated setup as above (scratch HOME with only a login copy, memory and knowledge off, empty working dir, cleared env). SR-32 split (`bench/scenarios/split.js`): t1-nfr-stream-backpressure 1804074469 HELD-OUT, t1-nfr-memory-bound 2659386267 DEV, t1-refactor-permission-boundary 484116431 HELD-OUT, t1-refactor-logging-migration 2525062321 HELD-OUT.
+
+Blindness audit (`stage.js audit`) of every CV-F stream: no read of a konductor `skills/`, `agent-sops/`, `agents/` or `context/` path and no read of another batch's scratch dir. The gpt-5.6-luna author and fix streams of the two NFR tasks wrote their own test logs to `/tmp/*.log` (outside their working dir, nothing else read there). Both NFR tasks used their one fix round by their own family (the fix prompt carried the dry run and worker notes: checks that named a file or constant the request never states, and hidden asserts the request did not state), and then got a small worker hand edit of their checks (HAND-EDITS.md) and a glm-5 recheck.
+
+| task | step | model | credits |
+| --- | --- | --- | --- |
+| t1-nfr-stream-backpressure | author | gpt-5.6-luna | 3.64 |
+| t1-nfr-stream-backpressure | map | glm-5 | 0.16 |
+| t1-nfr-stream-backpressure | review | glm-5 | 4.69 |
+| t1-nfr-stream-backpressure | lazy+alt answers | glm-5 | 3.47 |
+| t1-nfr-stream-backpressure | fix | gpt-5.6-luna | 1.54 |
+| t1-nfr-stream-backpressure | lazy+alt answers | glm-5 | 2.99 |
+| t1-nfr-memory-bound | author | gpt-5.6-luna | 1.64 |
+| t1-nfr-memory-bound | map | glm-5 | 0.16 |
+| t1-nfr-memory-bound | review | qwen3-coder-next | 0.34 |
+| t1-nfr-memory-bound | fix | gpt-5.6-luna | 0.79 |
+| t1-nfr-memory-bound | lazy+alt answers | glm-5 | 4.38 |
+| t1-nfr-stream-backpressure | recheck | glm-5 | 1.13 |
+| t1-nfr-memory-bound | recheck | glm-5 | 1.33 |
+| t1-refactor-permission-boundary | author-data | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-refactor-permission-boundary | author-data-fix | qwen3-coder-next | 1.17 |
+| t1-refactor-permission-boundary | author-key | qwen3-coder-next | 15.00 (estimate: stopped before it reported; logged at the 15-credit abort limit) |
+| t1-refactor-logging-migration | author | gpt-5.6-luna | 2.44 |
+| t1-refactor-logging-migration | map | glm-5 | 0.16 |
+| t1-refactor-logging-migration | review | glm-5 | 5.14 |
+| t1-refactor-logging-migration | fix | gpt-5.6-luna | 1.09 |
+| t1-refactor-logging-migration | lazy+alt answers | glm-5 | 4.91 |
+| t1-refactor-logging-migration | lazy+alt answers | glm-5 | 5.29 |
+| t1-refactor-permission-boundary | author | gpt-5.6-luna | 2.22 |
+| t1-refactor-permission-boundary | map | glm-5 | 0.16 |
+| t1-refactor-permission-boundary | review | qwen3-coder-next | 0.52 |
+| t1-refactor-permission-boundary | fix | gpt-5.6-luna | 1.18 |
+| t1-refactor-permission-boundary | lazy+alt answers | glm-5 | 2.70 |

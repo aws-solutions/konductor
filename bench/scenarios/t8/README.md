@@ -6,6 +6,11 @@ twin and two negative controls. Folders are synthetic: logs, metric CSVs, deploy
 definitions written by a seeded generator. Each incident folder seeds one root cause that the logs prove and one red
 herring.
 
+Two held-out tasks came from the coverage review of 2026-11-20 (worker CV-E): `t8-heldout-rollback-decision` (a release
+manager's roll back, hold or roll forward call under conflicting signals) and `t8-heldout-incident-handoff` (the hand-off
+note for an ongoing incident: diagnosis, the one safe mitigation, the open risk and the owner). Both ids land in
+HELD-OUT under the SR-32 split (`bench/scenarios/split.js`; hashes 1850953913 and 1473558289, recorded in their briefs).
+
 ## Layout
 
 | Path | What |
@@ -52,6 +57,11 @@ discarded (the request named the decoy or listed every constraint and its file, 
 does not read, the author's answer or key files sat in the fixture) and re-authored; the last three deepseek briefs
 were moved to gpt-5.6-luna before authoring for the same reason. The discarded drafts and the worker's hand fixes
 are listed in `AUTHORING-LOG.md`.
+
+The two CV-E held-out tasks were written by hand (Claude) and reviewed by qwen3-coder-next. A gpt-5.6-luna two-step
+draft of `t8-heldout-incident-handoff` (step `a`: `prompts/step-a.md`, step `b`: `prompts/step-b.md`, then one fix)
+still failed the stub and lazy gates and was dropped; its brief records it in `secondFamilyTry`. The batch stays
+single-family-authored (DEBT D-122).
 
 ## Tools
 

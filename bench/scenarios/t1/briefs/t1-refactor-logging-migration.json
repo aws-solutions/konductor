@@ -1,0 +1,17 @@
+{
+  "id": "t1-refactor-logging-migration",
+  "phase": "refactor",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "25 to 35",
+  "source": {
+    "url": "https://github.com/pinojs/pino",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-20",
+    "use": "idea"
+  },
+  "brief": "Phase: refactor and migration. Role: developer. Repo kind: a Node.js 24 command-line backup tool (no dependencies; about 30 files) whose modules log with a mix of console.log, console.error and a small old helper that prints free-text lines with a timestamp. Inspiration (idea only): public structured loggers that write one JSON object per line. Build a task where the owner asks to migrate every diagnostic log call to one structured logger module whose path, exported functions and JSON line shape the request states exactly (fields, level names, a level setting from an environment variable with a stated default, and a stated list of field names whose values must be replaced by a fixed redaction string). Logs go to stderr; the tool's normal stdout output (its report and its --json output) must stay byte-for-byte the same, so the agent must tell user-facing prints from diagnostics. The old helper is removed. Hidden tests run the tool's exported main or the CLI on temp directories with a fixed clock or a stated way to make timestamps testable, parse stderr lines as JSON and check levels, filtering and redaction, check stdout is unchanged, and check that no module still calls the old helper or console for diagnostics (a source scan, only if the request states that rule). Each rubric criterion must carry three anchors written as `Fail: ... Partial: ... Pass: ...` inside the criterion text, before the closing \"(code cannot check this because ...)\" clause.",
+  "economy": true
+}

@@ -1,7 +1,7 @@
 {
   "id": "t6-req-volunteer-shifts",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -265,48 +265,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "openai",
+      "model": "gpt-5.6-luna",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates requirement actionability and trade-off understanding without demanding a methodology. Earlier gpt-5.6-luna check of the request, fixture and key: pass (task.json field prompt states the business goal, source folders, output path, JSON ending, and June target, but does not prescribe a method or identify hidden traps or answers.)."
+          "note": "The prompt asks to consolidate the supplied volunteer documents into requirements and specifies the closing JSON block, with no prescribed method, framework or misleading hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (Mountain Time, 5-7 day background check, group minimum 3, 24-hour cancellation exception, 16-17 age bracket) are from scripted user; not a giveaway. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The fixture provides source evidence and explicitly marks unresolved decisions, such as meetings/2024-03-05-followup.md lines 13-16, 18-21, 23-26, and 35-51; it does not contain a separate answer list for the scripted facts.)."
+          "note": "The fixture contains handbook, safeguarding, privacy, operational and draft source material, but does not provide a finished requirements document or the complete set of scripted answers."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: Mountain Time with (MT), 5-7 business day background check, group minimum 3, 24-hour cancellation with emergency exception, age bracket 16-17 or 18+. Earlier gpt-5.6-luna check of the request, fixture and key: pass (The hidden grounded checks are supported by fixture sources: policy/safeguarding-policy.md lines 11-25 covers age and role checks, policy/data-privacy-guidelines.md lines 35-43 covers coordinator access, and policy/volunteer-handbook-excerpt.md lines 14-15 covers capacity limits. Scripted values are supplied by the user facts in task.json.)."
+          "note": "The grounded tests reference existing fixture data and policy paths, the shift-cap test checks only the concept actually supported by the handbook, and task.json scriptedUser supplies the clarified values; rubric R1 and R2 reward the stated requirements rather than reference file names."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement structure can still Pass if all rules are testable and safeguarding/coordinator visibility limits are addressed. Earlier gpt-5.6-luna check of the request, fixture and key: pass (A careful engineer can derive the required shift-cap, safeguarding, age/consent, privacy, reminder, and background-check requirements from the listed fixture documents and ask the six scripted questions in task.json for the open decisions.)."
+          "note": "A developer can derive role checks, privacy constraints and baseline shift rules from fixture/policy and fixture/drafts, then obtain the six clarifications from task.json; hidden tests accept equivalent wording and the edits record confirms the former over-specific shift-cap check was relaxed."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 5.5,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 5.5,
-      "lazy": 5.5,
+      "stub": 0,
+      "lazy": 0,
       "alt": 100,
       "date": "2026-11-20"
     }

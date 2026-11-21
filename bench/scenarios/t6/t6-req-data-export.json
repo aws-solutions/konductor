@@ -1,7 +1,7 @@
 {
   "id": "t6-req-data-export",
   "class": "design",
-  "version": 2,
+  "version": 5,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -15,7 +15,16 @@
           "who can request",
           "requester",
           "account data export permission",
-          "support agent"
+          "support agent",
+          "allowed to",
+          "who should",
+          "who can",
+          "start an export",
+          "request an export",
+          "permission",
+          "who is allowed",
+          "admin",
+          "trigger"
         ],
         "answer": "Only an account owner or a user granted the Account Data Export permission may submit an export request; Support agents cannot submit one for a customer."
       },
@@ -26,7 +35,15 @@
           "file format",
           "zip",
           "csv and json",
-          "timestamp representation"
+          "timestamp representation",
+          "format",
+          "timestamp",
+          "time zone",
+          "timezone",
+          "file type",
+          "what files",
+          "csv",
+          "json"
         ],
         "answer": "Deliver a ZIP archive with CSV data files and a JSON manifest. All exported date-times must use UTC with a trailing Z."
       },
@@ -38,7 +55,14 @@
           "omit",
           "payment card",
           "internal notes",
-          "deleted appointment"
+          "deleted appointment",
+          "left out",
+          "leave out",
+          "exclude",
+          "deleted",
+          "cancelled",
+          "card number",
+          "card data"
         ],
         "answer": "Exclude payment card numbers, Northstar internal support notes, and records deleted before the request. Customer-visible appointment records, including cancelled appointments, remain in scope."
       },
@@ -49,7 +73,15 @@
           "turnaround",
           "how long to complete",
           "ready by",
-          "job start"
+          "job start",
+          "sla",
+          "how quickly",
+          "how fast",
+          "take to",
+          "deliver the export",
+          "delivery time",
+          "deadline",
+          "processing time"
         ],
         "answer": "Start processing within 15 minutes of a valid request and make the completed package available within 72 hours."
       },
@@ -60,7 +92,12 @@
           "link expiry",
           "signed link",
           "expire",
-          "link lifetime"
+          "link lifetime",
+          "valid",
+          "expiry",
+          "expires",
+          "download link",
+          "stay available"
         ],
         "answer": "The signed download link expires 7 days after the package becomes ready; after that, the customer must submit a new request."
       },
@@ -71,7 +108,12 @@
           "size limit",
           "maximum package",
           "too large",
-          "compressed size"
+          "compressed size",
+          "maximum",
+          "max size",
+          "size",
+          "too big",
+          "large"
         ],
         "answer": "The compressed archive limit is 2 GB. If a package would exceed that limit, route the customer to Support rather than splitting it automatically."
       },
@@ -82,7 +124,14 @@
           "plan eligibility",
           "starter plan",
           "pro plan",
-          "enterprise plan"
+          "enterprise plan",
+          "plans",
+          "which plan",
+          "billing plan",
+          "tier",
+          "subscription",
+          "pricing",
+          "eligible"
         ],
         "answer": "Self-service export is available on Pro and Enterprise plans, not Starter."
       },
@@ -94,7 +143,13 @@
           "export events",
           "event names",
           "audit retention",
-          "retention"
+          "retention",
+          "audit",
+          "event",
+          "logging",
+          "logged",
+          "keep them",
+          "how long do we keep"
         ],
         "answer": "Write export.requested, export.ready, export.downloaded, and export.expired to the immutable audit log, retained for 400 days."
       }
@@ -126,7 +181,7 @@
       "type": "fixture_unchanged",
       "path": "data",
       "weight": 1,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -144,7 +199,7 @@
     {
       "type": "contains",
       "path": "docs/requirements.md",
-      "pattern": "open point",
+      "pattern": "open point|unresolved|open question",
       "weight": 1,
       "kind": "format"
     }
@@ -225,48 +280,48 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates scope clarity and honest assumptions without requiring a methodology. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a requirements document from source material without naming methods, techniques, or pointing at the hidden fact checks.)."
+          "note": "Prompt asks to read material and create implementable requirements, no specific method prescribed."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (owner/permission-based requesters, 72-hour delivery, 7-day link, 2 GB limit, Pro/Enterprise only) are from scripted user; synthesis required. Earlier glm-5 check of the request, fixture and key: pass (Fixture files contain notes, open questions, and source material requiring reasoning; no file lists the answers or expected findings outright.)."
+          "note": "Fixture contains admin roles, data schemas, policy notes but not synthesized requirements."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Anchors correctly cite scripted facts: account owner or granted permission only, ZIP with CSV/JSON, UTC times with Z, 72-hour delivery, 7-day link expiry, 2 GB limit, Pro/Enterprise only. Earlier glm-5 check of the request, fixture and key: pass (The 8 scripted facts are user-provided answers; the 3 grounded.test.js checks (record families, one-active limit, secrets/tenants) follow from data-model.md, infra-limits.md, and legal-team-email.md.)."
+          "note": "Hidden tests check patterns matching scripted facts; rubric matches prompt and fixture scope."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different requirement numbering and organization can still Pass if scope rules are correct and assumptions are honest about gaps. Earlier glm-5 check of the request, fixture and key: pass (Fixture provides record families, job limits, plan matrix, and security concerns; scripted user fills specific decisions, enabling a complete requirements document.)."
+          "note": "Competent PM could extract requirements from fixture; alternative wording/structure would pass."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate spot-review fix worker (2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 9.9,
+    "stub": 0,
     "decision": "keep",
     "date": "2026-11-20",
     "dryRun": {
       "reference": 100,
-      "stub": 9.9,
-      "lazy": 24.1,
+      "stub": 0,
+      "lazy": 17.1,
       "alt": 100,
       "date": "2026-11-20"
     }

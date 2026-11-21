@@ -105,3 +105,48 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t7-sprint-capacity | glm-5 (c10, full) | confirmed |  |
 | t7-status-slip-twin | glm-5 (c10, full) | confirmed |  |
 | t7-status-slip | glm-5 (c10, full) | confirmed |  |
+
+## Spot-review fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the Fable spot-review pre-read (reports/spot-review-preread-t2-t4-t6-t7.md).
+
+- `t7-pm-launch-cut` (version 5):
+  - Fixture `backlog.csv`: F-044 "Executive vanity wallboard" is now "Executive lobby wallboard"; "vanity" labelled the decoy. `interviews/interview-06.md:6` no longer says the release is "not an executive display"; it says the regional teams would run on it every day.
+  - Rubric `director-bottom-line` Pass asked for exactly eight features and 58 points while the key accepts 58 to 63 planned points. It now asks for a named feature set with planned points between 58 and 63 and the buffer that leaves, and says the reference (eight features, 58 points) is one such plan.
+  - Free gates unchanged: reference 100, stub 2.9, lazy 36.3; a second correct plan with nine features and 63 points scores 100.
+
+## Pilot wave 7 fixes (2026-11-20, mate spot-review fix worker)
+
+Who: claude (mate spot-review fix worker session), from the wave 7 pilot outputs in /tmp/pilot-w7 (vanilla, claude-sonnet-5.5, code `aa7db13c`). Free gates after the edit on all 13 tasks: reference 100, stub at most 4.8, lazy at most 39.3, alt 100. The pilot's own agent answers, rescored on the fixed checks, are the second correct answers below.
+
+- All 13 T7 tasks (one version each): the block may be fenced as ```name or ```json name. Two pilot answers wrote ```json breakdown and ```json sprint-plan for a request that said "info string breakdown"; the grader read only the first word, found no block and scored 0 of 12 and 0 of 10 hidden tests, and the substance `cmd` check split on ```name and failed too. `lib/hidden/plan-grade.cjs` `readBlock` now takes the name as the first word or after `json`; each task's `cmd` check splits on the same pattern and its format `contains` check matches it. Pilot rescored: t7-dev-breakdown 10 to 76.2, t7-sprint-capacity 10 to 85.7.
+- `t7-dev-breakdown`: the key required the new migration to be named `db/migrations/005_add_product_prices.sql`, a name no file gives; the pilot answer named it `005_create_product_prices.sql`. The three assertions now take any `db/migrations/005` file. Pilot answer 88.1 (it still misses the total estimate, 10.5 days against 17 +/- 20 %, and lists 27 files where at most 24 are allowed).
+- `t7-risk-owners`: `vendor-date-cites-ticket` required the vendor risk's trigger date 2027-08-20 and owner Sana Patel. `vendor-contract.md:3-5` gives the endpoint retirement (2027-08-20) and Sana Patel for commercial questions, but also names Diego Alvarez as the compatibility contact, and MOB-052 (his, due 2027-08-13) is the compatibility ticket. Either date and either owner now pass; `lib/hidden/plan-grade.cjs` `cites` takes a list of allowed values in `where`. Pilot answer 73.2 to 82.1.
+- `t7-status-slip-twin`: the key counted only Done tickets as closed points (Asha Iyer 2, Eve Grant 16), but the export README says "Done and Cancelled are closed", and the request says to use those conventions; the pilot answer followed the README (4 and 24) and lost two assertions and the weight-8 `cmd` check. Both readings now pass (`equals` with `oneOf`), and the `cmd` check no longer requires "16". Pilot answer 66.9 to 100.
+
+## Answer-key reconcile (2026-11-20, key-reconcile worker)
+
+Who: claude (kirocrew-mate-worker, key-reconcile session), applying the reconciled Fable and Opus 5.5 answer-key passes
+(reports/key-improve/reconciled.md in the mate workspace). Each task gets single-point expert items with their figures,
+`adjudication`, and a hand-written `answers/<id>/other` answer.
+
+- `t7-release-gate` (version 6): `hidden/.../key.json`: `third-blocker-summary` (one of six exact sentences) is gone;
+  `only-reverted-note` (maxCount 1) becomes `notes-match-branch` (ids REL-127, REL-112, REL-104, maxCount 3), because
+  the draft also claims REL-112 and REL-104 whose commits are not on release/27.05; new `notes-branch-claims` needs one
+  of REL-112 or REL-104. The reference and alt answers now correct all three notes. Tests min stays 15. Assertions
+  for owner-112, REL-145 absent from blockers and the CI lists were tried and left out: the shallow answer already
+  meets them (lazy 48 to 60), so they are judge items (`decoys`, `signal-separation`). expertKey: 8 items (adds
+  REL-112's pick is only proposed, REL-104 in the notes, repeatable branch CI). Free gates: reference 100, stub 4.8,
+  lazy 38.1, alt 100, other 100.
+- `t7-scope-cut` (version 5): the as-of date (2027-06-04) fell after S12 and S13, so their slack was spent. The three
+  sprints move to 2027-06-07 to 2027-07-16 (`capacity.csv`, `sprint-calendar.csv`) and the launch to 2027-07-16
+  (`roadmap.md`, key `launch-date`, reference, alt, pad, rubric); `README.md` says `committed_points` is the work
+  committed at the 2027-05-07 lock and excludes later additions, and that all three sprints are ahead; the same edits
+  in `authoring/t7-scope-cut/generate.py`. Points, slack and cut are unchanged (29, 17, 12). expertKey: 8 items with
+  figures (adds the unlabelled adds, the bug splits, cut arithmetic, no buffer). Free gates: reference 100, stub 4.8,
+  lazy 23.8, alt 100, other 100.
+
+## Delegated-read fixes (2026-11-20, mate spot-review fix worker)
+
+- `t7-pm-launch-cut` (version 7): F-021 was required in scope, but `sales-commitments.md:17-21` says Greybridge's F-021 ask "is a follow-up discussion, not a launch promise". The `audit-filters-in` assertion is removed (13 assertions, `min` 13) and the weight-8 `cmd` check no longer needs f-021; F-021 in or out both pass. A plan without F-021 (F-004 and F-028 instead, 58 points) scores 100. Free gates: reference 100, stub 2.9, lazy 33.2, alt 100.
+- `t7-ship-train` (version 6): `targetSkills` and `loadCheck.mustLoad` are `sprint-planning` and `program-planning`, `targetAgent` `k-tpm`, as for t7-freeze-forecast (it measured no skill before). Free gates unchanged: 100 / 2.9 / 29.5 / 100.

@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ( [ -L solution ] || [ ! -e solution ] || mv solution .bench-agent-solution ) && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 19
     },
     {
@@ -27,12 +27,12 @@
   "rubric": [
     {
       "id": "tradeoff-quality",
-      "criterion": "The decision explains why the selected option is preferable across downtime, recovery point, operational complexity, and recurring cost rather than merely naming an option. Fail: names an option with no limit check, or picks big_bang_copy or dual_write. Partial: picks continuous_replication but compares only on cost or downtime. Pass: rejects big_bang_copy (1.8 TB at 450 MB/s about 66.7 minutes against the 20-minute downtime limit) and dual_write (6,700 USD against 5,000), and shows continuous_replication meets all five limits (handoff 3 to 5 minutes, RPO 2 minutes under 5, 12 ms under 30, 150 MB/s, 4,300 USD) using production inventory (1.8 TB), not the staging 2.4 TB. (not code-checkable: Automated checks can verify figures and option identifiers but cannot judge whether the tradeoff explanation is complete or persuasive.)",
+      "criterion": "The decision explains why the selected option is preferable across downtime, recovery point, operational complexity, and recurring cost rather than merely naming an option. Fail: names an option with no limit check, or picks big_bang_copy or dual_write. Partial: picks continuous_replication but compares only on cost or downtime. Pass: rejects big_bang_copy (1.8 TB at 450 MB/s about 66.7 minutes against the 20-minute downtime limit) and dual_write (6,700 USD against 5,000), and shows continuous_replication meets all five limits (handoff 3 + 5 = 8 minutes against 20, RPO 2 minutes under 5, 12 ms under 30, 150 MB/s, 4,300 USD) using production inventory (1.8 TB), not the staging 2.4 TB. (not code-checkable: Automated checks can verify figures and option identifiers but cannot judge whether the tradeoff explanation is complete or persuasive.)",
       "weight": 1
     },
     {
       "id": "cutover-operability",
-      "criterion": "The cutover document gives a clear, actionable handoff sequence with measurable preconditions, rollback awareness, and operator checks. Fail: no handoff sequence. Partial: a sequence without measurable preconditions or a rollback point. Pass: gives ordered steps with measurable preconditions (replication lag under the RPO threshold, write pause timing, target health check), names the source cluster's last confirmed consistent position as the rollback checkpoint, and does not treat a small-dataset rehearsal as proof the production copy will fit the window. (not code-checkable: Tests can inspect the decision block but cannot reliably assess whether a human operator could execute the prose safely.)",
+      "criterion": "The cutover document gives a clear, actionable handoff sequence with measurable preconditions, rollback awareness, and operator checks. Fail: no handoff sequence. Partial: a sequence without measurable preconditions or a rollback point, or no lead time for the initial copy. Pass: gives ordered steps with measurable preconditions (replication lag under a stated number, write pause timing, target health check), names the source cluster's last confirmed consistent position as the rollback checkpoint and what happens to writes taken after the switch, and says how long the seed takes or when it must start. (not code-checkable: Tests can inspect the decision block but cannot reliably assess whether a human operator could execute the prose safely.)",
       "weight": 1
     },
     {
@@ -72,10 +72,10 @@
       "stub": 0,
       "lazy": 16,
       "alt": 100,
-      "date": "2026-11-19"
+      "date": "2026-11-20"
     }
   },
-  "version": 3,
+  "version": 6,
   "targetSkills": [
     "decision-writing",
     "trade-off-evaluator"
@@ -122,29 +122,29 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric evaluates tradeoff quality, operability, and calculation clarity for the cutover decision requested. Earlier glm-5 check of the request, fixture and key: pass (Prompt describes goals, constraints, and output format without naming methods or revealing which option is correct or which is the tempting decoy.)."
+          "note": "Request asks to choose and document without prescribing method; no misleading hints"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Fixture provides options and constraints; no pre-selected answer visible. Earlier glm-5 check of the request, fixture and key: pass (No fixture file states the correct answer; all files provide evidence (data sizes, costs, limits) that must be reasoned from to reach the decision.)."
+          "note": "Fixture provides data (requirements, prices, models) but doesn't state answer or describe final behavior"
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric anchors (1.8 TB not 2.4 TB staging, 450 MB/s off-hours, 150 MB/s business, $6,700 dual_write, $4,300 continuous_replication) match fixture. Earlier glm-5 check of the request, fixture and key: pass (All hidden test values (businessCap=150, latencyLimit=30, offHoursCap=450 from traffic-profile.csv; limits from acceptance.json; costs from price-sheet.json) exist in fixture and are consistent.)."
+          "note": "Tests, expert key and rubric reference fixture data; rubric rewards requested outcomes"
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different prose structure and handoff sequences can achieve Pass if calculations and rejections are grounded in fixture. Earlier glm-5 check of the request, fixture and key: pass (An engineer can calculate each option's metrics from migration-model.json and price-sheet.json, compare against limits in acceptance.json and traffic-profile.csv, and identify continuous_replication as the only option meeting all five constraints.)."
+          "note": "Alternative answer shows different structure passes; fixture provides all needed data for calculations"
         }
       ]
     }
@@ -153,43 +153,43 @@
     "items": [
       {
         "id": "e1",
-        "text": "states that big_bang_copy cannot be chosen because its 66.7-minute copy window (1.8 TB at 450 MB/s) exceeds the 20-minute downtime limit in acceptance.json",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Rejects big_bang_copy because copying 1.8 TB at 450 MB/s takes 4,000 s, about 66.7 minutes, over the 20-minute window. Weak: 'big bang takes too long'. Do not require naming the 2.4 TB figure."
       },
       {
         "id": "e2",
-        "text": "states that dual_write cannot be chosen because its $6700 monthly cost (2400+1200+300+2800) exceeds the $5000 budget ceiling in price-sheet.json",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Rejects dual_write on cost: 2,400 + 1,200 + 300 + 2,800 = 6,700 USD against 5,000. Also counts: a second reason (no shared commit across two ledgers). Weak: 'too expensive'. Do not require the note that it is otherwise best on RPO."
       },
       {
         "id": "e3",
-        "text": "explicitly rejects the superseded staging figures (2.4 TB dataset, 300 MB/s daytime allowance) from the retired environment and uses only the current production inventory (1.8 TB) and throttle sheet (150 MB/s business hours, 450 MB/s off hours)",
-        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Shows continuous_replication inside all five limits with its own figures: downtime 3 + 5 = 8 minutes against 20, RPO 2 against 5 minutes, 12 ms against 30 ms, 150 MB/s against the 150 MB/s minimum, 4,300 USD against 5,000. Also counts: a table. Weak: 'all limits met'."
       },
       {
         "id": "e4",
-        "text": "identifies continuous_replication as the only option meeting all five constraints: downtime within 3-5 min handoff window, RPO of 2 min under 5 min limit, latency of 12 ms under 30 ms limit, throughput of 150 MB/s matching requirement, and cost of $4300 under $5000 budget",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "Says the initial copy must finish before the window and gives a time or rate for it: with the application writing 90 MB/s under the 150 MB/s business-hours cap only about 60 MB/s is spare (about 8.3 hours for 1.8 TB), or about 67 minutes off hours; so the seed starts well before 02:00 Sunday. Weak: 'seed beforehand' with no figure. Do not require the exact 8.3 hours; 3.3 hours at the full cap is Partial."
       },
       {
         "id": "e5",
-        "text": "notes that rehearsal duration with a smaller dataset is not evidence that production copy will finish in the reserved window, as stated in change-calendar.md",
-        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "Names a measurable go condition before writes pause: replication lag below a stated number (for example under 2 minutes or 120 s), or the target confirming the recorded source position, with a stop if the 8-minute pause budget runs out. Weak: 'when ready, switch'. Do not require all of lag, timing and health check."
       },
       {
         "id": "e6",
-        "text": "specifies that the rollback checkpoint is the source cluster's last confirmed consistent position, not an informal estimate or point-in-time guess",
-        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)",
+        "text": "Names the source's last confirmed consistent position as the rollback checkpoint and says writes the target accepts after the switch are lost on rollback unless replicated back (a point of no return). The checkpoint alone is Partial. Weak: 'roll back if needed'."
       },
       {
         "id": "e7",
-        "text": "includes measurable handoff preconditions (e.g., replication lag under RPO threshold, write pause timing, target cluster health check) rather than relying on informal estimates",
-        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "States the zero margin or the flip condition: the 150 MB/s throughput equals the minimum exactly, or the choice would change with a ceiling of at least 6,700 USD (dual_write) or a data set small enough for big bang (under about 0.54 TB). Weak: no margin or flip condition. Do not require both."
       },
       {
         "id": "e8",
-        "text": "clarifies that one-time implementation labor is excluded from the monthly cost comparison per cost-notes.md, so only recurring items are summed",
-        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only)"
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only",
+        "text": "Keeps the monthly figure to recurring items: one-time labour excluded, and the 400 USD migration support line counted because it is billed monthly for the migration period (it stops afterwards). Weak: a total with labour added, or migration support dropped as one-time."
       }
     ],
     "weakAnswers": [
@@ -197,12 +197,22 @@
       "uses the 2.4 TB staging dataset size and 300 MB/s daytime allowance from the retired environment instead of the current production figures",
       "selects dual_write for its zero RPO potential without checking that its $6700 monthly cost exceeds the $5000 budget",
       "recommends an option without showing the cost breakdown or verifying all five acceptance constraints",
-      "relies on rehearsal timing as evidence that the production migration will meet the downtime window"
+      "Lists handoff steps with no measurable condition and no rollback point."
     ]
   },
+  "adjudication": [
+    "Test the figure used, not the mention: an answer that sizes on the production figures and never names the superseded ones is correct; using a superseded figure in sizing fails the item it feeds.",
+    "Numbers within 1% of the key (rounding, 4,964.62 vs 4,965) are full credit; a figure with no working shown is Partial on an item that asks for working.",
+    "One mistake, one penalty: the same wrong figure in prose and in the decision block is one Partial, not two.",
+    "A limit equal to its bound meets it (150 MB/s against a 150 MB/s minimum, 60 s against 60 s); headroom is an expert point, never a fail.",
+    "Downtime is the sum of the handoff steps (3 + 5 = 8 minutes) now that change-calendar.md says every step runs inside the write pause; an answer that reports only the 5-minute switch step is Partial on e3.",
+    "Seed lead time: 8.3 hours (60 MB/s spare beside the 90 MB/s write load) is the better reading; 3.3 hours at the full 150 MB/s cap is Partial on e4; either with a start-before-02:00 conclusion is never a fail of the decision.",
+    "Copying the rehearsal or rollback sentence from change-calendar.md is not an expert point by itself; e6 needs the post-switch writes point.",
+    "Treating migration_support (400) as one-time and dropping it is wrong: cost-notes.md bills it monthly for the migration period."
+  ],
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
+    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
     "log": "HAND-EDITS.md"
   }
 }

@@ -1,11 +1,11 @@
 {
   "id": "t8-pm-cache-stampede",
   "class": "hard",
-  "version": 3,
+  "version": 5,
   "phase": "release-ops",
   "role": "sre",
   "questions": "allowed",
-  "prompt": "Please write the postmortem for the catalogue service's afternoon incident for our team review. Work from the operational files in this folder and explain the customer impact, the evidence-backed cause, the timeline, the response, and useful follow-up actions. Put the document at postmortems/catalog-db-overload.md. End it with a fenced ```json block containing one object with these fields: rootCause (object with summary as a string and evidence as a list of path:line strings), timeline (a list of objects with time and event strings), impact (an object with numbers: failedPageRequests, the failed page requests the metrics record; peakDbCpuPercent, the highest database CPU in percent; peakDbConnections, the highest count of active database connections; affectedMinutes, the total minutes with failed pages), and actionItems (a list of objects with text and owner strings). Use ISO 8601 UTC strings for every timeline time. Evidence references must use path:line, where path is relative to this folder and line is a 1-based line number. Make the JSON values numeric. Keep the report useful to engineers who will operate the service again.",
+  "prompt": "Please write the postmortem for the catalogue service's afternoon incident for our team review. Work from the operational files in this folder and explain the customer impact, the evidence-backed cause, the timeline, the response, and useful follow-up actions. Put the document at postmortems/catalog-db-overload.md. End it with a fenced ```json block containing one object with these fields: rootCause (object with summary as a string and evidence as a list of path:line strings), timeline (a list of objects with time and event strings), impact (an object with numbers: failedPageRequests, the page errors the metrics record in the minutes where page errors were above the 50-per-minute alert threshold; peakDbCpuPercent, the highest database CPU in percent; peakDbConnections, the highest count of active database connections; affectedMinutes, the number of those above-threshold minutes), and actionItems (a list of objects with text and owner strings). Use ISO 8601 UTC strings for every timeline time. Evidence references must use path:line, where path is relative to this folder and line is a 1-based line number. Make the JSON values numeric. Keep the report useful to engineers who will operate the service again.",
   "fixture": "t8-pm-cache-stampede",
   "hidden": "t8-pm-cache-stampede",
   "timeoutSec": 1200,
@@ -39,6 +39,11 @@
       "id": "narrative-clarity",
       "criterion": "The prose clearly distinguishes the initiating cache behavior from the later database saturation and explains how the response stopped recurrence. Fail: wrong cause, or blames the decoy, or no causal link between events. Partial: right cause, but no mechanism from cause to symptom, or the decoy is not ruled out. Pass: cause, then mechanism, then symptom, each with a cited log line; why the decoy is not the cause; and why detection lagged. (code cannot check this because the structured block cannot measure causal clarity in the surrounding narrative)",
       "weight": 2
+    },
+    {
+      "id": "actions-fit",
+      "weight": 1,
+      "criterion": "The action items remove the cause, catch it earlier, and stop it at review, each with an owner from docs/on-call.md. Fail: actions are generic ('improve monitoring') or have no owners. Partial: actions fix the cause but none would have caught it within the first wave or at config review. Pass: one action removes the synchronized expiry (jitter, coalescing or similar), one detects it within the first wave (hit ratio, refill queue or waiters with a short window), one stops it at review or rollout (a lint on zero jitter, a staged reload), each with a named owner. (code cannot check this: the block key checks for words, not whether the actions would have prevented this incident.)"
     }
   ],
   "targetSkills": [],
@@ -97,36 +102,36 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
       "date": "2026-11-20",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for a postmortem with specific sections but names no method, framework, or tool for how to work."
+          "note": "Request asks to write postmortem from operational files without prescribing analysis method. Edits mention decoy (analytics_rollup) that shouldn't be blamed, clarifying not misleading."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Logs and configs contain the incident evidence but no doc comments list the cause, timeline, or impact values."
+          "note": "Fixture has logs, config, metrics, notes containing evidence but not stating root cause analysis. config/cache-policy.yaml shows jitter:0 but doesn't explain causal chain."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Block key references logs/cache.log, config/config-review.diff, deploy/deploy-history.jsonl and specific log lines; all paths exist and values match fixture data."
+          "note": "Hidden tests check postmortem structure and content. Fixture has all needed files (logs, config, metrics). Request defines impact fields calculable from metrics."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Cache TTL change at 14:42Z, expiration waves at 30-minute intervals, and DB saturation are derivable from logs; impact numbers come from metrics."
+          "note": "Competent SRE can analyze logs/metrics to write postmortem identifying synchronized expiry due to jitter 0. Different analyses possible."
         }
       ]
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
+    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
     "log": "HAND-EDITS.md"
   },
   "pilot": {
@@ -145,5 +150,64 @@
     "decision": "keep",
     "date": "2026-11-20"
   },
-  "lockedAt": null
+  "lockedAt": null,
+  "expertKey": {
+    "items": [
+      {
+        "id": "chain",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Links the 14:42 policy reload (TTL 1,800 s, jitter 0) and its single 38,400-key warmup to keys expiring together at 15:12, 15:42 and 16:12: the wave period equals the TTL. Also counts: 'every 30 minutes', 'in lockstep', 'a thundering herd'. Weak: 'a cache change caused the outage'. Do not require the word 'jitter'."
+      },
+      {
+        "id": "saturation",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Gives the path from the miss burst to failed pages with two of these numbers: hit ratio 0.18, 486 queries/s or refills against the 240-connection ceiling, database CPU 99.2%, page errors 420/390/300/210 a minute. Weak: 'the database was slow'. Do not require all four."
+      },
+      {
+        "id": "decoy-ruled-out",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Rules out the reporting analytics_rollup: it ran at 12:30, about 2.7 hours before the first wave, completed, and did not repeat. Also counts: 'unrelated', 'earlier and finished'. Weak: no mention, or 'may have contributed'. Do not require its CPU figure."
+      },
+      {
+        "id": "detection-lag",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Explains why paging lagged: each wave lasted 4 minutes while the alerts need 2 to 3 minutes over threshold, so a page came halfway through each wave and mitigation came only after the third; or that the config review passed jitter 0. Weak: 'add more alerts'. Do not require both reasons."
+      },
+      {
+        "id": "fix-proof",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Cites the missing 16:42 wave (the next TTL boundary passed clean) as proof the fix worked, since each earlier wave also recovered by itself after 4 minutes. Weak: 'errors returned to normal at 16:22'. Do not require the 16:20 blip."
+      },
+      {
+        "id": "config-drift",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Notes that config/cache-policy.yaml still holds jitter_seconds 0 and the 16:19 deploy says 'policy update staged', so the live fix must be committed or the next reload brings the bug back. Weak: 'keep jitter enabled'."
+      },
+      {
+        "id": "stampede-guard",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "Proposes one guard beyond a fixed jitter: request coalescing (single-flight), serve-stale-while-refresh, early refresh, a refill rate cap, or jitter sized as a share of the TTL (120 s over 38,400 keys is still about 320 refills a second). Weak: 'increase the TTL'. Do not require the word 'jitter'."
+      },
+      {
+        "id": "ceiling-held",
+        "source": "Google SRE book, Managing Incidents, https://sre.google/sre-book/managing-incidents/ (CC BY-NC-ND 4.0; idea only)",
+        "text": "States the team was right not to raise the 240-connection ceiling, with the runbook's reason (do not raise it as the first response to a cache burst). Weak: 'add database capacity' as an action."
+      }
+    ],
+    "weakAnswers": [
+      "The analytics rollup overloaded the database.",
+      "A cache change caused the outage; we fixed it and errors returned to normal at 16:22.",
+      "Add more monitoring and alerts.",
+      "Increase the database connection limit so bursts do not fail."
+    ]
+  },
+  "adjudication": [
+    "A cause that says the keys 'expired together', 'in one wave' or 'in lockstep' without the word 'jitter' is fully correct; the gate now takes those words.",
+    "failedPageRequests and affectedMinutes are defined by the 50-per-minute threshold in the request (3,960 and 12); an answer that also gives the whole-day sum with its window stated is not penalised.",
+    "Recovery at 16:16 (last wave ends), 16:22 (fix live) or 16:27 (waiters zero) is credited when labelled correctly.",
+    "Negation: 'not caused by the reporting job' rules the decoy out and passes decoy-ruled-out; a hedge ('may have contributed') is Partial; naming the rollup as the cause fails.",
+    "Cited metric rows of the three waves are relevant evidence, as are the config, deploy and cache log lines.",
+    "A coalescing-only or serve-stale fix passes stampede-guard and the hidden fix item; it need not say 'jitter'.",
+    "Score points, not length: a long timeline is never penalised by the judge."
+  ]
 }
