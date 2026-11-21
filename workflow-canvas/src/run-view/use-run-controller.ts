@@ -198,8 +198,14 @@ export function useRunController({
     started.kind === 'starting' ||
     started.kind === 'going' ||
     started.kind === 'unsure';
+  // A follow that ended badly follows nothing: the reads have stopped, and
+  // the run id is forgotten, so the workflow being swapped away costs no run
+  // this page still holds. The error the view shows says to open a fresh
+  // address, and warning there that a run would be lost would talk a person
+  // out of the very thing that gets them going again.
+  const unfollowed = status === 'failed' || gone;
   const lifecycle: RunLifecycle = {
-    active: atRisk && !runFinished,
+    active: atRisk && !runFinished && !unfollowed,
     status: progress ? progressText(progress) : '',
     ...(notice ? { error: `${notice.header} ${notice.message}` } : {}),
     ...(follow.status.kind === 'failed' || gone
