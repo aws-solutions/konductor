@@ -69,7 +69,7 @@ const FLAGS = {
   'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json'],
   'scenarios lint': ['base', 'repo-root', 'json'],
-  'scenarios prereg': ['date'],
+  'scenarios prereg': ['date', 'base', 'repo-root', 'selection-only', 'accept-gaps'],
   'scenarios coverage': ['base', 'repo-root', 'selection-only', 'out', 'fail-on-hole'],
   'scenarios pilot-table': ['pack', 'json'],
   'scenarios ready': ['batch', 'ids', 'late', 'json'],

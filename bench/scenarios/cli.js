@@ -85,7 +85,16 @@ function cmdPrereg(opts) {
   if (action !== 'freeze' && action !== 'check') throw new Error('scenarios prereg takes freeze or check: bench.js scenarios prereg freeze|check DIR');
   const dir = dirArg(opts, `prereg ${action}`, 2);
   if (action === 'freeze') {
-    const rec = prereg.freezePrereg(dir, { date: textFlag(opts.date) ?? today() });
+    // The lint and the coverage gate run on the konductor tree --base names, before anything is written (DEBT D-55).
+    const tasks = loadTaskFiles(dir).map((t) => t.task);
+    const { problems, gates } = withTree(opts, (scan, b, specs) => prereg.freezeGates({
+      lint: lintDir(dir, catalogOfScan(scan), { baseline: readBaseline() }),
+      coverage: buildCoverage({ tasks, scan, specs, selectionOnly: readSelectionOnly(opts, dir), base: { label: b.label, commitSha: b.commitSha } }),
+      base: { label: b.label, commitSha: b.commitSha ?? null },
+      acceptGaps: textFlag(opts['accept-gaps']),
+    }));
+    if (problems.length) { console.error(`scenarios prereg: the pack cannot be frozen:\n${problems.join('\n')}`); process.exitCode = 1; return; }
+    const rec = prereg.freezePrereg(dir, { date: textFlag(opts.date) ?? today(), gates });
     console.log(`wrote ${path.join(path.resolve(dir), prereg.FILE)}: ${rec.tasks.length} task(s) (${rec.split.dev.length} DEV, ${rec.split.heldOut.length} HELD-OUT), lock hash ${rec.lockHash}`);
     return;
   }

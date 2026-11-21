@@ -247,8 +247,11 @@ const USAGE = `Usage:
        (the prompt leak lint: refuses a task prompt that names a skill, SOP or agent of the konductor tree at --base, uses a term from the fixed method
        list, or says "do not ask" on a task where questions are allowed; also refuses a v3 task (one with a phase) with no authorship.source or an empty
        licence. DIR holds task files, or batch directories of them. Exit 1 when there is any finding. No credits)
-  node bench/runner/bench.js scenarios prereg freeze|check DIR [--date YYYY-MM-DD]
-       (freeze writes DIR/PREREG.json: every task's id, version and file sha256, the SR-32 DEV and HELD-OUT lists recomputed from the ids, and the fixed
+  node bench/runner/bench.js scenarios prereg freeze DIR --base REF|dir:PATH [--accept-gaps REASON] [--selection-only FILE] [--repo-root DIR] [--date YYYY-MM-DD]
+  node bench/runner/bench.js scenarios prereg check DIR
+       (freeze first runs scenarios lint and the coverage gate on the --base tree: a new lint finding or a stale lint baseline entry refuses (exit 1),
+       and so do coverage holes and phase or role shortfalls unless --accept-gaps gives the reason, which the lock records under gates. Then it writes
+       DIR/PREREG.json: every task's id, version and file sha256, the SR-32 DEV and HELD-OUT lists recomputed from the ids, and the fixed
        protocol of bench/scenarios/protocol.js (margin, verdict words, bootstrap draws and seed, reps, stop rules), with a hash of the whole record. It
        refuses a task with no integer version and never overwrites a lock. check recomputes everything and exits 1, naming each task whose file changed,
        a task added or missing, a split list or protocol that no longer matches, or an edited lock)

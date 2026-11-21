@@ -1272,7 +1272,10 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   `loadCheck.mustNotLoad`). A unit short of that is a **hole**, or **selection-only** when `selection-only.json` (`{ "skill:name": "reason" }`, beside
   the tasks or given by `--selection-only`) holds the owner's reason. `--fail-on-hole` exits 1 on any hole or any phase or role under its minimum.
 - `bench/scenarios/probe/` holds five tasks that probe the confirmation guard of PR #299 on `k-e2e-test-generation` and `k-test-coverage-review`, scored from git state and files only (no judge). Their fixtures are git repositories with a local bare remote: a fixture directory `dotgit/` is renamed `.git` when the runner copies the fixture. See `bench/scenarios/probe/README.md`; free check: `node bench/scenarios/lib/dry-run.js --config bench/scenarios/probe/scenario.config.js`.
-- `scenarios prereg freeze DIR [--date YYYY-MM-DD]` writes `DIR/PREREG.json`, the pre-registration lock: every task's id, `version` (an integer, required) and file
+- `scenarios prereg freeze DIR --base REF|dir:PATH [--accept-gaps REASON] [--date YYYY-MM-DD]` first runs `scenarios lint` and the coverage gate on the
+  `--base` tree and refuses (exit 1, nothing written) on a new lint finding or a stale lint baseline entry, and on coverage holes or phase or role
+  shortfalls unless `--accept-gaps` gives the reason; the lock records the gates (`gates.lint`, `gates.coverage` with `acceptedBecause`). It then
+  writes `DIR/PREREG.json`, the pre-registration lock: every task's id, `version` (an integer, required) and file
   sha256; the SR-32 DEV and HELD-OUT lists recomputed from the ids; and the fixed protocol of `bench/scenarios/protocol.js` (5-point margin, the verdict
   words, 10,000 bootstrap draws with a fixed seed, replicates, stop rules); and a hash of the whole record. It never overwrites a lock: a changed pack is a
   new study. `scenarios prereg check DIR` recomputes everything and exits 1, naming each task file that changed, a task added or missing, a split list or

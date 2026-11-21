@@ -41,20 +41,44 @@ function taskEntries(dir) {
   return items.map(({ file, task }) => ({ id: task.id, version: task.version, sha256: sha256(fs.readFileSync(file)), file: path.relative(root, file).split(path.sep).join('/') })).sort((a, b) => (a.id < b.id ? -1 : 1));
 }
 
-/** The lock record for the tasks under `dir`. `date` is the day of the freeze (YYYY-MM-DD). */
-function buildPrereg(dir, { date }) {
+/**
+ * The lock record for the tasks under `dir`. `date` is the day of the freeze (YYYY-MM-DD). `gates`, when given, is the
+ * record of the checks the freeze ran (lint and coverage, see freezeGates); it is part of the lock and its hash.
+ */
+function buildPrereg(dir, { date, gates = null }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) throw new Error('the freeze date must be YYYY-MM-DD');
   const tasks = taskEntries(dir);
   if (!tasks.length) throw new Error(`no task files under ${dir}`);
-  const record = { schemaVersion: SCHEMA_VERSION, frozenAt: date, tasks, split: splitSection(tasks.map((t) => t.id)), protocol: PROTOCOL };
+  const record = { schemaVersion: SCHEMA_VERSION, frozenAt: date, tasks, split: splitSection(tasks.map((t) => t.id)), protocol: PROTOCOL, ...(gates ? { gates } : {}) };
   return { ...record, lockHash: lockHashOf(record) };
 }
 
+/**
+ * The checks a freeze must pass (plan 2: the lint fails a lock on a hole). `lint` is lintDir's result (with the
+ * baseline), `coverage` buildCoverage's. A new lint finding or a stale baseline entry always refuses; coverage holes and
+ * phase or role shortfalls refuse unless `acceptGaps` gives the reason, which the lock then records.
+ * Returns { problems, gates }: freeze only when `problems` is empty.
+ */
+function freezeGates({ lint, coverage, base, acceptGaps = null }) {
+  const fresh = lint.findings.filter((f) => !f.known);
+  const problems = [
+    ...fresh.map((f) => `lint: ${f.taskId}: ${f.rule}: ${f.detail}`),
+    ...lint.stale.map((k) => `lint: stale baseline entry ${k}`),
+  ];
+  const gaps = [...coverage.holes.map((id) => `hole: ${id}`), ...coverage.shortfalls.map((x) => `short: ${x}`)];
+  if (gaps.length && !acceptGaps) problems.push(...gaps.map((g) => `coverage ${g}`), 'coverage: pass --accept-gaps "<reason>" to freeze with these gaps on the record');
+  return { problems, gates: {
+    base,
+    lint: { tasks: lint.tasks, known: lint.findings.length, new: 0 },
+    coverage: { holes: coverage.holes, shortfalls: coverage.shortfalls, ...(gaps.length ? { acceptedBecause: acceptGaps } : {}) },
+  } };
+}
+
 /** Writes DIR/PREREG.json. An existing lock is never overwritten: a changed pack is a new study. Returns the record. */
-function freezePrereg(dir, { date }) {
+function freezePrereg(dir, { date, gates = null }) {
   const file = path.join(path.resolve(dir), FILE);
   if (fs.existsSync(file)) throw new Error(`${file} already exists; a locked pack is read only, and a change is a new study (move the old lock aside first)`);
-  const record = buildPrereg(dir, { date });
+  const record = buildPrereg(dir, { date, gates });
   fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
   return record;
 }
@@ -123,4 +147,4 @@ function requirePrereg(opts, { taskIds, extraDirs }) {
   return checkRun(path.resolve(opts.prereg), { taskIds, extraDirs });
 }
 
-module.exports = { requirePrereg, FILE, buildPrereg, freezePrereg, checkPrereg, checkRun, readPrereg, verifyRecord, splitSection, canonical, lockHashOf };
+module.exports = { requirePrereg, FILE, buildPrereg, freezePrereg, freezeGates, checkPrereg, checkRun, readPrereg, verifyRecord, splitSection, canonical, lockHashOf };
