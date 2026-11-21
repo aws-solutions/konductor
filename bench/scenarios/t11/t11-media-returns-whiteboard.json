@@ -121,25 +121,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to implement from whiteboard image, names no method/framework, contains no misleading hints."
+          "note": "Request asks to implement state machine from design image, no specific method or misleading decoy mentioned."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains whiteboard image and existing lifecycle.js, but no complete solution matching hidden tests."
+          "note": "Fixture has old 4-state implementation, design note says image is authoritative, nothing reveals new 10-state behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Checks test implementation details from image; rubric anchors (Fail/Partial/Pass) follow request for image legibility review."
+          "note": "Hidden tests use states/events from prompt, checks look for required patterns, empty rubric has no anchors to check."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can read whiteboard image, implement state machine with specified states, events, and interface."
+          "note": "Design image + prompt provides all needed states, events, and behavior; developer can implement correct state machine."
         }
       ],
-      "version": 3
+      "version": 4
     }
   },
   "handEdited": {
