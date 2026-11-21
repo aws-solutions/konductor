@@ -80,11 +80,16 @@ export interface RunController {
   startRun(): void;
 }
 
-// The sentence of a follow that ended badly, for the live region.
+// The sentence of a follow that ended badly, for the live region. The view
+// says which of the two it is in the header of its alert; the live region has
+// one sentence to say it in, so it carries that word itself.
 function followMessage(follow: FollowRunState): string {
   const { status } = follow;
-  if (status.kind === 'failed' || status.kind === 'session_lost') {
-    return status.message;
+  if (status.kind === 'failed') {
+    return `The run is no longer followed. ${status.message}`;
+  }
+  if (status.kind === 'session_lost') {
+    return `The server no longer knows this session. ${status.message}`;
   }
   return '';
 }
