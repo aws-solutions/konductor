@@ -174,6 +174,7 @@ describe('createNextPorts, the check of a text', () => {
   const finding = {
     code: 'UNKNOWN_KEY',
     severity: 'warning',
+    file: 'hello.yml',
     path: 'stages[0].nope',
     line: 2,
     column: 3,
@@ -181,20 +182,20 @@ describe('createNextPorts, the check of a text', () => {
     end_column: 7,
     message: 'A key.',
   };
+  const stage = {
+    name: 'draft',
+    kind: 'agent',
+    agent: 'k-developer',
+    prompt: 'Write it.',
+    range: { line: 7, end_line: 8 },
+  };
   const answer = {
     view: {
       format: 'konductor/1',
       version: '0.1.0',
       name: 'hello',
       intent: { outcome: 'Add a greeting' },
-      stages: [
-        {
-          name: 'draft',
-          kind: 'agent',
-          prompt: 'Write it.',
-          range: { line: 7, end_line: 8 },
-        },
-      ],
+      stages: [stage],
     },
     diagnostics: [finding],
   };
@@ -234,6 +235,27 @@ describe('createNextPorts, the check of a text', () => {
     expect(checked.view).toBeNull();
   });
 
+  it('refuses a reply that leaves the view out', async () => {
+    const { fetchFn } = serverOf({ body: { diagnostics: [] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    await expect(
+      ports.validate({ text: '' }, new AbortController().signal),
+    ).rejects.toThrow(ApiError);
+  });
+
+  it('takes a view that is null as the answer of a text with errors', async () => {
+    const { fetchFn } = serverOf({ body: { view: null, diagnostics: [] } });
+    const ports = createNextPorts(TOKEN, { fetchFn });
+
+    const checked = await ports.validate(
+      { text: '' },
+      new AbortController().signal,
+    );
+
+    expect(checked.view).toBeNull();
+  });
+
   it('refuses a reply with no findings in it', async () => {
     const { fetchFn } = serverOf({ body: { view: null } });
     const ports = createNextPorts(TOKEN, { fetchFn });
@@ -243,26 +265,42 @@ describe('createNextPorts, the check of a text', () => {
     ).rejects.toThrow(ApiError);
   });
 
+  // Every field the contract requires of a stage, left out one at a time.
+  const without = (key: keyof typeof stage) => {
+    const rest: Record<string, unknown> = { ...stage };
+    delete rest[key];
+    return { ...answer.view, stages: [rest] };
+  };
+
   it.each([
     ['a view with no stages', { format: 'konductor/1' }],
     ['stages that are not a list', { ...answer.view, stages: 'draft' }],
-    ['a stage with no name', { ...answer.view, stages: [{ kind: 'agent' }] }],
+    ['a stage with no name', without('name')],
+    ['a stage with no kind', without('kind')],
+    ['a stage with no agent', without('agent')],
+    ['a stage with no range', without('range')],
     [
       'a stage whose kind is not text',
-      { ...answer.view, stages: [{ name: 'draft', kind: 7 }] },
+      { ...answer.view, stages: [{ ...stage, kind: 7 }] },
+    ],
+    [
+      'a stage whose agent is not text',
+      { ...answer.view, stages: [{ ...stage, agent: 7 }] },
     ],
     [
       'a stage range that is not a mapping',
-      { ...answer.view, stages: [{ name: 'draft', range: 'lines 1 to 2' }] },
+      { ...answer.view, stages: [{ ...stage, range: 'lines 1 to 2' }] },
     ],
     [
       'a stage range that ends before it starts',
       {
         ...answer.view,
-        stages: [{ name: 'draft', range: { line: 9, end_line: 8 } }],
+        stages: [{ ...stage, range: { line: 9, end_line: 8 } }],
       },
     ],
     ['a view with no name', { ...answer.view, name: 7 }],
+    ['a view with no format', { ...answer.view, format: undefined }],
+    ['a view with no version', { ...answer.view, version: undefined }],
   ])('refuses %s', async (_, view) => {
     const { fetchFn } = serverOf({ body: { view, diagnostics: [] } });
     const ports = createNextPorts(TOKEN, { fetchFn });
@@ -275,6 +313,8 @@ describe('createNextPorts, the check of a text', () => {
   it.each([
     ['no message', { ...finding, message: undefined }],
     ['no code', { ...finding, code: undefined }],
+    ['no file', { ...finding, file: undefined }],
+    ['no path', { ...finding, path: undefined }],
     ['no line', { ...finding, line: undefined }],
     ['a line of 0', { ...finding, line: 0 }],
     ['no end column', { ...finding, end_column: undefined }],
