@@ -1,0 +1,267 @@
+// SPDX-License-Identifier: Apache-2.0
+import { describe, expect, it } from 'vitest';
+import type { CheckView } from '../designer-view/yaml-draft';
+import {
+  SAVABLE_KEYS,
+  checkStageOf,
+  droppedKeysOf,
+  fieldValuesOf,
+  markedStageOf,
+  pickedStageOf,
+  saveRefusal,
+} from './view-stage';
+
+const view: CheckView = {
+  format: 'konductor/1',
+  version: '0.1.0',
+  name: 'hello',
+  intent: { outcome: 'Add a greeting' },
+  stages: [
+    {
+      name: 'draft',
+      kind: 'agent',
+      agent: 'k-developer',
+      prompt: 'Write the greeting.',
+      range: { line: 10, end_line: 12 },
+    },
+    {
+      name: 'review',
+      kind: 'agent',
+      agent: 'k-quality-assurance',
+      outputs: { note: 'NOTE.md' },
+      range: { line: 13, end_line: 13 },
+    },
+  ],
+};
+
+const stageOf = (over: Record<string, unknown>) => ({
+  name: 'draft',
+  ...over,
+});
+
+describe('checkStageOf', () => {
+  it('finds the stage by name', () => {
+    expect(checkStageOf(view, 'review')?.agent).toBe('k-quality-assurance');
+  });
+
+  it('finds no stage that the view does not have', () => {
+    expect(checkStageOf(view, 'wrap-up')).toBeUndefined();
+  });
+
+  it('finds no stage without a view', () => {
+    expect(checkStageOf(null, 'draft')).toBeUndefined();
+  });
+});
+
+describe('pickedStageOf', () => {
+  const at = (name: string, index: number, total = 2) => ({
+    name,
+    index,
+    total,
+  });
+
+  it('takes the stage in the picked place when the counts match', () => {
+    expect(pickedStageOf(view, at('draft', 0))?.agent).toBe('k-developer');
+  });
+
+  it('keeps the picked stage while its name is being typed', () => {
+    expect(pickedStageOf(view, at('drafting', 0))?.agent).toBe('k-developer');
+  });
+
+  it('does not follow a name that now belongs to another stage', () => {
+    // The first stage was renamed to the second one's name.
+    expect(pickedStageOf(view, at('review', 0))?.agent).toBe('k-developer');
+  });
+
+  it('takes the stage of that name when the counts differ', () => {
+    expect(pickedStageOf(view, at('review', 0, 3))?.agent).toBe(
+      'k-quality-assurance',
+    );
+  });
+
+  it('takes no stage when the counts differ and no name matches', () => {
+    expect(pickedStageOf(view, at('wrap-up', 0, 3))).toBeUndefined();
+  });
+
+  it('takes no stage without a view', () => {
+    expect(pickedStageOf(null, at('draft', 0))).toBeUndefined();
+  });
+});
+
+describe('markedStageOf', () => {
+  const at = (name: string, index: number, total = 2) => ({
+    name,
+    index,
+    total,
+  });
+
+  it('gives the lines of the stage', () => {
+    expect(markedStageOf(view, at('draft', 0))).toEqual({
+      name: 'draft',
+      range: { line: 10, end_line: 12 },
+    });
+  });
+
+  it('marks the stage in its place while its name is being typed', () => {
+    expect(markedStageOf(view, at('drafting', 0))).toEqual({
+      name: 'drafting',
+      range: { line: 10, end_line: 12 },
+    });
+  });
+
+  it('marks nothing when the view has another number of stages', () => {
+    expect(markedStageOf(view, at('drafting', 0, 3))).toBeUndefined();
+  });
+
+  it('marks nothing without a view', () => {
+    expect(markedStageOf(undefined, at('draft', 0))).toBeUndefined();
+  });
+
+  it.each([
+    ['no range', {}],
+    ['a range that is not a mapping', { range: 'lines 1 to 2' }],
+    ['a line of 0', { range: { line: 0, end_line: 2 } }],
+    ['a line that is not whole', { range: { line: 1.5, end_line: 2 } }],
+    ['a range that ends before it starts', { range: { line: 9, end_line: 8 } }],
+  ])('marks nothing for a stage with %s', (_, over) => {
+    const one: CheckView = { ...view, stages: [stageOf(over)] };
+
+    expect(markedStageOf(one, at('draft', 0, 1))).toBeUndefined();
+  });
+});
+
+describe('fieldValuesOf', () => {
+  const draft = { id: 's1', name: 'draft', agent: 'k-developer' };
+
+  it('takes the text keys of the stage in the view', () => {
+    expect(fieldValuesOf(checkStageOf(view, 'draft'), draft)).toEqual({
+      name: 'draft',
+      agent: 'k-developer',
+      prompt: 'Write the greeting.',
+    });
+  });
+
+  it('leaves out the kind and the lines, which are not keys of the file', () => {
+    const values = fieldValuesOf(checkStageOf(view, 'draft'), draft);
+
+    expect(values).not.toHaveProperty('kind');
+    expect(values).not.toHaveProperty('range');
+  });
+
+  it('leaves out a key whose value is not text', () => {
+    expect(
+      fieldValuesOf(checkStageOf(view, 'review'), {
+        id: 's2',
+        name: 'review',
+        agent: 'k-quality-assurance',
+      }),
+    ).not.toHaveProperty('outputs');
+  });
+
+  it('takes the name and the agent of the draft, which the person is typing', () => {
+    expect(
+      fieldValuesOf(checkStageOf(view, 'draft'), {
+        id: 's1',
+        name: 'drafting',
+        agent: 'k-architect',
+      }),
+    ).toMatchObject({ name: 'drafting', agent: 'k-architect' });
+  });
+
+  it('gives the name and the agent of a stage the view does not have', () => {
+    expect(fieldValuesOf(undefined, draft)).toEqual({
+      name: 'draft',
+      agent: 'k-developer',
+    });
+  });
+});
+
+describe('droppedKeysOf', () => {
+  it('names no key for a stage with a name and an agent only', () => {
+    expect(
+      droppedKeysOf({ name: 'draft', agent: 'k-developer', kind: 'agent' }),
+    ).toEqual([]);
+  });
+
+  it('names the keys of the file that a save would lose', () => {
+    expect(
+      droppedKeysOf({
+        name: 'draft',
+        kind: 'agent',
+        agent: 'k-developer',
+        prompt: 'Write it.',
+        range: { line: 1, end_line: 2 },
+      }),
+    ).toEqual(['prompt']);
+  });
+
+  it('names a prompt file as well, in one order', () => {
+    expect(
+      droppedKeysOf({
+        name: 'draft',
+        prompt_file: 'draft.md',
+        done_when: 'x',
+      }),
+    ).toEqual(['done_when', 'prompt_file']);
+  });
+
+  it('names no key for a stage the view does not have', () => {
+    expect(droppedKeysOf(undefined)).toEqual([]);
+  });
+
+  it('counts the name and the agent as keys a save writes', () => {
+    expect(SAVABLE_KEYS).toEqual(['name', 'agent']);
+  });
+});
+
+describe('saveRefusal', () => {
+  const draft = (name: string, id = 's1') => ({
+    id,
+    name,
+    agent: 'k-developer',
+  });
+  const plain = { name: 'draft', agent: 'k-developer' };
+  const withPrompt = { ...plain, prompt: 'Write it.' };
+
+  it('lets a save of changed stages with no other key go ahead', () => {
+    expect(
+      saveRefusal([{ draft: draft('drafting'), saved: plain, changed: true }]),
+    ).toBeUndefined();
+  });
+
+  it('lets a save go ahead when the stage with a prompt is unchanged', () => {
+    expect(
+      saveRefusal([
+        { draft: draft('draft'), saved: withPrompt, changed: false },
+        { draft: draft('reviewing', 's2'), saved: plain, changed: true },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it('refuses a save that would drop the prompt of a changed stage', () => {
+    const refusal = saveRefusal([
+      { draft: draft('drafting'), saved: withPrompt, changed: true },
+    ]);
+
+    expect(refusal).toContain('would drop the prompt of drafting');
+    expect(refusal).toContain('refused');
+  });
+
+  it('names every key the changed stage would lose', () => {
+    const refusal = saveRefusal([
+      {
+        draft: draft('drafting'),
+        saved: { ...plain, prompt_file: 'draft.md', done_when: 'x' },
+        changed: true,
+      },
+    ]);
+
+    expect(refusal).toContain('done_when and prompt_file');
+  });
+
+  it('refuses a save when a stage the view does not describe is unchanged', () => {
+    expect(
+      saveRefusal([{ draft: draft('draft'), saved: undefined, changed: true }]),
+    ).toBeUndefined();
+  });
+});
