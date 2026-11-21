@@ -104,7 +104,7 @@
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "A shallow fix adding the 3 missing columns without timestamp normalization would fail tests #5-8. Missing formula neutralization would fail tests #9-10. Missing CSV quoting would fail test #8. The hidden tests provide good coverage depth. Easy by design (wave 11/12 review, 2026-11-21): vanilla scored 100 in pilot wave 11, while the dry run keeps the lazy answer at 23.8 and the stub at 14.3, so a lazy answer does not pass; the job is a plain one a careful developer finishes, and the tests were not made harder."
+        "note": "A shallow fix adding the 3 missing columns without timestamp normalization would fail tests #5-8. Missing formula neutralization would fail tests #9-10. Missing CSV quoting would fail test #8. The hidden tests provide good coverage depth. Easy by design, with a caveat (wave 11/12 review fix, 2026-11-21): vanilla scored 100 in pilot wave 11, the pack's lazy answer scores 23.8 and the stub 14.3. An answer that misses one rule scores about 62: timestamps left as supplied, as docs/decisions.md and the stale notes say (the UTC policy is in the branch history the request points to), or no formula guard. That is a partial answer that fails the hidden-test check, not a lazy pass, so the tests were not made harder; the trap costs 38 points."
       },
       {
         "check": "floor",
