@@ -160,8 +160,8 @@
       "sha256": "955e4626364e0aaf828135ddea18cec602b5e7182534404d3428c47365723dfb"
     },
     "t11-media-returns-whiteboard": {
-      "version": 3,
-      "sha256": "db26550c493e01a5d1c8eb8a9e4d5ea3d38d6307c8a574acbce4045c73200551"
+      "version": 4,
+      "sha256": "b3e1c4ad51088b917fa18a1271dec51ba5eee8093382ed75fcc96d6d36c9a23b"
     },
     "t11-merge-pricing-branches": {
       "version": 4,

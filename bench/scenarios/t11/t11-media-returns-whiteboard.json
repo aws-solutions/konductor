@@ -1,7 +1,7 @@
 {
   "id": "t11-media-returns-whiteboard",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -57,13 +57,7 @@
       "kind": "format"
     }
   ],
-  "rubric": [
-    {
-      "id": "image-legibility",
-      "criterion": "The whiteboard image keeps its state names, event labels, guards, crossed mark, loop and money note readable at normal size. Fail: any of the ten states, the event labels or the crossed mark cannot be read at normal size, or an arrow shows only its head with no visible line, or the money note is cut off. Partial: all states and event labels read, but one of the guard text, the loop back arrow, the crossed mark or the money note is hard to read at normal size. Pass: all ten states, every event label, each guard, the crossed mark, the inspection loop and the money note can be read at normal size with no overlap or clipped text, and every arrow shows its line and head. (code cannot check this because visual legibility requires human review)",
-      "weight": 1
-    }
-  ],
+  "rubric": [],
   "targetSkills": [],
   "targetSop": null,
   "targetAgent": "k-media-analyzer",
@@ -150,9 +144,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): fixture test script and CI line use test/*.test.js, which Node 22 and later need (D-119)",
+    "editor": "mate debt worker (2026-11-21): dropped the image-legibility judge item, which judges cannot read (D-153)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "pilot": {
     "scores": {},
