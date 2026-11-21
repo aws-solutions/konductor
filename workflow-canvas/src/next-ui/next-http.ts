@@ -217,18 +217,22 @@ function viewStageOf(
 /** The most stages a workflow may have, as the contract allows. */
 const STAGES_MOST = 40;
 
-/** The longest outcome of an intent, as the contract allows. */
+/** The longest outcome of an intent, in characters, as the contract allows. */
 const OUTCOME_LONGEST = 300;
 
 // The intent of a workflow, whose outcome says what the run is for: one line
-// of at most three hundred characters, as the contract gives it. Every other
-// key of the intent, such as the checks of `accept`, is kept as it came.
+// of at most three hundred characters, as the contract gives it. A character
+// there is a code point, as it is everywhere the contract counts them, so an
+// outcome written in characters outside the first plane is measured as a
+// person reads it and not as the two units each takes in a JavaScript string.
+// Every other key of the intent, such as the checks of `accept`, is kept as
+// it came.
 function intentOrFail(value: unknown): unknown {
   if (!isObject(value)) throw new ApiError(BAD_REPLY, 200);
   const outcome = textOrFail(value.outcome);
   if (
     outcome === '' ||
-    outcome.length > OUTCOME_LONGEST ||
+    [...outcome].length > OUTCOME_LONGEST ||
     /[\r\n]/.test(outcome)
   ) {
     throw new ApiError(BAD_REPLY, 200);
