@@ -61,3 +61,9 @@ on the control, arrow keys move the choice and filter the list, the live region 
 still names no control. New correct answer `answers/.../alt-select`: the reference with a native select in place of
 the radios. Free gates: reference 100, stub 3.6, lazy 21.4, alt 100, alt-select 100 (the old test failed it at the
 page-ready wait). Not run in a browser: a listbox answer. Non-Claude recheck: not ordered (owner).
+
+Recheck of v3 (gpt-5.6-luna, round 6 call L10, 2026-11-21): key-matches-fixture and solvable-from-fixture now pass,
+because the radio, select or listbox fix holds. Two other items fail. no-method-or-decoy: the request names the
+`createSearch(...)` API and the cancelling `schedule`. fixture-lists-no-answer: `docs/architecture.md:21-22` says to
+reuse the existing helpers, and `test/match.test.js` shows the matching rules. Not recorded in `review.recheck` and
+not disposed (owner rule: on a second fail, stop). The owner decides whether these are defects.
