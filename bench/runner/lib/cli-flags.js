@@ -34,7 +34,7 @@ const FLAGS = {
   recheck: ['run', 'bench-dir', 'dry-run', 'extra-tasks'],
   backfill: ['run', 'write', 'credits', 'skills', 'bench-dir', 'repo-root', 'extra-tasks'],
   skills: ['run', 'bench-dir', 'repo-root', 'json', 'extra-tasks'],
-  'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file', 'criteria-pack'],
+  'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file', 'criteria-pack', 'extra-tasks'],
   'calibrate export-reference': ['tasks', 'criteria', 'out', 'seed', 'bench-dir', 'extra-tasks'],
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min', 'save', 'criteria-pack'],
   'list-arms': ['arms', 'repo-root'],
