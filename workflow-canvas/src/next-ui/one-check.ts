@@ -84,41 +84,81 @@ function editorError(error: unknown): unknown {
  * very same question.
  */
 export function oneCheck(validate: ValidatePort, name?: string): OneCheck {
-  let held:
-    | { text: string; answer: Promise<CheckAnswer>; abort: AbortController }
-    | undefined;
+  interface Call {
+    readonly text: string;
+    readonly answer: Promise<CheckAnswer>;
+    readonly abort: AbortController;
+    /** How many readers are still waiting for this answer. */
+    waiting: number;
+  }
+  let held: Call | undefined;
 
-  const ask = (text: string): Promise<CheckAnswer> => {
-    if (held?.text === text) return held.answer;
+  // One reader of a call. The call lives while a reader still waits for it,
+  // so a reader that gives up never takes the answer of another away, and it
+  // ends with the last of them.
+  const readerOf = (call: Call) => {
+    let gone = false;
+    const off = (): boolean => {
+      if (gone) return false;
+      gone = true;
+      call.waiting -= 1;
+      return true;
+    };
+    return {
+      /** This reader has given up: the call ends if it was the last. */
+      gaveUp: () => {
+        if (!off()) return;
+        if (call.waiting > 0 || held !== call) return;
+        held = undefined;
+        call.abort.abort();
+      },
+      /** The answer came, so this reader waits for nothing. */
+      settled: off,
+    };
+  };
+
+  const ask = (text: string): { call: Call; answer: Promise<CheckAnswer> } => {
+    if (held?.text === text) {
+      held.waiting += 1;
+      return { call: held, answer: held.answer };
+    }
     held?.abort.abort();
     const abort = new AbortController();
     const request = name === undefined ? { text } : { name, text };
     const answer = validate(request, abort.signal);
-    const mine = { text, answer, abort };
-    held = mine;
+    const call: Call = { text, answer, abort, waiting: 1 };
+    held = call;
     // A call that failed is not held: the next ask for that text makes it
     // again rather than reading the failure twice.
     answer.catch(() => {
-      if (held === mine) held = undefined;
+      if (held === call) held = undefined;
     });
-    return answer;
+    return { call, answer };
   };
 
   return {
     validate: (request, signal) => {
-      const answer = ask(request.text);
-      // The caller aborts when its text is no longer the one on the page,
-      // which is when this call is stale for every reader of it.
-      signal.addEventListener('abort', () => held?.abort.abort(), {
-        once: true,
+      const { call, answer } = ask(request.text);
+      const reader = readerOf(call);
+      // This reader gives up when its text is no longer the one on the page.
+      // The call ends with the last reader of it, because the editor waits
+      // for the same answer to say whether the draft may be saved, and
+      // losing it would leave Save closed until the next edit.
+      signal.addEventListener('abort', reader.gaveUp, { once: true });
+      return answer.finally(() => {
+        reader.settled();
+        signal.removeEventListener('abort', reader.gaveUp);
       });
-      return answer;
     },
     check: async (text) => {
+      const { call, answer } = ask(text);
+      const reader = readerOf(call);
       try {
-        return resultOf(await ask(text));
+        return resultOf(await answer);
       } catch (error) {
         throw editorError(error);
+      } finally {
+        reader.settled();
       }
     },
   };
