@@ -1,6 +1,6 @@
 {
   "id": "t2-pr-price-cache",
-  "version": 3,
+  "version": 4,
   "class": "review",
   "phase": "code-review",
   "phases2": [],
@@ -180,8 +180,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): the fixture's store test removes its temp dir (D-100)",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
