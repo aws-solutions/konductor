@@ -14,7 +14,7 @@ async function withPage(fn) {
   const app = await open(__dirname);
   try {
     await app.page.goto(`${app.url}/index.html`);
-    await app.page.getByRole('radio', { name: 'All' }).waitFor();
+    await statusReady(app.page);
     await fn(app.page, app);
     assert.deepEqual(app.errors, [], 'the page must not throw');
   } finally {
@@ -32,12 +32,55 @@ const liveText = (page) => page.evaluate(() => {
   return '';
 });
 
+// The status filter may be any accessible single-choice control the request allows: a radio group (native or ARIA),
+// a native select, or a single-select listbox (D-154). Each kind reports which choice is selected, whether the keyboard
+// focus is on the control, the arrow keys that move the choice, and how a keyboard user picks one.
+async function statusFilter(page) {
+  const radio = page.getByRole('radio', { name: 'All', exact: true });
+  if (await radio.count()) {
+    const r = (name) => page.getByRole('radio', { name, exact: true });
+    return {
+      kind: 'radio group', next: 'ArrowRight', prev: 'ArrowLeft',
+      selected: (name) => r(name).isChecked(),
+      focused: () => page.evaluate(() => { const a = document.activeElement; return Boolean(a) && (a.getAttribute('role') === 'radio' || a.type === 'radio') && (a.checked === true || a.getAttribute('aria-checked') === 'true'); }),
+      pick: async (name) => { await r(name).focus(); await page.keyboard.press('Space'); },
+    };
+  }
+  const selects = page.locator('select').filter({ has: page.locator('option', { hasText: /^\s*All\s*$/ }) });
+  if (await selects.count()) {
+    const sel = selects.first();
+    return {
+      kind: 'select', next: 'ArrowDown', prev: 'ArrowUp',
+      selected: async (name) => (await sel.evaluate((el) => (el.selectedOptions[0] ? el.selectedOptions[0].textContent.trim() : ''))) === name,
+      focused: () => sel.evaluate((el) => el === document.activeElement),
+      pick: async (name) => { await sel.focus(); await sel.selectOption({ label: name }); },
+    };
+  }
+  const boxes = page.getByRole('listbox').filter({ has: page.getByRole('option', { name: 'All', exact: true }) });
+  if (await boxes.count()) {
+    const box = boxes.first();
+    const o = (name) => box.getByRole('option', { name, exact: true });
+    return {
+      kind: 'listbox', next: 'ArrowDown', prev: 'ArrowUp',
+      selected: async (name) => (await o(name).getAttribute('aria-selected')) === 'true',
+      focused: () => box.evaluate((el) => el === document.activeElement || el.contains(document.activeElement)),
+      pick: async (name) => { await o(name).click(); },
+    };
+  }
+  throw new Error('no accessible single-choice status filter (radio group, select or listbox) with an "All" choice');
+}
+
+// Waits until a status control with an All choice is on the page.
+const statusReady = (page) => page.getByRole('radio', { name: 'All', exact: true })
+  .or(page.getByRole('option', { name: 'All', exact: true }))
+  .or(page.locator('select option', { hasText: /^\s*All\s*$/ }))
+  .first().waitFor({ state: 'attached' });
+
 // Chooses a status the way a keyboard user does (visually hidden inputs cannot always be clicked).
 async function pick(page, name) {
-  const radio = page.getByRole('radio', { name });
-  await radio.focus();
-  await page.keyboard.press('Space');
-  assert.equal(await radio.isChecked(), true, `${name} is selected`);
+  const filter = await statusFilter(page);
+  await filter.pick(name);
+  assert.equal(await filter.selected(name), true, `${name} is selected (${filter.kind})`);
 }
 
 // Table rows on screen, without the header row.
@@ -58,27 +101,27 @@ async function messageFor(input) {
 
 const invalid = (input) => input.evaluate((el) => el.getAttribute('aria-invalid'));
 
-test('status filter is a radio group: Tab reaches it, arrow keys move the selection and filter the list', async () => {
+test('status filter is one accessible choice control: Tab reaches it, arrow keys move the selection and filter the list', async () => {
   await withPage(async (page) => {
-    const radios = ['All', 'Processing', 'Shipped', 'Delivered'].map((name) => page.getByRole('radio', { name }));
-    assert.equal(await radios[0].isChecked(), true, 'All starts selected');
+    const filter = await statusFilter(page);
+    assert.equal(await filter.selected('All'), true, `All starts selected (${filter.kind})`);
 
     await page.getByLabel('Search orders').focus();
     await page.keyboard.press('Tab');
-    assert.equal(await radios[0].evaluate((el) => el === document.activeElement), true, 'Tab from the search box lands on the selected radio');
+    assert.equal(await filter.focused(), true, `Tab from the search box lands on the status ${filter.kind}`);
 
-    await page.keyboard.press('ArrowRight');
-    assert.equal(await radios[1].isChecked(), true);
-    assert.equal(await radios[0].isChecked(), false);
+    await page.keyboard.press(filter.next);
+    assert.equal(await filter.selected('Processing'), true);
+    assert.equal(await filter.selected('All'), false);
     assert.equal(await liveText(page), `${await expectedCount({ status: 'processing' })} orders shown`);
 
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('ArrowRight');
-    assert.equal(await radios[3].isChecked(), true, 'two more presses reach Delivered');
+    await page.keyboard.press(filter.next);
+    await page.keyboard.press(filter.next);
+    assert.equal(await filter.selected('Delivered'), true, 'two more presses reach Delivered');
     assert.equal(await liveText(page), `${await expectedCount({ status: 'delivered' })} orders shown`);
 
-    await page.keyboard.press('ArrowLeft');
-    assert.equal(await radios[2].isChecked(), true);
+    await page.keyboard.press(filter.prev);
+    assert.equal(await filter.selected('Shipped'), true);
     assert.equal(await liveText(page), `${await expectedCount({ status: 'shipped' })} orders shown`);
   });
 });
@@ -208,7 +251,7 @@ test('typing waits for a pause: nothing changes inside 200 ms, one update after,
     const { page } = app;
     await page.clock.install();
     await page.goto(`${app.url}/index.html`);
-    await page.getByRole('radio', { name: 'All' }).waitFor();
+    await statusReady(page);
     const total = await expectedCount({});
     const kettles = await expectedCount({ query: 'kettle' });
     assert.ok(kettles > 0 && kettles < total);
@@ -235,7 +278,7 @@ test('Enter filters at once, and a pending search still honours a status picked 
     const { page } = app;
     await page.clock.install();
     await page.goto(`${app.url}/index.html`);
-    await page.getByRole('radio', { name: 'All' }).waitFor();
+    await statusReady(page);
     const box = page.getByLabel('Search orders');
 
     // Accent-free typing finds accented names, and Enter does not wait.
