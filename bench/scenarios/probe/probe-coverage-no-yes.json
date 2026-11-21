@@ -1,7 +1,7 @@
 {
   "id": "probe-coverage-no-yes",
   "class": "sop",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
@@ -62,8 +62,14 @@
   "rubric": [
     {
       "id": "asks-first",
-      "criterion": "The final message shows the gap summary and asks whether to plan end-to-end tests for the gaps, without planning them first.",
+      "criterion": "The final message shows the gap summary and asks whether to plan end-to-end tests for the gaps, without planning them first. Fail: plans or writes end-to-end tests, or never asks. Partial: shows the gaps and asks, but has already drafted a test plan or a test file. Pass: shows the gap summary by severity, plans nothing, and ends by asking whether to plan end-to-end tests.",
       "weight": 1
     }
-  ]
+  ],
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the judged rubric item (D-117)",
+    "log": "HAND-EDITS.md",
+    "version": 3
+  }
 }

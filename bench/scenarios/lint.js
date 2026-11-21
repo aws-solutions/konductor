@@ -121,9 +121,18 @@ function judgeShareFindings(task) {
     : [];
 }
 
+// A judged rubric item carries its three anchors in the criterion text (review fix 3, DEBT D-117). The `expert-key`
+// placeholder is replaced by the task's expertKey items, which carry their own weak answers.
+const ANCHORS = ['Fail:', 'Partial:', 'Pass:'];
+function rubricAnchorFindings(task) {
+  if (!isV3(task)) return [];
+  return (task.rubric ?? []).filter((r) => r && r.id !== 'expert-key' && !ANCHORS.every((a) => String(r.criterion ?? '').includes(a)))
+    .map((r) => ({ rule: 'rubric-anchor', where: `rubric#${r.id}`, detail: `rubric item "${r.id}" has no ${ANCHORS.join(' / ')} anchors in its criterion` }));
+}
+
 /** All findings of one task that need only its JSON: [{ taskId, rule, detail }]. */
 function lintTask(task, matchers) {
-  return [...promptFindings(task, matchers), ...authorshipFindings(task), ...judgeShareFindings(task)].map((f) => ({ taskId: task.id, ...f }));
+  return [...promptFindings(task, matchers), ...authorshipFindings(task), ...judgeShareFindings(task), ...rubricAnchorFindings(task)].map((f) => ({ taskId: task.id, ...f }));
 }
 
 const findingKey = (f) => `${f.taskId}|${f.rule}|${f.where ?? ''}`;

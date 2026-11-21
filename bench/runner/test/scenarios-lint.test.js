@@ -138,7 +138,7 @@ test('the CLI exits 1 with the findings, 0 when clean, and 2 without --base or a
 const { judgeShare } = require('../../scenarios/lint.js');
 
 test('judge-share: the judges carry at most 30% of a v3 task; a task without a tests check or a substance check carries more', () => {
-  const rubric = [{ id: 'r1' }];
+  const rubric = [{ id: 'r1', criterion: 'c. Fail: x. Partial: y. Pass: z.' }];
   const t = (checks) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, rubric, checks });
   assert.equal(judgeShare(t([{ type: 'tests' }, { type: 'cmd' }])), 0.3);
   assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'cmd' }])), []);
@@ -146,6 +146,14 @@ test('judge-share: the judges carry at most 30% of a v3 task; a task without a t
   assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'file_exists', kind: 'format' }])), ['judge-share'], 'a format check is not scored: 0.3 of 0.8');
   assert.equal(judgeShare({ checks: [{ type: 'cmd' }] }), null, 'no rubric, no judges');
   assert.deepEqual(rules({ prompt: 'ok', rubric, checks: [{ type: 'cmd' }] }), [], 'an old task is exempt');
+});
+
+test('rubric-anchor: a judged rubric item of a v3 task needs Fail / Partial / Pass anchors; the expert-key placeholder and old tasks are exempt (D-117)', () => {
+  const v3 = (rubric) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, checks: [{ type: 'tests' }, { type: 'cmd' }], rubric });
+  assert.deepEqual(rules(v3([{ id: 'a', criterion: 'Clear. Fail: none. Partial: some. Pass: all.' }])), []);
+  assert.deepEqual(rules(v3([{ id: 'a', criterion: 'Clear. Fail: none. Pass: all.' }])), ['rubric-anchor']);
+  assert.deepEqual(rules(v3([{ id: 'expert-key', criterion: 'placeholder' }])), []);
+  assert.deepEqual(rules({ prompt: 'ok', rubric: [{ id: 'a', criterion: 'no anchors' }] }), []);
 });
 
 function filePack() {

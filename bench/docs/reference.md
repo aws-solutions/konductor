@@ -1254,7 +1254,8 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   one-word name (`verification`) is caught only in backticks or quotes, or next to the word skill, SOP or agent, because it is also an everyday word. It also refuses a
   v3 task (one with a `phase`) that has no `authorship.source`, or a public source with an empty licence. Plain deliverable names (ADR, postmortem,
   threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks.
-  It also checks bug classes that reviews found more than once (`bench/scenarios/lint-files.js`): `judge-share` (a v3 task's judges carry more than
+  It also checks bug classes that reviews found more than once (`bench/scenarios/lint-files.js`): `rubric-anchor` (a judged rubric item of a v3
+  task has no `Fail:`, `Partial:` and `Pass:` anchors in its criterion; the `expert-key` placeholder is exempt), `judge-share` (a v3 task's judges carry more than
   30% of its score under the default weights, for example no `tests` check), `key-negation` (a block key item fails an answer whose text matches a
   `none` pattern, so a correct denial of the wrong cause loses it; a pattern anchored as `^...$` is exempt; a key graded by the shared
   `block-key.js`, which skips a denied claim in `none` lists, is checked only for `none` items, and a `none` item with its own `match.none`

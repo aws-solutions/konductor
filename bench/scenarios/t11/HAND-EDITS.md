@@ -66,3 +66,9 @@ Non-Claude recheck: pending (paid; `handEdited.version` 2 blocks a lock until a 
 The fixture's `npm test`, CI line and README ran `node --test test/`, which fails on Node 22 and later (Node reads the
 directory as one file), so an untouched fixture looked broken. All three now run `node --test test/*.test.js`. Free
 gates unchanged: reference 100, stub 17.5, lazy 23.8, alt 100. Non-Claude recheck: pending (`handEdited.version` 3).
+
+## Rubric anchors (2026-11-21, mate debt worker, DEBT D-117)
+
+`t11-docx-room-booking-reqs` v3 (`narrative-judgment`) and `t11-guide-contributing` v2 (`review-guidance`) each had a
+judged rubric item with no Fail / Partial / Pass anchor; each now has the three. No check, key, fixture or answer
+changed. Non-Claude recheck: pending (`handEdited.version` 3 and 2).
