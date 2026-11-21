@@ -181,3 +181,7 @@ recheck at its new version before a lock.
 fixture-lists-no-answer: `docs/notes/sam-diagnosis.md:5-6` gives the cause and says the UTC getters fix it, and
 `test/export.test.js:12-15` shows the UTC outputs. The task is a half-done fix to hand off, so this may be its input.
 t12-parallel-backlog v5 (L15) passes 4 of 4 and is recorded.
+
+Independent review (claude-fable-5.1, `reports/review-probe-disposals-fable.md` in the mate workspace): the L14 fail
+is by design, since Sam's notes are the half-done work the hand-off must absorb. The L14 recheck is now in
+`review.recheck` at version 4, with that disposal in its note.
