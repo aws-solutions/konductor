@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { WorkflowExtras } from '../api/workflow-extras';
@@ -63,7 +63,8 @@ async function openPage({
     start: vi.fn(() => Promise.resolve(RUN_ID)),
     get: vi.fn(() => Promise.reject(new Error('The old tab reads no run.'))),
   };
-  const result = loaded(HELLO_DOCUMENT, runs, acceptingEdits());
+  const edits = acceptingEdits();
+  const result = loaded(HELLO_DOCUMENT, runs, edits);
   const portsFor = vi.fn(() => ports);
   render(
     <App
@@ -76,7 +77,7 @@ async function openPage({
     />,
   );
   await act(async () => {});
-  return { ports, scheduler, runs, result, portsFor };
+  return { ports, scheduler, runs, result, portsFor, edits };
 }
 
 const runTab = () => screen.getByRole('tab', { name: 'Run' });
@@ -220,6 +221,57 @@ describe('the run lifecycle with ?ui=next', () => {
     expect(events.calls.length).toBeGreaterThan(0);
   });
 
+  it('goes on following the run while the Design view is shown', async () => {
+    const events = new HeldEvents();
+    await openPage({
+      nextUi: true,
+      ports: portsOf({ readEvents: events.readEvents }),
+    });
+    await startRun(events);
+    const read = events.calls.length;
+
+    // The page follows the run, so looking at the Design view takes nothing
+    // off: the read of the next events is still out.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
+    });
+    await act(async () => {
+      events.answer({
+        events: [
+          { seq: 2, type: 'stage_state', stage: 'draft', status: 'passed' },
+          { seq: 3, type: 'stage_state', stage: 'review', status: 'running' },
+        ],
+        next: 3,
+        finished: false,
+      });
+    });
+
+    expect(events.calls.length).toBeGreaterThan(read);
+    expect(events.waiting).toBe(true);
+    // Coming back shows what came while it was away.
+    await act(async () => {
+      fireEvent.click(runTab());
+    });
+    expect(screen.getByTestId('run-progress').textContent).toContain('review');
+  });
+
+  it('keeps telling the swap guard about the run from the Design view', async () => {
+    const set = vi.fn();
+    const events = new HeldEvents();
+    await openPage({
+      nextUi: true,
+      ports: portsOf({ readEvents: events.readEvents }),
+      swapRisk: { set, get: () => ({ draft: false, run: false }) },
+    });
+    await startRun(events);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
+    });
+
+    expect(set).toHaveBeenLastCalledWith({ draft: false, run: true });
+  });
+
   it('follows the kept run once after a reload, and reads it one way', async () => {
     const events = new HeldEvents();
     const { runs } = await openPage({
@@ -274,5 +326,61 @@ describe('the run lifecycle with ?ui=next', () => {
 
     expect(screen.getAllByTestId('run-live-status')).toHaveLength(1);
     expect(screen.getAllByTestId('run-live-alert')).toHaveLength(1);
+  });
+});
+
+describe('the check of a text with ?ui=next', () => {
+  const nameBox = () =>
+    within(screen.getByRole('tabpanel', { name: 'Properties' })).getByRole(
+      'textbox',
+      { name: 'name' },
+    ) as HTMLInputElement;
+
+  const openProperties = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'Properties' }));
+    });
+  };
+
+  const type = async (text: string) => {
+    await act(async () => {
+      fireEvent.change(nameBox(), { target: { value: text } });
+    });
+  };
+
+  /** The checks made so far, as the page has sent them. */
+  const checksOf = (ports: NextPorts) => vi.mocked(ports.validate).mock.calls;
+
+  // Both readers of a check wait for the same pause, so one edit must send
+  // one request: the editor judges the draft by the findings of the very
+  // answer the view draws.
+  it('sends one check for one edit, and none of the editor own', async () => {
+    const { ports, edits } = await openPage({ nextUi: true });
+    await openProperties();
+    // The view checks the file as it was loaded when it opens; this is about
+    // what one edit adds to that.
+    const before = checksOf(ports).length;
+
+    await type('drafting');
+    await act(async () => {});
+
+    expect(checksOf(ports).slice(before)).toHaveLength(1);
+    expect(edits.check).not.toHaveBeenCalled();
+  });
+
+  it('calls off the check of a text another edit has replaced', async () => {
+    const { ports } = await openPage({ nextUi: true });
+    await openProperties();
+    const before = checksOf(ports).length;
+    await type('drafting');
+    await act(async () => {});
+
+    await type('drafted');
+    await act(async () => {});
+
+    const [first, second] = checksOf(ports).slice(before);
+    expect(first?.[0].text).not.toBe(second?.[0].text);
+    expect(first?.[1].aborted).toBe(true);
+    expect(second?.[1].aborted).toBe(false);
   });
 });

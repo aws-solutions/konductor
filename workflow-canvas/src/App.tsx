@@ -23,9 +23,13 @@ import { useGoal } from './execution/use-goal';
 import type { SwapRisk } from './launch/swap-guard';
 import type { NextPorts } from './next-ui/next-http';
 import { NextRunAnnouncements } from './next-ui/NextRunAnnouncements';
+import { oneCheck } from './next-ui/one-check';
 import { useNextData } from './next-ui/use-next-data';
 import { RunView } from './run-view/RunView';
-import { NO_RUN_LIFECYCLE, type RunLifecycle } from './run-view/run-start';
+import {
+  useRunController,
+  type RunViewPorts,
+} from './run-view/use-run-controller';
 import { useThemeMode } from './theme/use-theme-mode';
 import {
   openWorkflowName,
@@ -35,6 +39,18 @@ import {
 } from './workflow/load-workflow';
 
 type ViewId = 'designer' | 'execution';
+
+// The calls of a page that has no session to run anything through. It is one
+// object for the life of the page, so the run controller holds one state for
+// as long as there is nothing to follow.
+const NO_RUN_PORTS: RunViewPorts = {
+  start: () =>
+    Promise.reject(new Error('The page has no session to start a run with.')),
+  readEvents: undefined,
+  listRuns: undefined,
+  scheduler: timerScheduler,
+  now: () => Date.now(),
+};
 
 /**
  * True when the Run view draws a workflow, so it has a Run button. A load
@@ -101,13 +117,33 @@ export function App({
     scheduler,
     runMemory,
   );
-  const [nextRun, setNextRun] = useState<RunLifecycle>(NO_RUN_LIFECYCLE);
   const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
   // The load the page draws, held by its identity as well as its content: the
   // editor is opened with it, and the views that keep anything of their own
   // tell one workflow from another by it.
-  const loaded = result?.ok ? result.workflow : undefined;
+  const opened = result?.ok ? result.workflow : undefined;
+  // One check of a text for the two readers of it: the editor, which judges
+  // the draft by its findings, and the Design view, which draws the keys and
+  // the lines of each stage. Both ask after the same pause, so without this
+  // one edit would send two of the same request.
+  const checks = useMemo(
+    () =>
+      nextPorts && opened
+        ? oneCheck(nextPorts.validate, opened.document.name)
+        : undefined,
+    [nextPorts, opened],
+  );
+  // The editor of the views being built checks through that one call. Without
+  // the query it is the load as it came, so the page as it is today is left
+  // alone.
+  const loaded = useMemo(
+    () =>
+      opened && checks
+        ? { ...opened, edits: { ...opened.edits, check: checks.check } }
+        : opened,
+    [opened, checks],
+  );
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
   const editor = useEditor(loaded, scheduler);
@@ -121,7 +157,6 @@ export function App({
     () => (document ? withDocument(result, document) : result),
     [result, document],
   );
-  const running = isInFlight(execution.state) || nextRun.active;
   const [view, setView] = useState<ViewId>('designer');
   const workflowName = openWorkflowName(saved);
   const next = useNextData({
@@ -136,8 +171,40 @@ export function App({
       ),
     [saved],
   );
+  // The calls the Run view of the views being built follows a run through,
+  // which belong to the workflow that loaded: another workflow is another
+  // object, and the controller starts again for it, the run its session kept
+  // included.
+  const nextRunPorts = useMemo(
+    () =>
+      nextUi && nextPorts && runs
+        ? {
+            start: runs.start,
+            readEvents: nextPorts.readEvents,
+            listRuns: nextPorts.listRuns,
+            scheduler,
+            now: () => Date.now(),
+          }
+        : NO_RUN_PORTS,
+    [nextUi, nextPorts, runs, scheduler],
+  );
+  // The page follows the run, not the tab that draws it: a person who looks
+  // at the Design view must not take the only follower off the page.
+  const nextRunner = useRunController({
+    stages: stageNames,
+    ...(next.extras.goalDefault === undefined
+      ? {}
+      : { goalDefault: next.extras.goalDefault }),
+    ports: nextRunPorts,
+    // Only once there is a session: the page has no run of its own to keep
+    // before one, and the controller drops the run of the session it is
+    // handed a new one in place of.
+    ...(runMemory && nextRunPorts !== NO_RUN_PORTS ? { runMemory } : {}),
+  });
+  const nextRun = nextRunner.lifecycle;
+  const running = isInFlight(execution.state) || nextRun.active;
   const nextViews: PageView<ViewId>[] | undefined =
-    nextUi && editor && nextPorts && runs && loaded
+    nextUi && editor && nextPorts && runs && loaded && checks
       ? [
           {
             id: 'designer',
@@ -147,7 +214,7 @@ export function App({
                 editor={editor}
                 loaded={loaded}
                 harness={loaded.harness}
-                validate={nextPorts.validate}
+                validate={checks.validate}
                 scheduler={scheduler}
                 stageFields={next.extras.stageFields}
                 agents={next.agents}
@@ -157,23 +224,7 @@ export function App({
           {
             id: 'execution',
             label: 'Run',
-            content: (
-              <RunView
-                stages={stageNames}
-                {...(next.extras.goalDefault === undefined
-                  ? {}
-                  : { goalDefault: next.extras.goalDefault })}
-                ports={{
-                  start: runs.start,
-                  readEvents: nextPorts.readEvents,
-                  listRuns: nextPorts.listRuns,
-                  scheduler,
-                  now: () => Date.now(),
-                }}
-                {...(runMemory ? { runMemory } : {})}
-                onRunState={setNextRun}
-              />
-            ),
+            content: <RunView controller={nextRunner} />,
           },
         ]
       : undefined;
