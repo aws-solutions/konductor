@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-invoice-precheck",
+  "phase": "code-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: the developer who wrote the change. Repo kind: a Node.js invoicing service (invoice list and export endpoints, a small store, an HTTP client to a payment provider, config, tests, docs). The user wants a quick sanity check of their change before they put it up for review and says not to touch anything. Keep the change small: 4 to 6 files. Plant: an off-by-one in the page end index drops the last invoice of each page; a promise catch swallows the provider error and returns an empty list as success; a leftover debug log prints the request headers including the bearer token; a test fixture holds a live-looking provider secret key; a write to the store is not awaited so the response can go out before it fails; a config default timeout changes from 5000 to 50 by typo. Add one decoy.",
+  "stack": "node",
+  "pr": 418
+}

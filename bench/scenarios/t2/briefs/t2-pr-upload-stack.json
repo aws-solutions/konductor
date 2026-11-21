@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-upload-stack",
+  "phase": "code-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js image-upload service: a Lambda handler in src/ with tests, and its CloudFormation template in infra/ (YAML), plus docs that say this is the dev stack, that a copy of production data is loaded into its database for testing, and what the team may spend per month. The PR adds the stack and the user says it deploys tomorrow. Plant in the template and handler: SSH open to the whole internet on a security group; the bucket has no public access block and a policy that lets anyone read objects; the function role allows every action on every resource; the database has deletion protection off and no backups although it holds the production copy; one NAT gateway per zone across three zones for a dev stack against the cost note; the database password sits in plain text in a function environment variable; the database storage is not encrypted. Add a decoy: the public load balancer open to the internet on port 443.",
+  "stack": "node",
+  "pr": 77
+}

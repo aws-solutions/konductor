@@ -7,6 +7,7 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | Wave 1 | 37 | 97.53 | 80 | 160 |
 | Rest | 82 | 227.90 | 270 | 540 |
 | **T2 total** | 119 | **325.44** | 350 | 700 |
+| Coverage-gap stage 1 (2026-11-21, 4 tried, 0 landed) | 16 | 117.12 | counted at max(15, real): 248 | 1,550 counted |
 
 6 calls were stopped before their metering event and are not in these totals; at 2 to 15 credits each they add an estimated 12 to 90.
 
@@ -131,3 +132,19 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-20T02:39:39Z | t2-sec-dr-sso-login | recheck | minimax-m2.5 | 97 | 0.45 | ok |
 | 2026-11-20T02:40:30Z | t2-sec-pr-webhook-relay | recheck | qwen3-coder-next | 50 | 0.24 | ok |
 | 2026-11-20T02:43:01Z | t2-pr-refund-flow | recheck | glm-5 | 103 | 2.72 | ok |
+| 2026-11-21T19:10:05.222Z | t2-pr-invoice-precheck | author | deepseek-3.2 | 1243 | 21.59 | coverage-gap stage 1 |
+| 2026-11-21T19:29:58.161Z | t2-pr-invoice-precheck | map | glm-5 | 20 | 0.66 | coverage-gap stage 1 |
+| 2026-11-21T19:30:39.619Z | t2-pr-invoice-precheck | review | gpt-5.6-luna | 33 | 0.78 | coverage-gap stage 1 |
+| 2026-11-21T19:43:00.062Z | t2-pr-invoice-precheck | fix | deepseek-3.2 | 727 | 12.92 | coverage-gap stage 1 |
+| 2026-11-21T20:00:18.665Z | t2-pr-invoice-precheck | review-2 | gpt-5.6-luna | 52 | 1.23 | coverage-gap stage 1 |
+| 2026-11-21T20:16:52.890Z | t2-pr-upload-stack | author | deepseek-3.2 | 969 | 16.38 | coverage-gap stage 1 |
+| 2026-11-21T20:39:43.452Z | t2-pr-upload-stack | fix | deepseek-3.2 | 652 | 8.60 | coverage-gap stage 1 |
+| 2026-11-21T21:11:06.781Z | t2-pr-reservation-model | author | deepseek-3.2 | 866 | 13.95 | coverage-gap stage 1 |
+| 2026-11-21T21:34:46.653Z | t2-pr-reservation-model | fix | deepseek-3.2 | 605 | 12.41 | coverage-gap stage 1 |
+| 2026-11-21T21:52:59.689Z | t2-pr-reservation-model | map | glm-5 | 30 | 0.69 | coverage-gap stage 1 |
+| 2026-11-21T21:53:38.601Z | t2-pr-reservation-model | review | gpt-5.6-luna | 39 | 0.95 | coverage-gap stage 1 |
+| 2026-11-21T22:15:45.645Z | t2-dr-billing-migration-plan | author | deepseek-3.2 | 1293 | 11.63 | coverage-gap stage 1 |
+| 2026-11-21T22:22:34.277Z | t2-dr-billing-migration-plan | map | glm-5 | 23 | 0.67 | coverage-gap stage 1 |
+| 2026-11-21T22:23:12.473Z | t2-dr-billing-migration-plan | review | gpt-5.6-luna | 38 | 0.84 | coverage-gap stage 1 |
+| 2026-11-21T22:33:41.007Z | t2-dr-billing-migration-plan | fix | deepseek-3.2 | 624 | 13.10 | coverage-gap stage 1 |
+| 2026-11-21T22:45:10.848Z | t2-dr-billing-migration-plan | review-2 | gpt-5.6-luna | 32 | 0.72 | coverage-gap stage 1 |
