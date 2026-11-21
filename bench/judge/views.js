@@ -167,4 +167,22 @@ function blankExpert(criteria, deliverables) {
   return expert.every((c) => (c.verdictRaw ?? c.verdict) === 'fail' && NO_EVIDENCE.test(String(c.evidence ?? '').trim()));
 }
 
-module.exports = { blankExpert, dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };
+// A failed expert: item whose evidence says the output "does not quote" a passage (qwen3-coder-next on t8-rollout, while
+// quoting the plan's own lines on the same point) is read the same way as a blank one.
+const NO_QUOTE = /\b(?:does not|doesn't|do not|don't|did not|didn't)\s+(?:quote|cite)\b|\bnot\s+quote\b|\bno passage\b/i;
+
+/**
+ * Why a rubric reply must be asked again before its verdict counts (D-149), or null: 'blank' when it fails every
+ * expert: item with no evidence on a real deliverable (blankExpert), 'does-not-quote' when every expert: item fails and
+ * each one's evidence is empty or says the output does not quote a passage.
+ */
+function reaskReason(criteria, deliverables) {
+  if (blankExpert(criteria, deliverables)) return 'blank';
+  const expert = (criteria || []).filter((c) => isExpert(c.id));
+  if (!expert.length || String(deliverables ?? '').length < BLANK_MIN_CHARS) return null;
+  const quoteless = (c) => NO_EVIDENCE.test(String(c.evidence ?? '').trim()) || NO_QUOTE.test(String(c.evidence ?? ''));
+  const all = expert.every((c) => (c.verdictRaw ?? c.verdict) === 'fail' && quoteless(c));
+  return all && expert.some((c) => NO_QUOTE.test(String(c.evidence ?? ''))) ? 'does-not-quote' : null;
+}
+
+module.exports = { blankExpert, reaskReason, dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };

@@ -89,6 +89,8 @@ function openLedger({ dir, budget = null, budgetUnit = 'credits', create = true,
       } catch { t.writeFailures++; }
     },
     totals: () => ({ ...t }),
+    // Whether a call that may cost up to `worst` (in the budget's unit) still fits under the guard. No budget: always.
+    canAfford: (worst) => budgetValue === null || guardState((inUsd ? t.sessionUsd : t.session) + worst, budgetValue) === 'ok',
     state,
     shouldStop: () => state() !== 'ok',
     stopReason() {
