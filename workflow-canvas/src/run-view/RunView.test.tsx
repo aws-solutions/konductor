@@ -16,8 +16,43 @@ import {
   passed,
   running,
 } from '../test-support/held-events';
-import { RunView, type RunViewPorts } from './RunView';
+import { RunView } from './RunView';
 import type { RunLifecycle } from './run-start';
+import { useRunController, type RunViewPorts } from './use-run-controller';
+
+/**
+ * The view with the controller the page holds for it, so these tests drive
+ * the two together, as the page does.
+ */
+function Drawn({
+  stages,
+  goalDefault,
+  ports,
+  runMemory,
+  reasonSentence,
+  onRunState,
+}: {
+  stages: readonly string[];
+  goalDefault?: string;
+  ports: RunViewPorts;
+  runMemory?: RunMemory;
+  reasonSentence?: (code: string) => string | undefined;
+  onRunState?: (state: RunLifecycle) => void;
+}) {
+  const controller = useRunController({
+    stages,
+    ...(goalDefault === undefined ? {} : { goalDefault }),
+    ports,
+    ...(runMemory ? { runMemory } : {}),
+  });
+  onRunState?.(controller.lifecycle);
+  return (
+    <RunView
+      controller={controller}
+      {...(reasonSentence ? { reasonSentence } : {})}
+    />
+  );
+}
 
 const RUN_ID = '20261024-0412-a7b3c';
 const STAGES = ['draft', 'review'];
@@ -89,7 +124,7 @@ function drawn({
     now: clock ? clock.now : () => NOW,
   };
   const view = (
-    <RunView
+    <Drawn
       stages={STAGES}
       {...(noGoalDefault ? {} : { goalDefault })}
       ports={ports}
@@ -114,7 +149,7 @@ function drawn({
     const nextStart = vi.fn(() => startResult);
     const nextList = vi.fn(() => Promise.resolve(runs));
     rerender(
-      <RunView
+      <Drawn
         stages={STAGES}
         goalDefault={nextDefault}
         ports={{
@@ -661,5 +696,84 @@ describe('RunView when the server is gone', () => {
     expect(screen.getByTestId('run-session-error').textContent).toContain(
       'The session is gone.',
     );
+  });
+});
+
+describe('the Run view and the controller the page keeps', () => {
+  // The page holds the controller, so the view can come and go, as it does
+  // when a person looks at the Design view and comes back.
+  function Page({ shown, ports }: { shown: boolean; ports: RunViewPorts }) {
+    const controller = useRunController({
+      stages: STAGES,
+      goalDefault: GOAL_DEFAULT,
+      ports,
+    });
+    return shown ? <RunView controller={controller} /> : <p>Another view</p>;
+  }
+
+  function opened() {
+    const events = new HeldEvents();
+    const ports: RunViewPorts = {
+      start: vi.fn(() => Promise.resolve(RUN_ID)),
+      readEvents: events.readEvents,
+      listRuns: vi.fn(() => Promise.resolve([])),
+      scheduler: new EventWaits(),
+      now: () => NOW,
+    };
+    const { rerender } = render(<Page shown ports={ports} />);
+    const show = (shown: boolean) =>
+      act(async () => {
+        rerender(<Page shown={shown} ports={ports} />);
+      });
+    return { events, ports, show };
+  }
+
+  it('follows the run while the view is off the page, and shows what came', async () => {
+    const { events, show } = opened();
+    await press();
+    await answer(events, eventsAnswer([running(1, 'draft')]));
+
+    await show(false);
+    // The events of the run go on arriving with no view to draw them.
+    await answer(
+      events,
+      eventsAnswer([passed(2, 'draft'), running(3, 'review')]),
+    );
+    await show(true);
+
+    expect(screen.getByTestId('run-progress').textContent).toContain('review');
+    expect(events.waiting).toBe(true);
+  });
+
+  it('shows a run that ended while the view was off the page', async () => {
+    const { events, show } = opened();
+    await press();
+    await answer(events, eventsAnswer([running(1, 'draft')]));
+
+    await show(false);
+    await answer(
+      events,
+      eventsAnswer(
+        [passed(2, 'draft'), passed(3, 'review'), finished(4, 'passed')],
+        { done: true },
+      ),
+    );
+    await show(true);
+
+    expect(screen.getByTestId('run-progress').textContent).toContain(
+      'Run passed.',
+    );
+  });
+
+  it('keeps reading the run, so the follower is not aborted', async () => {
+    const { events, show } = opened();
+    await press();
+    await answer(events, eventsAnswer([running(1, 'draft')]));
+
+    await show(false);
+
+    // The read of the next events is still out: nothing took it off.
+    expect(events.waiting).toBe(true);
+    expect(events.calls.length).toBeGreaterThan(1);
   });
 });
