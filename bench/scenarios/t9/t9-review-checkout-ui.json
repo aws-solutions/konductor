@@ -1,11 +1,11 @@
 {
   "id": "t9-review-checkout-ui",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "code-review",
   "role": "frontend",
   "questions": "allowed",
-  "prompt": "Can you review the whole checkout UI before we ship 2.4? I own this repository and need a practical review of the code, markup, and recent changes so we can fix anything that could hurt shoppers or the release. Put the finished review in review/REVIEW.md. Keep the report focused on concrete findings, with enough detail for another developer to reproduce each one and understand the proposed correction. End the file with one fenced JSON block containing an array of finding objects. Every object must have a location naming the relevant place, severity set to critical, high, medium, or low, and fix containing the test to add. Please cover the full repository rather than only the first screen, and separate real concerns from things that are merely awkward. Do not change the application, tests, documentation, configuration, or styles; the only intended new file is review/REVIEW.md. Keep existing tests passing and preserve the current checkout behavior while describing what should change.",
+  "prompt": "Can you review the whole checkout UI before we ship 2.4? I own this repository and need a practical review of the code, markup, and recent changes so we can fix anything that could hurt shoppers or the release. Put the finished review in review/REVIEW.md. Open it with a short \"Review scope\" section saying what you checked. Keep the report focused on concrete findings, with enough detail for another developer to reproduce each one and understand the proposed correction. End the file with one fenced JSON block containing an array of finding objects. Every object must have a location naming the relevant place, severity set to critical, high, medium, or low, and fix containing the test to add. Please cover the full repository rather than only the first screen, and separate real concerns from things that are merely awkward. Do not change the application, tests, documentation, configuration, or styles; the only intended new file is review/REVIEW.md. Keep existing tests passing and preserve the current checkout behavior while describing what should change.",
   "fixture": "t9-review-checkout-ui",
   "hidden": "t9-review-checkout-ui",
   "timeoutSec": 1800,
@@ -281,16 +281,32 @@
       "stub": 5.7,
       "lazy": 39.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the one judged rubric item (D-117)",
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt asks for the Review scope section its check reads",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   }
 }

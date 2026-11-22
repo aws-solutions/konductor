@@ -71,3 +71,10 @@ not disposed (owner rule: on a second fail, stop). The owner decides whether the
 The independent review of those two L10 fails (claude-fable-5.1, 2026-11-21, `reports/review-t9-accessibility-fable.md`
 in the mate workspace) found both to be checklist misreads with no defect. The L10 recheck is now in `review.recheck`
 at version 3, with the two items disposed in their notes. D-154 is closed.
+
+## t9-review-checkout-ui v3 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 3)
+
+The `contains (review scope|what i checked)` check (weight 2) failed all six LITE runs: the prompt never asked for
+that section. Dropping the check lifted the lazy answer to 43.4 (over the 40 gate), so the prompt now asks for it
+instead: "Open it with a short "Review scope" section saying what you checked." Check, key and fixture unchanged.
+Gates: reference 100, stub 5.7, lazy 39.5, alt 100. Non-Claude recheck: pending (`handEdited.version` 3).
