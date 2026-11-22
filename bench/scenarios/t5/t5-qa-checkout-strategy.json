@@ -1,14 +1,14 @@
 {
   "id": "t5-qa-checkout-strategy",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "phases2": [
     "security"
   ],
   "questions": "allowed",
-  "prompt": "I am starting a checkout rework next sprint and have limited time to test it, so I need a focused QA plan before we touch code. Read the repository, including the source, the existing tests and docs/CHANGELOG.md, then write docs/TEST-PLAN.md: where the real risk is, why it matters, how severe it is, and the specific test to add for each risk, most important first. I would rather have the handful of risks that matter than a tour of every file; skip what is low value to test. End the file with a fenced JSON list of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Do not change application source, existing tests, configuration, generated data, CI files or other documentation. The only intended repository change is docs/TEST-PLAN.md. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "I am starting a checkout rework next sprint and have limited time to test it, so I need a focused QA plan before we touch code. Read the repository, including the source, the existing tests and docs/CHANGELOG.md, then write docs/TEST-PLAN.md: where the real risk is, why it matters, how severe it is, and the specific test to add for each risk, most important first. I would rather have the handful of risks that matter than a tour of every file; skip what is low value to test. End the file with a fenced JSON list of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Do not change application source, existing tests, configuration, generated data, CI files or other documentation. The only intended repository change is docs/TEST-PLAN.md. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit.",
   "fixture": "t5-qa-checkout-strategy",
   "hidden": "t5-qa-checkout-strategy",
   "timeoutSec": 1200,
@@ -332,19 +332,36 @@
     "reference": 100,
     "stub": 7.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
       "lazy": 15.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

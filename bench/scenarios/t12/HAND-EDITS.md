@@ -185,3 +185,10 @@ t12-parallel-backlog v5 (L15) passes 4 of 4 and is recorded.
 Independent review (claude-fable-5.1, `reports/review-probe-disposals-fable.md` in the mate workspace): the L14 fail
 is by design, since Sam's notes are the half-done work the hand-off must absorb. The L14 recheck is now in
 `review.recheck` at version 4, with that disposal in its note.
+
+## t12-sdlc-contact-import v5 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 7)
+
+The prompt offered "committing the work on the branch I am on is fine", but the fixture has no git repository; all
+six LITE runs ended saying they could not commit. It now says the folder is not a git repository and the work stays
+as files; the scope confirmation is kept. No check, key or fixture changed; gates unchanged (reference 100, stub 0,
+lazy 36.4, alt 100, shallow 0). Non-Claude recheck: pending (`handEdited.version` 5).

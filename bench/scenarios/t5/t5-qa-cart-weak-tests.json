@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-cart-weak-tests",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "We had a wrong charge reach a customer last week even though the dashboard says the test suite covers over 90% of the code. I do not trust the tests under test/ for the cart and checkout pricing any more. Please make them trustworthy for the pricing side of this repo: carts, discounts and coupons, tax, shipping and the order total. Put your new cases in test/qa-edge-cases.test.js (you may also fix or extend the existing test files), keep the suite runnable with `node --test`, and use the existing Node.js 24 CommonJS setup. Do not change anything under src/, the package files, data, docs or CI, and add no dependencies or generated files. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 57 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
+  "prompt": "We had a wrong charge reach a customer last week even though the dashboard says the test suite covers over 90% of the code. I do not trust the tests under test/ for the cart and checkout pricing any more. Please make them trustworthy for the pricing side of this repo: carts, discounts and coupons, tax, shipping and the order total. Put your new cases in test/qa-edge-cases.test.js (you may also fix or extend the existing test files), keep the suite runnable with `node --test`, and use the existing Node.js 24 CommonJS setup. Do not change anything under src/, the package files, data, docs or CI, and add no dependencies or generated files. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit. Keep the suite lean: at most 57 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-cart-weak-tests",
   "hidden": "t5-qa-cart-weak-tests",
   "timeoutSec": 1200,
@@ -140,19 +140,32 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 16.7,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 4
   }
 }

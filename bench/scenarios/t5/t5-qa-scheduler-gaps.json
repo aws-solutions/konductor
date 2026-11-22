@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-scheduler-gaps",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "A job fired one day late after a month ended, and I no longer trust the checks around the scheduler and retry path. Please strengthen the tests under tests/ so they give us confidence in the calendar rule parser and next-run calculation, including the priority queue, sliding-window limiter, retry policy, and JSON state persistence that support job execution. The existing tests should stay useful, and the new coverage should exercise the real public behavior rather than implementation details. Keep the suite quick and deterministic, and make sure temporary state used by tests is cleaned up. Do not change anything under schedulerlib/, the command-line behavior, documentation, configuration, or CI files. The repository must continue to run with its existing Python 3.12 test command, and the current README.md must remain present. Keep all additions or edits limited to tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 65 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
+  "prompt": "A job fired one day late after a month ended, and I no longer trust the checks around the scheduler and retry path. Please strengthen the tests under tests/ so they give us confidence in the calendar rule parser and next-run calculation, including the priority queue, sliding-window limiter, retry policy, and JSON state persistence that support job execution. The existing tests should stay useful, and the new coverage should exercise the real public behavior rather than implementation details. Keep the suite quick and deterministic, and make sure temporary state used by tests is cleaned up. Do not change anything under schedulerlib/, the command-line behavior, documentation, configuration, or CI files. The repository must continue to run with its existing Python 3.12 test command, and the current README.md must remain present. Keep all additions or edits limited to tests/. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit. Keep the suite lean: at most 65 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-scheduler-gaps",
   "hidden": "t5-qa-scheduler-gaps",
   "timeoutSec": 1200,
@@ -149,19 +149,34 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 16.7,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 4
   }
 }

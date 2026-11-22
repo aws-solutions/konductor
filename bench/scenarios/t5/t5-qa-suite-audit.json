@@ -1,14 +1,14 @@
 {
   "id": "t5-qa-suite-audit",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "phases2": [
     "code-review"
   ],
   "questions": "allowed",
-  "prompt": "Coverage is at 92%, but we still shipped a billing calculation bug. Please audit the existing test suite and tell me which tests give us false confidence. Read the implementation, the tests, and the project history closely enough to explain why each test could pass while the behavior is wrong, then say what the test should check instead. I only need the audit, not product changes or new tests. Do not change source files or existing tests. Put the finished report in docs/TEST-AUDIT.md. End the report with one fenced JSON block containing a list of findings. Each object in that list must have a location naming the test file or place, a severity of critical, high, medium, or low, and a fix describing the test to add or change. Keep the JSON block as the final content in the file. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "Coverage is at 92%, but we still shipped a billing calculation bug. Please audit the existing test suite and tell me which tests give us false confidence. Read the implementation, the tests, and the project history closely enough to explain why each test could pass while the behavior is wrong, then say what the test should check instead. I only need the audit, not product changes or new tests. Do not change source files or existing tests. Put the finished report in docs/TEST-AUDIT.md. End the report with one fenced JSON block containing a list of findings. Each object in that list must have a location naming the test file or place, a severity of critical, high, medium, or low, and a fix describing the test to add or change. Keep the JSON block as the final content in the file. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit.",
   "fixture": "t5-qa-suite-audit",
   "hidden": "t5-qa-suite-audit",
   "timeoutSec": 1200,
@@ -269,19 +269,36 @@
     "reference": 100,
     "stub": 7.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
       "lazy": 15.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "t12-sdlc-contact-import",
   "class": "orchestration",
-  "version": 4,
+  "version": 5,
   "phase": "multi-phase",
   "phases2": [
     "requirements",
@@ -11,7 +11,7 @@
   ],
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Customers need the contact import in docs/requests/contact-import.md, ready to hand to review. The code goes in src/import.js exporting importContacts(csvText, book), where book comes from createBook() in src/contacts.js; it returns { imported: number, skipped: list of { line, reason } } with line the file line (the header is line 1), and throws an Error when the file is over the row limit. Tests go under test/ (node --test test/*.test.js must pass), the customer help page is docs/help/importing.md, and a feature note docs/features/contact-import.md ends with one fenced json block holding an object with requirements (list of strings), decisions (list of strings: each design decision and why) and testPlan (list of strings: the cases the tests cover). Do not change src/contacts.js. Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "Customers need the contact import in docs/requests/contact-import.md, ready to hand to review. The code goes in src/import.js exporting importContacts(csvText, book), where book comes from createBook() in src/contacts.js; it returns { imported: number, skipped: list of { line, reason } } with line the file line (the header is line 1), and throws an Error when the file is over the row limit. Tests go under test/ (node --test test/*.test.js must pass), the customer help page is docs/help/importing.md, and a feature note docs/features/contact-import.md ends with one fenced json block holding an object with requirements (list of strings), decisions (list of strings: each design decision and why) and testPlan (list of strings: the cases the tests cover). Do not change src/contacts.js. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit.",
   "fixture": "t12-sdlc-contact-import",
   "hidden": "t12-sdlc-contact-import",
   "timeoutSec": 2400,
@@ -124,8 +124,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate hand-edit recheck worker (2026-11-20), after the mate review-fix2 worker",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 5
   },
   "pilot": {
     "scores": {},
@@ -136,10 +137,24 @@
       "stub": 0,
       "lazy": 36.4,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "review": {
