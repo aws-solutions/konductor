@@ -13,6 +13,8 @@ module.exports = Object.freeze({
   flags: Object.freeze({ own: Object.freeze([]), refused: Object.freeze({}), perRunCapFlag: null }),
   // How runs skip the agent's own approval prompts (design 15.3, A-4): opencode-translate.js writes an allow map.
   noPrompt: Object.freeze({ flags: Object.freeze([]), env: Object.freeze({}), note: 'the agent file permission map sets every tool to allow' }),
+  // No plant arms: no shim mount and no plant stream reader for opencode-json.
+  plant: null,
   multiTurnNote: null,
   trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),
 });

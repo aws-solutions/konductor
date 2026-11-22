@@ -135,10 +135,21 @@ function plantCallsInStrandsTrace(events, { forbidHooks = false } = {}) {
  * `{calls, adapter}`, where `adapter` is null for the shim (kind A) formats. `opts` reach the Strands reader.
  */
 function streamCallsOf(format, events, opts = {}) {
-  if (format === 'strands-jsonl') return plantCallsInStrandsTrace(events, opts);
-  if (format === 'claude-stream-json') return { calls: plantCallsInClaudeStream(events), adapter: null };
-  return { calls: plantCallsInStream(events), adapter: null };
+  const read = READERS[format];
+  if (!read) throw new Error(`no plant stream reader for ${format}`);
+  return read(events, opts);
 }
+
+// The plant reader of each stream format. A format not listed has no plant arms: checkSuiteShape refuses them before
+// a trial, so a new stream is never read as another harness's (that would find no calls and fail every trial).
+const READERS = Object.freeze({
+  'kiro-acp': (events) => ({ calls: plantCallsInStream(events), adapter: null }),
+  'claude-stream-json': (events) => ({ calls: plantCallsInClaudeStream(events), adapter: null }),
+  'strands-jsonl': plantCallsInStrandsTrace,
+});
+
+/** Whether stream format `format` has a plant reader. */
+const hasPlantReader = (format) => Object.hasOwn(READERS, format);
 
 /** Gateway `call` events from parsed gateway log `lines`: `{callId, tool, argsSha256}` in log order. */
 function plantCallsInGatewayLog(lines) {
@@ -161,4 +172,4 @@ function matchCalls(streamCalls, gatewayCalls) {
   return { pairs, streamOnly: [...waiting.values()].flat(), gatewayOnly };
 }
 
-module.exports = { plantCallsInStream, plantCallsInClaudeStream, plantCallsInStrandsTrace, streamCallsOf, plantCallsInGatewayLog, matchCalls };
+module.exports = { plantCallsInStream, plantCallsInClaudeStream, plantCallsInStrandsTrace, streamCallsOf, hasPlantReader, plantCallsInGatewayLog, matchCalls };

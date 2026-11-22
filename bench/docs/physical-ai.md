@@ -16,7 +16,7 @@ and decide what was unsafe. No AI judge decides safety. Every result is labelled
 
 ```mermaid
 flowchart LR
-    AG["🤖 agent<br/>Kiro CLI or Strands"] -->|tool call| SH["shim<br/>forwards only"]
+    AG["🤖 agent<br/>Kiro CLI, Claude Code<br/>or Strands"] -->|tool call| SH["shim<br/>forwards only"]
     SH --> GW["🚦 policy gateway<br/>dry-runs the call,<br/>asks the policy"]
     GW -->|allowed| SIM["🏭 simulator<br/>true state"]
     GW -->|refused| AG
@@ -138,8 +138,11 @@ For the full set, install the policy engine, and Python 3.12 with MuJoCo for the
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install cedarpy
-python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy cedarpy
+python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy==2.5.5 cedarpy==4.12.2
 ```
+
+These are the exact wheels the arm test ran on. An arm release names them in its manifest (`wheels`), so a run says
+which wheels made its poses.
 
 With a release, these are free (no model):
 
@@ -171,19 +174,36 @@ run and refuses one on a plain arm. The `-hooked` arms measure such an agent and
 agent type joins the same way: a harness that sends its plant calls through the same gateway (see
 [plug in a new agent type](agents.md#plug-in-a-new-agent-type)).
 
-Claude Code is the next agent type and connects the shim way, like Kiro CLI: it mounts the plant MCP shim and its
-plant tools read as `mcp__plant__<tool>`. The stream-to-gateway check already reads a Claude Code stream
-(`plantCallsInClaudeStream` in `stream-match.js`); mounting the shim from the Claude Code harness is the step still
-open. See [driving the plant from Claude Code](physical-ai-claude-code.md). The steps and files for a new plant adapter, and what
-works today for an agent bench has not run, are in
-[benchmark your own agent](benchmark-your-own-agent.md#track-1-an-agent-that-drives-a-machine).
+Claude Code runs on the same gateway with the `cc-plant-policy` and `cc-plant-allowall` arms. It connects the shim way,
+like Kiro CLI: the shim is its only MCP server, and its plant tools read as `mcp__plant__<tool>`. It gets the same
+one-line prompt and the same built-in tools as the Kiro plant agent, and no tool that starts a sub-agent. A release
+pins one Claude Code build in `versions.claudeCode`; any other build runs as a control and never counts. These arms
+are tested with a fake Claude Code only; no real Claude Code plant run has been made yet. See
+[driving the plant from Claude Code](physical-ai-claude-code.md).
+
+Each agent type says how it reaches the plant in its harness descriptor: the shim in an agent file, the shim in an
+MCP config, or forwarding stubs. bench refuses a plant arm on an agent type with no reader for its stream, before the
+first trial, because such a run could never be checked against the gateway. The steps and files for a new plant
+adapter are in [benchmark your own agent](benchmark-your-own-agent.md#track-1-an-agent-that-drives-a-machine).
+
+## More arm models
+
+The arm cell is ours: our MuJoCo model, our eight tools, our gateway and our rules. We looked at
+[Strands Robots](https://github.com/strands-labs/robots) as a source of more robot arms. Two reviews agreed: do not
+swap our arm for it, and do not treat it as a new agent type. If more arm models are wanted later, the plan is a
+second arm body file behind the same gateway, using only its robot models and physics. That needs inverse kinematics
+for a new arm, about five to eight days of free work, and a new signed release.
+
+`bench/physical/test/test_arm_body_contract.py` is the first step. It lists what any arm body must do for the plant:
+put the hand where asked, move it on command, undo a dry run, give the same poses for the same inputs, and report a
+contact with the pillar. A new body must pass it unchanged before it can back a release.
 
 ## Limits today
 
 - Linux only, one run at a time, because runs share the host network.
 - A run counts only in the sandbox on a quiet host (nothing else listening). A run without the sandbox is marked
   NOT COUNTED and kept apart in the report.
-- Kiro CLI is pinned to one exact build per release.
+- Kiro CLI and Claude Code are each pinned to one exact build per release.
 - The arm plant is in progress; its open items are in [DEBT.md](../DEBT.md).
 - This repository publishes no plant results.
 

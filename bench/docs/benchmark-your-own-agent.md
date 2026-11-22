@@ -65,15 +65,16 @@ Each task runs twice: once with the policy on (`plant-policy`) and once with it 
 policy off, every call runs and the policy's answer is only written down. Comparing the two shows what your agent
 tries by itself, and what the guard saves.
 
-### The two agents that run today
+### The agents that run today
 
 | Agent | How it reaches the gateway | Arms | Cost |
 | --- | --- | --- | --- |
 | Kiro CLI | bench writes a Kiro agent file whose `plant` tool server is a small shim. The shim copies each message to the gateway's socket, byte for byte | `plant-policy`, `plant-allowall` | credits |
+| Claude Code | bench writes an MCP config whose only server is the same shim, and passes it with `--mcp-config` | `cc-plant-policy`, `cc-plant-allowall` | USD on Bedrock |
 | Strands | bench copies a Strands agent whose plant tools are stubs. Each stub sends its call to the gateway and returns the reply | `st-plant-policy`, `st-plant-allowall`, and `-hooked` forms | free with the scripted fake model; USD on the one pinned Bedrock model |
 
-Both have run short trials, all marked NOT COUNTED, because no quiet run host exists yet ([DEBT.md](../DEBT.md),
-D-95). No counted plant suite has run.
+Kiro CLI and Strands have run short trials, all marked NOT COUNTED, because no quiet run host exists yet
+([DEBT.md](../DEBT.md), D-95). Claude Code has run only against a fake Claude Code. No counted plant suite has run.
 
 Strands lets an agent's own code cancel, change or repeat a tool call. So before the first trial bench lists every
 such hook. A plain arm with one is refused in a counted suite. The `-hooked` arms keep that agent's numbers apart.
@@ -84,7 +85,7 @@ There are two ways to plug in. Pick by how your agent calls tools.
 
 | Your agent | Way | Example today |
 | --- | --- | --- |
-| Starts tool servers over MCP stdio | Point its `plant` server at the shim | Kiro CLI |
+| Starts tool servers over MCP stdio | Point its `plant` server at the shim | Kiro CLI, Claude Code |
 | Calls Python or JS functions as tools | Give it stub tools that forward to the gateway | Strands |
 
 Then follow these steps. Each names the files you touch.
@@ -96,19 +97,21 @@ Then follow these steps. Each names the files you touch.
    `bench/runner/lib/plant/agent-file.js` writes Kiro's: one `plant` server that runs `shim.js` with the run's
    socket path, and no tool that starts another agent. For the stub way, copy the pattern of
    `bench/physical/strands/plant_strands/forward.py` and `bench/runner/lib/plant/strands-adapter.js`. A stub never
-   decides, retries or caches, and it holds no secret. Today `openPlantRun` in
-   `bench/runner/lib/plant/lifecycle.js` picks between the two ways by runtime name, so add yours there.
-3. **Add the arms.** Plant arm names live in `bench/runner/lib/arms.js` (`PLANT_ARMS` and the Strands prefix).
-   Today only Kiro CLI and Strands have plant arms. Add yours under its own prefix.
+   decides, retries or caches, and it holds no secret. Set `plant: {mount, pinKey}` in your descriptor:
+   `openPlantRun` in `bench/runner/lib/plant/lifecycle.js` mounts the plant by `mount` (`MOUNTS`: `agent-file`,
+   `mcp-config` or `forwarder`). A new way of mounting adds one entry there.
+3. **Add the arms.** Plant arm names live in `bench/runner/lib/arms.js` (`PLANT_ARMS`). Every runtime whose
+   descriptor has a `plant` field gets them under its prefix (`cc-plant-policy`); the `-hooked` forms are Strands only.
 4. **Teach the match check your stream.** `streamCallsOf` in `bench/runner/lib/plant/stream-match.js` reads your
-   agent's stream and lists its plant calls. Add a reader for your `streamFormat`. Until you do, your stream is read
-   as Kiro CLI's, no plant call is found, and every trial fails as a mismatch. That fails safe, but it tells you
-   nothing. `plantCallsInClaudeStream` (for Claude Code's `claude-stream-json`) is a worked example of the MCP-stdio
-   case: it lists every `mcp__plant__<tool>` call. If your agent can change a call inside itself, record what the
-   model asked for before that code runs, the way the Strands trace does with `model_tool_use` and `forward` lines.
-5. **Pin its version.** A release pins one exact agent build. `bench/runner/lib/plant/intake.js` checks the Kiro
-   CLI pin (`versions.kiroCli`) or the Strands pin (`versions.strands.version`). Add a pin check for yours. Without
-   a pin a suite must not count.
+   agent's stream and lists its plant calls. Add a reader for your `streamFormat` to `READERS`. Until you do, bench
+   refuses your plant arms before the first trial, because their trials could never be checked.
+   `plantCallsInClaudeStream` (for Claude Code's `claude-stream-json`) is a worked example of the MCP-stdio case: it
+   lists every `mcp__plant__<tool>` call. If your agent can change a call inside itself, record what the model asked
+   for before that code runs, the way the Strands trace does with `model_tool_use` and `forward` lines.
+5. **Pin its version.** A release pins one exact agent build under `versions.<pinKey>`.
+   `bench/runner/lib/plant/intake.js` checks the Kiro CLI pin (`versions.kiroCli`), the Claude Code pin
+   (`versions.claudeCode`) or the Strands pin (`versions.strands.version`). Add a pin check for yours. Without a pin
+   a suite must not count.
 6. **Prove the bench with controls.** Controls are scripted fake agents that must score as expected before any real
    result counts (table below). Today they are fake Kiro CLIs in `bench/physical/controls/`, run with `--kiro-bin`.
    Strands is checked with a scripted fake model and the hook tests in `bench/runner/test/plant-strands.test.js`.

@@ -69,7 +69,8 @@ Arm syntax for --arms (comma separated):
   name=dir:<path>     a working-tree directory (a worktree or checkout), snapshot of tracked and untracked
                       files that are not ignored; label name@<hash12>, recorded as dirty
   name=vanilla        a vanilla A/A repeat (vanilla-b=vanilla): the vanilla condition under another id, for a noise floor
-  plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli; never with oc- or cc-)
+  plant-policy | plant-allowall    plant arms on a simulated plant (kiro-cli; never with oc-)
+  cc-plant-policy | cc-plant-allowall    the same on Claude Code, with the plant shim as its only MCP server
   st-plant-policy | st-plant-allowall    the same on a Strands agent with forwarding plant tools (kind B);
                       st-plant-policy-hooked | st-plant-allowall-hooked keep an agent with tool hooks apart
   name: [a-z0-9][a-z0-9._-]{0,40}; vanilla, main, vX.Y.Z and the plant arm names are reserved. A bare ref (feat/x) is refused.
@@ -97,6 +98,7 @@ So today you can test these agents:
 | Claude Code, bare | `cc-vanilla` | the main Claude Code session, nothing installed |
 | Claude Code with Konductor | `cc-main`, `cc-name=<git ref>` | Konductor's Claude Code install |
 | opencode | `oc-vanilla`, `oc-main` | opencode on Amazon Bedrock |
+| Claude Code on the plant | `cc-plant-policy`, `cc-plant-allowall` | Claude Code driving the simulated plant through the gateway (see [physical AI](physical-ai.md)) |
 | Strands | `st-plant-policy`, `st-plant-allowall` | a Strands agent on the simulated plant only (see [physical AI](physical-ai.md)) |
 
 The bare arms are agents that are not Konductor. Any other agent definition, such as your own system prompt and

@@ -15,7 +15,8 @@ const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SI
 const { DEADLINES } = require('./gateway-proc.js');
 const { loadRefusalRule } = require('./refusal.js');
 const { readEnvironment, NOT_COUNTED } = require('./score.js');
-const { AGENT_ENGINES } = require('../harness/runtime.js');
+const { AGENT_ENGINES, descriptorOf } = require('../harness/runtime.js');
+const { hasPlantReader } = require('./stream-match.js');
 const { hostNoise } = require('./walls.js');
 const procs = require('../procs.js');
 
@@ -122,10 +123,18 @@ function refuseInside(what, p, roots) {
   }
 }
 
-/** Throws ReleaseRefused unless the suite's arms are all plant arms, its tasks all plant tasks, and it runs one trial at a time. */
+/**
+ * Throws ReleaseRefused unless the suite's arms are all plant arms of one runtime whose stream has a plant reader, its
+ * tasks all plant tasks, and it runs one trial at a time. A runtime with no reader would yield no plant calls, so every
+ * trial would fail as a mismatch and measure nothing: it is refused here, before any trial.
+ */
 function checkSuiteShape({ arms, tasks, parallel }) {
   const other = arms.filter((a) => !a.plant).map((a) => a.id);
   if (other.length) throw new ReleaseRefused(`a plant suite runs plant arms only; also given: ${other.join(', ')}`);
+  const unread = arms.filter((a) => !hasPlantReader(descriptorOf(a.runtime).streamFormat));
+  if (unread.length) throw new ReleaseRefused(`${unread.map((a) => `plant arm ${a.id}: ${descriptorOf(a.runtime).proseName} stream ${descriptorOf(a.runtime).streamFormat}`).join('; ')} has no plant stream reader`);
+  const runtimes = [...new Set(arms.map((a) => a.runtime))];
+  if (runtimes.length > 1) throw new ReleaseRefused(`a plant suite runs on one runtime; given ${runtimes.join(', ')}`);
   const notPlant = tasks.filter((t) => !t.environment).map((t) => t.id);
   if (notPlant.length) throw new ReleaseRefused(`plant arms run plant tasks only; ${notPlant.join(', ')} has no environment block`);
   if (parallel !== 1) throw new ReleaseRefused(`a plant suite runs one trial at a time (SR-23); --parallel ${parallel} is refused`);
@@ -173,6 +182,19 @@ function isCountedSuite(opts, kiroBin, manifest, versionOfBin) {
   if (!pinned) return false;
   refuseLauncher(kiroBin);
   return versionOfBin(kiroBin) === pinned;
+}
+
+/**
+ * What kind of suite a Claude Code run is: `{control, notCounted}`, by the rule `--kiro-bin` follows (isCountedSuite).
+ * `claude` is the resolved binary (`{version, sha256}`). It is a real suite only when its version is the one the release
+ * pins in `versions.claudeCode`, and then its SHA-256 must match too, so a wrong build of the pinned version is refused,
+ * not run as a control. Any other binary, or a release with no Claude Code pin, is a control and never counts.
+ */
+function claudeSuiteOf(manifest, claude) {
+  const pin = manifest.versions?.claudeCode;
+  if (!pin?.version || claude?.version !== pin.version) return { control: true, notCounted: [] };
+  if (claude.sha256 !== pin.sha256) throw new ReleaseRefused(`claude ${claude.version} (${claude.sha256}) is not the pinned build (${pin.sha256})`);
+  return { control: false, notCounted: [] };
 }
 
 /**
@@ -242,11 +264,13 @@ function gatewayFilesOf(release) {
 }
 
 /**
- * `{control, notCounted}` for the suite: a Strands suite by its model (strandsSuiteOf), a Kiro CLI suite by its
- * `--kiro-bin` (isCountedSuite). `strands` is true when the suite's arms run Strands; the rest are preparePlantSuite's.
+ * `{control, notCounted}` for the suite: a Strands suite by its model (strandsSuiteOf), a Claude Code suite by its
+ * binary (claudeSuiteOf), a Kiro CLI suite by its `--kiro-bin` (isCountedSuite). `runtime` is the suite's arms' runtime
+ * (checkSuiteShape allows one); the rest are preparePlantSuite's.
  */
-function suiteKindOf({ strands, opts, ctx, manifest, versionOfBin }) {
-  if (strands) return strandsSuiteOf(manifest, ctx.strands, ctx.config.model);
+function suiteKindOf({ runtime, opts, ctx, manifest, versionOfBin }) {
+  if (runtime === 'strands') return strandsSuiteOf(manifest, ctx.strands, ctx.config.model);
+  if (runtime === 'claude-code') return claudeSuiteOf(manifest, ctx.claude);
   return { control: !isCountedSuite(opts, ctx.kiroBin, manifest, versionOfBin), notCounted: [] };
 }
 
@@ -255,8 +279,8 @@ function suiteKindOf({ strands, opts, ctx, manifest, versionOfBin }) {
  * files, the quiet host and, in a sandbox mode, an out dir on its own filesystem. Returns the host's listeners outside
  * the allowlist (empty on a quiet host). Throws ReleaseRefused. Arguments are preparePlantSuite's.
  */
-function checkRealSuite({ release, ctx, strands, outDir, home, versionOfBin, noiseOf }) {
-  if (!strands) checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
+function checkRealSuite({ release, ctx, runtime, outDir, home, versionOfBin, noiseOf }) {
+  if (runtime === 'kiro-cli') checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
   const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
   if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
   const comparableMode = isComparableMode(ctx.isolation.mode);
@@ -299,10 +323,10 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     fs.mkdirSync(socketParent, { mode: 0o700 });
     if (Buffer.byteLength(socketParent) + SOCKET_SUFFIX_BYTES > SOCKET_PATH_MAX) throw new ReleaseRefused(`socket paths under ${socketParent} would pass ${SOCKET_PATH_MAX} bytes`);
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
-    const strands = arms[0].runtime === 'strands';
-    const kind = suiteKindOf({ strands, opts, ctx, manifest: release.manifest, versionOfBin });
+    const runtime = arms[0].runtime;
+    const kind = suiteKindOf({ runtime, opts, ctx, manifest: release.manifest, versionOfBin });
     const { control } = kind;
-    const noise = control ? [] : checkRealSuite({ release, ctx, strands, outDir, home, versionOfBin, noiseOf });
+    const noise = control ? [] : checkRealSuite({ release, ctx, runtime, outDir, home, versionOfBin, noiseOf });
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
     return {
       release, privateRoot, socketParent, control, hostNoise: noise, deadlines, makeToken, readListeners,
@@ -329,4 +353,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   procs.untrackScratch(privateRoot);
 }
 
-module.exports = { SOCKET_PATH_MAX, checkSuiteShape, oddFileReason, refuseLauncher, strandsSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };
+module.exports = { SOCKET_PATH_MAX, checkSuiteShape, oddFileReason, refuseLauncher, strandsSuiteOf, claudeSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };

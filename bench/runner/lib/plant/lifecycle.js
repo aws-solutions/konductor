@@ -9,7 +9,7 @@ const path = require('node:path');
 const { parseStream } = require('../stream.js');
 const { classifyPlantStartup } = require('../launch-failure.js');
 const { GatewayProcess, runningHashProblems } = require('./gateway-proc.js');
-const { writePlantAgent } = require('./agent-file.js');
+const { writePlantAgent, writePlantMcpConfig } = require('./agent-file.js');
 const { scorePlant } = require('./score.js');
 const { setModes, SOCKET_PATH_MAX } = require('./intake.js');
 const { installForwarder, releaseForwarder, writeRunFile, PLANT_DIR } = require('./strands-adapter.js');
@@ -193,7 +193,7 @@ class PlantRun {
   dispose() {
     this.gateway.kill();
     fs.rmSync(this.socketRoot, { recursive: true, force: true });
-    if (this.arm.runtime === 'strands') releaseForwarder(this.plantDir);
+    if (plantMountOf(this.arm) === 'forwarder') releaseForwarder(this.plantDir);
     else fs.chmodSync(this.plantDir, 0o700);
   }
 }
@@ -205,6 +205,36 @@ function installShim(plantDir, shimPath) {
   fs.chmodSync(shimPath, 0o444);
   fs.chmodSync(plantDir, 0o555);
 }
+
+/** The plant mount of `arm`'s runtime (its descriptor's `plant.mount`); throws for a runtime with no plant arms. */
+function plantMountOf(arm) {
+  const mount = descriptorOf(arm.runtime).plant?.mount;
+  if (!MOUNTS[mount]) throw new Error(`runtime ${arm.runtime} has no plant mount`);
+  return mount;
+}
+
+// How each mount puts the gateway in reach of the agent: `home` is the run's scratch HOME, `plantDir` the read-only dir
+// for the shim or forwarder, `socketPath` the run's gw.sock, `kind` the task's environment kind.
+const shimOpts = (plantDir, socketPath) => ({ shimPath: path.join(plantDir, 'shim.js'), socketPath, nodeBin: process.execPath });
+const MOUNTS = {
+  // Kiro CLI: the plant agent file names the shim as its MCP server.
+  'agent-file': ({ home, plantDir, socketPath, kind }) => {
+    const opts = shimOpts(plantDir, socketPath);
+    writePlantAgent(home, { ...opts, kind });
+    installShim(plantDir, opts.shimPath);
+  },
+  // Claude Code: the shim is the only server of the --mcp-config file; the prompt goes on the command line.
+  'mcp-config': ({ home, plantDir, socketPath }) => {
+    const opts = shimOpts(plantDir, socketPath);
+    writePlantMcpConfig(home, opts);
+    installShim(plantDir, opts.shimPath);
+  },
+  // Strands (kind B): the forwarder dials gw.sock from inside the agent process; its run file names the socket, nothing more.
+  forwarder: ({ home, plantDir, socketPath }) => {
+    writeRunFile(home, { socketPath });
+    installForwarder(plantDir);
+  },
+};
 
 /**
  * Sets up one plant run and starts its gateway (7.2 up to `ready`). `suite` is preparePlantSuite's result; `arm`, `task`
@@ -221,15 +251,7 @@ async function openPlantRun({ suite, arm, task, runRoot, home, cwd, outDir }) {
   const socketPath = path.join(socketRoot, 'gw.sock');
   if (Buffer.byteLength(socketPath) > SOCKET_PATH_MAX) throw new Error(`socket path ${socketPath} passes ${SOCKET_PATH_MAX} bytes`);
   const plantDir = path.join(runRoot, PLANT_DIR);
-  if (arm.runtime === 'strands') {
-    // Kind B: the forwarder dials gw.sock from inside the agent process; its run file names the socket, nothing more.
-    writeRunFile(home, { socketPath });
-    installForwarder(plantDir);
-  } else {
-    const shimPath = path.join(plantDir, 'shim.js');
-    writePlantAgent(home, { shimPath, socketPath, nodeBin: process.execPath, kind: task.environment.kind });
-    installShim(plantDir, shimPath);
-  }
+  MOUNTS[plantMountOf(arm)]({ home, plantDir, socketPath, kind: task.environment.kind });
   const gateway = new GatewayProcess({
     python: suite.python, stdoutPath: path.join(logDir, 'gateway.stdout'), stderrPath: path.join(logDir, 'gateway.stderr'),
     deadlines: suite.deadlines, ...(suite.makeToken ? { makeToken: suite.makeToken } : {}),

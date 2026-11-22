@@ -45,8 +45,9 @@ test('Strands plant arms parse under st- only, the hooked forms are their own ar
   assert.deepEqual(resolveArm('st-plant-allowall-hooked', '.').plant, { arm: 'allow-all', hooks: 'own-arm' });
   assert.equal(resolveArm('st-plant-policy', '.').runtime, 'strands');
   for (const spec of ['oc-st-plant-policy', 'cc-st-plant-allowall', 'st-st-plant-policy', 'oc-plant-policy-hooked']) {
-    assert.throws(() => parseArmSpec(spec), /plant arms run on kiro-cli or Strands \(st-\) only/, spec);
+    assert.throws(() => parseArmSpec(spec), /plant arms run on kiro-cli, Claude Code \(cc-\) or Strands \(st-\) only/, spec);
   }
+  assert.throws(() => parseArmSpec('cc-plant-policy-hooked'), /hooked plant arms run on Strands only \(st-plant-policy-hooked\)/);
   assert.throws(() => parseArmSpec('st-vanilla'), /Strands arms are plant arms only/);
   assert.throws(() => parseArmSpec('plant-policy-hooked'), /hooked plant arms run on Strands only/);
   assert.throws(() => parseArmSpec('plant-policy-hooked=main'), /reserved/);

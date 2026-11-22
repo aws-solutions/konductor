@@ -20,11 +20,14 @@ const PLANT_ARMS = Object.freeze({ 'plant-policy': 'policy', 'plant-allowall': '
 const HOOKED_PLANT_ARMS = Object.freeze({ 'plant-policy-hooked': 'policy', 'plant-allowall-hooked': 'allow-all' });
 const isPlantArm = (spec) => Object.hasOwn(PLANT_ARMS, spec);
 const isHookedPlantArm = (spec) => Object.hasOwn(HOOKED_PLANT_ARMS, spec);
-const PLANT_ONLY_KIRO = 'plant arms run on kiro-cli or Strands (st-) only';
+// The runtimes whose descriptor says how to mount the plant (`plant`, DEBT D-111): Kiro CLI, Claude Code and Strands.
+const PLANT_RUNTIMES = DESCRIPTORS.filter((d) => d.plant);
+const plantRuntimeNames = PLANT_RUNTIMES.map((d) => (d.armPrefix ? `${d.proseName} (${d.armPrefix})` : d.proseName));
+const PLANT_ONLY = `plant arms run on ${plantRuntimeNames.slice(0, -1).join(', ')} or ${plantRuntimeNames.at(-1)} only`;
 const STRANDS_PREFIX = prefixOf('strands');
 const STRANDS_PLANT_ONLY = 'Strands arms are plant arms only (st-plant-policy, st-plant-allowall, st-plant-policy-hooked, st-plant-allowall-hooked)';
-/** Every plant arm id a result can carry: the Kiro CLI ids and the Strands ids with their prefix. */
-const PLANT_ARM_IDS = Object.freeze([...Object.keys(PLANT_ARMS), ...[...Object.keys(PLANT_ARMS), ...Object.keys(HOOKED_PLANT_ARMS)].map((a) => `${STRANDS_PREFIX}${a}`)]);
+/** Every plant arm id a result can carry: the plain ids under each plant runtime's prefix, and the hooked ids under `st-`. */
+const PLANT_ARM_IDS = Object.freeze(PLANT_RUNTIMES.flatMap((d) => [...Object.keys(PLANT_ARMS), ...(d.id === 'strands' ? Object.keys(HOOKED_PLANT_ARMS) : [])].map((a) => `${d.armPrefix}${a}`)));
 const isPlantArmId = (armId) => PLANT_ARM_IDS.includes(armId);
 
 /**
@@ -37,12 +40,22 @@ function parseStrandsArm(rest) {
   throw new Error(`arm "${STRANDS_PREFIX}${rest}": ${STRANDS_PLANT_ONLY}`);
 }
 
-/** Throws when `spec` puts a plant arm under a runtime prefix that cannot run it (oc-, cc-, or a prefix inside a prefix). */
+/** Whether arm spec `s` names a plant arm, under any number of runtime prefixes (`st-` arms are all plant arms). */
+function namesPlantArm(s) {
+  const n = prefixedRuntime(s);
+  if (!n) return isPlantArm(s) || isHookedPlantArm(s);
+  return n.id === 'strands' || namesPlantArm(s.slice(n.armPrefix.length));
+}
+
+/**
+ * Throws when `spec` puts a plant arm under a runtime prefix that cannot run it: one with no plant mount (oc-), a prefix
+ * inside a prefix, or a hooked arm outside Strands.
+ */
 function refusePrefixedPlant(spec, d) {
   const rest = spec.slice(d.armPrefix.length);
-  const nested = prefixedRuntime(rest);
-  const plantInside = isPlantArm(rest) || isHookedPlantArm(rest) || (nested && nested.id === 'strands');
-  if (plantInside && (d.id !== 'strands' || nested)) throw new Error(`arm "${spec}": ${PLANT_ONLY_KIRO}`);
+  if (!namesPlantArm(rest)) return;
+  if (!d.plant || prefixedRuntime(rest)) throw new Error(`arm "${spec}": ${PLANT_ONLY}`);
+  if (isHookedPlantArm(rest) && d.id !== 'strands') throw new Error(`arm "${spec}": hooked plant arms run on Strands only (${STRANDS_PREFIX}${rest})`);
 }
 const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main', 'cc-vanilla', 'cc-main'];
 
@@ -173,7 +186,10 @@ function resolveArm(spec, repo) {
   }
   if (d) {
     const base = resolveArm(spec.slice(d.armPrefix.length), repo);
-    return { ...base, id: `${d.armPrefix}${base.id}`, label: `${d.armPrefix}${base.label}`, runtime: d.id, harness: base.vanilla ? 'none' : 'claude' };
+    const named = { ...base, id: `${d.armPrefix}${base.id}`, label: `${d.armPrefix}${base.label}`, runtime: d.id };
+    // A plant arm under cc- keeps the plant harness and has no agent: Claude Code gets the shim by --mcp-config.
+    if (base.plant) return { ...named, agent: null };
+    return { ...named, harness: base.vanilla ? 'none' : 'claude' };
   }
   const parsed = parseArmSpec(spec);
   if (parsed.kind === 'vanilla') {
@@ -225,7 +241,8 @@ const ARM_SYNTAX = [
   '  name=dir:<path>     a working-tree directory (a worktree or checkout), snapshot of tracked and untracked',
   '                      files that are not ignored; label name@<hash12>, recorded as dirty',
   '  name=vanilla        a vanilla A/A repeat (vanilla-b=vanilla): the vanilla condition under another id, for a noise floor',
-  '  plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli; never with oc- or cc-)',
+  '  plant-policy | plant-allowall    plant arms on a simulated plant (kiro-cli; never with oc-)',
+  '  cc-plant-policy | cc-plant-allowall    the same on Claude Code, with the plant shim as its only MCP server',
   '  st-plant-policy | st-plant-allowall    the same on a Strands agent with forwarding plant tools (kind B);',
   '                      st-plant-policy-hooked | st-plant-allowall-hooked keep an agent with tool hooks apart',
   '  name: [a-z0-9][a-z0-9._-]{0,40}; vanilla, main, vX.Y.Z and the plant arm names are reserved. A bare ref (feat/x) is refused.',

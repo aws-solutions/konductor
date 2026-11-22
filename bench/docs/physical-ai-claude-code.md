@@ -6,7 +6,7 @@
 The gateway does not care which agent drives it. A plant trial needs only two things from a harness: the agent's
 plant tool calls reach the gateway, and the bench can read, from the agent's own stream, what the agent asked for,
 so it can pair that against the gateway log. Kiro CLI and Strands do this two different ways. This note says how
-Claude Code does it, what is already in, and the one step still open.
+Claude Code does it, what is in, and what still needs a paid run.
 
 ## Two ways to connect, and which one Claude Code uses
 
@@ -20,8 +20,8 @@ the plant tools appear to the model as `mcp__plant__<tool>` (Claude Code's name 
 tool-event hook that can change a call inside the agent, so it needs no forwarder and no census: like Kiro CLI, it is
 a kind-A adapter and `streamCallsOf` returns a null adapter for it.
 
-To skip the agent's own approval prompts, a Claude Code plant run uses `--permission-mode acceptEdits` and lists the
-plant tools in `--allowedTools` (`claude-code-meta.js` `noPrompt`), so no call waits on a human.
+To skip the agent's own approval prompts, a Claude Code plant run uses `--permission-mode acceptEdits` and allows
+the whole plant server in `--allowedTools` (`claude-code-meta.js` `noPrompt`), so no call waits on a human.
 
 ## What the stream-to-gateway check needs (done)
 
@@ -37,15 +37,28 @@ Tested without any model call in `bench/runner/test/plant-stream-match.test.js`:
 the gateway's own `args_sha256` vector and pairs with a gateway log line; non-plant tools and non-assistant events are
 ignored.
 
-## The one step still open (needs a model run, deferred)
+## Mounting the shim (done, fake agent only)
 
-The Claude Code harness today passes `--strict-mcp-config` with no `--mcp-config` (`claude-code.js`), so it mounts no
-MCP server at all. Before a Claude Code agent can drive a plant end to end, three launch-side changes are needed, and
-each needs a real Claude Code run to validate (so they are not in this change):
+The arms are `cc-plant-policy` and `cc-plant-allowall`. They run no `--agent` and install nothing.
 
-1. For a plant arm, write a plant `.mcp.json` (the `plant` server = the run's `shim.js` + socket, as
-   `agent-file.js` builds for Kiro) and pass `--mcp-config` plus `--allowedTools mcp__plant__*`, instead of the
-   unconditional no-config `--strict-mcp-config`.
-2. Route `claude-code` down the shim path in `openPlantRun` (`bench/runner/lib/plant/lifecycle.js`).
-3. Add `cc-plant-*` arm names (`arms.js`) and a Claude Code pin check in `intake.js`. No counted suite runs until the
-   pin check and the controls pass.
+| Part | What it does | Where |
+| --- | --- | --- |
+| Mount | the run's HOME gets `.claude/plant-mcp.json`: one `plant` server, the run's read-only `shim.js` on its own `gw.sock`. The command passes it with `--mcp-config` and keeps `--strict-mcp-config`, so no other MCP server loads | `lifecycle.js` (`MOUNTS['mcp-config']`), `agent-file.js` (`plantMcpConfig`), `claude-code.js` `buildCommand` |
+| Prompt | the one-line operator prompt the Kiro plant agent carries, on `--append-system-prompt`; the task prompt on stdin | `agent-file.js` `plantPrompt` |
+| Tools | `--tools Read Write Edit Bash Glob Grep`, the Claude Code names of the Kiro plant agent's built-ins; no Task or other spawn tool exists. `--allowedTools mcp__plant` plus those six, so no call waits on a person | `claude-code.js` `PLANT_TOOLS` |
+| Pin | a release pins one build in `versions.claudeCode` (`{version, sha256}`). A binary of another version is a control; one of the pinned version with another SHA-256 is refused | `intake.js` `claudeSuiteOf` |
+| Evidence | `installed-mcp.json` in the run directory, next to `stream.jsonl` | `claude-code.js` `collectArtifacts` |
+
+Each harness descriptor names its plant mount and its pin key (`plant: {mount, pinKey}`), and a plant arm whose
+stream format has no plant reader is refused before the first trial (`checkSuiteShape`).
+
+Tested with no model in `bench/runner/test/plant-claude-code.test.js`: a fake Claude Code
+(`fake-plant-claude.js`) reads the MCP config, starts the shim, and makes its calls through a real gateway. The trial
+scores complete with zero mismatches. A call the gateway never saw, and a call with no tool name, are mismatches.
+
+## Still open (paid, needs the owner)
+
+- One real Claude Code plant run, to check that the real binary reads the MCP config, names the tools
+  `mcp__plant__<tool>`, and honours `--tools` (no Task in its init line). Plan: one `cc-plant-allowall` trial and
+  one `cc-plant-policy` trial on one arm task, `--run-budget-usd 1`, so at most about $2.
+- A Claude Code control suite and a release with a `versions.claudeCode` pin, before any counted run.

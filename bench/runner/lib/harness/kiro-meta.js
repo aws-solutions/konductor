@@ -14,6 +14,8 @@ module.exports = Object.freeze({
   flags: Object.freeze({ own: Object.freeze([]), refused: Object.freeze({}), perRunCapFlag: null }),
   // How runs skip the agent's own approval prompts (design 15.3, A-4). kiroArgs passes the flag.
   noPrompt: Object.freeze({ flags: Object.freeze(['--trust-all-tools']), env: Object.freeze({}), note: 'plant runs list built-in tools by name plus @plant in the agent file, never @builtin' }),
+  // How plant arms mount the gateway (DEBT D-111): the shim named in the plant agent file; the release pins `versions.kiroCli`.
+  plant: Object.freeze({ mount: 'agent-file', pinKey: 'kiroCli' }),
   multiTurnNote: null,
   trace: Object.freeze({
     sessionFiles: true,
