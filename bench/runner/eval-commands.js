@@ -257,7 +257,7 @@ async function cmdJudge(opts) {
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
-      backend, quoteRule, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      backend, quoteRule, reaskUnquoted: Boolean(opts['reask-unquoted']), ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
     });
   } finally {

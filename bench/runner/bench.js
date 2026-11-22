@@ -115,7 +115,7 @@ const USAGE = `Usage:
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
        [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE | --aws-export-profile NAME] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
-       [--criteria-pack quality] [--plan] [--quote-match lenient|strict] [--rescore-quotes]
+       [--criteria-pack quality] [--plan] [--quote-match lenient|strict] [--rescore-quotes] [--reask-unquoted]
        (--aws-export-profile NAME takes the opencode backend's credentials from aws configure export-credentials --profile NAME instead of a file and asks again when fewer than
        15 minutes remain; a refresh that brings no later expiry is asked again a minute later, and only expired credentials with nothing newer stop the pass. Values are never logged.
        On either source, 3 calls in a row that fail on their credentials stop the pass: the remaining calls are recorded as skipped and the command exits 3)
@@ -125,6 +125,8 @@ const USAGE = `Usage:
        verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
        fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
        between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json), "lenient", "paraphrase" (profiles/scoring-paraphrase.json: lenient, or a restatement whose figures and most words are in the output, rebuilt from the saved outputs), or "paraphrase-guarded" (profiles/scoring-paraphrase-guarded.json: paraphrase, but a figure the output lacks or a copy of the rubric text is refused))
+       (--reask-unquoted asks a judge once more, naming the criteria, when a pass or partial gives evidence the quote rule cannot find in the output,
+       and scores evidence that is the criterion's own text as fail instead of one level down; off by default, at most one extra call per rubric unit)
        (--rescore-quotes matches the stored evidence quotes of --run again with no model call, for judgments made before both views were recorded, and writes judgments-lenient.json beside
        judgments.json (judgments.json is untouched), then prints the share of verdicts downgraded per judge before and after and the mean rubric per arm. With --quote-match strict it only
        checks that the strict rule reproduces the stored values. Reports build the lenient view of old judgments in memory and no longer read that file)

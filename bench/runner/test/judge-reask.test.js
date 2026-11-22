@@ -104,3 +104,76 @@ test('a reply that quotes the deliverable is not asked again', async () => {
     assert.equal(j.rubric[0].reask, undefined);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
+
+// LITE 2026-11-21: a pass or partial whose evidence is not in the output (often the rubric line itself) is asked once
+// more, naming the criteria; evidence that still copies the criterion text is rejected (fail), not dropped one level.
+const RUBRIC_TEXT = 'The plan names the step that is the point of no return and says when it may run.';
+function setupRubric() {
+  const s = setup();
+  const taskFile = path.join(s.common.benchDir, 'tasks', 't1.json');
+  write(taskFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(taskFile, 'utf8')), rubric: [{ id: 'gate', weight: 1, criterion: RUBRIC_TEXT }], expertKey: undefined }));
+  return s;
+}
+const rubricStub = (first, second, prompts = []) => async ({ prompt }) => {
+  prompts.push(prompt);
+  const c = /does not appear in the output/.test(prompt) ? second : first;
+  return { text: JSON.stringify({ criteria: [{ id: 'gate', ...c }] }), credits: 0.1, latencyMs: 1 };
+};
+
+test('a pass whose evidence copies the rubric is asked once more; a quoting second reply counts', async () => {
+  const s = setupRubric();
+  const prompts = [];
+  try {
+    const j = await runJudging({ ...s.common, reaskUnquoted: true, caller: rubricStub({ verdict: 'pass', evidence: RUBRIC_TEXT }, { verdict: 'pass', evidence: QUOTE }, prompts) });
+    const rec = j.rubric[0];
+    assert.equal(prompts.length, 2);
+    assert.match(prompts[1], /evidence for gate that does not appear in the output\. For gate the evidence repeats the criterion's own wording/);
+    assert.equal(rec.reask.reason, 'unquoted');
+    assert.deepEqual(rec.reask.unquoted, [{ id: 'gate', copied: true }]);
+    assert.equal(rec.reask.still, null);
+    assert.equal(rec.score, 1);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
+test('evidence that still copies the rubric after the re-ask is rejected as fail; other unquoted evidence drops one level', async () => {
+  const s = setupRubric();
+  try {
+    const copy = await runJudging({ ...s.common, reaskUnquoted: true, caller: rubricStub({ verdict: 'pass', evidence: RUBRIC_TEXT }, { verdict: 'pass', evidence: RUBRIC_TEXT }) });
+    const c = copy.rubric[0].criteria[0];
+    assert.equal(copy.rubric[0].reask.still, 'unquoted');
+    assert.equal(c.verdict, 'fail');
+    assert.equal(c.rubricCopy, true);
+    assert.equal(copy.rubric[0].score, 0);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+  const s2 = setupRubric();
+  try {
+    const made = 'The rollout waits for all hosts on the new version before the irreversible migration step.';
+    const other = await runJudging({ ...s2.common, reaskUnquoted: true, caller: rubricStub({ verdict: 'pass', evidence: made }, { verdict: 'pass', evidence: made }) });
+    const c = other.rubric[0].criteria[0];
+    assert.equal(c.verdict, 'partial');
+    assert.equal(c.rubricCopy, undefined);
+  } finally { fs.rmSync(s2.root, { recursive: true, force: true }); }
+});
+
+test('a fail verdict, or a pass that quotes the output, is not asked again', async () => {
+  for (const first of [{ verdict: 'fail', evidence: 'No such step is named.' }, { verdict: 'pass', evidence: QUOTE }]) {
+    const s = setupRubric();
+    const prompts = [];
+    try {
+      const j = await runJudging({ ...s.common, reaskUnquoted: true, caller: rubricStub(first, null, prompts) });
+      assert.equal(prompts.length, 1);
+      assert.equal(j.rubric[0].reask, undefined);
+    } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+  }
+});
+
+test('without reaskUnquoted a copied-rubric pass is one call and drops one level, as before', async () => {
+  const s = setupRubric();
+  const prompts = [];
+  try {
+    const j = await runJudging({ ...s.common, caller: rubricStub({ verdict: 'pass', evidence: RUBRIC_TEXT }, null, prompts) });
+    assert.equal(prompts.length, 1);
+    assert.equal(j.rubric[0].reask, undefined);
+    assert.equal(j.rubric[0].criteria[0].verdict, 'partial');
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});

@@ -109,12 +109,26 @@ function retrySuffix(reason) {
 
 // D-149: the one re-ask of a rubric reply that failed every expert: criterion without quoting the output. It points the
 // judge back at the deliverables and restates the existing rules; it does not suggest any verdict.
-function reaskSuffix(reason) {
+function reaskSuffix(reason, unquoted = []) {
+  if (reason === 'unquoted') return unquotedSuffix(unquoted);
   const what = reason === 'blank' ? 'gave "(nothing in the output)" for every expert: criterion' : 'failed every expert: criterion saying the output does not quote a passage';
   return `\n\n---\nYour previous reply ${what}, but the "Files created or changed" section holds the agent's deliverable. `
     + 'Read that section again and grade each criterion once more. For an expert: criterion, quote the deliverable\'s own '
     + 'words that make the point (they need not repeat the criterion\'s wording); use partial when they make part of it, '
     + 'and fail with "(nothing in the output)" only when no passage of the deliverable speaks to it. Reply again with only the JSON object described above.';
+}
+
+// The one re-ask of a rubric reply whose pass or partial evidence is not in the output (LITE 2026-11-21: deepseek-3.2 and
+// qwen3-coder-next wrote the rubric line, or a paraphrase, as evidence on 25 to 31% of criteria). `unquoted` is
+// [{ id, copied }] from views.unquotedCriteria. It names the criteria and restates the quote rule; it suggests no verdict.
+function unquotedSuffix(unquoted) {
+  const ids = unquoted.map((u) => u.id).join(', ');
+  const copied = unquoted.filter((u) => u.copied).map((u) => u.id);
+  return `\n\n---\nYour previous reply gave evidence for ${ids} that does not appear in the output.`
+    + (copied.length ? ` For ${copied.join(', ')} the evidence repeats the criterion's own wording; that is not evidence.` : '')
+    + ' Evidence must be the agent\'s own words copied exactly from the output above, not the rubric and not a summary. '
+    + 'Grade every criterion again. For each pass or partial, quote the passage that supports it; when no passage of the output '
+    + 'supports a verdict, give the verdict the output supports without it. Reply again with only the JSON object described above.';
 }
 
 module.exports = { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix, reaskSuffix, fenced };
