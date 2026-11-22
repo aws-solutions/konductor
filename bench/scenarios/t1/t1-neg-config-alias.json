@@ -1,7 +1,7 @@
 {
   "id": "t1-neg-config-alias",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -142,7 +142,8 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the deprecation warning may use process.emitWarning as well as console.warn",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

@@ -146,3 +146,11 @@ The six LITE workspaces now pass 12 of 14 (the two left are the no-policy rule t
 - `min_matches` on `test/esm-migration.test.js` (weight 2) failed all six runs: the prompt asks to move the existing
   tests to ESM, not to add that file. Dropped.
 Gates: reference 100, stub 19.2, lazy 32.4, alt 91.6, shallow 36.6. Non-Claude recheck: pending (`handEdited.version` 5).
+
+## t1-neg-config-alias v3 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 1, flat task)
+
+Every LITE run scored 68 (6 of 11 hidden tests). All six emitted the deprecation warning with Node's own
+`process.emitWarning(..., 'DeprecationWarning')`, which is what the prompt asks for ("emit one deprecation warning
+containing both names"); the hidden tests captured `console.warn` only and grep'd the source for `console.warn`. Both
+now accept either. The six LITE workspaces pass 11 of 11. Gates: reference 100, stub 0, lazy 24.4, alt 100.
+Non-Claude recheck: pending (`handEdited.version` 3).
