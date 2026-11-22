@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-receipt-service",
+  "phase": "design-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "design",
+  "size": "8 to 14",
+  "brief": "Phase: design review. Role of the person asking: reviewer. The user asks for a thorough review of this spec from every angle. Packet kind: a design for a service that renders customer receipts as PDFs, emails them, and offers a self-serve download page. Context: peak traffic and a latency budget, a storage and email cost budget for two years, the company accessibility policy (WCAG 2.2 AA for every customer page and document), the on-call standard (every async job needs an alarm and a dead-letter path), the security standard for customer links. Plant across five different concerns, never two in one subsection: download links use sequential ids with no expiry; the PDF is rendered inside the request path and the given peak numbers break the latency budget; failed email sends have no alarm and no dead-letter path; every PDF is kept forever in hot storage and the given numbers pass the year-two budget; the download page shows status by colour only and the PDF is an image with no text layer; one retry loop re-sends email with no limit so a bounce storm costs money. Write every planted problem the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here.",
+  "doc": "docs/design/receipt-export-service.md"
+}
