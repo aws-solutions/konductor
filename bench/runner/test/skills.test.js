@@ -11,7 +11,7 @@ const { tmp, write } = require('./helpers.js');
 const { parseStream } = require('../lib/stream.js');
 const {
   extractSkills, catalogFromListing, catalogFromAgentJson, isSopName, startupKiro, startupOpencode, builtinStartup,
-  targetOutcome, resultFields, SKILL_FIELDS, normalizeUri,
+  targetOutcome, resultFields, SKILL_FIELDS, FULL_TEXT_FIELDS, normalizeUri,
 } = require('../lib/skills.js');
 const { buildResult, validateResult } = require('../lib/result.js');
 
@@ -259,7 +259,7 @@ test('resultFields: every field is present, SOPs are the subset of loaded skills
   const cat = catalogFromListing({ sops: ['k-verify'], skills: ['verification'], agents: [] });
   const startup = { count: 5, totalBytes: 1000 };
   const f = resultFields({ extraction: extractSkills(events, 'kiro-cli'), info: { catalog: cat, startup }, task: { target: 'k-verify', class: 'sop' }, arm: { vanilla: false } });
-  assert.deepEqual(Object.keys(f).sort(), [...SKILL_FIELDS, 'loadCheck'].sort());
+  assert.deepEqual(Object.keys(f).sort(), [...SKILL_FIELDS, ...FULL_TEXT_FIELDS, 'loadCheck'].sort());
   assert.deepEqual(f.sopsLoaded.map((s) => s.name), ['k-verify']);
   assert.equal(f.sopNameSource, 'listing');
   assert.equal(f.startupResourceCount, 5);

@@ -47,12 +47,13 @@ const { writeControls, controlPlan, evaluateControls } = require('./controls.js'
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria } = require('./skillcli.js');
 const { cmdKeepPrune } = require('./kprun.js');
 const { cmdSelect } = require('./selectrun.js');
+const { cmdNudgePreview, cmdNudgeCheck } = require('./nudgecli.js');
 const { writeReview, importRatings } = require('./review.js');
 const { DEFAULTS } = require('../judge/config.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { formatCalibration, formatRaterKappas } = require('../judge/calibrate.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'nudge-preview', 'nudge-check'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -224,7 +225,7 @@ function cmdVariant(opts) {
   const run = () => {
     const v = buildVariant({
       repo, base, drop: list(opts.drop), replace: list(opts.replace), add: list(opts.add), overlay: list(opts.overlay), toAgent: list(opts['to-agent']),
-      preset: opts.preset && opts.preset !== true ? opts.preset : null, scratch, agentEngine: engineOf(opts),
+      preset: opts.preset && opts.preset !== true ? opts.preset : null, hook: opts.hook && opts.hook !== true ? opts.hook : null, scratch, agentEngine: engineOf(opts),
     });
     const verify = opts.verify ? verifyVariant(v, opts, repo) : null;
     return { v, verify };
@@ -732,6 +733,8 @@ function cmdCap(opts) {
     if (sub === 'forced-prefix') return cmdForcedPrefix(opts);
     if (sub === 'keep-prune') return cmdKeepPrune(opts);
     if (sub === 'select') return cmdSelect(opts);
+    if (sub === 'nudge-preview') return cmdNudgePreview(opts);
+    if (sub === 'nudge-check') return cmdNudgeCheck(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {

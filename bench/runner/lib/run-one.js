@@ -316,7 +316,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       const asked = fresh.length && turn > 1 ? { ...task, prompt: fresh[turn - 2].prompt } : task;
       const turnTask = noGit ? withNoGitNote(asked) : asked;
       if (resume) dropStaleLease(home, resume.sessionId);
-      const cmd = harness.buildCommand({ arm, task: turnTask, config, ctx, cwd, resume });
+      const cmd = harness.buildCommand({ arm, task: turnTask, config, ctx, cwd, resume, home });
       if (turn === 1) {
         fs.writeFileSync(path.join(outDir, 'command.txt'), `${cmd.display}\n(cwd=<fresh copy of ${task.real ? `real task ${task.real}` : `fixture ${task.fixture}`}>, isolation=${iso.mode})\n`);
       } else {

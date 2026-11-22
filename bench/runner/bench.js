@@ -235,7 +235,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js archive --run DIR [--out DIR] [--compress auto|gzip|zstd] [--remove-originals] [--apply]
   node bench/runner/bench.js archive --restore DIR [--dry-run]
        (packs the workspace/ of every finished run under DIR into one workspace.tar.zst (zstd if installed) or workspace.tar.gz beside it, or under --out. result.json, stream.jsonl,
-       installed-agent.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/ stay as plain files (copied when --out is given). It writes ARCHIVE.md and
+       installed-agent.json, installed-mcp.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/ stay as plain files (copied when --out is given). It writes ARCHIVE.md and
        archive-manifest.json (sizes and sha256), re-reads every archive and compares its entry list and checksum with the workspace, and marks the archive directory kind archive, protect true,
        so gc never deletes it. A dry run unless --apply. --remove-originals, with --apply, deletes each uncompressed workspace/ only after its archive is verified.
        --restore checks each archive against archive-manifest.json and extracts workspace/ again where it is missing, so recheck works; it never overwrites an existing workspace/)
@@ -305,10 +305,12 @@ const USAGE = `Usage:
        exists, only listed lint findings are tolerated: a new finding fails, and so does a listed one that no longer occurs. --update-baseline writes
        the file (all findings if absent; afterwards it only removes stale waivers, adding needs --force); it is never run for you)
   node bench/runner/bench.js cap variant --scratch DIR [--base REF] [--drop ID,ID] [--replace ID=FILE] [--overlay ID=DIR] [--add ID=FILE --to-agent A,B]
-       [--preset skills-only|bare|noskills] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
+       [--preset skills-only|bare|noskills] [--hook nudge|filler] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
        [--cargo-online] [--repo-root DIR] [--bench-dir DIR] [--json]
        (builds a dir: arm from git archive of the base ref with the capability dropped, replaced or added, and prints the arm string for the run command.
        --overlay skill:NAME=DIR replaces SKILL.md and adds references/** from DIR in one step (a section moved out of a skill); it never overwrites a reference file.
+       --hook nudge adds a userPromptSubmit hook to konductor that prints the 3 skills whose trigger lines best match the request (a local matcher,
+       no model call); --hook filler adds a hook of the same shape that prints neutral text of about the same size, the control arm.
        --verify builds it and trial-installs it with a scratch HOME. Exit 2 when the capability is not reachable at startup, unless --force)
   node bench/runner/bench.js cap plan --mode lift|trigger|improve --cap ID [--base REF] [--reps N] [--tasks id,id] [--budget-credits X]
        [--vanilla] [--allow-regex] [--force] [--candidate FILE] [--acting-agent A] [--agent-engine v2|v3] [--scratch DIR] [--seed N]
@@ -334,6 +336,11 @@ const USAGE = `Usage:
        that cap trigger reads as its query file. --seed-queries FILE seeds it with a skill-creator eval set or a cap draft file for that one skill)
   node bench/runner/bench.js cap forced-prefix --cap skill:NAME|sop:NAME|agent:NAME [--harness kiro-cli|opencode] [--out DIR] [--base REF] [--repo-root DIR] [--bench-dir DIR]
        (free: writes the forced-load instruction for one skill and harness, to pass with run's arm prefix option to a forced arm and its A/A repeat in a run of their own)
+  node bench/runner/bench.js cap nudge-preview --tree DIR --tasks id,id --extra-tasks DIR,DIR [--json]
+       (free: what a built nudge arm prints for each task, with the rank-1 margin, for a person's leak check)
+  node bench/runner/bench.js cap nudge-check --run DIR,DIR [--json]
+       (free: per finished run, whether the hook text reached the agent, the skills loaded, those loaded in full and the preview-only loads;
+       exit 1 when a hook arm ran without its hook text)
   node bench/runner/bench.js cap keep-prune --skill NAME --run stub-ID [--out DIR] [--depth quick|deep|both] [--provider stub] [--subject-model ID] [--judges A,B,C] [--replicates N] [--rejudge] [--selection FILE] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap select --skill NAME (--run stub-ID [--reps N] [--stub-behaviour always|never|correct|fake] | --from-run DIR | --write-tasks DIR) [--requests FILE] [--usage-runs DIR,DIR] [--out DIR] [--repo-root DIR] [--json]
        (free: the keep-or-prune check at a quick and a deep depth under Michael Lin's copied rules; writes DIR/<run>/records/NAME.json with both verdicts side by side. Phase A has only the stub provider)

@@ -12,7 +12,7 @@ To repeat the 2x2 study, or a run level, from the scripts in this repository, se
 Every command `bench.js` takes (generated from `--help`):
 
 <!-- gen:commands -->
-`run`, `judge`, `explain`, `trace`, `refs-report`, `probe-report`, `canary-report`, `plant-trace`, `plant-policy-test`, `plant-report`, `report`, `report-2x2`, `contrast`, `pr-plan`, `recheck`, `gc`, `archive`, `backfill`, `compare`, `skills`, `scenarios lint`, `scenarios prereg`, `scenarios coverage`, `scenarios pilot-table`, `scenarios ready`, `scenarios spot-review`, `cap list`, `cap audit`, `cap variant`, `cap plan`, `cap draft`, `cap import`, `cap scenarios`, `cap forced-prefix`, `cap keep-prune`, `cap select`, `cap controls`, `cap trigger`, `cap prune-report`, `cap skill-plan`, `cap skill-study`, `cap decide`, `cap review`, `cap review-import`, `cap criteria`, `calibrate`, `list-arms`
+`run`, `judge`, `explain`, `trace`, `refs-report`, `probe-report`, `canary-report`, `plant-trace`, `plant-policy-test`, `plant-report`, `report`, `report-2x2`, `contrast`, `pr-plan`, `recheck`, `gc`, `archive`, `backfill`, `compare`, `skills`, `scenarios lint`, `scenarios prereg`, `scenarios coverage`, `scenarios pilot-table`, `scenarios ready`, `scenarios spot-review`, `cap list`, `cap audit`, `cap variant`, `cap plan`, `cap draft`, `cap import`, `cap scenarios`, `cap forced-prefix`, `cap nudge-preview`, `cap nudge-check`, `cap keep-prune`, `cap select`, `cap controls`, `cap trigger`, `cap prune-report`, `cap skill-plan`, `cap skill-study`, `cap decide`, `cap review`, `cap review-import`, `cap criteria`, `calibrate`, `list-arms`
 <!-- /gen:commands -->
 
 Every name `--suite` takes (generated):
@@ -1145,13 +1145,20 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   recommendation per skill and harness: HARMS, RELOCATE, PRUNE, FIX, KEEP or NEEDS DATA, plus a TRIM flag. Free, read-only, never a deletion.
   How to evaluate skills and decide keep, fix, trim, relocate or prune: [cap-playbook.md](cap-playbook.md).
   A skill counts as exposed in a run when the agent that started the run lists it (its own installed skill filter, else the base tree's listing for that agent), or an agent the stream shows the run spawning lists it, or the run loaded it. Each run keeps the entry agent's own `installed-agent.json` (`--arm-agent k-developer` saves k-developer's, not konductor's). Runs saved before that fix hold konductor's file for every entry agent; `prune-report` ignores that file when its name differs from the entry agent, uses the base tree's listing instead, and counts those runs in `usage.runs.staleInstalledAgent` with a warning.
-- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills` builds a `dir:`
+- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills | --hook nudge|filler` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
   `--drop agent:NAME` is the agent's drop-one arm: the agent is replaced by a stub, not removed, because the routing rules and the orchestrator's subagent
   list still name it. The stub keeps the agent's name and description, gets a prompt that tells it to do nothing and hand the brief back (`STUB_PROMPT` in
   `bench/cap/variant.js`), and loses its skills, SOPs, context files and subagents; `variant.json` records the op as `drop` with `how: "stub"`. The entry agent
   `konductor` cannot be dropped.
+  `--hook nudge` builds the `konductor-nudge` arm (`bench/cap/nudge.js`): konductor gets one `userPromptSubmit` hook, a `node -e` program
+  that scores the request against konductor's own skill trigger lines (the same lines its prompt lists under "## Your skills", built from the
+  agent spec and SKILL.md frontmatter only) and prints the top 3 with "your call" and "say no skill fits". It reads only its stdin. `--hook filler`
+  builds `konductor-filler`, the control: a hook of the same shape printing neutral text of about the same size that names no skill or tool.
+  `variant.json` records the hook command's sha256. `cap nudge-preview` prints the hook text per task for a leak check; `cap nudge-check` reads
+  finished runs (hook seen, loads, full loads, preview-only loads). Result fields `skillsLoadedFull` and `skillLoadsPreview` split loads whose
+  whole text reached the model from loads kiro-cli cut to its preview (tool answers over 30,000 characters).
   `--preset noskills` builds the `konductor-noskills` arm (B4): every `skills/` dir is removed and every agent's skill lists
   (`skillNames`, `claudeCli.skills`) are emptied; prompts, SOPs, context files and subagents stay. Use the same tree on both harnesses:
   `--arms konductor-noskills=dir:PATH` (Kiro CLI: the skills MCP server indexes 0 skills) and `cc-konductor-noskills=dir:PATH`
@@ -1459,7 +1466,7 @@ python3 -m venv .venv && .venv/bin/pip install cedarpy
 ```
 An `arm-sim` release also needs Python 3.12 with the arm wheels (same pins as the arm release manifest):
 ```
-python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy cedarpy
+python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy==2.5.5 cedarpy==4.12.2
 ```
 Tests: `python3 -m unittest discover -s bench/physical/test -p 'test_*.py'` (run them with `.venv/bin/python` to include the Cedar tests). The Node tests are `bench/runner/test/plant-*.test.js`.
 

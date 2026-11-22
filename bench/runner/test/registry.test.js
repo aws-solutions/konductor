@@ -16,7 +16,7 @@ const { kiroArgs } = require('../lib/harness/kiro.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
 const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'freshSessions', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly', 'armConfig'];
-const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'multiTurnNote', 'trace'];
+const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'plant', 'multiTurnNote', 'trace'];
 const STREAM_FORMATS = ['kiro-acp', 'opencode-json', 'claude-stream-json', 'strands-jsonl'];
 const CONTRACT = fs.readFileSync(path.join(__dirname, '..', 'lib', 'harness', 'CONTRACT.md'), 'utf8');
 

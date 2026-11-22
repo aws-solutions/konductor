@@ -41,10 +41,10 @@ test('plant-policy and plant-allowall parse as plant arms and resolve to kiro-cl
   assert.deepEqual(arm.plant, { arm: 'policy' });
 });
 
-test('a plant arm under the oc- or cc- prefix is refused: plant arms run on kiro-cli or Strands only', () => {
-  for (const spec of ['oc-plant-policy', 'cc-plant-allowall']) {
-    assert.throws(() => parseArmSpec(spec), /plant arms run on kiro-cli or Strands \(st-\) only/);
-    assert.throws(() => resolveArm(spec, '.'), /plant arms run on kiro-cli or Strands \(st-\) only/);
+test('a plant arm under the oc- prefix is refused: opencode has no plant mount (cc- is plant-claude-code.test.js)', () => {
+  for (const spec of ['oc-plant-policy', 'oc-plant-allowall']) {
+    assert.throws(() => parseArmSpec(spec), /plant arms run on kiro-cli, Claude Code \(cc-\) or Strands \(st-\) only/);
+    assert.throws(() => resolveArm(spec, '.'), /plant arms run on kiro-cli, Claude Code \(cc-\) or Strands \(st-\) only/);
   }
 });
 
