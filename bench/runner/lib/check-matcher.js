@@ -185,7 +185,8 @@ function realTestsResult(root, opts) {
   if (!real || !overlay || !fs.existsSync(overlay)) return unparsed('no manifest entry or hidden overlay');
   const r = runRealTests(root, real.spec, { overlayDir: overlay, env: opts.env ?? testEnv(), wrapCmd: opts.wrapCmd, scratchDir: opts.scratchDir });
   if (r.timedOut && r.results.size === 0) return unparsed('timed out');
-  if (r.results.size === 0) return unparsed(`exit ${r.exitCode}, no test results`);
+  // The last lines of the test output say why nothing parsed (a missing interpreter or module, a sandbox refusal).
+  if (r.results.size === 0) return unparsed(`exit ${r.exitCode}, no test results; output ends: ${r.tail.replace(/\s+/g, ' ').slice(-300)}`);
   const s = scoreReal({ results: r.results, failToPass: real.failToPass, passToPass: real.passToPass });
   const ok = !r.timedOut && s.failToPass.passed === s.failToPass.total && s.passToPass.passed === s.passToPass.total && s.failToPass.total > 0;
   return {

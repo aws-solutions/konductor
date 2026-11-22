@@ -124,6 +124,6 @@ const skip = probe.ok ? false : `unshare namespace unavailable: ${probe.reason}`
 test('inside the namespace the run still scores correctly with the offline check', { skip }, async () => {
   const { result: r } = await runWith({ files: { 'pkg/mod.py': 'def add(a, b):\n    return a + b\n' } }, { isolation: { mode: 'unshare', reason: 'test' } });
   assert.equal(r.infraError, null, r.error);
-  assert.deepEqual(r.hiddenTests, { passed: 1, total: 1, unparsed: false });
+  assert.deepEqual(r.hiddenTests, { passed: 1, total: 1, unparsed: false }, r.checks.map((c) => c.detail).join('; '));
   assert.deepEqual(r.regressionTests, { passed: 1, total: 1 });
 });

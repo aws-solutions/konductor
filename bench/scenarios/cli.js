@@ -10,6 +10,7 @@ const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
 const { repoRootOf, textFlag } = require('../runner/lib/flag-values.js');
 const { lintDir, catalogOfScan, readBaseline } = require('./lint.js');
 const { loadTaskFiles } = require('./files.js');
+const packSuiteLib = require('./pack-suite.js');
 const { buildCoverage, renderCoverageMd } = require('./coverage.js');
 const prereg = require('./prereg.js');
 const { cmdPilotTable } = require('./pilot-table.js');
@@ -32,19 +33,32 @@ function dirArg(opts, sub, at = 1) {
   return dir;
 }
 
+/**
+ * When `dir` is the scenario pack itself: the message that bench/suites/pack.json no longer lists the pack's tasks, or
+ * null. A task added without regenerating the suite file then fails the lint, not only the full suite (D-164).
+ */
+function packSuiteProblem(dir) {
+  if (path.resolve(dir) !== __dirname) return null;
+  const want = packSuiteLib.render(packSuiteLib.packSuite());
+  const have = fs.existsSync(packSuiteLib.SUITE_FILE) ? fs.readFileSync(packSuiteLib.SUITE_FILE, 'utf8') : null;
+  return have === want ? null : 'bench/suites/pack.json does not list the pack\'s tasks: run node bench/scenarios/pack-suite.js and commit bench/suites/pack.json';
+}
+
 function cmdLint(opts) {
   const dir = dirArg(opts, 'lint');
   const baseline = readBaseline();
   const res = withTree(opts, (scan, b) => ({ ...lintDir(dir, catalogOfScan(scan), { baseline }), base: b.label }));
+  res.packSuite = packSuiteProblem(dir);
   const fresh = res.findings.filter((f) => !f.known);
   if (opts.json) console.log(JSON.stringify(res, null, 2));
   else {
     for (const f of res.findings) console.log(`${f.known ? 'known ' : ''}${f.taskId}: ${f.rule}: ${f.detail} (${f.file})${f.known ? ` [${f.known}]` : ''}`);
+    if (res.packSuite) console.log(res.packSuite);
     for (const k of res.stale) console.log(`stale baseline entry (fixed? remove it from bench/scenarios/lint-baseline.json): ${k}`);
     const known = res.findings.length - fresh.length;
     console.log(`${res.tasks} task(s) checked against ${res.base}: ${fresh.length ? `${fresh.length} finding(s)` : 'clean'}${known ? `, ${known} known (lint-baseline.json)` : ''}${res.stale.length ? `, ${res.stale.length} stale baseline entr${res.stale.length === 1 ? 'y' : 'ies'}` : ''}`);
   }
-  if (fresh.length || res.stale.length) process.exitCode = 1;
+  if (fresh.length || res.stale.length || res.packSuite) process.exitCode = 1;
 }
 
 // The owner-approved list of units with no fair scenario: { "skill:name": "reason" }. --selection-only FILE, else DIR/selection-only.json when present.
