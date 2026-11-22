@@ -9,6 +9,7 @@ const { provenanceOf } = require('./runconfig.js');
 const { kiroInstallHarness, costUnitOf, DEFAULT_RUNTIME } = require('./harness/runtime.js');
 const { isComparableMode } = require('./isolate.js');
 const { oracleResult } = require('./oracle.js');
+const { forcedLoadResult } = require('./forced-must-load.js');
 
 const isolationOf = (mode) => (typeof mode === 'string' && mode && mode !== 'auto' ? mode : 'none');
 
@@ -177,6 +178,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     variant: arm.variant ?? null,
     armPrefix: arm.prefixInfo ? { ...arm.prefixInfo } : null,
     oracle: oracleResult(arm, task),
+    // Only on a forced arm's runs, so every other result keeps exactly the fields it always had.
+    ...(forcedLoadResult(arm, task) ? { forcedLoad: forcedLoadResult(arm, task) } : {}),
     armConfig: arm.armConfig ?? null,
     ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
     ...(meta.unscrubbed?.length ? { unscrubbedFiles: meta.unscrubbed } : {}),

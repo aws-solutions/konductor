@@ -78,10 +78,11 @@ function applyArmOptions(arms, opts) {
   return { armPrefix, armAgent, armConfig };
 }
 
-/** The prompt of the first turn: the arm's prefix, the oracle skills block, then the task prompt, each after a blank line. */
+/** The prompt of the first turn: the arm's prefix, the oracle skills block, the forced-load block, then the task prompt, each after a blank line. */
 function promptFor(arm, task) {
   const oracle = arm?.oracle?.get(task.id)?.block;
-  const parts = [arm?.prefixText ? arm.prefixText.replace(/\s+$/, '') : null, oracle ?? null, task.prompt].filter((p) => p !== null);
+  const forced = arm?.forcedLoad?.get(task.id)?.block;
+  const parts = [arm?.prefixText ? arm.prefixText.replace(/\s+$/, '') : null, oracle ?? null, forced ?? null, task.prompt].filter((p) => p !== null);
   return parts.join('\n\n');
 }
 

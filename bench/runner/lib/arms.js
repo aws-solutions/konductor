@@ -111,6 +111,9 @@ function parseArmSpec(spec) {
   }
   if (!NAME_RE.test(name)) throw new Error(`arm name "${name}" is invalid: use [a-z0-9][a-z0-9._-]{0,40}`);
   if (!ref) throw new Error(`arm "${name}" needs a ref after "=" (name=<git ref> or name=dir:<path>)`);
+  // A vanilla A/A repeat (vanilla-b=vanilla): the same empty install under another id, so two vanilla replicate sets measure
+  // run-to-run noise. "vanilla" is never read as a git ref here.
+  if (ref === 'vanilla') return { kind: 'vanilla', name, repeatOf: 'vanilla' };
   if (ref.startsWith('dir:')) {
     const p = ref.slice(4);
     if (!p) throw new Error(`arm "${name}" needs a path after "dir:"`);
@@ -174,7 +177,7 @@ function resolveArm(spec, repo) {
   }
   const parsed = parseArmSpec(spec);
   if (parsed.kind === 'vanilla') {
-    return { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
+    return { id: parsed.name, label: parsed.name, ...(parsed.repeatOf ? { repeatOf: parsed.repeatOf } : {}), ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
   }
   // A plant arm installs nothing of konductor, so it takes the vanilla install path; `plant` marks the gateway run.
   if (parsed.kind === 'plant') {
@@ -221,6 +224,7 @@ const ARM_SYNTAX = [
   '                      resolved in --repo-root without fetching; built from `git archive`, a dirty tree never leaks',
   '  name=dir:<path>     a working-tree directory (a worktree or checkout), snapshot of tracked and untracked',
   '                      files that are not ignored; label name@<hash12>, recorded as dirty',
+  '  name=vanilla        a vanilla A/A repeat (vanilla-b=vanilla): the vanilla condition under another id, for a noise floor',
   '  plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli; never with oc- or cc-)',
   '  st-plant-policy | st-plant-allowall    the same on a Strands agent with forwarding plant tools (kind B);',
   '                      st-plant-policy-hooked | st-plant-allowall-hooked keep an agent with tool hooks apart',

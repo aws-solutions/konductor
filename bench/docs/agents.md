@@ -68,6 +68,7 @@ Arm syntax for --arms (comma separated):
                       resolved in --repo-root without fetching; built from `git archive`, a dirty tree never leaks
   name=dir:<path>     a working-tree directory (a worktree or checkout), snapshot of tracked and untracked
                       files that are not ignored; label name@<hash12>, recorded as dirty
+  name=vanilla        a vanilla A/A repeat (vanilla-b=vanilla): the vanilla condition under another id, for a noise floor
   plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli; never with oc- or cc-)
   st-plant-policy | st-plant-allowall    the same on a Strands agent with forwarding plant tools (kind B);
                       st-plant-policy-hooked | st-plant-allowall-hooked keep an agent with tool hooks apart

@@ -35,7 +35,7 @@ const USAGE = `Usage:
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--prereg FILE] [--level lite|standard|full [--level-since FILE]] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
-       [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
+       [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE] [--forced-must-load ARM,ARM]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
        [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
@@ -95,7 +95,10 @@ const USAGE = `Usage:
        and nothing runs then. The expected skills come from --oracle-manifest FILE (default suites/rootcause.manifest.json, tasks[].entries[].expectedSkills for the arm's entry
        agent, else all the task's entries). result.json records oracle {skills, entryMatched, bytes, sha256} and the report flags the arm ORACLE. Give an oracle arm its own
        name (for example oracle=<sha>) and never pool it with normal runs; references/ files of a skill are not included)
-       arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)
+       (--forced-must-load ARM,ARM puts a short instruction in front of each task's prompt that names the task's loadCheck.mustLoad skills, SOPs and agents and says to
+       load them before anything else, worded as cap forced-prefix words it. Konductor arms on kiro-cli or opencode only; a task with no mustLoad or a unit the arm's ref does not
+       have is refused and nothing runs. result.json records forcedLoad {units, bytes, sha256}. Name it apart, for example konductor-forced=<ref> beside konductor=<ref>)
+       arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path>, name=vanilla (a vanilla A/A repeat, for example vanilla-b=vanilla; see list-arms)
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
        Claude Code arms (cc-vanilla, cc-main, cc-name=<git ref>; one harness per run; the real claude binary, never a launcher script):
