@@ -19,7 +19,7 @@ const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile,
 const { repoRootOf } = require('./flag-values.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
-const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
+const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD, PAIR_ORDERS } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
 const { resolveIsolation, describeHide, ISOLATE_MODES, isComparableMode } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
@@ -225,6 +225,22 @@ function runLimitsOpt(opts) {
 }
 
 /**
+ * --pair-order and --fill-skipped, checked. --fill-skipped X runs every budget_skipped cell once more before the
+ * command ends, while this command's spend stays under X (the same rules as --budget-credits, which X must not be under).
+ */
+function fillOpts(opts, budgetCredits) {
+  const pairOrder = opts['pair-order'] === undefined ? 'konductor-first' : opts['pair-order'];
+  if (!PAIR_ORDERS.includes(pairOrder)) throw new Error(`--pair-order takes ${PAIR_ORDERS.join(' or ')}`);
+  let fillBudget = null;
+  if (opts['fill-skipped'] !== undefined) {
+    fillBudget = Number(opts['fill-skipped']);
+    if (opts['fill-skipped'] === true || !(fillBudget > 0)) throw new Error('--fill-skipped must be a positive number: the budget of the fill pass');
+    if (budgetCredits !== null && fillBudget < budgetCredits) throw new Error(`--fill-skipped ${fillBudget} is under the budget ${budgetCredits}: the fill pass would skip the same cells`);
+  }
+  return { pairOrder, fillBudget };
+}
+
+/**
  * The Bedrock model and credentials of a Strands run (DEBT D-24), or nulls: a Strands run on Bedrock spends money, so it
  * needs a --budget-usd cap and an --aws-profile whose keys alone reach the agent. Throws when one is missing.
  */
@@ -344,6 +360,7 @@ async function cmdRun(opts, deps = {}) {
   const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
   if (isCc) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
   const { maxAuthFailures, maxToolCalls, seed, isolate, envKeep } = runLimitsOpt(opts);
+  const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
 
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
   if (profile) log(`profile ${profile.name}: ${replicates} replicate(s) per cell${opts.replicates === undefined ? ' (the profile default)' : ''}`);
@@ -517,6 +534,7 @@ async function cmdRun(opts, deps = {}) {
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      pairOrder, fillBudget,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
@@ -607,9 +625,10 @@ async function cmdRun(opts, deps = {}) {
     }, null, 2) + '\n');
 
     log(`out=${outDir}`);
-    const { results, observed, charged, studyLine, guard, authStop } = await runAll({
+    const { results, observed, charged, studyLine, guard, authStop, fill } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
       costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, resume, maxAuthFailures, loginCheck,
+      pairOrder, fillBudget,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
@@ -621,7 +640,7 @@ async function cmdRun(opts, deps = {}) {
       plantSuite.walls.checklist = checklistWithTrials(plantSuite.walls.results, trialRows);
       log(`plant walls: with the prober trials' gateway rows; ${plantSuite.walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}`);
     }
-    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(trialRows.length ? { plantBoundaryChecklist: plantSuite.walls.checklist } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(fill ? { fill } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(trialRows.length ? { plantBoundaryChecklist: plantSuite.walls.checklist } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
       log(judged.alarm);
@@ -629,6 +648,8 @@ async function cmdRun(opts, deps = {}) {
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
+    const leftSkipped = results.filter((r) => r?.status === 'budget_skipped').length;
+    if (leftSkipped) log(`budget_skipped: ${leftSkipped} cell(s) never ran${fill ? ` (fill pass: ${fill.filled} of ${fill.tried} filled)` : ''}; their pairs are unpaired until filled (--resume, or --fill-skipped X)`);
     for (const line of creditNoteLines(creditNotes(results))) log(line);
     if (authStop.tripped) {
       log(authStop.kind === 'launch'
@@ -658,4 +679,4 @@ async function cmdRun(opts, deps = {}) {
   }
 }
 
-module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt, timeoutSecOpt };
+module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt, timeoutSecOpt, fillOpts };

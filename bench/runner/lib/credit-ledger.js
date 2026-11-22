@@ -72,12 +72,12 @@ function openLedger({ dir, budget = null, budgetUnit = 'credits', create = true,
   const file = path.join(dir, LEDGER_FILE);
   const study = readLedger(dir).totals;
   const t = { ...study, session: 0, sessionUsd: 0, writeFailures: 0 };
-  const budgetValue = finite(budget) && budget > 0 ? budget : null;
+  let budgetValue = finite(budget) && budget > 0 ? budget : null;
   const inUsd = budgetUnit === 'usd';
   const state = () => guardState(inUsd ? t.sessionUsd : t.session, budgetValue);
   return {
     file,
-    budget: budgetValue,
+    get budget() { return budgetValue; },
     record(entry) {
       const e = { at: now().toISOString(), ...entry };
       addTo(t, e);
@@ -89,6 +89,8 @@ function openLedger({ dir, budget = null, budgetUnit = 'credits', create = true,
       } catch { t.writeFailures++; }
     },
     totals: () => ({ ...t }),
+    // The fill pass of `bench run --fill-skipped X`: a larger guard for the rest of this command. Never lowers it.
+    raise(b) { if (budgetValue !== null && finite(b) && b > budgetValue) budgetValue = b; },
     // Whether a call that may cost up to `worst` (in the budget's unit) still fits under the guard. No budget: always.
     canAfford: (worst) => budgetValue === null || guardState((inUsd ? t.sessionUsd : t.session) + worst, budgetValue) === 'ok',
     state,
