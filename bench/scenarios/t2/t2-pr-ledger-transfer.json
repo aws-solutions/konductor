@@ -144,7 +144,35 @@
         "verdict": "pass",
         "note": "No comments, tests, or file names point to specific bugs. Documentation mentions concepts like atomic transactions and UTC but as legitimate contracts to check, not as bug hints."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request asks for a code review of the PR using existing docs and tests; it names no specific method or framework and holds no misleading hint."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture code contains the bugs (non-atomic journal writes, late idempotency check, parseFloat truncation, same-day filter, done status on error, local time usage) but does not list or describe the correct fixes or expected behavior."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key (key.json), checks, and rubric all refer to the exact files, line spans, severities and fix keywords in the fixture code (src/scheduled-transfers.js:21-25, src/reconcile.js:5, src/scheduler.js:5,17) without requiring any names or paths not present in the fixture."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer could identify all six defects from the fixture code and request alone; alternative phrasing or ordering of the review would still pass the grader as long as the required findings are present."
+        }
+      ],
+      "version": 1
+    }
   },
   "pilot": {
     "scores": {},

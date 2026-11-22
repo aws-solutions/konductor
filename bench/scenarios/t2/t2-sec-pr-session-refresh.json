@@ -144,7 +144,35 @@
         "verdict": "pass",
         "note": "No comments, test names, or file names point directly to planted problems. Documentation states expected behaviors but doesn't identify specific bugs."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request asks for a code review of PR in pr/2788/, reading diff alongside implementation/tests/docs. No specific method, framework, or tool is named for how to work. No decoy hint points away from the real security issues found in the fixture."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains implementation files with bugs (string equality, Math.random, missing revocation calls, missing cookie flags) but nothing in comments, docs, tests, or filenames describes the correct secure behavior that hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key.json and checks all reference line numbers and file paths that exist in the fixture (src/session-store.js:48,53; src/routes/auth-routes.js:20,45; src/reset-service.js:16; src/account-service.js:34). The rubric's Fail/Partial/Pass anchors ask for actionable findings grounded in behavior without mentioning invented problems, matching the request's ask."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can see the bugs in the fixture (plain === comparison on attacker-controlled refresh token, Math.random for reset tokens, missing HttpOnly/Secure on remember-me cookie, no session revocation after password change, logout without server-side revoke) and fix them without seeing hidden tests or solution."
+        }
+      ],
+      "version": 1
+    }
   },
   "pilot": {
     "scores": {},

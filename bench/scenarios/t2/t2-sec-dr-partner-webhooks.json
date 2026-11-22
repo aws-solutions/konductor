@@ -189,7 +189,35 @@
         "verdict": "pass",
         "note": "No comments, tests, or file names point at specific problems. Context files contain policies but don't highlight contradictions explicitly."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request asks for a design review with specific format (location/severity/issue/fix JSON findings), names no method/process, and holds no decoy hint."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture provides context files and the design document but does not list the answer or describe the finished behavior the hidden tests check."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key.json findings (k1-k7) match sections 3.2-3.8 of the design document; checks validate REVIEW.md format and location references; rubric anchors align with the request's project-specific review goal."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer could solve this using only the design document and context files (auth-service.yaml, data-classification.md, traffic-and-slos.json, incident-2024-11.md, current-architecture.md) to identify the seven critical security issues."
+        }
+      ],
+      "version": 1
+    }
   },
   "pilot": {
     "scores": {},

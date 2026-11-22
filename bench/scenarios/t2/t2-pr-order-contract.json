@@ -151,7 +151,35 @@
         "verdict": "pass",
         "note": "No comments, test names, or file names hint at planted problems. Issues must be discovered through code and documentation review."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request asks for a code review of PR 2231 and specifies the expected output format (REVIEW.md with a JSON findings block). It does not name a method, process, framework or tool for how to perform the review, and there is no misleading hint or decoy in the prompt."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture code, tests, docs, contracts and API spec describe the current behavior and contracts but do not list or describe the seven defects that the hidden key identifies (missing displayTotal alias, deliveryNote requirement breaking mobile clients, paused status filtering, sequence string conversion, currency validation, non-atomic save, and debug route exposing email). The test file only tests the new functionality added in the PR, not the bug checks."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "The hidden key items, fixes and severity levels match the fixture code exactly: every file, line number and behavior referenced in the key exists in the fixture (or is stated in the request context such as the mobile contract). The rubric's Fail/Partial/Pass anchors describe judging substance (missing problems vs invented issues) which aligns with what the key tests. The edits.md file is empty, indicating no rubric changes were made after the task was created."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer could identify the seven defects from the PR diff and fixture context alone. The request explicitly asks to read the changed code in context and check behavior against documented contracts (mobile client, shipping consumer, data shapes). All referenced behaviors exist in the fixture: the mobile contract explains the displayTotal alias requirement, the shipping contract explains sequence must be an integer, the data-shapes doc confirms paused is a legacy status, and the order-rules.json shows currency must be three letters. Different phrasing or ordering in the review would still pass as long as each finding covers the right location, severity and fix keywords."
+        }
+      ],
+      "version": 1
+    }
   },
   "pilot": {
     "scores": {},
