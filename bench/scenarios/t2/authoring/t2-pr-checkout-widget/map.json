@@ -1,0 +1,18 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review"
+  ],
+  "targetSop": "k-code-review-workflow",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "code-review"
+    ],
+    "mustNotLoad": [
+      "frontend-review"
+    ]
+  },
+  "twinIdea": "Implement a new payment method integration in the checkout flow, extending the order-client and adding backend API calls.",
+  "why": "The task is a PR code review for a browser-only storefront widget. code-review is the primary skill for reviewing diffs/PRs, and k-code-review-workflow structures the review process. frontend-review is excluded because this is vanilla JS, not React/Cloudscape/TypeScript."
+}

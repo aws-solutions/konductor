@@ -1,0 +1,179 @@
+{
+  "id": "t2-pr-ledger-transfer",
+  "version": 1,
+  "class": "review",
+  "phase": "code-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "Review the scheduled-transfer pull request in this Node.js wallet ledger project. The worker is about to be enabled for recurring customer movements, so I need confidence that it fits the ledger rules and the surrounding operational behavior rather than only passing its new examples. Read the project files, the PR description at pr/5120/description.md, and the exact diff at pr/5120/changes.diff; use the existing docs and tests to understand the contracts. Write the review to REVIEW.md at the top of the project. Keep the prose focused on concrete consequences in this service and fixes a developer can apply. End the review with a fenced json list of findings, each with location (path/to/file.ext:LINE, using line numbers from the project as it is now), severity (critical, high, medium, low or nit), issue and fix.\n\n```json\n[\n  {\"location\": \"path/to/file.ext:LINE\", \"severity\": \"medium\", \"issue\": \"what is wrong and why it matters\", \"fix\": \"an actionable change\"}\n]\n```",
+  "questions": "allowed",
+  "fixture": "t2-pr-ledger-transfer",
+  "hidden": "t2-pr-ledger-transfer",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 21,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);let n=0;for(const x of L)for(const m of String(x.location).matchAll(/([A-Za-z0-9_.\\/-]+\\.[A-Za-z0-9]+):(\\d+)/g)){n++;let c;try{c=fs.readFileSync(m[1],\"utf8\").split(\"\\n\").length}catch{process.exit(1)}if(+m[2]<1||+m[2]>c)process.exit(1)}process.exit(n?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Fail: the review invents problems or omits the concrete consequences and actionable fixes for important findings. Partial: the review identifies some real concerns but leaves their project impact or fix vague. Pass: each important finding explains a concrete consequence in this ledger and gives a developer-actionable fix without invented problems. (code cannot check this because it cannot judge whether the review's explanations are grounded, useful, and free of invented concerns) ",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "The scheduled path appends the debit and credit through separate store calls and mutates balances between them, so a process failure can leave a persisted journal with only one side of the transfer.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "The client-key lookup happens after both journal lines and balance mutations, so a retried schedule posts the movement again before it is recognized as a duplicate.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "Converting the configured decimal with parseFloat and floor after multiplication can truncate values such as 0.29 to 28 minor units instead of the ledger's intended 29.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "Reconciliation filters out accounts whose creation date is today even though the operations contract requires every account, allowing a new account's mismatch to go unreported.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "The scheduler records a failed transfer as done and returns a done result, so the platform will not retry a transient account, balance, or store failure.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "Due-time matching uses the server's local hour and minute rather than the schedule's UTC contract, so the repeated local time during a daylight-saving fallback can run a daily transfer twice.",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review-pass-integrity"
+  ],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "adversarial-code-review-pass-integrity"
+    ],
+    "mustNotLoad": [
+      "adversarial-design-review",
+      "backend-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-21",
+    "source": "original"
+  },
+  "review": {
+    "family": "deepseek",
+    "date": "2026-11-22",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt doesn't mention specific review methods, checklists, or hint at planted problems. It only asks to review against ledger rules and operational contracts."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear instructions: review scheduled-transfer PR, read project files/docs, write to REVIEW.md with JSON findings containing location, severity, issue, fix."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Key items require careful comparison of code to documentation contracts. Quick review would miss atomicity violation, idempotency order, floating-point precision, reconciliation filter, error retry logic, and timezone issues."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items are findable from fixture with defensible severity. Code clearly violates documented contracts. Line numbers match actual code locations."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, tests, or file names point to specific bugs. Documentation mentions concepts like atomic transactions and UTC but as legitimate contracts to check, not as bug hints."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 32,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
+    },
+    "decision": "keep",
+    "date": "2026-11-22"
+  }
+}

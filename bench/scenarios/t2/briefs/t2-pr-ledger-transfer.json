@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-ledger-transfer",
+  "phase": "code-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js wallet ledger service (accounts, transfers, a journal, a reconciliation job, tests, docs that state the ledger rules: every transfer writes two journal lines that sum to zero, amounts are integer minor units, transfers are idempotent by client key). The PR adds scheduled transfers. Plant: the scheduled run writes the debit line and the credit line in separate store calls with no transaction, so a crash leaves the journal unbalanced; the idempotency key is checked after the write, not before, so a retry double-posts; amounts are converted from a decimal string with parseFloat and multiplied, which gives off-by-one minor units; the reconciliation job now skips accounts created today; a failed scheduled transfer is marked done so it never retries; the schedule uses the server clock and runs twice on the daylight-saving change. Add one decoy. Write every planted problem and the decoy the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and pr/<n>/changes.diff must be regenerated from git after any change. Docs, tests and context files give facts only, never a conclusion: no doc, changelog, incident note or test may say what this change gets wrong, and the PR description believes the change is correct. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\".",
+  "stack": "node",
+  "pr": 5120
+}

@@ -1,0 +1,51 @@
+openapi: 3.0.3
+info:
+  title: Pantry Path Orders API
+  version: 3.8.0
+paths:
+  /orders/{orderId}:
+    get:
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: An order ready for display
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+components:
+  schemas:
+    OrderResponse:
+      type: object
+      required: [id, customerId, status, statusLabel, displayTotal, deliveryNote, items, updatedAt]
+      properties:
+        id: { type: string }
+        customerId: { type: string }
+        status: { type: string, enum: [draft, paid, paused, packing, shipped, delivered] }
+        statusLabel: { type: string }
+        displayTotal: { type: string, example: "$64.50" }
+        deliveryNote: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [sku, quantity]
+            properties:
+              sku: { type: string }
+              quantity: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+  requestBodies:
+    OrderUpdate:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items: { type: array }
+              deliveryNote: { type: string }

@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-checkout-widget",
+  "phase": "code-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a small storefront front end in plain JavaScript modules and HTML (no framework, no build step), with node tests for the pure modules and docs including the team accessibility and UI-text rules. The PR adds a checkout summary widget with a promo-code field. Plant: the promo input has no label and its error is shown only in red text with no text change; the widget re-renders the whole list on every keystroke and re-attaches listeners each time so they pile up; prices are formatted with toFixed on floats and string concatenation, which breaks for the locales the docs list; the promo-code response is inserted with innerHTML, so a crafted code from the server runs script; the submit button can be clicked twice and sends two orders; the button text does not match the UI-text rule in the docs. Add one decoy. Write every planted problem and the decoy the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and pr/<n>/changes.diff must be regenerated from git after any change. Docs, tests and context files give facts only, never a conclusion: no doc, changelog, incident note or test may say what this change gets wrong, and the PR description believes the change is correct. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\".",
+  "stack": "node",
+  "pr": 3307
+}

@@ -1,0 +1,6 @@
+{
+  "currency": "USD",
+  "minorUnitScale": 100,
+  "maximumTransferMinor": 500000,
+  "reconcileLookbackDays": 30
+}

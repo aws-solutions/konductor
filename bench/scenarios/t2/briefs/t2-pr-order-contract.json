@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-order-contract",
+  "phase": "code-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js orders API for a meal-kit company: a public REST API documented in docs/api/ (an OpenAPI-style YAML), a typed JSON client the mobile apps use (docs say the two previous app versions are still in use and read the response as-is), an \"order.updated\" event published to a queue that a separate shipping service consumes (docs/consumers/shipping.md describes the fields that service parses), a small store layer, tests. The PR \"tidies up the order response and status values\". Plant: a response field is renamed with no alias although the old app versions read it; an optional request field becomes required so old clients get 400s; a status enum value is removed although stored orders still carry it, so reading old orders throws; the event field the shipping service parses as an integer becomes a string; a new currency field accepts any string while the store column holds three letters; an order and its items are updated in two writes with no transaction, so a failure leaves them out of step; a new debug route returns the full customer record, email included, with no auth check. Add one decoy. Write every planted problem and the decoy the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and pr/<n>/changes.diff must be regenerated from git after any change. Docs, tests and context files give facts only, never a conclusion: no doc, changelog, incident note or test may say what this change gets wrong, and the PR description believes the change is correct. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\".",
+  "stack": "node",
+  "pr": 2231
+}

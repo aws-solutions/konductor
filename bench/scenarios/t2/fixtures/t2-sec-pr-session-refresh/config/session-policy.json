@@ -1,0 +1,9 @@
+{
+  "idleSeconds": 1800,
+  "absoluteSeconds": 2592000,
+  "refreshGraceSeconds": 20,
+  "passwordResetSeconds": 1200,
+  "maxSessionsPerAccount": 5,
+  "revokeOnPasswordChange": true,
+  "logoutRevokesServerSession": true
+}

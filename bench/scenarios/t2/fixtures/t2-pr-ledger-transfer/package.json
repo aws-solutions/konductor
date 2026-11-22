@@ -1,0 +1,8 @@
+{
+  "name": "pocket-ledger",
+  "version": "2.7.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "reconcile": "node bin/reconcile.js" }
+}

@@ -1,0 +1,3 @@
+topic = "orders.updated"
+retry_limit = 5
+visibility_seconds = 45

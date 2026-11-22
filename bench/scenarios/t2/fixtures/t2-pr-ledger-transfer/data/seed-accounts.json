@@ -1,0 +1,4 @@
+[
+  { "id": "acct_demo_a", "label": "Everyday", "balanceMinor": 24500, "createdAt": "2024-11-12T09:15:00.000Z" },
+  { "id": "acct_demo_b", "label": "Reserve", "balanceMinor": 8100, "createdAt": "2024-11-12T09:15:01.000Z" }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "ord_1007",
+    "customerId": "cus_44",
+    "status": "paused",
+    "total": 64.5,
+    "currency": "USD",
+    "deliveryNote": "Leave the cooler beside the side gate",
+    "updatedAt": "2025-02-12T09:10:00.000Z",
+    "items": [
+      { "sku": "BOWL-THAI", "quantity": 2 },
+      { "sku": "SOUP-TOM", "quantity": 1 }
+    ]
+  },
+  {
+    "id": "ord_1008",
+    "customerId": "cus_45",
+    "status": "paid",
+    "total": 42,
+    "currency": "CAD",
+    "deliveryNote": "",
+    "updatedAt": "2025-02-13T14:30:00.000Z",
+    "items": [
+      { "sku": "TACO-BLACK", "quantity": 1 }
+    ]
+  }
+]

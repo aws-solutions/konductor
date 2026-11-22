@@ -184,3 +184,17 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-22T00:51:52.724Z | t2-dr-search-options | fix | gpt-5.6-luna | 49 | 1.25 | coverage-gap stage 1 |
 | 2026-11-22T00:54:10.738Z | t2-dr-search-options | review-3 | deepseek-3.2 | 135 | 1.97 | coverage-gap stage 1 |
 | 2026-11-22T01:18:24.722Z | t2-dr-orders-dynamo-model | fix | gpt-5.6-luna | 26 | 0.70 | coverage-gap stage 1 |
+| 2026-11-22T01:22:29.222Z | t2-pr-order-contract | author | gpt-5.6-luna | 217 | 6.21 | coverage-gap stage 1 |
+| 2026-11-22T01:22:52.299Z | t2-pr-order-contract | map | glm-5 | 20 | 0.69 | coverage-gap stage 1 |
+| 2026-11-22T01:26:23.199Z | t2-pr-order-contract | review | deepseek-3.2 | 211 | 3.99 | coverage-gap stage 1 |
+| 2026-11-22T01:27:31.598Z | t2-pr-order-contract | fix | gpt-5.6-luna | 68 | 1.72 | coverage-gap stage 1 |
+| 2026-11-22T01:32:08.186Z | t2-pr-order-contract | review-2 | deepseek-3.2 | 274 | 4.64 | coverage-gap stage 1 |
+| 2026-11-22T01:33:48.931Z | t2-pr-ledger-transfer | author | gpt-5.6-luna | 100 | 2.26 | coverage-gap stage 1 |
+| 2026-11-22T01:34:14.326Z | t2-pr-ledger-transfer | map | glm-5 | 23 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T01:37:06.393Z | t2-pr-ledger-transfer | review | deepseek-3.2 | 172 | 2.98 | coverage-gap stage 1 |
+| 2026-11-22T01:40:25.816Z | t2-sec-pr-session-refresh | author | gpt-5.6-luna | 199 | 5.73 | coverage-gap stage 1 |
+| 2026-11-22T01:40:48.916Z | t2-sec-pr-session-refresh | map | glm-5 | 20 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T01:43:08.479Z | t2-sec-pr-session-refresh | review | deepseek-3.2 | 139 | 2.39 | coverage-gap stage 1 |
+| 2026-11-22T01:45:07.732Z | t2-pr-checkout-widget | author | gpt-5.6-luna | 119 | 2.98 | coverage-gap stage 1 |
+| 2026-11-22T01:45:36.668Z | t2-pr-checkout-widget | map | glm-5 | 25 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T01:48:46.672Z | t2-pr-checkout-widget | review | deepseek-3.2 | 190 | 3.19 | coverage-gap stage 1 |

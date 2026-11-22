@@ -1,0 +1,21 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review"
+  ],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "adversarial-code-review"
+    ],
+    "mustNotLoad": [
+      "backend-review",
+      "frontend-review"
+    ]
+  },
+  "twinIdea": "Generate E2E tests for the session refresh endpoint using the existing API documentation.",
+  "why": "The task is a PR review with explicit security concerns (credential lifecycle, session refresh). code-review is the base for reviewing diffs and PRs, while adversarial-code-review targets the gap categories standard review misses: information disclosure, data integrity, and schema validation—exactly what the notes warn about. The SOP k-adversarial-pull-request-review structures the multi-pass security review flow."
+}

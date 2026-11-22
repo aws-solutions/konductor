@@ -1,0 +1,23 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review",
+    "backend-review"
+  ],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "adversarial-code-review"
+    ],
+    "mustNotLoad": [
+      "adversarial-design-review",
+      "frontend-review",
+      "threat-modeling"
+    ]
+  },
+  "twinIdea": "Write E2E tests for the orders API that verify the mobile client contract still holds after PR 2231 changes.",
+  "why": "This is a backend PR review with contract compatibility concerns. Code-review handles the base review, adversarial-code-review catches schema/validation gaps the notes hint at (currency constraints, mobile contract compatibility), and backend-review covers Node.js/backend patterns. The SOP k-adversarial-pull-request-review orchestrates a thorough adversarial review."
+}

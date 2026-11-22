@@ -1,0 +1,400 @@
+diff --git a/src/events/order-events.js b/src/events/order-events.js
+index 476f4f3..b80ee2e 100644
+--- a/src/events/order-events.js
++++ b/src/events/order-events.js
+@@ -1,3 +1,5 @@
++const topic = 'orders.updated';
++
+ export function orderUpdated(order) {
+   return {
+     event: 'order.updated',
+@@ -10,5 +12,17 @@ export function orderUpdated(order) {
+ }
+ 
+ export function publishOrderUpdated(queue, order) {
+-  queue.publish('orders.updated', orderUpdated(order));
++  const message = orderUpdated(order);
++  queue.publish(topic, {
++    ...message,
++    sequence: String(message.sequence)
++  });
++}
++
++export function eventTopic() {
++  return topic;
++}
++
++export function eventKey(message) {
++  return `${message.event}:${message.orderId}:${message.sequence}`;
+ }
+diff --git a/src/routes/debug-route.js b/src/routes/debug-route.js
+new file mode 100644
+index 0000000..5e8cf3f
+--- /dev/null
++++ b/src/routes/debug-route.js
+@@ -0,0 +1,26 @@
++const debugHeaders = {
++  'cache-control': 'no-store',
++  'x-route-kind': 'diagnostic'
++};
++
++export function debugCustomerRoute({ customerStore, customerId, now = () => new Date().toISOString() }) {
++  const customer = customerStore.get(customerId);
++  if (!customer) return { statusCode: 404, headers: debugHeaders, body: { error: 'customer not found' } };
++  return {
++    statusCode: 200,
++    headers: debugHeaders,
++    body: {
++      customer,
++      lookedUpAt: now(),
++      fields: Object.keys(customer).sort()
++    }
++  };
++}
++
++export function isDebugPath(pathname) {
++  return pathname.startsWith('/debug/customers/');
++}
++
++export function debugCustomerId(pathname) {
++  return pathname.split('/').filter(Boolean).at(-1);
++}
+diff --git a/src/routes/orders-route.js b/src/routes/orders-route.js
+index 7cd718e..2c87260 100644
+--- a/src/routes/orders-route.js
++++ b/src/routes/orders-route.js
+@@ -5,15 +5,15 @@ import { validateOrderInput } from '../validation/order-input.js';
+ export function createOrderRoutes({ store, queue, now = () => new Date().toISOString() }) {
+   function getOrder(id) {
+     const order = store.get(id);
+-    if (!order) return { statusCode: 404, body: { error: 'order not found' } };
+-    return { statusCode: 200, body: toOrderResponse(order) };
++    if (!order) return notFound('order');
++    return ok(toOrderResponse(order));
+   }
+ 
+   function updateOrder(id, input) {
+-    const errors = validateOrderInput(input, { partial: true });
+-    if (errors.length) return { statusCode: 400, body: { errors } };
++    const errors = validateOrderInput(input, { partial: true, requireDeliveryNote: true });
++    if (errors.length) return badRequest(errors);
+     const current = store.get(id);
+-    if (!current) return { statusCode: 404, body: { error: 'order not found' } };
++    if (!current) return notFound('order');
+     const updated = {
+       ...current,
+       ...input,
+@@ -21,10 +21,28 @@ export function createOrderRoutes({ store, queue, now = () => new Date().toISOSt
+       revision: (current.revision ?? 0) + 1,
+       updatedAt: now()
+     };
+-    const saved = store.updateWithItems(updated, input.items ?? current.items);
++    store.save(updated);
++    store.replaceItems(id, input.items ?? current.items);
++    const saved = store.get(id);
+     publishOrderUpdated(queue, saved);
+-    return { statusCode: 200, body: toOrderResponse(saved) };
++    return ok(toOrderResponse(saved));
+   }
+ 
+-  return { getOrder, updateOrder };
++  function listOrders(status) {
++    return ok(store.list({ status }).map(toOrderResponse));
++  }
++
++  return { getOrder, updateOrder, listOrders };
++}
++
++function ok(body) {
++  return { statusCode: 200, body };
++}
++
++function badRequest(errors) {
++  return { statusCode: 400, body: { errors } };
++}
++
++function notFound(resource) {
++  return { statusCode: 404, body: { error: `${resource} not found` } };
+ }
+diff --git a/src/serialization/order-status.js b/src/serialization/order-status.js
+index aa5918a..4eff3bb 100644
+--- a/src/serialization/order-status.js
++++ b/src/serialization/order-status.js
+@@ -1,19 +1,36 @@
+ import rules from '../../config/order-rules.json' with { type: 'json' };
+ 
++const readableStatuses = new Set(
++  rules.orderStatuses.filter((status) => status !== 'paused')
++);
++
++const labels = {
++  draft: 'Draft',
++  paid: 'Paid',
++  paused: 'Paused',
++  packing: 'Packing',
++  shipped: 'Shipped',
++  delivered: 'Delivered'
++};
++
+ export function assertKnownStatus(status) {
+-  if (!rules.orderStatuses.includes(status)) {
++  if (!readableStatuses.has(status)) {
+     throw new Error(`cannot serialize status: ${status}`);
+   }
+   return status;
+ }
+ 
+ export function statusLabel(status) {
+-  return {
+-    draft: 'Draft',
+-    paid: 'Paid',
+-    paused: 'Paused',
+-    packing: 'Packing',
+-    shipped: 'Shipped',
+-    delivered: 'Delivered'
+-  }[assertKnownStatus(status)];
++  return labels[assertKnownStatus(status)];
++}
++
++export function statusCanBeEdited(status) {
++  return ['draft', 'paid', 'paused'].includes(assertKnownStatus(status));
++}
++
++export function statusGroup(status) {
++  const knownStatus = assertKnownStatus(status);
++  if (knownStatus === 'draft' || knownStatus === 'paid') return 'before packing';
++  if (knownStatus === 'packing') return 'in kitchen';
++  return 'in transit';
+ }
+diff --git a/src/serialization/order-view.js b/src/serialization/order-view.js
+index b4ad347..58eed0a 100644
+--- a/src/serialization/order-view.js
++++ b/src/serialization/order-view.js
+@@ -1,5 +1,7 @@
+ import { assertKnownStatus, statusLabel } from './order-status.js';
+ 
++const responseVersion = '2025-02';
++
+ export function toOrderResponse(order) {
+   assertKnownStatus(order.status);
+   return {
+@@ -7,19 +9,33 @@ export function toOrderResponse(order) {
+     customerId: order.customerId,
+     status: order.status,
+     statusLabel: statusLabel(order.status),
+-    displayTotal: formatMoney(order.total, order.currency),
+-    deliveryNote: order.deliveryNote,
+-    items: order.items.map((item) => ({
+-      sku: item.sku,
+-      quantity: item.quantity
+-    })),
+-    updatedAt: order.updatedAt
++    total: formatMoney(order.total, order.currency),
++    currency: order.currency,
++    deliveryNote: deliveryNoteForClient(order.deliveryNote),
++    items: order.items.map(formatItem),
++    updatedAt: order.updatedAt,
++    responseVersion
+   };
+ }
+ 
++function formatItem(item) {
++  return {
++    sku: item.sku,
++    quantity: item.quantity
++  };
++}
++
++function deliveryNoteForClient(note) {
++  if (note === null || note === undefined) return '';
++  return String(note).trim();
++}
++
+ function formatMoney(amount, currency) {
+   return new Intl.NumberFormat('en-US', {
+     style: 'currency',
+-    currency
++    currency,
++    currencyDisplay: 'symbol',
++    minimumFractionDigits: 2,
++    maximumFractionDigits: 2
+   }).format(amount);
+ }
+diff --git a/src/server.js b/src/server.js
+index a31e2f8..bf18d06 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -1,12 +1,15 @@
+ import http from 'node:http';
+ import { readFile } from 'node:fs/promises';
+ import { OrderStore } from './store/order-store.js';
++import { CustomerStore } from './store/customer-store.js';
+ import { MemoryQueue } from './events/queue.js';
+ import { createOrderRoutes } from './routes/orders-route.js';
++import { debugCustomerId, debugCustomerRoute, isDebugPath } from './routes/debug-route.js';
+ import { healthRoute } from './routes/health-route.js';
+ 
+ const seed = JSON.parse(await readFile(new URL('../data/orders.json', import.meta.url)));
+ const store = new OrderStore(seed);
++const customerStore = new CustomerStore();
+ const queue = new MemoryQueue();
+ const routes = createOrderRoutes({ store, queue });
+ 
+@@ -17,15 +20,26 @@ export function createServer() {
+     if (request.method === 'GET' && url.pathname.startsWith('/orders/')) {
+       return send(response, routes.getOrder(url.pathname.split('/')[2]));
+     }
+-    response.statusCode = 404;
+-    response.end(JSON.stringify({ error: 'not found' }));
++    if (request.method === 'GET' && isDebugPath(url.pathname)) {
++      return send(response, debugCustomerRoute({
++        customerStore,
++        customerId: debugCustomerId(url.pathname)
++      }));
++    }
++    return send(response, { statusCode: 404, body: { error: 'not found' } });
+   });
+ }
+ 
+ function send(response, result) {
+   response.statusCode = result.statusCode;
++  for (const [name, value] of Object.entries(result.headers ?? {})) {
++    response.setHeader(name, value);
++  }
+   response.setHeader('content-type', 'application/json');
+   response.end(JSON.stringify(result.body));
+ }
+ 
+-if (process.argv[1] === new URL(import.meta.url).pathname) createServer().listen(process.env.PORT ?? 8080);
++if (process.argv[1] === new URL(import.meta.url).pathname) {
++  const port = Number(process.env.PORT ?? 8080);
++  createServer().listen(port, () => console.log(`orders listening on ${port}`));
++}
+diff --git a/src/store/order-store.js b/src/store/order-store.js
+index 43e23e8..8e355e9 100644
+--- a/src/store/order-store.js
++++ b/src/store/order-store.js
+@@ -18,6 +18,16 @@ export class OrderStore {
+     return { ...structuredClone(order), items: structuredClone(this.#items.get(id) ?? []) };
+   }
+ 
++  has(id) {
++    return this.#orders.has(id);
++  }
++
++  list({ status } = {}) {
++    return [...this.#orders.values()]
++      .filter((order) => status === undefined || order.status === status)
++      .map((order) => this.get(order.id));
++  }
++
+   save(order) {
+     if (!/^[A-Z]{3}$/.test(order.currency)) throw new Error('currency must be three uppercase letters');
+     if (!rules.orderStatuses.includes(order.status)) throw new Error(`unknown status: ${order.status}`);
+@@ -26,10 +36,20 @@ export class OrderStore {
+   }
+ 
+   replaceItems(id, items) {
++    if (!this.#orders.has(id)) throw new Error(`unknown order: ${id}`);
+     if (items.length > rules.maxItemsPerOrder) throw new Error('too many items');
++    if (items.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1)) {
++      throw new Error('item quantity must be positive');
++    }
+     this.#items.set(id, structuredClone(items));
+   }
+ 
++  remove(id) {
++    const removed = this.#orders.delete(id);
++    this.#items.delete(id);
++    return removed;
++  }
++
+   updateWithItems(order, items) {
+     const previousOrder = this.#orders.get(order.id);
+     const previousItems = this.#items.get(order.id);
+diff --git a/src/validation/order-input.js b/src/validation/order-input.js
+index 3a31cbb..b485109 100644
+--- a/src/validation/order-input.js
++++ b/src/validation/order-input.js
+@@ -1,15 +1,35 @@
+ import rules from '../../config/order-rules.json' with { type: 'json' };
+ 
+-export function validateOrderInput(input, { partial = false } = {}) {
++export function validateOrderInput(input, { partial = false, requireDeliveryNote = false } = {}) {
+   const errors = [];
+-  if (!input || typeof input !== 'object') return ['body must be an object'];
++  if (!isRecord(input)) return ['body must be an object'];
+   if (!partial && typeof input.customerId !== 'string') errors.push('customerId is required');
+   if (!partial && !Number.isFinite(input.total)) errors.push('total is required');
+-  if (!partial && !/^[A-Z]{3}$/.test(input.currency)) errors.push('currency is required');
++  if (!partial && typeof input.currency !== 'string') errors.push('currency is required');
+   if (input.status !== undefined && !rules.orderStatuses.includes(input.status)) errors.push('status is invalid');
++  if (requireDeliveryNote && typeof input.deliveryNote !== 'string') errors.push('deliveryNote is required');
+   if (input.deliveryNote !== undefined && typeof input.deliveryNote !== 'string') errors.push('deliveryNote must be text');
+   if (input.deliveryNote?.length > rules.maxDeliveryNoteCharacters) errors.push('deliveryNote is too long');
+-  if (!Array.isArray(input.items)) errors.push('items must be an array');
+-  if (input.items?.length > rules.maxItemsPerOrder) errors.push('too many items');
++  errors.push(...validateItems(input.items));
+   return errors;
+ }
++
++function isRecord(value) {
++  return value !== null && typeof value === 'object' && !Array.isArray(value);
++}
++
++function validateItems(items) {
++  if (!Array.isArray(items)) return ['items must be an array'];
++  const errors = [];
++  if (items.length > rules.maxItemsPerOrder) errors.push('too many items');
++  for (const item of items) {
++    if (!isRecord(item) || typeof item.sku !== 'string') errors.push('item sku is required');
++    if (isRecord(item) && !Number.isInteger(item.quantity)) errors.push('item quantity must be an integer');
++  }
++  return errors;
++}
++
++export function coerceDeliveryNote(input) {
++  if (!isRecord(input) || input.deliveryNote === undefined) return input;
++  return { ...input, deliveryNote: String(input.deliveryNote).trim() };
++}
+diff --git a/tests/api-orders.test.js b/tests/api-orders.test.js
+index f22c0ae..04668d5 100644
+--- a/tests/api-orders.test.js
++++ b/tests/api-orders.test.js
+@@ -18,8 +18,10 @@ test('gets an order in the mobile response shape', () => {
+   const { routes } = makeRoutes();
+   const result = routes.getOrder('ord_test');
+   assert.equal(result.statusCode, 200);
+-  assert.equal(result.body.displayTotal, '$24.00');
++  assert.equal(result.body.total, '$24.00');
++  assert.equal(result.body.currency, 'USD');
+   assert.equal(result.body.items[0].quantity, 1);
++  assert.equal(result.body.responseVersion, '2025-02');
+ });
+ 
+ test('updates items and publishes the new revision', () => {
+@@ -30,7 +32,23 @@ test('updates items and publishes the new revision', () => {
+   });
+   assert.equal(result.statusCode, 200);
+   assert.equal(store.get('ord_test').items[0].sku, 'KIT-TWO');
+-  assert.equal(queue.all()[0].message.sequence, 4);
++  assert.equal(queue.all()[0].topic, 'orders.updated');
++  assert.equal(queue.all()[0].message.sequence, '4');
++});
++
++test('rejects malformed update input', () => {
++  const { routes } = makeRoutes();
++  const result = routes.updateOrder('ord_test', { deliveryNote: '', items: [{ sku: 'KIT-TWO', quantity: 'two' }] });
++  assert.equal(result.statusCode, 400);
++  assert.ok(result.body.errors.length > 0);
++});
++
++test('lists orders by status', () => {
++  const { routes } = makeRoutes();
++  const result = routes.listOrders('paid');
++  assert.equal(result.statusCode, 200);
++  assert.equal(result.body.length, 1);
++  assert.equal(result.body[0].id, 'ord_test');
+ });
+ 
+ test('rejects an unknown order', () => {
