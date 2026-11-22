@@ -676,6 +676,41 @@
         "null"
       ]
     },
+    "skillsLoadedFull": {
+      "description": "Skills whose whole text reached the model at least once: a load answered with kiro-cli's cut preview is left out.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "via",
+          "count"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "via": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "skillLoadsPreview": {
+      "description": "Skill loads that delivered only kiro-cli's head-and-tail preview (answer over 30,000 characters).",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
     "skillsPreloaded": {
       "type": [
         "array",
