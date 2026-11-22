@@ -193,7 +193,7 @@ RUN=(run --suite pilot --tasks "$TASKS" --arms vanilla --replicates 1 --parallel
   --budget-credits "$CEIL" --run-credit-limit "$RUNLIM")
 
 if [ "$PREP" = 1 ]; then
-  PO=$(mktemp -d -t pilot-prep.XXXXXX)
+  PO=$(mktemp -d /tmp/pilot-prep.XXXXXX)
   # set -e ends the script when prepare-only fails, so the trap removes the dir on that path too.
   trap 'rm -rf -- "$PO"' EXIT
   say "prepare-only (no agent started), out $PO:"
