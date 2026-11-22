@@ -250,8 +250,41 @@ function extractQuestion({ finalText, stopReason }) {
   return paras.slice(start).join('\n\n');
 }
 
+// Token counts kiro-cli puts on a turn when its backend sends them: the kiro-cli 3.5 TUI reads these names on a
+// turn_completion (top level, or inside tokenUsage, usage or metrics) and on a v2 `metadata` event. A count absent
+// everywhere stays null, so a run whose stream carries none keeps `tokens: null` instead of a false zero.
+const TOKEN_FIELDS = {
+  input: ['uncachedInputTokens', 'inputTokens'],
+  output: ['outputTokens'],
+  cacheRead: ['cacheReadInputTokens', 'cachedTokens'],
+  cacheWrite: ['cacheWriteInputTokens'],
+};
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+/** { input, output, cacheRead, cacheWrite } with null for a count the object does not report, or null when it reports none. */
+function tokensOf(o) {
+  if (!isObj(o)) return null;
+  const sources = [o.tokenUsage, o.usage, o.metrics, o].filter(isObj);
+  const pick = (names) => {
+    for (const s of sources) for (const n of names) if (Number.isFinite(s[n]) && s[n] >= 0) return s[n];
+    return null;
+  };
+  const t = Object.fromEntries(Object.entries(TOKEN_FIELDS).map(([k, names]) => [k, pick(names)]));
+  return Object.values(t).some((v) => v !== null) ? t : null;
+}
+
+/** Adds counts into `acc` (null fields stay null until a count arrives) and returns it; `acc` null starts a new one. */
+function addTokens(acc, t) {
+  if (!t) return acc;
+  const out = acc ?? { input: null, output: null, cacheRead: null, cacheWrite: null, total: 0 };
+  for (const k of Object.keys(TOKEN_FIELDS)) if (t[k] !== null && t[k] !== undefined) out[k] = (out[k] ?? 0) + t[k];
+  out.total = Object.keys(TOKEN_FIELDS).reduce((n, k) => n + (out[k] ?? 0), 0);
+  return out;
+}
+
 function aggregateStream(events) {
   const out = {
+    tokens: null,
     sessionId: null,
     sessionIds: [],
     runFinishedStatus: null,
@@ -295,6 +328,7 @@ function aggregateStream(events) {
         if (typeof d.contextUsagePercentage === 'number') out.contextUsagePercentage = d.contextUsagePercentage;
         // Subagent turns nest inside the parent turn, so the last value (the parent's) is the whole turn.
         if (typeof d.turnDurationMs === 'number') lastTurnDurationMs = d.turnDurationMs;
+        out.tokens = addTokens(out.tokens, tokensOf(d));
         for (const m of d.meteringUsage || []) {
           if (m.unit !== 'credit') {
             if (!out.nonCreditUnits.includes(m.unit)) out.nonCreditUnits.push(m.unit);
@@ -314,6 +348,7 @@ function aggregateStream(events) {
           if (turnKey && countedTurns.has(turnKey)) break;
           if (turnKey) countedTurns.add(turnKey);
           if (typeof k.elapsedTime === 'number') lastTurnDurationMs = k.elapsedTime;
+          out.tokens = addTokens(out.tokens, tokensOf(k));
           for (const m of k.promptTurnSummaries || []) {
             if (m.unit !== 'credit') {
               if (!out.nonCreditUnits.includes(m.unit)) out.nonCreditUnits.push(m.unit);
@@ -391,6 +426,7 @@ function mergeAggregates(aggs) {
     sessionId: sessionIds[0] ?? null,
     sessionIds,
     credits: sumOf(aggs, 'credits'),
+    tokens: aggs.reduce((acc, a) => addTokens(acc, a.tokens ?? null), null),
     meteringEntries: sumOf(aggs, 'meteringEntries'),
     nonCreditUnits: [...new Set(aggs.flatMap((a) => a.nonCreditUnits))],
     turnDurationMs: last.runFinishedStatus === null || !durations.length ? null : durations.reduce((a, b) => a + b, 0),

@@ -126,7 +126,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
       : agg
         ? { meteringEntries: fromStream.meteringEntries, totalRequestCount: session?.totalRequestCount ?? null }
         : null,
-    tokens: usage?.tokens ?? null,
+    // kiro-cli runs have no `usage`; their counts come from the stream when kiro-cli reports them (null when it does not).
+    tokens: usage?.tokens ?? agg?.tokens ?? null,
     costUsd: usage?.costUsd ?? null,
     costCensored: usd ? censored : null,
     costUsdCharged: null,
