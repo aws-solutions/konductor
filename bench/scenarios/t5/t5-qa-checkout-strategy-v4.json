@@ -1,0 +1,367 @@
+{
+  "id": "t5-qa-checkout-strategy",
+  "class": "hard",
+  "version": 3,
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "security"
+  ],
+  "questions": "allowed",
+  "prompt": "I am starting a checkout rework next sprint and have limited time to test it, so I need a focused QA plan before we touch code. Read the repository, including the source, the existing tests and docs/CHANGELOG.md, then write docs/TEST-PLAN.md: where the real risk is, why it matters, how severe it is, and the specific test to add for each risk, most important first. I would rather have the handful of risks that matter than a tour of every file; skip what is low value to test. End the file with a fenced JSON list of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Do not change application source, existing tests, configuration, generated data, CI files or other documentation. The only intended repository change is docs/TEST-PLAN.md. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit.",
+  "fixture": "t5-qa-checkout-strategy",
+  "hidden": "t5-qa-checkout-strategy",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 findings.test.js",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/TEST-PLAN.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/TEST-PLAN.md",
+      "pattern": "```json\\s*\\[\\s*\\{\\s*\\\"location\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/TEST-PLAN.md",
+      "pattern": "\\\"location\\\"\\s*:",
+      "min": 5,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/payments/webhook.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "prioritization",
+      "criterion": "The plan makes a defensible time-based priority choice and explains the customer or operational consequence for the highest risks. Fail: it lists files or modules with no ranking, or ranks the large generated tax table or the messy admin script near the top. Partial: it ranks by severity, but does not say what happens to the customer or the business if the top risks fail, or does not choose what to leave out for lack of time. Pass: the risks are ordered by likelihood and impact, the highest ones (money moved, duplicate or lost charges, stock reservation, payment retries and webhooks) state the customer or operational harm, low-value areas are named as skipped and why, and the order fits the limited time with a minimum set to run before release. The severity of each item in the closing JSON list matches the text.",
+      "weight": 2
+    },
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are judgment about test design, not a pattern in the text)"
+    }
+  ],
+  "findingsKey": [
+    {
+      "id": "money-floating-point",
+      "location": [
+        "src/orders/price.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "cents",
+        "integer",
+        "decimal",
+        "minor unit",
+        "floating"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "webhook-replay",
+      "location": [
+        "src/payments/webhook.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "event id",
+        "replay",
+        "duplicate"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "inventory-read-write-race",
+      "location": [
+        "src/inventory/reservation.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "atomic",
+        "concurrency",
+        "oversell",
+        "compare-and-decrement"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "retry-double-charge",
+      "location": [
+        "src/payments/retry.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "status lookup",
+        "ambiguous timeout",
+        "double-charge",
+        "no retry"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "email-swallowed-error",
+      "location": [
+        "src/notifications/email.js"
+      ],
+      "severity": "medium",
+      "fix": [
+        "log",
+        "alert",
+        "surface",
+        "propagate",
+        "dead-letter",
+        "retry"
+      ],
+      "fixMin": 1,
+      "weight": 1
+    },
+    {
+      "id": "settlement-local-cutoff",
+      "location": [
+        "src/jobs/settlement.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "utc",
+        "timezone",
+        "time zone",
+        "cutoff",
+        "midnight"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "refund-rounding",
+      "location": [
+        "src/orders/refunds.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "remainder",
+        "allocat",
+        "cents",
+        "rounding",
+        "sum of"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "guard-disabled-by-default",
+      "location": [
+        "src/orders/checkout.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "flag",
+        "default",
+        "disabled",
+        "out-of-stock",
+        "oversell"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "risk-ranking",
+        "text": "Ranks work by likelihood times impact (money moved, customer harm, hard to undo), and says why the large generated tax table and the messy admin script rank low.",
+        "source": "OWASP Web Security Testing Guide, https://owasp.org/www-project-web-security-testing-guide/ (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "test-levels",
+        "text": "Chooses a test level per risk (unit for arithmetic, integration with a fake payment provider for retries and webhooks, a concurrency test for stock) instead of one level for everything.",
+        "source": "Martin Fowler, The Practical Test Pyramid, https://martinfowler.com/articles/practical-test-pyramid.html (copyright Ham Vocke / Thoughtworks; idea only); Google Testing Blog, Test Sizes, https://testing.googleblog.com/2010/12/test-sizes.html (copyright Google; idea only)"
+      },
+      {
+        "id": "provider-fake",
+        "text": "Plans a controllable fake or recorded stand-in for the payment provider and for the clock, so failure timing, duplicate deliveries and cut-off times can be reproduced.",
+        "source": "Stripe, Designing robust and predictable APIs with idempotency, https://stripe.com/blog/idempotency (vendor copyright; idea only)"
+      },
+      {
+        "id": "failure-injection",
+        "text": "Includes tests that force failures on purpose (timeout after the provider charged, duplicate and out-of-order webhook, crash between two writes), not only happy-path and validation cases.",
+        "source": "Stripe, Designing robust and predictable APIs with idempotency, https://stripe.com/blog/idempotency (vendor copyright; idea only)"
+      },
+      {
+        "id": "business-logic",
+        "text": "Treats business-rule abuse as a test target: replaying a promo code, refunding more than paid, reserving stock without paying.",
+        "source": "OWASP Web Security Testing Guide, https://owasp.org/www-project-web-security-testing-guide/ (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "order-and-exit",
+        "text": "Gives an order of work that fits the limited time and states what the remaining untested areas mean for the rework, with a minimum set that must be green before release.",
+        "source": "Martin Fowler, The Practical Test Pyramid, https://martinfowler.com/articles/practical-test-pyramid.html (copyright Ham Vocke / Thoughtworks; idea only)"
+      },
+      {
+        "id": "observe",
+        "text": "Names production signals (alerts on duplicate charges, stuck reservations, settlement mismatches) as a complement where a test cannot reach.",
+        "source": "Google SRE book, ch. 26 Data Integrity, https://sre.google/sre-book/data-integrity/ (CC BY-NC-ND 4.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Lists every module and says 'add unit tests' for each, ranked by file size or by how messy the code looks.",
+      "Recommends raising line coverage to a target percentage without saying which behaviour to check.",
+      "Gives severity labels with no reason and no test level, and puts the generated tax table first.",
+      "Writes a generic test pyramid essay with no tie to this code."
+    ]
+  },
+  "targetSkills": [
+    "test-coverage-analysis",
+    "risk-management"
+  ],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": "k-quality-assurance",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "test-coverage-analysis",
+      "risk-management"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/wstg",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T5, owner decision 2026-11-20); failed deepseek drafts were re-authored with gpt, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks for a test plan without naming specific methods, tools, or approaches; it describes the task goal (identify risks, prioritize, propose tests) without prescribing implementation details."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request is clear: write docs/TEST-PLAN.md with prose explaining risks and a JSON block with location/severity/fix fields. The hidden tests validate against a findingsKey that specifies 8 distinct risks, all discoverable by reading the source code."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The risks are not explicitly labeled in code comments or docs. Each risk must be identified by reasoning about the code (e.g., retry.js retries all errors without idempotency, price.js uses floating-point arithmetic, settlement.js uses local timezone). The CHANGELOG and config files provide context but do not reveal the specific test requirements."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive answer listing just locations and generic 'test X' descriptions passes only 9/17 tests (severity checks) but fails the 8 'fitting test' checks because fix descriptions must contain specific keywords from the findingsKey (e.g., 'idempotency', 'atomic', 'cents', 'utc'). This ensures substance over superficial coverage."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All 8 required risks are identifiable by careful code reading: floating-point in price.js, webhook replay in webhook.js (no event id tracking), race condition in reservation.js (read-pause-write), retry ambiguity in retry.js, swallowed email errors, local timezone cutoff in settlement.js, refund rounding in refunds.js, and disabled-by-default guard in checkout.js. The solution demonstrates all are discoverable without special knowledge."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "rubric check: Rubric items prioritization and expert-key ask for risk ranking with customer/operational consequences and scoring expertKey items, which match the request for a focused QA plan. Earlier glm-5 check of the request, fixture and key: pass (The prompt asks for a focused QA plan without naming methods, techniques, tools, or specific risks to find.)."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "rubric check: The anchors (risks ordered by likelihood/impact, customer harm stated, low-value areas skipped) are judge-only; the fixture has source files but not the test plan. Earlier glm-5 check of the request, fixture and key: pass (No fixture file lists bugs, findings, or risks; all must be discovered by analyzing source code.)."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "rubric check: The example risks in the Pass anchor (money moved, duplicate/lost charges, stock reservation, payment retries, webhooks) are areas the fixture's checkout code handles. Earlier glm-5 check of the request, fixture and key: pass (All 8 findingsKey items reference source files (price.js, webhook.js, reservation.js, retry.js, email.js, settlement.js, refunds.js, checkout.js) where the risks exist and are discoverable through code analysis.)."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "rubric check: Different correct plans can reach Pass as long as risks are prioritized with consequences and expertKey items are addressed; specific tests can vary. Earlier glm-5 check of the request, fixture and key: pass (A careful engineer can identify each risk by reading source files: floating-point math in price.js, missing idempotency in webhook.js, race condition in reservation.js, blind retries in retry.js, swallowed errors in email.js, local time in settlement.js, rounding in refunds.js, and disabled guard in checkout.js with feature-flags.json.)."
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "decision": "keep",
+    "date": "2026-11-22",
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 15.5,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
+    }
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 3
+  }
+}

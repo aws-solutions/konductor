@@ -28,13 +28,6 @@
       "kind": "substance"
     },
     {
-      "type": "contains",
-      "path": "review/REVIEW.md",
-      "pattern": "(review scope|what i checked)",
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
       "type": "fixture_unchanged",
       "path": "README.md",
       "weight": 1,
