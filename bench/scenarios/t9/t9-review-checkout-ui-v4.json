@@ -1,0 +1,305 @@
+{
+  "id": "t9-review-checkout-ui",
+  "class": "hard",
+  "version": 3,
+  "phase": "code-review",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "Can you review the whole checkout UI before we ship 2.4? I own this repository and need a practical review of the code, markup, and recent changes so we can fix anything that could hurt shoppers or the release. Put the finished review in review/REVIEW.md. Open it with a short \"Review scope\" section saying what you checked. Keep the report focused on concrete findings, with enough detail for another developer to reproduce each one and understand the proposed correction. End the file with one fenced JSON block containing an array of finding objects. Every object must have a location naming the relevant place, severity set to critical, high, medium, or low, and fix containing the test to add. Please cover the full repository rather than only the first screen, and separate real concerns from things that are merely awkward. Do not change the application, tests, documentation, configuration, or styles; the only intended new file is review/REVIEW.md. Keep existing tests passing and preserve the current checkout behavior while describing what should change.",
+  "fixture": "t9-review-checkout-ui",
+  "hidden": "t9-review-checkout-ui",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 findings.test.js",
+      "min": 19,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');const t=fs.readFileSync('review/REVIEW.md','utf8');const fence=String.fromCharCode(96).repeat(3);const p=t.split(fence+'json');if(p.length<2)process.exit(1);const a=JSON.parse(p[1].split(fence)[0]);if(!Array.isArray(a)||a.length<10||!a.every(x=>x.location&&x.severity&&x.fix))process.exit(1)\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "review/REVIEW.md",
+      "pattern": "```json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "actionable-review",
+      "criterion": "The prose explains why the findings matter and gives a developer enough context to act (code cannot check this because it cannot judge clarity or usefulness). Fail: findings are listed with no reason they matter or no place to act (no file or line, no shopper or release effect), or the prose mostly restates the diff. Partial: most findings say why they matter and where, but one or two leave the developer to guess the fix or the impact. Pass: every finding names where it is, what goes wrong for a shopper or the 2.4 release, and what to change, in that order, with no padding.",
+      "weight": 2
+    }
+  ],
+  "findingsKey": [
+    {
+      "id": "summary-untrusted-markup",
+      "location": [
+        "src/ui/order-summary.js",
+        "renderOrderSummary"
+      ],
+      "severity": "high",
+      "fix": [
+        "escape",
+        "textContent",
+        "sanitize",
+        "encode"
+      ]
+    },
+    {
+      "id": "modal-message-markup",
+      "location": [
+        "src/ui/modal.js",
+        "openModal"
+      ],
+      "severity": "high",
+      "fix": [
+        "escape",
+        "textContent",
+        "sanitize",
+        "encode"
+      ]
+    },
+    {
+      "id": "order-status-race",
+      "location": [
+        "src/order/order-status.js",
+        "watchOrder"
+      ],
+      "severity": "high",
+      "fix": [
+        "stale",
+        "sequence",
+        "abort",
+        "latest"
+      ]
+    },
+    {
+      "id": "payment-double-submit",
+      "location": [
+        "src/forms/payment-form.js",
+        "bindPaymentForm"
+      ],
+      "severity": "high",
+      "fix": [
+        "in-flight",
+        "disable",
+        "duplicate",
+        "idempotent"
+      ]
+    },
+    {
+      "id": "delivery-notes-label",
+      "location": [
+        "src/forms/address-form.js",
+        "renderAddressFields"
+      ],
+      "severity": "low",
+      "fix": [
+        "label",
+        "aria-label",
+        "associate",
+        "for"
+      ]
+    },
+    {
+      "id": "cart-focus-reset",
+      "location": [
+        "src/ui/cart-panel.js",
+        "renderCartPanel"
+      ],
+      "severity": "medium",
+      "fix": [
+        "focus",
+        "restore",
+        "preserve"
+      ]
+    },
+    {
+      "id": "session-token-storage",
+      "location": [
+        "src/session.js",
+        "saveSession"
+      ],
+      "severity": "high",
+      "fix": [
+        "sessionStorage",
+        "memory",
+        "secret",
+        "avoid localStorage",
+        "httpOnly"
+      ]
+    },
+    {
+      "id": "toast-listener-lifetime",
+      "location": [
+        "src/ui/toast.js",
+        "mountToast"
+      ],
+      "severity": "low",
+      "fix": [
+        "removeEventListener",
+        "cleanup",
+        "unsubscribe",
+        "teardown"
+      ]
+    },
+    {
+      "id": "fractional-money",
+      "location": [
+        "src/cart/totals.js",
+        "calculateSubtotal"
+      ],
+      "severity": "medium",
+      "fix": [
+        "cents",
+        "integer",
+        "minor units",
+        "round",
+        "decimal"
+      ]
+    }
+  ],
+  "targetSkills": [
+    "frontend-review",
+    "code-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "frontend-review",
+      "code-review"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-20",
+    "source": {
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html",
+      "licence": "CC BY-SA 4.0 (checked in the OWASP CheatSheetSeries repository); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-20",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Worker disposition: the request names the output file and the JSON block fields, which the findings grader needs (the T5 findings-kind rule); it names no review method, checklist or risk area. (reviewer: The prompt explicitly requires producing review/REVIEW.md with a specific JSON structure, lists forbidden changes, and dictates content format, leaking output constraints rather than only describing the goal.)"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Competent readers agree on the task: a practical security/usability review with location/severity/fix fields per finding; the findingsKey pins exact locations and required fix keywords."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Worker disposition: CHANGELOG.md lists features in plain words (postcode check, order progress, a refresh-safe session) and names no defect; a reviewer has to read the code to find each one. (reviewer: CHANGELOG.md reveals the release is 2.4.0 with recent features (postcode check, order progress), and src/app.js shows error flow into openModal and session token storage — details the reference review explicitly cites.)"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Worker disposition: the reviewer's own run shows the shallow answer at 39.5 under the 40 gate and the stub at 5.7; 'a copy of the reference passes' is true of every task and is not a ceiling defect. (reviewer: A shallow review that only lists obvious DOM/payment/storage issues (like lazy/) scores 39.5% — caught by the 95% gate — but a copy-paste of the reference would pass, indicating the task is not hard for a correct answer.)"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All tests derive from the request and findingsKey; no tests rely on internal class names, IDs, or timing; the fixture contains enough information to derive all issues."
+      }
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The prompt asks for a code review without prescribing a method, framework, or tool. It says 'put the finished review in review/REVIEW.md' and specifies required sections and JSON findings block, but offers no misleading hints or decoys."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture contains the source code as-is, with no comments, docs, or test files that list the answer or describe the finished review behavior. The task is to produce a review, not to implement fixes."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Every finding in the key (summary-untrusted-markup, modal-message-markup, order-status-race, payment-double-submit, delivery-notes-label, cart-focus-reset, session-token-storage, toast-listener-lifetime, fractional-money) corresponds to a real function in the fixture (renderOrderSummary, openModal, watchOrder, bindPaymentForm, renderAddressFields, renderCartPanel, saveSession, mountToast, calculateSubtotal). The checks and rubric match this output format and scope."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer can review the fixture source files (order-summary.js, modal.js, order-status.js, payment-form.js, address-form.js, cart-panel.js, session.js, toast.js, totals.js) and identify the concrete security, race, UX, and resource-leak issues described in the key without seeing the hidden tests or solution."
+        }
+      ],
+      "version": 3
+    }
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 5.7,
+    "dryRun": {
+      "reference": 100,
+      "stub": 5.7,
+      "lazy": 39.5,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-22"
+    },
+    "decision": "keep",
+    "date": "2026-11-22"
+  },
+  "lockedAt": null,
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt asks for the Review scope section its check reads",
+    "log": "HAND-EDITS.md",
+    "version": 3
+  }
+}

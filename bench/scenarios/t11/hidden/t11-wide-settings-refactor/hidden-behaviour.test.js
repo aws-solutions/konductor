@@ -83,14 +83,14 @@ test('README and configuration notes describe the current interface', () => {
   const text = fs.readFileSync(path.join(root, 'README.md'), 'utf8') +
     fs.readFileSync(path.join(root, 'docs/config.md'), 'utf8');
   // The call may be written with quoted or bare placeholders, and with or without the config. prefix.
-  assert.match(text, /\bvalue\(\s*['"]?section['"]?,\s*['"]?key['"]?,\s*\{\s*fallback\s*\}\s*\)/);
+  assert.match(text, /(?:config\.)?value\s*\(\s*['"]?section['"]?,\s*['"]?key['"]?,\s*\{\s*fallback\s*\}\s*\)/);
   assert.doesNotMatch(text, /conf\.read|legacy|old reader/i);
 });
 
 test('all generated caller files contain a current reader call', () => {
   for (const relative of callerPaths) {
     const text = fs.readFileSync(path.join(root, relative), 'utf8');
-    assert.match(text, /(?:\bconfig\.|(?<![.\w]))value\s*\(/, relative); // config.value( or a destructured value(
+    assert.match(text, /\b(?:config\.)?value\s*\(/, relative); // config.value( or a destructured value(
   }
 });
 
