@@ -161,3 +161,12 @@ Non-Claude recheck: pending (`handEdited.version` 3).
 key-matches-fixture: the hidden test imports `PermanentJobError` from `src/errors.js`. The request says
 "PermanentJobError from src/errors.js ... must never retry", but the fixture's `src/errors.js` exports only
 `QueueFormatError`. The request reads as if the class already exists, and it does not say to add it.
+
+## t1-impl-job-retry v5 (2026-11-22, mate LITE-fix worker, claude; after the v4 recheck)
+
+The v4 recheck failed key-matches-fixture: the hidden test imports `PermanentJobError` from `src/errors.js`, the
+fixture's `errors.js` exports only `QueueFormatError`, and the prompt read as if the class already existed
+("PermanentJobError from src/errors.js ... must never retry"). The prompt now says to add it: "Add a
+PermanentJobError(message, code) class to src/errors.js and export it there; a PermanentJobError and any error with
+retryable === false must never retry." The fixture is unchanged, so the stub still cannot load the hidden test.
+Gates: reference 100, stub 5.2, lazy 36, alt 100, shallow 18.2. Non-Claude recheck: pending (`handEdited.version` 5).
