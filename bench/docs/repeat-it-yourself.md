@@ -44,8 +44,9 @@ node bench/runner/bench.js scenarios coverage bench/scenarios --base main --out 
 node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"                     # the bench's own tests
 ```
 
-The full test run takes a few minutes. Set `TMPDIR` to a folder outside your home first, because the Claude Code
-tests refuse a temp folder under it.
+The full test run takes about 20 minutes. The tests work with any `TMPDIR`: when it is inside your home, they make
+their temp folders in `/tmp` instead, because the bench refuses out folders under your home. A real `bench run` with
+Claude Code arms still needs a `TMPDIR` outside your home.
 
 ## 3. Plan and prepare, still free
 
