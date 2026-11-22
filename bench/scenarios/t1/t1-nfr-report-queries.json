@@ -29,8 +29,27 @@
       "kind": "substance"
     },
     {
+      "type": "file_exists",
+      "path": "tests/test_streaming_report.py",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "joined query|streamed.*JSON",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
       "type": "cmd",
       "cmd": "test -z \"$(find . -maxdepth 2 -type d -name 'site-packages' -o -name 'node_modules')\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/performance.md",
       "weight": 1,
       "kind": "format"
     }

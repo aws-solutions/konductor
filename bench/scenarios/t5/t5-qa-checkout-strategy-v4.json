@@ -1,7 +1,7 @@
 {
-  "id": "t5-qa-checkout-strategy",
+  "id": "t5-qa-checkout-strategy-v4",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "testing",
   "role": "qa",
   "phases2": [

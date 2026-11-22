@@ -1,7 +1,7 @@
 {
-  "id": "t10-tpm-ring-rollout",
+  "id": "t10-tpm-ring-rollout-v4",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "multi-phase",
   "role": "tpm",
   "phases2": [

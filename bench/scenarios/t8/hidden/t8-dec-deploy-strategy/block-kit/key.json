@@ -13,7 +13,8 @@
         "blue.?green"
       ],
       "weight": 2,
-      "section": "decision"
+      "section": "decision",
+      "gate": true
     },
     {
       "id": "canary-chosen-with-small-exposure",

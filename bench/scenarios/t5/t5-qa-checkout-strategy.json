@@ -41,7 +41,7 @@
       "type": "min_matches",
       "path": "docs/TEST-PLAN.md",
       "pattern": "\\\"location\\\"\\s*:",
-      "min": 5,
+      "min": 8,
       "weight": 3,
       "kind": "substance"
     },

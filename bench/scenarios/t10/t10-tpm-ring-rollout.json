@@ -71,54 +71,6 @@
       "kind": "substance"
     },
     {
-      "type": "fixture_unchanged",
-      "path": "test/config.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/delivery.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/diagnostics.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/format.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/scripts.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/service.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/shared.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "fixture_unchanged",
-      "path": "test/validation.test.js",
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
       "type": "contains",
       "path": "CHANGELOG.md",
       "pattern": "ring-aware|PROMOTE|ROLLBACK",

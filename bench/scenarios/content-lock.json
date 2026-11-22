@@ -91,6 +91,10 @@
       "sha256": "67e9cc1be3efaa70568d673b88bd6bd93e82b0c99fe5f8d371310f02483fd5c5",
       "legacyRecheckVersion": 3
     },
+    "t1-nfr-report-queries-v4": {
+      "version": 4,
+      "sha256": "f6d7ef812ed8ca2826dd4ae6f9bbff42dc97dba8feb33de0dd9612d01de14452"
+    },
     "t1-nfr-startup-lazy": {
       "version": 3,
       "sha256": "d156d1f8ec1b59bb31004027d8c9d4b0abcabacad9be0bb7e6e865b60d59ffac",
@@ -146,6 +150,10 @@
       "version": 3,
       "sha256": "e7d21e252a75eaaa638e8dc692b6e1badd26bba9c6e4cc53d5898b412c3c5e4a",
       "legacyRecheckVersion": 2
+    },
+    "t10-tpm-ring-rollout-v4": {
+      "version": 4,
+      "sha256": "90e2bddfd63def075d326934138e843908f04ad91d1ce9aa7e8bebf29b45d764"
     },
     "t11-docx-room-booking-reqs": {
       "version": 4,
@@ -533,6 +541,10 @@
       "version": 3,
       "sha256": "137ea0075e3fa9903e00b5f60efcae09795e69d933e426a0d8ee1b2da88c80a2",
       "legacyRecheckVersion": 2
+    },
+    "t5-qa-checkout-strategy-v4": {
+      "version": 4,
+      "sha256": "1b4f8d9939861dbccedfdea9fee59aba0c31f0867b3bec3573067717dce19c2e"
     },
     "t5-qa-flaky-fix": {
       "version": 2,

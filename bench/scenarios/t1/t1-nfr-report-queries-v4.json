@@ -1,7 +1,7 @@
 {
-  "id": "t1-nfr-report-queries",
+  "id": "t1-nfr-report-queries-v4",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "nfr",
   "role": "developer",
   "questions": "allowed",
