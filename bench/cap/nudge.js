@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The skill-nudge hook arms (design B of reports/skill-awareness-review-2026-11-22.md). A `userPromptSubmit` hook on
-// the konductor agent runs a local matcher with no model call: it scores the request text against the agent's own skill
-// trigger lines and prints the top 3, with "your call" and "say no skill fits". The filler arm runs a hook of the same
-// shape that prints neutral text of about the same size and names no skill, so the effect of the hint is separable from
-// the effect of having a hook at all.
+// The skill-nudge hook arms (reports/skill-awareness-review-2026-11-22.md), each a `userPromptSubmit` hook on the
+// konductor agent with no model call:
+//   list    design A, the arm that runs: every skill name, a pointer to the trigger lines the prompt already holds, and
+//           a hard line to check the list and load a matching skill before starting. No matching, no request data.
+//   nudge   design B: a local matcher scores the request against the trigger lines and prints the top 3. Kept as a
+//           documented negative result (top-3 recall about half on held-out tasks); not run.
+//   filler  the control: a hook of the same shape printing neutral text the size of the list output, naming no skill,
+//           so the effect of the list is separable from the effect of having a hook at all.
 //
 // Fairness: the index is built from the arm tree only (the agent spec's skill list and each SKILL.md frontmatter
 // description), before any task is read. The hook program reads nothing but its stdin payload; it has no file, network
@@ -17,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { frontmatter, fmValue } = require('../runner/lib/frontmatter.js');
 
-const TOOL_VERSION = 'cap-nudge/2';
+const TOOL_VERSION = 'cap-nudge/3';
 const ORCHESTRATOR = 'konductor';
 const TRIGGER = 'userPromptSubmit';
 const HOOK_TIMEOUT_MS = 10000;
@@ -30,6 +33,12 @@ const NUDGE_NONE = '  (no listed skill shares words with this request)';
 const NUDGE_BROAD = 'Also listed for every request (the broadest triggers):';
 const TEMPLATE = Object.freeze({ header: NUDGE_HEADER, footer: NUDGE_FOOTER, none: NUDGE_NONE, broad: NUDGE_BROAD });
 const FILLER_HEADER = 'Notes for this request (no action needed):';
+const LIST_HEADER = 'Your skills (load one with get_skill; each one\'s trigger line is under "## Your skills" in your instructions):';
+const LIST_FOOTER = 'Check this list and load a matching skill before you start; say "no skill fits" if none does.';
+// kiro-cli v3 caps hook stdout near 3,000 bytes (cli/konductor-rs/src/cli/orchestration_hook.rs), so the list stays
+// under it; names only, since the 70 trigger lines alone are about 11,500 characters.
+const LIST_MAX_BYTES = 3000;
+const LIST_WIDTH = 110;
 // Neutral sentences: no skill, tool or loading word, so the filler adds a hook and text but no hint.
 const FILLER_SENTENCES = [
   'Read the request from start to finish.',
@@ -251,6 +260,29 @@ function nudgeSource(index, variant = FROZEN_MATCHER) {
   ].join('\n');
 }
 
+/**
+ * Design A's hook text: the header, every skill name in index order wrapped near LIST_WIDTH characters, the hard
+ * line. The same for every request. With check, throws when it would pass LIST_MAX_BYTES.
+ */
+function listText(index, { check = true } = {}) {
+  const lines = [LIST_HEADER];
+  let cur = '';
+  index.forEach((s, i) => {
+    const item = `${s.name}${i < index.length - 1 ? ',' : ''}`;
+    if (cur && cur.length + 1 + item.length > LIST_WIDTH) { lines.push(cur); cur = item; } else cur = cur ? `${cur} ${item}` : item;
+  });
+  if (cur) lines.push(cur);
+  lines.push(LIST_FOOTER);
+  const text = `${lines.join('\n')}\n`;
+  if (check && Buffer.byteLength(text) > LIST_MAX_BYTES) throw new Error(`the skill list is ${Buffer.byteLength(text)} bytes, over the ${LIST_MAX_BYTES}-byte hook output cap`);
+  return text;
+}
+
+/** The hook program for the list arm: same shape as the filler (node, reads all of stdin), prints the list. */
+function listSource(index) {
+  return `const F=${literal(listText(index))};let s="";process.stdin.on("data",(c)=>{s+=c;});process.stdin.on("end",()=>{process.stdout.write(F);});`;
+}
+
 /** Neutral text near `bytes` long: the header, then whole filler sentences in a fixed order while they fit. */
 function fillerText(bytes) {
   const lines = [FILLER_HEADER];
@@ -270,17 +302,6 @@ function fillerSource(bytes) {
   return `const F=${literal(fillerText(bytes))};let s="";process.stdin.on("data",(c)=>{s+=c;});process.stdin.on("end",()=>{process.stdout.write(F);});`;
 }
 
-/**
- * The filler size, from the index alone (no task): header, footer and three average index lines. A typical nudge
- * output is about this long.
- */
-function typicalNudgeBytes(index, variant = FROZEN_MATCHER) {
-  const lines = index.map((s) => Buffer.byteLength(`  ${s.name}: ${s.trigger}\n`));
-  const mean = lines.length ? lines.reduce((a, b) => a + b, 0) / lines.length : 0;
-  const broad = MATCHERS[variant].broad;
-  return Math.round(Buffer.byteLength(`${NUDGE_HEADER}\n${NUDGE_FOOTER}\n${broad ? `${NUDGE_BROAD}\n` : ''}`) + (TOP + broad) * mean);
-}
-
 function hookCommand(source) {
   if (source.includes("'")) throw new Error('hook source holds a single quote, so it cannot be one shell word');
   return `node -e '${source}'`;
@@ -294,11 +315,13 @@ const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
  * sha256 so every run that used it can be matched to the exact matcher.
  */
 function opHook(tree, kind) {
-  if (kind !== 'nudge' && kind !== 'filler') throw new Error('--hook takes nudge or filler');
+  if (!['list', 'nudge', 'filler'].includes(kind)) throw new Error('--hook takes list, nudge or filler');
   const index = buildIndex(tree);
   if (!index.length) throw new Error(`agents/${ORCHESTRATOR}.agent-spec.json lists no skill with a description; a nudge hook would have nothing to say`);
-  const fillerBytes = typicalNudgeBytes(index, FROZEN_MATCHER);
-  const command = hookCommand(kind === 'nudge' ? nudgeSource(index) : fillerSource(fillerBytes));
+  // The filler matches the list arm, the arm that runs; it is request-independent like the list.
+  const fillerBytes = Buffer.byteLength(listText(index));
+  const source = kind === 'list' ? listSource(index) : kind === 'nudge' ? nudgeSource(index) : fillerSource(fillerBytes);
+  const command = hookCommand(source);
   const file = path.join(tree, 'agents', `${ORCHESTRATOR}.agent-spec.json`);
   const before = sha256(fs.readFileSync(file));
   const j = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -307,9 +330,10 @@ function opHook(tree, kind) {
   kiro.hooks = { ...(kiro.hooks ?? {}), [TRIGGER]: [{ command, timeout_ms: HOOK_TIMEOUT_MS }] };
   fs.writeFileSync(file, `${JSON.stringify(j, null, 2)}\n`);
   return {
-    op: 'hook', id: `hook:${kind}`, agent: ORCHESTRATOR, trigger: TRIGGER, toolVersion: TOOL_VERSION, matcher: FROZEN_MATCHER,
+    op: 'hook', id: `hook:${kind}`, agent: ORCHESTRATOR, trigger: TRIGGER, toolVersion: TOOL_VERSION, ...(kind === 'nudge' ? { matcher: FROZEN_MATCHER } : {}),
     commandSha256: sha256(command), commandBytes: Buffer.byteLength(command), indexSha256: sha256(JSON.stringify(index)), skills: index.length,
-    header: kind === 'nudge' ? NUDGE_HEADER : FILLER_HEADER, ...(kind === 'filler' ? { fillerBytes } : {}),
+    header: { list: LIST_HEADER, nudge: NUDGE_HEADER, filler: FILLER_HEADER }[kind], ...(kind === 'filler' ? { fillerBytes } : {}),
+    ...(kind === 'list' ? { outputBytes: fillerBytes } : {}),
     beforeSha256: before, afterSha256: sha256(fs.readFileSync(file)),
   };
 }
@@ -329,7 +353,7 @@ function preview(index, prompt, variant = FROZEN_MATCHER) {
 }
 
 module.exports = {
-  TOOL_VERSION, TRIGGER, NUDGE_HEADER, NUDGE_FOOTER, NUDGE_NONE, NUDGE_BROAD, FILLER_HEADER, FILLER_SENTENCES, MATCHERS, FROZEN_MATCHER,
-  skillTrigger, unquote, buildIndex, tokens, rank, shown, shownFor, matcherData, promptOf, nudgeSource, fillerSource, fillerText, typicalNudgeBytes,
+  TOOL_VERSION, TRIGGER, NUDGE_HEADER, NUDGE_FOOTER, NUDGE_NONE, NUDGE_BROAD, FILLER_HEADER, LIST_HEADER, LIST_FOOTER, LIST_MAX_BYTES, listText, listSource, FILLER_SENTENCES, MATCHERS, FROZEN_MATCHER,
+  skillTrigger, unquote, buildIndex, tokens, rank, shown, shownFor, matcherData, promptOf, nudgeSource, fillerSource, fillerText,
   hookCommand, opHook, preview,
 };

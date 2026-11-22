@@ -1145,19 +1145,22 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   recommendation per skill and harness: HARMS, RELOCATE, PRUNE, FIX, KEEP or NEEDS DATA, plus a TRIM flag. Free, read-only, never a deletion.
   How to evaluate skills and decide keep, fix, trim, relocate or prune: [cap-playbook.md](cap-playbook.md).
   A skill counts as exposed in a run when the agent that started the run lists it (its own installed skill filter, else the base tree's listing for that agent), or an agent the stream shows the run spawning lists it, or the run loaded it. Each run keeps the entry agent's own `installed-agent.json` (`--arm-agent k-developer` saves k-developer's, not konductor's). Runs saved before that fix hold konductor's file for every entry agent; `prune-report` ignores that file when its name differs from the entry agent, uses the base tree's listing instead, and counts those runs in `usage.runs.staleInstalledAgent` with a warning.
-- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills | --hook nudge|filler` builds a `dir:`
+- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills | --hook list|nudge|filler` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
   `--drop agent:NAME` is the agent's drop-one arm: the agent is replaced by a stub, not removed, because the routing rules and the orchestrator's subagent
   list still name it. The stub keeps the agent's name and description, gets a prompt that tells it to do nothing and hand the brief back (`STUB_PROMPT` in
   `bench/cap/variant.js`), and loses its skills, SOPs, context files and subagents; `variant.json` records the op as `drop` with `how: "stub"`. The entry agent
   `konductor` cannot be dropped.
-  `--hook nudge` builds the `konductor-nudge` arm (`bench/cap/nudge.js`): konductor gets one `userPromptSubmit` hook, a `node -e` program
+  `--hook list` builds the `konductor-list` arm (design A, the one the nudge experiment runs): konductor gets one `userPromptSubmit` hook that
+  prints every skill name in its list, a pointer to the trigger lines under "## Your skills", and "Check this list and load a matching skill
+  before you start; say "no skill fits" if none does." It reads no request text and stays under 3,000 bytes (kiro-cli v3's hook output cap).
+  `--hook nudge` builds the `konductor-nudge` arm (design B, kept as a negative result: about half top-3 recall on held-out tasks): konductor gets one `userPromptSubmit` hook, a `node -e` program
   that scores the request against konductor's own skill trigger lines (the same lines its prompt lists under "## Your skills", built from the
   agent spec and SKILL.md frontmatter only) and prints the top 3 with "your call" and "say no skill fits". It reads only its stdin.
   The matcher is `FROZEN_MATCHER` in `nudge.js` (`v2-weighted`: strong stemming, name words x3, "Use ..." clause words x2, length-normalised),
   picked from four variants on the 26 LITE tasks outside the nudge experiment, with each task's `loadCheck.mustLoad` as the expected skills. `--hook filler`
-  builds `konductor-filler`, the control: a hook of the same shape printing neutral text of about the same size that names no skill or tool.
+  builds `konductor-filler`, the control: a hook of the same shape printing neutral text the size of the list arm's output that names no skill or tool.
   `variant.json` records the hook command's sha256. `cap nudge-preview` prints the hook text per task for a leak check; `cap nudge-check` reads
   finished runs (hook seen, loads, full loads, preview-only loads). Result fields `skillsLoadedFull` and `skillLoadsPreview` split loads whose
   whole text reached the model from loads kiro-cli cut to its preview (tool answers over 30,000 characters).

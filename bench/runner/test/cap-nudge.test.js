@@ -156,7 +156,7 @@ test('variant.json records the hook op with the command sha, and the build is re
     const b = s.build('nudge');
     assert.equal(b.meta.variantHash, hash, 'same base, same hook: same tree');
     assert.notEqual(s.build('filler').meta.variantHash, hash);
-    assert.throws(() => s.build('loud'), /--hook takes nudge or filler/);
+    assert.throws(() => s.build('loud'), /--hook takes list, nudge or filler/);
   } finally { s.done(); }
 });
 
@@ -249,4 +249,42 @@ test('strong stemming folds plural and -ation forms; name and Use-clause words o
   assert.equal(d.skills[0].w.risk, 3, 'a name word gets weight 3');
   assert.equal(d.skills[0].w.list, 2, 'a Use-clause word gets weight 2');
   assert.equal(nudge.shownFor('What are the risks?', d)[0], 'risk-management');
+});
+
+test('design A, the list arm: every skill name once, the pointer to the trigger lines, the hard check line; no request words', () => {
+  const s = setup();
+  try {
+    const v = s.build('list');
+    assert.equal(v.armName, 'konductor-list');
+    const idx = nudge.buildIndex(v.dir);
+    const a = stubAgentTurn(v.dir, 'Write a decision record for the deploy strategy.').context;
+    assert.equal(a, stubAgentTurn(v.dir, 'Something else entirely.').context, 'the list does not depend on the request');
+    assert.equal(a, nudge.listText(idx));
+    const lines = a.trimEnd().split('\n');
+    assert.equal(lines[0], nudge.LIST_HEADER);
+    assert.equal(lines.at(-1), nudge.LIST_FOOTER);
+    assert.deepEqual(lines.slice(1, -1).join(' ').split(', ').map((x) => x.replace(/,$/, '')), idx.map((x) => x.name));
+    assert.match(nudge.LIST_FOOTER, /load a matching skill before you start/);
+    assert.match(nudge.LIST_FOOTER, /no skill fits/);
+    assert.ok(Buffer.byteLength(a) <= nudge.LIST_MAX_BYTES);
+    assert.equal(v.meta.ops[0].id, 'hook:list');
+    assert.equal(v.meta.ops[0].outputBytes, Buffer.byteLength(a));
+  } finally { s.done(); }
+});
+
+test('the list arm refuses an index whose list would pass the hook output cap', () => {
+  const big = Array.from({ length: 400 }, (_, i) => ({ name: `skill-with-a-long-name-${i}`, trigger: 'Use when x.' }));
+  assert.throws(() => nudge.listText(big, { check: true }), /over the 3000-byte hook output cap/);
+});
+
+test('the filler is sized to the list arm output, within 10%, and still names no skill', () => {
+  const s = setup();
+  try {
+    const list = Buffer.byteLength(nudge.listText(nudge.buildIndex(s.build('list').dir)));
+    const f = s.build('filler');
+    const text = stubAgentTurn(f.dir, 'x').context;
+    assert.ok(Math.abs(Buffer.byteLength(text) - list) <= list * 0.1, `${Buffer.byteLength(text)} vs ${list}`);
+    assert.equal(f.meta.ops[0].fillerBytes, list);
+    for (const n of Object.keys(DESCS)) assert.equal(text.includes(n), false, n);
+  } finally { s.done(); }
 });
