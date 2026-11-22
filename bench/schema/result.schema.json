@@ -539,21 +539,22 @@
         "cacheWrite",
         "total"
       ],
+      "description": "Token counts. A kiro-cli run has them only when kiro-cli reports them on the turn; a count it never reports is null, never 0.",
       "properties": {
         "input": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "output": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "reasoning": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "cacheRead": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "cacheWrite": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "total": {
           "type": "integer"
@@ -1370,6 +1371,16 @@
         "sha256": {
           "type": "string"
         }
+      }
+    },
+    "forcedLoad": {
+      "type": ["object", "null"],
+      "description": "run --forced-must-load: the task's mustLoad units named in front of its prompt, as kind:name.",
+      "required": ["units", "sha256"],
+      "properties": {
+        "units": { "type": "array", "items": { "type": "string" } },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string" }
       }
     },
     "comparable": {

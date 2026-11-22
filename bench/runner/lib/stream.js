@@ -276,7 +276,7 @@ function tokensOf(o) {
 /** Adds counts into `acc` (null fields stay null until a count arrives) and returns it; `acc` null starts a new one. */
 function addTokens(acc, t) {
   if (!t) return acc;
-  const out = acc ?? { input: null, output: null, cacheRead: null, cacheWrite: null, total: 0 };
+  const out = acc ?? { input: null, output: null, reasoning: null, cacheRead: null, cacheWrite: null, total: 0 };
   for (const k of Object.keys(TOKEN_FIELDS)) if (t[k] !== null && t[k] !== undefined) out[k] = (out[k] ?? 0) + t[k];
   out.total = Object.keys(TOKEN_FIELDS).reduce((n, k) => n + (out[k] ?? 0), 0);
   return out;
