@@ -1,0 +1,3 @@
+{
+  "notes": "The widget looks straightforward, but several contracts live in the accessibility, copy, and checkout documents. The price path crosses the page adapter, the existing currency helper, and the locale rules. The service response path and order action need careful reading beyond the happy-path tests. The page mount fallback is valid because the main entry point renders a preview without live services."
+}

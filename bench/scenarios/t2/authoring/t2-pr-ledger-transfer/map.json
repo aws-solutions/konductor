@@ -1,0 +1,21 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review-pass-integrity"
+  ],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "adversarial-code-review-pass-integrity"
+    ],
+    "mustNotLoad": [
+      "adversarial-design-review",
+      "backend-review"
+    ]
+  },
+  "twinIdea": "Implement a new transfer type in this wallet ledger project following the existing ledger rules and contracts.",
+  "why": "The task requires reviewing a PR diff for ledger/financial code where integrity issues (atomicity, idempotency, ordering, money conversion) are the key defect categories noted in the hidden test criteria. Code-review provides the base review skill, and the integrity pass targets exactly the failure modes hidden across the worker, scheduler, and reconciliation code."
+}

@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name review methods, checklists, or hint at planted problems. It asks for a general code review of PR 2231."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR 2231, write to REVIEW.md, use JSON findings format with location, severity, issue, fix."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Requires reading multiple documentation files (mobile contract, shipping contract, data shapes) and understanding backward compatibility, atomic operations, and validation-storage boundaries."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items have evidence in fixture files. Grader matches by file:line within 3 lines; all items are at correct locations with clear evidence."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, test names, or file names hint at planted problems. Issues must be discovered through code and documentation review."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

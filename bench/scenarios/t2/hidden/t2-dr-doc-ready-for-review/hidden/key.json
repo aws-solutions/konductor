@@ -1,0 +1,72 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "2.1",
+      "severity": "high",
+      "fix": [
+        "60 seconds",
+        "99 percent",
+        "measurable target"
+      ],
+      "finding": "The customer outcome is expressed as a feeling and does not carry the product brief's measurable 60-second and 99-percent visibility target, so reviewers cannot tell how success will be judged."
+    },
+    {
+      "id": "k2",
+      "section": "4.3",
+      "severity": "critical",
+      "fix": [
+        "remove policy layer",
+        "fixed categories",
+        "out of scope"
+      ],
+      "finding": "This section adds a rules and policy engine for conditions such as quiet hours and channel ranking even though the first-release brief explicitly excludes that work, expanding scope and introducing an unowned component."
+    },
+    {
+      "id": "k3",
+      "section": "5.1",
+      "severity": "high",
+      "fix": [
+        "10 million",
+        "25 percent",
+        "planning horizon"
+      ],
+      "finding": "The capacity section claims the design will scale but gives no workload, baseline, growth rate, or time horizon, so the capacity decision cannot be checked against the documented traffic and launch plan."
+    },
+    {
+      "id": "k4",
+      "section": "6.2",
+      "severity": "medium",
+      "fix": [
+        "credible alternative",
+        "compare option",
+        "cost"
+      ],
+      "finding": "The only alternative is a plainly inferior direct-database read, so the document does not provide a credible competing design or a meaningful comparison of trade-offs."
+    },
+    {
+      "id": "k5",
+      "section": "7.1",
+      "severity": "medium",
+      "fix": [
+        "remove repetition",
+        "cross-reference",
+        "single explanation"
+      ],
+      "finding": "This subsection repeats the asynchronous outbox and local-view decision already explained in 4.2 with different wording, making the design harder to maintain and leaving two narratives for the same decision."
+    },
+    {
+      "id": "k6",
+      "section": "8.3",
+      "severity": "low",
+      "fix": [
+        "owner",
+        "action",
+        "measure"
+      ],
+      "finding": "The long operating-principles subsection offers general encouragement but no owner, action, measure, or constraint a reviewer or operator can use, so it consumes attention without advancing a decision."
+    }
+  ],
+  "decoys": []
+}

@@ -1,0 +1,83 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "high",
+      "fix": [
+        "pass/fail",
+        "relevance",
+        "threshold"
+      ],
+      "finding": "Section 3.2 says to make results look good but gives no reproducible pass/fail check against the service's relevance contract, so a relevance regression could be accepted on judgment alone."
+    },
+    {
+      "id": "k2",
+      "section": "3.4",
+      "severity": "high",
+      "fix": [
+        "produce",
+        "synonym",
+        "source"
+      ],
+      "finding": "Section 3.4 requires synonym-bundle-2025-02 without naming a producing step or available source, so the load cannot be completed from the plan's earlier outputs."
+    },
+    {
+      "id": "k3",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "canonical name",
+        "catalog-search-2025-03",
+        "rename"
+      ],
+      "finding": "Section 3.3 creates catalog_search_v3 instead of the reserved hyphenated physical name, so the index created by this step does not match the plan's approved naming facts."
+    },
+    {
+      "id": "k4",
+      "section": "3.5",
+      "severity": "high",
+      "fix": [
+        "same physical name",
+        "rename",
+        "align"
+      ],
+      "finding": "Section 3.5 compares catalog-search-2025-03 even though Section 3.3 creates catalog_search_v3, so the comparison can target an index that this run never loaded."
+    },
+    {
+      "id": "k5",
+      "section": "3.6",
+      "severity": "medium",
+      "fix": [
+        "available owner",
+        "reassign",
+        "leave"
+      ],
+      "finding": "Section 3.6 assigns the rehearsal to Priya Nair during her March 3–7 leave, leaving a required owner unavailable in the proposed window."
+    },
+    {
+      "id": "k6",
+      "section": "3.7",
+      "severity": "critical",
+      "fix": [
+        "rollback",
+        "previous index",
+        "abort"
+      ],
+      "finding": "Section 3.7 switches all traffic but its way back only says the team will decide after observation, so it provides no executable rollback if the live change harms customers."
+    },
+    {
+      "id": "k7",
+      "section": "4.1",
+      "severity": "medium",
+      "fix": [
+        "completion criteria",
+        "sign-off",
+        "evidence"
+      ],
+      "finding": "Section 4.1 lists artifacts and an announcement but never defines the checks or sign-off that establish the entire migration is complete."
+    }
+  ],
+  "decoys": []
+}

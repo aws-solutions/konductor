@@ -1,0 +1,20 @@
+{
+  "id": "t2-pr-precheck-uncommitted",
+  "phase": "code-review",
+  "kind": "pr",
+  "size": "20 to 35",
+  "stack": "node",
+  "pr": 611,
+  "role": "developer",
+  "wave": 5,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: the developer who wrote the change. Repo kind: a Node.js shipping-rates service (a rate table loader, a quote endpoint, a carrier client, config, tests, docs). The change is the developer's own work that is not yet sent for review; the request says they want a fast look before they open it for review, that they will make the fixes themselves, and that nothing in the project may be changed. Keep the change small: 4 to 6 files, 120 to 250 lines. Plant: a weight band lookup uses < where the rate table doc says bands include their upper bound, so parcels at exactly a band edge get the next band price; a carrier error is caught and turned into a zero-cost quote; a new log line prints the full carrier response including the account number; a new config default reads the carrier sandbox URL in every environment; a quote cache key leaves out the destination country, so two countries share one price; a test asserts on the mocked value it just set, so it can never fail. Add one decoy. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: a quick read-only check of a developer's own unsent change before code review, where the developer fixes things later and the project must stay untouched.",
+  "targetUnit": "sop:k-pre-cr-critique"
+}

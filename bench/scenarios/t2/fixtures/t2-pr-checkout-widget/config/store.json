@@ -1,0 +1,7 @@
+{
+  "storeName": "Harbor Cart",
+  "defaultLocale": "en-US",
+  "currency": "USD",
+  "taxRegion": "coastal",
+  "promoEndpoint": "/api/promotions/apply"
+}

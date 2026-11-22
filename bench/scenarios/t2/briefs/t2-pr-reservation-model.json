@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-reservation-model",
+  "phase": "code-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js restaurant booking API whose contract is a Smithy model under model/ (several .smithy files), with hand-written JS handlers and tests, and docs that say clients retry failed writes and that generated SDKs are built from the model. The PR adds reservation operations to the model and their handlers. Plant in the model: the get operation is not marked read-only; the list operation returns a next token but has no pagination trait; the create operation has no idempotency token although clients retry; the conflict error shape has no error trait and no HTTP status; the cancel operation is bound to HTTP GET; one member uses snake_case while every other member is camelCase; a time member is a string where the rest of the model uses timestamps. Add a decoy: a phone member marked sensitive, which is right here.",
+  "stack": "node",
+  "pr": 912
+}

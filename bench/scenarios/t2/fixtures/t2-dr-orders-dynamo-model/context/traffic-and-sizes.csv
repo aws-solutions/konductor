@@ -1,0 +1,13 @@
+measure,value,unit,window,notes
+peak order writes,1800,requests/second,launch peak,12 launch hours per month
+share of peak writes on current UTC date,92,percent,launch forecast,traffic assigned to the date partition
+average order writes,500,requests/second,non-peak,forecast planning value
+order detail reads,7000,requests/second,daytime,forecast planning value
+customer history requests,2400,requests/second,daytime,forecast planning value
+fulfillment queries,180,requests/second,daytime,forecast planning value
+average order header,6,KB,February sample,excludes line entries
+average line entry,1.2,KB,February sample,SKU title quantity and money fields
+largest observed order,640,lines,February export,largest customer account
+largest customer order count,126400,orders,February export,account has seven years of history
+special bulk account limit,1200,lines,contract discussion,planned for next quarter
+orders in 18 months,2.5,multiple,forecast,relative to current count

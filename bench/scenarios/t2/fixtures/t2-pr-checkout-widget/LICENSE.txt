@@ -1,0 +1,5 @@
+Harbor Cart sample application
+
+Copyright 2025 Harbor Cart contributors.
+
+This sample is provided for internal evaluation and demonstration use.

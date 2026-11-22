@@ -125,7 +125,7 @@ test('the batch summary counts runs, distinct tasks and flagged tasks per batch,
     assert.equal(s.tasks, new Set(own.map((r) => r.task)).size);
     assert.equal(s.flagged.noisy, new Set(own.filter((r) => r.flags.noisy).map((r) => r.task)).size);
   }
-  assert.match(renderTable(rows), /^\| batch \| runs \| tasks \| broken \(tasks\)/m);
+  assert.match(renderTable(rows), /^\| batch \| runs \| budget_skipped \(runs\) \| tasks \| broken \(tasks\)/m);
 });
 
 test('secondFamilyShare is the share outside the most common family', () => {

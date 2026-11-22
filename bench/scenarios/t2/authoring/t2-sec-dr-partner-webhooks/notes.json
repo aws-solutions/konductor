@@ -1,0 +1,8 @@
+{
+  "notes": [
+    "A quick skim may accept the clean event flow while missing the destination, authentication, and payload details in the numbered design subsections.",
+    "The URL, credential, payload, and retention findings require comparing the design with architecture, auth, classification, and traffic-policy files.",
+    "The queue finding requires connecting the single FIFO claim path to the tenant-isolation target and partner tier commitments.",
+    "The design contains ordinary open questions about acknowledgements, ordering, and rollout that are useful review context but are separate from the seeded findings."
+  ]
+}

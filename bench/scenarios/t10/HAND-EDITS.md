@@ -45,3 +45,24 @@ The fixture's `npm test` and CI line ran `node --test test/`, which fails on Nod
 directory as one file), so an untouched fixture looked broken. Both now run `node --test test/*.test.js`, as the
 reference and answers already did. Free gates unchanged: reference 100, stub 3.6, lazy 34, alt 100, other 100.
 Non-Claude recheck: pending (`handEdited.version` 3).
+
+## t10-tpm-ring-rollout v3 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 9)
+
+The LITE analysis said vanilla r3 loosened an existing test. Read against the workspace, it loosened its own new
+test (`test/rollout-docs.test.js`, written in the same run); no run changed the fixture's 8 test files. The guard was
+still missing: only `docs/partners.md` is checked unchanged, so a run could weaken an existing test in `test/` and
+its regression check would pass. New hidden test 19, "the original test suite passes unchanged", runs copies of the
+fixture's 37 tests (`hidden/.../pristine-tests/`) against the final code. A separate `tests` check was tried first and
+dropped: it lifted the stub to 38.8. Gates: reference 100, stub 5.7, lazy 28.5, alt 100, other 100. Saved LITE
+answers: vanilla r1 72.4, r3 56.2 (close to their run scores). Non-Claude recheck: pending (`handEdited.version` 3).
+
+## Round 6 recheck of t10-tpm-ring-rollout v3 (2026-11-22, deepseek-3.2, call D19)
+
+3 of 4 pass, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+no-method-or-decoy: the request names exact files (`src/ring-rollout.js`, `src/go-no-go.js`,
+`scripts/receipt-go-no-go.js`), function signatures, exports, error codes and JSON block formats. That may be the
+interface the hidden tests load, which earlier reviews passed as an entry point, not a method.
+
+Independent review (claude-fable-5.1, `reports/review-probe-disposals-fable.md` in the mate workspace): the D19 fail
+is by design, because the request names the interface the hidden tests import. The D19 recheck is now in
+`review.recheck` at version 3, with that disposal in its note.

@@ -1,0 +1,5 @@
+option,monthly_infrastructure_usd,monthly_engineering_fte,fte_monthly_usd,annual_total_usd,calculation_note
+postgresql index,450,0.10,145000/12,19900,"replica and storage allocation plus routine tuning"
+managed search,620,0.15,145000/12,29190,"service tier, snapshots, and integration support"
+self-run cluster,3100,0,145000/12,37200,"three data nodes, three replicas, storage, and monitoring"
+operating envelope,,, ,36000,"approved annual search operating envelope"

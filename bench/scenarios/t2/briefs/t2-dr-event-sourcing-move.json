@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-event-sourcing-move",
+  "phase": "design-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "design",
+  "size": "8 to 14",
+  "brief": "Phase: design review. Role of the person asking: reviewer. The doc goes to a principal engineer review next week and the user wants it ready. Packet kind: a proposal to move a ledger service from a relational monolith to event sourcing. Context: the current architecture, write and storage growth numbers as CSV, the team roster with skills, two incident summaries, the platform team list of supported stores. Plant: the main case rests on large well-known companies using event sourcing, with no link to this system own problems; the doc offers only two options, full event sourcing or keep the failing monolith, although an outbox with change data capture fits the context; one incident is generalised into a claim that the monolith always loses data; storage is called negligible but the CSV numbers give many terabytes a year; replay is called safe because events never change, and events never change because replay must be safe; there is no way back once the migration starts; the roster shows nobody has run the proposed event store and the platform list does not support it. Write every planted problem the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here. Context files give facts and numbers only, never a conclusion: an incident summary says what happened and when, and must not name a lesson that restates a planted problem; no context file may say what this design gets wrong.",
+  "doc": "docs/design/move-to-event-sourcing.md"
+}

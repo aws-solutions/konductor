@@ -1,0 +1,5 @@
+{
+  "eligibleStatuses": ["active"],
+  "graceDays": 7,
+  "ledgerReason": "annual-expiry"
+}

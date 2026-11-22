@@ -1,0 +1,6 @@
+[
+  { "id": "oat-bread", "name": "Oat bread", "priceCents": 599, "category": "pantry" },
+  { "id": "citrus-box", "name": "Citrus breakfast box", "priceCents": 1299, "category": "produce" },
+  { "id": "sea-salt", "name": "Sea salt flakes", "priceCents": 875, "category": "pantry" },
+  { "id": "linen-napkins", "name": "Linen napkins", "priceCents": 2400, "category": "home" }
+]

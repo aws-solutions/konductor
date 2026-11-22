@@ -1,0 +1,192 @@
+diff --git a/README.md b/README.md
+index a63f867..42af01f 100644
+--- a/README.md
++++ b/README.md
+@@ -10,7 +10,7 @@ This project has no runtime dependencies. Use Node.js 24 or newer, then run:
+ node --test
+ ```
+ 
+-The reconciliation command reads the configured store and reports accounts whose balance does not match their journal entries. The scheduled transfer worker is invoked by the platform timer and uses the same transfer rules as the HTTP service.
++The reconciliation command reads the configured store and reports accounts whose balance does not match their journal entries. The scheduled transfer worker is invoked by the platform timer and uses the same transfer rules as the HTTP service. Schedule configuration is kept separate from account seed data.
+ 
+ ## Layout
+ 
+diff --git a/docs/scheduled-transfers.md b/docs/scheduled-transfers.md
+new file mode 100644
+index 0000000..a32184b
+--- /dev/null
++++ b/docs/scheduled-transfers.md
+@@ -0,0 +1,7 @@
++# Scheduled transfers
++
++A schedule has an id, a client key, two account ids, a decimal amount, an hour, a minute, and a UTC timezone label. The timer calls the worker once for each due schedule.
++
++The worker returns `skipped` for a disabled schedule, `done` for a completed transfer, and records an error result when an account or balance check fails. Scheduled entries use the same two-line journal representation as an ordinary transfer.
++
++Configuration amounts are strings because the ledger stores integer minor units. The configured scale in `config/ledger.json` is used when a schedule is loaded.
+diff --git a/src/reconcile.js b/src/reconcile.js
+index 3ff05ca..88a0bdb 100644
+--- a/src/reconcile.js
++++ b/src/reconcile.js
+@@ -2,9 +2,9 @@
+ 
+ const { totalForAccount } = require('./journal');
+ 
+-function reconcile(store) {
++function reconcile(store, today = new Date().toISOString().slice(0, 10)) {
+   const lines = store.listJournal();
+-  return store.listAccounts().map((account) => ({
++  return store.listAccounts().filter((account) => !account.createdAt.startsWith(today)).map((account) => ({
+     accountId: account.id,
+     expectedMinor: account.balanceMinor,
+     journalMinor: totalForAccount(lines, account.id),
+diff --git a/src/scheduled-transfers.js b/src/scheduled-transfers.js
+new file mode 100644
+index 0000000..dd07ad7
+--- /dev/null
++++ b/src/scheduled-transfers.js
+@@ -0,0 +1,30 @@
++'use strict';
++
++const { transferLines } = require('./journal');
++
++function amountToMinor(amount, scale) {
++  if (typeof amount !== 'string' || !/^\d+\.\d{2}$/.test(amount)) throw new Error('scheduled amount is invalid');
++  return Math.floor(parseFloat(amount) * scale);
++}
++
++function runScheduledTransfer(store, schedule, ledger, now = new Date().toISOString()) {
++  if (!schedule.enabled) return { status: 'skipped', reason: 'disabled' };
++  if (schedule.fromAccountId === schedule.toAccountId) throw new Error('source and destination must differ');
++  const amountMinor = amountToMinor(schedule.amount, ledger.minorUnitScale);
++  const transferId = `tr_schedule_${schedule.id}`;
++  const lines = transferLines({ transferId, fromAccountId: schedule.fromAccountId, toAccountId: schedule.toAccountId, amountMinor, createdAt: now });
++  const source = store.getAccount(schedule.fromAccountId);
++  const destination = store.getAccount(schedule.toAccountId);
++  if (!source || !destination) throw new Error('account not found');
++  if (source.balanceMinor < amountMinor) throw new Error('insufficient funds');
++
++  store.appendJournal(lines[0]);
++  source.balanceMinor -= amountMinor;
++  store.appendJournal(lines[1]);
++  destination.balanceMinor += amountMinor;
++  if (store.hasTransfer(schedule.clientKey)) return { status: 'duplicate', id: transferId };
++  store.recordTransfer({ id: transferId, clientKey: schedule.clientKey, amountMinor });
++  return { status: 'done', id: transferId };
++}
++
++module.exports = { amountToMinor, runScheduledTransfer };
+diff --git a/src/scheduler.js b/src/scheduler.js
+new file mode 100644
+index 0000000..e2686a6
+--- /dev/null
++++ b/src/scheduler.js
+@@ -0,0 +1,25 @@
++'use strict';
++
++const { runScheduledTransfer } = require('./scheduled-transfers');
++
++function isDue(schedule, now) {
++  return schedule.enabled && schedule.hour === now.getHours() && schedule.minute === now.getMinutes();
++}
++
++function runDueSchedules(store, schedules, ledger, now = new Date()) {
++  const results = [];
++  for (const schedule of schedules) {
++    if (!isDue(schedule, now)) continue;
++    try {
++      const result = runScheduledTransfer(store, schedule, ledger, now.toISOString());
++      store.setScheduleRun(schedule.id, { status: 'done', ranAt: now.toISOString(), result });
++      results.push(result);
++    } catch (error) {
++      store.setScheduleRun(schedule.id, { status: 'done', ranAt: now.toISOString(), error: error.message });
++      results.push({ status: 'done', id: schedule.id });
++    }
++  }
++  return results;
++}
++
++module.exports = { isDue, runDueSchedules };
+diff --git a/src/store.js b/src/store.js
+index f720a1d..54f4395 100644
+--- a/src/store.js
++++ b/src/store.js
+@@ -4,6 +4,7 @@ function createStore(seed = {}) {
+   const accounts = new Map((seed.accounts || []).map((a) => [a.id, structuredClone(a)]));
+   const journal = [...(seed.journal || [])].map((line) => structuredClone(line));
+   const transfers = new Map((seed.transfers || []).map((t) => [t.clientKey, structuredClone(t)]));
++  const scheduleRuns = new Map();
+ 
+   return {
+     getAccount(id) { return accounts.get(id); },
+@@ -14,6 +15,8 @@ function createStore(seed = {}) {
+     hasTransfer(clientKey) { return transfers.has(clientKey); },
+     getTransfer(clientKey) { return transfers.get(clientKey); },
+     recordTransfer(transfer) { transfers.set(transfer.clientKey, transfer); },
++    getScheduleRun(id) { return scheduleRuns.get(id); },
++    setScheduleRun(id, state) { scheduleRuns.set(id, structuredClone(state)); },
+     withTransaction(work) {
+       const accountCopy = new Map([...accounts].map(([id, a]) => [id, structuredClone(a)]));
+       const journalLength = journal.length;
+diff --git a/tests/scheduled-transfers.test.js b/tests/scheduled-transfers.test.js
+new file mode 100644
+index 0000000..5802baa
+--- /dev/null
++++ b/tests/scheduled-transfers.test.js
+@@ -0,0 +1,29 @@
++'use strict';
++
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { createStore } = require('../src/store');
++const { runScheduledTransfer, amountToMinor } = require('../src/scheduled-transfers');
++const { fixedAccounts } = require('./helpers');
++
++const ledger = { minorUnitScale: 100 };
++const schedule = { id: 'rent', enabled: true, clientKey: 'client_schedule_1', fromAccountId: 'acct_a', toAccountId: 'acct_b', amount: '2.50' };
++
++test('converts a configured amount for the ledger', () => {
++  assert.equal(amountToMinor('12.50', 100), 1250);
++});
++
++test('runs an enabled scheduled transfer', () => {
++  const store = createStore({ accounts: fixedAccounts() });
++  const result = runScheduledTransfer(store, schedule, ledger, '2025-02-01T09:00:00.000Z');
++  assert.equal(result.status, 'done');
++  assert.equal(store.listJournal().length, 2);
++  assert.equal(store.getAccount('acct_a').balanceMinor, 750);
++});
++
++test('skips a disabled schedule', () => {
++  const store = createStore({ accounts: fixedAccounts() });
++  const result = runScheduledTransfer(store, { ...schedule, enabled: false }, ledger);
++  assert.deepEqual(result, { status: 'skipped', reason: 'disabled' });
++  assert.equal(store.listJournal().length, 0);
++});
+diff --git a/tests/scheduler.test.js b/tests/scheduler.test.js
+new file mode 100644
+index 0000000..4158b1d
+--- /dev/null
++++ b/tests/scheduler.test.js
+@@ -0,0 +1,21 @@
++'use strict';
++
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { createStore } = require('../src/store');
++const { runDueSchedules } = require('../src/scheduler');
++const { fixedAccounts } = require('./helpers');
++
++test('runs a schedule at its configured time', () => {
++  const store = createStore({ accounts: fixedAccounts() });
++  const schedules = [{ id: 'morning', enabled: true, clientKey: 'client_morning', fromAccountId: 'acct_a', toAccountId: 'acct_b', amount: '1.00', hour: 9, minute: 30 }];
++  const result = runDueSchedules(store, schedules, { minorUnitScale: 100 }, new Date('2025-02-01T09:30:00.000Z'));
++  assert.equal(result[0].status, 'done');
++  assert.equal(store.getScheduleRun('morning').status, 'done');
++});
++
++test('ignores schedules outside their minute', () => {
++  const store = createStore({ accounts: fixedAccounts() });
++  const schedules = [{ id: 'later', enabled: true, clientKey: 'client_later', fromAccountId: 'acct_a', toAccountId: 'acct_b', amount: '1.00', hour: 10, minute: 0 }];
++  assert.deepEqual(runDueSchedules(store, schedules, { minorUnitScale: 100 }, new Date('2025-02-01T09:30:00.000Z')), []);
++});

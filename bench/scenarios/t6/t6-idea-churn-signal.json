@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-churn-signal",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -143,25 +143,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt asks to identify problem and evidence but names no specific method or framework; edits.md says previous version leaked answer but current version doesn't have misleading hints."
+          "note": "Prompt asks for framing note with JSON structure, no method prescribed. Edits show removed sentence that leaked answer."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains data files (CSV, notes) but doesn't state the analysis conclusion; provides raw evidence without interpretation."
+          "note": "Fixture has raw data (CSV files with 612, 402, 156, etc.) and context definitions, no explicit answer or description of finished behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Rubric references numbers from product_metrics.csv (612, 402, 156, 517, 65.7%); checks and rubric reward what the request asks for, not reference specifics."
+          "note": "Hidden tests check numbers and concepts (612, 402, 156, 517, 65.7%, failed payment, voluntary, survey sample, June 10-16 gap) all present in fixture or request. Rubric anchors reward evidence-based problem framing as requested."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent developer can analyze CSV data and create framing note; different correct answers with same substantive content would pass the checks."
+          "note": "Competent developer can analyze product_metrics.csv to identify 402/612 failed payments as main problem, create options, and pass tests with different wording/structure."
         }
       ],
-      "version": 3
+      "version": 4
     }
   },
   "expertKey": {
@@ -206,9 +206,9 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): the problem and options precision tests need a problem and an option (D-143)",
+    "editor": "mate debt worker (2026-11-21): price-cause precision test is denial-safe (contradicts) (D-158)",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   },
   "pilot": {
     "scores": {},

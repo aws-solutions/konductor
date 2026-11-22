@@ -21,14 +21,27 @@ const DEFAULT_CENSORED_FLOOR = 1.0;
 // run-config the same way every other seeded draw in bench is.
 const { mulberry32, shuffle } = require('./util.js');
 
-// Replicate-major: every (task, arm) pair runs once per replicate, in a seeded random order.
+// Replicate-major: every (task, arm) pair runs once per replicate.
+// `order` 'konductor-first' (the default): tasks in a seeded random order, and within a task every konductor arm before
+// the vanilla arm, so a budget stop lands on the vanilla side of a pair, never on the arm under test.
+// `order` 'shuffle': every (task, arm) cell in one seeded random order (the order before 2026-11-21).
 // A budget stop then removes whole replicates or an unbiased random remainder, never a task class.
 // `offset` continues numbering after an earlier run in the same out dir: replicates are offset+1..offset+replicates.
-function planRuns(tasks, arms, replicates, seed = 1, offset = 0) {
+const PAIR_ORDERS = Object.freeze(['konductor-first', 'shuffle']);
+function planRuns(tasks, arms, replicates, seed = 1, offset = 0, order = 'konductor-first') {
+  if (!PAIR_ORDERS.includes(order)) throw new Error(`pair order must be ${PAIR_ORDERS.join(' or ')}`);
   const plan = [];
+  const tested = arms.filter((a) => !a.vanilla);
+  const plain = arms.filter((a) => a.vanilla);
   for (let rep = offset + 1; rep <= offset + replicates; rep++) {
-    const pairs = tasks.flatMap((task) => arms.map((arm) => ({ task, arm, replicate: rep })));
-    plan.push(...shuffle(pairs, mulberry32(seed + rep)));
+    const rand = mulberry32(seed + rep);
+    if (order === 'shuffle') {
+      const pairs = tasks.flatMap((task) => arms.map((arm) => ({ task, arm, replicate: rep })));
+      plan.push(...shuffle(pairs, rand));
+    } else {
+      // Several konductor arms take turns in a seeded order, so no one of them always runs first.
+      for (const task of shuffle(tasks, rand)) plan.push(...[...shuffle(tested, rand), ...plain].map((arm) => ({ task, arm, replicate: rep })));
+    }
   }
   return plan;
 }
@@ -38,6 +51,16 @@ const runDirOf = (outDir, { arm, task, replicate }) => path.join(outDir, arm.id,
 // Planned cells whose result.json already exists; running them overwrites it in place.
 function existingResults(plan, outDir) {
   return plan.filter((item) => fs.existsSync(path.join(runDirOf(outDir, item), 'result.json')));
+}
+
+/** Renames cell folder `dir` to the first free `<dir>.resumed-N`, its result.json to attempt-result.json; returns the new path. */
+function moveAside(dir) {
+  let n = 1;
+  while (fs.existsSync(`${dir}.resumed-${n}`)) n++;
+  const aside = `${dir}.resumed-${n}`;
+  fs.renameSync(dir, aside);
+  if (fs.existsSync(path.join(aside, 'result.json'))) fs.renameSync(path.join(aside, 'result.json'), path.join(aside, 'attempt-result.json'));
+  return aside;
 }
 
 /**
@@ -107,7 +130,8 @@ const CREDITS = (r) => ({ observed: r.credits || 0, censored: Boolean(r.creditsC
 const USD = (r) => ({ observed: r.costUsd || 0, censored: Boolean(r.costCensored), known: r.costUsd != null });
 
 // `costOf(result)` says what a run spent and in which unit: credits for kiro-cli, list-price USD for opencode.
-function makeLedger({ budgetCredits, floor = DEFAULT_CENSORED_FLOOR, runsPerReplicate, costOf = CREDITS }) {
+function makeLedger({ budgetCredits: initialBudget, floor = DEFAULT_CENSORED_FLOOR, runsPerReplicate, costOf = CREDITS }) {
+  let budgetCredits = initialBudget;
   const completed = new Map();
   const ledger = { observed: 0, charged: 0, runs: 0, largest: 0 };
   let reason = null;
@@ -141,6 +165,10 @@ function makeLedger({ budgetCredits, floor = DEFAULT_CENSORED_FLOOR, runsPerRepl
     return decided.get(replicate);
   };
   ledger.skipReason = () => reason ?? 'budget reached';
+  // The fill pass (--fill-skipped): a larger budget for this command; replicate projections are made again under it.
+  ledger.raise = (b) => {
+    if (budgetCredits != null && b > budgetCredits) { budgetCredits = b; decided.clear(); }
+  };
   return ledger;
 }
 
@@ -231,7 +259,7 @@ function preflightTable(arms, prepared, errors) {
 // One rerun of a run the model service refused (a throttle), after a minute (DEBT D-138; pilot-wave.sh reruns any left).
 const DEFAULT_THROTTLE_RETRY = Object.freeze({ max: 1, waitMs: 60000 });
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS, throttleRetry = DEFAULT_THROTTLE_RETRY }) {
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS, throttleRetry = DEFAULT_THROTTLE_RETRY, pairOrder = 'konductor-first', fillBudget = null }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
   // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
   const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
@@ -268,7 +296,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     return guardReason !== null || ledger.shouldSkip(item);
   };
   let active = 0;
-  let plan = planRuns(tasks, arms, replicates, seed, replicateOffset);
+  let plan = planRuns(tasks, arms, replicates, seed, replicateOffset, pairOrder);
   if (resume) {
     const { todo, kept } = resumePlan(plan, outDir, resume);
     log(`resume: ${kept} of ${plan.length} planned cell(s) already have a result and are kept; ${todo.length} to run${resume.errors ? ' (errored cells included)' : ''}`);
@@ -280,10 +308,17 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   const batchWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   const batchFrom = new Date().toISOString();
 
-  const worker = async (item) => {
+  const worker = async (item, refill = false) => {
     const { task, arm, replicate } = item;
     if (!prepErrors.has(arm.id) && !(await loginStillValid())) return onSkip(item);
     const dir = path.join(outDir, arm.id, task.id, String(replicate));
+    // --resume reruns a cell an earlier command left unfinished (killed mid-trial: plant logs and no result.json), never
+    // ran or errored. Its folder is kept beside the cell as <replicate>.resumed-N, never deleted, so the rerun starts in
+    // an empty folder (a plant cell refuses a folder that already holds plant logs, D-19). Any old result.json becomes
+    // attempt-result.json there, so no report or spend count reads it.
+    // The fill pass does the same for the budget_skipped cell it runs again.
+    const aside = (resume || refill) && fs.existsSync(dir) ? moveAside(dir) : null;
+    if (aside) log(`resume: kept the earlier attempt of ${arm.id} / ${task.id} / #${replicate} as ${path.basename(aside)}`);
     let r;
     if (prepErrors.has(arm.id)) {
       r = errorResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, message: `arm preparation failed: ${prepErrors.get(arm.id)}`, meta: { agentStarted: false } });
@@ -337,6 +372,10 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       const censored = unit === 'usd' ? r.costCensored : r.creditsCensored;
       log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.authFailure ? ' (login failure, no turn ran, charged 0)' : ''}${r.launchFailure ? ' (agent binary could not be launched, no turn ran, charged 0)' : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
     }
+    if (aside) {
+      r.resumedFrom = path.basename(aside);
+      writeResult(outDir, arm, task, replicate, r);
+    }
     state.results.push(r);
     return r;
   };
@@ -351,6 +390,26 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   };
 
   const results = await runPool(plan, parallel, worker, shouldSkip, onSkip);
+  // --fill-skipped: before the batch is done, every cell the budget skipped runs once more under the larger fill budget
+  // (this command's spend, like --budget-credits). A login or launch stop is never filled: the same failure would follow.
+  let fill = null;
+  if (fillBudget != null && !authStop.tripped) {
+    const again = plan.map((item, i) => [item, i]).filter(([, i]) => results[i]?.status === 'budget_skipped');
+    if (again.length) {
+      ledger.raise(fillBudget);
+      study.raise?.(fillBudget);
+      log(`fill: ${again.length} budget_skipped cell(s) run again under the fill budget ${fillBudget} (charged so far ${ledger.charged.toFixed(3)})`);
+      const refilled = await runPool(again.map(([item]) => item), parallel, (item) => worker(item, true), shouldSkip, onSkip);
+      again.forEach(([, i], j) => {
+        const k = state.results.indexOf(results[i]);
+        if (k >= 0) state.results.splice(k, 1);
+        results[i] = refilled[j];
+      });
+      const left = refilled.filter((r) => r?.status === 'budget_skipped').length;
+      fill = { budget: fillBudget, tried: again.length, filled: again.length - left, left };
+      log(`fill: ${fill.filled} of ${fill.tried} filled, ${left} still budget_skipped`);
+    }
+  }
   const rawGate = batchWindow ? batchWindow.end() : null;
   const judged = rawGate ? judgeBatch({ gate: rawGate, results, strict: gateStrict, window: { from: batchFrom, to: new Date().toISOString() } }) : null;
   const installsGate = judged ? judged.gate : null;
@@ -359,9 +418,9 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     if (judged.warning) log(`${judged.warning} See ${GATE_FILE}.`);
     if (!installsGate.ok) log(gateStrict ? `ISOLATION FAILURE: ${describeChange(installsGate)}. The runs of this batch are not trustworthy; see ${GATE_FILE}.` : `${judged.alarm} See ${GATE_FILE}.`);
   }
-  return { installsGate, authStop, results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
+  return { installsGate, authStop, fill, results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
 }
 
 module.exports = {
-  CREDITS, USD, runAll, DEFAULT_THROTTLE_RETRY, planRuns, existingResults, resumePlan, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
+  CREDITS, USD, runAll, DEFAULT_THROTTLE_RETRY, planRuns, PAIR_ORDERS, existingResults, resumePlan, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
 };

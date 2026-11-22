@@ -94,3 +94,13 @@ three answered "(nothing in the output)" in the judged pass. The item is dropped
 legibility was already fixed and checked when it was rendered (the CSS rule row above). The task is now scored on code
 alone, like the five tasks with no judge part. No check, key, fixture or answer changed; gates unchanged: reference
 100, stub 17.5, lazy 23.8, alt 100. Non-Claude recheck: pending (`handEdited.version` 4).
+
+## t11-wide-settings-refactor v2 (2026-11-22, mate LITE-fix worker, claude; LITE flat task)
+
+Every LITE run scored 86 (8 of 10 hidden tests), failing the same two for wording only:
+- "README and configuration notes describe the current interface" wanted the literal `config.value('section', 'key',
+  { fallback })`; the runs wrote `config.value(section, key, { fallback })` (no quotes). Quotes are now optional.
+- "all generated caller files contain a current reader call" wanted `config.value(`; callers that destructure
+  (`const { value } = require('../../lib/config')`, then `value(...)`) failed. A bare `value(` call now counts.
+The legacy-reader test is unchanged, so a caller still on `conf` still fails. The six LITE workspaces pass 10 of 10.
+Gates: reference 100, stub 7.1, lazy 14.3, alt 100. Non-Claude recheck: pending.

@@ -1,0 +1,5 @@
+{
+  "businessTimeZone": "UTC",
+  "nightlyRunAt": "02:15",
+  "dateFormat": "yyyy-MM-dd"
+}

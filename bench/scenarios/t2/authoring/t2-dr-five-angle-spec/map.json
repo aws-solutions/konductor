@@ -1,0 +1,22 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "k-aspect-review",
+    "adversarial-design-review",
+    "design-doc-guidelines"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "k-aspect-review",
+      "adversarial-design-review"
+    ],
+    "mustNotLoad": [
+      "code-review",
+      "backend-review"
+    ]
+  },
+  "twinIdea": "Refactor the team workspace invites service to use a single Lambda orchestrator instead of Step Functions.",
+  "why": "The task requires reviewing a design doc from multiple independent angles (security, performance, operations, cost, accessibility, data) against matching context files—k-aspect-review explicitly handles parallel n-aspect reviews using subagents, and adversarial-design-review stresses design decisions for gaps. A code review skill would mislead by suggesting code-level analysis."
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "acct_1",
+    "email": "alex@example.test",
+    "passwordHash": "sha256:4104d36f8da2c254349f85836793ebe029e0c957063a34c91c2e9203187b5631",
+    "failedLogins": 0,
+    "lockedUntil": null
+  },
+  {
+    "id": "acct_2",
+    "email": "mira@example.test",
+    "passwordHash": "sha256:2bb80d537b1da3e38bd30361aa855686bde0ba4f",
+    "failedLogins": 1,
+    "lockedUntil": null
+  }
+]

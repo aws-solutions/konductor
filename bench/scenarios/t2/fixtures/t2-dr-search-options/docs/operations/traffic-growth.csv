@@ -1,0 +1,6 @@
+measure,current,12_months,24_months,unit,source_date
+active product rows,18400000,27600000,40000000,rows,2025-02-28
+localized title rows,49600000,74400000,108000000,rows,2025-02-28
+normal search qps,180,270,400,requests/second,2025-02-28
+campaign peak qps,620,900,1300,requests/second,2025-02-28
+catalogue update batch,250000,350000,500000,rows per batch,2025-02-28

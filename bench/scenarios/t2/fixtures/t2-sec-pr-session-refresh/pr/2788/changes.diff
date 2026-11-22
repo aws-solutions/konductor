@@ -1,0 +1,358 @@
+diff --git a/src/account-service.js b/src/account-service.js
+index 5a062e7..4921131 100644
+--- a/src/account-service.js
++++ b/src/account-service.js
+@@ -32,6 +32,7 @@ class AccountService {
+     if (!account || !passwordMatches(currentPassword, account.passwordHash)) return false;
+     if (!passwordIsAcceptable(nextPassword)) return false;
+     account.passwordHash = passwordDigest(nextPassword);
++    account.passwordChangedAt = Date.now();
+     return true;
+   }
+ }
+diff --git a/src/app.js b/src/app.js
+index dffc746..310251b 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -34,6 +34,7 @@ function createApp({ clock } = {}) {
+     audit,
+     async handle(request) {
+       if (request.method === 'POST' && request.path === '/login') return auth.login(request);
++      if (request.method === 'POST' && request.path === '/refresh') return auth.refresh(request);
+       if (request.method === 'POST' && request.path === '/logout') return auth.logout(request);
+       if (request.method === 'POST' && request.path === '/password') return account.password(request);
+       if (request.method === 'POST' && request.path === '/password-reset/request') return auth.resetRequest(request);
+diff --git a/src/http.js b/src/http.js
+index 582fdd5..918d36d 100644
+--- a/src/http.js
++++ b/src/http.js
+@@ -12,7 +12,7 @@ function cookieHeader(name, value, options = {}) {
+   if (options.maxAge !== undefined) parts.push(`Max-Age=${options.maxAge}`);
+   if (options.httpOnly) parts.push('HttpOnly');
+   if (options.secure) parts.push('Secure');
+-  parts.push('SameSite=Lax');
++  parts.push(`SameSite=${options.sameSite ?? 'Lax'}`);
+   return parts.join('; ');
+ }
+ 
+@@ -31,7 +31,9 @@ function createServer(handler) {
+       response.statusCode = result.status ?? 200;
+       response.setHeader('x-request-id', id);
+       if (result.cookies) {
+-        response.setHeader('set-cookie', Object.entries(result.cookies).map(([name, value]) => cookieHeader(name, value, { httpOnly: true, secure: true })));
++        const options = result.cookieOptions ?? {};
++        const headers = Object.entries(result.cookies).map(([name, value]) => cookieHeader(name, value, options[name] ?? { httpOnly: true, secure: true }));
++        response.setHeader('set-cookie', headers);
+       }
+       if (result.clearCookies) {
+         const expired = result.clearCookies.map((name) => cookieHeader(name, '', { maxAge: 0, httpOnly: true, secure: true }));
+diff --git a/src/reset-service.js b/src/reset-service.js
+index 95cf499..31c1339 100644
+--- a/src/reset-service.js
++++ b/src/reset-service.js
+@@ -1,6 +1,6 @@
+ 'use strict';
+ 
+-const { createOpaqueToken, digest } = require('./token-service');
++const { digest } = require('./token-service');
+ 
+ class ResetService {
+   constructor(accounts, config, clock = config.now) {
+@@ -13,7 +13,7 @@ class ResetService {
+   request(email) {
+     const account = this.accounts.find((item) => item.email.toLowerCase() === String(email).toLowerCase());
+     if (!account) return { accepted: true };
+-    const raw = createOpaqueToken(24);
++    const raw = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+     this.pending.set(digest(raw), {
+       accountId: account.id,
+       expiresAt: this.clock() + this.config.passwordResetSeconds * 1000
+diff --git a/src/routes/auth-routes.js b/src/routes/auth-routes.js
+index e7760a3..3f736a2 100644
+--- a/src/routes/auth-routes.js
++++ b/src/routes/auth-routes.js
+@@ -1,23 +1,56 @@
+ 'use strict';
+ 
+-const { createSessionToken } = require('../token-service');
++const { createRefreshToken, createSessionToken } = require('../token-service');
+ 
+-function authRoutes({ accounts, sessions, audit }) {
++function authRoutes({ accounts, sessions, resets, audit, config }) {
+   return {
+     login(request) {
+       const account = accounts.authenticate(request.body.email, request.body.password);
+       if (!account) return { status: 401, body: { error: 'invalid credentials' } };
+       const sessionToken = createSessionToken();
+-      sessions.create(account.id, sessionToken);
+-      audit.add('login_succeeded', { accountId: account.id });
+-      return { status: 200, body: { account: { id: account.id } }, cookies: { sid: sessionToken } };
++      const refreshToken = createRefreshToken();
++      const rememberMe = request.body.rememberMe === true;
++      sessions.create(account.id, sessionToken, refreshToken, rememberMe);
++      audit.add('login_succeeded', { accountId: account.id, rememberMe });
++      const cookies = { sid: sessionToken, refresh: refreshToken };
++      const cookieOptions = {
++        sid: { httpOnly: true, secure: true },
++        refresh: { httpOnly: true, secure: true }
++      };
++      if (rememberMe) {
++        cookies.remember = '1';
++        cookieOptions.remember = { maxAge: config.absoluteSeconds };
++      }
++      return { status: 200, body: { account: { id: account.id } }, cookies, cookieOptions };
++    },
++
++    refresh(request) {
++      const current = sessions.findByRefreshToken(request.cookies.refresh);
++      if (!current) return { status: 401, body: { error: 'refresh expired' } };
++      const sessionToken = createSessionToken();
++      const refreshToken = createRefreshToken();
++      const replacement = sessions.rotateRefreshToken(current, sessionToken, refreshToken);
++      audit.add('session_refreshed', { accountId: replacement.accountId, sessionId: replacement.id });
++      return {
++        status: 200,
++        body: { account: { id: replacement.accountId } },
++        cookies: { sid: sessionToken, refresh: refreshToken },
++        cookieOptions: {
++          sid: { httpOnly: true, secure: true },
++          refresh: { httpOnly: true, secure: true }
++        }
++      };
+     },
+ 
+     logout(request) {
+-      const session = sessions.findBySessionToken(request.cookies.sid);
+-      if (session) sessions.revoke(session.id);
+-      audit.add('logout', { sessionId: session?.id ?? null });
+-      return { status: 204, body: null, clearCookies: ['sid'] };
++      audit.add('logout', { sessionId: request.cookies.sid ?? null });
++      return { status: 204, body: null, clearCookies: ['sid', 'refresh', 'remember'] };
++    },
++
++    resetRequest(request) {
++      const result = resets.request(request.body.email);
++      audit.add('password_reset_requested', { accountId: result.accountId ?? null });
++      return { status: 202, body: { accepted: result.accepted } };
+     }
+   };
+ }
+diff --git a/src/session-store.js b/src/session-store.js
+index b8e46af..ced703c 100644
+--- a/src/session-store.js
++++ b/src/session-store.js
+@@ -7,16 +7,20 @@ class SessionStore {
+     this.records = [];
+   }
+ 
+-  create(accountId, sessionToken) {
++  create(accountId, sessionToken, refreshToken, rememberMe = false) {
+     const now = this.clock();
++    const lifetime = rememberMe ? this.config.absoluteSeconds : this.config.idleSeconds * 2;
+     const record = {
+       id: `sess_${this.records.length + 1}`,
+       accountId,
+       sessionToken,
++      refreshToken,
++      rememberMe,
+       createdAt: now,
+       lastSeenAt: now,
+-      expiresAt: now + this.config.absoluteSeconds * 1000,
+-      revokedAt: null
++      expiresAt: now + lifetime * 1000,
++      revokedAt: null,
++      refreshCount: 0
+     };
+     this.records.push(record);
+     this.trimAccount(accountId);
+@@ -40,6 +44,27 @@ class SessionStore {
+     return record;
+   }
+ 
++  findByRefreshToken(refreshToken) {
++    const record = this.records.find((candidate) => candidate.refreshToken === refreshToken);
++    if (!record || record.revokedAt || record.expiresAt <= this.clock()) return null;
++    return record;
++  }
++
++  rotateRefreshToken(record, sessionToken, refreshToken) {
++    const replacement = {
++      ...record,
++      id: `sess_${this.records.length + 1}`,
++      sessionToken,
++      refreshToken,
++      createdAt: this.clock(),
++      lastSeenAt: this.clock(),
++      refreshCount: record.refreshCount + 1
++    };
++    this.records.push(replacement);
++    this.trimAccount(record.accountId);
++    return replacement;
++  }
++
+   revoke(id) {
+     const record = this.records.find((candidate) => candidate.id === id);
+     if (record) record.revokedAt = this.clock();
+diff --git a/src/token-service.js b/src/token-service.js
+index 734659f..57f67ae 100644
+--- a/src/token-service.js
++++ b/src/token-service.js
+@@ -2,10 +2,16 @@
+ 
+ const crypto = require('node:crypto');
+ 
++const REFRESH_PREFIX = 'r_';
++
+ function createOpaqueToken(bytes = 32) {
+   return crypto.randomBytes(bytes).toString('base64url');
+ }
+ 
++function createRefreshToken() {
++  return `${REFRESH_PREFIX}${createOpaqueToken(32)}`;
++}
++
+ function digest(value) {
+   return crypto.createHash('sha256').update(String(value)).digest('hex');
+ }
+@@ -20,4 +26,4 @@ function createSessionToken() {
+   return createOpaqueToken(24);
+ }
+ 
+-module.exports = { createOpaqueToken, createSessionToken, digest, tokensEqual };
++module.exports = { createOpaqueToken, createRefreshToken, createSessionToken, digest, tokensEqual };
+diff --git a/tests/auth-routes.test.js b/tests/auth-routes.test.js
+index 4d460ff..8796dd0 100644
+--- a/tests/auth-routes.test.js
++++ b/tests/auth-routes.test.js
+@@ -9,9 +9,31 @@ test('logs in and logs out a browser session', async () => {
+   const app = createApp();
+   const login = await app.handle(request('/login', { email: 'alex@example.test', password: 'correct horse' }));
+   assert.equal(login.status, 200);
++  assert.ok(login.cookies.refresh.startsWith('r_'));
+   const logout = await app.handle(request('/logout', {}, { sid: login.cookies.sid }));
+   assert.equal(logout.status, 204);
+-  assert.deepEqual(logout.clearCookies, ['sid']);
++  assert.deepEqual(logout.clearCookies, ['sid', 'refresh', 'remember']);
++});
++
++test('creates a longer-lived cookie set when remember me is selected', async () => {
++  const app = createApp();
++  const response = await app.handle(request('/login', {
++    email: 'alex@example.test',
++    password: 'correct horse',
++    rememberMe: true
++  }));
++  assert.equal(response.status, 200);
++  assert.equal(response.cookies.remember, '1');
++  assert.equal(response.cookieOptions.remember.maxAge, 2592000);
++});
++
++test('refreshes an active session with a replacement cookie pair', async () => {
++  const app = createApp();
++  const login = await app.handle(request('/login', { email: 'alex@example.test', password: 'correct horse' }));
++  const refreshed = await app.handle(request('/refresh', {}, { refresh: login.cookies.refresh }));
++  assert.equal(refreshed.status, 200);
++  assert.notEqual(refreshed.cookies.sid, login.cookies.sid);
++  assert.notEqual(refreshed.cookies.refresh, login.cookies.refresh);
+ });
+ 
+ test('rejects bad login credentials', async () => {
+diff --git a/tests/session-store.test.js b/tests/session-store.test.js
+index fb4c77a..26f73f3 100644
+--- a/tests/session-store.test.js
++++ b/tests/session-store.test.js
+@@ -6,33 +6,61 @@ const { SessionStore } = require('../src/session-store');
+ 
+ function setup() {
+   let now = 1_000_000;
+-  const config = { now: () => now, idleSeconds: 30, absoluteSeconds: 300, maxSessionsPerAccount: 2 };
++  const config = { now: () => now, idleSeconds: 30, absoluteSeconds: 300, maxSessionsPerAccount: 5 };
+   return { store: new SessionStore(config, () => now), advance: (ms) => { now += ms; } };
+ }
+ 
+ test('finds a live session and touches its idle clock', () => {
+   const { store, advance } = setup();
+-  const record = store.create('acct_1', 'session-a');
++  const record = store.create('acct_1', 'session-a', 'refresh-a');
+   advance(500);
+   assert.equal(store.findBySessionToken('session-a').id, record.id);
+   assert.equal(record.lastSeenAt, 1_000_500);
+ });
+ 
++test('stores the remember choice with a session record', () => {
++  const { store } = setup();
++  const record = store.create('acct_1', 'session-a', 'refresh-a', true);
++  assert.equal(record.rememberMe, true);
++  assert.equal(record.refreshToken, 'refresh-a');
++});
++
++test('finds a refresh session before its absolute expiry', () => {
++  const { store, advance } = setup();
++  const record = store.create('acct_1', 'session-a', 'refresh-a');
++  advance(500);
++  assert.equal(store.findByRefreshToken('refresh-a').id, record.id);
++});
++
++test('replaces the session credentials when a refresh is accepted', () => {
++  const { store } = setup();
++  const original = store.create('acct_1', 'session-a', 'refresh-a');
++  const replacement = store.rotateRefreshToken(original, 'session-b', 'refresh-b');
++  assert.equal(replacement.refreshToken, 'refresh-b');
++  assert.equal(replacement.refreshCount, 1);
++});
++
+ test('revokes the oldest session over the account limit', () => {
+   const { store, advance } = setup();
+-  const first = store.create('acct_1', 'one');
++  const first = store.create('acct_1', 'one', 'refresh-one');
++  advance(1);
++  store.create('acct_1', 'two', 'refresh-two');
++  advance(1);
++  store.create('acct_1', 'three', 'refresh-three');
++  advance(1);
++  store.create('acct_1', 'four', 'refresh-four');
+   advance(1);
+-  store.create('acct_1', 'two');
++  store.create('acct_1', 'five', 'refresh-five');
+   advance(1);
+-  store.create('acct_1', 'three');
++  store.create('acct_1', 'six', 'refresh-six');
+   assert.equal(store.findBySessionToken('one'), null);
+-  assert.equal(store.activeForAccount('acct_1').length, 2);
+-  assert.equal(first.revokedAt, 1_000_002);
++  assert.equal(store.activeForAccount('acct_1').length, 5);
++  assert.equal(first.revokedAt, 1_000_005);
+ });
+ 
+ test('does not return an idle or expired session', () => {
+   const { store, advance } = setup();
+-  store.create('acct_1', 'stale');
++  store.create('acct_1', 'stale', 'refresh-stale');
+   advance(31_000);
+   assert.equal(store.findBySessionToken('stale'), null);
+ });
+diff --git a/tests/token-service.test.js b/tests/token-service.test.js
+index 9c754b7..2b12ab1 100644
+--- a/tests/token-service.test.js
++++ b/tests/token-service.test.js
+@@ -2,7 +2,7 @@
+ 
+ const test = require('node:test');
+ const assert = require('node:assert/strict');
+-const { createOpaqueToken, digest, tokensEqual } = require('../src/token-service');
++const { createOpaqueToken, createRefreshToken, digest, tokensEqual } = require('../src/token-service');
+ 
+ test('creates URL-safe opaque tokens', () => {
+   const token = createOpaqueToken();
+@@ -10,6 +10,11 @@ test('creates URL-safe opaque tokens', () => {
+   assert.ok(token.length >= 32);
+ });
+ 
++test('labels refresh tokens without reducing their random payload', () => {
++  const token = createRefreshToken();
++  assert.match(token, /^r_[A-Za-z0-9_-]{40,}$/);
++});
++
+ test('digests and compares token values', () => {
+   assert.equal(digest('abc').length, 64);
+   assert.equal(tokensEqual('abc', 'abc'), true);

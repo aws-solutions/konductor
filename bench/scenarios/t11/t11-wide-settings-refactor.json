@@ -1,7 +1,7 @@
 {
   "id": "t11-wide-settings-refactor",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -118,31 +118,32 @@
       }
     ],
     "recheck": {
-      "family": "alibaba",
-      "model": "qwen3-coder-next",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt only mentions the migration task using config.value from lib/config.js. It names no external method or alternative approach as a decoy."
+          "note": "Request clearly describes migration from conf.read to config.value without naming specific methods or misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture/test/*.test.js files (7 visible tests) and fixture/lib/* do not contain any solution code or answers—only test cases and the old implementation files."
+          "note": "Fixture shows starting state with old interface; no files show solution or describe finished migration behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden/hidden-behaviour.test.js contains callerTable with 62 entries matching the fixture's module structure (apps/, jobs/, lib/), and the test assertions verify the same behavior expected from the fixture code."
+          "note": "Hidden tests and checks validate migration matches request; rubric anchors added follow criterion and request."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The prompt, fixture (lib/config.js with the new interface, config/app.json with data), and documentation define the task completely: replace conf.read imports with config.value calls, update lib/index.js to remove read export, remove lib/conf.js, and refresh README.md/docs/config.md wording."
+          "note": "Developer can infer conversion from conf.read(section.key) to config.value(section, key) from existing interface and app.json structure."
         }
-      ]
+      ],
+      "version": 2
     }
   },
   "pilot": {
@@ -154,15 +155,32 @@
       "stub": 7.1,
       "lazy": 14.3,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (CV-C session)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): hidden tests accept unquoted placeholders and destructured value() calls",
+    "log": "HAND-EDITS.md",
+    "version": 2
   }
 }

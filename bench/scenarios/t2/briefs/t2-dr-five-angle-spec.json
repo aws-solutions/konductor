@@ -1,0 +1,19 @@
+{
+  "id": "t2-dr-five-angle-spec",
+  "phase": "design-review",
+  "kind": "design",
+  "size": "8 to 14",
+  "doc": "docs/design/team-workspace-invites.md",
+  "role": "reviewer",
+  "wave": 5,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "brief": "Phase: design review. Role of the person asking: reviewer. The request asks for a review of a spec from every angle that matters before it is built, because the team has been burned by reviews that only looked at one side. Context: the security standard, the accessibility policy, the on-call standard, the cost budget, the latency targets. Plant exactly one problem in each of six different angles, each in its own subsection, and make each one need its own context file to see: security (invite links never expire and can be reused); performance (the invite list is loaded without paging and the context numbers make it too slow); operations (the email job has no alarm, against the on-call standard); cost (every invite sends three emails and the numbers pass the budget); accessibility (the invite form shows errors by colour only); data (removed members keep their invites in the export). A review that goes deep on one or two angles finds at most two. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: a review of one spec from several separate angles (security, performance, operations, cost, accessibility, data), where each angle needs its own pass.",
+  "targetUnit": "skill:k-aspect-review"
+}

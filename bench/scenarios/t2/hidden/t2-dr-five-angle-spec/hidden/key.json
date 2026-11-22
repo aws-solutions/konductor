@@ -1,0 +1,72 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "high",
+      "fix": [
+        "expiry",
+        "single-use",
+        "revoke"
+      ],
+      "finding": "The acceptance link has no server-enforced expiry and remains usable after acceptance, so a copied bearer link can grant workspace access again long after the invitation was issued."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "pagination",
+        "page size",
+        "bounded"
+      ],
+      "finding": "The pending-invite endpoint returns every row without pagination, which can exceed the 300 ms list target as the documented pending counts and read volume grow."
+    },
+    {
+      "id": "k3",
+      "section": "3.4",
+      "severity": "medium",
+      "fix": [
+        "alert",
+        "queue age",
+        "runbook"
+      ],
+      "finding": "The worker design adds dashboard panels but no alert and runbook for queue age or terminal failures, leaving the on-call team without the required signal when invitation email stops progressing."
+    },
+    {
+      "id": "k4",
+      "section": "3.5",
+      "severity": "medium",
+      "fix": [
+        "deduplicate",
+        "digest",
+        "one email"
+      ],
+      "finding": "Every invitation fans out to three transactional emails even though the design's own figures stay under the cap, consuming three times the provider volume and leaving less headroom for growth and other email traffic."
+    },
+    {
+      "id": "k5",
+      "section": "3.6",
+      "severity": "medium",
+      "fix": [
+        "text error",
+        "aria",
+        "label"
+      ],
+      "finding": "The form communicates validation state through red and green styling without specifying a text error associated with the field, so colour-blind and screen-reader users may not learn what to correct."
+    },
+    {
+      "id": "k6",
+      "section": "3.7",
+      "severity": "high",
+      "fix": [
+        "exclude",
+        "removed",
+        "export"
+      ],
+      "finding": "The export deliberately retains invitation rows for a removed member, contradicting the archive rule that later exports omit those invitations and exposing data that the retention contract says to remove."
+    }
+  ],
+  "decoys": []
+}

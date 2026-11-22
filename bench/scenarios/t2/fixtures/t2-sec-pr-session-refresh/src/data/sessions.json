@@ -1,0 +1,11 @@
+[
+  {
+    "id": "sess_demo",
+    "accountId": "acct_1",
+    "refreshToken": "refresh_demo",
+    "createdAt": 1739500000000,
+    "lastSeenAt": 1739500000000,
+    "expiresAt": 1742092000000,
+    "revokedAt": null
+  }
+]

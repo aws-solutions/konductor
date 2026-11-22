@@ -1,0 +1,20 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review",
+    "backend-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "backend-review"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review"
+    ]
+  },
+  "twinIdea": "Run the full test suite and fix any failures in the PR changes.",
+  "why": "The task is a quick pre-review check of a backend Node.js PR diff before opening for review. code-review is the core skill for reviewing diffs and PRs; backend-review covers backend-specific concerns (JS/Node services) in this project. adversarial-code-review is overkill for a fast pre-check."
+}

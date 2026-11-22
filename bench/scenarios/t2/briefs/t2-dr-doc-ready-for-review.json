@@ -1,0 +1,19 @@
+{
+  "id": "t2-dr-doc-ready-for-review",
+  "phase": "design-review",
+  "kind": "design",
+  "size": "8 to 14",
+  "doc": "docs/design/notification-preferences.md",
+  "role": "reviewer",
+  "wave": 5,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "brief": "Phase: design review. Role of the person asking: reviewer. The request asks one thing: is this design doc ready to send to the wider review, and what must change first. The design itself is sound; every planted problem is about the doc, not the system. Context: the team design-doc guide (goals must be measurable, non-goals listed, alternatives real, numbers given for every scale claim, no section that solves a problem nobody asked for), the product brief the doc answers. Plant, each in its own subsection: a goal written as a feeling with no number although the product brief gives one; a subsection that builds a rules engine the product brief does not ask for; a scale claim with no number; an alternatives subsection whose only other option is plainly worse; the same decision explained twice in two subsections with different wording; a long subsection of filler that says nothing the reader can act on. Keep each problem quiet: written in calm, normal prose, not as an obvious red flag. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: deciding whether a design document is ready for review by checking its writing quality, structure and scope (keep it simple, nothing built that nobody asked for), not the system it describes.",
+  "targetUnit": "skill:design-quality-check"
+}

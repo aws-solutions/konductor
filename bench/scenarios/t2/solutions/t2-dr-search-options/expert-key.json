@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Defines a bounded degraded-mode path for vendor timeouts or quota exhaustion, including a circuit breaker, request budget, and protection against pushing campaign load back onto PostgreSQL.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Specifies idempotent handling for duplicate and out-of-order product events and a stale-document detection and reconciliation process before trusting event lag and document counts.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Explains how a 48-result search joins authoritative price and stock without an N+1 query or inconsistent snapshot, and measures join latency under campaign load.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Documents vendor exit, export portability, snapshot restore, and mapping compatibility needed to recover or roll back after a managed-service failure.",
+      "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Defines credentials, service-to-service authorization, and least-privilege access for the search client, index management, snapshots, and event consumer.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Sets failure-domain and recovery objectives for a regional or control-plane outage rather than treating replica replacement and service availability as the whole continuity plan.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    }
+  ],
+  "weakAnswers": [
+    "The managed service is a sensible choice and the rollout is clearly described.",
+    "The review should consider scalability, reliability, and future growth.",
+    "The design compares the three options and includes useful latency, cost, and acceptance metrics.",
+    "Add more monitoring and test the system before launch."
+  ]
+}

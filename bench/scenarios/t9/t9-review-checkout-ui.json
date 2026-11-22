@@ -1,11 +1,11 @@
 {
   "id": "t9-review-checkout-ui",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "code-review",
   "role": "frontend",
   "questions": "allowed",
-  "prompt": "Can you review the whole checkout UI before we ship 2.4? I own this repository and need a practical review of the code, markup, and recent changes so we can fix anything that could hurt shoppers or the release. Put the finished review in review/REVIEW.md. Keep the report focused on concrete findings, with enough detail for another developer to reproduce each one and understand the proposed correction. End the file with one fenced JSON block containing an array of finding objects. Every object must have a location naming the relevant place, severity set to critical, high, medium, or low, and fix containing the test to add. Please cover the full repository rather than only the first screen, and separate real concerns from things that are merely awkward. Do not change the application, tests, documentation, configuration, or styles; the only intended new file is review/REVIEW.md. Keep existing tests passing and preserve the current checkout behavior while describing what should change.",
+  "prompt": "Can you review the whole checkout UI before we ship 2.4? I own this repository and need a practical review of the code, markup, and recent changes so we can fix anything that could hurt shoppers or the release. Put the finished review in review/REVIEW.md. Open it with a short \"Review scope\" section saying what you checked. Keep the report focused on concrete findings, with enough detail for another developer to reproduce each one and understand the proposed correction. End the file with one fenced JSON block containing an array of finding objects. Every object must have a location naming the relevant place, severity set to critical, high, medium, or low, and fix containing the test to add. Please cover the full repository rather than only the first screen, and separate real concerns from things that are merely awkward. Do not change the application, tests, documentation, configuration, or styles; the only intended new file is review/REVIEW.md. Keep existing tests passing and preserve the current checkout behavior while describing what should change.",
   "fixture": "t9-review-checkout-ui",
   "hidden": "t9-review-checkout-ui",
   "timeoutSec": 1800,
@@ -244,32 +244,32 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
       "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for code review with output format specification but doesn't prescribe review methodology. No misleading hints."
+          "note": "The prompt asks for a code review without prescribing a method, framework, or tool. It says 'put the finished review in review/REVIEW.md' and specifies required sections and JSON findings block, but offers no misleading hints or decoys."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains checkout UI code to review, not the answer (review findings). Hidden tests check for specific findings to identify."
+          "note": "The fixture contains the source code as-is, with no comments, docs, or test files that list the answer or describe the finished review behavior. The task is to produce a review, not to implement fixes."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests use findingsKey that matches issues in fixture code (e.g., untrusted markup in order-summary.js). Rubric anchors align with request about actionable findings."
+          "note": "Every finding in the key (summary-untrusted-markup, modal-message-markup, order-status-race, payment-double-submit, delivery-notes-label, cart-focus-reset, session-token-storage, toast-listener-lifetime, fractional-money) corresponds to a real function in the fixture (renderOrderSummary, openModal, watchOrder, bindPaymentForm, renderAddressFields, renderCartPanel, saveSession, mountToast, calculateSubtotal). The checks and rubric match this output format and scope."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent code reviewer could examine codebase and identify issues. FindingsKey represents expected correct findings; different but equivalent findings could match via fix keywords."
+          "note": "A competent developer can review the fixture source files (order-summary.js, modal.js, order-status.js, payment-form.js, address-form.js, cart-panel.js, session.js, toast.js, totals.js) and identify the concrete security, race, UX, and resource-leak issues described in the key without seeing the hidden tests or solution."
         }
       ],
-      "version": 2
+      "version": 3
     }
   },
   "pilot": {
@@ -281,16 +281,32 @@
       "stub": 5.7,
       "lazy": 39.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate debt worker (2026-11-21): Fail / Partial / Pass anchors on the one judged rubric item (D-117)",
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt asks for the Review scope section its check reads",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   }
 }

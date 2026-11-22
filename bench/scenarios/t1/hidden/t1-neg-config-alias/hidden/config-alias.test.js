@@ -18,14 +18,18 @@ function withConfig(filePath, value, callback) {
   }
 }
 
+// A deprecation warning may go through console.warn or Node's process.emitWarning; both are captured.
 function captureWarnings(callback) {
   const messages = [];
   const originalWarn = console.warn;
+  const originalEmit = process.emitWarning;
   console.warn = (...args) => messages.push(args.join(' '));
+  process.emitWarning = (warning, ...rest) => messages.push([warning instanceof Error ? warning.message : String(warning), ...rest.map(String)].join(' '));
   try {
     return { value: callback(), messages };
   } finally {
     console.warn = originalWarn;
+    process.emitWarning = originalEmit;
   }
 }
 
@@ -140,5 +144,5 @@ test('the config loader contains the compatibility warning text', () => {
   const source = fs.readFileSync(path.join(root, 'src', 'config.js'), 'utf8');
   assert.match(source, /pollIntervalMs/);
   assert.match(source, /pollingIntervalMs/);
-  assert.match(source, /console\.warn/);
+  assert.match(source, /console\.warn|process\.emitWarning/);
 });

@@ -1,0 +1,3 @@
+{
+  "notes": "This is a later pull-request revision review against earlier review threads, so settled findings should not be raised again and the still-open thread must carry forward. The current code contains a regression that resembles a fixed thread, plus an ordinary-looking new route and retry behavior that need more than a skim. Cross-file reading is needed for the redemption cap, the configured business timezone, the precision contract, and the store's versioned write API. The focused tests cover sequential happy paths and do not exercise the boundary or failure cases that matter here."
+}

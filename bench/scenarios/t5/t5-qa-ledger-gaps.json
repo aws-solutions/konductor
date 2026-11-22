@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-ledger-gaps",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "An auditor asked how sure we are that a change to the interest code would be noticed, and all I could say was that coverage is 95%. I do not think that is a good answer. Please strengthen the test suite for this ledger library, for the code that moves or counts money: interest, fees, overdrafts, posting and reversal, statements and the CSV export. Add new test files named test_*.py under tests/ (you may also extend the existing ones) and keep `python3 -m unittest discover -s tests` passing, using Python 3.12 and the standard library only. Do not change anything under ledger/ or the CLI, the docs or the configuration; the work is limited to tests under tests/. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 54 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
+  "prompt": "An auditor asked how sure we are that a change to the interest code would be noticed, and all I could say was that coverage is 95%. I do not think that is a good answer. Please strengthen the test suite for this ledger library, for the code that moves or counts money: interest, fees, overdrafts, posting and reversal, statements and the CSV export. Add new test files named test_*.py under tests/ (you may also extend the existing ones) and keep `python3 -m unittest discover -s tests` passing, using Python 3.12 and the standard library only. Do not change anything under ledger/ or the CLI, the docs or the configuration; the work is limited to tests under tests/. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit. Keep the suite lean: at most 54 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-ledger-gaps",
   "hidden": "t5-qa-ledger-gaps",
   "timeoutSec": 1200,
@@ -141,19 +141,32 @@
     "reference": 100,
     "stub": 8.3,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 8.3,
       "lazy": 25,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 4
   }
 }

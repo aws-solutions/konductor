@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name review methods, hint at planted problems, or give number of issues."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR, write to REVIEW.md, output JSON findings with location/severity/issue/fix."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Issues require understanding session lifecycle, cryptographic security, and checking against documentation; not trivially found."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items are present in code and findable by examining implementation against documented policies."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, test names, or file names point directly to planted problems. Documentation states expected behaviors but doesn't identify specific bugs."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

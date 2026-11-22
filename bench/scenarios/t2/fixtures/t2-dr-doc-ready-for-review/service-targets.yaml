@@ -1,0 +1,21 @@
+service: notification-preferences
+owner: notifications-platform
+launch_accounts: 10000000
+planning_horizon_months: 12
+account_growth_rate: 0.25
+api_targets:
+  read_p95_ms: 120
+  write_p95_ms: 180
+  availability: 0.999
+propagation:
+  visibility_slo_percent: 99
+  visibility_window_seconds: 60
+  event_retry_limit: 8
+storage:
+  retention_years: 2
+  projected_record_bytes: 920
+budget:
+  monthly_operating_usd: 1800
+rollout:
+  initial_percent: 5
+  observation_hours: 24

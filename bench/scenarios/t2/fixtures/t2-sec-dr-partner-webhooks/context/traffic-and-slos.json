@@ -1,0 +1,29 @@
+{
+  "as_of": "2025-01-15",
+  "active_tenants": 1840,
+  "connected_partners": 312,
+  "order_events_per_day": 4200000,
+  "peak_events_per_second": 180,
+  "peak_burst_seconds": 90,
+  "annual_event_growth": 0.55,
+  "largest_tenant_share_of_events": 0.18,
+  "partner_delivery_slo": {
+    "accepted_within_seconds": 900,
+    "availability_percent": 99.9,
+    "measurement": "accepted by partner or terminally classified"
+  },
+  "tenant_isolation_target": {
+    "max_cross_tenant_delay_seconds": 60,
+    "scope": "delivery scheduling and retry capacity"
+  },
+  "worker_budget": {
+    "initial_worker_pods": 12,
+    "max_worker_pods": 60,
+    "monthly_cloud_budget_usd": 18400
+  },
+  "delivery_log_policy": {
+    "default_days": 14,
+    "maximum_days": 30,
+    "payload_storage": "metadata and a redacted digest"
+  }
+}

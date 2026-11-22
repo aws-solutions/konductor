@@ -1,0 +1,178 @@
+{
+  "id": "t2-pr-precheck-uncommitted",
+  "version": 1,
+  "class": "review",
+  "phase": "code-review",
+  "phases2": [],
+  "role": "developer",
+  "prompt": "I wrote the change in PR 611 and want a fast look before I open it for review. Please read the project at the current checkout, including pr/611/description.md and pr/611/changes.diff, then review the changed behavior against the surrounding code and the project's own documentation and tests. I want concrete issues introduced by this change, especially anything that conflicts with an existing contract or could cause a surprising result for callers. Keep the review focused on problems in this change and explain the consequence in this project. Do not edit any project file; I will make the fixes myself later. Write the review to REVIEW.md at the top of the project. End it with one fenced json list of findings, with each object containing location (path/to/file.ext:LINE, using line numbers of the file as it is in the project), severity (critical, high, medium, low or nit), issue, and fix.",
+  "questions": "allowed",
+  "fixture": "t2-pr-precheck-uncommitted",
+  "hidden": "t2-pr-precheck-uncommitted",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 21,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);let n=0;for(const x of L)for(const m of String(x.location).matchAll(/([A-Za-z0-9_.\\/-]+\\.[A-Za-z0-9]+):(\\d+)/g)){n++;let c;try{c=fs.readFileSync(m[1],\"utf8\").split(\"\\n\").length}catch{process.exit(1)}if(+m[2]<1||+m[2]>c)process.exit(1)}process.exit(n?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Fail: the review omits important introduced issues or gives findings with no concrete consequence or usable fix. Partial: the review identifies some important issues and usually connects them to this project, but has vague, unsupported, or invented findings. Pass: each important finding is grounded in the changed project, explains its concrete consequence, and gives a fix a developer can act on without inventing problems. (code cannot check this because it cannot judge whether the written explanation is concrete, grounded, and actionable).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "The lookup now uses a strict less-than comparison even though the rate-table contract includes each band's upper bound, so a parcel exactly at 1, 5, 10, or 20 kg is priced from the next band or rejected.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "Carrier failures are converted into a successful zero-total quote, which can undercharge customers and hides an unavailable carrier from the HTTP caller.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "The response logger receives the full carrier payload, which includes the account number and exposes it in normal service logs.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "The new carrier settings helper overwrites the selected environment's URL with the sandbox URL whenever CARRIER_URL is absent, so production loads the sandbox endpoint.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "The cache key includes the destination postal code but not its country, allowing quotes for the same postal code in different countries to share a price.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "The second-country test only asserts the amount left in its response fixture and never checks the quote returned by the service, so the cache collision can pass unnoticed.",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "code-review",
+    "backend-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "backend-review"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-22",
+    "source": "original"
+  },
+  "review": {
+    "family": "deepseek",
+    "date": "2026-11-22",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt does not hint at specific problems, review method, or number of issues."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear instructions: review PR 611 changes, find issues against code/docs/tests, write to REVIEW.md with JSON findings."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Shallow review would find 2-3 obvious issues (rates comparison, error handling, logging), not all 6; k4, k5, k6 require deeper cross-file analysis."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items findable from fixture: k1 (doc vs code), k2 (catch returns zero), k3 (logs payload), k4 (config overwrites URL), k5 (cache key missing country), k6 (test checks mock)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No planted hints in comments, tests, or file names; documentation states contract but does not point to specific bug."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 32,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
+    },
+    "decision": "keep",
+    "date": "2026-11-22"
+  }
+}

@@ -1,0 +1,3 @@
+{
+  "notes": "The visible change is small, but its contracts are spread across the session policy, API notes, configuration, and existing store methods. A quick pass can accept replacement credentials without checking whether the presented credential is actually retired. The cookie behavior is split between route options and the HTTP serializer. Password changes and logout must be checked against both the documented lifecycle and the server-side store operations."
+}

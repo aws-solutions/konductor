@@ -1,0 +1,9 @@
+{
+  "preference_record": "The complete four-category, two-channel state for one account.",
+  "effective_preference": "The result after the preference view and the legal unsubscribe service are both checked.",
+  "event_version": "A monotonically increasing version assigned to an account preference change.",
+  "visibility": "The point at which the Messaging local view uses a saved preference.",
+  "outbox": "Rows written with a database change and published asynchronously by a worker.",
+  "category": "One of account activity, billing, product updates, or recommendations.",
+  "sender": "The Messaging component that chooses a channel before dispatch."
+}

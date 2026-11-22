@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks how the system detects and repairs divergence between the source record and a Messaging local view after duplicate, delayed, or out-of-order events.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Checks whether the account-version compare-and-swap and event application are idempotent under client retries and consumer replays.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Asks what data is exposed in audit logs and events, how long it is retained, and whether account identifiers are protected from unnecessary disclosure.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Checks whether configuration, credentials, and service-specific settings remain external to the document's proposed code and deployment artifact.",
+      "source": "https://12factor.net (MIT)"
+    },
+    {
+      "id": "e5",
+      "text": "Asks how the feature flag behaves across retries and deploys, and whether rollback leaves a customer with a predictable last known preference.",
+      "source": "https://www.rfc-editor.org/rfc/rfc9700 (IETF Trust)"
+    },
+    {
+      "id": "e6",
+      "text": "Asks how malformed preference events are quarantined, alerted on, and replayed without blocking healthy accounts or silently losing a change.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    }
+  ],
+  "weakAnswers": [
+    "The design is clear and uses a sensible asynchronous architecture; it looks ready after minor polishing.",
+    "Consider scalability, monitoring, security, and failure handling before implementation.",
+    "The document proposes a preference API, an outbox event, a Messaging consumer, and a staged rollout.",
+    "Add more detail where appropriate and confirm that all teams agree with the plan."
+  ]
+}

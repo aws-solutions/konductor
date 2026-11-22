@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt asks for general code review without naming methods, checklists, or hinting at specific problems."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR 3307, write findings to REVIEW.md with severity and fixes, output JSON."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Some items require deeper analysis (event listener accumulation, currency formatting across files); not all would be caught in quick shallow review."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items are findable from code and documentation; line numbers match; severities defensible."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, or filenames point directly at planted issues. Documentation states correct practices without highlighting violations."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

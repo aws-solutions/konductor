@@ -1,0 +1,6 @@
+{
+  "port": 8080,
+  "queueName": "orders.updated",
+  "requestBodyLimit": 65536,
+  "logLevel": "info"
+}

@@ -7,6 +7,7 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | Wave 1 | 37 | 97.53 | 80 | 160 |
 | Rest | 82 | 227.90 | 270 | 540 |
 | **T2 total** | 119 | **325.44** | 350 | 700 |
+| Coverage-gap stage 1 (2026-11-21 to 22, 20 tried, 12 landed) | 81 | 278.67 | counted at max(15, real): 1,223 | 1,550 counted |
 
 6 calls were stopped before their metering event and are not in these totals; at 2 to 15 credits each they add an estimated 12 to 90.
 
@@ -131,3 +132,84 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-20T02:39:39Z | t2-sec-dr-sso-login | recheck | minimax-m2.5 | 97 | 0.45 | ok |
 | 2026-11-20T02:40:30Z | t2-sec-pr-webhook-relay | recheck | qwen3-coder-next | 50 | 0.24 | ok |
 | 2026-11-20T02:43:01Z | t2-pr-refund-flow | recheck | glm-5 | 103 | 2.72 | ok |
+| 2026-11-21T19:10:05.222Z | t2-pr-invoice-precheck | author | deepseek-3.2 | 1243 | 21.59 | coverage-gap stage 1 |
+| 2026-11-21T19:29:58.161Z | t2-pr-invoice-precheck | map | glm-5 | 20 | 0.66 | coverage-gap stage 1 |
+| 2026-11-21T19:30:39.619Z | t2-pr-invoice-precheck | review | gpt-5.6-luna | 33 | 0.78 | coverage-gap stage 1 |
+| 2026-11-21T19:43:00.062Z | t2-pr-invoice-precheck | fix | deepseek-3.2 | 727 | 12.92 | coverage-gap stage 1 |
+| 2026-11-21T20:00:18.665Z | t2-pr-invoice-precheck | review-2 | gpt-5.6-luna | 52 | 1.23 | coverage-gap stage 1 |
+| 2026-11-21T20:16:52.890Z | t2-pr-upload-stack | author | deepseek-3.2 | 969 | 16.38 | coverage-gap stage 1 |
+| 2026-11-21T20:39:43.452Z | t2-pr-upload-stack | fix | deepseek-3.2 | 652 | 8.60 | coverage-gap stage 1 |
+| 2026-11-21T21:11:06.781Z | t2-pr-reservation-model | author | deepseek-3.2 | 866 | 13.95 | coverage-gap stage 1 |
+| 2026-11-21T21:34:46.653Z | t2-pr-reservation-model | fix | deepseek-3.2 | 605 | 12.41 | coverage-gap stage 1 |
+| 2026-11-21T21:52:59.689Z | t2-pr-reservation-model | map | glm-5 | 30 | 0.69 | coverage-gap stage 1 |
+| 2026-11-21T21:53:38.601Z | t2-pr-reservation-model | review | gpt-5.6-luna | 39 | 0.95 | coverage-gap stage 1 |
+| 2026-11-21T22:15:45.645Z | t2-dr-billing-migration-plan | author | deepseek-3.2 | 1293 | 11.63 | coverage-gap stage 1 |
+| 2026-11-21T22:22:34.277Z | t2-dr-billing-migration-plan | map | glm-5 | 23 | 0.67 | coverage-gap stage 1 |
+| 2026-11-21T22:23:12.473Z | t2-dr-billing-migration-plan | review | gpt-5.6-luna | 38 | 0.84 | coverage-gap stage 1 |
+| 2026-11-21T22:33:41.007Z | t2-dr-billing-migration-plan | fix | deepseek-3.2 | 624 | 13.10 | coverage-gap stage 1 |
+| 2026-11-21T22:45:10.848Z | t2-dr-billing-migration-plan | review-2 | gpt-5.6-luna | 32 | 0.72 | coverage-gap stage 1 |
+| 2026-11-21T22:52:46.970Z | t2-dr-receipt-service | author | deepseek-3.2 | 361 | 3.45 | coverage-gap stage 1 |
+| 2026-11-21T23:15:43.380Z | t2-dr-receipt-service | map | glm-5 | 33 | 1.43 | coverage-gap stage 1 |
+| 2026-11-21T23:16:16.891Z | t2-dr-receipt-service | review | gpt-5.6-luna | 33 | 0.68 | coverage-gap stage 1 |
+| 2026-11-21T23:22:46.213Z | t2-dr-receipt-service | fix | deepseek-3.2 | 389 | 6.99 | coverage-gap stage 1 |
+| 2026-11-21T23:23:22.182Z | t2-dr-receipt-service | review-2 | gpt-5.6-luna | 33 | 0.67 | coverage-gap stage 1 |
+| 2026-11-21T23:30:30.605Z | t2-dr-flags-doc-ready | author | deepseek-3.2 | 428 | 4.77 | coverage-gap stage 1 |
+| 2026-11-21T23:30:57.407Z | t2-dr-flags-doc-ready | map | glm-5 | 24 | 0.67 | coverage-gap stage 1 |
+| 2026-11-21T23:31:29.570Z | t2-dr-flags-doc-ready | review | gpt-5.6-luna | 32 | 0.73 | coverage-gap stage 1 |
+| 2026-11-21T23:37:53.272Z | t2-dr-flags-doc-ready | fix | deepseek-3.2 | 384 | 6.25 | coverage-gap stage 1 |
+| 2026-11-21T23:38:27.102Z | t2-dr-flags-doc-ready | review-2 | gpt-5.6-luna | 31 | 0.73 | coverage-gap stage 1 |
+| 2026-11-21T23:51:21.212Z | t2-dr-event-sourcing-move | author | deepseek-3.2 | 774 | 11.02 | coverage-gap stage 1 |
+| 2026-11-21T23:51:39.487Z | t2-dr-event-sourcing-move | map | glm-5 | 16 | 0.68 | coverage-gap stage 1 |
+| 2026-11-21T23:52:12.355Z | t2-dr-event-sourcing-move | review | gpt-5.6-luna | 33 | 0.80 | coverage-gap stage 1 |
+| 2026-11-22T00:00:32.199Z | t2-dr-event-sourcing-move | fix | deepseek-3.2 | 500 | 11.84 | coverage-gap stage 1 |
+| 2026-11-22T00:01:12.948Z | t2-dr-event-sourcing-move | review-2 | gpt-5.6-luna | 38 | 0.82 | coverage-gap stage 1 |
+| 2026-11-22T00:04:27.505Z | t2-dr-aws-claims-check | author | gpt-5.6-luna | 119 | 2.86 | coverage-gap stage 1 |
+| 2026-11-22T00:05:02.511Z | t2-dr-aws-claims-check | map | glm-5 | 32 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T00:07:49.489Z | t2-dr-aws-claims-check | review | deepseek-3.2 | 167 | 2.14 | coverage-gap stage 1 |
+| 2026-11-22T00:08:30.279Z | t2-dr-aws-claims-check | fix | gpt-5.6-luna | 41 | 1.00 | coverage-gap stage 1 |
+| 2026-11-22T00:11:37.413Z | t2-dr-aws-claims-check | review-2 | deepseek-3.2 | 184 | 2.94 | coverage-gap stage 1 |
+| 2026-11-22T00:13:27.252Z | t2-sec-dr-partner-webhooks | author | gpt-5.6-luna | 110 | 2.40 | coverage-gap stage 1 |
+| 2026-11-22T00:13:58.561Z | t2-sec-dr-partner-webhooks | map | glm-5 | 29 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T00:17:31.245Z | t2-sec-dr-partner-webhooks | review | deepseek-3.2 | 213 | 3.36 | coverage-gap stage 1 |
+| 2026-11-22T00:19:09.048Z | t2-dr-orders-dynamo-model | author | gpt-5.6-luna | 98 | 2.19 | coverage-gap stage 1 |
+| 2026-11-22T00:19:37.039Z | t2-dr-orders-dynamo-model | map | glm-5 | 25 | 0.69 | coverage-gap stage 1 |
+| 2026-11-22T00:22:10.647Z | t2-dr-orders-dynamo-model | review | deepseek-3.2 | 154 | 2.23 | coverage-gap stage 1 |
+| 2026-11-22T00:23:43.486Z | t2-dr-orders-dynamo-model | fix | gpt-5.6-luna | 93 | 2.62 | coverage-gap stage 1 |
+| 2026-11-22T00:26:06.808Z | t2-dr-orders-dynamo-model | review-2 | deepseek-3.2 | 141 | 2.15 | coverage-gap stage 1 |
+| 2026-11-22T00:27:43.851Z | t2-dr-search-options | author | gpt-5.6-luna | 97 | 2.09 | coverage-gap stage 1 |
+| 2026-11-22T00:28:09.626Z | t2-dr-search-options | map | glm-5 | 23 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T00:30:34.635Z | t2-dr-search-options | review | deepseek-3.2 | 145 | 2.24 | coverage-gap stage 1 |
+| 2026-11-22T00:48:21.458Z | t2-sec-dr-partner-webhooks | fix | gpt-5.6-luna | 42 | 1.05 | coverage-gap stage 1 |
+| 2026-11-22T00:51:03.329Z | t2-sec-dr-partner-webhooks | review-3 | deepseek-3.2 | 159 | 2.33 | coverage-gap stage 1 |
+| 2026-11-22T00:51:52.724Z | t2-dr-search-options | fix | gpt-5.6-luna | 49 | 1.25 | coverage-gap stage 1 |
+| 2026-11-22T00:54:10.738Z | t2-dr-search-options | review-3 | deepseek-3.2 | 135 | 1.97 | coverage-gap stage 1 |
+| 2026-11-22T01:18:24.722Z | t2-dr-orders-dynamo-model | fix | gpt-5.6-luna | 26 | 0.70 | coverage-gap stage 1 |
+| 2026-11-22T01:22:29.222Z | t2-pr-order-contract | author | gpt-5.6-luna | 217 | 6.21 | coverage-gap stage 1 |
+| 2026-11-22T01:22:52.299Z | t2-pr-order-contract | map | glm-5 | 20 | 0.69 | coverage-gap stage 1 |
+| 2026-11-22T01:26:23.199Z | t2-pr-order-contract | review | deepseek-3.2 | 211 | 3.99 | coverage-gap stage 1 |
+| 2026-11-22T01:27:31.598Z | t2-pr-order-contract | fix | gpt-5.6-luna | 68 | 1.72 | coverage-gap stage 1 |
+| 2026-11-22T01:32:08.186Z | t2-pr-order-contract | review-2 | deepseek-3.2 | 274 | 4.64 | coverage-gap stage 1 |
+| 2026-11-22T01:33:48.931Z | t2-pr-ledger-transfer | author | gpt-5.6-luna | 100 | 2.26 | coverage-gap stage 1 |
+| 2026-11-22T01:34:14.326Z | t2-pr-ledger-transfer | map | glm-5 | 23 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T01:37:06.393Z | t2-pr-ledger-transfer | review | deepseek-3.2 | 172 | 2.98 | coverage-gap stage 1 |
+| 2026-11-22T01:40:25.816Z | t2-sec-pr-session-refresh | author | gpt-5.6-luna | 199 | 5.73 | coverage-gap stage 1 |
+| 2026-11-22T01:40:48.916Z | t2-sec-pr-session-refresh | map | glm-5 | 20 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T01:43:08.479Z | t2-sec-pr-session-refresh | review | deepseek-3.2 | 139 | 2.39 | coverage-gap stage 1 |
+| 2026-11-22T01:45:07.732Z | t2-pr-checkout-widget | author | gpt-5.6-luna | 119 | 2.98 | coverage-gap stage 1 |
+| 2026-11-22T01:45:36.668Z | t2-pr-checkout-widget | map | glm-5 | 25 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T01:48:46.672Z | t2-pr-checkout-widget | review | deepseek-3.2 | 190 | 3.19 | coverage-gap stage 1 |
+| 2026-11-22T05:51:14.458Z | t2-gaps-rev3-history | author | gpt-5.6-luna | 167 | 3.37 | coverage-gap stage 1 |
+| 2026-11-22T05:54:13.086Z | t2-gaps-rev3-history | map | glm-5 | 25 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T05:56:54.299Z | t2-gaps-rev3-history | review | deepseek-3.2 | 161 | 3.18 | coverage-gap stage 1 |
+| 2026-11-22T06:00:09.684Z | t2-pr-precheck-uncommitted | author | gpt-5.6-luna | 195 | 4.52 | coverage-gap stage 1 |
+| 2026-11-22T06:04:23.414Z | t2-pr-precheck-uncommitted | map | glm-5 | 39 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T06:07:07.442Z | t2-pr-precheck-uncommitted | review | deepseek-3.2 | 164 | 2.94 | coverage-gap stage 1 |
+| 2026-11-22T06:08:37.824Z | t2-dr-plan-start-monday | author | gpt-5.6-luna | 90 | 1.98 | coverage-gap stage 1 |
+| 2026-11-22T06:09:37.384Z | t2-dr-plan-start-monday | map | glm-5 | 27 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T06:13:28.771Z | t2-dr-plan-start-monday | review | deepseek-3.2 | 231 | 3.89 | coverage-gap stage 1 |
+| 2026-11-22T06:15:12.862Z | t2-dr-doc-ready-for-review | author | gpt-5.6-luna | 104 | 2.22 | coverage-gap stage 1 |
+| 2026-11-22T06:16:48.372Z | t2-dr-doc-ready-for-review | map | glm-5 | 32 | 0.68 | coverage-gap stage 1 |
+| 2026-11-22T06:19:12.680Z | t2-dr-doc-ready-for-review | review | deepseek-3.2 | 144 | 1.90 | coverage-gap stage 1 |
+| 2026-11-22T06:21:12.527Z | t2-dr-five-angle-spec | author | gpt-5.6-luna | 120 | 2.42 | coverage-gap stage 1 |
+| 2026-11-22T06:28:01.587Z | t2-dr-five-angle-spec | map | glm-5 | 20 | 0.67 | coverage-gap stage 1 |
+| 2026-11-22T06:31:19.553Z | t2-dr-five-angle-spec | review | deepseek-3.2 | 198 | 3.22 | coverage-gap stage 1 |

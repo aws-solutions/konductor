@@ -1,0 +1,14 @@
+provider: Northstar Search
+benchmark_date: 2025-02-11
+service_tier: standard-2
+index_documents: 2000000
+localized_fields: 2000000
+query_mix: "single locale, title prefix, one facet"
+concurrency: 40
+result_limit: 24
+p95_ms: 115
+p99_ms: 190
+warmup_minutes: 30
+replicas: 2
+network_region: same region as test client
+measurement: "vendor published performance page"

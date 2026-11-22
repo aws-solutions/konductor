@@ -1,0 +1,3 @@
+{
+  "notes": "The key defects are distributed across the new worker, scheduler, and reconciliation code rather than stated in the PR description. A quick read of the happy-path tests can miss failure ordering, exact money conversion, and retry state. The ledger and operations documents establish the atomicity, idempotency, minor-unit, all-account, and UTC contracts. The disabled-schedule wording in the new document describes a valid behavior and should not be raised as a finding."
+}

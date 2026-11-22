@@ -1,0 +1,10 @@
+{
+  "port": 8080,
+  "cacheTtlMs": 30000,
+  "carrier": {
+    "url": "https://sandbox.carrier.test/v1/rates",
+    "accountNumber": "test_account_123",
+    "apiKey": "test_key_123",
+    "timeoutMs": 8000
+  }
+}

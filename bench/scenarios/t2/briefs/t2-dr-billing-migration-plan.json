@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-billing-migration-plan",
+  "phase": "design-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "design",
+  "size": "8 to 14",
+  "brief": "Phase: design review. Role of the person asking: reviewer. The user asks: here is our plan for the billing database migration, can we start Monday? Packet kind: a step-by-step work plan with numbered steps. Context: the current billing system, the team roster and on-call rota, the change policy (every step needs a check you can run and a named rollback owner), the traffic calendar with the month-end billing peak. Plant: one step says verify the data looks right with no check or number; the target database is named differently in two steps; the schema migration is ordered after the app deploy that needs it; no one owns rollback although the policy requires it; the cutover date falls in the month-end peak; writes that arrive during the backfill window are not handled so they are lost; the rollback step assumes the old database still gets writes, but an earlier step stops them. Write every planted problem the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here.",
+  "doc": "docs/plans/billing-db-migration-plan.md"
+}

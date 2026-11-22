@@ -1,0 +1,3 @@
+{
+  "notes": "A quick reading can miss that two older mobile app versions consume the response as-is and that the update request omits a note. The status value still appears in stored data, while the shipping consumer expects a numeric sequence. The currency constraint is stated at the store and data-shape boundary rather than in the changed validator. The update route separates order and item writes, and the diagnostic route exposes a full customer object without a gate; the response formatter also contains a changed formatting detail that is not a defect."
+}

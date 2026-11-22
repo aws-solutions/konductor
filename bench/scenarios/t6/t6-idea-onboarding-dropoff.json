@@ -1,7 +1,7 @@
 {
   "id": "t6-idea-onboarding-dropoff",
   "class": "design",
-  "version": 3,
+  "version": 4,
   "phase": "ideation",
   "role": "pm",
   "questions": "allowed",
@@ -52,7 +52,7 @@
       "path": "docs/framing.md",
       "pattern": "analytics.{0,20}outage.{0,20}caused",
       "weight": 2,
-      "kind": "substance"
+      "kind": "format"
     },
     {
       "type": "cmd",
@@ -174,50 +174,72 @@
       }
     ],
     "recheck": {
-      "family": "deepseek",
-      "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request asks for framing note based on data without prescribing method; field name leaks were fixed per edits.md."
+          "note": "The request asks for a framing note with a specific JSON structure and evidence-based recommendations. It does not name a method, process, framework or tool for how to work, and contains no misleading hint."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture contains data files but does not state calculated values like '84%' or 'Cloudmail delivery 77%'."
+          "note": "The fixture data (funnel_weekly.csv, provider_delivery_summary.csv, verification_reconciliation.csv, release-log.md, etc.) contains raw metrics but no explicit answer. Nothing in the fixture states the recommendation, options, success_measure, or main_problem that the task asks for."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check for values derivable from data files; date matching improved per edits.md to accept multiple date formats."
+          "note": "The hidden tests (framing.test.js) verify claims, dates, providers, and structure that all exist in the fixture: Cloudmail, 84%, 54%, 77%/23%, 64%, 3 February tracking outage, 21 January domain change. The rubric criteria (clear-framing, honest-tradeoffs, honest-summary) match the request's framing-note ask and reward the expected outcome."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Competent PM can analyze data to calculate rates and make recommendations; different phrasing could pass."
+          "note": "A competent developer could derive the correct answer from the fixture and request: 8,232/9,800=84% pre-change verification; 5,740/10,700≈54% post-change; Cloudmail 77% delivery/23% bounce; tracking outage on 3 Feb; domain change on 21 Jan. The solution uses the same numbers and logic."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate debt worker (2026-11-21): analytics-cause precision test is denial-safe; check 5 not_contains is format, the hidden test scores it (D-158)",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 3.2,
+    "stub": 4.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-21",
     "dryRun": {
       "reference": 100,
-      "stub": 3.2,
-      "lazy": 9.5,
+      "stub": 4.1,
+      "lazy": 4.1,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-21"
     }
   }
 }

@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt asks for generic design review without naming methods, checklists, or hinting at specific problems."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review specific document with supporting files, write to REVIEW.md with JSON findings format."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Key items require cross-referencing multiple documents and careful analysis; shallow review would miss k2 (FTE inconsistency), k5 (migration details), k6 (benchmark mismatch)."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items findable in fixture: k1 weight contradiction in 2.3 vs 3.2; k2 FTE omission in table 3.3; k3 scale mismatch between 3.4 and 2.2; k4 language gap between 3.5 and locales.md; k5 missing reindex from 3.6 vs catalog-indexing.md; k6 query mismatch between 3.7 and current-search.md."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, test names, or file names point at planted problems; issues emerge from content analysis."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

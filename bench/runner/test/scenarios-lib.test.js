@@ -44,6 +44,25 @@ test('a hidden dir pulls shared helpers through .bench-lib.json, and a bad entry
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a @pristine entry copies the untouched fixture in, replacing anything the agent left there; it needs a fixture (D-120)', () => {
+  const root = tmp();
+  try {
+    const fixture = path.join(root, 'fixture');
+    write(path.join(fixture, 'src/a.js'), 'old\n');
+    const hid = path.join(root, 'hidden');
+    write(path.join(hid, MANIFEST), JSON.stringify({ '.bench-base': '@pristine' }));
+    assert.deepEqual(sharedHelpers(hid), [], 'a @pristine entry is not a helper and adds nothing to the helper hash');
+    const dest = path.join(root, 'dest');
+    write(path.join(dest, '.bench-base/src/a.js'), 'planted by the agent\n');
+    write(path.join(dest, '.bench-base/extra.js'), 'planted\n');
+    addSharedHelpers(hid, dest, undefined, { pristineDir: fixture });
+    assert.equal(fs.readFileSync(path.join(dest, '.bench-base/src/a.js'), 'utf8'), 'old\n');
+    assert.ok(!fs.existsSync(path.join(dest, '.bench-base/extra.js')));
+    write(path.join(hid, MANIFEST), JSON.stringify({ '.bench-base': '@pristine' }));
+    assert.throws(() => addSharedHelpers(hid, path.join(root, 'd2')), /needs the untouched fixture/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the tests check runs a hidden suite whose grader comes from scenarios/lib/hidden', () => {
   const root = tmp();
   try {

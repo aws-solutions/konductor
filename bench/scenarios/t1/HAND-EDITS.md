@@ -124,3 +124,49 @@ t1-ref-schema-migrate passes all four items. t1-ref-callbacks passes three. It f
 that the hidden tests check only FileStore and runPipeline. That is a misread: `hidden/api.test.js` also tests retry
 (lines 70 to 89) and processFile (line 123), so the item is disposed and nothing changed. Verdicts are in each task's
 `review.recheck`.
+
+## t1-impl-job-retry v4 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 2)
+
+All six LITE runs passed 1 or 2 of 14 hidden tests while every other check passed. Two spec gaps:
+- The prompt says "Each policy has maxAttempts, baseDelayMs, maxDelayMs, jitter", so the runs validated that every
+  field is present; 12 hidden tests passed policies with only some of the fields and failed at construction. Each
+  hidden policy now carries all four numeric fields (missing ones as `baseDelayMs: 0`, `maxDelayMs: 10000`,
+  `jitter: 0`, which change no expected value).
+- Two tests expect a job type with no policy to go to deadLetter after one attempt; the prompt did not say so and the
+  fixture's old runner drops a failed job, so every run kept that. The prompt now says: "A job type with no entry in
+  retryPolicies gets one attempt: when it fails, it goes to deadLetter the same way."
+The six LITE workspaces now pass 12 of 14 (the two left are the no-policy rule they were never told). Gates: reference
+100, stub 5.2, lazy 36, alt 100, shallow 18.2. Non-Claude recheck: pending (`handEdited.version` 4).
+
+## t1-ref-esm-migrate v5 (2026-11-22, mate LITE-fix worker, claude; LITE analysis items 3 and 4)
+
+- The CommonJS grep (`! grep 'require\(|module\.exports'`, weight 2) failed valid ESM: `export { lantern as
+  'module.exports' }` (Node's CommonJS-interop export name) and a code comment, in two konductor runs. It now skips
+  comment lines and a name inside quotes; it still fails the CommonJS fixture (every `require(` and `module.exports`).
+- `min_matches` on `test/esm-migration.test.js` (weight 2) failed all six runs: the prompt asks to move the existing
+  tests to ESM, not to add that file. Dropped.
+Gates: reference 100, stub 19.2, lazy 32.4, alt 91.6, shallow 36.6. Non-Claude recheck: pending (`handEdited.version` 5).
+
+## t1-neg-config-alias v3 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 1, flat task)
+
+Every LITE run scored 68 (6 of 11 hidden tests). All six emitted the deprecation warning with Node's own
+`process.emitWarning(..., 'DeprecationWarning')`, which is what the prompt asks for ("emit one deprecation warning
+containing both names"); the hidden tests captured `console.warn` only and grep'd the source for `console.warn`. Both
+now accept either. The six LITE workspaces pass 11 of 11. Gates: reference 100, stub 0, lazy 24.4, alt 100.
+Non-Claude recheck: pending (`handEdited.version` 3).
+
+## Round 6 recheck of t1-impl-job-retry v4 (2026-11-22, deepseek-3.2, call D16)
+
+3 of 4 pass, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+key-matches-fixture: the hidden test imports `PermanentJobError` from `src/errors.js`. The request says
+"PermanentJobError from src/errors.js ... must never retry", but the fixture's `src/errors.js` exports only
+`QueueFormatError`. The request reads as if the class already exists, and it does not say to add it.
+
+## t1-impl-job-retry v5 (2026-11-22, mate LITE-fix worker, claude; after the v4 recheck)
+
+The v4 recheck failed key-matches-fixture: the hidden test imports `PermanentJobError` from `src/errors.js`, the
+fixture's `errors.js` exports only `QueueFormatError`, and the prompt read as if the class already existed
+("PermanentJobError from src/errors.js ... must never retry"). The prompt now says to add it: "Add a
+PermanentJobError(message, code) class to src/errors.js and export it there; a PermanentJobError and any error with
+retryable === false must never retry." The fixture is unchanged, so the stub still cannot load the hidden test.
+Gates: reference 100, stub 5.2, lazy 36, alt 100, shallow 18.2. Non-Claude recheck: pending (`handEdited.version` 5).

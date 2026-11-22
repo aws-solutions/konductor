@@ -19,7 +19,7 @@ const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile,
 const { repoRootOf } = require('./flag-values.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
-const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
+const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD, PAIR_ORDERS } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
 const { resolveIsolation, describeHide, ISOLATE_MODES, isComparableMode } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
@@ -207,6 +207,88 @@ function checkHarnessFlags({ opts, tasks, runtime }) {
   return { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn };
 }
 
+/**
+ * The run limits and switches of `opts`, checked (DEBT D-24): auth-failure stop, tool-call limit, seed, isolation mode
+ * (--isolate none also needs --allow-unisolated) and the env names to keep. Throws on a bad value.
+ */
+function runLimitsOpt(opts) {
+  const maxAuthFailures = maxAuthFailuresOf(opts['max-auth-failures'], process.env.BENCH_MAX_AUTH_FAILURES);
+  const maxToolCalls = opts['max-tool-calls'] === undefined ? null : intOpt(opts['max-tool-calls'], 'max-tool-calls');
+  const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
+  const isolate = opts.isolate || 'auto';
+  if (!ISOLATE_MODES.includes(isolate)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
+  if (isolate === 'none' && !opts['allow-unisolated']) {
+    throw new Error('--isolate none runs the agent with no containment, and its results are recorded as not comparable and are never counted by a verdict. Pass --allow-unisolated as well to run anyway.');
+  }
+  const envKeep = list(opts['env-keep']);
+  return { maxAuthFailures, maxToolCalls, seed, isolate, envKeep };
+}
+
+/**
+ * --pair-order and --fill-skipped, checked. --fill-skipped X runs every budget_skipped cell once more before the
+ * command ends, while this command's spend stays under X (the same rules as --budget-credits, which X must not be under).
+ */
+function fillOpts(opts, budgetCredits) {
+  const pairOrder = opts['pair-order'] === undefined ? 'konductor-first' : opts['pair-order'];
+  if (!PAIR_ORDERS.includes(pairOrder)) throw new Error(`--pair-order takes ${PAIR_ORDERS.join(' or ')}`);
+  let fillBudget = null;
+  if (opts['fill-skipped'] !== undefined) {
+    fillBudget = Number(opts['fill-skipped']);
+    if (opts['fill-skipped'] === true || !(fillBudget > 0)) throw new Error('--fill-skipped must be a positive number: the budget of the fill pass');
+    if (budgetCredits !== null && fillBudget < budgetCredits) throw new Error(`--fill-skipped ${fillBudget} is under the budget ${budgetCredits}: the fill pass would skip the same cells`);
+  }
+  return { pairOrder, fillBudget };
+}
+
+/**
+ * The Bedrock model and credentials of a Strands run (DEBT D-24), or nulls: a Strands run on Bedrock spends money, so it
+ * needs a --budget-usd cap and an --aws-profile whose keys alone reach the agent. Throws when one is missing.
+ */
+function strandsSpendOpt({ isSt, opts, budgetCredits, deps }) {
+  const stModel = isSt ? st.bedrockModelOf(opts.model ?? '') : null;
+  let stCreds = null;
+  if (stModel) {
+    if (budgetCredits === null) throw new Error('a Strands run on Bedrock needs --budget-usd X: what is left of X is each run\'s hard spend cap');
+    if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
+    stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
+    stCreds.current();
+  } else if (isSt && opts['aws-profile'] !== undefined) {
+    throw new Error('--aws-profile applies to a Strands run only with a bedrock: model; the fake model takes no credentials');
+  }
+  return { stModel, stCreds };
+}
+
+/**
+ * Prepares the plant suite of a run (DEBT D-24): release intake, the wall prober under unshare, the Strands hook census,
+ * and the log lines that say what the suite counts as. Sets ctx.plant, ctx.cgroup and the plant masks; returns the suite.
+ */
+async function setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, deps, isolation, isSt, scratchDir, log }) {
+  const plantSuite = preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, ...deps.plant });
+  // A setup step that throws after intake removes the suite here: the caller has not been handed it yet.
+  try {
+    ctx.plant = plantSuite;
+    plantSuite.log = log;
+    ctx.mask.push(...plantSuite.mask);
+    if (isolation.mode === 'unshare') {
+      const walls = await preflightWalls({ ctx, suite: plantSuite, repo, outDir, makeIso: (root, plantRun) => makeIso(ctx, arms[0], root, null, { plantRun }) });
+      ctx.cgroup = walls.cgroup;
+      plantSuite.walls = walls;
+      log(`plant walls: prober passed; ${walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}; cgroup ${walls.cgroup.ok ? walls.cgroup.caps : `missing (${walls.cgroup.reason})`}`);
+    }
+    if (isSt) {
+      const wrap = (file, args) => makeIso(ctx, arms[0], scratchDir, null).wrap(file, args);
+      plantSuite.strandsCensus = preflightStrands({ strands: ctx.strands, suite: plantSuite, arms, env: st.env({ home: scratchDir, tmpdir: scratchDir }), scratch: scratchDir, wrap });
+      log(`plant: Strands hook census: ${plantSuite.strandsCensus.problems.length ? plantSuite.strandsCensus.problems.join('; ') : 'no hook, middleware or tool swap that can change a plant call'}`);
+    }
+    if (plantSuite.hostNoise.length) log(`warning: plant: host failed quiet-host checks (${plantSuite.hostNoise.join(', ')}); this suite is not counted`);
+    log(`plant release ${plantSuite.release.manifest.release} (manifest ${plantSuite.release.manifestSha256.slice(0, 12)}, key ${plantSuite.release.keyId.slice(0, 12)}), ${plantSuite.control ? 'control' : plantSuite.counted ? 'counted' : `NOT COUNTED (${plantSuite.notCounted.join('; ')})`} suite`);
+  } catch (e) {
+    plantSuite.dispose();
+    throw e;
+  }
+  return plantSuite;
+}
+
 async function cmdRun(opts, deps = {}) {
   // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
   preloadSchemas();
@@ -277,15 +359,8 @@ async function cmdRun(opts, deps = {}) {
   // Claude Code takes exported keys: from the environment, or with --aws-profile read from that profile before each run that needs fresh ones.
   const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
   if (isCc) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
-  const maxAuthFailures = maxAuthFailuresOf(opts['max-auth-failures'], process.env.BENCH_MAX_AUTH_FAILURES);
-  const maxToolCalls = opts['max-tool-calls'] === undefined ? null : intOpt(opts['max-tool-calls'], 'max-tool-calls');
-  const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
-  const isolate = opts.isolate || 'auto';
-  if (!ISOLATE_MODES.includes(isolate)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
-  if (isolate === 'none' && !opts['allow-unisolated']) {
-    throw new Error('--isolate none runs the agent with no containment, and its results are recorded as not comparable and are never counted by a verdict. Pass --allow-unisolated as well to run anyway.');
-  }
-  const envKeep = list(opts['env-keep']);
+  const { maxAuthFailures, maxToolCalls, seed, isolate, envKeep } = runLimitsOpt(opts);
+  const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
 
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
   if (profile) log(`profile ${profile.name}: ${replicates} replicate(s) per cell${opts.replicates === undefined ? ' (the profile default)' : ''}`);
@@ -347,16 +422,7 @@ async function cmdRun(opts, deps = {}) {
   // A Strands run on Bedrock spends money. It needs --budget-usd (what is left of it is each run's hard cap, enforced
   // in the launcher before every model call) and --aws-profile (only that profile's exported keys reach the agent).
   // Strands arms are plant arms, and a plant suite runs at --parallel 1 (intake.js), so no two runs share what is left.
-  const stModel = isSt ? st.bedrockModelOf(opts.model ?? '') : null;
-  let stCreds = null;
-  if (stModel) {
-    if (budgetCredits === null) throw new Error('a Strands run on Bedrock needs --budget-usd X: what is left of X is each run\'s hard spend cap');
-    if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
-    stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
-    stCreds.current();
-  } else if (isSt && opts['aws-profile'] !== undefined) {
-    throw new Error('--aws-profile applies to a Strands run only with a bedrock: model; the fake model takes no credentials');
-  }
+  const { stModel, stCreds } = strandsSpendOpt({ isSt, opts, budgetCredits, deps });
   const config = isSt
     ? { model: opts.model, effort: 'default' }
     : isCc
@@ -437,25 +503,7 @@ async function cmdRun(opts, deps = {}) {
     ctx.stopOn = stopOn;
     ctx.maxToolCalls = maxToolCalls;
     ctx.keyRoots = [benchDir];
-    if (arms.some((a) => a.plant)) {
-      plantSuite = preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, ...deps.plant });
-      ctx.plant = plantSuite;
-      plantSuite.log = log;
-      ctx.mask.push(...plantSuite.mask);
-      if (isolation.mode === 'unshare') {
-        const walls = await preflightWalls({ ctx, suite: plantSuite, repo: REPO, outDir, makeIso: (root, plantRun) => makeIso(ctx, arms[0], root, null, { plantRun }) });
-        ctx.cgroup = walls.cgroup;
-        plantSuite.walls = walls;
-        log(`plant walls: prober passed; ${walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}; cgroup ${walls.cgroup.ok ? walls.cgroup.caps : `missing (${walls.cgroup.reason})`}`);
-      }
-      if (isSt) {
-        const wrap = (file, args) => makeIso(ctx, arms[0], scratchDir, null).wrap(file, args);
-        plantSuite.strandsCensus = preflightStrands({ strands: ctx.strands, suite: plantSuite, arms, env: st.env({ home: scratchDir, tmpdir: scratchDir }), scratch: scratchDir, wrap });
-        log(`plant: Strands hook census: ${plantSuite.strandsCensus.problems.length ? plantSuite.strandsCensus.problems.join('; ') : 'no hook, middleware or tool swap that can change a plant call'}`);
-      }
-      if (plantSuite.hostNoise.length) log(`warning: plant: host failed quiet-host checks (${plantSuite.hostNoise.join(', ')}); this suite is not counted`);
-      log(`plant release ${plantSuite.release.manifest.release} (manifest ${plantSuite.release.manifestSha256.slice(0, 12)}, key ${plantSuite.release.keyId.slice(0, 12)}), ${plantSuite.control ? 'control' : plantSuite.counted ? 'counted' : `NOT COUNTED (${plantSuite.notCounted.join('; ')})`} suite`);
-    }
+    if (arms.some((a) => a.plant)) plantSuite = await setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, deps, isolation, isSt, scratchDir, log });
     ctx.tripwire = {
       roots: [
         { dir: home, depth: opts['tripwire-depth'] ? intOpt(opts['tripwire-depth'], 'tripwire-depth') : 3, exclude: DEFAULT_EXCLUDES },
@@ -486,6 +534,7 @@ async function cmdRun(opts, deps = {}) {
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      pairOrder, fillBudget,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
@@ -576,9 +625,10 @@ async function cmdRun(opts, deps = {}) {
     }, null, 2) + '\n');
 
     log(`out=${outDir}`);
-    const { results, observed, charged, studyLine, guard, authStop } = await runAll({
+    const { results, observed, charged, studyLine, guard, authStop, fill } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
       costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, resume, maxAuthFailures, loginCheck,
+      pairOrder, fillBudget,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
@@ -590,7 +640,7 @@ async function cmdRun(opts, deps = {}) {
       plantSuite.walls.checklist = checklistWithTrials(plantSuite.walls.results, trialRows);
       log(`plant walls: with the prober trials' gateway rows; ${plantSuite.walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}`);
     }
-    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(trialRows.length ? { plantBoundaryChecklist: plantSuite.walls.checklist } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(fill ? { fill } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(trialRows.length ? { plantBoundaryChecklist: plantSuite.walls.checklist } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
       log(judged.alarm);
@@ -598,6 +648,8 @@ async function cmdRun(opts, deps = {}) {
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
+    const leftSkipped = results.filter((r) => r?.status === 'budget_skipped').length;
+    if (leftSkipped) log(`budget_skipped: ${leftSkipped} cell(s) never ran${fill ? ` (fill pass: ${fill.filled} of ${fill.tried} filled)` : ''}; their pairs are unpaired until filled (--resume, or --fill-skipped X)`);
     for (const line of creditNoteLines(creditNotes(results))) log(line);
     if (authStop.tripped) {
       log(authStop.kind === 'launch'
@@ -627,4 +679,4 @@ async function cmdRun(opts, deps = {}) {
   }
 }
 
-module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt, timeoutSecOpt };
+module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt, timeoutSecOpt, fillOpts };

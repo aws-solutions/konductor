@@ -1,0 +1,9 @@
+.checkout-summary { max-width: 42rem; margin-top: 2rem; padding: 1.25rem; background: white; border: 1px solid #d7dddf; }
+.checkout-lines { display: grid; gap: 0.5rem; padding: 0; list-style: none; }
+.checkout-line { display: flex; justify-content: space-between; padding: 0.5rem 0; }
+.checkout-line-price { font-variant-numeric: tabular-nums; }
+.promo-panel { display: grid; gap: 0.35rem; margin: 1.25rem 0; }
+.promo-panel input { max-width: 18rem; padding: 0.55rem; border: 1px solid #7b858a; }
+.promo-hint { color: #536067; }
+.promo-status, .checkout-response { min-height: 1.3rem; }
+.checkout-grand-total { font-weight: 700; }

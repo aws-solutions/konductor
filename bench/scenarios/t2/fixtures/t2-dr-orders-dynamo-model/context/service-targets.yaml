@@ -1,0 +1,26 @@
+service: orders
+region: us-east-1
+availability_zones: 3
+slo:
+  availability: 99.95
+  read_p95_ms: 90
+  write_p95_ms: 150
+  recovery_objective_minutes: 240
+retention:
+  orders_years: 7
+traffic_forecast:
+  peak_order_writes_per_second: 1800
+  detail_reads_per_second: 7000
+  customer_history_requests_per_second: 2400
+  fulfillment_queries_per_second: 180
+  growth_90_days: 0.18
+  order_count_multiple_18_months: 2.5
+dynamodb:
+  max_item_bytes: 409600
+  max_transaction_items: 100
+  on_demand_partition_baseline_writes_per_second: 1000
+  on_demand_partition_baseline_reads_per_second: 3000
+api:
+  max_order_lines: 500
+  max_request_bytes: 2097152
+  max_response_bytes: 6291456

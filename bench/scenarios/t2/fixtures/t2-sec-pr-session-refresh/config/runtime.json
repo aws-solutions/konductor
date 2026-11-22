@@ -1,0 +1,7 @@
+{
+  "serviceName": "harbor-account-service",
+  "port": 4080,
+  "cookieName": "harbor_sid",
+  "refreshCookieName": "harbor_refresh",
+  "resetPath": "/password-reset/complete"
+}

@@ -249,13 +249,23 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
   const run = loadRuns(dirs);
   const pack = loadPack(packDir);
   const byTask = new Map();
+  const rows = [];
   for (const e of run.runs) {
-    if (e.result.status === 'budget_skipped') continue;
+    // A run the budget skipped never started: a visible row with no score and no other flag, never a silent drop.
+    if (e.result.status === 'budget_skipped') {
+      const entry = pack.tasks.get(e.taskId) ?? null;
+      rows.push({
+        task: e.taskId, batch: batchOf(e.taskId), arm: e.armId, rep: e.replicate, status: 'budget_skipped', score: null, sec: null, credits: null,
+        loads: [], flags: { budget_skipped: e.result.error || 'budget reached' }, skipped: true,
+        handEdited: entry?.task.handEdited ? String(entry.task.handEdited.family ?? 'yes') : entry ? 'no' : 'n/a',
+        singleFamily: entry?.task.authorship?.singleFamily ? 'single-family-authored' : '-', knownTask: Boolean(entry),
+      });
+      continue;
+    }
     const k = `${e.armId}\u0000${e.taskId}`;
     if (!byTask.has(k)) byTask.set(k, []);
     byTask.get(k).push(e);
   }
-  const rows = [];
   for (const group of byTask.values()) {
     // A check index whose pass/fail differs between replicates of the same task and arm.
     const flips = new Set();
@@ -310,25 +320,50 @@ const NOTE_DRY_RUN = 'Dry-run note: the shallow (lazy) and alternative answers b
 
 const FLAG_NAMES = ['broken', 'throttled', 'too-easy', 'too-hard', 'answer-leak', 'second-family', 'noisy', 'fix', 'hand-edited, recheck missing'];
 
-/** Per batch: runs, distinct tasks, and for each flag the number of distinct tasks with at least one flagged run. */
+/**
+ * The (task, replicate) pairs a skipped run breaks. A pair is unpaired when one arm ran and another was budget_skipped;
+ * it stays out of paired analysis (pairedRows) until the skipped side is filled (bench run --resume or --fill-skipped).
+ */
+function unpaired(rows) {
+  const groups = new Map();
+  for (const r of rows) {
+    const k = `${r.task}\u0000${r.rep}`;
+    if (!groups.has(k)) groups.set(k, { task: r.task, rep: r.rep, ran: [], skipped: [] });
+    groups.get(k)[r.skipped ? 'skipped' : 'ran'].push(r.arm);
+  }
+  return [...groups.values()].filter((g) => g.skipped.length)
+    .sort((a, b) => a.task.localeCompare(b.task) || a.rep - b.rep);
+}
+
+/** The rows of complete pairs only: no run of a (task, replicate) that has a budget_skipped side. */
+function pairedRows(rows) {
+  const broken = new Set(unpaired(rows).map((g) => `${g.task}\u0000${g.rep}`));
+  return rows.filter((r) => !r.skipped && !broken.has(`${r.task}\u0000${r.rep}`));
+}
+
+/**
+ * Per batch: runs that ran, budget_skipped runs, distinct tasks, and for each flag the number of distinct tasks with at
+ * least one flagged run.
+ */
 function batchSummary(rows) {
   const out = new Map();
   for (const r of rows) {
     const b = r.batch ?? 'none';
-    if (!out.has(b)) out.set(b, { batch: b, runs: 0, tasks: new Set(), flagged: Object.fromEntries(FLAG_NAMES.map((f) => [f, new Set()])) });
+    if (!out.has(b)) out.set(b, { batch: b, runs: 0, skipped: 0, tasks: new Set(), flagged: Object.fromEntries(FLAG_NAMES.map((f) => [f, new Set()])) });
     const s = out.get(b);
+    if (r.skipped) { s.skipped++; s.tasks.add(r.task); continue; }
     s.runs++;
     s.tasks.add(r.task);
     for (const f of FLAG_NAMES) if (r.flags[f]) s.flagged[f].add(r.task);
   }
   const num = (b) => (/^t(\d+)$/.exec(b) ? Number(b.slice(1)) : Infinity);
   return [...out.values()].sort((a, b) => num(a.batch) - num(b.batch) || a.batch.localeCompare(b.batch))
-    .map((s) => ({ batch: s.batch, runs: s.runs, tasks: s.tasks.size, flagged: Object.fromEntries(FLAG_NAMES.map((f) => [f, s.flagged[f].size])) }));
+    .map((s) => ({ batch: s.batch, runs: s.runs, skipped: s.skipped, tasks: s.tasks.size, flagged: Object.fromEntries(FLAG_NAMES.map((f) => [f, s.flagged[f].size])) }));
 }
 
 function renderBatches(summary) {
-  const L = [`| batch | runs | tasks | ${FLAG_NAMES.map((f) => `${f} (tasks)`).join(' | ')} |`, `| --- | --- | --- | ${FLAG_NAMES.map(() => '---').join(' | ')} |`];
-  for (const s of summary) L.push(`| ${s.batch} | ${s.runs} | ${s.tasks} | ${FLAG_NAMES.map((f) => s.flagged[f]).join(' | ')} |`);
+  const L = [`| batch | runs | budget_skipped (runs) | tasks | ${FLAG_NAMES.map((f) => `${f} (tasks)`).join(' | ')} |`, `| --- | --- | --- | --- | ${FLAG_NAMES.map(() => '---').join(' | ')} |`];
+  for (const s of summary) L.push(`| ${s.batch} | ${s.runs} | ${s.skipped} | ${s.tasks} | ${FLAG_NAMES.map((f) => s.flagged[f]).join(' | ')} |`);
   return L;
 }
 
@@ -341,7 +376,12 @@ function renderTable(rows) {
   const total = rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0);
   const count = (k) => rows.filter((r) => r.flags[k]).length;
   const rerun = [...new Set(rows.filter((r) => r.flags.noisy).map((r) => r.task))];
-  L.push('', `${rows.length} run(s), ${total.toFixed(2)} credits. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
+  const skipped = rows.filter((r) => r.skipped).length;
+  L.push('', `${rows.length - skipped} run(s), ${total.toFixed(2)} credits${skipped ? `, and ${skipped} budget_skipped (never ran)` : ''}. Score is the code-scored part only (hidden tests and substance checks; no judges).`);
+  const open = unpaired(rows);
+  if (open.length) {
+    L.push(`Unpaired, left out of paired analysis until filled (bench run --resume or --fill-skipped): ${open.map((g) => `${g.task} #${g.rep} (${g.ran.length ? `ran ${g.ran.join(', ')}; ` : ''}skipped ${g.skipped.join(', ')})`).join('; ')}.`);
+  }
   L.push('', ...renderBatches(batchSummary(rows)));
   L.push(`Flagged runs: broken ${count('broken')}, throttled ${count('throttled')}, too-easy ${count('too-easy')}, too-hard ${count('too-hard')}, answer-leak ${count('answer-leak')}, second-family ${count('second-family')}, noisy ${count('noisy')}, fix ${count('fix')}, hand-edited with no re-check ${count('hand-edited, recheck missing')}.`);
   L.push(`Second run for noisy tasks: ${rerun.length ? rerun.join(',') : 'none'}`);
@@ -357,4 +397,4 @@ function cmdPilotTable(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
 }
 
-module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, throttled, FLAG_NAMES };
+module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, unpaired, pairedRows, throttled, FLAG_NAMES };

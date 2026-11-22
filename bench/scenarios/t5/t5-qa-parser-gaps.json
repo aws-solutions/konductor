@@ -1,11 +1,11 @@
 {
   "id": "t5-qa-parser-gaps",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "A bad input reached production last week even though the parser tests look healthy and coverage is high. The suite under test/ for Tide Config, our small configuration format, only uses short, well-formed inputs, and I no longer trust it. Please strengthen it for the tokenizer, parser, validator and printer: add new test files under test/ (you may also extend the existing ones), keep the suite runnable with `node --test --test-timeout=4000 test/*.test.js`, and assert on public results and error messages rather than private details. Do not change anything under src/, package.json or docs/, do not add dependencies, and keep every existing test working. Yes, that scope is confirmed, and committing the work on the branch I am on is fine. Keep the suite lean: at most 64 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
+  "prompt": "A bad input reached production last week even though the parser tests look healthy and coverage is high. The suite under test/ for Tide Config, our small configuration format, only uses short, well-formed inputs, and I no longer trust it. Please strengthen it for the tokenizer, parser, validator and printer: add new test files under test/ (you may also extend the existing ones), keep the suite runnable with `node --test --test-timeout=4000 test/*.test.js`, and assert on public results and error messages rather than private details. Do not change anything under src/, package.json or docs/, do not add dependencies, and keep every existing test working. Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit. Keep the suite lean: at most 64 test cases in total under the test folder, each protecting one rule through the public interface, so that a rewrite of the code that keeps its behaviour does not break them.",
   "fixture": "t5-qa-parser-gaps",
   "hidden": "t5-qa-parser-gaps",
   "timeoutSec": 1200,
@@ -139,19 +139,32 @@
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 16.7,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 4
   }
 }

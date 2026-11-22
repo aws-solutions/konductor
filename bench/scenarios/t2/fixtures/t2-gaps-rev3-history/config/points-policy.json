@@ -1,0 +1,6 @@
+{
+  "maxRedeemPoints": 10000,
+  "earnPrecision": 2,
+  "expiryDays": 365,
+  "minimumEarnSubtotal": 0.01
+}

@@ -1,0 +1,220 @@
+{
+  "id": "t2-dr-plan-start-monday",
+  "version": 1,
+  "class": "design",
+  "phase": "design-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "Please review the product search reindex work plan in `docs/plans/search-reindex-plan.md` and tell me whether the team can start it on Monday, March 3. I own this change and need a clear go or no-go decision before I put the window on the release calendar. Read the plan with the packet around it, including the service facts, operating notes, traffic calendar, roster, and change rules. The index move is tied to the upcoming release calendar, so I need to know whether this plan is ready to run and whether its stated outcome can be verified. Write the review to `REVIEW.md` at the top of the project. End it with a fenced json list of findings, each with `location` (the section number of the document, like `3.2`), `severity` (critical, high, medium, low or nit), `issue` and `fix`.",
+  "questions": "allowed",
+  "fixture": "t2-dr-plan-start-monday",
+  "hidden": "t2-dr-plan-start-monday",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 20,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const H=new Set();for(const l of fs.readFileSync(\"docs/plans/search-reindex-plan.md\",\"utf8\").split(\"\\n\")){const m=l.match(/^#+\\s*(?:section\\s*)?(\\d+(?:\\.\\d+)*)/i);if(m)H.add(m[1])}process.exit(L.every(x=>{const m=String(x.location).match(/\\d+(?:\\.\\d+)*/);return m&&H.has(m[0])})?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/plans/search-reindex-plan.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Fail: The review misses the decision or invents problems that the packet does not support. Partial: The review identifies some supported concerns but leaves their concrete effect or fix vague. Pass: The review gives a grounded go or no-go decision and explains the concrete consequence and an actionable fix for each important concern without inventing defects. (code cannot check this because it cannot judge whether prose is grounded, consequential, and actionable)",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "Section 3.2 says to make results look good but gives no reproducible pass/fail check against the service's relevance contract, so a relevance regression could be accepted on judgment alone.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "Section 3.4 requires synonym-bundle-2025-02 without naming a producing step or available source, so the load cannot be completed from the plan's earlier outputs.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "Section 3.3 creates catalog_search_v3 instead of the reserved hyphenated physical name, so the index created by this step does not match the plan's approved naming facts.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "Section 3.5 compares catalog-search-2025-03 even though Section 3.3 creates catalog_search_v3, so the comparison can target an index that this run never loaded.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "Section 3.6 assigns the rehearsal to Priya Nair during her March 3–7 leave, leaving a required owner unavailable in the proposed window.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "Section 3.7 switches all traffic but its way back only says the team will decide after observation, so it provides no executable rollback if the live change harms customers.",
+      "weight": 1
+    },
+    {
+      "id": "k7",
+      "finding": "Section 4.1 lists artifacts and an announcement but never defines the checks or sign-off that establish the entire migration is complete.",
+      "weight": 1
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Asks for a capacity and shard-sizing check that accounts for the promotion traffic, bulk-load pressure, document growth, and the cost of the seven-day overlap.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Asks how the team proves that updates, deletes, and late catalog events are represented consistently during and after the bulk load.",
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Asks for alert thresholds, escalation ownership, and a time-bounded response when latency, empty results, facet mismatches, or freshness drift persists.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e4",
+        "text": "Asks whether sensitive catalog or merchant fields are copied into the new index with the same access controls, retention, and deletion behavior.",
+        "source": "OWASP Cheat Sheet Series, https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e5",
+        "text": "Asks how operators will distinguish configuration failure, stale data, and an empty-result regression from ordinary traffic variation in the dashboards.",
+        "source": "The Twelve-Factor App, https://12factor.net (MIT)"
+      },
+      {
+        "id": "e6",
+        "text": "Asks what happens when the managed search service slows or rejects bulk requests, including which work is shed first and how the catalog export is resumed safely.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "The plan is well organized and has clear owners, so the team should proceed after a quick confirmation.",
+      "The migration should be tested for scalability, reliability, and monitoring before launch.",
+      "The team will build the new index, compare results, switch traffic, observe it, and retire the old index."
+    ]
+  },
+  "targetSkills": [
+    "plan-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "plan-review"
+    ],
+    "mustNotLoad": [
+      "verification"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-22",
+    "source": "original"
+  },
+  "review": {
+    "family": "deepseek",
+    "date": "2026-11-22",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt does not name review methods, hint at planted problems, or give problem count."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear instructions: review plan with packet, write REVIEW.md with JSON findings using section numbers."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Requires cross-referencing plan with architecture, roster, runbook, and change rules; quick read would miss many items."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items have supporting evidence in fixture; grader can match by section number within 3 lines."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, test names, or obvious clues point to planted problems; issues require analysis of document relationships."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
+    },
+    "decision": "keep",
+    "date": "2026-11-22"
+  }
+}

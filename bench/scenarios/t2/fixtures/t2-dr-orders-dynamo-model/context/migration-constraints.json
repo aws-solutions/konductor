@@ -1,0 +1,17 @@
+{
+  "migrationWindow": "2025-03-10T01:00:00Z/2025-03-10T05:00:00Z",
+  "rollbackFlag": "orders.reads.dynamodb",
+  "dualWriteMaximumDays": 14,
+  "sourceStore": "postgresql-orders",
+  "backfill": {
+    "checkpointKey": "orders-migration-checkpoint",
+    "sampleVerificationRate": 0.01,
+    "mustCompare": ["order_count", "total_amount", "customer_id", "line_count", "status"]
+  },
+  "roles": {
+    "service": ["read", "write"],
+    "reporting": ["read"],
+    "deployment": ["table_configuration"]
+  },
+  "rollbackOwner": "Orders on-call"
+}

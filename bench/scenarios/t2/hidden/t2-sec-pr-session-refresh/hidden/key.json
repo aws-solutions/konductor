@@ -1,0 +1,92 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/session-store.js",
+      "line": 53,
+      "endLine": 64,
+      "severity": "high",
+      "fix": [
+        "revoke old token",
+        "invalidate previous",
+        "single-use"
+      ],
+      "finding": "rotateRefreshToken appends a replacement record but leaves the record containing the presented refresh token active, so a stolen token can be replayed after a successful rotation."
+    },
+    {
+      "id": "k2",
+      "file": "src/session-store.js",
+      "line": 48,
+      "endLine": 48,
+      "severity": "medium",
+      "fix": [
+        "constant time",
+        "timing safe",
+        "digest token"
+      ],
+      "finding": "Refresh-token lookup uses JavaScript string equality even though this credential is attacker-controlled, which exposes a timing signal and bypasses the token service's constant-time comparison helper."
+    },
+    {
+      "id": "k3",
+      "file": "src/routes/auth-routes.js",
+      "line": 20,
+      "endLine": 23,
+      "severity": "high",
+      "fix": [
+        "httponly",
+        "secure",
+        "cookie flags"
+      ],
+      "finding": "The remember-me cookie options only set Max-Age, so the persistent credential is sent without HttpOnly or Secure and can be read by script or sent over an insecure connection."
+    },
+    {
+      "id": "k4",
+      "file": "src/reset-service.js",
+      "line": 16,
+      "endLine": 16,
+      "severity": "critical",
+      "fix": [
+        "randombytes",
+        "cryptographic randomness",
+        "crypto random"
+      ],
+      "finding": "Password-reset links now use Math.random for their secret token, making a high-impact account-recovery credential predictable instead of cryptographically random."
+    },
+    {
+      "id": "k5",
+      "file": "src/account-service.js",
+      "line": 34,
+      "endLine": 35,
+      "severity": "high",
+      "fix": [
+        "revoke all",
+        "revoke all for account",
+        "invalidate sessions"
+      ],
+      "finding": "Changing the password updates the account but never calls the available session revocation operation, leaving every existing device signed in despite the documented password-change policy."
+    },
+    {
+      "id": "k6",
+      "file": "src/routes/auth-routes.js",
+      "line": 45,
+      "endLine": 47,
+      "severity": "medium",
+      "fix": [
+        "revoke server session",
+        "sessions.revoke",
+        "server-side revoke"
+      ],
+      "finding": "Logout only emits expired browser cookies and does not revoke the matching server session, so a copied session cookie remains usable after logout."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/token-service.js",
+      "line": 5,
+      "endLine": 5,
+      "why": "The refresh prefix is only a non-secret type label; the token still contains 32 bytes from crypto.randomBytes, so the label does not reduce its entropy."
+    }
+  ]
+}

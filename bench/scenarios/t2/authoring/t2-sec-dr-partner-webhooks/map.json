@@ -1,0 +1,21 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "adversarial-design-review",
+    "design-doc-guidelines"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-design-review",
+      "k-existing-design-review"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review",
+      "code-review"
+    ]
+  },
+  "twinIdea": "Write a new partner webhook delivery design doc from scratch using the architecture constraints and contracts.",
+  "why": "The task is a design document review comparing against existing contracts and policies. adversarial-design-review stress-tests design decisions, design-doc-guidelines ensures review thoroughness, and k-existing-design-review is the exact SOP for this review type. Code review skills don't apply to design docs."
+}

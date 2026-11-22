@@ -159,3 +159,17 @@ test('with stdioDir the child writes under the scratch root and the files move t
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('removeAllScratch also removes a tracked dir that holds a read-only release copy (a killed plant run, D-93)', () => {
+  const root = tmp();
+  const priv = path.join(root, 'kplant-x');
+  const rel = path.join(priv, 'release-y', 'policy');
+  fs.mkdirSync(rel, { recursive: true });
+  fs.writeFileSync(path.join(rel, 'rules.cedar'), 'permit;');
+  fs.chmodSync(path.join(rel, 'rules.cedar'), 0o400);
+  fs.chmodSync(rel, 0o500);
+  fs.chmodSync(path.dirname(rel), 0o500);
+  procs.trackScratch(priv);
+  procs.removeAllScratch();
+  assert.equal(fs.existsSync(priv), false);
+});

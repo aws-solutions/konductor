@@ -17,6 +17,7 @@ const { loadRefusalRule } = require('./refusal.js');
 const { readEnvironment, NOT_COUNTED } = require('./score.js');
 const { AGENT_ENGINES } = require('../harness/runtime.js');
 const { hostNoise } = require('./walls.js');
+const procs = require('../procs.js');
 
 const POLICY_FILES = ['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'];
 const REFUSAL_RULE = 'refusal-rule.json';
@@ -290,6 +291,7 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
   refuseInside('the plant release', dir, roots);
   refuseInside('the out dir', outDir, roots);
   const privateRoot = fs.mkdtempSync(path.join(privateParent, 'kplant-'));
+  procs.trackScratch(privateRoot); // a SIGINT or SIGTERM removes it too (D-93), read-only release copy included
   let release = null;
   try {
     refuseInside('the runner-private dir', privateRoot, roots);
@@ -324,6 +326,7 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
 function removePrivateRoot(privateRoot, releaseRoot) {
   if (releaseRoot) discardRelease(releaseRoot);
   fs.rmSync(privateRoot, { recursive: true, force: true });
+  procs.untrackScratch(privateRoot);
 }
 
 module.exports = { SOCKET_PATH_MAX, checkSuiteShape, oddFileReason, refuseLauncher, strandsSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };

@@ -1,0 +1,7 @@
+{
+  "currencyLength": 3,
+  "allowedCurrencies": ["USD", "CAD", "GBP"],
+  "maxItemsPerOrder": 24,
+  "maxDeliveryNoteCharacters": 180,
+  "orderStatuses": ["draft", "paid", "paused", "packing", "shipped", "delivered"]
+}

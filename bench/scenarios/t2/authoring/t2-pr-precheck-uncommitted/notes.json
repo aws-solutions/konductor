@@ -1,0 +1,3 @@
+{
+  "notes": "This is a quick, read-only check of a developer's own unsent change before code review; the developer fixes things later and the project must stay untouched. The traps look reasonable in a short diff but matter when behavior is compared with facts elsewhere. A quick pass may miss a contract or test weakness that is visible only across files. The configuration, pricing, carrier, cache, and test findings require cross-file reading rather than a single-file skim."
+}

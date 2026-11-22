@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks for the acknowledgement contract, including how partners signal permanent rejection and how the sender handles a timeout after the partner processed the event.",
+      "source": "https://www.rfc-editor.org/rfc/rfc9700 (IETF Trust)"
+    },
+    {
+      "id": "e2",
+      "text": "Asks how partners reconcile out-of-order status events and whether the event schema exposes a monotonic version or sequence for an order.",
+      "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Asks how bounded concurrency, cancellation, and circuit breaking behave when a partner keeps connections open until the ten-second timeout.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Asks who owns schema compatibility and how a profile change is tested against partners before a new version is enabled.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Asks for alert thresholds, dashboard ownership, and a low-cardinality way to distinguish partner, connection, and tenant failures during an incident.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Asks how consumer restarts, stream redelivery, and a rollback affect duplicate delivery records and reconciliation after a long outage.",
+      "source": "https://12factor.net (MIT)"
+    }
+  ],
+  "weakAnswers": [
+    "The design is clear and uses familiar components, so it looks ready to implement.",
+    "Consider scalability and monitoring as traffic grows.",
+    "The retry schedule and HMAC authentication are sensible; add more documentation during implementation.",
+    "The rollout should be tested carefully with partners before production."
+  ]
+}

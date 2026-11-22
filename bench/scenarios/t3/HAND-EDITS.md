@@ -315,3 +315,61 @@ D-141 judge pass (gpt-5.6-luna, deepseek-3.2, qwen3-coder-next): the reference s
 | t3-tpm-migration-cutover | 2026-11-20 | `answers/.../alt/docs/cutover.md` rewritten as an independent answer: an option table, a "before Sunday" seed plan and a numbered Sunday runbook, with the same decision block | the alt was a copy of the reference, so it said nothing about whether other wording passes |
 
 Free gates after the change: reference 100, empty 0, lazy 16, alt 100, other 100. Judged again ($0.022): the reference scored 100 from all three judges under the paraphrase rule, and its raw verdicts are within 1.1 points of each other. Under the lenient rule it is 68.8, because deepseek and qwen restated instead of quoting. The new alt scored a median of 87.5 (68.8 lenient). deepseek-3.2 (v9, 2026-11-20, a family that did not write the task or the edit) passes the four-item checklist on this version, alt included; the verdicts are in `review.recheck`.
+
+## t3-db-order-history v6 (2026-11-21, mate debt worker, DEBT D-155)
+
+The new `fixture-tells` lint rule found that `constraints.txt` told the agent how it is graded and where the trap is:
+a "Validation Requirements" section opened with "Hidden tests will verify:" and listed them, and an "Important Notes"
+section said "The "tempting" option is indexing every column separately", with its 3.1 TB total and the Premium fee.
+Both sections are gone from the fixture and from the hidden `_pristine` copy. The facts the agent needs are still in
+the fixture: `prototype-results.md` projects 3.1 TB at 900M rows and `pricing-guide.md` gives the Premium fee and the
+Standard limit. Free gates after: reference 100, stub 0, lazy 6, alt 100. Needs a non-Claude recheck at v6.
+
+## Round 6 recheck of t3-db-order-history v6 (2026-11-21, gpt-5.6-luna, call L13)
+
+1 of 4 passes, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+- fixture-lists-no-answer: `prototype-results.md:55-62` gives the query plans of the recommended option, and
+  lines 97-104 call Option 2 the primary recommendation.
+- key-matches-fixture and solvable-from-fixture: `hidden/options.test.js:8-14` needs the ids `composite-optimized` or
+  `two-table-normalized`, but the fixture names the options A-D (`README.md:38-42`) or 1-3 (`prototype-results.md`).
+  The rubric uses the same ids. This is the D-127 finding that dropped the task before; `pilot.decision` now reads keep.
+
+## t3-db-order-history v7 (2026-11-21, mate free-fix worker, claude; Fable review D2)
+
+`reports/review-probe-disposals-fable.md` D2: the hidden tests read the option ids `composite-optimized` and
+`two-table-normalized` and the limits keys `storage_tb`, `iops`, `throughput_mbps` and `monthly_budget_usd`, but no
+fixture file or the prompt named them. The prompt now has one sentence naming the three option ids (mapped to Options
+1 to 3 of `prototype-results.md`) and the four limits keys, the way the nine D-127 siblings were fixed (for example
+t3-adr-db-engine). It names no choice. Key, checks and fixture unchanged. Gates: reference 100, stub 0, lazy 6, alt
+100. Non-Claude recheck: pending (`handEdited.version` 7).
+
+## Round 6 recheck of t3-db-order-history v7 (2026-11-21, gpt-5.6-luna, call L16)
+
+2 of 4 pass, so nothing is recorded in `review.recheck`; listed for the fixing worker and Fable.
+- key-matches-fixture: the request says `prototype-results.md` names the ids (`composite-optimized`,
+  `two-table-normalized`), but that file only says Option 1/2/3 (lines 11-25) and `README.md:38-42` says A-D.
+- fixture-lists-no-answer: `prototype-results.md:55-62` and 97-104 mark Option 2 as the recommendation, with its
+  indexes, cost and query plans.
+
+## t3-db-order-history v8 (2026-11-21, mate free-fix worker, claude; last fix after the v7 recheck)
+
+The v7 recheck failed 2 of 4: the prompt said `prototype-results.md` names the option ids, but it only says Option 1,
+2 and 3; and that file marked Option 2 as the pick. v8:
+- The prompt maps the ids directly: Option 1 = `single-column-all`, Option 2 = `composite-optimized`, Option 3 =
+  `two-table-normalized`, and names the four limits keys. It does not say which to choose.
+- `prototype-results.md` (and its `_pristine` copy) gives numbers only: the "Recommended" label, the bold Option 2
+  cells, the "best overall" and "critical finding" notes, and the Recommendations and Next steps sections are gone.
+  The choice follows from the numbers: projected storage 3.10, 2.50 and 2.61 TB against the 2.5 TB limit.
+- Key, checks and the other fixture files are unchanged. Gates: reference 100, stub 0, lazy 6, alt 100.
+
+One-fix rule: if the v8 recheck fails, the task leaves the lock list.
+
+## Last recheck of t3-db-order-history v8 (2026-11-21, gpt-5.6-luna, call L17)
+
+2 of 4 pass, so nothing is recorded in `review.recheck`. Under the one-fix rule (owner), the task is dropped from the
+lock list.
+- fixture-lists-no-answer: `prototype-results.md:17-20` marks the composite option as the 2.5 TB, good-performance
+  result, and lines 51-67 map its indexes to the query patterns.
+- key-matches-fixture: `hidden/meta.json:3` and `hidden/options.test.js:8-14` accept `two-table-normalized`, but
+  `prototype-results.md:22-26` gives it 2.6 TB, and `constraints.txt:4-7` rules it out. The `query-pattern-coverage`
+  Pass anchor allows unoptimized patterns, which `constraints.txt:13` and 22-30 forbid.

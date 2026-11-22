@@ -1,0 +1,9 @@
+{
+  "period": "2025-Q1",
+  "currency": "USD",
+  "approved_incremental_cluster_budget": 1800,
+  "expected_migration_cost": 420,
+  "temporary_overlap_days": 7,
+  "owner": "Search Foundations",
+  "notes": "The estimate includes one additional physical index and bulk processing. It excludes any extra capacity needed for the promotion period."
+}

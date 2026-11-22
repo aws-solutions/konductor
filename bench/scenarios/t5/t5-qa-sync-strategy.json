@@ -1,14 +1,14 @@
 {
   "id": "t5-qa-sync-strategy",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "testing",
   "role": "qa",
   "phases2": [
     "architecture"
   ],
   "questions": "allowed",
-  "prompt": "We migrate customer data to the new store on a weekend two weeks from now, and I own the sync service that does it. I have limited time and want a plan for what to test and in what order, not a tour of every file. Read the repository, including the source, the existing tests and the docs, then write docs/TEST-STRATEGY.md: where the real risk is, how severe it is, the test that should cover each risk, an order we can work through in the two weeks, and what could go wrong if we skip the rest. This is planning only; do not change application code, fixtures, generated files or existing tests. End the document with one fenced `json` block holding an array of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Yes, that scope is confirmed, and committing the work on the branch I am on is fine.",
+  "prompt": "We migrate customer data to the new store on a weekend two weeks from now, and I own the sync service that does it. I have limited time and want a plan for what to test and in what order, not a tour of every file. Read the repository, including the source, the existing tests and the docs, then write docs/TEST-STRATEGY.md: where the real risk is, how severe it is, the test that should cover each risk, an order we can work through in the two weeks, and what could go wrong if we skip the rest. This is planning only; do not change application code, fixtures, generated files or existing tests. End the document with one fenced `json` block holding an array of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add). Yes, that scope is confirmed. This folder is not a git repository, so leave the work as files; there is nothing to commit.",
   "fixture": "t5-qa-sync-strategy",
   "hidden": "t5-qa-sync-strategy",
   "timeoutSec": 1200,
@@ -313,19 +313,32 @@
     "reference": 100,
     "stub": 7.1,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 7.1,
       "lazy": 15.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): the prompt says the folder has no git repo instead of offering a commit on a branch",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

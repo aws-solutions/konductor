@@ -1,0 +1,7 @@
+metric,observed_value,unit,window,source
+settings_reads,4200000,requests/day,2025-02-01..2025-02-28,settings-api dashboard
+settings_writes,180000,requests/day,2025-02-01..2025-02-28,settings-api dashboard
+notification_reads,76000000,preference lookups/day,2025-02-01..2025-02-28,messaging gateway dashboard
+active_accounts,8000000,accounts,2025-02-28,account registry
+peak_write_rate,18,requests/second,2025-02-14 18:00 UTC,settings-api dashboard
+stream_events,94000000,events/day,2025-02-01..2025-02-28,account stream metrics

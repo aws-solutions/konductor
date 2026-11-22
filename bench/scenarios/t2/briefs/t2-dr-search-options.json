@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-search-options",
+  "phase": "design-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "design",
+  "size": "8 to 14",
+  "brief": "Phase: design review. Role of the person asking: reviewer. Packet kind: a design that compares three options for product search (stay on database LIKE queries with an index, a managed search service, a self-run search cluster) and picks one. Context: catalogue size and growth, query rates and latency targets, team size and on-call load, the budget, the languages the store sells in. Plant: the scoring table weights criteria so the chosen option wins although the stated priorities in the doc rank them the other way; the cost comparison leaves out the self-run cluster staff time while counting it for the others; the latency claim for the chosen option is from a vendor page for a much smaller index; the evaluation ignores multi-language stemming, which the context says is required; the migration effort for the chosen option is rated low with no plan for reindexing the catalogue; the rejected database option is judged on a query shape the store does not use. Write every planted problem the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here. Context files give facts and numbers only, never a conclusion: an incident summary says what happened and when, and must not name a lesson that restates a planted problem; no context file may say what this design gets wrong.",
+  "doc": "docs/design/product-search-options.md"
+}

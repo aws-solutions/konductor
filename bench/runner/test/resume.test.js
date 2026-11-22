@@ -12,6 +12,7 @@ const { runAll, planRuns, resumePlan } = require('../lib/orchestrate.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { cmdRun } = require('../lib/run-cmd.js');
+const { validateResult } = require('../lib/result.js');
 
 const ARM = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, harness: 'none', agent: null, vanilla: true };
 const TASK = { id: 't1' };
@@ -49,6 +50,8 @@ test('runAll with resume runs only the missing cells and leaves the kept results
     const out = path.join(root, 'out');
     cell(out, 1, 'success');
     cell(out, 2, 'error');
+    // Rep 3 was killed mid-trial: plant logs and no result.json (D-19).
+    write(path.join(out, 'vanilla', 't1', '3', 'plant', 'gateway.jsonl'), '{"seq":0}\n');
     const ctx = {
       config: { model: 'claude-sonnet-5.5', effort: 'high', agentEngine: 'v2' }, scratchDir, authDb, envKeep: [], envInfo: { kiroCliVersion: 'fake', modelListSnapshotPath: null },
       isolation: { mode: 'none' }, tripwire: { roots: [{ dir: watch, depth: 2 }], extraExcludes: [], absExclude: [scratchDir, out] },
@@ -65,6 +68,10 @@ test('runAll with resume runs only the missing cells and leaves the kept results
     assert.equal(read(1).marker, 'old-1');
     assert.equal(read(2).marker, 'old-2', 'an errored cell is kept without --resume-errors');
     assert.equal(read(3).armId, 'vanilla');
+    assert.equal(read(3).resumedFrom, '3.resumed-1', 'the result names the kept earlier attempt');
+    assert.deepEqual(validateResult(read(3)), [], 'resumedFrom is in the result schema');
+    assert.equal(fs.readFileSync(path.join(out, 'vanilla', 't1', '3.resumed-1', 'plant', 'gateway.jsonl'), 'utf8'), '{"seq":0}\n', 'the killed attempt is kept, not deleted');
+    assert.ok(!fs.existsSync(path.join(out, 'vanilla', 't1', '3', 'plant')), 'the rerun starts in an empty folder');
     assert.ok(logs.some((l) => /resume: 2 of 3 planned cell\(s\) already have a result and are kept; 1 to run/.test(l)), logs.join('\n'));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

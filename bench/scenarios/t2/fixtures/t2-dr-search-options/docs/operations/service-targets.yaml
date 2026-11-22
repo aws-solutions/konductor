@@ -1,0 +1,24 @@
+service: catalogue-search
+owner: Storefront Platform
+reviewed: 2025-03-04
+availability:
+  monthly_target: 99.95%
+latency:
+  p50_ms: 90
+  p95_ms: 250
+  p99_ms: 500
+traffic:
+  normal_queries_per_second: 180
+  peak_queries_per_second: 620
+  peak_window: "15 minutes during campaign launches"
+request_limits:
+  max_query_chars: 64
+  max_results: 48
+  timeout_ms: 700
+freshness:
+  price_and_stock: authoritative at response time
+  catalogue_title: within 10 minutes of an approved catalogue change
+operations:
+  primary_on_call: "Storefront Platform"
+  primary_engineers: 5
+  overnight_escalation: "one shared platform rotation"

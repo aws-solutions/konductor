@@ -209,7 +209,7 @@ function testsResult(root, check, opts) {
     copyRegular(root, scratch);
     for (const name of fs.readdirSync(opts.hiddenDir)) fs.rmSync(path.join(scratch, name), { recursive: true, force: true });
     copyRegular(opts.hiddenDir, scratch);
-    addSharedHelpers(opts.hiddenDir, scratch);
+    addSharedHelpers(opts.hiddenDir, scratch, undefined, { pristineDir: opts.pristineDir });
     const ms = opts.testsTimeoutMs ?? TESTS_TIMEOUT_MS;
     // `timeout` kills the whole process group; a plain kill would leave a runaway test process behind.
     const secs = Math.max(1, Math.ceil(ms / 1000));

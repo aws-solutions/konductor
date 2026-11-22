@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name review methods, hint at planted problems, or give problem count."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review plan with packet, write REVIEW.md with JSON findings using section numbers."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Requires cross-referencing plan with architecture, roster, runbook, and change rules; quick read would miss many items."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items have supporting evidence in fixture; grader can match by section number within 3 lines."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, test names, or obvious clues point to planted problems; issues require analysis of document relationships."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

@@ -1,0 +1,5 @@
+{
+  "coastal": { "taxRate": 0.0825, "label": "Coastal" },
+  "inland": { "taxRate": 0.0715, "label": "Inland" },
+  "mountain": { "taxRate": 0.064, "label": "Mountain" }
+}

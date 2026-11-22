@@ -1,0 +1,220 @@
+{
+  "id": "t2-dr-doc-ready-for-review",
+  "version": 1,
+  "class": "design",
+  "phase": "design-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "Please review `docs/design/notification-preferences.md` as I prepare it for the wider design review. I own the proposal and need a clear call on whether it is ready to send now. The change touches Account Settings, Notifications Platform, and Messaging, so I am worried that a reader may miss an important assumption, scope decision, or operational consequence when those teams review it. Compare the proposal with the product brief and the supporting architecture, targets, traffic, constraints, and incident notes in this project. Focus on issues in the document itself: what is unclear, unsupported, out of scope, repeated, or not useful to a decision-maker. For each important issue, name the document section, explain the concrete consequence here, and give a fix that an author can apply. Write the review to `REVIEW.md` at the top of the project. End it with a fenced json list of findings, each with `location` (the section number of the document, like `3.2`), `severity` (critical, high, medium, low or nit), `issue` and `fix`.",
+  "questions": "allowed",
+  "fixture": "t2-dr-doc-ready-for-review",
+  "hidden": "t2-dr-doc-ready-for-review",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 20,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const H=new Set();for(const l of fs.readFileSync(\"docs/design/notification-preferences.md\",\"utf8\").split(\"\\n\")){const m=l.match(/^#+\\s*(?:section\\s*)?(\\d+(?:\\.\\d+)*)/i);if(m)H.add(m[1])}process.exit(L.every(x=>{const m=String(x.location).match(/\\d+(?:\\.\\d+)*/);return m&&H.has(m[0])})?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/design/notification-preferences.md",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "r1",
+      "criterion": "Fail: the review is generic, invents defects, or gives no concrete consequence and usable fix for important issues. Partial: the review identifies some document issues with plausible consequences or fixes but misses important evidence or leaves fixes vague. Pass: the review accurately identifies important issues in this packet, explains their concrete consequence in this project, and gives an actionable fix without inventing problems. (code cannot check this because judging requires understanding the document, its context, and the usefulness of the written reasoning.)",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "The customer outcome is expressed as a feeling and does not carry the product brief's measurable 60-second and 99-percent visibility target, so reviewers cannot tell how success will be judged.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "This section adds a rules and policy engine for conditions such as quiet hours and channel ranking even though the first-release brief explicitly excludes that work, expanding scope and introducing an unowned component.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "The capacity section claims the design will scale but gives no workload, baseline, growth rate, or time horizon, so the capacity decision cannot be checked against the documented traffic and launch plan.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "The only alternative is a plainly inferior direct-database read, so the document does not provide a credible competing design or a meaningful comparison of trade-offs.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "This subsection repeats the asynchronous outbox and local-view decision already explained in 4.2 with different wording, making the design harder to maintain and leaving two narratives for the same decision.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "The long operating-principles subsection offers general encouragement but no owner, action, measure, or constraint a reviewer or operator can use, so it consumes attention without advancing a decision.",
+      "weight": 1
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Asks how the system detects and repairs divergence between the source record and a Messaging local view after duplicate, delayed, or out-of-order events.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Checks whether the account-version compare-and-swap and event application are idempotent under client retries and consumer replays.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Asks what data is exposed in audit logs and events, how long it is retained, and whether account identifiers are protected from unnecessary disclosure.",
+        "source": "OWASP Cheat Sheet Series, https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+      },
+      {
+        "id": "e4",
+        "text": "Checks whether configuration, credentials, and service-specific settings remain external to the document's proposed code and deployment artifact.",
+        "source": "The Twelve-Factor App, https://12factor.net (MIT)"
+      },
+      {
+        "id": "e5",
+        "text": "Asks how the feature flag behaves across retries and deploys, and whether rollback leaves a customer with a predictable last known preference.",
+        "source": "RFC 9700, Best Current Practice for OAuth 2.0 Security, https://www.rfc-editor.org/rfc/rfc9700 (IETF Trust Legal Provisions)"
+      },
+      {
+        "id": "e6",
+        "text": "Asks how malformed preference events are quarantined, alerted on, and replayed without blocking healthy accounts or silently losing a change.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "The design is clear and uses a sensible asynchronous architecture; it looks ready after minor polishing.",
+      "Consider scalability, monitoring, security, and failure handling before implementation.",
+      "The document proposes a preference API, an outbox event, a Messaging consumer, and a staged rollout.",
+      "Add more detail where appropriate and confirm that all teams agree with the plan."
+    ]
+  },
+  "targetSkills": [
+    "design-quality-check",
+    "doc-accuracy-analyzer",
+    "design-doc-guidelines"
+  ],
+  "targetSop": "k-pre-cr-critique",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "design-quality-check",
+      "doc-accuracy-analyzer"
+    ],
+    "mustNotLoad": [
+      "adversarial-design-review",
+      "design-evaluation"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-22",
+    "source": "original"
+  },
+  "review": {
+    "family": "deepseek",
+    "date": "2026-11-22",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt does not name review methods, hint at planted problems, or give problem count; asks for general design document review"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Prompt clearly specifies document to review, supporting materials, focus areas, output location, and required format"
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "While k1, k2, k3 are fairly obvious when comparing with product brief, k5 (repetition) and k6 (vague principles) require careful reading and might be missed in a quick review"
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items reference real sections with evidence in supporting documents; competent reviewer could find each with document comparison"
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No comments, TODOs, test names, or obvious hints point directly at planted problems; issues require reading and comparing documents"
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 28.6,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
+    },
+    "decision": "keep",
+    "date": "2026-11-22"
+  }
+}

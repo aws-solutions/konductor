@@ -490,6 +490,21 @@ test('a new host listener between trials stops a control suite too', async () =>
   await assert.rejects(runPlantCell(execute, { ctx, outDir: '/nonexistent' }), PlantSuiteStop);
 });
 
+test('a control suite under --isolate none notes a new host listener and goes on (D-92)', async () => {
+  let reads = 0;
+  const logged = [];
+  const ctx = { plant: { counted: false, control: true, isolationMode: 'none', log: (m) => logged.push(m), readListeners: () => (++reads > 2 ? ['tcp 0100007F:1F90'] : []) } };
+  const execute = async () => ({ plant: { runState: 'complete', flags: [] } });
+  await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
+  const second = await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
+  assert.deepEqual(second.plant.hostListenerNotes, ['tcp 0100007F:1F90']);
+  assert.match(logged[0], /control suite runs without a sandbox and never counts, so it goes on/);
+  let r2 = 0;
+  const counted = { plant: { counted: true, control: false, isolationMode: 'none', readListeners: () => (++r2 > 2 ? ['tcp 0100007F:1F90'] : []) } };
+  await runPlantCell(execute, { ctx: counted, outDir: '/nonexistent' });
+  await assert.rejects(runPlantCell(execute, { ctx: counted, outDir: '/nonexistent' }), PlantSuiteStop);
+});
+
 test('a NOT COUNTED pilot logs a new host listener once, records it on the trial and goes on', async () => {
   let reads = 0;
   const logged = [];

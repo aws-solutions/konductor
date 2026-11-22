@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-flags-doc-ready",
+  "phase": "design-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "design",
+  "size": "8 to 14",
+  "brief": "Phase: design review. Role of the person asking: reviewer. The team asks if their design doc is ready to send for review. Packet kind: a design for a second-generation feature-flag service. Context: the team design-doc guide (it requires measurable goals, non-goals, real alternatives, a rollout plan and project-specific risks), notes on the current config service, latency and scale numbers, a past incident where a bad flag took checkout down. Plant: goals use words like very fast and massively scalable while the context gives real numbers; a whole subsection designs a third-party plugin marketplace that no requirement asks for; a later subsection repeats an earlier one with a different number that contradicts it; the alternatives subsection only lists a straw option and leaves out extending the existing config service, which the context shows is viable; the rollout subsection says TBD although the guide requires it; the risks subsection is generic and ignores the checkout incident; a claim of industry-leading performance has no number behind it. Write every planted problem the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here. Context files give facts and numbers only, never a conclusion: an incident summary says what happened and when, and must not name a lesson that restates a planted problem; no context file may say what this design gets wrong.",
+  "doc": "docs/design/feature-flags-v2.md"
+}

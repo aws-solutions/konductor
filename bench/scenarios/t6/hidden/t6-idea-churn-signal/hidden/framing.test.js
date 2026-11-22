@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { blockOf, itemTexts } = require('./doc-key.js');
+const { blockOf, itemTexts, contradicts } = require('./doc-key.js');
 
 const doc = 'docs/framing.md';
 const block = () => blockOf(doc);
@@ -104,7 +104,7 @@ test('calls out the June 10 through 16 cancellation tracking gap', () => {
 test('does not present the survey price count as the overall churn cause', () => {
   const problem = String(block().problem || '');
   assert.ok(problem.trim(), 'the framing block states no problem');
-  assert.doesNotMatch(problem, /(?:price|92).{0,35}(?:main|primary|largest|major\s+cause)/i);
+  assert.ok(!contradicts(problem, /(?:price|92).{0,35}(?:main|primary|largest|major\s+cause)/i), 'states the claim (a sentence that denies it is fine)');
 });
 
 test('keeps the option set bounded', () => {

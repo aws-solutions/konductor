@@ -1,0 +1,4 @@
+:root { font-family: system-ui, sans-serif; color: #1d2730; background: #f7f8f6; }
+body { max-width: 70rem; margin: 0 auto; padding: 2rem; }
+button, input { font: inherit; }
+button { border: 0; border-radius: 0.3rem; padding: 0.65rem 1rem; background: #155e75; color: white; cursor: pointer; }

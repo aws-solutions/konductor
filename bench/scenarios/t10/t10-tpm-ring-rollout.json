@@ -1,7 +1,7 @@
 {
   "id": "t10-tpm-ring-rollout",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "multi-phase",
   "role": "tpm",
   "phases2": [
@@ -22,7 +22,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js",
-      "min": 18,
+      "min": 19,
       "weight": 3,
       "kind": "substance"
     },
@@ -214,29 +214,30 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request specifies ring rollout functions but not algorithm. No misleading hints pointing away from real problem."
+          "note": "Request prescribes specific implementation details: exact file names (src/ring-rollout.js, src/go-no-go.js, scripts/receipt-go-no-go.js), exact function signatures, exports, error codes, and JSON block formats. (disposition: independent review reports/review-probe-disposals-fable.md (claude-fable-5.1, 2026-11-22, mate workspace, t10-tpm-ring-rollout v3): by design, checklist misread; the request names the interface the hidden tests import, not a way of working)"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has ops/budget-policy.json with ring definitions and docs/error-budget-policy.md, but doesn't give implementation. No file reveals solution."
+          "note": "Fixture provides context (ring definitions, thresholds, freezes, error policy, partner info) but doesn't list answer or describe finished behavior hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests would check ring rollout functionality. Fixture has policy files defining rings, metrics. Rubric's plan-follows-policy checks ops/budget-policy.json alignment."
+          "note": "Hidden tests reference fixture elements: ring order from ops/rings.json, thresholds from ops/budget-policy.json, freeze dates from ops/freeze-calendar.csv, error policy from docs/error-budget-policy.md, Ledger Lantern from docs/partners.md."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can implement ring rollout from policy files and request. Different percentage steps possible (adjudication notes)."
+          "note": "Competent developer could implement prescribed solution from fixture context (ring definitions, thresholds, freezes, error policy, partner requirements) and detailed request."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "pilot": {
@@ -246,17 +247,42 @@
     "dryRun": {
       "reference": 100,
       "stub": 5.7,
-      "lazy": 28.8,
+      "lazy": 28.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): a hidden test runs the fixture's own 37 tests unchanged, so a loosened copy cannot hide a regression",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }

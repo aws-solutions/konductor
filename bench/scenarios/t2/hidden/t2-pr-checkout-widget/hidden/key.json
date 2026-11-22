@@ -1,0 +1,118 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/checkout-summary.js",
+      "line": 41,
+      "endLine": 55,
+      "also": [
+        {
+          "file": "src/checkout-summary.js",
+          "line": 110,
+          "endLine": 116
+        }
+      ],
+      "severity": "medium",
+      "fix": [
+        "visible label",
+        "aria-invalid",
+        "error message"
+      ],
+      "finding": "The promotion input has no associated visible label, and invalid input is communicated only by changing the color of the input and hint while the status remains empty, so keyboard and color-blind users do not get an accessible error or field relationship."
+    },
+    {
+      "id": "k2",
+      "file": "src/checkout-summary.js",
+      "line": 96,
+      "endLine": 101,
+      "severity": "medium",
+      "fix": [
+        "render once",
+        "event listener",
+        "event delegation"
+      ],
+      "finding": "Each promotion keystroke calls renderLines, which adds another click listener to the same list after replacing its children, causing handlers to accumulate during normal typing."
+    },
+    {
+      "id": "k3",
+      "file": "src/checkout-summary.js",
+      "line": 20,
+      "endLine": 22,
+      "also": [
+        {
+          "file": "src/checkout-summary.js",
+          "line": 104,
+          "endLine": 106
+        },
+        {
+          "file": "src/checkout-page.js",
+          "line": 11,
+          "endLine": 15
+        }
+      ],
+      "severity": "medium",
+      "fix": [
+        "formatMoney",
+        "integer cents",
+        "Intl.NumberFormat"
+      ],
+      "finding": "The widget converts catalog cents to a floating point price and then builds currency strings with toFixed and a dollar prefix, so the fr-FR and de-DE locales documented for checkout cannot format separators and symbols correctly and floating point totals can leak into the UI."
+    },
+    {
+      "id": "k4",
+      "file": "src/checkout-summary.js",
+      "line": 123,
+      "endLine": 126,
+      "also": [
+        {
+          "file": "src/checkout-summary.js",
+          "line": 129,
+          "endLine": 135
+        }
+      ],
+      "severity": "critical",
+      "fix": [
+        "textContent",
+        "escape",
+        "sanitize"
+      ],
+      "finding": "Both service messages are assigned to innerHTML, allowing a promotion or order response containing markup from the server to execute script in the checkout page."
+    },
+    {
+      "id": "k5",
+      "file": "src/checkout-summary.js",
+      "line": 129,
+      "endLine": 135,
+      "severity": "high",
+      "fix": [
+        "disable",
+        "in flight",
+        "guard"
+      ],
+      "finding": "The submit handler has no in-flight guard or disabled state, so two rapid clicks can send two order requests even though the checkout contract requires one request per user action."
+    },
+    {
+      "id": "k6",
+      "file": "src/checkout-summary.js",
+      "line": 66,
+      "endLine": 71,
+      "severity": "low",
+      "fix": [
+        "Submit order",
+        "button label",
+        "imperative"
+      ],
+      "finding": "The action is labeled Place order even though the checkout copy rule requires the imperative button label Submit order, making the new control inconsistent with the documented UI text."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/checkout-page.js",
+      "line": 23,
+      "endLine": 23,
+      "why": "The fallback order callback keeps the read-only page preview rendered by main.js usable when that entry point has no order service; the live checkout supplies the real callback through services."
+    }
+  ]
+}

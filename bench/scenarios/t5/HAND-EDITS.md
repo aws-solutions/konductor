@@ -188,3 +188,12 @@ edits, on top of the earlier non-Claude check of the request, fixture and key). 
 | t5-qa-security-tests | glm-5 (c08, full) | confirmed |  |
 | t5-qa-suite-audit | glm-5 (r4, rubric) | confirmed |  |
 | t5-qa-sync-strategy | glm-5 (r4, rubric) | confirmed |  |
+
+## No-git prompt fix (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 7)
+
+Seven T5 tasks (t5-qa-cart-weak-tests v4, t5-qa-checkout-strategy v3, t5-qa-ledger-gaps v4, t5-qa-parser-gaps v4,
+t5-qa-scheduler-gaps v4, t5-qa-suite-audit v3, t5-qa-sync-strategy v3) told the agent "committing the work on the
+branch I am on is fine", but their fixtures have no git repository; every LITE run of the three in the run ended by
+saying it could not commit. The sentence now reads: "Yes, that scope is confirmed. This folder is not a git
+repository, so leave the work as files; there is nothing to commit." The scope confirmation the SOP guard reads is
+kept. No check, key or fixture changed; gates pass unchanged. Non-Claude recheck: pending for all seven.

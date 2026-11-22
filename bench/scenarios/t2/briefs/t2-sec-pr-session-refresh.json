@@ -1,0 +1,19 @@
+{
+  "id": "t2-sec-pr-session-refresh",
+  "phase": "code-review",
+  "role": "security",
+  "wave": 4,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "pr",
+  "size": "20 to 35",
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js account service (login, sessions, refresh tokens, password reset, tests, docs that state the session policy). The PR adds refresh-token rotation and remember-me. Plant: an old refresh token stays valid after rotation, so a stolen one keeps working; the refresh token is compared with plain string equality; the remember-me cookie is set without HttpOnly and Secure; the password reset link token comes from Math.random; sessions are not ended when the password changes, against the policy doc; the logout route only clears the cookie and leaves the server session alive. Add one decoy. Write every planted problem and the decoy the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and pr/<n>/changes.diff must be regenerated from git after any change. Docs, tests and context files give facts only, never a conclusion: no doc, changelog, incident note or test may say what this change gets wrong, and the PR description believes the change is correct. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\".",
+  "stack": "node",
+  "pr": 2788
+}
