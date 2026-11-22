@@ -40,6 +40,19 @@ function walk(root, rel = '') {
     }
   };
   if (fs.existsSync(path.join(root, rel))) visit(rel);
+  
+  // Write git log to GIT-LOG.txt when .git exists at snapshot time
+  const gitDir = path.join(root, rel, '.git');
+  if (fs.existsSync(gitDir) && fs.statSync(gitDir).isDirectory()) {
+    try {
+      const { execSync } = require('node:child_process');
+      const logPath = path.join(root, rel, 'GIT-LOG.txt');
+      const log = execSync("git log --all --format='%h %s%n%b' --merges", { cwd: path.join(root, rel), encoding: 'utf8' });
+      fs.writeFileSync(logPath, log);
+      out.push(path.join(rel, 'GIT-LOG.txt').replace(/\\/g, '/'));
+    } catch {}
+  }
+  
   return { files: out, excluded: excluded.count, ephemeral: excluded.ephemeral };
 }
 
