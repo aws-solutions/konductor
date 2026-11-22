@@ -62,3 +62,7 @@ answers: vanilla r1 72.4, r3 56.2 (close to their run scores). Non-Claude rechec
 no-method-or-decoy: the request names exact files (`src/ring-rollout.js`, `src/go-no-go.js`,
 `scripts/receipt-go-no-go.js`), function signatures, exports, error codes and JSON block formats. That may be the
 interface the hidden tests load, which earlier reviews passed as an entry point, not a method.
+
+Independent review (claude-fable-5.1, `reports/review-probe-disposals-fable.md` in the mate workspace): the D19 fail
+is by design, because the request names the interface the hidden tests import. The D19 recheck is now in
+`review.recheck` at version 3, with that disposal in its note.
