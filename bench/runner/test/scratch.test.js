@@ -18,6 +18,17 @@ function child(parent, body) {
   return spawn(process.execPath, ['-e', `const { mkScratch } = require(${JSON.stringify(SCRATCH)}); ${body}`], { env: { PATH: process.env.PATH, TMPDIR: parent }, stdio: ['ignore', 'pipe', 'ignore'] });
 }
 
+test('a TMPDIR inside the real HOME puts scratch dirs in /tmp, since the bench refuses out dirs under HOME', () => {
+  const home = parentDir();
+  const tmpdir = path.join(home, 'session-scratch');
+  fs.mkdirSync(tmpdir);
+  const r = spawnSync(process.execPath, ['-e', `const { mkScratch } = require(${JSON.stringify(SCRATCH)}); process.stdout.write(mkScratch('h-'));`], { env: { PATH: process.env.PATH, HOME: home, TMPDIR: tmpdir }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(path.dirname(r.stdout), '/tmp');
+  assert.equal(fs.existsSync(r.stdout), false);
+  assert.deepEqual(fs.readdirSync(tmpdir), []);
+});
+
 test('a directory is removed when the process ends normally', () => {
   const parent = parentDir();
   const r = spawnSync(process.execPath, ['-e', `const { mkScratch } = require(${JSON.stringify(SCRATCH)}); require('fs').writeFileSync(mkScratch('a-') + '/f', 'x');`], { env: { PATH: process.env.PATH, TMPDIR: parent } });

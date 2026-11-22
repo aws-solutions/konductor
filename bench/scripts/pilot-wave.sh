@@ -194,10 +194,11 @@ RUN=(run --suite pilot --tasks "$TASKS" --arms vanilla --replicates 1 --parallel
 
 if [ "$PREP" = 1 ]; then
   PO=$(mktemp -d /tmp/pilot-prep.XXXXXX)
+  # set -e ends the script when prepare-only fails, so the trap removes the dir on that path too.
+  trap 'rm -rf -- "$PO"' EXIT
   say "prepare-only (no agent started), out $PO:"
   nice -n 10 "${BJ[@]}" "${RUN[@]}" --out "$PO" --prepare-only
   [ "${#LOCK[@]}" = 0 ] || say "(the paid run holds ${LOCK[*]})"
-  rm -r -- "$PO"
   say "prepare-only passed. Paid run: bash $R/bench/scripts/pilot-wave.sh$ARGS_NO_PREP"
   exit 0
 fi

@@ -28,8 +28,11 @@ function hook() {
   }
 }
 
-/** Like fs.mkdtempSync(path.join(parent, prefix)), plus removal at process exit. parent defaults to os.tmpdir(). */
-function mkScratch(prefix, parent = os.tmpdir()) {
+/**
+ * Like fs.mkdtempSync(path.join(parent, prefix)), plus removal at process exit. parent defaults to os.tmpdir(), or
+ * /tmp when TMPDIR is inside the real HOME (a session scratch dir): the bench refuses out dirs under HOME.
+ */
+function mkScratch(prefix, parent = require('../lib/isolate.js').tmpOutsideHome()) {
   hook();
   const dir = fs.mkdtempSync(path.join(parent, prefix));
   made.add(dir);

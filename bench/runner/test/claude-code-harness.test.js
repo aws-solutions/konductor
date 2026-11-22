@@ -41,10 +41,11 @@ const CRED_NAMES = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_T
 
 // Credentials come from the caller's environment; the tests set fake ones and put the environment back.
 function withEnv(vars, fn) {
-  const saved = Object.fromEntries(CRED_NAMES.map((k) => [k, process.env[k]]));
+  const names = [...new Set([...CRED_NAMES, ...Object.keys(vars)])];
+  const saved = Object.fromEntries(names.map((k) => [k, process.env[k]]));
   for (const k of CRED_NAMES) delete process.env[k];
   Object.assign(process.env, vars);
-  const restore = () => { for (const k of CRED_NAMES) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } };
+  const restore = () => { for (const k of names) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } };
   let out;
   try { out = fn(); } catch (e) { restore(); throw e; }
   if (out && typeof out.then === 'function') return out.finally(restore);
@@ -185,7 +186,8 @@ test('run refuses a --claude-tools-dir that now resolves a newer claude than the
     fs.appendFileSync(path.join(tools, '1.0.1', 'claude'), 'x');
     const out = path.join(root, 'out');
     write(path.join(out, 'run-config.json'), JSON.stringify({ startedAt: '2030-01-01T00:00:00Z', claudeCode: { version: '1.0.0', binarySha256: oldSha } }));
-    await withEnv(CREDS, () => assert.rejects(
+    // TMPDIR: root, since cmdRun refuses a Claude Code scratch dir under HOME, as when the suite runs from a session scratch dir.
+    await withEnv({ ...CREDS, TMPDIR: root }, () => assert.rejects(
       cmdRun({ suite: 'lite', arms: 'cc-vanilla', 'bench-dir': bench, 'repo-root': root, out, cache: path.join(root, 'cache'), 'claude-tools-dir': tools, isolate: 'none', 'allow-unisolated': true }),
       (e) => { assert.match(e.message, /One study must use one claude binary/); assert.ok(e.message.includes(`--claude-bin ${oldBin}`), e.message); return true; },
     ));

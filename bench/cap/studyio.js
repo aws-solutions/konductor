@@ -15,6 +15,7 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { scanRunDirs } = require('./usage.js');
 const { resolveBase } = require('./source.js');
 const { buildVariant } = require('./variant.js');
+const { tmpOutsideHome } = require('../runner/lib/isolate.js');
 const { parseSkill } = require('./sections.js');
 const { applyCuts } = require('./ablate.js');
 
@@ -133,7 +134,8 @@ const filesOf = (patch) => [...new Set([...patch.matchAll(/^diff --git a\/(.*) b
 function buildSkillPatch({ repo, base, decision }) {
   if (!['DELETE', 'PRUNE'].includes(decision.decision)) return null;
   const b = resolveBase(base, repo);
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'skillpatch-'));
+  // buildVariant refuses a scratch dir under HOME, so a session TMPDIR there falls back to /tmp.
+  const work = fs.mkdtempSync(path.join(tmpOutsideHome(), 'skillpatch-'));
   try {
     if (decision.decision === 'DELETE') {
       const v = buildVariant({ repo, base, drop: [decision.skill], scratch: path.join(work, 'v') });
