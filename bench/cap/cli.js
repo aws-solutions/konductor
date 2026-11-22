@@ -47,6 +47,7 @@ const { writeControls, controlPlan, evaluateControls } = require('./controls.js'
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria } = require('./skillcli.js');
 const { cmdKeepPrune } = require('./kprun.js');
 const { cmdUnits, cmdUnitStage } = require('./unitstage.js');
+const { cmdDelegation } = require('./delegation.js');
 const { cmdSelect } = require('./selectrun.js');
 const { cmdNudgePreview, cmdNudgeCheck } = require('./nudgecli.js');
 const { writeReview, importRatings } = require('./review.js');
@@ -54,7 +55,7 @@ const { DEFAULTS } = require('../judge/config.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { formatCalibration, formatRaterKappas } = require('../judge/calibrate.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'nudge-preview', 'nudge-check'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'delegation', 'nudge-preview', 'nudge-check'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -735,6 +736,7 @@ function cmdCap(opts) {
     if (sub === 'keep-prune') return cmdKeepPrune(opts);
     if (sub === 'units') return cmdUnits(opts);
     if (sub === 'unit-stage') return cmdUnitStage(opts);
+    if (sub === 'delegation') return cmdDelegation(opts);
     if (sub === 'select') return cmdSelect(opts);
     if (sub === 'nudge-preview') return cmdNudgePreview(opts);
     if (sub === 'nudge-check') return cmdNudgeCheck(opts);

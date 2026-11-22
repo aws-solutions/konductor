@@ -1,0 +1,88 @@
+{
+  "$comment": "One keep-or-prune stage record of an agent file (stage 2), a SOP (stage 3) or an always-loaded context file (stage 4), written by bench.js cap unit-stage (bench/cap/unitstage.js). The quick and deep blocks are checked against the quick and deep blocks of keep-prune-record.schema.json (bench/cap/unitrecord.js), and delegation against cap/delegation.js. See bench/docs/keep-prune-stages.md.",
+  "type": "object",
+  "required": ["schema", "createdAt", "stage", "kind", "name", "claim", "unit", "ablation", "selection", "listedBy", "panel", "baseline", "delegation", "noData", "quick", "deep", "agree", "stale", "signoff"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "string", "pattern": "^keep-prune-unit-stage/[0-9]+$" },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "stage": { "enum": [2, 3, 4] },
+    "kind": { "enum": ["agent", "sop", "context"] },
+    "name": { "type": "string", "minLength": 1 },
+    "claim": { "type": "string", "minLength": 1 },
+    "unit": {
+      "type": "object",
+      "required": ["files", "sha256", "estTokens"],
+      "additionalProperties": false,
+      "properties": {
+        "files": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "estTokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ablation": {
+      "type": ["object", "null"],
+      "required": ["command", "how"],
+      "additionalProperties": false,
+      "properties": {
+        "command": { "type": "string", "pattern": "^cap variant --drop (agent|sop|context):" },
+        "how": { "enum": ["stub", "remove file and lists"] }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "required": ["test", "note", "built"],
+      "additionalProperties": false,
+      "properties": {
+        "test": { "enum": ["delegation", "none: user-invoked", "none: always loaded"] },
+        "note": { "type": "string", "minLength": 1 },
+        "built": { "type": "boolean" }
+      }
+    },
+    "listedBy": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "panel": {
+      "type": "object",
+      "required": ["families", "seated", "why"],
+      "additionalProperties": false,
+      "properties": {
+        "families": { "type": "integer", "minimum": 1 },
+        "seated": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "why": { "type": ["string", "null"] }
+      }
+    },
+    "baseline": {
+      "type": ["object", "null"],
+      "required": ["unitSha256", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "unitSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "source": { "type": ["object", "null"] }
+      }
+    },
+    "delegation": { "type": ["object", "null"] },
+    "noData": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "quick": { "type": ["object", "null"] },
+    "deep": { "type": ["object", "null"] },
+    "agree": { "type": ["boolean", "null"] },
+    "stale": {
+      "type": "object",
+      "required": ["value", "why"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "boolean" },
+        "why": { "type": ["string", "null"] }
+      }
+    },
+    "signoff": {
+      "type": "object",
+      "required": ["by", "date", "decision", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "by": { "type": ["string", "null"] },
+        "date": { "type": ["string", "null"] },
+        "decision": { "enum": [null, "keep", "prune", "fix", "reject"] },
+        "note": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
