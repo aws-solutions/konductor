@@ -1,0 +1,12 @@
+{
+  "period": "monthly",
+  "transactional_email_budget_usd": 5000,
+  "provider_unit_price_usd": 0.002,
+  "expected_invites_now": 420000,
+  "expected_invites_three_months": 610000,
+  "budget_calculation_assumes_messages_per_invite": 3,
+  "calculated_monthly_cost_now_usd": 2520,
+  "calculated_monthly_cost_three_months_usd": 3660,
+  "workspace_email_cap_usd": 5000,
+  "cost_review_owner": "finance-ops"
+}

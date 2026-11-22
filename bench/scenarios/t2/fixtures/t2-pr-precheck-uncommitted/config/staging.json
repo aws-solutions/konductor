@@ -1,0 +1,8 @@
+{
+  "port": 8080,
+  "cacheTtlMs": 15000,
+  "carrier": {
+    "url": "https://sandbox.carrier.test/v1/rates",
+    "accountNumber": "test_account_123"
+  }
+}

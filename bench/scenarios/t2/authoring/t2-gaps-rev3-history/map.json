@@ -1,0 +1,21 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review",
+    "historical-issues-registry"
+  ],
+  "targetSop": "k-adversarial-pull-request-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "code-review",
+      "historical-issues-registry"
+    ],
+    "mustNotLoad": [
+      "adversarial-design-review",
+      "backend-review"
+    ]
+  },
+  "twinIdea": "Design a new feature for the loyalty-points service that adds a gamification layer with badges and streak tracking.",
+  "why": "code-review is the core skill for reviewing diffs and PRs; historical-issues-registry is essential here because the task explicitly requires filtering findings against earlier review threads marked fixed/rejected/wontfixed. The k-adversarial-pull-request-review SOP orchestrates multi-pass PR review cycles with revision tracking."
+}

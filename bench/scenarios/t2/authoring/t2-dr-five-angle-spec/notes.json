@@ -1,0 +1,3 @@
+{
+  "notes": "This is a review of one spec from several separate angles: security, performance, operations, cost, accessibility, and data, where each angle needs its own pass. A quick read can accept the confident rollout language and miss the six separate gaps. The security, performance, operations, cost, accessibility, and data findings each depend on comparing a design subsection with its matching context file. The packet also contains ordinary design choices that are not findings, so a strong review should stay tied to stated facts."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "t2-gaps-rev3-history",
+  "phase": "code-review",
+  "kind": "gaps",
+  "size": "20 to 35",
+  "stack": "node",
+  "pr": 1630,
+  "role": "reviewer",
+  "wave": 5,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js loyalty-points service (earn and redeem endpoints, a balance store, a nightly expiry job, tests, docs). This is revision 3 of a PR. `pr/1630/review.md` holds the earlier review threads from revisions 1 and 2, each with its resolution written by the PR author or the reviewer: fixed, rejected with a reason, or won't fix, and one still open. The user asks for a review of the current revision that does not repeat what was already settled. Plant only new problems that came in with revision 3 (the key holds only these): a redeem path that reads the balance and writes it back without a guard, so two redeems at once overspend; the expiry job now uses the server local date so points expire a day early for customers east of the server; a points rounding change that loses fractional points on every earn; a new admin route that skips the role check the other admin routes use; a retry added around a non-idempotent earn call so a timeout can double-credit. The still-open thread from revision 2 must still be a real problem in revision 3 and is in the key too. At least one thread marked fixed or rejected must still look suspicious in the code, so a reviewer who ignores the history raises it again. Add one decoy. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: reviewing a later revision of a pull request against the earlier review threads, so findings already fixed, rejected or won't-fixed are not raised again and still-open ones are carried over.",
+  "targetUnit": "skill:historical-issues-registry"
+}

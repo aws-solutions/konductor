@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not hint at specific problems, review method, or number of issues."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR 611 changes, find issues against code/docs/tests, write to REVIEW.md with JSON findings."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Shallow review would find 2-3 obvious issues (rates comparison, error handling, logging), not all 6; k4, k5, k6 require deeper cross-file analysis."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items findable from fixture: k1 (doc vs code), k2 (catch returns zero), k3 (logs payload), k4 (config overwrites URL), k5 (cache key missing country), k6 (test checks mock)."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No planted hints in comments, tests, or file names; documentation states contract but does not point to specific bug."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

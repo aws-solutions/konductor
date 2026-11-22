@@ -1,0 +1,9 @@
+{
+  "name": "parcel-rate-service",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Small HTTP service for domestic and cross-border parcel quotes",
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "start": "node src/server.js" }
+}

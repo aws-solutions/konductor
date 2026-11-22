@@ -1,0 +1,7 @@
+measure,now,three_months,unit,notes
+active_workspaces,18000,24000,count,monthly snapshot
+pending_invites_p50,22,35,rows per workspace,workspace median
+pending_invites_p95,140,260,rows per workspace,workspace 95th percentile
+invite_creations,420000,610000,per month,successful creates
+invite_list_reads,3100000,4800000,per month,web and admin clients
+archive_exports,18000,24000,per month,one per active workspace

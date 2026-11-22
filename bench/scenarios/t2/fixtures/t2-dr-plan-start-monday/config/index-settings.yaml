@@ -1,0 +1,16 @@
+cluster: product-search
+current_index: catalog-search-2024-11
+next_reserved_index: catalog-search-2025-03
+shards:
+  primaries: 6
+  replicas: 2
+refresh_interval: 1s
+max_result_window: 10000
+analysis:
+  tokenizer: standard
+  language: en
+  synonyms_source: catalog-dictionary
+limits:
+  bulk_batch_documents: 1000
+  bulk_requests_per_second: 40
+  max_rejected_batches: 0

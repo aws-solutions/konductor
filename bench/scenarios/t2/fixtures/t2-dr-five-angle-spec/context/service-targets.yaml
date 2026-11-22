@@ -1,0 +1,16 @@
+service: workspace-api
+version: 2025-02
+request_targets:
+  invite_create_p95_ms: 250
+  invite_list_p95_ms: 300
+  export_start_p95_ms: 1000
+availability:
+  api_monthly: 0.999
+  email_submission_monthly: 0.995
+worker:
+  poll_interval_seconds: 15
+  normal_retry_limit: 8
+  provider_timeout_seconds: 10
+retention:
+  pending_invite_days: 30
+  event_audit_days: 400

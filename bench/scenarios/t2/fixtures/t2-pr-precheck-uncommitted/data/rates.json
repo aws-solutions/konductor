@@ -1,0 +1,13 @@
+{
+  "currency": "USD",
+  "bands": [
+    { "maxKg": 1, "amount": 7.5 },
+    { "maxKg": 5, "amount": 11.25 },
+    { "maxKg": 10, "amount": 18.5 },
+    { "maxKg": 20, "amount": 29.75 }
+  ],
+  "surcharges": {
+    "remote": 4.5,
+    "crossBorder": 8
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "port": 8080,
+  "cacheTtlMs": 15000,
+  "carrier": {
+    "url": "https://api.carrier.example/v1/rates",
+    "accountNumber": "prod_account_456"
+  }
+}

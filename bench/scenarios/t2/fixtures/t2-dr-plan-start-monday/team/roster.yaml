@@ -1,0 +1,18 @@
+week_of: 2025-03-03
+people:
+  - name: Maya Chen
+    role: search foundations lead
+    availability: available
+  - name: Priya Nair
+    role: catalog relevance engineer
+    availability: leave
+    leave_dates: 2025-03-03 through 2025-03-07
+  - name: Luis Romero
+    role: release manager
+    availability: available
+  - name: Hannah Brooks
+    role: Search Gateway on-call
+    availability: available
+  - name: Omar Haddad
+    role: catalog data engineer
+    availability: available

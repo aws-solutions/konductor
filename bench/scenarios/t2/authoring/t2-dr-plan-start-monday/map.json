@@ -1,0 +1,18 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "plan-review"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "plan-review"
+    ],
+    "mustNotLoad": [
+      "verification"
+    ]
+  },
+  "twinIdea": "A request to run the search reindex plan and verify its outcome by checking index health metrics afterward.",
+  "why": "plan-review directly covers evaluating work plans for clarity, verifiability, and completeness with a verdict—the exact task. verification looks related but is for code test verification, not plan review."
+}

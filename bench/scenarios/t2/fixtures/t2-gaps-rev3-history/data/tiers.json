@@ -1,0 +1,5 @@
+[
+  { "name": "standard", "multiplier": 1 },
+  { "name": "plus", "multiplier": 1.25 },
+  { "name": "premier", "multiplier": 1.5 }
+]

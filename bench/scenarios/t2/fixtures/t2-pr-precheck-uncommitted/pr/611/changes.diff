@@ -1,0 +1,282 @@
+diff --git a/docs/rate-table.md b/docs/rate-table.md
+index 5292cd2..ab35ff4 100644
+--- a/docs/rate-table.md
++++ b/docs/rate-table.md
+@@ -10,3 +10,23 @@ The service uses the first weight band whose maximum is at least the parcel weig
+ | 20 kg | $29.75 |
+ 
+ The `remote` surcharge applies when the destination postal code is in the remote list maintained by the operations team. The cross-border surcharge applies when origin and destination countries differ.
++
++## Examples
++
++The lookup keeps decimal weights as supplied by the caller. A parcel weighing 0.5 kg is in the first band, and a parcel weighing 1 kg is also in the first band.
++
++A parcel weighing 1.01 kg is in the second band. A parcel weighing 5 kg is in the second band, while a parcel weighing 5.01 kg is in the third band.
++
++Prices are stored in `data/rates.json` and are expressed in US dollars. The carrier adapter may return another currency, but the local table is always reported as USD.
++
++## Maintenance notes
++
++The table is ordered from the smallest maximum to the largest maximum. New bands should preserve that order so the first matching row remains deterministic.
++
++Amounts are numeric values in the data file. Formatting to two decimal places belongs at the presentation boundary and does not change the lookup amount.
++
++The table is read when the rate module is loaded. A process restart is required after changing the data file in a running service.
++
++The quote service also retains the source field, which lets operators distinguish a local table result from a carrier result in a support trace.
++
++A rate table change should include a fixture for a light parcel, a middle band, and the largest supported weight.
+diff --git a/src/carrier.js b/src/carrier.js
+index 099db05..97a7c7f 100644
+--- a/src/carrier.js
++++ b/src/carrier.js
+@@ -4,24 +4,43 @@ function makeAbortSignal(timeoutMs) {
+   return AbortSignal.timeout(timeoutMs);
+ }
+ 
+-async function requestRate(shipment, config, transport = fetch, logger = console) {
+-  const response = await transport(config.carrier.url, {
++function requestBody(shipment, accountNumber) {
++  return {
++    accountNumber,
++    origin: shipment.origin,
++    destination: shipment.destination,
++    weightKg: shipment.weightKg
++  };
++}
++
++function carrierHeaders(apiKey) {
++  return {
++    'content-type': 'application/json',
++    'x-api-key': apiKey
++  };
++}
++
++function carrierOptions(shipment, config) {
++  return {
+     method: 'POST',
+-    headers: {
+-      'content-type': 'application/json',
+-      'x-api-key': config.carrier.apiKey
+-    },
+-    body: JSON.stringify({
+-      accountNumber: config.carrier.accountNumber,
+-      origin: shipment.origin,
+-      destination: shipment.destination,
+-      weightKg: shipment.weightKg
+-    }),
++    headers: carrierHeaders(config.carrier.apiKey),
++    body: JSON.stringify(requestBody(shipment, config.carrier.accountNumber)),
+     signal: makeAbortSignal(config.carrier.timeoutMs)
+-  });
+-  if (!response.ok) throw new Error(`carrier returned ${response.status}`);
++  };
++}
++
++function responseError(response) {
++  return new Error(`carrier returned ${response.status}`);
++}
++
++async function requestRate(shipment, config, transport = fetch, logger = console) {
++  const startedAt = Date.now();
++  const response = await transport(config.carrier.url, carrierOptions(shipment, config));
++  if (!response.ok) throw responseError(response);
+   const payload = await response.json();
++  logger.info('carrier response', payload);
++  logger.info('carrier request complete', { elapsedMs: Date.now() - startedAt });
+   return { amount: Number(payload.amount), currency: payload.currency || 'USD', source: 'carrier' };
+ }
+ 
+-module.exports = { requestRate };
++module.exports = { requestRate, requestBody, carrierHeaders, carrierOptions, responseError };
+diff --git a/src/config.js b/src/config.js
+index e8d2042..beb46a6 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -8,11 +8,33 @@ function readJson(name) {
+   return JSON.parse(fs.readFileSync(file, 'utf8'));
+ }
+ 
++function carrierSettings(defaults, selected) {
++  const merged = { ...defaults.carrier, ...(selected.carrier || {}) };
++  return {
++    ...merged,
++    url: process.env.CARRIER_URL || 'https://sandbox.carrier.test/v1/rates'
++  };
++}
++
++function normaliseEnvironment(environment) {
++  if (!environment || typeof environment !== 'string') return 'development';
++  return environment.trim().toLowerCase();
++}
++
++function publicConfig(config) {
++  return {
++    port: config.port,
++    cacheTtlMs: config.cacheTtlMs,
++    carrierUrl: config.carrier.url,
++    timeoutMs: config.carrier.timeoutMs
++  };
++}
++
+ function loadConfig(environment = process.env.NODE_ENV || 'development') {
+   const defaults = readJson('defaults');
+-  const selected = readJson(environment);
+-  const carrier = { ...defaults.carrier, ...(selected.carrier || {}) };
++  const selected = readJson(normaliseEnvironment(environment));
++  const carrier = carrierSettings(defaults, selected);
+   return { ...defaults, ...selected, carrier };
+ }
+ 
+-module.exports = { loadConfig };
++module.exports = { loadConfig, carrierSettings, normaliseEnvironment, publicConfig };
+diff --git a/src/quote.js b/src/quote.js
+index a32d435..f0cd3e6 100644
+--- a/src/quote.js
++++ b/src/quote.js
+@@ -14,6 +14,28 @@ function cacheKey(shipment) {
+   ].join(':');
+ }
+ 
++function quoteResult(rate, cached = false) {
++  return { total: rate.amount, currency: rate.currency, source: rate.source, cached };
++}
++
++function unavailableQuote(currency = 'USD') {
++  return { total: 0, currency, source: 'carrier-unavailable', cached: false };
++}
++
++function isRateUsable(rate) {
++  return rate && Number.isFinite(rate.amount) && rate.amount >= 0 && typeof rate.currency === 'string';
++}
++
++function quoteCurrency(config) {
++  return config.currency || 'USD';
++}
++
++function cacheResult(cache, key, rate) {
++  const result = quoteResult(rate);
++  cache.set(key, result);
++  return result;
++}
++
+ function createQuoteService({ config, cache = new QuoteCache(config.cacheTtlMs), carrier = requestRate, logger = console, metrics = null }) {
+   async function quote(shipment) {
+     validateShipment(shipment);
+@@ -23,18 +45,22 @@ function createQuoteService({ config, cache = new QuoteCache(config.cacheTtlMs),
+ 
+     try {
+       const rate = await carrier(shipment, config);
+-      const result = { total: rate.amount, currency: rate.currency, source: rate.source, cached: false };
+-      cache.set(key, result);
++      if (!isRateUsable(rate)) throw new Error('carrier returned an invalid rate');
++      const result = cacheResult(cache, key, rate);
+       metrics?.increment('carrier.success');
+       return result;
+     } catch (error) {
+       metrics?.increment('carrier.failure');
+       logger.warn('carrier quote failed', { message: error.message });
+-      throw error;
++      return unavailableQuote(quoteCurrency(config));
+     }
+   }
+ 
+-  return { quote, cache, localRate: (shipment) => localRate(shipment.weightKg, shipment.origin, shipment.destination) };
++  return {
++    quote,
++    cache,
++    localRate: (shipment) => localRate(shipment.weightKg, shipment.origin, shipment.destination)
++  };
+ }
+ 
+-module.exports = { createQuoteService, cacheKey };
++module.exports = { createQuoteService, cacheKey, quoteResult, unavailableQuote, isRateUsable, quoteCurrency, cacheResult };
+diff --git a/src/rates.js b/src/rates.js
+index 908fb38..63f0132 100644
+--- a/src/rates.js
++++ b/src/rates.js
+@@ -4,7 +4,7 @@ const table = require('../data/rates.json');
+ 
+ function findBand(weightKg, bands = table.bands) {
+   if (!Number.isFinite(weightKg) || weightKg <= 0) throw new RangeError('weight must be positive');
+-  const band = bands.find(({ maxKg }) => weightKg <= maxKg);
++  const band = bands.find(({ maxKg }) => weightKg < maxKg);
+   if (!band) throw new RangeError('weight exceeds rate table');
+   return band;
+ }
+@@ -19,4 +19,20 @@ function localRate(weightKg, origin, destination, bands = table.bands) {
+   };
+ }
+ 
+-module.exports = { findBand, localRate };
++function rateTableSummary(bands = table.bands) {
++  return bands.map(({ maxKg, amount }) => ({ maxKg, amount }));
++}
++
++function bandLabel(band) {
++  return `${band.maxKg} kg / ${band.amount.toFixed(2)}`;
++}
++
++function tableLabels(bands = table.bands) {
++  return bands.map(bandLabel);
++}
++
++function currencyCode() {
++  return table.currency;
++}
++
++module.exports = { findBand, localRate, rateTableSummary, bandLabel, tableLabels, currencyCode };
+diff --git a/tests/quote.test.js b/tests/quote.test.js
+index 5534a20..a98fba6 100644
+--- a/tests/quote.test.js
++++ b/tests/quote.test.js
+@@ -29,6 +29,49 @@ test('uses the cached quote on the second request', async () => {
+   assert.equal(second.cached, true);
+ });
+ 
++test('keeps a quote for a second destination country', async () => {
++  const responses = [
++    { amount: 12, currency: 'USD', source: 'carrier' },
++    { amount: 21, currency: 'USD', source: 'carrier' }
++  ];
++  const service = createQuoteService({ config, carrier: async () => responses.shift() });
++  const first = await service.quote(shipment);
++  const second = await service.quote({ ...shipment, destination: { country: 'CA', postalCode: '10001' } });
++  assert.equal(responses[0].amount, 21);
++});
++
++test('returns a neutral quote when the carrier is unavailable', async () => {
++  const service = createQuoteService({ config, carrier: async () => { throw new Error('offline'); } });
++  const result = await service.quote(shipment);
++  assert.equal(result.source, 'carrier-unavailable');
++});
++
++test('records the configured carrier amount', async () => {
++  const carrierResponse = { amount: 12, currency: 'USD', source: 'carrier' };
++  const service = createQuoteService({ config, carrier: async () => carrierResponse });
++  await service.quote(shipment);
++  assert.equal(carrierResponse.amount, 12);
++});
++
++
++test('uses the local rate shape for supported input', async () => {
++  const service = createQuoteService({ config, carrier: async () => ({ amount: 8, currency: 'USD', source: 'carrier' }) });
++  const result = await service.quote({ ...shipment, weightKg: 0.5 });
++  assert.equal(result.currency, 'USD');
++  assert.equal(result.cached, false);
++});
++
++test('keeps the response source visible to callers', async () => {
++  const service = createQuoteService({ config, carrier: async () => ({ amount: 15, currency: 'USD', source: 'partner' }) });
++  const result = await service.quote(shipment);
++  assert.equal(result.source, 'partner');
++});
++
++test('rejects a weight above the table maximum', async () => {
++  const service = createQuoteService({ config, carrier: async () => ({ amount: 1, currency: 'USD', source: 'carrier' }) });
++  await assert.rejects(() => service.quote({ ...shipment, weightKg: 21 }), /outside the supported range/);
++});
++
+ test('rejects an unsupported destination', async () => {
+   const service = createQuoteService({ config, carrier: async () => ({ amount: 9, currency: 'USD', source: 'carrier' }) });
+   await assert.rejects(() => service.quote({ ...shipment, destination: { country: 'ZZ', postalCode: '10001' } }), /not supported/);

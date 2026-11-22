@@ -1,0 +1,39 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks for a capacity and shard-sizing check that accounts for the promotion traffic, bulk-load pressure, document growth, and the cost of the seven-day overlap.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Asks how the team proves that updates, deletes, and late catalog events are represented consistently during and after the bulk load.",
+      "source": "https://github.com/adr/madr (MIT OR CC0-1.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Asks for alert thresholds, escalation ownership, and a time-bounded response when latency, empty results, facet mismatches, or freshness drift persists.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Asks whether sensitive catalog or merchant fields are copied into the new index with the same access controls, retention, and deletion behavior.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Asks how operators will distinguish configuration failure, stale data, and an empty-result regression from ordinary traffic variation in the dashboards.",
+      "source": "https://12factor.net (MIT)"
+    },
+    {
+      "id": "e6",
+      "text": "Asks what happens when the managed search service slows or rejects bulk requests, including which work is shed first and how the catalog export is resumed safely.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    }
+  ],
+  "weakAnswers": [
+    "The plan is well organized and has clear owners, so the team should proceed after a quick confirmation.",
+    "The migration should be tested for scalability, reliability, and monitoring before launch.",
+    "The team will build the new index, compare results, switch traffic, observe it, and retire the old index."
+  ]
+}

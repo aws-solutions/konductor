@@ -1,0 +1,22 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "design-quality-check",
+    "doc-accuracy-analyzer",
+    "design-doc-guidelines"
+  ],
+  "targetSop": "k-pre-cr-critique",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "design-quality-check",
+      "doc-accuracy-analyzer"
+    ],
+    "mustNotLoad": [
+      "adversarial-design-review",
+      "design-evaluation"
+    ]
+  },
+  "twinIdea": "Implement the notification-preferences feature from the approved design document.",
+  "why": "The request is a pre-review quality check on a design doc's writing, structure, and claim accuracy before wider circulation. design-quality-check and doc-accuracy-analyzer are essential for scoring writing quality and verifying claims against supporting artifacts; design-evaluation targets production-readiness gates instead."
+}

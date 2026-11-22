@@ -1,0 +1,38 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name review methods, hint at planted problems, or give problem count; asks for general design document review"
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Prompt clearly specifies document to review, supporting materials, focus areas, output location, and required format"
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "While k1, k2, k3 are fairly obvious when comparing with product brief, k5 (repetition) and k6 (vague principles) require careful reading and might be missed in a quick review"
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items reference real sections with evidence in supporting documents; competent reviewer could find each with document comparison"
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, TODOs, test names, or obvious hints point directly at planted problems; issues require reading and comparing documents"
+    }
+  ],
+  "keyProblems": [
+    "k3 severity 'high' might be borderline—some reviewers might consider vague capacity claims as medium rather than high",
+    "k3 fix words include 'planning horizon' which isn't explicitly in product brief (though product brief mentions '12 months')"
+  ],
+  "suggestedFixes": [
+    "Consider making k3 severity 'medium' instead of 'high' to better match typical review severity scales",
+    "For k3, use '12-month growth period' instead of 'planning horizon' to better match product brief wording"
+  ]
+}

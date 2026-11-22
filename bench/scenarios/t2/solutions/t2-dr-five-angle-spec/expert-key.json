@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Asks how the service sheds load when the email provider slows or throttles, including which messages are deferred first and how queue growth is bounded.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Checks whether the three independently delivered messages have separate idempotency and reconciliation behavior when one provider call succeeds and another fails.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Checks how the raw bearer token in a browser URL is protected from referrer, browser-history, analytics, and support-tool leakage.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Checks that the provider credential and public web origin come from deployment configuration with separate values and safe defaults for each environment.",
+      "source": "https://12factor.net (MIT)"
+    },
+    {
+      "id": "e5",
+      "text": "Asks how a feature-flag rollback and a migration rollback preserve compatibility for outbox events and export-version consumers during a partial deploy.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Asks how focus and an announcement move to the relevant control after asynchronous validation so a screen-reader user knows that the server response changed the form.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    }
+  ],
+  "weakAnswers": [
+    "The design is clear and ready to build, with sensible API boundaries and a gradual rollout.",
+    "Consider scalability, monitoring, and security as usage grows.",
+    "The document covers the API, worker, client, export, migration, and verification plan.",
+    "Add more tests and keep the documentation updated as implementation proceeds."
+  ]
+}

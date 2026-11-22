@@ -1,0 +1,12 @@
+{
+  "measurement_notes": {
+    "settings_reads": "Counts HTTP requests, including cache hits.",
+    "notification_reads": "Counts local preference lookups before delivery decisions.",
+    "peak_write_rate": "Highest one-minute average observed in the February window.",
+    "capacity_review_date": "2025-03-15"
+  },
+  "owners": {
+    "dashboard": "Notifications Platform",
+    "account_registry": "Account Settings"
+  }
+}

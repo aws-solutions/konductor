@@ -1,0 +1,36 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name review methods, hint at planted problems, or give problem count."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Prompt clearly states: read design with context files, check behavior against facts, call out concrete risks with consequences and fixes, write to REVIEW.md with JSON findings list."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Each finding requires comparing specific design sections with specific context files; a quick shallow review might accept confident rollout language and miss cross-references."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 6 key items are findable by comparing design sections with context files; grader matches by section number (±3 lines)."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, docs, or file names point at planted problems; context files contain standards but are presented as normal policy documents."
+    }
+  ],
+  "keyProblems": [
+    "K4 severity could be debated: design says 'figures fit within cap', making tripling volume arguably low rather than medium, but cost optimization at scale justifies medium."
+  ],
+  "suggestedFixes": [
+    "Consider clarifying K4 severity rationale in notes: 'Tripling provider volume unnecessarily is medium for cost optimization and scaling headroom, not just absolute budget exceedance.'"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "t2-dr-plan-start-monday",
+  "phase": "design-review",
+  "kind": "design",
+  "size": "8 to 14",
+  "doc": "docs/plans/search-reindex-plan.md",
+  "role": "reviewer",
+  "wave": 5,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "brief": "Phase: design review. Role of the person asking: reviewer. The document is a work plan, not a design: numbered steps with owners, inputs and done-checks, for moving product search to a new index. The request asks whether the team can start the plan on Monday and wants a clear go or no-go with the reasons. Context: the team roster with time off, the change rules (each step needs a check anyone can run, an owner, and a way back), the traffic calendar, the current index settings. Plant, each in its own step: one step says make sure results look good with no check; one step needs an input that no earlier step makes; two steps name different target index names; a step is owned by a person the roster shows is on leave that week; the step that switches traffic has no way back; the plan never says how the team will know the whole move is done. The right answer is no-go. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: judging a work plan before it starts: is each step clear, checkable, complete in its inputs, and does the whole plan add up, ending in a go or no-go verdict.",
+  "targetUnit": "skill:plan-review"
+}

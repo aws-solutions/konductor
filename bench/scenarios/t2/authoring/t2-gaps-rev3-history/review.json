@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "The prompt describes a normal code review task without hinting at specific problems or their count."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR 1630, read given files, write findings to REVIEW.md in specified JSON format."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Key items require cross-file reading and understanding of concurrency, timezone, configuration validation, idempotency, and authorization patterns that a quick shallow review would miss."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items are discoverable from the fixture code and config files; none require external knowledge or have wrong line numbers."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No obvious pointers in comments, tests, or file names; code appears normal with subtle issues."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}
