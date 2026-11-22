@@ -99,6 +99,15 @@ function realHomes(home = os.homedir()) {
   return realDirs([home, os.userInfo().homedir, `/home/${user}`]);
 }
 
+/**
+ * The real os.tmpdir(), or /tmp when TMPDIR is inside a real HOME (such as an agent session's scratch dir).
+ * For internal temp dirs that a home guard (cap variant scratch, Claude Code scratch) would refuse.
+ */
+function tmpOutsideHome() {
+  const tmp = realOrNull(os.tmpdir()) || path.resolve(os.tmpdir());
+  return realHomes().some((h) => inside(tmp, h)) ? '/tmp' : tmp;
+}
+
 const statOrNull = (p) => { try { return fs.statSync(p); } catch { return null; } };
 const realOrNull = (p) => { try { return fs.realpathSync(p); } catch { return null; } };
 const inside = (child, parent) => child === parent || child.startsWith(parent + path.sep);
@@ -443,6 +452,6 @@ function liveStdioDir(mode, runRoot) {
 }
 
 module.exports = {
-  liveStdioDir, makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
+  liveStdioDir, makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, tmpOutsideHome, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
   UNSHARE_FLAGS, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME, describeHide, ISOLATE_MODES, COMPARABLE_MODES, isComparableMode, resultComparable,
 };

@@ -185,6 +185,23 @@ test('a DELETE patch removes the skill directory and its name from every agent l
   } finally { e.done(); }
 });
 
+test('a DELETE patch builds when TMPDIR is inside HOME (a session scratch dir), and leaves nothing there', () => {
+  const e = patchEnv();
+  const saved = { HOME: process.env.HOME, TMPDIR: process.env.TMPDIR };
+  const home = path.join(e.root, 'home');
+  const tmpdir = path.join(home, 'scratch');
+  fs.mkdirSync(tmpdir, { recursive: true });
+  try {
+    Object.assign(process.env, { HOME: home, TMPDIR: tmpdir });
+    const p = buildSkillPatch({ repo: e.repo, base: 'v0', decision: { skill: 'skill:big', name: 'big', decision: 'DELETE', sections: [] } });
+    assert.match(p.patch, /^deleted file mode/m);
+    assert.deepEqual(fs.readdirSync(tmpdir), []);
+  } finally {
+    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    e.done();
+  }
+});
+
 test('no patch for KEEP or NEEDS DATA, and a changed skill file is refused rather than patched at the wrong lines', () => {
   const e = patchEnv();
   try {
