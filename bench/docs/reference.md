@@ -1294,8 +1294,9 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   with replacement inside each drawn task and arm; 10,000 draws, a fixed seed, 95%. The verdict word follows the owner's rule on the interval [L, U] with margin M = 5, first rule that holds wins: **beats by the margin** if L > M; **beats** if L > 0; **loses by the margin** if U < -M; **loses** if U < 0; **ties** only if -M < L and U < M; otherwise **unsettled**. An interval of 1 to 3 is therefore "beats", not "ties", and exactly -5 to 5 is "unsettled". Only HELD-OUT tasks give a
   verdict; DEV tasks are shown apart as "DEV, not a verdict". The per-phase and per-role tables use each task's own `phase` and `role` and Holm's step-down
   correction: rows are ordered by p-value, row i of m is tested at 0.05 / (m - i), its interval is taken at that level, and rows after the first failure keep
-  that level. A row with fewer than two tasks scored in both arms has no interval and is unsettled. The 3-arm pairs (against `konductor-noskills`) need a
-  report that reads three arms; `compare` and `compareRows` take any two score lists.
+  that level. A row with fewer than two tasks scored in both arms has no interval and is unsettled. The 3-arm pairs (against `konductor-noskills`) are in
+  `bench.js report` when a run holds vanilla, konductor (or `main`) and konductor-noskills: the three pairs, HELD-OUT Holm-corrected as one family,
+  DEV apart (`report/three-arm.js`); `compare` and `compareRows` take any two score lists.
 - `run --level lite|standard|full [--level-since FILE]` picks the suite's tasks by run level (plan 7a) instead of `--tasks`; the two together are refused.
   The list is a function of the task metadata and the SR-32 hashes (`bench/scenarios/levels.js`), so it is fixed for a pack version. **lite**: for each of the
   14 phases (not the long multi-phase row) the DEV real task with the lowest SR-32 hash among tasks with a soft limit of 900 s or less; a role then missing is

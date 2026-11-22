@@ -6,6 +6,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { buildThreeArm, threeArmBlocks, pairsFor, DEFAULT_ARMS } = require('../../report/three-arm.js');
 const { compare } = require('../../scenarios/bootstrap.js');
 const { toMarkdown } = require('../../report/doc.js');
@@ -66,4 +68,28 @@ test('fewer than 2 HELD-OUT tasks: every pair is unsettled with a note, and the 
   assert.match(md, /the three arm pairs/);
   assert.match(md, /konductor minus konductor-noskills/);
   assert.match(md, /fewer than 2 tasks/);
+});
+
+test('bench.js report shows the three-arm section when a run has vanilla, konductor and konductor-noskills, and not otherwise (D-54)', () => {
+  const { spawnSync } = require('node:child_process');
+  const { tmp, makeBench, makeRun } = require('./helpers.js');
+  const { threeArmsOf } = require('../../report/build.js');
+  assert.deepEqual(threeArmsOf(['vanilla', 'main', 'konductor-noskills']), { vanilla: 'vanilla', konductor: 'main', noskills: 'konductor-noskills' });
+  assert.equal(threeArmsOf(['vanilla', 'konductor']), null);
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const specs = (arms) => arms.flatMap((arm) => [1, 2].map((rep) => ({ arm, rep, credits: 1, wallClockMs: 1000, toolCalls: 3 })));
+    const BENCH_JS = path.join(__dirname, '..', 'bench.js');
+    const env = { ...process.env, BENCH_TEST_MODE: '1' };
+    const three = makeRun(path.join(root, 'three'), bench, specs(['vanilla', 'konductor', 'konductor-noskills']));
+    const r = spawnSync(process.execPath, [BENCH_JS, 'report', '--run', three, '--bench-dir', bench], { env, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const md = fs.readFileSync(path.join(three, 'report.md'), 'utf8');
+    assert.match(md, /## Pre-registered statistic: the three arm pairs/);
+    assert.match(md, /konductor minus konductor-noskills/);
+    const two = makeRun(path.join(root, 'two'), bench, specs(['vanilla', 'konductor']));
+    assert.equal(spawnSync(process.execPath, [BENCH_JS, 'report', '--run', two, '--bench-dir', bench], { env, encoding: 'utf8' }).status, 0);
+    assert.doesNotMatch(fs.readFileSync(path.join(two, 'report.md'), 'utf8'), /three arm pairs/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

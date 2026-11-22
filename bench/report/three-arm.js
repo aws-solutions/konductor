@@ -8,7 +8,7 @@
 //   konductor-noskills - vanilla    what the install does without its skills.
 // The three HELD-OUT pairs are one family, so their intervals use Holm's correction (compareRows); DEV tasks are shown
 // apart, uncorrected, and are never a verdict. Pure over report rows ({ arm, task, quality }); nothing is read or written.
-// shortcut: not yet wired into `report` or `report-2x2` (D-54 stays open for that); a caller passes the rows.
+// `bench.js report` shows it when a run holds all three arms (build.js threeArmsOf; the konductor arm may be "main").
 
 const { compare, compareRows } = require('../scenarios/bootstrap.js');
 const { splitOf } = require('../scenarios/split.js');

@@ -16,6 +16,7 @@ const { MIN_RECALL, fetchUnchecked, externalFetchCell } = require('../runner/lib
 const { gradedSummary, gradedTable } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { orchBlocks } = require('./orch.js');
+const { buildThreeArm, threeArmBlocks, DEFAULT_ARMS } = require('./three-arm.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : 'n/a');
@@ -135,6 +136,15 @@ function commandsFor(run, report, detail) {
 }
 
 /**
+ * The arm ids of the pre-registered three-arm statistic when the run has all three (vanilla, the konductor arm as
+ * "konductor" or "main", konductor-noskills), else null (DEBT D-54).
+ */
+function threeArmsOf(arms) {
+  const konductor = arms.includes(DEFAULT_ARMS.konductor) ? DEFAULT_ARMS.konductor : arms.includes('main') ? 'main' : null;
+  return konductor && arms.includes(DEFAULT_ARMS.vanilla) && arms.includes(DEFAULT_ARMS.noskills) ? { ...DEFAULT_ARMS, konductor } : null;
+}
+
+/**
  * args: run, tasks, report, rows, scores, card, facts, ctx, weights, detail ('quick'|'full').
  * Returns { blocks, charts: Map(name -> svg), title }.
  */
@@ -180,6 +190,8 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
 
   blocks.push(D.h(2, 'Scores'));
   blocks.push(headlineTable(scores, arms, unit));
+  const three = threeArmsOf(arms);
+  if (three) blocks.push(...threeArmBlocks(buildThreeArm({ rows: rows.map((x) => ({ arm: x.arm, task: x.task, quality: rq(x) })), taskIds: taskOrder, arms: three })));
   blocks.push(D.note('Quality is the weighted mean of the components a run has (hidden tests, checks, rubric), renormalised; reliability is 100 minus the share of timed-out, errored, infra-error and model-mismatch runs; the cost ratio is the arm over the base. Below 3 runs a score is anecdotal. Formulas: `bench/docs/reference.md`.'));
   if (report.rubricPolicy) blocks.push(D.note('Rubric policy: a run kept out of judging for an integrity reason (a credential scrub failure caused by a planted link or a permission change, stdioTampered, usageDbTampered) scores 0 on the rubric component of quality, so it counts as a failure there. Runs left out for infrastructure reasons, or for a scrub failure with a benign or unknown cause, stay gaps. The tables below show the judged-runs-only rubric beside the main number.'));
 
@@ -317,4 +329,4 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   return { blocks, charts, title: 'Benchmark report (full)' };
 }
 
-module.exports = { buildRunDocument, scorecardBlocks, topFlags, forestRows, tone, agreementMatrix, skillLoads, headlineTable, noiseBands, MIN_REL };
+module.exports = { threeArmsOf, buildRunDocument, scorecardBlocks, topFlags, forestRows, tone, agreementMatrix, skillLoads, headlineTable, noiseBands, MIN_REL };
