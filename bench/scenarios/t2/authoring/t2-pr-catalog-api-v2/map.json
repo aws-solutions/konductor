@@ -1,0 +1,20 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review-pass-schema"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-code-review-pass-schema"
+    ],
+    "mustNotLoad": [
+      "backend-review",
+      "adversarial-code-review"
+    ]
+  },
+  "twinIdea": "Implement a new product search endpoint with filtering by category and price range.",
+  "why": "The task is explicitly a contract-only review focusing on API/schema changes, backward compatibility, and validation completeness — adversarial-code-review-pass-schema covers exactly these concerns. code-review is the base skill for PR review. backend-review is too broad (task is contract-only), and adversarial-code-review is the coordinator that would spawn multiple passes when only schema/contract is needed."
+}

@@ -1,0 +1,183 @@
+{
+  "id": "t2-pr-catalog-api-v2",
+  "version": 1,
+  "class": "review",
+  "phase": "code-review",
+  "phases2": [],
+  "role": "reviewer",
+  "prompt": "Please review PR 4410, \"Clean up the product payload\", as if you own the catalog API. The change is in the checked-out project, with the author’s summary in pr/4410/description.md and the exact patch in pr/4410/changes.diff. The API has released mobile clients and a downstream indexing worker, so a payload change that looks tidy in isolation can still cause rejected requests, blank screens, or unusable records after release. Check the implementation and the surrounding project facts, including the schemas and published contract files, and report only concrete issues supported by this repository. Write the review to REVIEW.md at the top of the project. End it with a fenced json list of findings, each with location (path/to/file.ext:LINE, using line numbers from the project as it is checked out), severity (critical, high, medium, low or nit), issue and fix.",
+  "questions": "allowed",
+  "fixture": "t2-pr-catalog-api-v2",
+  "hidden": "t2-pr-catalog-api-v2",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/findings.test.cjs",
+      "min": 21,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "REVIEW.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);const S=[\"critical\",\"high\",\"medium\",\"low\",\"nit\"];process.exit(L.every(x=>x.location&&S.includes(String(x.severity).toLowerCase())&&(x.issue||x.fix||x.text))?0:1)'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"REVIEW.md\",\"utf8\");let L=null;for(const m of t.matchAll(/^\\x60\\x60\\x60([a-z]*)[ \\t]*\\n([\\s\\S]*?)^\\x60\\x60\\x60[ \\t]*$/gim)){if(m[1]&&m[1].toLowerCase()!==\"json\")continue;let d;try{d=JSON.parse(m[2])}catch{continue}const l=Array.isArray(d)?d:Array.isArray(d&&d.findings)?d.findings:null;if(l&&l.every(x=>x&&typeof x===\"object\"&&!Array.isArray(x))){L=l;break}}if(!L||!L.length)process.exit(1);let n=0;for(const x of L)for(const m of String(x.location).matchAll(/([A-Za-z0-9_.\\/-]+\\.[A-Za-z0-9]+):(\\d+)/g)){n++;let c;try{c=fs.readFileSync(m[1],\"utf8\").split(\"\\n\").length}catch{process.exit(1)}if(+m[2]<1||+m[2]>c)process.exit(1)}process.exit(n?0:1)'",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "actionable-contract-findings",
+      "criterion": "Fail: The review misses the important caller impact or invents problems that the repository does not support. Partial: The review identifies some real contract risks but gives vague consequences or fixes that a developer cannot apply. Pass: Each important finding explains the concrete consequence for this project and gives a specific fix without invented problems. (code cannot check this because it cannot judge the accuracy and usefulness of the reviewer’s explanation.)",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "findingsKey": [
+    {
+      "id": "k1",
+      "finding": "The response mapper replaces displayName with label without retaining the field used by the still-supported mobile clients, so older apps will render an empty product title.",
+      "weight": 1
+    },
+    {
+      "id": "k2",
+      "finding": "Adding subtitle to required makes previously valid create requests fail even though the service and client notes treat the field as optional.",
+      "weight": 1
+    },
+    {
+      "id": "k3",
+      "finding": "Removing archived from the accepted status values makes reads of existing archived rows throw before the API can return them.",
+      "weight": 1
+    },
+    {
+      "id": "k4",
+      "finding": "The product.changed event now emits priceCents as a formatted string while the search indexer accepts only a finite number, so changed products will be rejected by indexing.",
+      "weight": 1
+    },
+    {
+      "id": "k5",
+      "finding": "The labels array no longer has the twelve-item maximum documented by the store limits, allowing requests that cannot fit in the bounded column.",
+      "weight": 1
+    },
+    {
+      "id": "k6",
+      "finding": "The attributes object loses its additionalProperties restriction, so misspelled or unsupported nested keys are accepted and silently carried into stored products.",
+      "weight": 1
+    },
+    {
+      "id": "k7",
+      "finding": "The API description was updated for the new payload wording but still does not tell request callers that subtitle is now required, leaving the published contract stale.",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "code-review",
+    "adversarial-code-review-pass-schema"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-code-review-pass-schema"
+    ],
+    "mustNotLoad": [
+      "backend-review",
+      "adversarial-code-review"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-22",
+    "source": "original"
+  },
+  "review": {
+    "family": "deepseek",
+    "date": "2026-11-22",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt doesn't name review method or number of problems. Notes.txt mentions 'contract-only review' and backward compatibility, which gives general direction but not specific issues."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Clear instructions: review PR 4410, check implementation and surrounding facts, write REVIEW.md with JSON findings. Competent reviewer understands scope and output format."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Key items require cross-file reading (e.g., schema + normalizer + clients.md, event code + search-indexer.md, schema + limits.json). Quick shallow review wouldn't catch all."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key items supported by evidence in fixture: displayName->label with mobile clients, required subtitle with optional normalizer, archived removal with archived product, priceCents string vs number requirement, missing maxItems with store limit, missing additionalProperties, API docs missing required field. Severities appropriate."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No obvious comments or file names pointing to problems. Test 'event schema keeps cents numeric' contrasts with code but is checking schema file, not highlighting bug."
+      }
+    ]
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 7.1,
+    "dryRun": {
+      "reference": 100,
+      "stub": 7.1,
+      "lazy": 32,
+      "alt": 100,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ]
+      },
+      "date": "2026-11-22"
+    },
+    "decision": "keep",
+    "date": "2026-11-22"
+  }
+}

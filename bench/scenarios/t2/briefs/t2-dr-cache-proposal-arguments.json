@@ -1,0 +1,19 @@
+{
+  "role": "reviewer",
+  "wave": 6,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "id": "t2-dr-cache-proposal-arguments",
+  "phase": "design-review",
+  "kind": "design",
+  "size": "8 to 14",
+  "doc": "docs/design/edge-cache-proposal.md",
+  "brief": "Phase: design review. Role of the person asking: reviewer. The request asks for a hard review of the reasoning in a proposal to put an edge cache in front of the API, because leadership will decide from the argument, not the code. Context: last quarter latency and traffic numbers, the current architecture, the cost sheet, the team roster. Every planted problem is a weak argument, each in its own subsection: an appeal to authority (large companies do this) in place of this system numbers; a false choice between the cache and a full rewrite, although the context shows a cheaper fix; a hasty generalisation from one slow day to all traffic; a circular claim (the cache is safe because cached data is always fresh, and data is fresh because it is cached); a straw version of the team objection that is then knocked down; a conclusion that does not follow from its own numbers, which show the slow calls are writes the cache cannot serve. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: reviewing the logic of a design argument: finding weak claims and logical fallacies (appeal to authority, false choice, circular reasoning, straw man, hasty generalisation, conclusions that do not follow).",
+  "targetUnit": "skill:argumentation-reference"
+}

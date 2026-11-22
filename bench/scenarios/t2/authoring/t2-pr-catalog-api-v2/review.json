@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt doesn't name review method or number of problems. Notes.txt mentions 'contract-only review' and backward compatibility, which gives general direction but not specific issues."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review PR 4410, check implementation and surrounding facts, write REVIEW.md with JSON findings. Competent reviewer understands scope and output format."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Key items require cross-file reading (e.g., schema + normalizer + clients.md, event code + search-indexer.md, schema + limits.json). Quick shallow review wouldn't catch all."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items supported by evidence in fixture: displayName->label with mobile clients, required subtitle with optional normalizer, archived removal with archived product, priceCents string vs number requirement, missing maxItems with store limit, missing additionalProperties, API docs missing required field. Severities appropriate."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No obvious comments or file names pointing to problems. Test 'event schema keeps cents numeric' contrasts with code but is checking schema file, not highlighting bug."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

@@ -7,7 +7,7 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | Wave 1 | 37 | 97.53 | 80 | 160 |
 | Rest | 82 | 227.90 | 270 | 540 |
 | **T2 total** | 119 | **325.44** | 350 | 700 |
-| Coverage-gap stage 1 (2026-11-21 to 22, 20 tried, 12 landed) | 81 | 278.67 | counted at max(15, real): 1,223 | 1,550 counted |
+| Coverage-gap stage 1 (2026-11-21 to 22, 23 tried, 13 landed, 1 re-map) | 95 | 316.66 | counted at max(15, real): 1,433 | 1,550 counted (stop at 1,450) |
 
 6 calls were stopped before their metering event and are not in these totals; at 2 to 15 credits each they add an estimated 12 to 90.
 
@@ -213,3 +213,17 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-22T06:21:12.527Z | t2-dr-five-angle-spec | author | gpt-5.6-luna | 120 | 2.42 | coverage-gap stage 1 |
 | 2026-11-22T06:28:01.587Z | t2-dr-five-angle-spec | map | glm-5 | 20 | 0.67 | coverage-gap stage 1 |
 | 2026-11-22T06:31:19.553Z | t2-dr-five-angle-spec | review | deepseek-3.2 | 198 | 3.22 | coverage-gap stage 1 |
+| 2026-11-22T06:33:38.552Z | t2-pr-precheck-uncommitted | map | glm-5 | 29 | 0.71 | coverage-gap stage 1 |
+| 2026-11-22T06:37:46.301Z | t2-pr-catalog-api-v2 | author | gpt-5.6-luna | 220 | 6.14 | coverage-gap stage 1 |
+| 2026-11-22T06:38:15.559Z | t2-pr-catalog-api-v2 | map | glm-5 | 26 | 0.71 | coverage-gap stage 1 |
+| 2026-11-22T06:41:53.263Z | t2-pr-catalog-api-v2 | review | deepseek-3.2 | 218 | 4.32 | coverage-gap stage 1 |
+| 2026-11-22T06:43:17.893Z | t2-pr-catalog-api-v2 | fix | gpt-5.6-luna | 85 | 2.14 | coverage-gap stage 1 |
+| 2026-11-22T06:46:37.128Z | t2-pr-catalog-api-v2 | review-2 | deepseek-3.2 | 196 | 4.31 | coverage-gap stage 1 |
+| 2026-11-22T06:48:38.641Z | t2-pr-reports-stack | author | gpt-5.6-luna | 121 | 3.07 | coverage-gap stage 1 |
+| 2026-11-22T06:54:07.304Z | t2-pr-reports-stack | map | glm-5 | 25 | 0.69 | coverage-gap stage 1 |
+| 2026-11-22T06:58:10.005Z | t2-pr-reports-stack | review | deepseek-3.2 | 243 | 3.22 | coverage-gap stage 1 |
+| 2026-11-22T06:59:09.557Z | t2-pr-reports-stack | fix | gpt-5.6-luna | 59 | 1.25 | coverage-gap stage 1 |
+| 2026-11-22T07:02:05.721Z | t2-pr-reports-stack | review-2 | deepseek-3.2 | 173 | 2.85 | coverage-gap stage 1 |
+| 2026-11-22T07:05:20.216Z | t2-pr-booking-smithy | author | gpt-5.6-luna | 194 | 3.77 | coverage-gap stage 1 |
+| 2026-11-22T07:09:46.864Z | t2-pr-booking-smithy | map | glm-5 | 23 | 0.69 | coverage-gap stage 1 |
+| 2026-11-22T07:13:05.126Z | t2-pr-booking-smithy | review | deepseek-3.2 | 198 | 4.12 | coverage-gap stage 1 |

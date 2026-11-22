@@ -1,0 +1,43 @@
+openapi: 3.1.0
+info:
+  title: Northstar Catalog API
+  version: 2.8.0
+  description: Product payload names are aligned with the warehouse export vocabulary.
+servers:
+  - url: https://catalog.example.test
+paths:
+  /v2/products/{id}:
+    get:
+      summary: Read one product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Product payload
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/product-response.json'
+        '404':
+          description: Product was not found
+  /v2/products:
+    post:
+      summary: Create a product with the current payload shape
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/product-create.json'
+      responses:
+        '201':
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/product-response.json'
+        '400':
+          description: Invalid product body

@@ -1,20 +1,20 @@
 {
   "model": "glm-5",
   "targetSkills": [
-    "code-review",
-    "backend-review"
+    "code-review"
   ],
-  "targetSop": null,
+  "targetSop": "k-pre-cr-critique",
   "targetAgent": null,
   "loadCheck": {
     "mustLoad": [
       "code-review",
-      "backend-review"
+      "k-pre-cr-critique"
     ],
     "mustNotLoad": [
-      "adversarial-code-review"
+      "adversarial-code-review",
+      "k-code-review-workflow"
     ]
   },
-  "twinIdea": "Run the full test suite and fix any failures in the PR changes.",
-  "why": "The task is a quick pre-review check of a backend Node.js PR diff before opening for review. code-review is the core skill for reviewing diffs and PRs; backend-review covers backend-specific concerns (JS/Node services) in this project. adversarial-code-review is overkill for a fast pre-check."
+  "twinIdea": "Add a new rate calculation endpoint to this project's server.",
+  "why": "The task is a fast read-only pre-CR self-check of a diff, which matches k-pre-cr-critique's purpose. code-review is the core skill for reviewing diffs and finding bugs. adversarial-code-review is for a second-pass security/integrity review after standard review, not a first quick check."
 }

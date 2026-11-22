@@ -1,0 +1,303 @@
+diff --git a/docs/api/catalog.yaml b/docs/api/catalog.yaml
+index 1bc49bc..82a7f20 100644
+--- a/docs/api/catalog.yaml
++++ b/docs/api/catalog.yaml
+@@ -1,7 +1,8 @@
+ openapi: 3.1.0
+ info:
+   title: Northstar Catalog API
+-  version: 2.7.0
++  version: 2.8.0
++  description: Product payload names are aligned with the warehouse export vocabulary.
+ servers:
+   - url: https://catalog.example.test
+ paths:
+@@ -24,7 +25,7 @@ paths:
+           description: Product was not found
+   /v2/products:
+     post:
+-      summary: Create a product
++      summary: Create a product with the current payload shape
+       requestBody:
+         required: true
+         content:
+diff --git a/schemas/product-create.json b/schemas/product-create.json
+index cd22f8f..a3690b0 100644
+--- a/schemas/product-create.json
++++ b/schemas/product-create.json
+@@ -4,7 +4,7 @@
+   "title": "Product create request",
+   "type": "object",
+   "additionalProperties": false,
+-  "required": ["name", "price"],
++  "required": ["name", "price", "subtitle"],
+   "properties": {
+     "id": { "type": "string", "pattern": "^p-[a-z0-9-]+$" },
+     "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+@@ -13,17 +13,20 @@
+     "labels": {
+       "type": "array",
+       "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+-      "maxItems": 12,
+       "uniqueItems": true
+     },
+     "attributes": {
+       "type": "object",
+-      "additionalProperties": false,
+       "properties": {
+         "material": { "type": "string", "maxLength": 60 },
+         "capacityOz": { "type": "integer", "minimum": 0 },
+         "capacityLiters": { "type": "integer", "minimum": 0 }
+       }
++    },
++    "warehouseNote": {
++      "type": "string",
++      "maxLength": 120,
++      "default": ""
+     }
+   }
+ }
+diff --git a/schemas/product-response.json b/schemas/product-response.json
+index 18a0349..361875d 100644
+--- a/schemas/product-response.json
++++ b/schemas/product-response.json
+@@ -3,15 +3,16 @@
+   "$id": "https://catalog.local/schemas/product-response.json",
+   "title": "Product response",
+   "type": "object",
+-  "required": ["id", "displayName", "subtitle", "status", "priceCents", "labels", "attributes", "updatedAt"],
++  "required": ["id", "label", "subtitle", "status", "priceCents", "labels", "attributes", "updatedAt", "warehouseNote"],
+   "properties": {
+     "id": { "type": "string" },
+-    "displayName": { "type": "string" },
++    "label": { "type": "string" },
+     "subtitle": { "type": "string" },
+-    "status": { "enum": ["active", "draft", "archived"] },
++    "status": { "enum": ["active", "draft"] },
+     "priceCents": { "type": "integer", "minimum": 0 },
+     "labels": { "type": "array", "items": { "type": "string" } },
+     "attributes": { "type": "object" },
+-    "updatedAt": { "type": "string", "format": "date-time" }
++    "updatedAt": { "type": "string", "format": "date-time" },
++    "warehouseNote": { "type": "string" }
+   }
+ }
+diff --git a/src/catalog/normalizers.js b/src/catalog/normalizers.js
+index 6522afc..a2f28a6 100644
+--- a/src/catalog/normalizers.js
++++ b/src/catalog/normalizers.js
+@@ -1,4 +1,4 @@
+-const statuses = new Set(['active', 'draft', 'archived']);
++const statuses = new Set(['active', 'draft']);
+ 
+ export function normalizeStoredProduct(input) {
+   if (!input || typeof input !== 'object') throw new Error('product must be an object');
+@@ -15,7 +15,8 @@ export function normalizeStoredProduct(input) {
+     priceCents: input.priceCents,
+     labels: Array.isArray(input.labels) ? [...input.labels] : [],
+     attributes: input.attributes && typeof input.attributes === 'object' ? { ...input.attributes } : {},
+-    updatedAt: input.updatedAt ?? new Date().toISOString()
++    updatedAt: input.updatedAt ?? new Date().toISOString(),
++    warehouseNote: input.warehouseNote ?? ''
+   };
+ }
+ 
+@@ -23,6 +24,7 @@ export function normalizeCreateBody(body) {
+   const product = normalizeStoredProduct({
+     ...body,
+     id: body.id ?? `p-${Date.now()}`,
++    status: body.status ?? 'draft',
+     priceCents: numberToCents(body.price)
+   });
+   return product;
+diff --git a/src/catalog/product-service.js b/src/catalog/product-service.js
+index 0a9f709..c18253c 100644
+--- a/src/catalog/product-service.js
++++ b/src/catalog/product-service.js
+@@ -5,13 +5,14 @@ import { publishProductChanged } from '../events/product-changed.js';
+ function toResponse(product) {
+   return {
+     id: product.id,
+-    displayName: product.name,
++    label: product.name,
+     subtitle: product.subtitle,
+     status: product.status,
+     priceCents: product.priceCents,
+     labels: product.labels,
+     attributes: product.attributes,
+-    updatedAt: product.updatedAt
++    updatedAt: product.updatedAt,
++    warehouseNote: product.warehouseNote ?? ''
+   };
+ }
+ 
+diff --git a/src/events/product-changed.js b/src/events/product-changed.js
+index 5e16608..6427c00 100644
+--- a/src/events/product-changed.js
++++ b/src/events/product-changed.js
+@@ -12,7 +12,7 @@ export function buildProductChanged(product) {
+       id: product.id,
+       name: product.name,
+       status: product.status,
+-      priceCents: product.priceCents,
++      priceCents: centsToNumber(product.priceCents).toFixed(2),
+       labels: product.labels
+     }
+   };
+diff --git a/tests/catalog.test.js b/tests/catalog.test.js
+index 8af5cc9..383adaa 100644
+--- a/tests/catalog.test.js
++++ b/tests/catalog.test.js
+@@ -1,18 +1,19 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import { getProduct, getProducts } from '../src/catalog/product-service.js';
++import { getProduct } from '../src/catalog/product-service.js';
+ 
+-test('returns a known product with its display fields', async () => {
++test('returns a known product with its details', async () => {
+   const product = await getProduct('p-100');
+-  assert.equal(product.displayName, 'Trail Mug');
++  assert.equal(product.id, 'p-100');
+   assert.equal(product.priceCents, 2400);
+   assert.deepEqual(product.labels, ['camping', 'drinkware']);
++  assert.equal(product.warehouseNote, '');
+ });
+ 
+-test('lists normalized products', async () => {
+-  const products = await getProducts();
+-  assert.equal(products.length, 2);
+-  assert.equal(products[1].status, 'archived');
++test('returns the active product status', async () => {
++  const product = await getProduct('p-100');
++  assert.equal(product.status, 'active');
++  assert.equal(product.updatedAt, '2025-02-10T10:30:00.000Z');
+ });
+ 
+ test('returns null for an unknown product', async () => {
+diff --git a/tests/event.test.js b/tests/event.test.js
+index f8169bb..f191f94 100644
+--- a/tests/event.test.js
++++ b/tests/event.test.js
+@@ -6,7 +6,7 @@ test('builds the search event fields', () => {
+   const event = buildProductChanged({ id: 'p-9', name: 'Cap', status: 'active', priceCents: 1250, labels: ['summer'] });
+   assert.equal(event.type, 'product.changed');
+   assert.equal(event.version, 1);
+-  assert.equal(event.product.priceCents, 1250);
++  assert.equal(event.product.id, 'p-9');
+   assert.deepEqual(event.product.labels, ['summer']);
+ });
+ 
+diff --git a/tests/payload-contract.test.js b/tests/payload-contract.test.js
+new file mode 100644
+index 0000000..c123c50
+--- /dev/null
++++ b/tests/payload-contract.test.js
+@@ -0,0 +1,88 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { normalizeCreateBody, normalizeStoredProduct } from '../src/catalog/normalizers.js';
++
++const body = {
++  name: 'Field Radio',
++  subtitle: 'Small emergency receiver',
++  price: 39.95,
++  labels: ['outdoor'],
++  attributes: { material: 'plastic' }
++};
++
++test('normalizes a complete create body', () => {
++  const product = normalizeCreateBody(body);
++  assert.equal(product.name, 'Field Radio');
++  assert.equal(product.subtitle, 'Small emergency receiver');
++  assert.equal(product.priceCents, 3995);
++  assert.deepEqual(product.labels, ['outdoor']);
++});
++
++test('keeps supplied attributes', () => {
++  const product = normalizeCreateBody(body);
++  assert.deepEqual(product.attributes, { material: 'plastic' });
++});
++
++test('normalizes missing collections and note', () => {
++  const product = normalizeStoredProduct({
++    id: 'p-77',
++    name: 'Camp Towel',
++    status: 'draft',
++    priceCents: 900
++  });
++  assert.equal(product.warehouseNote, '');
++  assert.deepEqual(product.labels, []);
++  assert.deepEqual(product.attributes, {});
++});
++
++test('keeps labels in their input order', () => {
++  const product = normalizeCreateBody({ ...body, labels: ['blue', 'sale', 'blue'] });
++  assert.deepEqual(product.labels, ['blue', 'sale', 'blue']);
++});
++
++test('rejects a negative price', () => {
++  assert.throws(() => normalizeCreateBody({ ...body, price: -1 }), /price/);
++});
++
++test('rejects a missing name', () => {
++  assert.throws(() => normalizeCreateBody({ ...body, name: '' }), /name/);
++});
++
++test('keeps a supplied warehouse note', () => {
++  const product = normalizeCreateBody({ ...body, warehouseNote: 'Keep upright' });
++  assert.equal(product.warehouseNote, 'Keep upright');
++});
++
++test('preserves a supplied identifier', () => {
++  const product = normalizeCreateBody({ ...body, id: 'p-lantern-7' });
++  assert.equal(product.id, 'p-lantern-7');
++});
++
++test('uses the requested status when present', () => {
++  const product = normalizeCreateBody({ ...body, status: 'active' });
++  assert.equal(product.status, 'active');
++});
++
++test('copies input arrays instead of retaining them', () => {
++  const labels = ['quiet'];
++  const product = normalizeCreateBody({ ...body, labels });
++  labels.push('changed');
++  assert.deepEqual(product.labels, ['quiet']);
++});
++
++test('copies input attributes instead of retaining them', () => {
++  const attributes = { material: 'wool' };
++  const product = normalizeCreateBody({ ...body, attributes });
++  attributes.material = 'cotton';
++  assert.deepEqual(product.attributes, { material: 'wool' });
++});
++
++test('accepts a zero price', () => {
++  const product = normalizeCreateBody({ ...body, price: 0 });
++  assert.equal(product.priceCents, 0);
++});
++
++test('rounds fractional cents for stored values', () => {
++  const product = normalizeCreateBody({ ...body, price: 1.239 });
++  assert.equal(product.priceCents, 124);
++});
+diff --git a/tests/schema.test.js b/tests/schema.test.js
+index 82f6ca9..165643d 100644
+--- a/tests/schema.test.js
++++ b/tests/schema.test.js
+@@ -6,11 +6,10 @@ function load(name) {
+   return JSON.parse(fs.readFileSync(new URL(`../schemas/${name}`, import.meta.url), 'utf8'));
+ }
+ 
+-test('create schema describes the stable request fields', () => {
++test('create schema describes the current request fields', () => {
+   const schema = load('product-create.json');
+-  assert.deepEqual(schema.required, ['name', 'price']);
+-  assert.equal(schema.properties.labels.maxItems, 12);
+-  assert.equal(schema.properties.attributes.additionalProperties, false);
++  assert.equal(schema.properties.subtitle.type, 'string');
++  assert.equal(schema.properties.warehouseNote.default, '');
+ });
+ 
+ test('event schema keeps cents numeric', () => {

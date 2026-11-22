@@ -1,0 +1,22 @@
+[
+  {
+    "id": "p-100",
+    "name": "Trail Mug",
+    "subtitle": "Double-wall camp cup",
+    "status": "active",
+    "priceCents": 2400,
+    "labels": ["camping", "drinkware"],
+    "attributes": { "material": "steel", "capacityOz": 12 },
+    "updatedAt": "2025-02-10T10:30:00.000Z"
+  },
+  {
+    "id": "p-101",
+    "name": "Canvas Pack",
+    "subtitle": "A soft-sided day pack",
+    "status": "archived",
+    "priceCents": 7900,
+    "labels": ["bags"],
+    "attributes": { "material": "canvas", "capacityLiters": 18 },
+    "updatedAt": "2025-02-09T08:15:00.000Z"
+  }
+]

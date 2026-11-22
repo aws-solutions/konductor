@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://catalog.local/schemas/product-event.json",
+  "type": "object",
+  "required": ["type", "version", "occurredAt", "product"],
+  "properties": {
+    "type": { "const": "product.changed" },
+    "version": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "product": {
+      "type": "object",
+      "required": ["id", "name", "status", "priceCents", "labels"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string" },
+        "priceCents": { "type": "integer" },
+        "labels": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

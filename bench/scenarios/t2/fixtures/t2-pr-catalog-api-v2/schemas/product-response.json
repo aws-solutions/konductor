@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://catalog.local/schemas/product-response.json",
+  "title": "Product response",
+  "type": "object",
+  "required": ["id", "label", "subtitle", "status", "priceCents", "labels", "attributes", "updatedAt", "warehouseNote"],
+  "properties": {
+    "id": { "type": "string" },
+    "label": { "type": "string" },
+    "subtitle": { "type": "string" },
+    "status": { "enum": ["active", "draft"] },
+    "priceCents": { "type": "integer", "minimum": 0 },
+    "labels": { "type": "array", "items": { "type": "string" } },
+    "attributes": { "type": "object" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "warehouseNote": { "type": "string" }
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "readProduct": ["id", "label", "subtitle", "status", "priceCents", "labels", "attributes", "updatedAt"],
+  "indexProduct": ["id", "name", "status", "priceCents", "labels"]
+}

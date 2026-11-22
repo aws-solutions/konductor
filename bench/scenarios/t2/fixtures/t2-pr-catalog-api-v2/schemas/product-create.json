@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://catalog.local/schemas/product-create.json",
+  "title": "Product create request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "price", "subtitle"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^p-[a-z0-9-]+$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "subtitle": { "type": "string", "maxLength": 240 },
+    "price": { "type": "number", "minimum": 0 },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+      "uniqueItems": true
+    },
+    "attributes": {
+      "type": "object",
+      "properties": {
+        "material": { "type": "string", "maxLength": 60 },
+        "capacityOz": { "type": "integer", "minimum": 0 },
+        "capacityLiters": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "warehouseNote": {
+      "type": "string",
+      "maxLength": 120,
+      "default": ""
+    }
+  }
+}

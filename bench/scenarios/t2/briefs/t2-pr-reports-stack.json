@@ -1,0 +1,20 @@
+{
+  "role": "reviewer",
+  "wave": 6,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "id": "t2-pr-reports-stack",
+  "phase": "code-review",
+  "kind": "pr",
+  "size": "20 to 35",
+  "stack": "node",
+  "pr": 88,
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: an AWS CDK app in TypeScript (no install needed to read it; tests may be plain node tests over the synthesized template checked in as cdk.out/ReportsStack.template.json) for a reports service: a Lambda, an S3 bucket for report files, an RDS Postgres database, a VPC, and docs saying it deploys to the shared staging account tomorrow, that the database holds a copy of customer data, and what the team may spend per month. Plant in the stack code: the bucket has no block on public access and objects are readable by anyone; the Lambda role allows every action on every resource; the database has deletion protection off and no backup retention; the database is in a public subnet; a security group allows port 5432 from anywhere; the database password is a plain string in the Lambda environment; three NAT gateways for a staging stack against the cost note. Add one decoy: a public load balancer listening on 443. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: checking infrastructure as code (AWS CDK) against AWS best practice before it is deployed: security holes, cost waste and compliance gaps.",
+  "targetUnit": "skill:infra-validation"
+}

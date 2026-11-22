@@ -1,0 +1,20 @@
+{
+  "role": "reviewer",
+  "wave": 6,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "id": "t2-pr-catalog-api-v2",
+  "phase": "code-review",
+  "kind": "pr",
+  "size": "20 to 35",
+  "stack": "node",
+  "pr": 4410,
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js product catalog API: a JSON API documented in docs/api/catalog.yaml, a JSON schema for request bodies in schemas/, a \"product.changed\" event read by a search indexer whose field list is in docs/consumers/search-indexer.md, and a mobile client note in docs/clients.md saying the two previous app versions are still in use. The PR \"cleans up the product payload\". Every planted problem is about the contract between this API and its callers, nothing else: a response field is renamed with no old name kept; an optional request field becomes required; an enum loses a value that stored products still have, so reading them fails; a price field changes from integer cents to a decimal string in the event the indexer parses as a number; a new list field has no maximum length in the schema while the store column is bounded; the schema for a nested object drops additionalProperties false, so unknown keys pass silently; the API doc is not updated for the new required field. Add one decoy: a new optional field with a safe default. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: checking a change only for its API, schema and type contract: backward compatibility for old clients and event readers, and whether validation is complete.",
+  "targetUnit": "skill:adversarial-code-review-pass-schema"
+}

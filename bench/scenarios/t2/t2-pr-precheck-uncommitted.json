@@ -92,19 +92,19 @@
     }
   ],
   "targetSkills": [
-    "code-review",
-    "backend-review"
+    "code-review"
   ],
-  "targetSop": null,
+  "targetSop": "k-pre-cr-critique",
   "targetAgent": null,
   "controlKind": "none",
   "loadCheck": {
     "mustLoad": [
       "code-review",
-      "backend-review"
+      "k-pre-cr-critique"
     ],
     "mustNotLoad": [
-      "adversarial-code-review"
+      "adversarial-code-review",
+      "k-code-review-workflow"
     ]
   },
   "effectSubset": false,

@@ -1,0 +1,20 @@
+{
+  "role": "reviewer",
+  "wave": 6,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-22",
+    "use": "idea"
+  },
+  "id": "t2-pr-booking-smithy",
+  "phase": "code-review",
+  "kind": "pr",
+  "size": "20 to 35",
+  "stack": "node",
+  "pr": 913,
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js clinic booking API whose contract is a Smithy model in model/ (several .smithy files) that generated client SDKs are built from, with hand-written handlers and tests; the docs say clients retry failed writes. The PR adds appointment operations to the model. Plant only in the model files, spread over at least three of them: a Get operation not marked readonly; a List operation that returns a next token but has no paginated trait; a Create operation with no idempotency token although clients retry; an error structure with no error trait and no HTTP status; a Cancel operation bound to HTTP GET; one member in snake_case where the rest of the model is camelCase; a time member typed as a string where the rest of the model uses timestamp. No handler comment may describe any of these. Add one decoy: a phone member marked sensitive. Write every planted problem the way the team really wrote it: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here, and any diff must be regenerated from git after a change. Docs, tests and context files give facts only, never a conclusion: no context file may say what this work gets wrong. The rubric criterion holds three one-sentence anchors, written Fail: ..., Partial: ... and Pass: ..., before the closing \"(code cannot check this because ...)\". In task-draft.json notes, say in plain words what kind of work this is: checking a Smithy API model for quality and production readiness before code generation: traits, HTTP bindings, naming, types and pagination.",
+  "targetUnit": "skill:smithy-validation"
+}

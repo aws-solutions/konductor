@@ -1,0 +1,3 @@
+{
+  "notes": "This is a contract-only review: check the change for its API, schema and type contract, including backward compatibility for old clients and event readers and whether validation is complete. A quick pass can accept the renamed response field and the new event representation without reading the client and consumer notes. The stored product data and the store limits live in other files, so the status and list validation changes need cross-file reading. The API description was edited but does not necessarily describe every request rule in the schema."
+}

@@ -1,0 +1,10 @@
+{
+  "productColumnLengths": {
+    "labels": 12,
+    "name": 120,
+    "subtitle": 240
+  },
+  "event": {
+    "maxBytes": 65536
+  }
+}
