@@ -166,6 +166,17 @@ test('a plant run with no plant field exits 2 and names the run', () => withRoot
   assert.equal(r.report, null);
 }));
 
+test('a budget_skipped cell (no plant field) is skipped, not an error; the report builds from the ran cells', () => withRoot((root) => {
+  const rel = fakeRelease(root);
+  const suite = writeSuite(root, 's', [plant(rel)]);
+  const skipDir = path.join(suite, 'plant-policy', 'task-skip', 'rep-1');
+  fs.mkdirSync(skipDir, { recursive: true });
+  fs.writeFileSync(path.join(skipDir, 'result.json'), JSON.stringify({ armId: 'plant-policy', taskId: 'task-skip', status: 'budget_skipped' }));
+  const r = report(root, [suite], rel.dir);
+  assert.equal(r.code, 0);
+  assert.ok(r.report);
+}));
+
 test('an unknown plant schemaVersion exits 2 and names the version', () => withRoot((root) => {
   const rel = fakeRelease(root);
   const r = report(root, [writeSuite(root, 's', [plant(rel), plant(rel, { schemaVersion: 2 })])], rel.dir);

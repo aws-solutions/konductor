@@ -84,6 +84,9 @@ const isPlantRun = (result) => isPlantArmId(result.armId);
 function plantRowOf(root, dir) {
   const result = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'));
   if (!isPlantRun(result)) return null;
+  // A budget_skipped cell never ran, so it carries no plant field; skip it instead of refusing the whole report
+  // (DEBT D-19). A genuine plant run still missing its plant field is an error below.
+  if (result.status === 'budget_skipped') return null;
   if (!result.plant) throw new PlantReportError(`${dir}: plant run (arm ${result.armId}) has no plant field in result.json`);
   try {
     return { root, dir, task: result.taskId ?? null, plant: readPlantField(result.plant), config: groupConfigOf(dir) };
