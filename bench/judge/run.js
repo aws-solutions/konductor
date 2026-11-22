@@ -14,7 +14,7 @@ const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('.
 const { withCache, hasCachedReply } = require('./model.js');
 const { cacheSaltOf } = require('./opencode.js');
 const { DEFAULT_JUDGE_QUOTE_RULE, JUDGE_QUOTE_RULES } = require('./quote.js');
-const { dualCriteria, dualScores, matchersFor, checkRule, blankExpert, reaskReason } = require('./views.js');
+const { dualCriteria, dualScores, matchersFor, checkRule, blankExpert, reaskReason, unquotedCriteria } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 
@@ -242,24 +242,39 @@ async function runJudging(o) {
   const spentByJudge = {};
   const spentUsdByJudge = {};
   const maxPromptBytes = promptBytesFor(backend);
+  // o.reaskUnquoted (--reask-unquoted): re-ask unquoted pass/partial evidence and reject rubric copies. Off by default,
+  // so a pass without it calls and scores as before. textOfTask is the rubric text per criterion id (views.dualCriteria).
+  const reaskUnquoted = Boolean(o.reaskUnquoted);
+  const textOfTask = (taskId) => (reaskUnquoted ? new Map((tasks.get(taskId)?.rubric || []).map((c) => [c.id, c.criterion])) : null);
+  /** Why a rubric reply of unit `u` is asked again: { reason: 'blank'|'does-not-quote' } (D-149), { reason: 'unquoted', unquoted } or null. */
+  const reaskOf = (u, criteria) => {
+    const bundle = bundles.get(runKey(u.run));
+    const d149 = reaskReason(criteria, bundle.expertText);
+    if (d149 || !reaskUnquoted) return d149 ? { reason: d149 } : null;
+    const unquoted = unquotedCriteria(criteria, matchersFor(bundle.text, bundle.expertText), quoteRule, textOfTask(u.run.taskId));
+    return unquoted.length ? { reason: 'unquoted', unquoted } : null;
+  };
   const worker = async (u) => {
     const { prompt, check } = specOf(u);
     let out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check });
     // D-149: a rubric reply that failed every expert: item without quoting the deliverable is asked once more before its
     // verdict counts. The re-ask is paid for like any call, so it starts only when its worst case still fits the guard.
-    const why = u.kind === 'rubric' && !out.error ? reaskReason(out.value.criteria, bundles.get(runKey(u.run)).expertText) : null;
+    // With --reask-unquoted, a reply that passes the D-149 test but gives a pass or partial evidence that is not in the
+    // output is asked once too ('unquoted'), naming those criteria; one re-ask per unit at most.
+    const why = u.kind === 'rubric' && !out.error ? reaskOf(u, out.value.criteria) : null;
     if (why) {
       const first = out.value.criteria.map((c) => ({ id: c.id, verdict: c.verdict, evidence: c.evidence }));
       const fits = study.canAfford ? study.canAfford(usdMode ? REASK_WORST_USD : REASK_WORST_CREDITS) : !study.shouldStop();
+      const named = why.unquoted ? { unquoted: why.unquoted } : {};
       if (!fits || callerStop()) {
-        out = { ...out, reask: { reason: why, skipped: callerStop() ?? 'the worst case of one more call does not fit the spend guard', first: null } };
+        out = { ...out, reask: { reason: why.reason, ...named, skipped: callerStop() ?? 'the worst case of one more call does not fit the spend guard', first: null } };
       } else {
-        const again = await judgeOnce({ caller, model: u.judge, prompt: prompt + reaskSuffix(why), maxPromptBytes, check });
+        const again = await judgeOnce({ caller, model: u.judge, prompt: prompt + reaskSuffix(why.reason, why.unquoted), maxPromptBytes, check });
         const calls = [...out.calls, ...again.calls.map((c) => ({ ...c, reask: true }))];
         const parseFailures = out.parseFailures + again.parseFailures;
         out = again.error
-          ? { ...out, calls, parseFailures, reask: { reason: why, error: again.error, first: null } }
-          : { value: again.value, calls, parseFailures, reask: { reason: why, first, still: reaskReason(again.value.criteria, bundles.get(runKey(u.run)).expertText) } };
+          ? { ...out, calls, parseFailures, reask: { reason: why.reason, ...named, error: again.error, first: null } }
+          : { value: again.value, calls, parseFailures, reask: { reason: why.reason, ...named, first, still: reaskOf(u, again.value.criteria)?.reason ?? null } };
       }
     }
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.credits ?? 0), 0);
@@ -293,7 +308,7 @@ async function runJudging(o) {
       const task = tasks.get(u.run.taskId);
       const matchers = matchersFor(bundle.text, bundle.expertText);
       // Both quote rules are applied to every criterion; the fields older readers use carry the rule this pass ran with.
-      const criteria = out.error ? [] : dualCriteria(out.value.criteria, matchers, quoteRule);
+      const criteria = out.error ? [] : dualCriteria(out.value.criteria, matchers, quoteRule, textOfTask(task.id));
       const views = out.error ? null : dualScores(task.rubric, criteria);
       rubric.push({
         kind: 'rubric', ...common, taskRevision: revisions.get(task.id), quoteRule,

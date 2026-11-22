@@ -10,7 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { unquotedVerdict, rubricScore } = require('./score.js');
-const { makeQuoteMatcher, DEFAULT_JUDGE_QUOTE_RULE, QUOTE_RULES, JUDGE_QUOTE_RULES } = require('./quote.js');
+const { makeQuoteMatcher, copiedFromRubric, DEFAULT_JUDGE_QUOTE_RULE, QUOTE_RULES, JUDGE_QUOTE_RULES } = require('./quote.js');
 const { EXPERT_PREFIX } = require('../runner/lib/expert-rubric.js');
 
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
@@ -51,9 +51,11 @@ function bundleMatcher(bundle, { lenient, paraphrase = false, guarded = false, r
 
 /**
  * Criteria of one reply with both views. `replyCriteria`: [{ id, verdict (the judge's own), evidence }].
- * The fields older readers use carry the `rule` view.
+ * The fields older readers use carry the `rule` view. `textOf` (criterion id => its rubric text, optional): a pass or
+ * partial whose evidence is not in the output but is in the criterion's own text is the judge copying the rubric, so it
+ * is rejected (scored fail, `rubricCopy: true`) instead of dropping one level.
  */
-function dualCriteria(replyCriteria, matchers, rule = DEFAULT_JUDGE_QUOTE_RULE) {
+function dualCriteria(replyCriteria, matchers, rule = DEFAULT_JUDGE_QUOTE_RULE, textOf = null) {
   return replyCriteria.map((c) => {
     const raw = c.verdictRaw ?? c.verdict;
     const evidence = c.evidence ?? '';
@@ -61,14 +63,25 @@ function dualCriteria(replyCriteria, matchers, rule = DEFAULT_JUDGE_QUOTE_RULE) 
     // "(nothing in the output)" cites no evidence, so a pass or partial that rests on it drops a level under either rule.
     const none = NO_EVIDENCE.test(evidence);
     const quoteFound = { strict: none ? false : m.strict(evidence), lenient: none ? false : m.lenient(evidence) };
-    const verdictOf = (r) => (quoteFound[r] === false && raw !== 'fail' ? unquotedVerdict(c.id, raw) : raw);
+    const copied = !none && raw !== 'fail' && Boolean(textOf) && copiedFromRubric(textOf.get(c.id), evidence);
+    const verdictOf = (r) => (quoteFound[r] === false && raw !== 'fail' ? (copied ? 'fail' : unquotedVerdict(c.id, raw)) : raw);
     const verdictScored = verdictOf(rule);
     const downgraded = quoteFound[rule] === false && raw !== 'fail';
     return {
       id: c.id, verdict: verdictScored, verdictRaw: raw, verdictScored, evidence, evidenceFound: quoteFound[rule], ...(downgraded ? { evidenceDowngraded: true } : {}),
+      ...(downgraded && copied ? { rubricCopy: true } : {}),
       verdictStrict: verdictOf('strict'), verdictLenient: verdictOf('lenient'), quoteFound,
     };
   });
+}
+
+/**
+ * The pass and partial verdicts of one reply whose evidence the `rule` view cannot find in the output, so the quote rule
+ * would lower them: [{ id, copied }], `copied` when the evidence is the criterion's own text (textOf, as dualCriteria).
+ * [] when every pass and partial quotes the output. The judge is asked once more for these before they count.
+ */
+function unquotedCriteria(replyCriteria, matchers, rule = DEFAULT_JUDGE_QUOTE_RULE, textOf = null) {
+  return dualCriteria(replyCriteria, matchers, rule, textOf).filter((c) => c.evidenceDowngraded).map((c) => ({ id: c.id, copied: Boolean(c.rubricCopy) }));
 }
 
 /** Score of the record under each rule, from criteria made by dualCriteria. */
@@ -185,4 +198,4 @@ function reaskReason(criteria, deliverables) {
   return all && expert.some((c) => NO_QUOTE.test(String(c.evidence ?? ''))) ? 'does-not-quote' : null;
 }
 
-module.exports = { blankExpert, reaskReason, dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };
+module.exports = { blankExpert, reaskReason, unquotedCriteria, dualCriteria, dualScores, hasViews, selectView, viewJudgments, matchersFor, bundleMatcher, checkRule, otherRule, NO_EVIDENCE };

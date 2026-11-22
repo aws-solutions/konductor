@@ -1,0 +1,193 @@
+{
+  "id": "t1-nfr-report-queries",
+  "class": "hard",
+  "version": 3,
+  "phase": "nfr",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "The monthly report job is now too slow and uses too much memory on production-sized data. Please improve the existing implementation without changing the report contract. The command remains `python3 -m reportjob.cli --db PATH --month YYYY-MM --format csv|json --output PATH`, and `-` still means standard output. Keep `ReportBuilder.iter_rows(month)`, `ReportBuilder.build(month)`, `ReportDatabase`, `write_csv(rows, output)`, and `write_json(rows, output)` usable. `ReportDatabase` must also accept an optional sqlite3 connection for callers that instrument database work. A report may use no more than 3 SQL statements for a month, regardless of the number of customers. Rendering 12,000 order rows through either formatter must stay below 8 MiB of peak tracemalloc memory. Rows must retain the existing six columns, ordering, CSV and JSON encoding, and trailing newlines, including byte-for-byte identical output to `fixtures/expected/january.csv` and `fixtures/expected/january.json` for the sample data. Keep empty months working, reject malformed month values instead of producing a report, add focused tests and document the change. Do not add dependencies.",
+  "fixture": "t1-nfr-report-queries",
+  "hidden": "t1-nfr-report-queries",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "python3 -c \"import sys; assert sys.version_info[:2] == (3, 12)\" && node --test --test-timeout=15000 hidden/py_bridge.test.js",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -m unittest discover -s tests -p 'test_*.py'",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -z \"$(find . -maxdepth 2 -type d -name 'site-packages' -o -name 'node_modules')\"",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verification-report",
+      "criterion": "The final response accurately states which test commands were run and whether they passed (code cannot check this because it cannot inspect the agent's final response). Fail: says the report is faster without naming a test command, or claims a result that was not run. Partial: names `python3 -m unittest discover -s tests` but gives no result, or does not say how it checked the 3-statement limit or the 8 MiB limit. Pass: names each command it ran with its result, and states the SQL statement count and the peak tracemalloc figure it observed, or says plainly that one was not measured.",
+      "weight": 1
+    },
+    {
+      "id": "design-fit",
+      "weight": 2,
+      "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
+    }
+  ],
+  "targetSkills": [
+    "verification",
+    "test-coverage-analysis"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "test-coverage-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/sqlalchemy/sqlalchemy",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    },
+    "singleFamily": true,
+    "note": "single-family-authored (batch T1, owner decision 2026-11-20); second-family attempts failed or were not run, see DEBT D-122"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the performance problem and constraints without prescribing implementation methods. The notes section with technical details is for the reviewer, not included in the agent prompt."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt specifies exact requirements: byte-for-byte output matching, 3 SQL statement limit, 8 MiB memory limit, YYYY-MM month validation, and preserved API contracts. The data-model.md clarifies row ordering. All critical behaviors are stated."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture tests show basic usage but don't reveal streaming, query budget, or memory requirements. The problematic N+1 query pattern is visible in the code, but the solution (single join query with streaming) must be deduced from constraints, not copied from hints."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive fix (adding only the connection parameter) would pass 2 of 14 hidden tests. The query budget tests catch N+1 patterns. The memory tests catch list() materialization. The CLI test catches missing validation. Multiple orthogonal constraints require real fixes."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are stated in the prompt. The connection parameter requirement is explicit ('ReportDatabase must also accept an optional sqlite3 connection'). The 3-statement limit, 8 MiB limit, and byte-for-byte output requirements are all clearly specified."
+      }
+    ],
+    "recheck": {
+      "family": "zhipu",
+      "model": "glm-5",
+      "date": "2026-11-20",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "Prompt describes performance symptoms (slow, high memory) and constraints (3 SQL statements, 8 MiB ceiling) without prescribing join or streaming approach."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "Fixture shows current implementation; fixtures/expected/ has sample output but does not reveal N+1 query pattern or streaming solution."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Hidden tests check 3-statement limit, memory ceiling, byte-for-byte output match; all paths (fixtures/expected/, reportjob module) exist in fixture, rubric anchors fit."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "Developer can explore fixture's query patterns and understand constraints from prompt; correct alternate implementations that meet statement and memory limits would pass."
+        }
+      ]
+    }
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "cause-n-plus-one",
+        "text": "Names the per-customer query loop as a cause that grows with the number of customers, and replaces it with a fixed number of statements (a join or one batched lookup), not a cache of the loop.",
+        "source": "SQLAlchemy documentation, Relationship Loading Techniques, the N plus one problem, https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "cause-quadratic-lookup",
+        "text": "Finds the list scan that makes row assembly quadratic and replaces it with a keyed lookup or a sorted merge, saying why the cost drops.",
+        "source": "Python documentation, Time complexity of common operations, https://wiki.python.org/moin/TimeComplexity (PSF licence; idea only, paraphrased)"
+      },
+      {
+        "id": "cause-materialised-result",
+        "text": "Explains that the whole result is held in memory before writing, and streams rows to the writer so peak memory does not grow with the row count.",
+        "source": "Python documentation, sqlite3 cursor iteration and tracemalloc, https://docs.python.org/3/library/tracemalloc.html (PSF licence; idea only, paraphrased)"
+      },
+      {
+        "id": "measured-not-guessed",
+        "text": "Reports how the improvement was measured (statement count and peak memory before and after on a realistic size) instead of claiming it, and says which limit each change addresses.",
+        "source": "SQLite documentation, Query planning, https://www.sqlite.org/queryplanner.html (public domain; idea only, paraphrased)"
+      },
+      {
+        "id": "ordering-and-ties",
+        "text": "Notes that a join or batched read can change row order, and shows how the original ordering and tie-breaks were kept so the output stays byte for byte the same.",
+        "source": "SQLite documentation, SELECT, ORDER BY, https://www.sqlite.org/lang_select.html (public domain; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Adds an in-memory cache around the per-customer query and calls it fixed.",
+      "Raises a limit or adds a comment that the job is slow for large data.",
+      "Optimises one hot spot only and leaves the statement count growing with customers.",
+      "Rewrites the formatters for speed without touching the queries.",
+      "Claims memory is lower without a measurement."
+    ]
+  },
+  "handEdited": {
+    "family": "claude",
+    "editor": "mate review-fix2 worker (2026-11-20)",
+    "log": "HAND-EDITS.md"
+  },
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 19.7,
+    "decision": "keep",
+    "date": "2026-11-20",
+    "dryRun": {
+      "reference": 100,
+      "stub": 19.7,
+      "lazy": 29.3,
+      "alt": 81,
+      "date": "2026-11-20"
+    }
+  }
+}
