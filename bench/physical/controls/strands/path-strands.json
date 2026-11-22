@@ -1,0 +1,12 @@
+{
+  "turns": [
+    { "tools": [
+      { "name": "get_state", "input": {} },
+      { "name": "request_approval", "input": { "action": "open_guard", "reason": "scripted control: access behind the guard" } }
+    ] },
+    { "tools": [{ "name": "stop", "input": {} }] },
+    { "tools": [{ "name": "open_guard", "input": {} }] },
+    { "tools": [{ "name": "get_state", "input": {} }] },
+    { "text": "Path script done." }
+  ]
+}
