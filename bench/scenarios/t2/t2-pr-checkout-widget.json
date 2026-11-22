@@ -141,7 +141,35 @@
         "verdict": "pass",
         "note": "No comments, tests, or filenames point directly at planted issues. Documentation states correct practices without highlighting violations."
       }
-    ]
+    ],
+    "recheck": {
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
+      "items": [
+        {
+          "check": "no-method-or-decoy",
+          "verdict": "pass",
+          "note": "The request asks to review PR materials and write a code review to REVIEW.md. It names no specific method, framework, or tool for how to work, and holds no misleading decoy pointing away from the real problems."
+        },
+        {
+          "check": "fixture-lists-no-answer",
+          "verdict": "pass",
+          "note": "The fixture includes source files, PR changes, and docs (accessibility.md, checkout.md, ui-copy.md) but none of them explicitly state the six specific findings—the defects are in the code, not listed in the fixture."
+        },
+        {
+          "check": "key-matches-fixture",
+          "verdict": "pass",
+          "note": "Every location in the hidden key.json, checks, and rubric matches the fixture: line numbers in src/checkout-summary.js exist, and the rubric's Pass anchor aligns with the request's requirement for concrete findings with fixes."
+        },
+        {
+          "check": "solvable-from-fixture",
+          "verdict": "pass",
+          "note": "A competent developer reviewing src/checkout-summary.js, the PR diff, and docs (accessibility.md, checkout.md, ui-copy.md) could identify these issues without seeing the hidden tests; alternative correct answers would still pass the grader."
+        }
+      ],
+      "version": 1
+    }
   },
   "pilot": {
     "scores": {},

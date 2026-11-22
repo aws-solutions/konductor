@@ -170,25 +170,25 @@
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt states the requested API, documents, tests, and customer outcome; it does not prescribe a parser, framework, or implementation method. The test command is an acceptance command, not a misleading solution hint, and the request contains no decoy."
+          "note": "The prompt states the requested API, files, behavior, validation command, and scope in task.json:14, but gives no prescribed implementation method or process and contains no misleading alternative. The node --test command is an acceptance check, not a method for solving the task."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "The fixture contains the product request, the existing address-book API and validation behavior, and a baseline test. It contains no import implementation, feature note, customer help answer, or tests that reveal the finished solution."
+          "note": "The fixture request states the product requirements in fixture/docs/requests/contact-import.md:7-18, while the remaining fixture only supplies the base address-book API and its test (fixture/src/contacts.js:1-38 and fixture/test/contacts.test.js:1-13). It contains no importer implementation, feature note, help answer, or finished solution beyond the request itself."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "The hidden behavior checks follow the request's CSV, BOM, quoted fields, column-order, duplicate, validation, line-number, result, and 5,000-row rules; the blank-line case is explicitly allowed either way. The document key and rubric check the requested JSON sections and agreement across requirements, design, code, tests, and help, while accepting alternative parser and error implementations."
+          "note": "The hidden cases in hidden/hidden-import.test.js:14-61 correspond to the CSV, duplicate, invalid-row, line-number, and 5,000-row requirements in fixture/docs/requests/contact-import.md:7-16; the referenced createBook API and email validation exist in fixture/src/contacts.js:3-38. The checks and block key use the requested paths and JSON fields (task.json:22-64 and hidden/block-kit/key.json), and their anchors allow an Error, alternate parser naming, and any behavior matching the request rather than requiring the reference layout."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "The request and fixture expose the public API, address-book validation and duplicate semantics, file locations, row limit, output shape, and documentation format needed to implement the task. A competent developer can use another valid CSV-reader design, error wording, or test organization and still satisfy the stated checks and rubric."
+          "note": "A competent developer can derive the public API, CSV rules, skip results, whole-file limit, documentation paths, and feature-note schema from task.json:14 and fixture/docs/requests/contact-import.md:7-18, with the existing book contract in fixture/src/contacts.js:3-38. The hidden checks test those public outcomes and the block key uses semantic matches, so alternate internal names, ordering, and structure can pass."
         }
       ],
-      "version": 4
+      "version": 5
     }
   }
 }

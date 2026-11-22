@@ -108,31 +108,32 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "The prompt describes the domain (carts, discounts, coupons, tax, shipping, order total) and the goal (trustworthy tests) without prescribing a method or providing decoys."
+          "note": "Prompt specifies scope and constraints but not testing methodology; mentions node --test and CommonJS which are the existing setup, doesn't prescribe specific approach."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Existing tests (discounts.test.js, etc.) check basic cases but not the boundary traps mutants test (percentage vs fixed order, exact expiry timestamp, free-shipping threshold, fractional cent rounding)."
+          "note": "Fixture documents business rules (quantity 1-99, free shipping threshold) but existing tests don't cover all edge cases; doesn't provide test implementations."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Mutants target src/discounts.js, cart.js, coupons.js, shipping.js, tax.js, store.js, order-total.js - all present in fixture. The 57-test budget matches the prompt. Rubric 'clear-case-names' and 'suite-economy' align with request."
+          "note": "Hidden mutants reference existing src files and behaviors; rubric anchors reward test quality not specific implementation; matches request for tests protecting customer-facing rules."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "A developer can read the pricing source files to understand the rules and write tests for edge cases. The prompt clearly states the goal: tests that would have caught the wrong charge."
+          "note": "Competent developer can examine source code to identify edge cases (quantity limits, expiry, thresholds, rounding) and write tests through public interface; different but equivalent solutions possible."
         }
-      ]
+      ],
+      "version": 4
     }
   },
   "pilot": {

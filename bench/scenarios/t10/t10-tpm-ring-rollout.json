@@ -214,29 +214,30 @@
     "recheck": {
       "family": "deepseek",
       "model": "deepseek-3.2",
-      "date": "2026-11-20",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Request specifies ring rollout functions but not algorithm. No misleading hints pointing away from real problem."
+          "note": "Request prescribes specific implementation details: exact file names (src/ring-rollout.js, src/go-no-go.js, scripts/receipt-go-no-go.js), exact function signatures, exports, error codes, and JSON block formats. (disposition: independent review reports/review-probe-disposals-fable.md (claude-fable-5.1, 2026-11-22, mate workspace, t10-tpm-ring-rollout v3): by design, checklist misread; the request names the interface the hidden tests import, not a way of working)"
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture has ops/budget-policy.json with ring definitions and docs/error-budget-policy.md, but doesn't give implementation. No file reveals solution."
+          "note": "Fixture provides context (ring definitions, thresholds, freezes, error policy, partner info) but doesn't list answer or describe finished behavior hidden tests check."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests would check ring rollout functionality. Fixture has policy files defining rings, metrics. Rubric's plan-follows-policy checks ops/budget-policy.json alignment."
+          "note": "Hidden tests reference fixture elements: ring order from ops/rings.json, thresholds from ops/budget-policy.json, freeze dates from ops/freeze-calendar.csv, error policy from docs/error-budget-policy.md, Ledger Lantern from docs/partners.md."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Developer can implement ring rollout from policy files and request. Different percentage steps possible (adjudication notes)."
+          "note": "Competent developer could implement prescribed solution from fixture context (ring definitions, thresholds, freezes, error policy, partner requirements) and detailed request."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "pilot": {
