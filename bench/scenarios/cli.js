@@ -37,10 +37,10 @@ function dirArg(opts, sub, at = 1) {
  * When `dir` is the scenario pack itself: the message that bench/suites/pack.json no longer lists the pack's tasks, or
  * null. A task added without regenerating the suite file then fails the lint, not only the full suite (D-164).
  */
-function packSuiteProblem(dir) {
-  if (path.resolve(dir) !== __dirname) return null;
-  const want = packSuiteLib.render(packSuiteLib.packSuite());
-  const have = fs.existsSync(packSuiteLib.SUITE_FILE) ? fs.readFileSync(packSuiteLib.SUITE_FILE, 'utf8') : null;
+function packSuiteProblem(dir, { packDir = __dirname, benchDir = path.join(__dirname, '..'), suiteFile = packSuiteLib.SUITE_FILE } = {}) {
+  if (path.resolve(dir) !== path.resolve(packDir)) return null;
+  const want = packSuiteLib.render(packSuiteLib.packSuite(packDir, benchDir));
+  const have = fs.existsSync(suiteFile) ? fs.readFileSync(suiteFile, 'utf8') : null;
   return have === want ? null : 'bench/suites/pack.json does not list the pack\'s tasks: run node bench/scenarios/pack-suite.js and commit bench/suites/pack.json';
 }
 
@@ -134,4 +134,4 @@ function cmdScenarios(opts) {
   }
 }
 
-module.exports = { cmdScenarios, SUBCOMMANDS, withTree, dirArg };
+module.exports = { cmdScenarios, SUBCOMMANDS, withTree, dirArg, packSuiteProblem };
