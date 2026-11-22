@@ -1,0 +1,23 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "adversarial-design-review",
+    "doc-accuracy-analyzer",
+    "design-doc-guidelines"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "adversarial-design-review",
+      "doc-accuracy-analyzer"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review",
+      "code-review",
+      "design-evaluation"
+    ]
+  },
+  "twinIdea": "Implement the chosen search option by writing the Lambda handlers and DynamoDB access patterns for the managed search service integration.",
+  "why": "adversarial-design-review is the primary skill for challenging design decisions and trade-offs; doc-accuracy-analyzer is needed because the notes warn about unverified vendor latency and migration estimates; design-doc-guidelines provides the structural expectations for what a complete design should cover."
+}

@@ -1,0 +1,5 @@
+partner_id,tier,monthly_events,delivery_target,timeout_seconds,retention_days,allowed_profile,notes
+p-amber,growth,250000,99.0% accepted within 15 minutes,10,30,order.status.v1,One tenant may have several partner connections
+p-cobalt,enterprise,1200000,99.9% accepted within 5 minutes,5,14,order.status.v1,Contract includes tenant isolation for delivery delays
+p-fern,starter,30000,95.0% accepted within 60 minutes,15,30,order.status.v1,Events may be delayed during platform maintenance
+p-lilac,enterprise,900000,99.9% accepted within 5 minutes,5,14,order.status.v1,Uses a dedicated support escalation path

@@ -1,0 +1,30 @@
+service: partner-auth
+owner: identity-platform
+version: v2
+base_url: https://auth.internal.example.invalid/partner
+credential_model:
+  credential_id: opaque registry reference
+  generated_by: partner-auth
+  secret_length_bytes: 32
+  storage: encrypted database column
+  scope: partner_id
+  active_key_slots: 2
+  accepted_key_states: [current, next]
+rotation:
+  create_next: POST /partner/{partner_id}/keys
+  activate_next: POST /partner/{partner_id}/keys/{key_id}/activate
+  overlap_window_hours: 24
+  old_key_retained_after_activation_hours: 24
+  caller_requirement: sender must be able to select the key version per delivery
+request_authentication:
+  algorithm: HMAC-SHA256
+  input: UTF-8 request body
+  signature_header: X-Partner-Signature
+  timestamp_header: X-Partner-Timestamp
+  replay_window_seconds: 300
+  verification_rule: reject timestamps outside the replay window
+  key_lookup: credential_id and key version
+administration:
+  partner_scope: tenant_id and partner_id
+  audit_events: create, rotate, activate, revoke
+  emergency_revoke: available through the identity-platform on-call

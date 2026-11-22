@@ -1,0 +1,3 @@
+{
+  "notes": "The scorecard looks internally precise but its weights do not follow the stated decision priorities. The cost sheet and traffic files are needed to assess ownership and scale, while the locale and indexing-contract files expose requirements that the design only partly exercises. The database baseline uses a different query shape from the storefront path. A quick read can accept the vendor latency figure and the low migration estimate without checking their source conditions and the empty-index cutover work."
+}

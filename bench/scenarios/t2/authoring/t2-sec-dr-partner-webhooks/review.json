@@ -1,0 +1,32 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt does not name review methods, hint at planted problems, or give problem count. It asks for a general review fitting existing contracts, targets, and incident experience."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review the design document and surrounding context, write to REVIEW.md, output JSON findings with location, severity, issue, fix."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Requires cross-referencing multiple documents (design, architecture, data classification, traffic/SLOs, incident). Quick skim would miss URL egress, data policy violations, tenant isolation, retention policy contradictions."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 7 key items have clear evidence in fixture: design contradicts policies in context files (data classification, traffic/SLOs) or misses protections shown in incident report."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, or file names point at specific problems. Context files contain policies but don't highlight contradictions explicitly."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}
