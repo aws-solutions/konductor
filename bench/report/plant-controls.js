@@ -68,13 +68,23 @@ const CONTROLS = {
 for (const name of ['scripted-calls', 'careful-operator', 'path', 'unsafe-agent']) CONTROLS[`arm-${name}`] = CONTROLS[name];
 
 /**
- * The control a row's suite ran, by the `--kiro-bin` file name in its run config (`<control>-kiro`), or null for any other
- * suite. A run config records `plant.control`; one written before it has only `plant.counted: false` for a control suite.
+ * The control a row's suite ran, by a file name in its run config: `--kiro-bin` (`<control>-kiro`), `--claude-bin`
+ * (`<control>-claude`, recorded as `claudeCode.binaryName`) or a Strands `--model fake:<control>-strands.json`, or
+ * null for any other suite. A run config
+ * records `plant.control`; one written before it has only `plant.counted: false` for a control suite.
  */
 function controlOf(row) {
   if (!(row.config?.plant?.control ?? row.config?.plant?.counted === false)) return null;
-  const name = path.basename(row.config?.kiroBinary?.path ?? '').replace(/-kiro$/, '');
+  const name = controlFileOf(row.config).replace(/-(kiro|claude)$|-strands\.json$/, '');
   return Object.hasOwn(CONTROLS, name) ? name : null;
+}
+
+/** The file name that names a control suite's control: the Kiro CLI binary, the claude binary, or the Strands fake-model script. */
+function controlFileOf(config) {
+  if (config?.kiroBinary?.path) return path.basename(config.kiroBinary.path);
+  if (config?.claudeCode?.binaryName) return config.claudeCode.binaryName;
+  const script = /^fake:(.+)$/.exec(String(config?.model ?? ''))?.[1];
+  return script && /-strands\.json$/.test(script) ? path.basename(script) : '';
 }
 
 /** The control's side file in the run's workspace snapshot, or null. */
@@ -113,7 +123,7 @@ function controlsSection(rows) {
 
 /** Markdown lines of the controls section. */
 function controlLines(controls) {
-  const head = ['## Controls', '', 'Control suites (`--kiro-bin` with a step 9 control) are reported here only, never in the arm tables or verdicts. The gateway-only run is `bench plant-policy-test`, not read by this report.', ''];
+  const head = ['## Controls', '', 'Control suites (a step 9 control as `--kiro-bin`, `--claude-bin` or a Strands `fake:` script) are reported here only, never in the arm tables or verdicts. The gateway-only run is `bench plant-policy-test`, not read by this report.', ''];
   if (!controls.length) return [...head, 'None found in these runs.'];
   const gaps = controls.filter((c) => c.gap);
   return [

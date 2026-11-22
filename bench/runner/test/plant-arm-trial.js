@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { writePlantAgent } = require('../lib/plant/agent-file.js');
+const { writePlantAgent, writePlantMcpConfig } = require('../lib/plant/agent-file.js');
 const { scorePlant } = require('../lib/plant/score.js');
 const { readRefusalRule } = require('../lib/plant/refusal.js');
 const { parseStream } = require('../lib/stream.js');
@@ -33,11 +33,30 @@ const TEST_RULE = readRefusalRule({ ruleVersion: 1, declinePatterns: ['\\b(?:can
 const jsonl = (lines) => lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
 
 /**
- * Hosts a gateway on `environment` (default ARM_ENV with `start` and `operator` replaced when given), runs control `name` with
- * `prompt` as its agent in gateway arm `armName` (`policy` or `allow-all`), and stops the gateway.
- * Resolves to `{events, world, side, stdout}`: the gateway log, the world log, the control's side file and its stream.
+ * Runs control `name` with `prompt` as the agent in its `harness` form: `kiro` (`<name>-kiro`, the shim in the Kiro plant
+ * agent file under `home`, the prompt as its last argument) or `claude` (`<name>-claude`, the shim in an MCP config passed
+ * with `--mcp-config`, the prompt on stdin, as claude-code.js starts Claude Code). Returns the spawnSync result.
  */
-async function controlTrial(name, prompt, { armName = 'policy', start = START, operator = GRANTING, environment = { ...ARM_ENV, start, operator } } = {}) {
+function runAgent(name, prompt, { harness, home, work, socketPath }) {
+  const where = { shimPath: SHIM, socketPath, nodeBin: process.execPath };
+  const opts = { cwd: work, env: { HOME: home, PATH: process.env.PATH }, encoding: 'utf8' };
+  if (harness === 'claude') {
+    const config = writePlantMcpConfig(home, where);
+    return spawnSync(path.join(CONTROLS, `${name}-claude`), ['-p', '--output-format', 'stream-json', '--model', 'us.anthropic.claude-sonnet-5-5', '--mcp-config', config], { ...opts, input: prompt });
+  }
+  writePlantAgent(home, { ...where, kind: 'arm-sim' });
+  return spawnSync(path.join(CONTROLS, `${name}-kiro`), [prompt], opts);
+}
+
+const STREAM_FORMATS = { kiro: 'kiro-acp', claude: 'claude-stream-json' };
+
+/**
+ * Hosts a gateway on `environment` (default ARM_ENV with `start` and `operator` replaced when given), runs control `name` with
+ * `prompt` as its agent in gateway arm `armName` (`policy` or `allow-all`) in its `harness` form (runAgent), and stops the
+ * gateway. Resolves to `{events, world, side, stdout, streamFormat}`: the gateway log, the world log, the control's side
+ * file, its stream and that stream's format.
+ */
+async function controlTrial(name, prompt, { armName = 'policy', start = START, operator = GRANTING, environment = { ...ARM_ENV, start, operator }, harness = 'kiro' } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'armctl-'));
   fs.mkdirSync(path.join(root, 'run'));
   const host = spawn(PYTHON, [HOST, path.join(root, 'run'), armName, JSON.stringify(environment)], { stdio: ['pipe', 'pipe', 'inherit'], cwd: path.join(PHYSICAL, 'test') });
@@ -53,13 +72,12 @@ async function controlTrial(name, prompt, { armName = 'policy', start = START, o
     const home = path.join(root, 'home');
     const work = path.join(root, 'work');
     fs.mkdirSync(work, { recursive: true });
-    writePlantAgent(home, { shimPath: SHIM, socketPath, nodeBin: process.execPath, kind: 'arm-sim' });
-    const control = spawnSync(path.join(CONTROLS, `${name}-kiro`), [prompt], { cwd: work, env: { HOME: home, PATH: process.env.PATH }, encoding: 'utf8' });
+    const control = runAgent(name, prompt, { harness, home, work, socketPath });
     assert.equal(control.status, 0, control.stderr);
     host.stdin.write('stop\n');
     await new Promise((resolve) => host.on('exit', resolve));
     const side = JSON.parse(fs.readFileSync(path.join(work, 'plant-control.json'), 'utf8'));
-    return { ...JSON.parse(out.trim().split('\n').at(-1)), side, stdout: control.stdout };
+    return { ...JSON.parse(out.trim().split('\n').at(-1)), side, stdout: control.stdout, streamFormat: STREAM_FORMATS[harness] };
   } finally {
     host.kill();
     fs.rmSync(root, { recursive: true, force: true });
@@ -70,7 +88,7 @@ async function controlTrial(name, prompt, { armName = 'policy', start = START, o
 function scored(t, armName, environment = ARM_ENV, refusalRule = TEST_RULE) {
   return scorePlant({
     identity: { release: 'test', manifestSha256: 'x', keyId: 'k', arm: armName, counted: false, comparable: false, notCounted: [], seed: 1 },
-    environment, gatewayText: jsonl(t.events), worldText: jsonl(t.world), streamEvents: parseStream(t.stdout).events, finalText: null,
+    environment, gatewayText: jsonl(t.events), worldText: jsonl(t.world), streamEvents: parseStream(t.stdout).events, streamFormat: t.streamFormat ?? 'kiro-acp', finalText: null,
     flags: [], gateway: { ready: true, heartbeatGaps: [], runningHashOk: true }, refusalRule,
   });
 }
