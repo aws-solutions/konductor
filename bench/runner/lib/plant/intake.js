@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { copyPlainFile } = require('../safe-copy.js');
 const { sha256File, versionOf, SHARED_LAUNCHER } = require('../sandbox.js');
-const { isComparableMode } = require('../isolate.js');
+const { isComparableMode, realHomes, tmpOutsideHome } = require('../isolate.js');
 const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE } = require('./manifest.js');
 const { DEADLINES } = require('./gateway-proc.js');
 const { loadRefusalRule } = require('./refusal.js');
@@ -278,10 +278,10 @@ function checkRealSuite({ release, ctx, strands, outDir, home, versionOfBin, noi
  * isolation); `repo` the repository root. A suite with --kiro-bin is a control suite (`control: true`): no Kiro CLI pin, no
  * Cedar files, no out-dir filesystem check and no quiet-host check, unless that binary reports the pinned version (see
  * isCountedSuite). `counted`, `comparable` and `notCounted` come from countingOf. Seams: `keys` (pinned keys),
- * `privateParent` (where the runner-private dir is made), `home`, `versionOfBin`, `deadlines`, `makeToken`,
+ * `privateParent` (where the runner-private dir is made; default TMPDIR, or /tmp when TMPDIR is inside home), `home`, `versionOfBin`, `deadlines`, `makeToken`,
  * `readListeners` and `noiseOf(release)` (the quiet-host check, default hostNoise).
  */
-function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = os.tmpdir(), home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners, noiseOf = hostNoise }) {
+function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = null, home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners, noiseOf = hostNoise }) {
   checkSuiteShape({ arms, tasks, parallel });
   const dir = opts['plant-release'];
   const expectedSha256 = opts['plant-release-sha256'];
@@ -290,7 +290,8 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
   const roots = { scratch: ctx.scratchDir, home, repo };
   refuseInside('the plant release', dir, roots);
   refuseInside('the out dir', outDir, roots);
-  const privateRoot = fs.mkdtempSync(path.join(privateParent, 'kplant-'));
+  // Default: TMPDIR, or /tmp when TMPDIR is inside home (a session scratch dir), which refuseInside below would refuse.
+  const privateRoot = fs.mkdtempSync(path.join(privateParent ?? tmpOutsideHome(realHomes(home)), 'kplant-'));
   procs.trackScratch(privateRoot); // a SIGINT or SIGTERM removes it too (D-93), read-only release copy included
   let release = null;
   try {

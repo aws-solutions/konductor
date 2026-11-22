@@ -101,11 +101,12 @@ function realHomes(home = os.homedir()) {
 
 /**
  * The real os.tmpdir(), or /tmp when TMPDIR is inside a real HOME (such as an agent session's scratch dir).
- * For internal temp dirs that a home guard (cap variant scratch, Claude Code scratch) would refuse.
+ * For internal temp dirs that a home guard (cap variant scratch, the plant runner-private dir) would refuse.
+ * `homes` are real paths; the default is realHomes().
  */
-function tmpOutsideHome() {
+function tmpOutsideHome(homes = realHomes()) {
   const tmp = realOrNull(os.tmpdir()) || path.resolve(os.tmpdir());
-  return realHomes().some((h) => inside(tmp, h)) ? '/tmp' : tmp;
+  return homes.some((h) => inside(tmp, h)) ? '/tmp' : tmp;
 }
 
 const statOrNull = (p) => { try { return fs.statSync(p); } catch { return null; } };

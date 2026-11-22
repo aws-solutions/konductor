@@ -151,6 +151,21 @@ test('a plant suite is refused when the out dir or the release lies inside scrat
   } finally { r.cleanup(); }
 });
 
+test('a TMPDIR inside home (a session scratch dir) puts the runner-private dir outside home instead of refusing the suite', () => {
+  const r = rig();
+  const saved = process.env.TMPDIR;
+  try {
+    process.env.TMPDIR = path.join(r.home, 'scratch');
+    fs.mkdirSync(process.env.TMPDIR, { recursive: true });
+    const suite = suiteOf(r);
+    assert.ok(!fs.realpathSync(suite.privateRoot).startsWith(fs.realpathSync(r.home) + path.sep), suite.privateRoot);
+    suite.dispose();
+  } finally {
+    if (saved === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = saved;
+    r.cleanup();
+  }
+});
+
 test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an out dir on its own filesystem', () => {
   const r = rig();
   try {
