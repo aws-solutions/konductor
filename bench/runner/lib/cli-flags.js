@@ -70,6 +70,8 @@ const FLAGS = {
   'cap nudge-preview': ['tree', 'tasks', 'extra-tasks', 'json'],
   'cap nudge-check': ['run', 'json'],
   'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
+  'cap units': ['kind', 'coverage', 'out', 'repo-root', 'json'],
+  'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'estimate', 'depth', 'max-units', 'repo-root'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json', 'usage-runs'],
   'scenarios lint': ['base', 'repo-root', 'json'],
   'scenarios prereg': ['date', 'base', 'repo-root', 'selection-only', 'accept-gaps'],
@@ -84,7 +86,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'nudge-preview', 'nudge-check'] };
+const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenarios: ['lint', 'coverage', 'prereg', 'pilot-table', 'ready', 'spot-review'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select', 'units', 'unit-stage', 'nudge-preview', 'nudge-check'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([

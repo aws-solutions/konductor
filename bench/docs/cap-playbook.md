@@ -22,6 +22,7 @@ evaluate a skill, and whether a skill should be pruned. Everything marked free s
 | `cap skill-study --study DIR`, then `cap decide --study DIR` | For each skill: delete, prune (which sections, which lines, move or remove) or keep? | tens to hundreds of credits per skill |
 | `cap select --skill NAME --run stub-ID` | Stage 1's selection test: trigger precision and recall from the skill's frozen should-load and should-not requests, read from the agent stream. The stub is free; `--from-run` scores a finished run. | free |
 | `cap keep-prune --skill NAME --run stub-ID` | One keep-or-prune record per skill: a quick and a deep verdict of the conditional effect after load, side by side, under Michael Lin's dated rules. The whole-skill call stays NO DATA until a separate selection result is given. Phase A runs on the stub provider only. | free |
+| `cap units`, `cap unit-stage` | Stages 2 to 4 of keep-or-prune: agent files, SOPs and always-loaded context, through the same pipeline on the stub provider, and a dry-run cost per stage. See [keep-prune-stages.md](keep-prune-stages.md). | free |
 
 The prune report is a recommendation, never a deletion. A person decides, with the checklist at the end.
 

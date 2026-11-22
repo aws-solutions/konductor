@@ -327,10 +327,13 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     const runtime = arms[0].runtime;
     const kind = suiteKindOf({ runtime, opts, ctx, manifest: release.manifest, versionOfBin });
     const { control } = kind;
+    // Anyone can sign with the public toy key (D-82), so its releases never meet a real agent or a counted suite.
+    const toy = release.keyStatus === 'toy';
+    if (toy && !control) throw new ReleaseRefused(`toy release ${release.manifest.release} runs control suites only (a scripted control as --kiro-bin or --claude-bin, or a Strands fake: model): it is signed with the public toy key and never counts`);
     const noise = control ? [] : checkRealSuite({ release, ctx, runtime, outDir, home, versionOfBin, noiseOf });
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
     return {
-      release, privateRoot, socketParent, control, hostNoise: noise, deadlines, makeToken, readListeners,
+      release, privateRoot, socketParent, control, toy, hostNoise: noise, deadlines, makeToken, readListeners,
       ...countingOf({ control, mode: ctx.isolation.mode, noise, reasons: kind.notCounted }),
       python: opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3',
       isolationMode: ctx.isolation.mode,

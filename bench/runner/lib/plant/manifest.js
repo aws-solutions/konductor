@@ -20,13 +20,20 @@ const sha256Hex = (bytes) => crypto.createHash('sha256').update(bytes).digest('h
 /** The key id of an Ed25519 public key given as base64 SPKI DER: the SHA-256 of the DER bytes, in hex. */
 const keyIdOf = (publicKeyB64) => sha256Hex(Buffer.from(publicKeyB64, 'base64'));
 
+// Key statuses that verify. `toy` is the public toy key (bench/physical/toy, D-82): its private half is rebuilt from
+// public text, so a release it signs runs control suites only (intake.js preparePlantSuite).
+const USABLE_STATUSES = new Set(['active', 'toy']);
+
 /** The pinned entry of `keys` (`[{publicKey, status}]`) whose key id is `keyId`. Throws ReleaseRefused if none or revoked. */
 function pinnedKey(keyId, keys) {
   const key = keys.find((k) => keyIdOf(k.publicKey) === keyId);
   if (!key) throw new ReleaseRefused(`release key ${keyId} is not pinned in this runner`);
-  if (key.status !== 'active') throw new ReleaseRefused(`release key ${keyId} is ${key.status}`);
+  if (!USABLE_STATUSES.has(key.status)) throw new ReleaseRefused(`release key ${keyId} is ${key.status}`);
   return key;
 }
+
+/** Whether `keyId` is pinned in `keys` as the toy key. */
+const isToyKey = (keyId, keys = PINNED_KEYS) => keys.some((k) => k.status === 'toy' && keyIdOf(k.publicKey) === keyId);
 
 /** Throws ReleaseRefused unless `signatureText` (base64) is a valid Ed25519 signature of `manifestBytes` by `key`. */
 function verifySignature(manifestBytes, signatureText, key) {
@@ -67,7 +74,7 @@ function readManifest(bytes) {
 }
 
 /**
- * The checked manifest of one release: `{manifest, manifestSha256, keyId}`.
+ * The checked manifest of one release: `{manifest, manifestSha256, keyId, keyStatus}` (`keyStatus` `active` or `toy`).
  * `manifestBytes` and `signatureText` are read from the runner-private copy; `expectedSha256` is the
  * --plant-release-sha256 value; `keys` is the pinned key list (tests pass their own). Throws ReleaseRefused.
  */
@@ -75,8 +82,9 @@ function checkManifest({ manifestBytes, signatureText, expectedSha256, keys = PI
   const manifestSha256 = sha256Hex(manifestBytes);
   if (manifestSha256 !== expectedSha256) throw new ReleaseRefused(`manifest SHA-256 ${manifestSha256} is not the expected ${expectedSha256}`);
   const manifest = readManifest(manifestBytes);
-  verifySignature(manifestBytes, signatureText, pinnedKey(manifest.keyId, keys));
-  return { manifest, manifestSha256, keyId: manifest.keyId };
+  const key = pinnedKey(manifest.keyId, keys);
+  verifySignature(manifestBytes, signatureText, key);
+  return { manifest, manifestSha256, keyId: manifest.keyId, keyStatus: key.status };
 }
 
-module.exports = { checkManifest, readManifest, keyIdOf, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE };
+module.exports = { checkManifest, readManifest, keyIdOf, isToyKey, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE };

@@ -24,8 +24,8 @@ const TOOL_VERSION = 'cap-variant/1';
 const PRESETS = ['skills-only', 'bare', 'noskills'];
 // The arm a preset builds is named after the preset, except noskills: konductor with every skill removed (B4).
 const PRESET_ARM = { noskills: 'konductor-noskills' };
-// A hook variant (cap/nudge.js) is named after its hook: konductor-nudge or konductor-filler.
-const HOOKS = ['nudge', 'filler'];
+// A hook variant (cap/nudge.js) is named after its hook: konductor-list, konductor-nudge or konductor-filler.
+const HOOKS = ['list', 'nudge', 'filler'];
 const BARE_PROMPT = 'You are a general software engineering assistant. Do the work you are asked to do.';
 const ORCHESTRATOR = 'konductor';
 
@@ -369,7 +369,7 @@ function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
 function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, hook = null, scratch, agentEngine = 'v2', now = new Date() }) {
   drop = toList(drop); replace = toList(replace); add = toList(add); overlay = toList(overlay); toAgent = toList(toAgent);
   if (preset !== null && !PRESETS.includes(preset)) throw new Error(`--preset takes ${PRESETS.join(' or ')}`);
-  if (hook !== null && !HOOKS.includes(hook)) throw new Error(`--hook takes ${HOOKS.join(' or ')}`);
+  if (hook !== null && !HOOKS.includes(hook)) throw new Error('--hook takes list, nudge or filler');
   if (!drop.length && !replace.length && !add.length && !overlay.length && !preset && !hook) throw new Error('nothing to do: give --drop, --replace, --add, --overlay, --preset or --hook');
   if (add.length && !toAgent.length) throw new Error('--add needs --to-agent AGENT[,AGENT]');
   if (!scratch) throw new Error('--scratch DIR is required');

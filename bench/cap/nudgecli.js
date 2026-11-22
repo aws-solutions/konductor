@@ -78,7 +78,7 @@ function checkRuns(runs) {
       const events = parseStream(readLines(path.join(dir, 'stream.jsonl'))).events;
       const x = extractSkills(events, 'kiro-cli');
       // Only the hook arms carry a header to look for; any other arm reports null.
-      const header = /filler/.test(r.armId) ? nudge.FILLER_HEADER : /nudge/.test(r.armId) ? nudge.NUDGE_HEADER : null;
+      const header = /filler/.test(r.armId) ? nudge.FILLER_HEADER : /list/.test(r.armId) ? nudge.LIST_HEADER : /nudge/.test(r.armId) ? nudge.NUDGE_HEADER : null;
       rows.push({
         armId: r.armId, taskId: r.taskId, replicate: r.replicate, status: r.status, credits: r.credits ?? null, toolCalls: r.toolCalls ?? null,
         hookSeen: header ? hookSeen(dir, header) : null,
