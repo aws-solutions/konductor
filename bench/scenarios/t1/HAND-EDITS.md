@@ -124,3 +124,16 @@ t1-ref-schema-migrate passes all four items. t1-ref-callbacks passes three. It f
 that the hidden tests check only FileStore and runPipeline. That is a misread: `hidden/api.test.js` also tests retry
 (lines 70 to 89) and processFile (line 123), so the item is disposed and nothing changed. Verdicts are in each task's
 `review.recheck`.
+
+## t1-impl-job-retry v4 (2026-11-22, mate LITE-fix worker, claude; LITE analysis item 2)
+
+All six LITE runs passed 1 or 2 of 14 hidden tests while every other check passed. Two spec gaps:
+- The prompt says "Each policy has maxAttempts, baseDelayMs, maxDelayMs, jitter", so the runs validated that every
+  field is present; 12 hidden tests passed policies with only some of the fields and failed at construction. Each
+  hidden policy now carries all four numeric fields (missing ones as `baseDelayMs: 0`, `maxDelayMs: 10000`,
+  `jitter: 0`, which change no expected value).
+- Two tests expect a job type with no policy to go to deadLetter after one attempt; the prompt did not say so and the
+  fixture's old runner drops a failed job, so every run kept that. The prompt now says: "A job type with no entry in
+  retryPolicies gets one attempt: when it fails, it goes to deadLetter the same way."
+The six LITE workspaces now pass 12 of 14 (the two left are the no-policy rule they were never told). Gates: reference
+100, stub 5.2, lazy 36, alt 100, shallow 18.2. Non-Claude recheck: pending (`handEdited.version` 4).

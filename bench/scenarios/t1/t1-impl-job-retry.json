@@ -1,11 +1,11 @@
 {
   "id": "t1-impl-job-retry",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
-  "prompt": "Can you add per-job-type retries to this worker? Keep the current queue format, handlers, logging shape, and successful-job behaviour intact. In src/runner.js, WorkerRunner must accept retryPolicies keyed by job type. Each policy has maxAttempts (including the first attempt), baseDelayMs, maxDelayMs, jitter, and an optional async shouldRetry(error, job) hook. Use exponential backoff, cap it, and use the injected random function for deterministic jitter. jitter is a fraction of the delay: a random value of 0 gives delay \u00d7 (1 \u2212 jitter), 1 gives delay \u00d7 (1 + jitter), and the result never exceeds maxDelayMs. WorkerRunner must also accept an injected clock with now() and sleep(milliseconds, signal), plus random(). Export retryDelay(policy, attempts, randomValue) from src/runner.js for the delay calculation.\n\nPersist the incremented attempts count in each job record before processing. A retry must remain in pending with availableAt, so stopping the runner while it is waiting cannot lose the job. JobQueue should expose listDeadLetters() and nextAvailableAt() while retaining its existing queue methods. PermanentJobError from src/errors.js and errors with retryable === false must never retry. When the policy is exhausted or shouldRetry returns false, move the record to deadLetter and keep the error message in its reason field. Keep the existing runOnce(), run(), and stop() interfaces; run({ signal }) should respect shutdown. Add focused tests and update the README or operations notes and changelog. Do not add dependencies or require real-time sleeps in tests.",
+  "prompt": "Can you add per-job-type retries to this worker? Keep the current queue format, handlers, logging shape, and successful-job behaviour intact. In src/runner.js, WorkerRunner must accept retryPolicies keyed by job type. Each policy has maxAttempts (including the first attempt), baseDelayMs, maxDelayMs, jitter, and an optional async shouldRetry(error, job) hook. Use exponential backoff, cap it, and use the injected random function for deterministic jitter. jitter is a fraction of the delay: a random value of 0 gives delay × (1 − jitter), 1 gives delay × (1 + jitter), and the result never exceeds maxDelayMs. WorkerRunner must also accept an injected clock with now() and sleep(milliseconds, signal), plus random(). Export retryDelay(policy, attempts, randomValue) from src/runner.js for the delay calculation.\n\nPersist the incremented attempts count in each job record before processing. A retry must remain in pending with availableAt, so stopping the runner while it is waiting cannot lose the job. JobQueue should expose listDeadLetters() and nextAvailableAt() while retaining its existing queue methods. PermanentJobError from src/errors.js and errors with retryable === false must never retry. When the policy is exhausted or shouldRetry returns false, move the record to deadLetter and keep the error message in its reason field. Keep the existing runOnce(), run(), and stop() interfaces; run({ signal }) should respect shutdown. Add focused tests and update the README or operations notes and changelog. Do not add dependencies or require real-time sleeps in tests.",
   "fixture": "t1-impl-job-retry",
   "hidden": "t1-impl-job-retry",
   "timeoutSec": 1200,
@@ -156,7 +156,7 @@
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check behaviors from prompt: jitter formula (delay \u00d7 (1-jitter) to delay \u00d7 (1+jitter)), maxAttempts includes first try, PermanentJobError bypasses retry, retryable=false bypasses, availableAt persists, dead-letter retains reason."
+          "note": "Hidden tests check behaviors from prompt: jitter formula (delay × (1-jitter) to delay × (1+jitter)), maxAttempts includes first try, PermanentJobError bypasses retry, retryable=false bypasses, availableAt persists, dead-letter retains reason."
         },
         {
           "check": "solvable-from-fixture",
@@ -171,18 +171,39 @@
     "reference": 100,
     "stub": 5.2,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 5.2,
       "lazy": 36,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): prompt states the no-policy rule; hidden tests pass full policies",
+    "log": "HAND-EDITS.md",
+    "version": 4
   }
 }
