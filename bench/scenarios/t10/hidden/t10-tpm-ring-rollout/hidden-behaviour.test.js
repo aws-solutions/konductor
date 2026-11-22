@@ -29,3 +29,6 @@ test('rolls back a high-error snapshot', () => { const csv = fs.readFileSync('op
 test('holds at the promotion boundary', () => { const csv = good.replace(/,0\.[0-9]+,/g, ',1.0,'); assert.equal(evaluate({ ring: 'staff', snapshot: csv, now: '2025-06-02T10:11:00Z' }).decision, 'HOLD'); });
 test('holds when the required metric is absent', () => { const csv = good.replace('RECEIPT_ERROR_RATE_PERCENT', 'other_metric_percent'); assert.equal(evaluate({ ring: 'staff', snapshot: csv, now: '2025-06-02T10:11:00Z' }).decision, 'HOLD'); });
 test('CLI prints only the decision', () => { const out = execFileSync(process.execPath, ['scripts/receipt-go-no-go.js', '--ring', 'staff', '--snapshot', 'ops/snapshots/staff-good.csv', '--now', '2025-06-02T10:11:00Z'], { encoding: 'utf8' }); assert.equal(out.trim(), 'PROMOTE'); });
+
+// The fixture's own 37 tests, copied here unchanged, must still pass: a copy loosened in test/ cannot hide a regression.
+test('the original test suite passes unchanged', () => { execFileSync(process.execPath, ['--test', '--test-timeout=15000', 'pristine-tests/'], { stdio: 'pipe' }); });

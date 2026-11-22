@@ -1,7 +1,7 @@
 {
   "id": "t10-tpm-ring-rollout",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "multi-phase",
   "role": "tpm",
   "phases2": [
@@ -22,7 +22,7 @@
     {
       "type": "tests",
       "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js",
-      "min": 18,
+      "min": 19,
       "weight": 3,
       "kind": "substance"
     },
@@ -246,17 +246,42 @@
     "dryRun": {
       "reference": 100,
       "stub": 5.7,
-      "lazy": 28.8,
+      "lazy": 28.5,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (key-reconcile session, 2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): a hidden test runs the fixture's own 37 tests unchanged, so a loosened copy cannot hide a regression",
+    "log": "HAND-EDITS.md",
+    "version": 3
   }
 }
