@@ -1,7 +1,7 @@
 {
   "id": "t11-wide-settings-refactor",
   "class": "hard",
-  "version": 1,
+  "version": 2,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -154,15 +154,32 @@
       "stub": 7.1,
       "lazy": 14.3,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     },
     "decision": "keep",
-    "date": "2026-11-20"
+    "date": "2026-11-22"
   },
   "lockedAt": null,
   "handEdited": {
     "family": "claude",
-    "editor": "kirocrew-mate-worker (CV-C session)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): hidden tests accept unquoted placeholders and destructured value() calls",
+    "log": "HAND-EDITS.md",
+    "version": 2
   }
 }
