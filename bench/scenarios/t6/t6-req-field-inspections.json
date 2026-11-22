@@ -1,7 +1,7 @@
 {
   "id": "t6-req-field-inspections",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -118,14 +118,29 @@
   ],
   "rubric": [
     {
-      "id": "Q1",
-      "criterion": "Requirements separate confirmed operating rules from decisions that still need an owner and do not turn the old draft into settled policy. Fail: rules from the old draft are written as confirmed, or open decisions have no owner. Partial: confirmed and open items are separated, but only some confirmed rules appear (8 hours offline with queued submissions and photos, 12 shared tablets chosen by asset tag at sign-out, at most 4 photos per item at original resolution, both versions kept when two tablets edit one inspection, tablet attestation then field-lead approval within 2 business days as the export gate), or open decisions have no owner. Pass: all of these appear as confirmed requirements, the records retention rule and the managed tablet boundary are kept, and each decision still open names who must decide it, with nothing taken from the old draft as policy. (code cannot check this because it requires judging the source evidence and the document's interpretation)",
-      "weight": 2
+      "id": "confirmed-capture",
+      "criterion": "The confirmed field-capture rules appear as confirmed requirements with their numbers. Fail: two or more of these are missing or carry another number, or a rule from the old draft (offline 'near real time' or 'end of day' upload, supervisor review) is written in its place as confirmed. Partial: one of them is missing, vague or carries another number. Pass: all four appear as confirmed requirements: 8 hours of offline work with submissions and photos queued until reconnecting; 12 shared rugged tablets, each chosen by asset tag at sign-out, with no personal device required; at most 4 photos per inspection item kept at original resolution; and when two tablets edit one inspection offline, both versions kept and the record flagged for field-lead resolution, never silently overwritten. (code cannot check this because it requires judging whether each rule is stated as confirmed and testable rather than merely mentioned)",
+      "weight": 1
     },
     {
-      "id": "Q2",
-      "criterion": "The requirements are practical for a field crew and preserve the intent of the paper process without adding needless workflow burden. Fail: it adds steps the paper process never had, or omits the safety stop. Partial: it keeps the capture steps, but forces a reading or photo before a safety stop, or loses the paper-form not-applicable meaning. Pass: it offers a safety-stop status (chlorine smell, exposed electrical conductor, unstable ground) that needs no reading or photo and notifies the field lead, keeps the paper-form not-applicable semantics, warns or blocks before photographing identifiable people or vehicle plates, and adds no step beyond what the folder asks for. (code cannot check this because usability and proportionality require human review)",
-      "weight": 2
+      "id": "completion-records",
+      "criterion": "Completion, records and device rules are kept as the folder states them. Fail: completion is defined without the field-lead approval, or the records retention rule is missing. Partial: completion is right (inspector attestation on the tablet, then field-lead approval within 2 business days as the export gate), but the retention rule or the managed tablet boundary is missing or changed. Pass: completion is attestation then field-lead approval within 2 business days, with that approval as the export gate; completed records and their audit history are kept 7 years from completion and a correction keeps the original submitted value recoverable; and the app runs on the managed rugged Android tablet without administrator access. (code cannot check this because it requires judging the document against the policy and standards pages)",
+      "weight": 1
+    },
+    {
+      "id": "open-decisions",
+      "criterion": "Requirements separate confirmed rules from decisions that are still open, and give each open decision an owner. Fail: confirmed and open items sit together with no marker, a rule from the old draft is written as settled policy, or no open decision names who must decide it. Partial: confirmed and open items are separated and nothing from the old draft is taken as policy, but some open decisions name no owner. Pass: open decisions (for example whether a record can be edited after upload, or duplicate handling beyond the two-version rule) are listed apart from the confirmed rules, each names who must decide it, and nothing from the old draft is presented as approved. (code cannot check this because it requires judging the source evidence and the document's interpretation)",
+      "weight": 1
+    },
+    {
+      "id": "safety-stop",
+      "criterion": "The safety stop is a requirement a crew can use on site. Fail: no safety stop, or the stop needs a reading or a photo before it can be used. Partial: a safety stop exists without a reading or photo, but it leaves out one of the three conditions (chlorine smell, exposed electrical conductor, unstable ground) or does not notify the field lead. Pass: a safety-stop status names all three conditions, needs no reading or photo, and notifies the field lead. (code cannot check this because usability on site requires human review)",
+      "weight": 1
+    },
+    {
+      "id": "field-burden",
+      "criterion": "The requirements keep the paper process's meaning without adding work for the crew. Fail: it adds steps the paper process and the folder never asked for, or it drops the not-applicable meaning so a skipped check looks like a reading or a missed entry. Partial: not-applicable is kept apart from a missed entry, but the photo warning for identifiable people or vehicle plates is missing, or one needless step is added. Pass: a check can be marked not applicable without a reading and that is distinguishable from a missed entry, the app warns or blocks before photographing identifiable people or vehicle plates, and no step is added beyond what the folder asks for. (code cannot check this because proportionality requires human review)",
+      "weight": 1
     },
     {
       "id": "honest-summary",
@@ -223,21 +238,38 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate experiment-prep worker (2026-11-22)",
+    "log": "HAND-EDITS.md",
+    "version": 6
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-21",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 14.3,
       "alt": 100,
-      "date": "2026-11-21"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     }
   }
 }

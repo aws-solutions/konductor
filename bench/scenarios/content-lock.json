@@ -237,6 +237,14 @@
       "sha256": "b285489eca4c3dcd078dafb3edf485be49c327d706ad71b3a8db2199a0fdb3c5",
       "legacyRecheckVersion": 3
     },
+    "t2-dr-doc-ready-for-review": {
+      "version": 1,
+      "sha256": "bc162e9d2d235a1a7b728bbfb64c7f2fc8c9090044d091a67a6bf6a890152926"
+    },
+    "t2-dr-five-angle-spec": {
+      "version": 1,
+      "sha256": "f8d12ff1c1183fe8ecb46ce86372be84b11bf991896fc6613d12dc8fcecb1ea5"
+    },
     "t2-dr-notify-fanout": {
       "version": 3,
       "sha256": "a39cebbbbd78e9a2120e12675601f3b59dc70e64219329e892949a4820e2b67b",
@@ -245,6 +253,10 @@
     "t2-dr-orders-dynamo-model": {
       "version": 1,
       "sha256": "ec378839d520e2f17d9d65b69aaa1138c2a01dd5171a8804752d2120cb438d40"
+    },
+    "t2-dr-plan-start-monday": {
+      "version": 1,
+      "sha256": "bd0696b7709deca62968f17e65e5ce3f452736054a1c6a15a37d61d2834daa79"
     },
     "t2-dr-rate-limits": {
       "version": 3,
@@ -264,9 +276,17 @@
       "version": 6,
       "sha256": "0b64d40b755afc1f5b5877f43c899b9ef7c8d8a2169a7f75c6154ef1a1bd3c66"
     },
+    "t2-gaps-rev3-history": {
+      "version": 1,
+      "sha256": "cb311002e1373b2c67a8d9d3d83dd1021c1b7957107c82947aeffc8989e88940"
+    },
     "t2-pr-avatar-upload": {
       "version": 6,
       "sha256": "46ef586c4f6c81f69f7319c4c8acb70f1e9e811e1e5035544b878465129388c4"
+    },
+    "t2-pr-catalog-api-v2": {
+      "version": 1,
+      "sha256": "65c0835184a9aab3f427b17b368f49691a0646169834c793e88b0f8c4e9a3cee"
     },
     "t2-pr-checkout-widget": {
       "version": 1,
@@ -288,6 +308,10 @@
       "version": 3,
       "sha256": "f789ea1924b491074475edcc1e04b2b8379c1bf7db064a2fb61bec2392ab285b",
       "legacyRecheckVersion": 3
+    },
+    "t2-pr-precheck-uncommitted": {
+      "version": 1,
+      "sha256": "ba79077b87aaf83fe8ef8513c87c7cfd94bd2feb199fed903412b022346504ea"
     },
     "t2-pr-price-cache": {
       "version": 5,
@@ -589,8 +613,8 @@
       "legacyRecheckVersion": 3
     },
     "t6-req-clinic-reminders": {
-      "version": 5,
-      "sha256": "629ffeb3262f226a228ebcedaec49b8f9e9eea2e49cb96a46291a3c1b91b4ce5",
+      "version": 6,
+      "sha256": "4273b46c9ba7c48af6bc6083dcf514572a623097c7b595feb6292efba63de56a",
       "legacyRecheckVersion": 5
     },
     "t6-req-data-export": {
@@ -609,8 +633,8 @@
       "legacyRecheckVersion": 3
     },
     "t6-req-field-inspections": {
-      "version": 5,
-      "sha256": "8792a83f2ee91a4988741354ac2f6de06764c65771fbeb5503577ca0a5e60597",
+      "version": 6,
+      "sha256": "a50695e9ce3c0d0c6f10f9d37f87ebf448ee3b1ca3f5045e4f8df24cf51d7b9d",
       "legacyRecheckVersion": 5
     },
     "t6-req-library-holds": {

@@ -377,3 +377,18 @@ negation in the same sentence and still fails the plain claim.
 
 Free gates after: references 100, alternatives 100, stub 0 to 4.1, lazy 4.1 to 30.5. Each needs a non-Claude recheck
 at its new version before a lock.
+
+## 2026-11-22: thin rubrics widened (next-experiment prep)
+
+The LITE analysis flagged two-criterion T6 rubrics whose broad Q1 and Q2 could only land at 0, 50 or 100. Each Q is
+split into the parts its own Pass text already listed, with the same Pass bar per part and nothing loosened; a few
+Fail lines are stricter (a safety stop that needs a reading now fails `safety-stop` instead of half-passing Q2).
+`honest-summary` is unchanged. Rubric weight is now 5 parts of 1 plus the summary at 1 (was 2, 2, 1).
+
+- `t6-req-field-inspections` v6: `confirmed-capture`, `completion-records` (adds the 7-year retention and managed
+  tablet facts from `records-policy.md` and `it-standards.md` that Q1 named only as "kept"), `open-decisions`,
+  `safety-stop`, `field-burden`.
+- `t6-req-clinic-reminders` v6: `send-rules`, `consent-privacy`, `language-replies`, `rollout`, `open-decisions`.
+
+Free gates after: references 100, alternatives 100, stub 0, lazy 14.3 and 11.4. Each needs a non-Claude recheck at
+its new version before a lock.

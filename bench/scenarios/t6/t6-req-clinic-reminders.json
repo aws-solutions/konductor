@@ -1,7 +1,7 @@
 {
   "id": "t6-req-clinic-reminders",
   "class": "design",
-  "version": 5,
+  "version": 6,
   "phase": "requirements",
   "role": "pm",
   "questions": "scripted",
@@ -132,14 +132,29 @@
   ],
   "rubric": [
     {
-      "id": "Q1",
-      "criterion": "The requirements distinguish confirmed behavior from unresolved decisions and make each operational rule implementable. Fail: confirmed rules and open questions sit together in one list with no marker, or rules are vague ('send reminders at suitable times'). Partial: most rules are testable, but the list misses several confirmed rules (two reminders at 72 and 24 hours with one immediate send for late bookings, quiet hours 20:00 to 08:00 in each clinic's local time, explicit consent before sending, cancelled appointments excluded, STOP, END and UNSUBSCRIBE suppression recorded in the patient record). Pass: these rules appear as separate testable requirements, the English and Spanish templates with an English fallback and the 60-minute front-desk task for replies are included, and anything not settled is listed as an open decision with an owner. (code cannot check this because it cannot judge the quality of the boundary or wording)",
-      "weight": 2
+      "id": "send-rules",
+      "criterion": "The confirmed sending rules appear as separate testable requirements. Fail: rules are vague ('send reminders at suitable times'), or two or more of these are missing or carry other values. Partial: one of them is missing, vague or carries another value. Pass: all of these appear as separate testable requirements: two reminders at 72 and 24 hours before the appointment, with one immediate send for a late booking; quiet hours 20:00 to 08:00 in each clinic's local time; cancelled appointments excluded. (code cannot check this because it cannot judge whether each rule is worded so it can be built and tested)",
+      "weight": 1
     },
     {
-      "id": "Q2",
-      "criterion": "The document is clear enough for operations and engineering to act without hiding privacy, consent, ownership, or rollout risks. Fail: the document leaves out the consent rule, the message content limit or the rollout order. Partial: privacy and consent are covered, but ownership (who handles replies and opt-outs) or the rollout (Cedar Grove and Harbor Point on March 3, 2025, Northgate on March 17 after a two-week check) is missing or unclear. Pass: it limits the message to first name and clinic name with no provider, treatment or diagnosis, names who owns reply handling and opt-out records, gives the staged rollout dates with the condition for adding Northgate, and lists open decisions with an owner. (code cannot check this because it cannot assess human usability and completeness of context)",
-      "weight": 2
+      "id": "consent-privacy",
+      "criterion": "Consent, opt-out and message content are covered. Fail: the consent rule or the message content limit is missing. Partial: consent and the content limit are covered, but STOP, END and UNSUBSCRIBE suppression is missing or is not recorded in the patient record. Pass: explicit consent is required before any send, STOP, END and UNSUBSCRIBE suppress further messages and are recorded in the patient record, and the message carries only first name and clinic name with no provider, treatment or diagnosis. (code cannot check this because it cannot judge whether the privacy limits are stated without gaps)",
+      "weight": 1
+    },
+    {
+      "id": "language-replies",
+      "criterion": "Templates and reply handling are concrete and owned. Fail: neither the templates nor reply handling are described. Partial: one of the two is concrete, or both are described but nobody owns reply handling or opt-out records. Pass: English and Spanish templates with an English fallback are required, ordinary replies create a front-desk task to review within 60 minutes during open hours, and the document names who owns reply handling and opt-out records. (code cannot check this because ownership and actionability are a judgement)",
+      "weight": 1
+    },
+    {
+      "id": "rollout",
+      "criterion": "The rollout is staged as the folder states. Fail: the rollout order is missing. Partial: an order is given, but a date or the condition for adding Northgate is missing or wrong. Pass: Cedar Grove and Harbor Point go live on March 3, 2025, and Northgate on March 17 after a two-week check, with that check stated as the condition. (code cannot check this because it cannot judge whether the condition is clear enough to act on)",
+      "weight": 1
+    },
+    {
+      "id": "open-decisions",
+      "criterion": "Confirmed behavior is kept apart from unresolved decisions. Fail: confirmed rules and open questions sit together in one list with no marker. Partial: they are separated, but some open decisions name no owner. Pass: anything not settled is listed as an open decision apart from the confirmed rules, and each names an owner. (code cannot check this because it cannot judge the quality of the boundary or wording)",
+      "weight": 1
     },
     {
       "id": "honest-summary",
@@ -239,21 +254,38 @@
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate spot-review fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate experiment-prep worker (2026-11-22)",
+    "log": "HAND-EDITS.md",
+    "version": 6
   },
   "pilot": {
     "scores": {},
     "reference": 100,
     "stub": 0,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
       "stub": 0,
       "lazy": 11.4,
       "alt": 100,
-      "date": "2026-11-20"
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     }
   }
 }
