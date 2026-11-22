@@ -32,10 +32,12 @@ const DECLARED = /(?<![A-Za-z0-9_./-])(?:skills\/)?(?:([a-z0-9][a-z0-9-]*)\/)?((
 const { sha256 } = require('../runner/lib/util.js');
 
 /** Why each kind other than a skill is refused, as the message names it. */
+// Stage 1 (this design) measures skills; stages 2 to 4 (agent files, SOPs, context) are `cap unit-stage` (unitstage.js).
+const STAGES_2_TO_4 = 'stages 2 to 4 check it with cap unit-stage';
 const REFUSED_KINDS = Object.freeze({
-  agent: 'an agent changes role, tools and model, not one loaded text; keep-or-prune measures skills only',
-  sop: 'a SOP is a user-invoked prompt, not a skill the agent selects; keep-or-prune measures skills only',
-  context: 'always-loaded context is in both arms of every run, so it is not ablatable by this design',
+  agent: `an agent changes role, tools and model, not one loaded text; keep-or-prune measures skills only (${STAGES_2_TO_4})`,
+  sop: `a SOP is a user-invoked prompt, not a skill the agent selects; keep-or-prune measures skills only (${STAGES_2_TO_4})`,
+  context: `always-loaded context is in both arms of every run, so it is not ablatable by this design (${STAGES_2_TO_4}, which drops it from one arm)`,
   steering: 'always-loaded steering is in both arms of every run, so it is not ablatable by this design',
 });
 const KIND_NAMES = Object.freeze({ agent: 'an agent', sop: 'a SOP', context: 'a context file', steering: 'a steering file' });
