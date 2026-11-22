@@ -16,7 +16,7 @@ const unquote = (s) => s.replace(/^(["'])(.*)\1$/s, '$2');
 
 /** The first paragraph under `## Overview` of a SOP, on one line; '' when it has none. */
 function overviewOf(text) {
-  const m = /^## Overview[ \t]*\n+([\s\S]*?)(?:\n[ \t]*\n|\n#|$)/m.exec(text);
+  const m = /^## Overview[ \t]*\n+([\s\S]*?)(?:\n[ \t]*\n|\n#|(?![\s\S]))/m.exec(text);
   return m ? m[1].replace(/\s+/g, ' ').trim() : '';
 }
 
