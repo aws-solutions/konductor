@@ -25,6 +25,9 @@ module.exports = Object.freeze({
   }),
   // How runs skip the agent's own approval prompts (design 15.3, A-4): PERMISSION_MODE in claude-code.js, plus --allowedTools.
   noPrompt: Object.freeze({ flags: Object.freeze(['--permission-mode', 'acceptEdits']), env: Object.freeze({}), note: '--allowedTools lists the tools that run without a prompt' }),
+  // Plant arms (cc-plant-*, DEBT D-111): the shim is the only MCP server, given with --mcp-config; the release pins
+  // `versions.claudeCode` ({version, sha256}).
+  plant: Object.freeze({ mount: 'mcp-config', pinKey: 'claudeCode' }),
   multiTurnNote: null,
   trace: Object.freeze({
     sessionFiles: false,

@@ -18,7 +18,7 @@ const pipe = promisify(pipeline);
 const MANIFEST = 'archive-manifest.json';
 const NOTE = 'ARCHIVE.md';
 const ARCHIVE_NAMES = { gzip: 'workspace.tar.gz', zstd: 'workspace.tar.zst' };
-const EVIDENCE_NAMES = new Set(['result.json', 'stream.jsonl', 'installed-agent.json', 'run-config.json', 'summary.json', 'credit-ledger.jsonl']);
+const EVIDENCE_NAMES = new Set(['result.json', 'stream.jsonl', 'installed-agent.json', 'installed-mcp.json', 'run-config.json', 'summary.json', 'credit-ledger.jsonl']);
 const isEvidenceFile = (name) => EVIDENCE_NAMES.has(name) || /^judgments.*\.json$/.test(name);
 // session/ holds a run's session files; run-configs/ at the top level keeps the run-config of every command that ran into the directory.
 const isEvidenceDir = (name) => name === 'session' || name === 'run-configs';
@@ -323,7 +323,7 @@ function writeManifest(dir, manifest) {
     '# Archive of finished runs', '',
     `Made ${manifest.createdAt} by bench.js archive (${manifest.compression}, ${manifest.mode}).`, '',
     `${manifest.runs.length} runs. Workspaces: ${human(totals.workspaceBytes)}. Archives: ${human(totals.archiveBytes)}. Uncompressed workspaces removed: ${removed} of ${manifest.runs.length}.`, '',
-    'Evidence files stay uncompressed next to each archive: result.json, stream.jsonl, installed-agent.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/.', '',
+    'Evidence files stay uncompressed next to each archive: result.json, stream.jsonl, installed-agent.json, installed-mcp.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/.', '',
     'To get the workspaces back, for example before `recheck`:', '', '    node bench/runner/bench.js archive --restore <this directory>', '',
     `${MANIFEST} lists every archive with its size and sha256. Restore checks each checksum first. gc never deletes this directory (its .bench-owner.json says kind archive, protect true).`, '',
     '| Run | Archive | Archive size | Workspace size | sha256 | Workspace removed |', '| --- | --- | --- | --- | --- | --- |',

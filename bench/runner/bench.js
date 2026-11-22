@@ -235,7 +235,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js archive --run DIR [--out DIR] [--compress auto|gzip|zstd] [--remove-originals] [--apply]
   node bench/runner/bench.js archive --restore DIR [--dry-run]
        (packs the workspace/ of every finished run under DIR into one workspace.tar.zst (zstd if installed) or workspace.tar.gz beside it, or under --out. result.json, stream.jsonl,
-       installed-agent.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/ stay as plain files (copied when --out is given). It writes ARCHIVE.md and
+       installed-agent.json, installed-mcp.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/ stay as plain files (copied when --out is given). It writes ARCHIVE.md and
        archive-manifest.json (sizes and sha256), re-reads every archive and compares its entry list and checksum with the workspace, and marks the archive directory kind archive, protect true,
        so gc never deletes it. A dry run unless --apply. --remove-originals, with --apply, deletes each uncompressed workspace/ only after its archive is verified.
        --restore checks each archive against archive-manifest.json and extracts workspace/ again where it is missing, so recheck works; it never overwrites an existing workspace/)

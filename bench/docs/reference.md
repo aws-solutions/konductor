@@ -1466,7 +1466,7 @@ python3 -m venv .venv && .venv/bin/pip install cedarpy
 ```
 An `arm-sim` release also needs Python 3.12 with the arm wheels (same pins as the arm release manifest):
 ```
-python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy cedarpy
+python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy==2.5.5 cedarpy==4.12.2
 ```
 Tests: `python3 -m unittest discover -s bench/physical/test -p 'test_*.py'` (run them with `.venv/bin/python` to include the Cedar tests). The Node tests are `bench/runner/test/plant-*.test.js`.
 

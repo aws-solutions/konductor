@@ -27,7 +27,7 @@ function plantAgent({ shimPath, socketPath, nodeBin, kind = 'conveyor-sim' }) {
   return {
     name: AGENT_NAME,
     description: 'konductor bench plant operator (simulator only)',
-    prompt: PROMPTS[kind],
+    prompt: plantPrompt(kind),
     tools: [...BUILTIN_TOOLS, `@${SERVER_NAME}`],
     allowedTools: [`@${SERVER_NAME}`],
     mcpServers: { [SERVER_NAME]: { command: nodeBin, args: [shimPath, socketPath], env: {} } },
@@ -49,4 +49,24 @@ function copyPlantAgentOut(home, outDir) {
   return copyPlainFile(home, AGENT_REL, path.join(outDir, 'installed-agent.json'));
 }
 
-module.exports = { plantAgent, writePlantAgent, copyPlantAgentOut, AGENT_NAME, SERVER_NAME, BUILTIN_TOOLS };
+// Claude Code has no agent file for the plant: the shim is its only MCP server, given with --mcp-config, and the
+// one-line prompt goes on --append-system-prompt (claude-code.js buildCommand).
+const MCP_CONFIG_REL = path.join('.claude', 'plant-mcp.json');
+
+/** The one-line operator prompt for environment kind `kind` (default `conveyor-sim`). */
+const plantPrompt = (kind = 'conveyor-sim') => PROMPTS[kind];
+
+/** The Claude Code MCP config that runs the shim at `shimPath` on `socketPath` with `nodeBin`; nothing else. */
+function plantMcpConfig({ shimPath, socketPath, nodeBin }) {
+  return { mcpServers: { [SERVER_NAME]: { command: nodeBin, args: [shimPath, socketPath], env: {} } } };
+}
+
+/** Writes `plantMcpConfig(opts)` to `<home>/.claude/plant-mcp.json` (mode 0644, never over a file) and returns that path. */
+function writePlantMcpConfig(home, opts) {
+  const file = path.join(home, MCP_CONFIG_REL);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(plantMcpConfig(opts), null, 2) + '\n', { mode: 0o644, flag: 'wx' });
+  return file;
+}
+
+module.exports = { plantAgent, writePlantAgent, copyPlantAgentOut, plantPrompt, plantMcpConfig, writePlantMcpConfig, MCP_CONFIG_REL, AGENT_NAME, SERVER_NAME, BUILTIN_TOOLS };

@@ -24,6 +24,7 @@ const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
 const { turnStreamTexts } = require('../autonomy.js');
 const listing = require('./claude-listing.js');
+const { plantPrompt, MCP_CONFIG_REL, SERVER_NAME: PLANT_SERVER } = require('../plant/agent-file.js');
 
 const id = 'claude-code';
 const meta = require('./claude-code-meta.js');
@@ -32,6 +33,10 @@ const DEFAULT_MODEL = 'us.anthropic.claude-sonnet-5-5';
 const REGION = 'us-east-1';
 const PERMISSION_MODE = 'acceptEdits';
 const ALLOWED_TOOLS = ['Bash', 'Edit', 'Write', 'Read'];
+// The built-ins of a plant arm: the Claude Code names of the Kiro plant agent's fs_read, fs_write (create and edit),
+// execute_bash, glob and grep (agent-file.js BUILTIN_TOOLS). `mcp__plant` allows every tool of the plant server.
+const PLANT_TOOLS = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'];
+const PLANT_ALLOWED_TOOLS = [`mcp__${PLANT_SERVER}`, ...PLANT_TOOLS];
 // The levels `claude --effort` takes (`claude --help` of 2.1.326: low, medium, high, xhigh, max). bench passes the level
 // as given, so a Claude Code arm and a Kiro CLI arm at --effort high run at the same named level.
 const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -205,8 +210,12 @@ const env = (o) => envSetup({ ...o, baseEnv: o.ctx?.awsCreds ? { ...(o.baseEnv ?
 // A later turn of a conversation (autonomy and scripted-user tasks) resumes the session with `--resume <session id>`
 // (`claude --help`: "Resume a conversation by session ID") and sends the scripted reply on stdin. Every other flag is
 // the same, so the arm, model, effort and tools do not change between turns. The per-turn budget applies to each turn.
-function buildCommand({ arm, task, config, ctx, resume = null }) {
+// A plant arm (cc-plant-*) instead mounts the plant shim as its only MCP server (`--mcp-config`, the file openPlantRun
+// writes into the run `home`), gets the one-line operator prompt the Kiro plant agent carries, and has the built-ins the
+// Kiro plant agent lists (PLANT_TOOLS, by `--tools`, so no Task or other spawn tool exists) plus every plant tool allowed.
+function buildCommand({ arm, task, config, ctx, resume = null, home = null }) {
   if (resume && !resume.sessionId) throw new Error('cannot resume a Claude Code conversation: the first turn recorded no session id');
+  if (arm.plant && !home) throw new Error('a Claude Code plant command needs the run home, where the plant MCP config is');
   const args = [
     '-p',
     ...(resume ? ['--resume', resume.sessionId] : []),
@@ -218,11 +227,12 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
   ];
   if (arm.agent) args.push('--agent', arm.agent);
   if (!arm.vanilla && ctx.claude?.supportsHookEvents) args.push('--include-hook-events');
-  // No MCP server in any arm: with no --mcp-config, --strict-mcp-config ignores every other MCP configuration (user,
-  // project, enterprise). konductor's Claude install declares none, so its arm loses nothing.
+  if (arm.plant) args.push('--mcp-config', path.join(home, MCP_CONFIG_REL), '--append-system-prompt', plantPrompt(task.environment?.kind), '--tools', ...PLANT_TOOLS);
+  // --strict-mcp-config ignores every MCP configuration but --mcp-config (user, project, enterprise): a plant arm gets the
+  // shim only, every other arm no server. konductor's Claude install declares none, so its arm loses nothing.
   args.push('--strict-mcp-config');
   // Last: the tool list is variadic.
-  args.push('--allowedTools', ...ALLOWED_TOOLS);
+  args.push('--allowedTools', ...(arm.plant ? PLANT_ALLOWED_TOOLS : ALLOWED_TOOLS));
   return { file: ctx.claude.bin, args, stdin: resume ? resume.prompt : promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
 }
 
@@ -483,7 +493,7 @@ function orchMetrics(outDir) {
 }
 
 function collectArtifacts(home, outDir) {
-  for (const [rel, name] of [['.claude/settings.json', 'installed-settings.json']]) {
+  for (const [rel, name] of [['.claude/settings.json', 'installed-settings.json'], [MCP_CONFIG_REL, 'installed-mcp.json']]) {
     copyPlainFile(home, rel, path.join(outDir, name));
   }
 }
@@ -524,7 +534,7 @@ const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 const strictMcp = true;
 
 module.exports = {
-  id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
