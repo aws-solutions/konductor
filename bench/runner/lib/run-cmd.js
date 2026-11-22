@@ -360,7 +360,9 @@ async function cmdRun(opts, deps = {}) {
   const { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn } = checkHarnessFlags({ opts, tasks, runtime: runtimes[0] });
   // Claude Code takes exported keys: from the environment, or with --aws-profile read from that profile before each run that needs fresh ones.
   const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
-  if (isCc) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
+  // A bench plant control as --claude-bin calls no model, so it needs no keys (D-113).
+  const ccControl = isCc && typeof opts['claude-bin'] === 'string' && cc.isPlantControl(path.resolve(opts['claude-bin']));
+  if (isCc && !ccControl) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
   const { maxAuthFailures, maxToolCalls, seed, isolate, envKeep } = runLimitsOpt(opts);
   const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
 

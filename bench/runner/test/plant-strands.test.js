@@ -17,10 +17,8 @@ const { preflightStrands } = require('../lib/plant/strands-census.js');
 const { strandsSuiteOf, countingOf, ReleaseRefused } = require('../lib/plant/intake.js');
 const { NOT_COUNTED } = require('../lib/plant/score.js');
 const { resolveArm, parseArmSpec, isPlantArmId } = require('../lib/arms.js');
-const { executeRun } = require('../lib/run-one.js');
 const strands = require('../lib/harness/strands.js');
-const { rig, suiteOf, readJsonl, CONFIG } = require('./plant-run-rig.js');
-const { TASK_ID } = require('./plant-release-fixture.js');
+const { rig, strandsPlantRun, CONFIG } = require('./plant-run-rig.js');
 
 const STRANDS_PYTHON = process.env.BENCH_STRANDS_PYTHON || null;
 const NEEDS_STRANDS = STRANDS_PYTHON ? false : 'set BENCH_STRANDS_PYTHON to an interpreter with strands-agents';
@@ -234,16 +232,7 @@ async function strandsTrial(r, { turns, agent = null, arm = 'st-plant-policy' })
   fs.writeFileSync(script, JSON.stringify({ turns }));
   const agentFile = agent ? path.join(r.root, `agent-${agent}.py`) : null;
   if (agentFile) fs.writeFileSync(agentFile, AGENTS[agent]);
-  const config = { ...CONFIG, model: `fake:${script}`, effort: 'default' };
-  const suite = suiteOf(r, { arms: [resolveArm(arm, r.repo)], ctx: { scratchDir: r.scratch, config, isolation: { mode: 'none' } } });
-  const ctx = {
-    config, scratchDir: r.scratch, envKeep: [], envInfo: { kiroCliVersion: null, harnessVersion: 'test', modelListSnapshotPath: null },
-    isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
-    strands: strands.resolveStrands({ python: STRANDS_PYTHON, agentFile }),
-  };
-  const outDir = path.join(r.out, arm, agent ?? 'plain', TASK_ID);
-  const result = await executeRun({ arm: resolveArm(arm, r.repo), task: r.tasks.get(TASK_ID), replicate: 1, ctx, prepared: null, outDir, inFlightAtStart: 0 });
-  return { result, gateway: readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')), suite, ctx };
+  return strandsPlantRun(r, { python: STRANDS_PYTHON, script, agentFile, arm, outName: agent ?? 'plain' });
 }
 
 const calls = (gateway) => gateway.filter((l) => l.type === 'call').map((l) => [l.tool, l.args]);

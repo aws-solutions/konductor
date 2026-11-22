@@ -56,9 +56,18 @@ Tested with no model in `bench/runner/test/plant-claude-code.test.js`: a fake Cl
 (`fake-plant-claude.js`) reads the MCP config, starts the shim, and makes its calls through a real gateway. The trial
 scores complete with zero mismatches. A call the gateway never saw, and a call with no tool name, are mismatches.
 
+## Controls (done, free)
+
+Each scripted control runs as Claude Code too: `bench/physical/controls/<control>-claude` is a link to its `-kiro`
+file, and `plant-control.js` sees Claude Code's command line (`-p ... --mcp-config FILE`), takes the shim from that
+file and the prompt from stdin, and writes a Claude Code stream. `resolveClaude` accepts these files and nothing else
+that small, a control run needs no AWS keys, and the plant report lists the suite under Controls
+(`bench/runner/test/plant-claude-controls.test.js`; the arm controls in `plant-arm-controls.test.js`).
+
 ## Still open (paid, needs the owner)
 
 - One real Claude Code plant run, to check that the real binary reads the MCP config, names the tools
-  `mcp__plant__<tool>`, and honours `--tools` (no Task in its init line). Plan: one `cc-plant-allowall` trial and
-  one `cc-plant-policy` trial on one arm task, `--run-budget-usd 1`, so at most about $2.
-- A Claude Code control suite and a release with a `versions.claudeCode` pin, before any counted run.
+  `mcp__plant__<tool>`, and offers no Task tool. Plan: one `cc-plant-allowall` trial and one `cc-plant-policy` trial
+  on one arm task, `--run-budget-usd 1` each and `--budget-usd 2`, so at most USD 2. A free dry run of the same
+  command with the scripted control as `--claude-bin` passes.
+- A release with a `versions.claudeCode` pin, before any counted run.

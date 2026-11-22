@@ -3,6 +3,8 @@
 
 // Shared by the scripted plant controls (FR-12): MCP through the shim the plant agent file names, a Kiro-shaped stream on
 // stdout, the task cues read from the prompt, and the side file `plant-control.json` in the work dir. No release content.
+// Each `<control>-claude` is a link to its `-kiro` file: started with Claude Code's argv (`-p ... --mcp-config FILE`) it
+// takes the shim from that MCP config and the prompt from stdin, and writes a Claude Code stream (D-113).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -121,6 +123,61 @@ class KiroStream {
   }
 }
 
+/** Whether `argv` is a Claude Code plant command (`claude -p ... --mcp-config FILE`), the form `<control>-claude` gets. */
+const isClaudeArgv = (argv) => argv.includes('-p') && argv.includes('--mcp-config');
+
+/** The value after `flag` in `argv`, or null. */
+const flagValue = (argv, flag) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] ?? null : null);
+
+// The model id without its Bedrock region and vendor prefix, as Claude Code reports it (claude-code-parse.js canonicalModelOf).
+const canonicalModel = (id) => String(id).replace(/^(?:[a-z]{2,6}(?:-[a-z]{2,6})?\.)?anthropic\./, '').replace(/-v\d+(?::\d+)?$/, '');
+
+/**
+ * Claude Code stream-json lines on `out` (`--output-format stream-json`), in the shapes the Claude Code parser and the
+ * plant match read: a `system` init, an `assistant` `tool_use` named `mcp__plant__<tool>` per call, a `user`
+ * `tool_result` per reply, and a final `result` line with no cost. `model` is the `--model` the harness passed.
+ */
+class ClaudeStream {
+  constructor(out = process.stdout, model = 'unknown') {
+    this.out = out;
+    this.model = model;
+    this.n = 0;
+  }
+
+  line(obj) {
+    this.out.write(JSON.stringify({ ...obj, session_id: SESSION_ID }) + '\n');
+  }
+
+  say(content) {
+    this.line({ type: 'assistant', parent_tool_use_id: null, message: { model: canonicalModel(this.model), id: `msg-control-${++this.n}`, type: 'message', role: 'assistant', content, usage: { input_tokens: 0, output_tokens: 0 } } });
+  }
+
+  start() {
+    this.line({ type: 'system', subtype: 'init', cwd: process.cwd(), tools: [], mcp_servers: [{ name: SERVER, status: 'connected' }], model: this.model, agents: [], skills: [] });
+  }
+
+  /** A `tool_use` for plant `tool` with `args`; returns its id. */
+  toolCall(tool, args) {
+    const id = `control-${++this.n}`;
+    this.say([{ type: 'tool_use', id, name: `mcp__${SERVER}__${tool}`, input: args }]);
+    return id;
+  }
+
+  /** The `tool_result` closing `id`; `failed` for an error reply. */
+  toolDone(id, tool, failed) {
+    this.line({ type: 'user', parent_tool_use_id: null, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: failed ? 'failed' : 'ok', is_error: failed }] } });
+  }
+
+  finish(finalText) {
+    this.say([{ type: 'text', text: finalText }]);
+    this.line({
+      type: 'result', subtype: 'success', is_error: false, stop_reason: 'end_turn', terminal_reason: 'completed', result: finalText, num_turns: this.n,
+      duration_ms: 0, duration_api_ms: 0, total_cost_usd: 0, usage: { input_tokens: 0, output_tokens: 0 }, permission_denials: [],
+      modelUsage: { [this.model]: { inputTokens: 0, outputTokens: 0, costUSD: 0, canonicalModel: canonicalModel(this.model), provider: 'bedrock', costBasis: 'list' } },
+    });
+  }
+}
+
 /** The reply of one tool call: `executed` (ok and not isError), `lost` (-32000 from the shim), `payload` and `text`. */
 function replyOf(msg) {
   if (msg.error) return { executed: false, lost: msg.error.code === LOST_CODE, payload: null, text: msg.error.message ?? '' };
@@ -159,8 +216,8 @@ function probeDiscover(home) {
 }
 
 class PlantSession {
-  constructor(home, stream) {
-    const server = serverOf(home);
+  /** `server` is the plant server entry (`{command, args}`); by default the one in the Kiro agent file under `home`. */
+  constructor(home, stream, server = serverOf(home)) {
     this.child = spawn(server.command, server.args, { stdio: ['pipe', 'pipe', 'inherit'] });
     this.stream = stream;
     this.waiting = new Map();
@@ -231,18 +288,37 @@ function writeSideFile(dir, record) {
  * `{finalText, record}`; `record` goes into the side file with the control name and every call sent. Returns the exit code.
  */
 async function runControl(name, act, argv = process.argv.slice(2)) {
+  if (isClaudeArgv(argv)) return runClaudeControl(name, act, argv);
+  // bench's Claude Code skill-listing probes (`claude -p /context`, `--debug-file`): a control lists no skills.
+  if (argv.includes('/context') || argv.includes('--debug-file')) return 1;
   if (answerCliQuery(argv, name)) return 0;
   const engine = engineOf(argv);
   const stream = new KiroStream(process.stdout, engine);
   const prompt = argv.at(-1);
   stream.event('runStarted', { payloadSchema: 'acp', acpProtocolVersion: 1, engine });
   if (engine === 'v3') await probeDiscover(process.env.HOME);
-  const session = await new PlantSession(process.env.HOME, stream).open();
+  return actAndFinish(name, act, await new PlantSession(process.env.HOME, stream).open(), prompt);
+}
+
+/**
+ * The Claude Code form of control `name` (`<control>-claude`): the plant server from the `--mcp-config` file, the
+ * prompt from stdin (the harness sends it there), and a Claude Code stream. The calls and the side file are the same.
+ */
+async function runClaudeControl(name, act, argv) {
+  const server = JSON.parse(fs.readFileSync(flagValue(argv, '--mcp-config'), 'utf8')).mcpServers[SERVER];
+  const stream = new ClaudeStream(process.stdout, flagValue(argv, '--model') ?? 'unknown');
+  const prompt = fs.readFileSync(0, 'utf8');
+  stream.start();
+  return actAndFinish(name, act, await new PlantSession(null, stream, server).open(), prompt);
+}
+
+/** Runs `act` on the open `session` with `prompt`, writes the side file, ends the stream and the session; returns 0. */
+async function actAndFinish(name, act, session, prompt) {
   const { finalText, record = {} } = await act(session, prompt);
   writeSideFile(process.cwd(), { control: name, ...record, calls: session.sent });
-  stream.finish(finalText);
+  session.stream.finish(finalText);
   await session.close();
   return 0;
 }
 
-module.exports = { OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };
+module.exports = { OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, ClaudeStream, isClaudeArgv, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };

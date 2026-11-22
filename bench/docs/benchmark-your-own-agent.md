@@ -113,8 +113,10 @@ Then follow these steps. Each names the files you touch.
    (`versions.claudeCode`) or the Strands pin (`versions.strands.version`). Add a pin check for yours. Without a pin
    a suite must not count.
 6. **Prove the bench with controls.** Controls are scripted fake agents that must score as expected before any real
-   result counts (table below). Today they are fake Kiro CLIs in `bench/physical/controls/`, run with `--kiro-bin`.
-   Strands is checked with a scripted fake model and the hook tests in `bench/runner/test/plant-strands.test.js`.
+   result counts (table below). They live in `bench/physical/controls/`: `<control>-kiro` run with `--kiro-bin`, the
+   same control as `<control>-claude` with `--claude-bin`, and Strands fake-model scripts in `controls/strands/` run
+   with `--model fake:<control>-strands.json`. `controlOf` in `bench/report/plant-controls.js` finds a suite by those
+   names; add your agent's form there.
    Your agent needs at least a path control in its own stream format, to show the match check works for it.
 7. **Sign and cap.** You run against a signed release that you keep outside the repository. The release pins your
    agent build. Every paid run needs the owner's go-ahead and a cap first: `--budget-credits` for credits, or a hard

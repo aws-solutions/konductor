@@ -100,6 +100,15 @@ function binaryContains(file, needle) {
   } finally { fs.closeSync(fd); }
 }
 
+const PLANT_CONTROLS_DIR = path.resolve(__dirname, '..', '..', '..', 'physical', 'controls');
+const PLANT_CONTROL_VERSION = 'plant-control';
+
+/** Whether `bin` is one of bench's own Claude Code plant controls: named `<control>-claude`, its file in physical/controls. */
+function isPlantControl(bin) {
+  if (!/-claude$/.test(path.basename(bin))) return false;
+  try { return path.dirname(fs.realpathSync(bin)) === fs.realpathSync(PLANT_CONTROLS_DIR); } catch { return false; }
+}
+
 /**
  * The claude binary a run uses: `binOverride` (or BENCH_CLAUDE_BIN), else the newest `<version>/claude` under `toolsDir`
  * (or BENCH_CLAUDE_TOOLS_DIR). There is no default location. A launcher script is refused.
@@ -120,6 +129,9 @@ function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, too
     bin = path.join(toolsDir, version, 'claude');
   }
   if (!executable(bin)) throw new Error(`claude binary is not executable: ${bin}`);
+  // A bench plant control (`<control>-claude`, D-113) is a small script by design. It calls no model and reads no model
+  // flag, so the launcher check does not apply and --effort is moot; its version pins nothing, so its suite is a control.
+  if (isPlantControl(bin)) return { bin, version: PLANT_CONTROL_VERSION, sha256: sandbox.sha256File(bin), supportsHookEvents: false, supportsEffort: true, control: true };
   const problem = launcherProblem(bin, minBytes);
   if (problem) throw new Error(`${bin}: this is a launcher, not the claude binary; it can override the model, region and credentials (${problem}). Pass the real binary with --claude-bin PATH or --claude-tools-dir DIR`);
   version = version ?? path.basename(path.dirname(bin)).match(/^\d+(\.\d+)+$/)?.[0] ?? 'unknown';
@@ -537,5 +549,5 @@ module.exports = {
   id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, PLANT_TOOLS, PLANT_ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, checkScratchRoot, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
-  resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
+  resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

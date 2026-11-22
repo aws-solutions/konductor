@@ -2,7 +2,8 @@
 'use strict';
 
 // One plant trial for runner tests: a signed stub release, its suite preflight, and executeRun with a fake or control
-// Kiro CLI against a real gateway, unisolated (--isolate none). Test data only.
+// agent (Kiro CLI, Claude Code, or Strands on the scripted model) against a real gateway, unisolated (--isolate none).
+// Test data only.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -14,6 +15,7 @@ const { loadTasks } = require('../lib/tasks.js');
 const { resolveArm } = require('../lib/arms.js');
 const { preparePlantSuite } = require('../lib/plant/intake.js');
 const { DEADLINES } = require('../lib/plant/gateway-proc.js');
+const { claudeCode: cc, strands } = require('../lib/harness/index.js');
 
 // Generous on purpose: a test about a limit, a launch failure or a foreign connection must not turn into a gateway that
 // never got ready or lost its heartbeat because the host was busy (the full suite runs many gateways at once). A test
@@ -80,4 +82,50 @@ async function plantRun(r, fake, { arm = 'plant-policy', suiteMore = {}, kiroBin
 
 const readJsonl = (file) => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 
-module.exports = { rig, suiteOf, plantRun, readJsonl, FAST, LOSS_FAST, CONFIG };
+const CC_CONFIG = { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'high' };
+// Fake keys: a Claude Code run takes its credentials from the environment, and the fakes never use them.
+const CC_CREDS = { AWS_ACCESS_KEY_ID: 'AKIAFAKEPLANT0000000', AWS_SECRET_ACCESS_KEY: 'fake-plant-secret-0000000000', AWS_SESSION_TOKEN: 'fake-plant-token-000000000000' };
+
+/**
+ * One Claude Code plant trial of `arm` (a `cc-plant-*` id) on task `taskId` with the claude binary `claudeBin` (a fake
+ * Claude Code or a plant control): its suite preflight and executeRun, with fake keys in the environment for the run.
+ * Returns `{result, outDir}`.
+ */
+async function claudePlantRun(r, claudeBin, { arm = 'cc-plant-policy', taskId = TASK_ID } = {}) {
+  const claude = cc.resolveClaude({ binOverride: claudeBin });
+  const a = resolveArm(arm, r.repo);
+  const suite = suiteOf(r, { taskId, opts: { 'kiro-bin': undefined }, arms: [a], ctx: { scratchDir: r.scratch, config: CC_CONFIG, isolation: { mode: 'none' }, claude } });
+  const ctx = {
+    config: CC_CONFIG, scratchDir: r.scratch, claude, claudeTmpBases: [r.scratch], envKeep: [], runBudgetUsd: 0.5,
+    envInfo: { kiroCliVersion: null, harnessVersion: claude.version, modelListSnapshotPath: null, region: 'us-east-1' },
+    isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
+  };
+  const outDir = path.join(r.out, arm, taskId, '1');
+  const saved = Object.fromEntries(Object.keys(CC_CREDS).map((k) => [k, process.env[k]]));
+  Object.assign(process.env, CC_CREDS);
+  try {
+    return { outDir, result: await executeRun({ arm: a, task: r.tasks.get(taskId), replicate: 1, ctx, prepared: null, outDir, inFlightAtStart: 0 }) };
+  } finally {
+    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+}
+
+/**
+ * One Strands plant trial of `arm` (an `st-plant-*` id) on task `taskId`: `python` has strands-agents, `script` is the
+ * fake model's turns file, `agentFile` an agent file or null for a plain Agent. Its out dir is under `outName`.
+ * Returns `{result, gateway, suite, ctx, outDir}`.
+ */
+async function strandsPlantRun(r, { python, script, agentFile = null, arm = 'st-plant-policy', taskId = TASK_ID, outName = 'plain' }) {
+  const config = { ...CONFIG, model: `fake:${script}`, effort: 'default' };
+  const suite = suiteOf(r, { taskId, arms: [resolveArm(arm, r.repo)], ctx: { scratchDir: r.scratch, config, isolation: { mode: 'none' } } });
+  const ctx = {
+    config, scratchDir: r.scratch, envKeep: [], envInfo: { kiroCliVersion: null, harnessVersion: 'test', modelListSnapshotPath: null },
+    isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
+    strands: strands.resolveStrands({ python, agentFile }),
+  };
+  const outDir = path.join(r.out, arm, outName, taskId);
+  const result = await executeRun({ arm: resolveArm(arm, r.repo), task: r.tasks.get(taskId), replicate: 1, ctx, prepared: null, outDir, inFlightAtStart: 0 });
+  return { result, gateway: readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')), suite, ctx, outDir };
+}
+
+module.exports = { rig, suiteOf, plantRun, claudePlantRun, strandsPlantRun, readJsonl, FAST, LOSS_FAST, CONFIG, CC_CONFIG };

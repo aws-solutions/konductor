@@ -11,8 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { makeFakePlantClaude } = require('./fake-plant-claude.js');
 const { TASK_ID } = require('./plant-release-fixture.js');
-const { rig, suiteOf, readJsonl } = require('./plant-run-rig.js');
-const { executeRun } = require('../lib/run-one.js');
+const { rig, suiteOf, claudePlantRun, readJsonl, CC_CONFIG } = require('./plant-run-rig.js');
 const { validateResult } = require('../lib/result.js');
 const { resolveArm, parseArmSpec, isPlantArmId } = require('../lib/arms.js');
 const { checkSuiteShape } = require('../lib/plant/intake.js');
@@ -20,8 +19,6 @@ const { streamCallsOf, hasPlantReader } = require('../lib/plant/stream-match.js'
 const { ReleaseRefused } = require('../lib/plant/manifest.js');
 const { claudeCode: cc } = require('../lib/harness/index.js');
 
-const CC_CONFIG = { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'high' };
-const CREDS = { AWS_ACCESS_KEY_ID: 'AKIAFAKEPLANT0000000', AWS_SECRET_ACCESS_KEY: 'fake-plant-secret-0000000000', AWS_SESSION_TOKEN: 'fake-plant-token-000000000000' };
 const STOP_CALLS = [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {} }];
 
 // ---- arms ----
@@ -119,25 +116,8 @@ test('the Claude Code pin: another version is a control, a wrong build of the pi
 
 // ---- whole trials ----
 
-async function ccTrial(r, fake, { arm = 'cc-plant-policy' } = {}) {
-  const bin = makeFakePlantClaude(path.join(r.root, 'tools'), { dir: r.probe, ...fake });
-  const claude = cc.resolveClaude({ binOverride: bin });
-  const a = resolveArm(arm, r.repo);
-  const suite = suiteOf(r, { opts: { 'kiro-bin': undefined }, arms: [a], ctx: { scratchDir: r.scratch, config: CC_CONFIG, isolation: { mode: 'none' }, claude } });
-  const ctx = {
-    config: CC_CONFIG, scratchDir: r.scratch, claude, claudeTmpBases: [r.scratch], envKeep: [], runBudgetUsd: 0.5,
-    envInfo: { kiroCliVersion: null, harnessVersion: '9.9.9', modelListSnapshotPath: null, region: 'us-east-1' },
-    isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
-  };
-  const outDir = path.join(r.out, arm, TASK_ID, '1');
-  const saved = Object.fromEntries(Object.keys(CREDS).map((k) => [k, process.env[k]]));
-  Object.assign(process.env, CREDS);
-  try {
-    return { outDir, result: await executeRun({ arm: a, task: r.tasks.get(TASK_ID), replicate: 1, ctx, prepared: null, outDir, inFlightAtStart: 0 }) };
-  } finally {
-    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
-  }
-}
+/** One cc-plant-policy trial with a fake Claude Code configured by `fake`. */
+const ccTrial = (r, fake) => claudePlantRun(r, makeFakePlantClaude(path.join(r.root, 'tools'), { dir: r.probe, ...fake }));
 
 test('a Claude Code plant trial runs through the shim and the gateway with zero mismatches', async () => {
   const r = rig();
