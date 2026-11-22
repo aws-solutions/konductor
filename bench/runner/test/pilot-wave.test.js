@@ -78,8 +78,17 @@ test('a kiro-cli that is not the pinned copy stops, and the pin can be set for a
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /STOP: (.*not the pinned kiro-cli copy|PY312 .* is not Python 3\.12|.*has local changes)/);
   const sha = execFileSync('sha256sum', [s.kiro], { encoding: 'utf8' }).split(' ')[0];
-  const ok = run(['1', '--prepare-only'], { KBIN: s.kiro, PY312: s.py, KBIN_SHA256: sha });
+  const tmpdir = path.join(s.d, 'tmp');
+  fs.mkdirSync(tmpdir);
+  const ok = run(['1', '--prepare-only'], { KBIN: s.kiro, PY312: s.py, KBIN_SHA256: sha, TMPDIR: tmpdir });
   assert.doesNotMatch(ok.stderr, /not the pinned kiro-cli copy/);
+  // In a clean worktree the stub run gets to prepare-only, which fails on the stub kiro-cli: its out dir must still go.
+  if (!/has local changes/.test(ok.stderr)) {
+    const po = `${ok.stdout}${ok.stderr}`.match(/prepare-only \(no agent started\), out (\S+):/);
+    assert.ok(po, ok.stdout + ok.stderr);
+    assert.equal(path.dirname(po[1]), tmpdir, 'the prepare-only out dir is made under TMPDIR');
+    assert.equal(fs.existsSync(po[1]), false, 'a failed prepare-only leaves no pilot-prep dir behind');
+  }
   fs.rmSync(s.d, { recursive: true, force: true });
 });
 
