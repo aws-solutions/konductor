@@ -197,3 +197,10 @@ branch I am on is fine", but their fixtures have no git repository; every LITE r
 saying it could not commit. The sentence now reads: "Yes, that scope is confirmed. This folder is not a git
 repository, so leave the work as files; there is nothing to commit." The scope confirmation the SOP guard reads is
 kept. No check, key or fixture changed; gates pass unchanged. Non-Claude recheck: pending for all seven.
+
+## t5-qa-suite-audit v4 (2026-11-22, mate LITE-fix worker 2, owner-assigned fixer gpt-terra; LITE analysis item 12)
+
+One rubric criterion (`explanation`) carried the whole judged score. Added `ties-to-billing-bug` (weight 2),
+`replacement-assertions-concrete` (weight 2) and `no-false-accusation` (weight 1), each with Fail, Partial and Pass
+anchors. No prompt, check, key or fixture change; gates stand. A score for the new criteria needs a re-judge (paid,
+not run). Non-Claude recheck: pending (`handEdited.version` 4).

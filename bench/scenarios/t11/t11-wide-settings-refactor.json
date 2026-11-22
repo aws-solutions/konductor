@@ -1,7 +1,7 @@
 {
   "id": "t11-wide-settings-refactor",
   "class": "hard",
-  "version": 2,
+  "version": 3,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -54,6 +54,21 @@
       "id": "migration-clarity",
       "criterion": "The documentation explains the current settings interface in terms that an operator can apply. Fail: README.md or docs/config.md still describes conf.read as the way to read settings, or says nothing usable about config.value. Partial: both files name config.value, but leave out how a dotted key becomes a section and a key, or how the fallback behaves. Pass: both files describe config.value(section, key, { fallback }) with a worked example, how a key with more than two parts is split, and that the fallback applies only when the value is missing, and neither presents the removed reader as current. (code cannot check this because execution cannot judge whether prose is clear to its intended reader)",
       "weight": 1
+    },
+    {
+      "id": "key-split-faithful",
+      "weight": 2,
+      "criterion": "Every migrated call passes the section and the key the way lib/config.js defines them (the first dotted part is the section, the rest is the key). Fail: callers keep their own splitter, hard-code a flattened key, or pass a three-part key whole as the section. Partial: most callers are right, but a key with more than two parts, or the dispatch and queue region keys, is passed in a different shape in one or two files. Pass: every caller outside third_party/ calls config.value(section, key, ...) with the documented split, including every key with more than two parts and the region keys, and none re-implements the split. (code cannot check this because tests compare results against fixed data, so a caller that returns the right value by another path still passes)"
+    },
+    {
+      "id": "fallback-through-interface",
+      "weight": 2,
+      "criterion": "Each caller's old default now goes through the fallback option. Fail: callers add a default after the call with || or ??, or drop the default so a missing value returns undefined. Partial: the fallback option is used, but a falsy value (0, an empty string, false) is replaced by a default in one or two callers. Pass: every default is passed as { fallback }, falsy values read from config/app.json are kept, and no caller adds its own default after the call. (code cannot check this because a test sees the returned value, not whether the default came from the interface or from the caller)"
+    },
+    {
+      "id": "retired-reader-removed",
+      "weight": 1,
+      "criterion": "The retired reader is gone without side effects. Fail: lib/conf.js, the read export or a require of the old reader is still present. Partial: the code is clean, but a comment, an unused import or a doc line still names the old reader, or an unrelated file was reformatted. Pass: lib/conf.js and the read export are removed, lib/index.js exports the current interface, nothing in the code or the docs names the old reader as current, and the diff touches no unrelated file. (code cannot check this because a test checks that the reader is missing, not whether leftovers or unrelated edits remain)"
     }
   ],
   "targetSkills": [
@@ -178,9 +193,9 @@
   },
   "lockedAt": null,
   "handEdited": {
-    "family": "claude",
-    "editor": "mate LITE-fix worker (2026-11-22): hidden tests accept unquoted placeholders and destructured value() calls",
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): rubric criteria added, LITE fix 12",
     "log": "HAND-EDITS.md",
-    "version": 2
+    "version": 3
   }
 }

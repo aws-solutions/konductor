@@ -1,7 +1,7 @@
 {
   "id": "t12-delegated-worker-fix",
   "class": "orchestration",
-  "version": 1,
+  "version": 2,
   "phase": "multi-phase",
   "phases2": [
     "bugfix",
@@ -43,6 +43,21 @@
       "id": "worker-briefs-and-review",
       "weight": 1,
       "criterion": "The history shows two separate pieces of work that were each checked before they were merged. Fail: one branch or commit holds both fixes, or a branch's commit messages say nothing about its issue. Partial: each branch holds one fix with a message naming its issue, but nothing in the history or the merge messages shows the change was checked against CONTRIBUTING.md (for example a merge message that only says 'merge'). Pass: each branch's commits name the issue and what changed, and each merge message or a commit on main records what was checked (the house rule kept, the tests run) before the merge. (code cannot check this because whether a message is a real review is a judgement)"
+    },
+    {
+      "id": "work-handed-to-workers",
+      "weight": 2,
+      "criterion": "The two issues were handed to two separate workers, and the main agent did not fix them itself. Fail: the main agent edits src/ itself, or one worker gets both issues. Partial: two workers were started, but a brief carries the other issue or the whole task, or the main agent also edits source files. Pass: the tool calls show one worker per issue (PD-41 and PD-44), each brief names only its own issue file and the files it may change, and the main agent edits no source file. (code cannot check this because the repository shows the result of the fix, not who made it)"
+    },
+    {
+      "id": "review-reported",
+      "weight": 1,
+      "criterion": "The final report says what each worker's change was checked against before it was merged. Fail: says the changes were reviewed with no rule or finding named, or claims a review the tool calls do not show. Partial: names CONTRIBUTING.md but not which rules were checked for which change, or does not say whether a change was sent back. Pass: for each issue, names the CONTRIBUTING.md rules checked (a failing regression test, parseWeight as a number, quote() with a Date or an ISO string, public names kept), the result, and whether the change went back to its worker. (code cannot check this because a review is a judgement and the final text is the only place it is stated for both changes)"
+    },
+    {
+      "id": "cleanup-reported-truthfully",
+      "weight": 1,
+      "criterion": "The final report states the end state and matches the commands that were run. Fail: claims the extra worktrees are removed, the branches deleted or the tests passing, and the tool calls show otherwise or show no such command. Partial: reports the end state without the test result after each merge, or leaves out one of worktrees, branches and working tree. Pass: says each worktree is removed, each worker branch deleted, main is checked out with a clean working tree, and the test run after each merge passed, each backed by a command in the tool calls. (code cannot check this because a run can leave the repository tidy and still describe it wrongly, which only a comparison with the transcript shows)"
     }
   ],
   "targetSkills": [
@@ -70,9 +85,10 @@
     "note": "written by hand by the mate CV-A worker (owner-approved coverage review addition 1); needs the non-Claude recheck in review.recheck"
   },
   "handEdited": {
-    "family": "claude",
-    "editor": "mate CV-A worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): rubric criteria added, LITE fix 12",
+    "log": "HAND-EDITS.md",
+    "version": 2
   },
   "pilot": {
     "scores": {},

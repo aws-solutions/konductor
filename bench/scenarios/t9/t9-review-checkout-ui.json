@@ -1,7 +1,7 @@
 {
   "id": "t9-review-checkout-ui",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "code-review",
   "role": "frontend",
   "questions": "allowed",
@@ -53,6 +53,21 @@
       "id": "actionable-review",
       "criterion": "The prose explains why the findings matter and gives a developer enough context to act (code cannot check this because it cannot judge clarity or usefulness). Fail: findings are listed with no reason they matter or no place to act (no file or line, no shopper or release effect), or the prose mostly restates the diff. Partial: most findings say why they matter and where, but one or two leave the developer to guess the fix or the impact. Pass: every finding names where it is, what goes wrong for a shopper or the 2.4 release, and what to change, in that order, with no padding.",
       "weight": 2
+    },
+    {
+      "id": "severity-calibration",
+      "weight": 2,
+      "criterion": "Severities follow the effect on a shopper or on the 2.4 release. Fail: most findings share one severity, or a cosmetic issue is rated critical while a payment or data-loss risk is rated low. Partial: the top findings are right, but several mid-list findings are one level off or the critical list is padded. Pass: critical and high are kept for failures that cost a shopper money, block checkout, lose data or break access, the rest are medium or low, and each rating is explainable from the finding text. (code cannot check this because a rating is a judgement about impact that no pattern can read)"
+    },
+    {
+      "id": "real-versus-awkward",
+      "weight": 1,
+      "criterion": "Real defects are separated from things that are only awkward, as the prompt asks, and nothing is invented. Fail: reports behaviour the repository does not have, or lists style preferences as defects. Partial: the findings are real, but awkward items are mixed in with defects at the same severity, or one finding cannot be reproduced from its description. Pass: every finding can be reproduced from its description, style remarks are marked low or kept apart, and none contradicts the code. (code cannot check this because it needs a reader to check each claim against the repository)"
+    },
+    {
+      "id": "review-scope",
+      "weight": 1,
+      "criterion": "The \"Review scope\" section tells the truth about what was read and the review covers the whole repository. Fail: no scope section, or one that lists areas the review never mentions. Partial: the scope is honest but the findings cover only part of it (for example scripts only, with no markup or recent changes). Pass: the scope names the code, markup and recent changes it read, each area has a finding or a stated \"nothing found\", and it says what it did not check. (code cannot check this because a heading check cannot tell whether the scope is true)"
     }
   ],
   "findingsKey": [
@@ -304,9 +319,9 @@
   },
   "lockedAt": null,
   "handEdited": {
-    "family": "claude",
-    "editor": "mate LITE-fix worker (2026-11-22): the prompt asks for the Review scope section its check reads",
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): rubric criteria added, LITE fix 12",
     "log": "HAND-EDITS.md",
-    "version": 3
+    "version": 4
   }
 }

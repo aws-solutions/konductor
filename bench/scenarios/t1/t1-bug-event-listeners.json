@@ -1,7 +1,7 @@
 {
   "id": "t1-bug-event-listeners",
   "class": "hard",
-  "version": 3,
+  "version": 4,
   "phase": "bugfix",
   "role": "developer",
   "questions": "allowed",
@@ -72,6 +72,16 @@
       "id": "root-cause-minimal",
       "weight": 2,
       "criterion": "The change fixes the cause at the place it lives, stays small, and leaves a regression test that would fail on the original code. Fail: patches the symptom (a special case at the caller), rewrites unrelated code, or adds no test that fails before the change. Partial: right place, but with extra churn (renames, reformatting, unrelated refactors) or a new test that would also pass on the original code. Pass: one change at the cause, nearby code left alone, and a new test that fails on the original code and passes now; the final message says which test that is. (code cannot check this because tests show the behaviour is right, not whether the diff is the smallest one at the cause)"
+    },
+    {
+      "id": "symptom-regression-tests",
+      "weight": 2,
+      "criterion": "Each of the four reported symptoms (listener growth after reconnects, duplicate delivery, one failed callback blocking the others, heartbeats keeping the process alive) has its own focused regression test in the repository. Fail: a symptom has no test, or the new tests only call the methods and assert nothing about the symptom (for example a listenerCount that is never compared). Partial: three of the four symptoms have a test that asserts the symptom, or each is covered only by one broad test. Pass: all four have a test that asserts the symptom directly (a listener count after repeated connect and disconnect, a single delivery per socket, the other callbacks still called after one throws, the heartbeat timer unref'd or cleared). (code cannot check this because the hidden tests show the service now behaves, not whether the agent left tests that would catch the symptom again)"
+    },
+    {
+      "id": "reverse-check-reported",
+      "weight": 1,
+      "criterion": "The final report says whether the new regression tests were run against the original code and what happened. Fail: says the new tests fail on the old code, or that a check was done, with no run to show it (the tool calls hold no such run). Partial: says nothing about running the new tests on the original code, or says plainly it was not done. Pass: says it reverted the fix (or ran the tests on a copy of the original), names the count of new tests that failed, and the tool calls show that run. (code cannot check this because it compares what the report says with the commands in the transcript)"
     }
   ],
   "targetSkills": [
@@ -179,8 +189,9 @@
     }
   },
   "handEdited": {
-    "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): rubric criteria added, LITE fix 12",
+    "log": "HAND-EDITS.md",
+    "version": 4
   }
 }

@@ -78,3 +78,11 @@ The `contains (review scope|what i checked)` check (weight 2) failed all six LIT
 that section. Dropping the check lifted the lazy answer to 43.4 (over the 40 gate), so the prompt now asks for it
 instead: "Open it with a short "Review scope" section saying what you checked." Check, key and fixture unchanged.
 Gates: reference 100, stub 5.7, lazy 39.5, alt 100. Non-Claude recheck: pending (`handEdited.version` 3).
+
+## t9-review-checkout-ui v4 (2026-11-22, mate LITE-fix worker 2, owner-assigned fixer gpt-terra; LITE analysis item 12)
+
+One rubric criterion (`actionable-review`) passed in all six LITE runs, so the judged side could not separate runs.
+Added `severity-calibration` (weight 2), `real-versus-awkward` (weight 1) and `review-scope` (weight 1, reads the
+"Review scope" section the v3 prompt asks for), each with Fail, Partial and Pass anchors. No prompt, check, key or
+fixture change; gates stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck:
+pending (`handEdited.version` 4).

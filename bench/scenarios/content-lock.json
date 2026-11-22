@@ -32,8 +32,8 @@
       "legacyRecheckVersion": 3
     },
     "t1-bug-event-listeners": {
-      "version": 3,
-      "sha256": "7f0fc7f7c46d7b3666153e66ba96668d3a84a57f5b141f2f2cde265799c06f56",
+      "version": 4,
+      "sha256": "b87374a9a1a4d2fd2cca8b765cb474248342cde2364fa9d84564a4162209a655",
       "legacyRecheckVersion": 3
     },
     "t1-bug-http-retry": {
@@ -47,8 +47,8 @@
       "legacyRecheckVersion": 3
     },
     "t1-impl-job-retry": {
-      "version": 5,
-      "sha256": "e22b790073003dcc4239736cecfd2717fcddc4903de9bfb8cd2d459c85c33669",
+      "version": 6,
+      "sha256": "c8a0cde8fad08048c316c9fb288fe93e8f6de2a3e13685a091d346791ed5560f",
       "legacyRecheckVersion": 3
     },
     "t1-impl-money-split": {
@@ -112,8 +112,8 @@
       "legacyRecheckVersion": 3
     },
     "t1-ref-esm-migrate": {
-      "version": 5,
-      "sha256": "d6fa4233dcb0145c3baea13c7496ef8abdec7b314764de5ce037440289168360",
+      "version": 6,
+      "sha256": "609763f73758ff680f32747bf6918cab4eedad454ab8b84f9123cbfb75a5a162",
       "legacyRecheckVersion": 4
     },
     "t1-ref-schema-migrate": {
@@ -178,8 +178,8 @@
       "legacyRecheckVersion": 2
     },
     "t11-wide-settings-refactor": {
-      "version": 2,
-      "sha256": "5b2f5aa78c98f0133fc6e912065bfba20a3c05b1a5a099b2295252a4200ac0cf",
+      "version": 3,
+      "sha256": "9f72aa90206ff9f88829cc16440eafaf225bb39cda0f902ed6c8faf21194d824",
       "legacyRecheckVersion": 1
     },
     "t12-cmux-parallel-merge": {
@@ -188,8 +188,8 @@
       "legacyRecheckVersion": 1
     },
     "t12-delegated-worker-fix": {
-      "version": 1,
-      "sha256": "eb5a13e15af00d02f07cddba23d1689c85953dae5ac26da4b2577fa8bc2587b6",
+      "version": 2,
+      "sha256": "ac5d554bc6e8385784577b8d9d99d807827995380d9171060d69eaf83fb092b5",
       "legacyRecheckVersion": 1
     },
     "t12-handoff-export-dates": {
@@ -246,8 +246,8 @@
       "sha256": "f8d12ff1c1183fe8ecb46ce86372be84b11bf991896fc6613d12dc8fcecb1ea5"
     },
     "t2-dr-notify-fanout": {
-      "version": 3,
-      "sha256": "a39cebbbbd78e9a2120e12675601f3b59dc70e64219329e892949a4820e2b67b",
+      "version": 4,
+      "sha256": "630dc12eb12bf1e335b67e789f6f6777ccd51ebafb0d27da97b70919303f8a3f",
       "legacyRecheckVersion": 3
     },
     "t2-dr-orders-dynamo-model": {
@@ -560,8 +560,8 @@
       "legacyRecheckVersion": 3
     },
     "t5-qa-suite-audit": {
-      "version": 3,
-      "sha256": "3846a2ecb84c9efc4df21f92abe9c5ac5ea9a23657d891dc05e6497759d1a85c",
+      "version": 4,
+      "sha256": "771c89358bc65ccb9abe9d0bdb76863f491baf437fffff6e5b66eb39e5265fa3",
       "legacyRecheckVersion": 2
     },
     "t5-qa-sync-strategy": {
@@ -834,8 +834,8 @@
       "sha256": "780e8e019ac241904a423fbc4512a8667330c0858912ca36ffeae903daec2cc8"
     },
     "t9-review-checkout-ui": {
-      "version": 3,
-      "sha256": "52ddd2af207ae96cac6f83ee91fef411509826e91b4e4f9a3ceaba113b61a6d1"
+      "version": 4,
+      "sha256": "30af8d35d3ccff3b6125a2ba01bd4b4750b24814db403b710f0cd41dde34fa6b"
     },
     "t9-state-management-refactor": {
       "version": 1,

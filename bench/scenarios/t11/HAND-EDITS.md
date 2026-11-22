@@ -104,3 +104,12 @@ Every LITE run scored 86 (8 of 10 hidden tests), failing the same two for wordin
   (`const { value } = require('../../lib/config')`, then `value(...)`) failed. A bare `value(` call now counts.
 The legacy-reader test is unchanged, so a caller still on `conf` still fails. The six LITE workspaces pass 10 of 10.
 Gates: reference 100, stub 7.1, lazy 14.3, alt 100. Non-Claude recheck: pending.
+
+## t11-wide-settings-refactor v3 (2026-11-22, mate LITE-fix worker 2, owner-assigned fixer gpt-terra; LITE analysis item 12)
+
+One rubric criterion (`migration-clarity`, documentation only) carried the judged score; gpt gave a partial in all six
+LITE runs and deepseek flipped, so the task moved 17 to 50 points on one judge. Added `key-split-faithful` (weight 2),
+`fallback-through-interface` (weight 2) and `retired-reader-removed` (weight 1), which judge the code migration the
+hidden tests only measure by output. Each has Fail, Partial and Pass anchors. No prompt, check, key or fixture
+change; gates stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck: pending
+(`handEdited.version` 3).

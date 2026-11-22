@@ -170,3 +170,20 @@ fixture's `errors.js` exports only `QueueFormatError`, and the prompt read as if
 PermanentJobError(message, code) class to src/errors.js and export it there; a PermanentJobError and any error with
 retryable === false must never retry." The fixture is unchanged, so the stub still cannot load the hidden test.
 Gates: reference 100, stub 5.2, lazy 36, alt 100, shallow 18.2. Non-Claude recheck: pending (`handEdited.version` 5).
+
+## t1-bug-event-listeners v4, t1-ref-esm-migrate v6, t1-impl-job-retry v6 (2026-11-22, mate LITE-fix worker 2, owner-assigned fixer gpt-terra; LITE analysis item 12)
+
+Each task had a two-criterion rubric, so one judge's partial moved the judged score 17 to 50 points. Criteria added,
+each with Fail, Partial and Pass anchors and a stated reason code cannot check it; no prompt, check, key or fixture
+changed, so the recorded gates stand. The two old criteria are kept as they are.
+- t1-bug-event-listeners (2 to 4): `symptom-regression-tests` (weight 2: each of the four symptoms has its own test
+  that asserts it) and `reverse-check-reported` (weight 1: the report says whether the new tests ran on the original
+  code, checked against the tool calls). The LITE runs differed here: konductor reported a reverse check, vanilla said
+  it did not run one.
+- t1-ref-esm-migrate (2 to 4): `esm-idioms` (weight 2: paths from import.meta.url, plugin import only from an
+  allow-listed name, cycle and bin entry still work) and `consumer-note` (weight 1: the README or CHANGELOG tells a
+  consumer what changes).
+- t1-impl-job-retry (2 to 5): `durable-attempts-and-shutdown` (weight 2), `delay-and-jitter-rules` (weight 1) and
+  `permanent-errors-and-hook` (weight 1), one per group of hidden-test facts the prompt names.
+Free checks: `lint.js` rubric-anchor rule, `ready.js` and the content lock. A score for the new criteria needs a
+re-judge, which is paid and not run. Non-Claude recheck: pending (`handEdited.version` 4, 6 and 6).

@@ -31,7 +31,12 @@
       "fix": [
         "capacity planning",
         "traffic analysis",
-        "peak load"
+        "peak load",
+        "design capacity",
+        "observed peak",
+        "over provision",
+        "overprovision",
+        "right size"
       ],
       "finding": "Design capacity of 10,000 notifications/sec is 20x the current peak of 500/sec shown in traffic-by-hour.csv, with no justification for such over-provisioning."
     },
@@ -40,8 +45,9 @@
       "section": "5.4.2",
       "severity": "high",
       "fix": [
-        "throttling",
-        "rate limiting",
+        "throttl",
+        "rate limit",
+        "token bucket",
         "sendgrid limit"
       ],
       "finding": "SendGrid limit is 100 emails/sec per vendor-limits.yaml, but the design doesn't include throttling mechanisms to prevent exceeding this limit."
@@ -65,7 +71,12 @@
       "fix": [
         "multi-zone",
         "availability zone",
-        "high availability"
+        "high availability",
+        "multi az",
+        "two az",
+        "across az",
+        "cross az",
+        "single az"
       ],
       "finding": "99.95% availability target requires multi-zone deployment, but the design specifies single availability zone in us-east-1."
     },

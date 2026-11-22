@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-esm-migrate",
   "class": "hard",
-  "version": 5,
+  "version": 6,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -74,6 +74,16 @@
       "id": "design-fit",
       "weight": 2,
       "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
+    },
+    {
+      "id": "esm-idioms",
+      "weight": 2,
+      "criterion": "CommonJS-only constructs are replaced by their ES module equivalents in the way the package already loads things. Fail: keeps CommonJS through a createRequire shim or a dynamic require for the package code, imports a plugin from an unchecked user-supplied path, or leaves the bin entry unable to start. Partial: the code is ESM but one construct is handled loosely (a __dirname rebuilt in several files, the module map or JSON read through a shim, the plugin name checked after the import call). Pass: file paths come from import.meta.url, JSON and the banner are read beside their module, the plugin loader builds an import() only from a name found in its allow-list, the circular import still resolves, and the bin entry keeps its shebang and starts. (code cannot check this because tests show the behaviour is unchanged, not which mechanism produced it or whether the loader guards its input)"
+    },
+    {
+      "id": "consumer-note",
+      "weight": 1,
+      "criterion": "The README or CHANGELOG entry tells a consumer what changes for them. Fail: no entry, or an entry that only says \"migrated\" with nothing a consumer can act on. Partial: says the package is now ES modules but omits how to import the default, the named exports or the lantern-kit/cli subpath. Pass: says the package is ESM-only, shows the import form for the default and named exports and the cli subpath, and states the command and the version output are unchanged, with nothing that the code does not do. (code cannot check this because whether prose is accurate and usable for a consumer is a judgement)"
     }
   ],
   "targetSkills": [
@@ -202,9 +212,9 @@
     }
   },
   "handEdited": {
-    "family": "claude",
-    "editor": "mate LITE-fix worker (2026-11-22): ESM grep ignores comments and quoted export names; unnamed test-file check dropped",
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): rubric criteria added, LITE fix 12",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   }
 }

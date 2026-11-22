@@ -167,3 +167,20 @@ The judge-vs-code edits of 2026-11-21 changed these tasks without a new version,
 After the D-150 bumps (9a8697f4, version field only, content unchanged): the round 6 rechecks above move to the bumped
 versions (t2-gaps-jwt-middleware v6, t2-pr-cursor-pages v5, t2-pr-stock-reserve v4). The k3 sync is a content change, so
 t2-pr-avatar-upload goes to v6 (content-lock.json recorded); its gpt-5.6-luna recheck L6 read that content.
+
+## t2-dr-notify-fanout v4 (2026-11-22, mate LITE-fix worker 2, owner-assigned fixer gpt-terra; LITE analysis item 11)
+
+The LITE analysis said konductor's review of this task missed key items k3, k4 and k6. Read against the saved
+reviews, the places are right: every run has a finding at 5.5, 5.4.2 and 5.6. The misses are fix keywords. K r1 wrote
+"no outbound rate limiter ... token-bucket limiter" (key words "rate limiting", "throttling"), "Run at least two AZs"
+(key words "multi-zone", "availability zone"), and a design capacity of 10,000/s against an observed peak of 550/s
+(key words "capacity planning", "traffic analysis"). The `fix` lists of those three items now also hold the wording
+such findings use: k3 "design capacity", "observed peak", "over provision", "overprovision", "right size"; k4 "throttl",
+"rate limit", "token bucket"; k6 "multi az", "two az", "across az", "cross az", "single az". Location, severity and the
+other four items are unchanged. The 3x length allowance was already in place (3447c9d7); it is not changed.
+Re-grade of the six saved reviews (`analysis-fix11-regrade.js`): matched items K r1 4 to 7, V r1 4 to 7, K r2 6 to 7, V r2
+6 to 7, K r3 7 to 7, V r3 5 to 7; score K r1 0.264 to 0.476, K r2 0.325 to 0.408, K r3 0.413 to 0.431, V r1 0.307 to
+0.557, V r2 0.407 to 0.471, V r3 0.270 to 0.410. Both arms now find all 7 items in every run, so the key no longer
+separates them by recall; the scores differ only by the length term (21 findings allowed, 33 to 45 written) and
+severity. The length term still takes about half of every score and the prompt does not state a limit: left for the
+owner. Gates: reference 100, stub 7.1, lazy 28.6, alt 100, dump 28.6. Non-Claude recheck: pending (`handEdited.version` 4).

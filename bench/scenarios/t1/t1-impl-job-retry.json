@@ -1,7 +1,7 @@
 {
   "id": "t1-impl-job-retry",
   "class": "hard",
-  "version": 5,
+  "version": 6,
   "phase": "implementation",
   "role": "developer",
   "questions": "allowed",
@@ -74,6 +74,21 @@
       "id": "design-fit",
       "weight": 2,
       "criterion": "The change fits the code that is already there (its module layout, error style and naming), stays small, and adds tests that cover the new behaviour's edge cases through the public interface. Fail: adds a parallel structure or framework, duplicates existing helpers, or adds tests that only read private state. Partial: fits the codebase, but with extra churn or tests that miss the edge cases the prompt names. Pass: follows the existing structure, reuses existing helpers, touches no unrelated code, and its tests cover each named edge case through the public interface. (code cannot check this because tests show the behaviour is right, not whether the change fits the codebase)"
+    },
+    {
+      "id": "durable-attempts-and-shutdown",
+      "weight": 2,
+      "criterion": "Attempts and the wait for a retry are kept in the job record, so a stop or a crash cannot lose the job. Fail: the attempts count lives only in memory, or a waiting retry is held in a timer or a local list rather than in the pending record. Partial: availableAt is persisted, but the attempts count is written after the handler runs, or stop() during the wait is handled only by the happy path. Pass: attempts is incremented and written before the handler runs, a retry stays in pending with availableAt, stop() while waiting leaves the record on disk, and the queue file format is unchanged apart from those fields. (code cannot check this because the tests cannot kill the process in the middle of a handler, so write order is only visible in the code)"
+    },
+    {
+      "id": "delay-and-jitter-rules",
+      "weight": 1,
+      "criterion": "The delay follows the stated rule and uses only the injected time and random sources. Fail: reads Math.random or Date.now directly, or computes jitter as a fixed amount rather than a fraction of the delay. Partial: the formula is right, but the cap is applied before jitter so the result can pass maxDelayMs, or the base for the first retry is off by one. Pass: the delay is baseDelayMs doubled per attempt, capped at maxDelayMs, scaled by (1 - jitter) to (1 + jitter) from the injected random, never above maxDelayMs, and retryDelay is exported from src/runner.js. (code cannot check this because a handful of test inputs cannot show that no other time or random source is read)"
+    },
+    {
+      "id": "permanent-errors-and-hook",
+      "weight": 1,
+      "criterion": "Errors that must not retry, the shouldRetry hook and the dead-letter record are handled in the code the project already uses for errors. Fail: a PermanentJobError or retryable false is retried, or the dead-letter record loses the reason. Partial: those paths work, but PermanentJobError is added in a style that differs from the other errors in src/errors.js, or the hook result is not awaited. Pass: PermanentJobError(message, code) follows the existing error classes, both non-retry cases go straight to deadLetter with the reason kept, and the async shouldRetry(error, job) hook is awaited and can veto a retry. (code cannot check this because tests show the outcome, not whether the new class and the hook fit the existing code)"
     }
   ],
   "targetSkills": [
@@ -201,9 +216,9 @@
     }
   },
   "handEdited": {
-    "family": "claude",
-    "editor": "mate LITE-fix worker (2026-11-22): the prompt says to add and export PermanentJobError from src/errors.js (recheck of v4)",
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): rubric criteria added, LITE fix 12",
     "log": "HAND-EDITS.md",
-    "version": 5
+    "version": 6
   }
 }

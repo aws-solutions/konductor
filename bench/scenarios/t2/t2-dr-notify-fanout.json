@@ -1,6 +1,6 @@
 {
   "id": "t2-dr-notify-fanout",
-  "version": 3,
+  "version": 4,
   "class": "design",
   "phase": "design-review",
   "phases2": [],
@@ -226,9 +226,10 @@
     }
   },
   "handEdited": {
-    "family": "claude",
-    "editor": "mate task-fix worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "family": "gpt",
+    "editor": "mate LITE-fix worker 2 (2026-11-22, owner-assigned fixer gpt-terra): fix keywords of k3, k4, k6 accept the wording a correct finding uses, LITE fix 11",
+    "log": "HAND-EDITS.md",
+    "version": 4
   },
   "pilot": {
     "scores": {},

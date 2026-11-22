@@ -192,3 +192,12 @@ The prompt offered "committing the work on the branch I am on is fine", but the 
 six LITE runs ended saying they could not commit. It now says the folder is not a git repository and the work stays
 as files; the scope confirmation is kept. No check, key or fixture changed; gates unchanged (reference 100, stub 0,
 lazy 36.4, alt 100, shallow 0). Non-Claude recheck: pending (`handEdited.version` 5).
+
+## t12-delegated-worker-fix v2 (2026-11-22, mate LITE-fix worker 2, owner-assigned fixer gpt-terra; LITE analysis item 12)
+
+The only criterion (`worker-briefs-and-review`) reads the git history, which the judge bundle does not hold (`.git` is
+skipped and the saved workspaces have none), so its verdict was a coin toss per judge. Added three criteria that
+the judge can read from the final text and the tool calls: `work-handed-to-workers` (weight 2), `review-reported`
+(weight 1) and `cleanup-reported-truthfully` (weight 1). The old criterion stays; a bundle that carries the merge log
+(analysis fix 10) would make it readable, and is another fixer's change. No prompt, check, key or fixture change; gates
+stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck: pending (`handEdited.version` 2).
