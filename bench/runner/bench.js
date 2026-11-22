@@ -305,12 +305,13 @@ const USAGE = `Usage:
        exists, only listed lint findings are tolerated: a new finding fails, and so does a listed one that no longer occurs. --update-baseline writes
        the file (all findings if absent; afterwards it only removes stale waivers, adding needs --force); it is never run for you)
   node bench/runner/bench.js cap variant --scratch DIR [--base REF] [--drop ID,ID] [--replace ID=FILE] [--overlay ID=DIR] [--add ID=FILE --to-agent A,B]
-       [--preset skills-only|bare|noskills] [--hook nudge|filler] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
+       [--preset skills-only|bare|noskills] [--hook list|nudge|filler] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
        [--cargo-online] [--repo-root DIR] [--bench-dir DIR] [--json]
        (builds a dir: arm from git archive of the base ref with the capability dropped, replaced or added, and prints the arm string for the run command.
        --overlay skill:NAME=DIR replaces SKILL.md and adds references/** from DIR in one step (a section moved out of a skill); it never overwrites a reference file.
-       --hook nudge adds a userPromptSubmit hook to konductor that prints the 3 skills whose trigger lines best match the request (a local matcher,
-       no model call); --hook filler adds a hook of the same shape that prints neutral text of about the same size, the control arm.
+       --hook list adds a userPromptSubmit hook to konductor that prints every skill name and a line to check the list and load a matching
+       skill before starting (design A, no matching, under 3,000 bytes); --hook nudge prints the 3 skills whose trigger lines best match the
+       request (design B, a local matcher, not run: a documented negative result); --hook filler prints neutral text the size of the list, the control.
        --verify builds it and trial-installs it with a scratch HOME. Exit 2 when the capability is not reachable at startup, unless --force)
   node bench/runner/bench.js cap plan --mode lift|trigger|improve --cap ID [--base REF] [--reps N] [--tasks id,id] [--budget-credits X]
        [--vanilla] [--allow-regex] [--force] [--candidate FILE] [--acting-agent A] [--agent-engine v2|v3] [--scratch DIR] [--seed N]
