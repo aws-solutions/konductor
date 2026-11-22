@@ -137,3 +137,12 @@ All six LITE runs passed 1 or 2 of 14 hidden tests while every other check passe
   retryPolicies gets one attempt: when it fails, it goes to deadLetter the same way."
 The six LITE workspaces now pass 12 of 14 (the two left are the no-policy rule they were never told). Gates: reference
 100, stub 5.2, lazy 36, alt 100, shallow 18.2. Non-Claude recheck: pending (`handEdited.version` 4).
+
+## t1-ref-esm-migrate v5 (2026-11-22, mate LITE-fix worker, claude; LITE analysis items 3 and 4)
+
+- The CommonJS grep (`! grep 'require\(|module\.exports'`, weight 2) failed valid ESM: `export { lantern as
+  'module.exports' }` (Node's CommonJS-interop export name) and a code comment, in two konductor runs. It now skips
+  comment lines and a name inside quotes; it still fails the CommonJS fixture (every `require(` and `module.exports`).
+- `min_matches` on `test/esm-migration.test.js` (weight 2) failed all six runs: the prompt asks to move the existing
+  tests to ESM, not to add that file. Dropped.
+Gates: reference 100, stub 19.2, lazy 32.4, alt 91.6, shallow 36.6. Non-Claude recheck: pending (`handEdited.version` 5).

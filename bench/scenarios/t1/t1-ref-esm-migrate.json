@@ -1,7 +1,7 @@
 {
   "id": "t1-ref-esm-migrate",
   "class": "hard",
-  "version": 4,
+  "version": 5,
   "phase": "refactor",
   "role": "developer",
   "questions": "allowed",
@@ -51,16 +51,8 @@
     },
     {
       "type": "cmd",
-      "cmd": "! grep -R -n -E 'require\\(|module\\.exports' index.js cli.js lib plugins bin",
+      "cmd": "! grep -R -n -E \"(^|[^'\\\"A-Za-z0-9_.$])(require\\(|module\\.exports)\" index.js cli.js lib plugins bin 2>/dev/null | grep -v -E \"^[^:]+:[0-9]+:[[:space:]]*(//|\\*|/\\*)\"",
       "expectExit": 0,
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
-      "type": "min_matches",
-      "path": "test/esm-migration.test.js",
-      "pattern": "test\\s*\\(",
-      "min": 3,
       "weight": 2,
       "kind": "substance"
     },
@@ -177,20 +169,41 @@
   "pilot": {
     "scores": {},
     "reference": 100,
-    "stub": 18.3,
+    "stub": 19.2,
     "decision": "keep",
-    "date": "2026-11-20",
+    "date": "2026-11-22",
     "dryRun": {
       "reference": 100,
-      "stub": 18.3,
-      "lazy": 37.8,
-      "alt": 87.8,
-      "date": "2026-11-20"
+      "stub": 19.2,
+      "lazy": 36.6,
+      "alt": 91.6,
+      "checks": {
+        "reference": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "stub": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "date": "2026-11-22"
     }
   },
   "handEdited": {
     "family": "claude",
-    "editor": "mate review-fix2 worker (2026-11-20)",
-    "log": "HAND-EDITS.md"
+    "editor": "mate LITE-fix worker (2026-11-22): ESM grep ignores comments and quoted export names; unnamed test-file check dropped",
+    "log": "HAND-EDITS.md",
+    "version": 5
   }
 }
