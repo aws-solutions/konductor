@@ -113,3 +113,4 @@ LITE runs and deepseek flipped, so the task moved 17 to 50 points on one judge. 
 hidden tests only measure by output. Each has Fail, Partial and Pass anchors. No prompt, check, key or fixture
 change; gates stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck: pending
 (`handEdited.version` 3).
+The v3 hash also covers the hidden-test regex change that LITE fixes 2-6 landed in place (52f23a25) under the same number.

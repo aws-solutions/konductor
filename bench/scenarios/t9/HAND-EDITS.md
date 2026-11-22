@@ -86,3 +86,4 @@ Added `severity-calibration` (weight 2), `real-versus-awkward` (weight 1) and `r
 "Review scope" section the v3 prompt asks for), each with Fail, Partial and Pass anchors. No prompt, check, key or
 fixture change; gates stand. A score for the new criteria needs a re-judge (paid, not run). Non-Claude recheck:
 pending (`handEdited.version` 4).
+The v4 hash also covers the dead-check drop that LITE fixes 8-9 landed in place (53cc33ad) under the same number.

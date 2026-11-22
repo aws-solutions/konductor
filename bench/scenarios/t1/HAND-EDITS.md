@@ -187,3 +187,4 @@ changed, so the recorded gates stand. The two old criteria are kept as they are.
   `permanent-errors-and-hook` (weight 1), one per group of hidden-test facts the prompt names.
 Free checks: `lint.js` rubric-anchor rule, `ready.js` and the content lock. A score for the new criteria needs a
 re-judge, which is paid and not run. Non-Claude recheck: pending (`handEdited.version` 4, 6 and 6).
+The t1-ref-esm-migrate v6 hash also covers the grep change that LITE fixes 2-6 landed in place (52f23a25) under the same number.
