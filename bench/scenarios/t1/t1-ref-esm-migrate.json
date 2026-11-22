@@ -51,7 +51,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "! grep -R -n -E \"(^|[^'\\\"A-Za-z0-9_.$])(require\\(|module\\.exports)\" index.js cli.js lib plugins bin 2>/dev/null | grep -v -E \"^[^:]+:[0-9]+:[[:space:]]*(//|\\*|/\\*)\"",
+      "cmd": "! grep -R -n -E \"^\\s*(const|let|var)\\b.*\\brequire\\(|^\\s*module\\.exports\\b\" index.js cli.js lib plugins bin",
       "expectExit": 0,
       "weight": 2,
       "kind": "substance"

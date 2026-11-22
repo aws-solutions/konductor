@@ -1,0 +1,22 @@
+{
+  "outputFile": "docs/features/contact-import.md",
+  "scoring": "sections",
+  "items": [
+    { "id": "req-any-order", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["header|column", "any order|order"] } },
+    { "id": "req-bom", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["byte[- ]order|BOM"] } },
+    { "id": "req-quotes", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["quot", "comma"] } },
+    { "id": "req-duplicates", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["duplicate|already", "case", "same file|earlier|within"] } },
+    { "id": "req-line-reasons", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["line", "reason"] } },
+    { "id": "req-limit-whole-file", "section": "requirements", "type": "some", "path": "requirements", "match": { "all": ["5,?000", "whole|entire|nothing|before|refus|reject"] } },
+    { "id": "requirements-bounded", "section": "requirements", "type": "maxLen", "path": "requirements", "min": 5, "max": 15 },
+    { "id": "dec-line-numbering", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["line", "header|line 1|first line|span|multi-?line"] } },
+    { "id": "dec-parser", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["pars|reader|tokeni[sz]|lexer", "dependenc|standard library|own|hand-written|rfc ?4180"] } },
+    { "id": "dec-limit-behaviour", "section": "decisions", "type": "some", "path": "decisions", "match": { "all": ["5,?000|limit", "throw|error|refus|reject"] } },
+    { "id": "decisions-bounded", "section": "decisions", "type": "maxLen", "path": "decisions", "min": 2, "max": 20 },
+    { "id": "test-bom", "section": "verification", "type": "some", "path": "testPlan", "match": { "all": ["byte[- ]order|BOM"] } },
+    { "id": "test-duplicates", "section": "verification", "type": "some", "path": "testPlan", "match": { "all": ["duplicate|already"] } },
+    { "id": "test-limit-edges", "section": "verification", "type": "some", "path": "testPlan", "match": { "all": ["5,?000|5,?001|limit"] } },
+    { "id": "test-multiline-line", "section": "verification", "type": "some", "path": "testPlan", "match": { "all": ["line", "quot|multi-?line|span"] } },
+    { "id": "testplan-bounded", "section": "verification", "type": "maxLen", "path": "testPlan", "min": 4, "max": 30 }
+  ]
+}
