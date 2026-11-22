@@ -1,0 +1,18 @@
+{
+  "id": "t2-dr-aws-claims-check",
+  "phase": "design-review",
+  "role": "reviewer",
+  "wave": 4,
+  "author": "gpt-5.6-luna",
+  "reviewer": "deepseek-3.2",
+  "source": {
+    "url": "original",
+    "licence": "n/a",
+    "licenceCheckedAt": "2026-11-21",
+    "use": "idea"
+  },
+  "kind": "design",
+  "size": "8 to 14",
+  "brief": "Phase: design review. Role of the person asking: reviewer. The user asks for the AWS facts in this design to be checked before it goes to review. Packet kind: a design for a video and image processing pipeline on AWS (upload to S3, events to a queue, Lambda and container workers, a DynamoDB job table, Step Functions for long jobs). Context: expected file sizes and job durations, request rates, the team budget, the target Region list. Plant only AWS claims that are wrong for long-stable, documented reasons, each in its own subsection, and make them matter to this design: a Lambda function is said to run a 40-minute transcode (the documented maximum is 15 minutes); a DynamoDB item is said to hold a 2 MB job manifest (the item limit is 400 KB); Step Functions Express workflows are chosen for jobs that run up to 3 hours (Express runs at most 5 minutes); an SQS visibility timeout of 24 hours is planned (the maximum is 12 hours); S3 is said to need a wait before reading a new object (S3 has had strong read-after-write consistency since 2020); one Region in the target list is named as a Region code that does not exist. Every other AWS fact in the doc must be correct. Use only facts that have been stable for years. Write every planted problem the way the team really wrote them: no comment, diff line, test name or doc may say decoy, planted, intentional, on purpose or correct here. Context files give facts and numbers only, never a conclusion: an incident summary says what happened and when, and must not name a lesson that restates a planted problem; no context file may say what this design gets wrong.",
+  "doc": "docs/design/media-pipeline-on-aws.md"
+}

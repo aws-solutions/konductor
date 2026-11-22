@@ -183,3 +183,4 @@ Every model call made to write, map, review or re-check a T2 task, in order. Cal
 | 2026-11-22T00:51:03.329Z | t2-sec-dr-partner-webhooks | review-3 | deepseek-3.2 | 159 | 2.33 | coverage-gap stage 1 |
 | 2026-11-22T00:51:52.724Z | t2-dr-search-options | fix | gpt-5.6-luna | 49 | 1.25 | coverage-gap stage 1 |
 | 2026-11-22T00:54:10.738Z | t2-dr-search-options | review-3 | deepseek-3.2 | 135 | 1.97 | coverage-gap stage 1 |
+| 2026-11-22T01:18:24.722Z | t2-dr-orders-dynamo-model | fix | gpt-5.6-luna | 26 | 0.70 | coverage-gap stage 1 |

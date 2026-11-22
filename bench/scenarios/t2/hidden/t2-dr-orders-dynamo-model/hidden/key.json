@@ -1,0 +1,72 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "shard",
+        "write distribution",
+        "partition key"
+      ],
+      "finding": "Using the UTC order date as the sole partition key concentrates the launch peak on one partition, exceeding the stated per-partition write baseline and making checkout latency vulnerable to a daily hot spot."
+    },
+    {
+      "id": "k2",
+      "section": "3.3",
+      "severity": "high",
+      "fix": [
+        "customer index",
+        "query",
+        "GSI"
+      ],
+      "finding": "Customer history is implemented as a filtered table scan even though the service must support 2,400 requests per second and customers with more than 100,000 orders, so the access pattern has no bounded key-based read."
+    },
+    {
+      "id": "k3",
+      "section": "4.1",
+      "severity": "medium",
+      "fix": [
+        "projection",
+        "KEYS_ONLY",
+        "attributes"
+      ],
+      "finding": "GSI1 projects every order attribute while the fulfillment path reads only orderId, customerId, and updatedAt, unnecessarily duplicating large line-bearing items and roughly doubling index write and storage cost."
+    },
+    {
+      "id": "k4",
+      "section": "3.4",
+      "severity": "critical",
+      "fix": [
+        "split",
+        "line items",
+        "item size"
+      ],
+      "finding": "The list representation cannot fit the observed 774 KB order or the planned 1,200-line bulk order within DynamoDB's 400 KB item limit, so valid orders will fail to write or read."
+    },
+    {
+      "id": "k5",
+      "section": "3.5",
+      "severity": "high",
+      "fix": [
+        "conditional update",
+        "atomic",
+        "idempotent"
+      ],
+      "finding": "Read-then-write counter updates can lose concurrent increments and count redelivered status events twice, making fulfillment workload counts unreliable despite the event contract requiring idempotency."
+    },
+    {
+      "id": "k6",
+      "section": "6.3",
+      "severity": "high",
+      "fix": [
+        "incremental",
+        "export",
+        "reporting table"
+      ],
+      "finding": "Scanning the entire growing table every hour cannot stay within the 400 USD reporting allocation as the table grows from 250 GB toward 1.1 TB, and it does not provide a bounded incremental workload."
+    }
+  ],
+  "decoys": []
+}

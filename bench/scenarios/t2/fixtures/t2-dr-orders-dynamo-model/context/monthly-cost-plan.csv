@@ -1,0 +1,10 @@
+category,monthly_usd,assumption
+base table requests,2100,launch and daytime request forecast
+base table storage and backup,900,250 GB starting table
+GSI1 requests and storage,1300,forecast fulfillment index workload
+reporting worker,120,one hourly job and daily extract
+reporting DynamoDB reads,280,one 250 GB table read per hour
+dual-write transition,excluded,temporary migration period
+headroom,15 percent,applied to application request estimate
+total approved allocation,7500,storage requests backups exports and reporting
+reporting sub-allocation,400,hourly reports and daily finance extract

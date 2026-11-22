@@ -1,0 +1,36 @@
+{
+  "model": "deepseek-3.2",
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt asks for general review of traffic, limits, costs, and service behavior alignment without naming review methods, checklists, or hinting at specific problems."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Clear instructions: review DynamoDB model in docs/design/orders-table-design.md and supporting files, write to REVIEW.md, include section numbers, severity, issue, and fix in JSON list."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Key items require cross-referencing multiple files, understanding DynamoDB constraints, and performing calculations; not findable by quick shallow review."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All key items are supported by evidence in fixture files: traffic forecasts, cost allocations, service limits, and design descriptions."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "Fixture provides necessary constraints without explicit pointers; no comments, test names, or file names highlight planted problems."
+    }
+  ],
+  "keyProblems": [
+    "No key items appear wrong, ambiguous, or with disputable severity. All items are well-supported by evidence in the fixture and have appropriate severity assignments for a senior reviewer."
+  ],
+  "suggestedFixes": [
+    "The task is well-constructed. No fixes needed for the benchmark design."
+  ]
+}

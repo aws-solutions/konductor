@@ -1,0 +1,22 @@
+{
+  "model": "glm-5",
+  "targetSkills": [
+    "dynamodb-design",
+    "adversarial-design-review"
+  ],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "dynamodb-design",
+      "adversarial-design-review"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review",
+      "backend-review",
+      "code-review"
+    ]
+  },
+  "twinIdea": "Implement the DynamoDB access patterns from the approved design as Lambda handlers and service layer code.",
+  "why": "The task is a go/no-go design review of a DynamoDB data model, requiring DynamoDB-specific expertise for partition key, GSI, and capacity validation (dynamodb-design) plus adversarial challenge of trade-offs and edge cases (adversarial-design-review). Code review skills would be wrong scope—this is pre-implementation."
+}
