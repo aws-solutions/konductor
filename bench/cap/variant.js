@@ -18,11 +18,14 @@ const { frontmatter, fmValue } = require('../runner/lib/frontmatter.js');
 const { scanRepo, loadAgentSpecs, PATH_OF } = require('./scan.js');
 const { kiroReachers, split } = require('./reach.js');
 const { inboundRefs } = require('./audit.js');
+const nudge = require('./nudge.js');
 
 const TOOL_VERSION = 'cap-variant/1';
 const PRESETS = ['skills-only', 'bare', 'noskills'];
 // The arm a preset builds is named after the preset, except noskills: konductor with every skill removed (B4).
 const PRESET_ARM = { noskills: 'konductor-noskills' };
+// A hook variant (cap/nudge.js) is named after its hook: konductor-nudge or konductor-filler.
+const HOOKS = ['nudge', 'filler'];
 const BARE_PROMPT = 'You are a general software engineering assistant. Do the work you are asked to do.';
 const ORCHESTRATOR = 'konductor';
 
@@ -323,20 +326,20 @@ function opPreset(tree, preset) {
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
-function namesFor({ drop, replace, add, overlay = [], preset }) {
-  const kinds = [drop.length && 'x-minus', replace.length && 'x-replace', add.length && 'x-plus', overlay.length && 'x-overlay', preset && (PRESET_ARM[preset] ?? preset)].filter(Boolean);
+function namesFor({ drop, replace, add, overlay = [], preset, hook = null }) {
+  const kinds = [drop.length && 'x-minus', replace.length && 'x-replace', add.length && 'x-plus', overlay.length && 'x-overlay', preset && (PRESET_ARM[preset] ?? preset), hook && `${ORCHESTRATOR}-${hook}`].filter(Boolean);
   const armName = kinds.length === 1 ? kinds[0] : 'x-variant';
   const first = drop[0] ?? (replace[0] ? parseIdFile(replace[0], '--replace').id : null) ?? (add[0] ? parseIdFile(add[0], '--add').id : null) ?? (overlay[0] ? parseIdFile(overlay[0], '--overlay').id : null);
   const nameOf = first ? first.slice(first.indexOf(':') + 1) : '';
   const total = drop.length + replace.length + add.length + overlay.length;
   const extra = total > 1 ? `-and-${total - 1}-more` : '';
-  const variantId = slug(preset && !first ? preset : `${armName}-${nameOf}${extra}`);
+  const variantId = slug(hook && kinds.length === 1 ? armName : preset && !first ? preset : `${armName}-${nameOf}${extra}`);
   return { armName, variantId };
 }
 
 // The directory name comes from the inputs (base commit, ops, candidate file bytes, engine) so a plan can print the
 // exact path before anything is built. variantHash in variant.json is the hash of the resulting tree.
-function variantKey({ sha, drop, replace, add, overlay = [], toAgent, preset, agentEngine }) {
+function variantKey({ sha, drop, replace, add, overlay = [], toAgent, preset, agentEngine, hook = null }) {
   const h = crypto.createHash('sha256');
   const part = (...x) => h.update(`${x.join('\u0001')}\u0000`);
   part('base', sha, 'engine', agentEngine, 'preset', preset ?? '');
@@ -344,15 +347,16 @@ function variantKey({ sha, drop, replace, add, overlay = [], toAgent, preset, ag
   for (const a of replace) { const { id, file } = parseIdFile(a, '--replace'); part('replace', id, fs.existsSync(file) ? readSha(file) : 'missing'); }
   for (const a of add) { const { id, file } = parseIdFile(a, '--add'); part('add', id, fs.existsSync(file) ? readSha(file) : 'missing', ...toAgent); }
   for (const a of overlay) { const { id, file } = parseIdFile(a, '--overlay'); part('overlay', id, overlayDigest(file)); }
+  if (hook) part('hook', hook, nudge.TOOL_VERSION);
   return h.digest('hex');
 }
 
 /** Where a variant with these inputs is (or will be) built. Pure: reads the repo refs and candidate files, writes nothing. */
-function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, scratch, agentEngine = 'v2' }) {
+function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, hook = null, scratch, agentEngine = 'v2' }) {
   drop = toList(drop); replace = toList(replace); add = toList(add); overlay = toList(overlay); toAgent = toList(toAgent);
   const { ref, sha } = resolveRefOnly(repo, base);
-  const { armName, variantId } = namesFor({ drop, replace, add, overlay, preset });
-  const key = variantKey({ sha, drop, replace, add, overlay, toAgent, preset, agentEngine });
+  const { armName, variantId } = namesFor({ drop, replace, add, overlay, preset, hook });
+  const key = variantKey({ sha, drop, replace, add, overlay, toAgent, preset, agentEngine, hook });
   const root = path.join(realTarget(scratch), 'variants', `${variantId}-${key.slice(0, 12)}`);
   const dir = path.join(root, 'tree');
   return { ref, sha, armName, variantId, root, dir, armSpec: `${armName}=dir:${dir}` };
@@ -362,14 +366,15 @@ function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
  * Builds the variant and returns { root, dir, armName, armSpec, variantId, meta }. `dir` is the tree to pass as a dir arm;
  * `variant.json` sits beside it in `root`, so it never changes the arm's content hash.
  */
-function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, scratch, agentEngine = 'v2', now = new Date() }) {
+function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, hook = null, scratch, agentEngine = 'v2', now = new Date() }) {
   drop = toList(drop); replace = toList(replace); add = toList(add); overlay = toList(overlay); toAgent = toList(toAgent);
   if (preset !== null && !PRESETS.includes(preset)) throw new Error(`--preset takes ${PRESETS.join(' or ')}`);
-  if (!drop.length && !replace.length && !add.length && !overlay.length && !preset) throw new Error('nothing to do: give --drop, --replace, --add, --overlay or --preset');
+  if (hook !== null && !HOOKS.includes(hook)) throw new Error(`--hook takes ${HOOKS.join(' or ')}`);
+  if (!drop.length && !replace.length && !add.length && !overlay.length && !preset && !hook) throw new Error('nothing to do: give --drop, --replace, --add, --overlay, --preset or --hook');
   if (add.length && !toAgent.length) throw new Error('--add needs --to-agent AGENT[,AGENT]');
   if (!scratch) throw new Error('--scratch DIR is required');
   const scratchReal = checkScratch(scratch, repo);
-  const planned = variantPaths({ repo, base, drop, replace, add, overlay, toAgent, preset, scratch: scratchReal, agentEngine });
+  const planned = variantPaths({ repo, base, drop, replace, add, overlay, toAgent, preset, hook, scratch: scratchReal, agentEngine });
   const { ref, sha } = planned;
   const variantsDir = path.join(scratchReal, 'variants');
   ensureOwnedDir(scratchReal, 'scratch');
@@ -386,6 +391,7 @@ function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
     for (const r of replace) ops.push(opReplace(tree, r));
     for (const a of add) ops.push(opAdd(tree, a, toAgent));
     for (const a of overlay) ops.push(opOverlay(tree, a));
+    if (hook) ops.push(nudge.opHook(tree, hook));
     const variantHash = armSource.snapshotDir(tree).hash;
     const { armName, variantId, root } = planned;
     fs.rmSync(root, { recursive: true, force: true });
@@ -394,7 +400,7 @@ function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
       variantId, armName, agentEngine,
       base: { ref, commitSha: sha, tree: armSource.treeOf(repo, sha) },
       ops,
-      inboundRefs: ops.filter((o) => o.op !== 'preset').map((o) => ({ id: o.id, refs: refs.get(o.id) ?? [] })),
+      inboundRefs: ops.filter((o) => o.op !== 'preset' && o.op !== 'hook').map((o) => ({ id: o.id, refs: refs.get(o.id) ?? [] })),
       variantHash, createdAt: now.toISOString(), toolVersion: TOOL_VERSION,
     };
     fs.writeFileSync(path.join(root, 'variant.json'), `${JSON.stringify(meta, null, 2)}\n`);
@@ -476,4 +482,4 @@ function verifyInstalled({ variant, prepared, tmpRoot = os.tmpdir(), home = null
   }
 }
 
-module.exports = { STUB_PROMPT, buildVariant, variantPaths, verifyInstalled, reachWarning, checkScratch, PRESETS, PRESET_ARM, TOOL_VERSION, BARE_PROMPT };
+module.exports = { STUB_PROMPT, buildVariant, variantPaths, verifyInstalled, reachWarning, checkScratch, PRESETS, PRESET_ARM, HOOKS, TOOL_VERSION, BARE_PROMPT };

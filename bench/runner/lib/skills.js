@@ -20,6 +20,15 @@ const SKILL_FIELDS = [
 // kiro-cli and opencode results, and the backfill of older results, stay as they are.
 const CLAUDE_SKILL_FIELDS = ['skillsPreloaded', 'skillBytesPreloaded', 'skillLoadsByScope', 'skillLoadsNoBody', 'skillReferenceReads'];
 
+// Loads whose whole text reached the model, and loads that delivered only kiro-cli's cut preview. Kept out of SKILL_FIELDS
+// for the same reason: the backfill of older results leaves them as they are.
+const FULL_TEXT_FIELDS = ['skillsLoadedFull', 'skillLoadsPreview'];
+
+// kiro-cli 3.5.0 cuts a tool answer over 30,000 characters to a 500-character head and tail plus a saved-file path, and
+// says so with this sentence. A load answered that way gave the model a preview, not the skill.
+const PREVIEW_RE = /exceeded the [\d,]+-char limit; here is a preview of the tool's result/;
+const isPreviewText = (t) => typeof t === 'string' && PREVIEW_RE.test(t);
+
 // Claude Code injects the full body of at most this many distinct frontmatter `skills:` names into a sub-agent.
 const CC_PRELOAD_CAP = 32;
 
@@ -194,16 +203,24 @@ function firstDecisionOf(events, runtime) {
 function extractSkills(events, runtime) {
   // Both report a loaded skill's text on the call and a status; the kiro-cli path reads a skills-server answer instead.
   const oc = runtime === 'opencode' || runtime === 'claude-code';
-  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], failedCalls: [], failedByTool: { get_skill: 0, load_resource: 0, find_skills: 0 }, firstDecision: firstDecisionOf(events, runtime) };
+  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillsLoadedFull: [], skillLoadsPreview: 0, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], failedCalls: [], failedByTool: { get_skill: 0, load_resource: 0, find_skills: 0 }, firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
+  const fullByName = new Map();
   const requested = new Set();
   // opencode's and Claude Code's skill tool is the analogue of get_skill.
   const fail = (tool) => { out.skillCallsFailed++; out.failedByTool[tool === 'skill' ? 'get_skill' : tool]++; };
-  const load = (rawName, via, bytes) => {
+  const count = (map, rawName, via) => {
     const key = lower(rawName);
-    const cur = byName.get(key);
+    const cur = map.get(key);
     if (cur) cur.count++;
-    else byName.set(key, { name: rawName, via, count: 1 });
+    else map.set(key, { name: rawName, via, count: 1 });
+  };
+  // `preview`: the answer was kiro-cli's cut preview, so the load is not a full one.
+  const load = (rawName, via, bytes, preview = false) => {
+    const key = lower(rawName);
+    count(byName, rawName, via);
+    if (preview) out.skillLoadsPreview++;
+    else count(fullByName, rawName, via);
     out.skillBytesLoaded += bytes;
     out.bytesByName[key] = (out.bytesByName[key] ?? 0) + bytes;
   };
@@ -238,7 +255,8 @@ function extractSkills(events, runtime) {
     }
     if (c.tool === 'skill-file') {
       // A plain file read: a failure is a missing file, not a refused skill call, so it is not counted as one.
-      if (c.status === 'completed' && c.text) load(c.input.name, c.via, Buffer.byteLength(c.text));
+      // shortcut: a partial shell read (head -c) counts as full; split on the command's byte range if that ever matters.
+      if (c.status === 'completed' && c.text) load(c.input.name, c.via, Buffer.byteLength(c.text), isPreviewText(c.text));
       continue;
     }
     const raw = c.input?.name ?? c.input?.skill_name;
@@ -251,9 +269,10 @@ function extractSkills(events, runtime) {
       fail(c.tool);
       const recorded = Object.keys(c.input ?? {}).some((k) => !k.startsWith('_'));
       out.failedCalls.push({ tool: c.tool, name: name ?? (recorded ? null : ARGS_NOT_RECORDED) });
-    } else load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes);
+    } else load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes, isPreviewText(c.output?.message) || texts.some(isPreviewText));
   }
   out.skillsLoaded = [...byName.values()];
+  out.skillsLoadedFull = [...fullByName.values()];
   out.requested = [...requested];
   return out;
 }
@@ -542,6 +561,7 @@ function capInvocationOf({ agg, extraction, sops = [] }) {
 /** The result.json fields. All null when nothing was captured. `order` (load-check.js loadOrderOf) adds loadCheck. */
 function resultFields({ extraction, info, task, arm, extras = null, order = null }) {
   const cc = extras ? Object.fromEntries(CLAUDE_SKILL_FIELDS.map((k) => [k, extras[k] ?? null])) : {};
+  // The full-text fields are left out with no extraction, so a result built from older data stays as it was.
   if (!extraction) return { ...Object.fromEntries(SKILL_FIELDS.map((k) => [k, null])), loadCheck: null, ...cc };
   const catalog = info?.catalog ?? catalogFrom();
   const startup = arm?.vanilla ? null : info?.startup ?? null;
@@ -550,6 +570,8 @@ function resultFields({ extraction, info, task, arm, extras = null, order = null
     skillQueries: [...extraction.skillQueries],
     sopsLoaded: extraction.skillsLoaded.filter((s) => isSopName(s.name, catalog)).map((s) => ({ ...s })),
     skillBytesLoaded: extraction.skillBytesLoaded,
+    skillsLoadedFull: (extraction.skillsLoadedFull ?? []).map((s) => ({ ...s })),
+    skillLoadsPreview: extraction.skillLoadsPreview ?? 0,
     skillCallsFailed: extraction.skillCallsFailed,
     skillCallsFailedByTool: { ...extraction.failedByTool },
     findSkillsCalls: extraction.findSkillsCalls,
@@ -564,7 +586,7 @@ function resultFields({ extraction, info, task, arm, extras = null, order = null
 }
 
 module.exports = {
-  ARGS_NOT_RECORDED, SKILL_FIELDS, CLAUDE_SKILL_FIELDS, CC_PRELOAD_CAP, extractSkills, claudeSkillExtras, startupClaude, fmList, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
+  ARGS_NOT_RECORDED, SKILL_FIELDS, CLAUDE_SKILL_FIELDS, FULL_TEXT_FIELDS, isPreviewText, CC_PRELOAD_CAP, extractSkills, claudeSkillExtras, startupClaude, fmList, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
   startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, claudeSkillInfo, captureSkills, resultFields, normalizeUri, has,
   firstDecisionOf, identifiedSops, capInvocationOf,
 };
