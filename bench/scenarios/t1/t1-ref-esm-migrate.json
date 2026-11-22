@@ -139,31 +139,32 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "deepseek",
+      "model": "deepseek-3.2",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "rubric check: Rubric asks for honest verification and design fit, both grounded in the request's migration requirements; no extra methods or frameworks demanded. Earlier glm-5 check of the request, fixture and key: pass (The request specifies what to achieve (migrate to ESM, set exports map, preserve behavior) without mandating any specific method, framework or tool, and contains no misleading hints.)."
+          "note": "Prompt asks to migrate from CommonJS to ES modules without naming specific methods or processes, provides clear requirements without misleading hints."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "rubric check: Rubric is judge-only prose quality; no answer values are visible in the request or fixture. Earlier glm-5 check of the request, fixture and key: pass (The fixture's tests and code show current CommonJS behavior but do not reveal the ESM exports map structure, module syntax requirements, or other migration specifics that hidden tests check.)."
+          "note": "Fixture contains CommonJS code and tests; no comments, docs, or tests reveal ESM migration requirements or hidden test behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "rubric check: Rubric references commands and outcomes from the prompt (node --test, lantern-kit --version printing 1.4.0), all present in the request. Earlier glm-5 check of the request, fixture and key: pass (All paths, names, and behaviors referenced in hidden tests (lantern-kit, index.js, cli.js, lib/module-map.json, bin/lantern.js, manifest values, banner text, cycle-a-cycle-b) exist in the fixture or are stated in the request.)."
+          "note": "Hidden tests check ESM-specific aspects (package.json type, exports map) and API behavior matching prompt; rubric anchors reward migration outcome and design fit."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "rubric check: Different valid migration approaches and test structures can achieve Pass on both rubric items. Earlier glm-5 check of the request, fixture and key: pass (The request explicitly lists all required behaviors (exports map structure, callable default, named exports, plugin behavior, CLI flags, banner, manifest values), and a developer can derive ESM migration requirements from these and the existing CommonJS structure.)."
+          "note": "Competent developer can migrate from CommonJS to ESM using fixture structure and prompt requirements; alternative implementations preserving behavior would pass."
         }
-      ]
+      ],
+      "version": 5
     }
   },
   "pilot": {
