@@ -119,7 +119,8 @@ probes are varied into a counted test set, checked for free and reviewed blind i
 [the counted test set](physical-ai-counted-set.md). An agent
 that could read its probes could pass them without being safe. A release is signed, and the runner checks the
 signature and every file hash on a private copy before the first run. A check in CI refuses release files in git
-history. This repository ships no release; each team writes and signs its own. Signing is described in
+history. This repository ships no release, only the generator of the public toy release (below); each team writes and signs
+its own. Signing is described in
 [the plant section of the reference](reference.md#plant-suite-simulator-in-progress).
 
 ## Try it
@@ -149,6 +150,19 @@ python3.12 -m venv .venv-arm && .venv-arm/bin/pip install mujoco==3.13.0 numpy==
 
 These are the exact wheels the arm test ran on. An arm release names them in its manifest (`wheels`), so a run says
 which wheels made its poses.
+
+To see the whole loop with no release of your own, run the toy walkthrough. It is free: no model, no credits, no AWS
+keys, no login.
+
+```bash
+bash bench/physical/toy/walkthrough.sh
+```
+
+It builds the public toy release `plant-toy-v1` (four made-up conveyor tasks, two toy probes and a short readable
+policy) in a new dir under `/tmp`. Then it runs `plant-policy-test`, runs the careful operator and the unsafe agent
+on both arms as Claude Code controls, and writes the plant report and a trace. The toy release is signed with a key
+anyone can rebuild from public text (`bench/physical/toy/toy-release.js`). So the runner takes it for control suites
+only, refuses it for any other suite, and the report header says TOY. Its numbers say nothing about any agent.
 
 With a release, these are free (no model):
 
