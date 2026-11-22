@@ -99,31 +99,32 @@
       }
     ],
     "recheck": {
-      "family": "zhipu",
-      "model": "glm-5",
-      "date": "2026-11-20",
+      "family": "alibaba",
+      "model": "qwen3-coder-next",
+      "date": "2026-11-21",
       "items": [
         {
           "check": "no-method-or-decoy",
           "verdict": "pass",
-          "note": "Prompt describes the rename-and-alias pattern without naming a method or framework; no decoy hints."
+          "note": "The prompt explicitly names the rename target (pollIntervalMs \u2192 pollingIntervalMs) and lists all affected files (config/*.json, src/config.js, src/index.js, README.md, docs/operations.md). No misleading hints or decoy processes are present."
         },
         {
           "check": "fixture-lists-no-answer",
           "verdict": "pass",
-          "note": "Fixture config uses pollIntervalMs; src/index.js references config.pollIntervalMs; docs do not mention pollingIntervalMs alias pattern."
+          "note": "The fixture uses pollIntervalMs in both JSON files, the config loader passes through without aliasing or warnings, and the documentation does not mention pollingIntervalMs. Nothing describes the desired end state with the new key and deprecation behavior."
         },
         {
           "check": "key-matches-fixture",
           "verdict": "pass",
-          "note": "Hidden tests check pollingIntervalMs in config files, both names in docs, and warning behavior; prompt specifies rename-to pollingIntervalMs, keep pollIntervalMs alias, warn on every load with both names."
+          "note": "The request, checks, and hidden tests all target the same behavior: the config loader must normalize pollIntervalMs to pollingIntervalMs with a deprecation warning, keep both keys in the returned object, and docs must name both. The fixture's current state (old key only) is the 'before' state needing change."
         },
         {
           "check": "solvable-from-fixture",
           "verdict": "pass",
-          "note": "Prompt fully specifies rename, alias, warning-on-every-load, and both-keys-present behavior; developer could implement warning mechanism differently and still pass tests."
+          "note": "A competent developer can see the key usage in config files and source, and the explicit request tells them to rename while preserving backward compatibility with a warning. They can produce a correct implementation without seeing hidden tests or the reference solution."
         }
-      ]
+      ],
+      "version": 3
     }
   },
   "pilot": {

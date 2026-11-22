@@ -154,3 +154,10 @@ Every LITE run scored 68 (6 of 11 hidden tests). All six emitted the deprecation
 containing both names"); the hidden tests captured `console.warn` only and grep'd the source for `console.warn`. Both
 now accept either. The six LITE workspaces pass 11 of 11. Gates: reference 100, stub 0, lazy 24.4, alt 100.
 Non-Claude recheck: pending (`handEdited.version` 3).
+
+## Round 6 recheck of t1-impl-job-retry v4 (2026-11-22, deepseek-3.2, call D16)
+
+3 of 4 pass, so nothing is recorded in `review.recheck`. Listed for independent review (Fable), not disposed.
+key-matches-fixture: the hidden test imports `PermanentJobError` from `src/errors.js`. The request says
+"PermanentJobError from src/errors.js ... must never retry", but the fixture's `src/errors.js` exports only
+`QueueFormatError`. The request reads as if the class already exists, and it does not say to add it.
