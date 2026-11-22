@@ -66,3 +66,15 @@ test('a version bumped past its recheck with no handEdited record still blocks t
   assert.deepEqual(lockBlockers({ version: 3, review: { version: 2, recheck: { version: 3 } } }), []);
   assert.deepEqual(lockBlockers({ version: 1 }), [], 'a task no review has read yet has nothing to be ahead of');
 });
+
+test('scenarios lint on the pack names a task left out of content-lock.json, or changed at its version, with the command (D-166)', () => {
+  const { contentLockProblems } = require('../../scenarios/cli.js');
+  const p = pack();
+  const opts = { packDir: p.dir, lockFile: p.lockFile };
+  assert.deepEqual(contentLockProblems(p.dir, opts), [], 'a matching lock passes');
+  write(p.file, JSON.stringify({ ...p.t, prompt: 'Fix it now.' }));
+  assert.match(contentLockProblems(p.dir, opts)[0], /t1-a v2 changed without a version bump: bump its version .*content-lock\.js --write/);
+  write(path.join(p.dir, 't1', 't1-b.json'), JSON.stringify({ ...p.t, id: 't1-b' }));
+  assert.ok(contentLockProblems(p.dir, opts).some((l) => /t1-b is new: run node bench\/scenarios\/content-lock\.js --write/.test(l)));
+  assert.deepEqual(contentLockProblems(path.join(p.dir, 't1'), opts), [], 'a task dir that is not the pack is not checked');
+});

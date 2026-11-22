@@ -11,6 +11,7 @@ const { repoRootOf, textFlag } = require('../runner/lib/flag-values.js');
 const { lintDir, catalogOfScan, readBaseline } = require('./lint.js');
 const { loadTaskFiles } = require('./files.js');
 const packSuiteLib = require('./pack-suite.js');
+const contentLock = require('./content-lock.js');
 const { buildCoverage, renderCoverageMd } = require('./coverage.js');
 const prereg = require('./prereg.js');
 const { cmdPilotTable } = require('./pilot-table.js');
@@ -44,21 +45,34 @@ function packSuiteProblem(dir, { packDir = __dirname, benchDir = path.join(__dir
   return have === want ? null : 'bench/suites/pack.json does not list the pack\'s tasks: run node bench/scenarios/pack-suite.js and commit bench/suites/pack.json';
 }
 
+/**
+ * When `dir` is the scenario pack: one line per task whose content-lock.json entry is missing or out of date, with the
+ * command to run (the same class as pack.json: a generated file left stale until the full suite; D-166). [] otherwise.
+ */
+function contentLockProblems(dir, { packDir = __dirname, lockFile = contentLock.LOCK_FILE } = {}) {
+  if (path.resolve(dir) !== path.resolve(packDir)) return [];
+  return contentLock.compare(packDir, contentLock.readLock(lockFile)).filter((r) => r.problem).map((r) => (r.problem === 'same-version change'
+    ? `content-lock: ${r.id} v${r.version} changed without a version bump: bump its version (and handEdited.version), then run node bench/scenarios/content-lock.js --write`
+    : `content-lock: ${r.id} is ${r.problem}: run node bench/scenarios/content-lock.js --write and commit bench/scenarios/content-lock.json`));
+}
+
 function cmdLint(opts) {
   const dir = dirArg(opts, 'lint');
   const baseline = readBaseline();
   const res = withTree(opts, (scan, b) => ({ ...lintDir(dir, catalogOfScan(scan), { baseline }), base: b.label }));
   res.packSuite = packSuiteProblem(dir);
+  res.contentLock = contentLockProblems(dir);
   const fresh = res.findings.filter((f) => !f.known);
   if (opts.json) console.log(JSON.stringify(res, null, 2));
   else {
     for (const f of res.findings) console.log(`${f.known ? 'known ' : ''}${f.taskId}: ${f.rule}: ${f.detail} (${f.file})${f.known ? ` [${f.known}]` : ''}`);
     if (res.packSuite) console.log(res.packSuite);
+    for (const l of res.contentLock) console.log(l);
     for (const k of res.stale) console.log(`stale baseline entry (fixed? remove it from bench/scenarios/lint-baseline.json): ${k}`);
     const known = res.findings.length - fresh.length;
     console.log(`${res.tasks} task(s) checked against ${res.base}: ${fresh.length ? `${fresh.length} finding(s)` : 'clean'}${known ? `, ${known} known (lint-baseline.json)` : ''}${res.stale.length ? `, ${res.stale.length} stale baseline entr${res.stale.length === 1 ? 'y' : 'ies'}` : ''}`);
   }
-  if (fresh.length || res.stale.length || res.packSuite) process.exitCode = 1;
+  if (fresh.length || res.stale.length || res.packSuite || res.contentLock.length) process.exitCode = 1;
 }
 
 // The owner-approved list of units with no fair scenario: { "skill:name": "reason" }. --selection-only FILE, else DIR/selection-only.json when present.
@@ -134,4 +148,4 @@ function cmdScenarios(opts) {
   }
 }
 
-module.exports = { cmdScenarios, SUBCOMMANDS, withTree, dirArg, packSuiteProblem };
+module.exports = { cmdScenarios, SUBCOMMANDS, withTree, dirArg, packSuiteProblem, contentLockProblems };
