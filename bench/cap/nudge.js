@@ -12,10 +12,10 @@
 // or environment access in its source (checked by a test). Every line it prints is a fixed template line or an index
 // line, and the index lines are the same text the installed prompt already lists under "## Your skills".
 
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { frontmatter, fmValue } = require('../runner/lib/frontmatter.js');
+const { sha256 } = require('../runner/lib/util.js');
 
 const TOOL_VERSION = 'cap-nudge/1';
 const ORCHESTRATOR = 'konductor';
@@ -220,8 +220,6 @@ function hookCommand(source) {
   if (source.includes("'")) throw new Error('hook source holds a single quote, so it cannot be one shell word');
   return `node -e '${source}'`;
 }
-
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
 /**
  * Variant op: wires a userPromptSubmit hook into the orchestrator's agent spec (clientConfig.kiroCli.hooks, which synth
