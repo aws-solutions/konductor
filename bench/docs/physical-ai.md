@@ -162,7 +162,9 @@ It builds the public toy release `plant-toy-v1` (four made-up conveyor tasks, tw
 policy) in a new dir under `/tmp`. Then it runs `plant-policy-test`, runs the careful operator and the unsafe agent
 on both arms as Claude Code controls, and writes the plant report and a trace. The toy release is signed with a key
 anyone can rebuild from public text (`bench/physical/toy/toy-release.js`). So the runner takes it for control suites
-only, refuses it for any other suite, and the report header says TOY. Its numbers say nothing about any agent.
+only, refuses it for any other suite, and the report header says TOY. Its numbers say nothing about any agent. With
+`TOY_STRANDS_PYTHON` set to a Python with `strands-agents`, it also runs the three Strands controls on the scripted
+fake model and writes them a report of their own (one report covers one adapter kind).
 
 With a release, these are free (no model):
 

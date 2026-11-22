@@ -61,6 +61,8 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
     const reply = await request('tools/call', { name: call.tool, arguments: call.args });
     out({ type: 'user', parent_tool_use_id: null, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: JSON.stringify(reply.result ?? reply.error), is_error: Boolean(reply.error) }] } });
   }
+  // hold: after the calls, say so in held.json and never finish (a trial a test kills mid-run).
+  if (cfg.hold) { probe('held.json', { at: Date.now() }); setInterval(() => {}, 60000); return; }
   say([{ type: 'text', text: cfg.finalText || 'done' }]);
   out({
     type: 'result', subtype: 'success', is_error: false, stop_reason: 'end_turn', terminal_reason: 'completed', result: cfg.finalText || 'done',
@@ -77,7 +79,8 @@ const stub = () => `#!/bin/sh\nexec '${process.execPath}' "$(dirname "$0")/fake-
 
 /**
  * Writes the fake plant `claude` under `toolsDir/<version>/` with `config`: `dir` (probe dir), `calls`
- * ([{tool, args, inStream, inGateway, streamName}]), `finalText` and `exitEarly` (exits 1 before starting the shim).
+ * ([{tool, args, inStream, inGateway, streamName}]), `finalText`, `exitEarly` (exits 1 before starting the shim) and
+ * `hold` (after the calls, writes held.json and never finishes).
  * Returns the binary's path.
  */
 function makeFakePlantClaude(toolsDir, config, version = '9.9.9') {

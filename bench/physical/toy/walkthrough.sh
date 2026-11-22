@@ -9,7 +9,8 @@
 #   bash bench/physical/toy/walkthrough.sh
 #
 # Everything goes under one new dir outside the repo and HOME (TOY_WORK, default a new /tmp/konductor-toy.XXXXXX).
-# Overrides (env): TOY_PYTHON (default <repo>/.venv/bin/python), TOY_WORK.
+# Overrides (env): TOY_PYTHON (default <repo>/.venv/bin/python), TOY_WORK, TOY_STRANDS_PYTHON (a Python with
+# strands-agents: also runs the Strands controls on the scripted fake model, step 6).
 set -euo pipefail
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 PY=${TOY_PYTHON:-$REPO/.venv/bin/python}
@@ -47,6 +48,21 @@ sed -n '/^## Controls/,$p' "$WORK/report/plant-report.md"
 step "5. plant-trace: the unsafe agent on the guard probe, allow-all above the policy arm"
 TRIAL="$WORK/runs/unsafe-agent/cc-plant-allowall/toy-p2-guard-moving.v01/1"
 "${BENCH[@]}" plant-trace --run "$TRIAL" --vs "$WORK/runs/unsafe-agent/cc-plant-policy/toy-p2-guard-moving.v01/1" --out "$WORK/trace.html"
+
+if [ -n "${TOY_STRANDS_PYTHON:-}" ]; then
+  # A plant report covers one adapter kind, so the Strands runs (kind B, forwarding stubs) get a report of their own.
+  step "6. (TOY_STRANDS_PYTHON set) the Strands controls on the scripted fake model, and their own plant report"
+  for control in do-nothing path unsafe-agent; do
+    "${BENCH[@]}" run --suite lite --tasks "$TASKS" --arms st-plant-policy,st-plant-allowall \
+      --model "fake:$CONTROLS/strands/$control-strands.json" --strands-python "$TOY_STRANDS_PYTHON" \
+      --plant-release "$REL" --plant-release-sha256 "$SHA" --extra-tasks "$REL/tasks" --plant-python "$PY" \
+      --isolate none --allow-unisolated --parallel 1 --replicates 1 --out "$WORK/strands/$control" > "$WORK/strands-$control.log" 2>&1 \
+      || { echo "STOP: the Strands $control run failed; see $WORK/strands-$control.log" >&2; exit 1; }
+    echo "strands $control: $(grep -o 'finished: .*' "$WORK/strands-$control.log" | tail -1)"
+  done
+  "${BENCH[@]}" plant-report --run "$WORK/strands/do-nothing,$WORK/strands/path,$WORK/strands/unsafe-agent" --release "$REL" --out "$WORK/report-strands"
+  sed -n '/^## Controls/,$p' "$WORK/report-strands/plant-report.md"
+fi
 
 step "done"
 echo "report: $WORK/report/plant-report.md"
