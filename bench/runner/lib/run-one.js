@@ -283,7 +283,13 @@ function dropStaleLease(home, sessionId) {
   for (const f of [`${sessionId}.lease`, `${sessionId}.lease.lock`]) fs.rmSync(path.join(dir, f), { force: true });
 }
 
+// One runner rule for fixtures with no repository (DEBT D-161): every new conversation's prompt ends with this line, so an
+// agent does not spend turns finding out by running git. Fixture tasks only: a real task and a plant run keep their text.
+const NO_GIT_NOTE = 'This folder is not a git repository.';
+const withNoGitNote = (t) => ({ ...t, prompt: `${t.prompt}\n\n${NO_GIT_NOTE}` });
+
 async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt, plantRun = null, home = null }) {
+  const noGit = !task.real && !arm.plant && !fs.existsSync(path.join(cwd, '.git'));
   const fresh = task.freshSessions ?? [];
   const multi = Boolean(task.autonomy) || fresh.length > 0;
   const deadline = Date.now() + task.timeoutSec * 1000;
@@ -307,7 +313,8 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         execs.push({ exitCode: null, timedOut: true, wallClockMs: 0, error: null });
         break;
       }
-      const turnTask = fresh.length && turn > 1 ? { ...task, prompt: fresh[turn - 2].prompt } : task;
+      const asked = fresh.length && turn > 1 ? { ...task, prompt: fresh[turn - 2].prompt } : task;
+      const turnTask = noGit ? withNoGitNote(asked) : asked;
       if (resume) dropStaleLease(home, resume.sessionId);
       const cmd = harness.buildCommand({ arm, task: turnTask, config, ctx, cwd, resume });
       if (turn === 1) {
@@ -562,5 +569,5 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   return result;
 }
 
-module.exports = {
+module.exports = { NO_GIT_NOTE,
   dropStaleLease, executeRun, auditContamination, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };

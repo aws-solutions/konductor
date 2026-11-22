@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
+const { NO_GIT_NOTE } = require('../lib/run-one.js');
+const noGit = (p) => `${p}\n\n${NO_GIT_NOTE}`; // a git-less fixture's prompt ends with the runner's note (D-161)
+
 // The scripted user of `questions: scripted` tasks (schema v3): the harness answers the agent's questions from
 // task.scriptedUser and resumes the session, on Kiro CLI and Claude Code, against fake agents. No credits, no network.
 
@@ -207,7 +210,7 @@ test('Claude Code: the session resumes with --resume and the scripted answer on 
     assert.deepEqual(r.factsLocked, ['deadline', 'never']);
     const [t1, t2, t3] = [1, 2, 3].map(s.turn);
     assert.equal(t1.args.includes('--resume'), false);
-    assert.equal(t1.stdin, s.task.prompt);
+    assert.equal(t1.stdin, noGit(s.task.prompt));
     assert.equal(t2.args[t2.args.indexOf('--resume') + 1], '445ddd25-adc6-4c3f-addf-d373844db85d', 'the session id read from turn 1');
     assert.equal(t2.stdin, 'The budget is 12k a month.', 'the reply is the prompt, on stdin and not in argv');
     assert.equal(t3.stdin, 'No preference. Use your judgment.');

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
+const { NO_GIT_NOTE } = require('../lib/run-one.js');
+const noGit = (p) => `${p}\n\n${NO_GIT_NOTE}`; // a git-less fixture's prompt ends with the runner's note (D-161)
+
 // Fresh-session tasks (`freshSessions`): session 1 runs and ends, then each later prompt starts a NEW conversation in the
 // same workspace, so files the agent saved are still there. Kiro CLI and Claude Code, against fake agents. No credits, no network.
 
@@ -72,8 +75,8 @@ test('Kiro CLI: session 2 is a new conversation in the same workspace, sees the 
     assert.equal(r.status, 'success', r.error);
     assert.deepEqual(validateResult(r), []);
     const [t1, t2] = [1, 2].map(s.turn);
-    assert.equal(t1.args.at(-1), s.task.prompt);
-    assert.equal(t2.args.at(-1), SECOND);
+    assert.equal(t1.args.at(-1), noGit(s.task.prompt));
+    assert.equal(t2.args.at(-1), noGit(SECOND));
     assert.equal(t2.args.some((a) => a.startsWith('--resume')), false, 'no resume flag: a fresh conversation');
     assert.equal(t2.cwd, t1.cwd);
     assert.equal(t2.home, t1.home);
@@ -156,8 +159,8 @@ test('Claude Code: session 2 runs without --resume in the same workspace, sees t
     assert.equal(r.status, 'success', r.error);
     assert.deepEqual(validateResult(r), []);
     const [t1, t2] = [1, 2].map(b.turn);
-    assert.equal(t1.stdin, task.prompt);
-    assert.equal(t2.stdin, SECOND);
+    assert.equal(t1.stdin, noGit(task.prompt));
+    assert.equal(t2.stdin, noGit(SECOND));
     assert.equal(t2.args.includes('--resume'), false);
     assert.deepEqual(t2.args, t1.args);
     assert.equal(t2.cwd, t1.cwd);
@@ -165,4 +168,15 @@ test('Claude Code: session 2 runs without --resume in the same workspace, sees t
     assert.deepEqual(r.sessions.map((x) => x.sessionId), ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222']);
     assert.ok(Math.abs(r.costUsd - (one.cost + two.cost)) < 1e-9, `cost ${r.costUsd} is the sum of both conversations`);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a fixture with its own repository (dotgit/) gets the prompt as written: the no-git note is only for git-less folders (D-161)', async () => {
+  const s = kiroSetup([{ sessionId: 's1', credits: 1, finalText: 'Done.' }, { sessionId: 's2', credits: 1, finalText: 'Done.' }]);
+  try {
+    write(path.join(s.task.fixtureDir, 'dotgit', 'HEAD'), 'ref: refs/heads/main\n');
+    const r = await runKiro(s);
+    assert.equal(r.status, 'success', r.error);
+    assert.equal(s.turn(1).args.at(-1), s.task.prompt);
+    assert.equal(s.turn(2).args.at(-1), SECOND);
+  } finally { s.cleanup(); }
 });

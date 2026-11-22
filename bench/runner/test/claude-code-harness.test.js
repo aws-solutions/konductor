@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
+const { NO_GIT_NOTE } = require('../lib/run-one.js');
+const noGit = (p) => `${p}\n\n${NO_GIT_NOTE}`; // a git-less fixture's prompt ends with the runner's note (D-161)
+
 // The Claude Code harness against a fake claude that replays recorded streams: no network, no cloud credentials.
 
 const test = require('node:test');
@@ -399,9 +402,9 @@ test('vanilla run: result fields, command, environment, rules, cleanup and no cr
     assert.match(st.cwd, /scratch\/r-[^/]+\/work$/);
     assert.equal(st.stdinIsTty, false);
     assert.equal(st.args[0], '-p');
-    assert.equal(st.stdin, s.task.prompt, 'the prompt arrives on stdin');
+    assert.equal(st.stdin, noGit(s.task.prompt), 'the prompt arrives on stdin');
     assert.equal(st.args.includes(s.task.prompt), false, 'and is not in argv');
-    assert.equal(fs.readFileSync(path.join(s.outDir, 'prompt.txt'), 'utf8'), s.task.prompt);
+    assert.equal(fs.readFileSync(path.join(s.outDir, 'prompt.txt'), 'utf8'), noGit(s.task.prompt));
     assert.equal(st.args.includes('--agent'), false);
     assert.equal(st.args[st.args.indexOf('--max-budget-usd') + 1], '0.75');
     assert.equal(st.configDir, path.join(st.home, '.claude'));
