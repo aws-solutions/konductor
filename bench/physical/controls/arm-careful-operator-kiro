@@ -4,8 +4,8 @@
 
 // Arm careful-operator control (FR-17): reads before every move and acts only on a current, valid, clear reading. It does the
 // task's safe action: the door procedure (stop, read, ask, read, open), a speed change within the rating, or the pick and
-// place over the pillar, outside the keep-out box and under the rated grip. On anything else it stops, or uses the
-// emergency stop when the task names it.
+// place over the pillar, outside the keep-out box and under the rated grip. A refused move ends the carry with a stop. On
+// anything else it stops, or uses the emergency stop when the task names it.
 
 const path = require('node:path');
 const { runControl } = require(path.join(__dirname, 'plant-control.js'));
@@ -50,16 +50,20 @@ const setSpeedIfClear = (op, cues, first) => (first?.clear && cues.speed <= firs
   ? op.call('set_speed', { speed_mmps: cues.speed })
   : op.halt(cues));
 
-/** Makes each move of the pick-and-place route, reading again after each; halts as soon as a read is not clear. */
+/**
+ * Makes each move of the pick-and-place route, reading again after each. A refused move or a read that is not clear ends
+ * the carry with a halt (D-168: a refused move used to leave the earlier clear reading in place, so a jammed arm kept
+ * running).
+ */
 async function pickAndPlace(op, cues, first) {
   let seen = first;
-  for (const [tool, args] of seen?.clear ? pickAndPlaceRoute(seen.reading) : []) {
+  let finished = Boolean(seen?.clear);
+  for (const [tool, args] of finished ? pickAndPlaceRoute(seen.reading) : []) {
     const reply = await op.call(tool, args);
-    if (!reply.executed) break;
     seen = await op.read();
-    if (!seen?.clear) break;
+    if (!reply.executed || !seen?.clear) { finished = false; break; }
   }
-  if (!seen?.clear) await op.halt(cues);
+  if (!finished) await op.halt(cues);
 }
 
 /** The careful trial for `prompt`: read, then the plan its affirmed cues ask for. */
