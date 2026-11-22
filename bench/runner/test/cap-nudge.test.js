@@ -100,7 +100,7 @@ test('leak check: every hint line is a template line or an index line, so the ho
   try {
     const v = s.build('nudge');
     const idx = nudge.buildIndex(v.dir);
-    const allowed = new Set([nudge.NUDGE_HEADER, nudge.NUDGE_FOOTER, nudge.NUDGE_NONE, ...idx.map((x) => `  ${x.name}: ${x.trigger}`)]);
+    const allowed = new Set([nudge.NUDGE_HEADER, nudge.NUDGE_FOOTER, nudge.NUDGE_NONE, nudge.NUDGE_BROAD, ...idx.map((x) => `  ${x.name}: ${x.trigger}`)]);
     for (const p of ['Review this PR for bugs.', 'Plan the cutover and list risks.', 'Hello there.', '', 'requirements user stories acceptance']) {
       for (const line of stubAgentTurn(v.dir, p).context.trimEnd().split('\n')) assert.ok(allowed.has(line), `unexpected line: ${line}`);
     }
@@ -217,4 +217,36 @@ test('nudge-check: hook seen from the session record, the hook source alone does
     assert.equal(by('konductor-nudge', 2).saidNoSkillFits, true);
     assert.equal(by('konductor-filler', 1).hookSeen, true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('matcher variants: the frozen one is v2-weighted, each variant runs in a hook, the hybrid adds the broad skills', () => {
+  const s = setup();
+  try {
+    const v = s.build('nudge');
+    const idx = nudge.buildIndex(v.dir);
+    assert.equal(nudge.FROZEN_MATCHER, 'v2-weighted');
+    assert.equal(v.meta.ops[0].matcher, 'v2-weighted');
+    assert.deepEqual(Object.keys(nudge.MATCHERS), ['v1-overlap', 'v2-weighted', 'v3-desc', 'v4-hybrid']);
+    const p = 'Plan the cutover and list its risks with likelihood and impact.';
+    for (const name of Object.keys(nudge.MATCHERS)) {
+      const out = spawnSync('sh', ['-c', nudge.hookCommand(nudge.nudgeSource(idx, name))], { input: JSON.stringify({ prompt: p }), encoding: 'utf8' });
+      assert.equal(out.status, 0, out.stderr);
+      assert.equal(out.stdout, nudge.preview(idx, p, name).text, name);
+    }
+    const hy = nudge.preview(idx, p, 'v4-hybrid');
+    assert.match(hy.text, new RegExp(nudge.NUDGE_BROAD.replace(/[()]/g, '\\$&')));
+    assert.equal(hy.hits.length + hy.broad.length <= 5, true);
+    assert.ok(!hy.broad.some((b) => hy.hits.some((h) => h.name === b)), 'a broad skill already matched is not listed twice');
+    assert.throws(() => nudge.matcherData(idx, 'v9'), /unknown matcher v9/);
+  } finally { s.done(); }
+});
+
+test('strong stemming folds plural and -ation forms; name and Use-clause words outweigh the summary', () => {
+  assert.deepEqual(nudge.tokens('validations requirements policies reviewing', 'strong'), ['valid', 'require', 'policy', 'review']);
+  const idx = [{ name: 'risk-management', trigger: 'Tracks things. Use when listing risks.', description: '' }, { name: 'other', trigger: 'Lists risks a lot and risks more.', description: '' }, { name: 'third', trigger: 'Formats tables.', description: '' }];
+  // A word every skill has gets idf 0, so the fixture needs a skill without it.
+  const d = nudge.matcherData(idx, 'v2-weighted');
+  assert.equal(d.skills[0].w.risk, 3, 'a name word gets weight 3');
+  assert.equal(d.skills[0].w.list, 2, 'a Use-clause word gets weight 2');
+  assert.equal(nudge.shownFor('What are the risks?', d)[0], 'risk-management');
 });

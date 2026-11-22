@@ -1154,7 +1154,9 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   `konductor` cannot be dropped.
   `--hook nudge` builds the `konductor-nudge` arm (`bench/cap/nudge.js`): konductor gets one `userPromptSubmit` hook, a `node -e` program
   that scores the request against konductor's own skill trigger lines (the same lines its prompt lists under "## Your skills", built from the
-  agent spec and SKILL.md frontmatter only) and prints the top 3 with "your call" and "say no skill fits". It reads only its stdin. `--hook filler`
+  agent spec and SKILL.md frontmatter only) and prints the top 3 with "your call" and "say no skill fits". It reads only its stdin.
+  The matcher is `FROZEN_MATCHER` in `nudge.js` (`v2-weighted`: strong stemming, name words x3, "Use ..." clause words x2, length-normalised),
+  picked from four variants on the 26 LITE tasks outside the nudge experiment, with each task's `loadCheck.mustLoad` as the expected skills. `--hook filler`
   builds `konductor-filler`, the control: a hook of the same shape printing neutral text of about the same size that names no skill or tool.
   `variant.json` records the hook command's sha256. `cap nudge-preview` prints the hook text per task for a leak check; `cap nudge-check` reads
   finished runs (hook seen, loads, full loads, preview-only loads). Result fields `skillsLoadedFull` and `skillLoadsPreview` split loads whose
