@@ -119,7 +119,9 @@ test('editing an existing test file fails fixture_unchanged and the regression f
 });
 
 const probe = probeUnshare();
-const skip = probe.ok ? false : `unshare namespace unavailable: ${probe.reason}`;
+// The case scores FAIL_TO_PASS, so it needs pytest as much as the cases above (D-165: a host python without pytest
+// read "unparsed" and failed instead of skipping).
+const skip = probe.ok ? PYTEST_SKIP : `unshare namespace unavailable: ${probe.reason}`;
 
 test('inside the namespace the run still scores correctly with the offline check', { skip }, async () => {
   const { result: r } = await runWith({ files: { 'pkg/mod.py': 'def add(a, b):\n    return a + b\n' } }, { isolation: { mode: 'unshare', reason: 'test' } });
