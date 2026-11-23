@@ -541,7 +541,7 @@ function cmdCompare(opts) {
     if (!['both', 'any'].includes(rule)) throw new Error('--rule takes both or any');
     const r = compareRuns({
       baseDir: need(opts, 'base'), headDir: need(opts, 'head'), benchDir: benchDirOf(opts),
-      minRel: numOpt(opts, 'min-rel', 0.15), rule, force: Boolean(opts.force),
+      minRel: numOpt(opts, 'min-rel', 0.15), rule, force: Boolean(opts.force), allowMixedPass: Boolean(opts['allow-mixed-pass']),
     });
     (r.exitCode === 2 ? console.error : console.log)(formatCompare(r));
     process.exitCode = r.exitCode;
