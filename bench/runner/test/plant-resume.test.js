@@ -18,8 +18,7 @@ const { cmdPlantReport } = require('../../report/plant.js');
 const { validateResult } = require('../lib/result.js');
 const { CC_CONFIG } = require('./plant-run-rig.js');
 
-const PYTHON = process.env.BENCH_ARM_PYTHON || path.join(__dirname, '..', '..', '..', '.venv', 'bin', 'python');
-const HAS_CEDAR = fs.existsSync(PYTHON) && spawnSync(PYTHON, ['-c', 'import cedarpy']).status === 0;
+const { PYTHON, HAS_CEDAR } = require('./arm-python.js');
 const TASK = 'toy-stop-line.v01';
 const ARM = 'cc-plant-policy';
 // A fake Claude Code takes its keys from the environment like the real one; these are made up and never used.
