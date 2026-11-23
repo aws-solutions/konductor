@@ -183,102 +183,8 @@ st_set() {
   mv -f -- "$tmp" "$STATEFILE"
 }
 
-# ---------------------------------------------------------------- node helper for JSON work (read-only except where noted)
-NODE_HELPER=$(cat <<'JS'
-const fs = require('fs'), path = require('path');
-const [cmd, ...a] = process.argv.slice(1);
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-const lines = (f) => { try { return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean); } catch { return []; } };
-const resultFiles = (dir) => {
-  const out = [];
-  for (const arm of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
-    const ad = path.join(dir, arm); let st; try { st = fs.statSync(ad); } catch { continue; }
-    if (!st.isDirectory()) continue;
-    for (const task of fs.readdirSync(ad)) for (const rep of (() => { try { return fs.readdirSync(path.join(ad, task)); } catch { return []; } })()) {
-      const f = path.join(ad, task, rep, 'result.json'); if (fs.existsSync(f)) out.push(f);
-    }
-  }
-  return out;
-};
-const walkLedgers = (root, acc = []) => {
-  let ents; try { ents = fs.readdirSync(root, { withFileTypes: true }); } catch { return acc; }
-  for (const e of ents) { const p = path.join(root, e.name); if (e.isDirectory()) walkLedgers(p, acc); else if (e.name === 'credit-ledger.jsonl') acc.push(p); }
-  return acc;
-};
-if (cmd === 'complete') {            // dir nArms reps
-  const [dir, nArms, reps] = a; const s = rd(path.join(dir, 'summary.json'));
-  const out = (m) => { console.log(m); process.exit(0); };
-  if (!s) out('no-summary');
-  if (s.interrupted) out('interrupted:' + s.interrupted);
-  if (!s.isolationGate || s.isolationGate.ok !== true) out('isolation-gate-not-ok');
-  if ((s.armIds || []).length !== +nArms || s.replicates !== +reps || (s.taskIds || []).length !== 1) out('config-mismatch');
-  const exp = s.armIds.length * s.replicates;
-  if (!Array.isArray(s.results) || s.results.length !== exp) out('runs:' + (s.results || []).length + '/' + exp);
-  if (s.results.some((r) => r.status === 'budget_skipped')) out('budget-skipped');
-  out('complete');
-} else if (cmd === 'astats') {       // dirs... -> runs asked second-turn
-  let runs = 0, asked = 0, second = 0;
-  for (const d of a) for (const f of resultFiles(d)) {
-    const r = rd(f); if (!r || !String(r.taskId || '').startsWith('autonomy')) continue;
-    runs++; if (r.askedUser === true) asked++; if ((r.turns || 0) >= 2) second++;
-  }
-  console.log('runs=' + runs + ' askedUser=' + asked + ' secondTurn=' + second);
-} else if (cmd === 'credits') {      // dirs... -> "runCredits runs judgeUsd judgeCalls"
-  let cr = 0, runs = 0, usd = 0, jc = 0;
-  for (const d of a) for (const f of walkLedgers(d)) for (const e of lines(f)) {
-    if (e.kind === 'run') { runs++; cr += Number(e.charged ?? e.credits ?? 0) || 0; }
-    else if (e.kind === 'judge' && !e.cached && typeof e.usd === 'number') { usd += e.usd; jc++; }
-  }
-  console.log(cr.toFixed(2) + ' ' + runs + ' ' + usd.toFixed(4) + ' ' + jc);
-} else if (cmd === 'judgeinfo') {    // judgments.json -> "errors credErrors budgetSkipped spentUsd"
-  const j = rd(a[0]); if (!j) { console.log('unreadable 0 0 0'); process.exit(0); }
-  const recs = [...(j.rubric || []), ...(j.pairwise || []), ...(j.graded || [])];
-  const errs = recs.filter((r) => r.judgeError);
-  const cred = errs.filter((r) => /credential|expired|ExpiredToken|security token|UnrecognizedClient|InvalidClientTokenId|AccessDenied|not authorized/i.test(String(r.judgeError))).length;
-  const bud = errs.filter((r) => /budget reached/.test(String(r.judgeError))).length;
-  console.log(errs.length + ' ' + cred + ' ' + bud + ' ' + (typeof j.spentUsd === 'number' ? j.spentUsd.toFixed(4) : 0));
-} else if (cmd === 'judgebackend') {
-  const j = rd(a[0]); console.log(j ? String(j.backend || 'kiro') : 'none');
-} else if (cmd === 'decisions') {    // decisions.json -> counts and list
-  const j = rd(a[0]); if (!j) { console.log('unreadable'); process.exit(0); }
-  const order = ['DELETE', 'PRUNE', 'KEEP', 'NEEDS DATA']; const ds = j.decisions || [];
-  console.log(order.map((k) => k + '=' + ds.filter((d) => d.decision === k).length).join(' '));
-  for (const d of ds.slice().sort((x, y) => order.indexOf(x.decision) - order.indexOf(y.decision) || String(x.name).localeCompare(y.name))) console.log('  ' + d.name + ': ' + d.decision + ' (' + d.confidence + ')');
-  console.log('controls: ' + (j.controls && j.controls.trusted === true ? 'passed' : j.controls && j.controls.trusted === false ? 'FAILED' : 'not checked'));
-} else if (cmd === 'psummary') {     // V RJ -> the capability judging summary on stdout
-  const [V, RJ] = a; const out = []; const p = (s = '') => out.push(s);
-  const usd = (n) => (typeof n === 'number' ? '$' + n.toFixed(4) : 'n/a');
-  p('Capability study judging summary, generated ' + new Date().toISOString()); p('Study: ' + V); p();
-  p('Judge spend and errors per task dir');
-  let tot = 0;
-  const dirs = fs.readdirSync(V).filter((n) => /^(real|pilot)-/.test(n) && fs.existsSync(path.join(V, n, 'summary.json'))).sort();
-  for (const n of dirs) {
-    const j = rd(path.join(V, n, 'judgments.json'));
-    if (!j) { p('- ' + n + ': judgments.json missing, not judged'); continue; }
-    const recs = [...(j.rubric || []), ...(j.pairwise || []), ...(j.graded || [])];
-    const errs = recs.filter((r) => r.judgeError); const pf = recs.reduce((s, r) => s + (typeof r.parseFailures === 'number' ? r.parseFailures : 0), 0);
-    const inv = j.invocations || []; const calls = inv.reduce((s, x) => s + (x.calls || 0), 0); const cached = inv.reduce((s, x) => s + (x.cachedCalls || 0), 0);
-    if (typeof j.spentUsd === 'number') tot += j.spentUsd;
-    p('- ' + n + ': spent ' + usd(j.spentUsd) + ' over ' + inv.length + ' invocation(s), calls ' + calls + ' (' + cached + ' cached), parse failures ' + pf + ', judge errors ' + errs.length + ', not judged ' + (j.notJudged || []).length);
-  }
-  p('Total judge spend (sum of the per-dir figures): ' + usd(tot)); p();
-  p('Orchestrator pass rule (cell | arm | call)');
-  const pass = rd(path.join(RJ, 'pass', 'orchestrator-pass.json'));
-  if (!pass) p('    report missing: pass/orchestrator-pass.json');
-  else for (const c of pass.cells || []) for (const x of c.arms || []) {
-    const why = x.aaRepeatOf ? 'A/A repeat of ' + x.aaRepeatOf : (x.reasons || []).slice(0, 2).join('; ');
-    p('- ' + (c.key || (c.harnessLabel + ' / ' + c.model)) + ' | ' + x.label + ' | ' + x.call + (why ? ' | ' + why : ''));
-  }
-  p(); p('Platform verdict (arm | verdict)');
-  const v = rd(path.join(RJ, 'platform', 'verdict.json'));
-  if (!v) p('    report missing: platform/verdict.json'); else for (const x of v.arms || []) p('- ' + x.label + ' | ' + x.verdict + (x.aaRepeatOf ? ' (A/A repeat of ' + x.aaRepeatOf + ')' : ''));
-  p(); p('Reports');
-  if (fs.existsSync(RJ)) for (const d of fs.readdirSync(RJ).sort()) { const f = path.join(RJ, d); if (fs.statSync(f).isDirectory()) p('- ' + f + '/'); }
-  console.log(out.join('\n'));
-}
-JS
-)
-hj() { node -e "$NODE_HELPER" "$@"; }
+# ---------------------------------------------------------------- JSON reads (read only): bench/scripts/lib/sh.js
+hj() { node "$SELF_DIR/lib/sh.js" "$@"; }
 
 # ---------------------------------------------------------------- scratch HOME and TMPDIR around every node call
 drop_scratch() {
@@ -492,13 +398,7 @@ commit_message() { # <patch> <outfile>: <patch>.msg, else the mail header, else 
   fi
   rm -rf -- "$md"
 }
-message_marker() { # prints the first public-hygiene marker found in the files, if the checkout has the scanner
-  node -e '
-    const fs = require("fs"), path = require("path");
-    let m; try { m = require(path.join(process.argv[1], "bench/cap/public.js")); } catch { process.exit(3); }
-    for (const f of process.argv.slice(2)) { const h = m.findMarker(fs.readFileSync(f, "utf8")); if (h) { console.log(h.marker); process.exit(0); } }
-  ' "$REPO" "$@"
-}
+message_marker() { hj marker "$REPO" "$@"; } # the first public-hygiene marker in the files; exit 3 without the scanner
 p2_patch() {
   local br head want got mdir rc total pass fail skipped n info i p files marker
   if [ "${#PATCH_LIST[@]}" -eq 0 ]; then
@@ -692,7 +592,7 @@ p4_judge_one() { # <dir>; 0 ok, 1 fail, 130 stopped
   local d=$1 name attempt=0 rc info errs cerrs bud spent be jl
   name=$(basename "$d"); jl=$STATE_DIR/judge-capability-$name.log
   if [ -f "$d/judgments.json" ]; then
-    be=$(hj judgebackend "$d/judgments.json")
+    be=$(hj backend "$d/judgments.json")
     if [ "$be" != opencode ]; then fail_phase "$d/judgments.json was written by the '$be' backend; one backend per study. Move it aside by hand to rejudge."; return 1; fi
   fi
   while :; do
