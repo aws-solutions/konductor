@@ -18,6 +18,7 @@ const { buildVariant } = require('./variant.js');
 const { tmpOutsideHome } = require('../runner/lib/isolate.js');
 const { parseSkill } = require('./sections.js');
 const { applyCuts } = require('./ablate.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
 const FAILED_OUTCOMES = ['timeout', 'error'];
 
@@ -79,7 +80,7 @@ function readWave({ dir, benchDir, extraTasks = [], skill, refPaths = {}, baseli
   const base = run.runs.some((r) => r.armId === baseline) ? baseline : run.runs[0].armId;
   const { rows } = analyze({ run, tasks, baseline: base });
   const arms = armScoresFromRows(rows, loadScoring());
-  const loadedAt = new Map(scanRunDirs([dir], { harnesses: ['kiro-cli'] }).runs.map((r) => [`${r.arm}\u0000${r.task}\u0000${r.replicate}`, Boolean(r.loads[String(skill).toLowerCase()])]));
+  const loadedAt = new Map(scanRunDirs([dir], { harnesses: [STUDY_RUNTIME] }).runs.map((r) => [`${r.arm}\u0000${r.task}\u0000${r.replicate}`, Boolean(r.loads[String(skill).toLowerCase()])]));
   for (const [id, a] of Object.entries(arms)) a.loaded = a.keys.map((k) => loadedAt.get(`${id}\u0000${k.task}\u0000${k.rep}`) ?? false);
   const opened = {};
   for (const [armId, ref] of Object.entries(refPaths)) {

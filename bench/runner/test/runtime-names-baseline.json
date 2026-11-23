@@ -2,22 +2,13 @@
   "$comment": "Quoted runtime ids left in bench/report and bench/cap (non-test .js), per file. Only shrinks. runtime-names-lint.test.js checks it; DEBT D-206 holds the plan.",
   "files": {
     "cap/audit.js": 7,
-    "cap/decide.js": 1,
-    "cap/evidence.js": 3,
     "cap/forced.js": 7,
     "cap/keepprune.js": 1,
     "cap/kprecord.js": 2,
-    "cap/nudgecli.js": 1,
     "cap/paidcall.js": 1,
-    "cap/plan.js": 2,
-    "cap/proxy.js": 3,
     "cap/prune.js": 9,
-    "cap/selection.js": 1,
-    "cap/skillcli.js": 1,
     "cap/skillplan.js": 3,
-    "cap/skillstudy.js": 3,
-    "cap/studyio.js": 1,
-    "cap/surface.js": 4,
+    "cap/skillstudy.js": 1,
     "cap/usage.js": 9
   }
 }

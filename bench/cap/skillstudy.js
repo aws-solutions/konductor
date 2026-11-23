@@ -35,6 +35,9 @@ const CONTROL_TASKS = ['control-keep', 'control-prune'];
 const ACTING_AGENT = 'konductor';
 
 const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
+// The judge backend (judge/backends.js, not a runtime) a study judges on unless --judge-backend names another.
+const STUDY_JUDGE_BACKEND = 'opencode';
 const writeJson = (f, o) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, `${JSON.stringify(o, null, 2)}\n`); };
 const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
 
@@ -162,7 +165,7 @@ function materializeForced(study, rec, studyDir) {
   const base = study.settings.base;
   const del = materialize(study, rec, ['del'], studyDir);
   const dir = paths(studyDir).skill(rec.name);
-  const instruction = forcedPrefix({ name: rec.name, harness: 'kiro-cli' });
+  const instruction = forcedPrefix({ name: rec.name, harness: STUDY_RUNTIME });
   const texts = { forced: `${instruction}\n`, filler: `${forcedFiller(instruction)}\n` };
   const files = { forced: path.join(dir, 'forced-prefix.txt'), filler: path.join(dir, 'forced-filler.txt') };
   for (const f of Object.values(files)) if (/[,=]/.test(f)) throw new Error(`the study path ${f} holds a comma or an equals sign, which --arm-prefix cannot carry`);
@@ -175,7 +178,7 @@ function materializeForced(study, rec, studyDir) {
     refPaths: {},
     prefix: { frc: files.forced, 'frc-b': files.forced, del: files.filler },
     forced: {
-      label: ARM_LABEL, harness: 'kiro-cli', usedForCall: false, prefixFile: files.forced, fillerFile: files.filler, sha256: sha.forced, fillerSha256: sha.filler,
+      label: ARM_LABEL, harness: STUDY_RUNTIME, usedForCall: false, prefixFile: files.forced, fillerFile: files.filler, sha256: sha.forced, fillerSha256: sha.filler,
       prefixes: { frc: sha.forced, 'frc-b': sha.forced, del: sha.filler },
     },
   };
@@ -212,7 +215,7 @@ function runArgv(study, { tasks, specs, armIds, out, reps, armAgent, armConfig, 
 
 function judgeArgv(study, dir, baseline = 'ctl') {
   const s = study.settings;
-  const argv = ['judge', '--run', dir, '--judge-backend', s.judgeBackend ?? 'opencode', '--aws-creds-file', s.credsFile, '--profile', study.plan.profile.name, '--baseline', baseline,
+  const argv = ['judge', '--run', dir, '--judge-backend', s.judgeBackend ?? STUDY_JUDGE_BACKEND, '--aws-creds-file', s.credsFile, '--profile', study.plan.profile.name, '--baseline', baseline,
     '--budget-usd', String(s.budgetUsdPerWave ?? 15), '--concurrency', String(s.concurrency ?? 2), '--bench-dir', s.benchDir];
   if (s.awsProfile) argv.push('--aws-profile', s.awsProfile);
   if (s.awsRegion) argv.push('--aws-region', s.awsRegion);
@@ -641,4 +644,4 @@ function makeExec({ cwd, env = process.env, nodeBin = process.execPath, timeoutS
   return exec;
 }
 
-module.exports = { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, paths, runArgv, judgeArgv, waveWhere, skillWaveComplete, materializeForced, stepLabel, AFTER_WAVE1_STEP, STUDY_FILE };
+module.exports = { STUDY_JUDGE_BACKEND, initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, paths, runArgv, judgeArgv, waveWhere, skillWaveComplete, materializeForced, stepLabel, AFTER_WAVE1_STEP, STUDY_FILE };

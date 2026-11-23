@@ -14,6 +14,7 @@ const { variantPaths, reachWarning } = require('./variant.js');
 const { scoringOf } = require('./captasks.js');
 const { split } = require('./reach.js');
 const { replicatesFor } = require('../runner/lib/profiles.js');
+const { ACTING_RUNTIME } = require('./runtimes.js');
 
 const MODES = ['lift', 'trigger', 'improve'];
 
@@ -93,7 +94,7 @@ function planCap({
     specs = loadAgentSpecs(b.dir);
     reg = loadRegistry(benchDir).entries.find((e) => e.data?.id === cap)?.data ?? null;
     tasks = loadTasks(benchDir, { extraDirs: extraTasks });
-    acting = actingAgents && actingAgents.length ? actingAgents : reg?.expect?.['kiro-cli']?.actingAgents?.length ? reg.expect['kiro-cli'].actingAgents : DEFAULT_ACTING;
+    acting = actingAgents && actingAgents.length ? actingAgents : reg?.expect?.[ACTING_RUNTIME]?.actingAgents?.length ? reg.expect[ACTING_RUNTIME].actingAgents : DEFAULT_ACTING;
   } finally { b.cleanup(); }
   if (b.kind !== 'git') throw new Error('cap plan needs a git ref as --base (variants are built from git archive)');
 

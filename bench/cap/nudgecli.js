@@ -10,6 +10,7 @@ const path = require('node:path');
 const nudge = require('./nudge.js');
 const { parseStream } = require('../runner/lib/stream.js');
 const { extractSkills } = require('../runner/lib/skills.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
 const list = (v) => (v === undefined || v === true ? [] : String(v).split(',').map((s) => s.trim()).filter(Boolean));
 
@@ -76,7 +77,7 @@ function checkRuns(runs) {
     for (const dir of resultDirs(root)) {
       const r = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'));
       const events = parseStream(readLines(path.join(dir, 'stream.jsonl'))).events;
-      const x = extractSkills(events, 'kiro-cli');
+      const x = extractSkills(events, STUDY_RUNTIME);
       // Only the hook arms carry a header to look for; any other arm reports null.
       const header = /filler/.test(r.armId) ? nudge.FILLER_HEADER : /list/.test(r.armId) ? nudge.LIST_HEADER : /nudge/.test(r.armId) ? nudge.NUDGE_HEADER : null;
       rows.push({

@@ -16,6 +16,7 @@
 const { diffCI } = require('../report/stats.js');
 const { mappedVerdict } = require('../report/skillcard.js');
 const { pointerBytes, defaultOpenWhen } = require('./ablate.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
 const MARGIN = 0.1;
 const NOISE_FLOOR = 0.05;
@@ -262,7 +263,7 @@ function evidenceRowsFor(decision, { runId = null } = {}) {
   const add = (st, label) => {
     if (!st || st.delta === null || st.control === null) return;
     rows.push({
-      capId: decision.skill, harness: 'kiro-cli', kind: 'ablation', task: `pooled:${label}`, n: st.nHead + st.nBase,
+      capId: decision.skill, harness: STUDY_RUNTIME, kind: 'ablation', task: `pooled:${label}`, n: st.nHead + st.nBase,
       delta: round(st.control - st.variant), aaSpread: round(st.aaSpread ?? decision.aaSpread ?? 0), verdict: STATUS_VERDICT[st.status], runId,
       note: `${label}; ${st.status}${st.reason ? ` (${st.reason})` : ''}`, withValue: round(st.control), withoutValue: round(st.variant),
     });

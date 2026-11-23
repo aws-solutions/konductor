@@ -13,16 +13,20 @@
 const { judgeOnce } = require('../judge/run.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { findSkills } = require('./retrieval.js');
+const { capRuntime } = require('./runtimes.js');
 
 const MAX_SEARCHES = 3;
 
 const FIND_SKILLS_CONTRACT = 'Search the skill catalog by name, keyword, or tag (substring/exact filters, not a ranker). All inputs are optional; when several are given, results must match all of them (AND). With none given, every indexed skill is returned. Returns metadata only, never a SKILL.md body.\nArguments: name = substring match against the skill name (case-insensitive); keyword = substring match against the name or the description (case-insensitive); tag = exact match against one tag (case-insensitive). An empty string is an error.';
 
+// A skill-index runtime (opencode) lists SOPs in the same index as skills, so its proxy models both.
+const readsSkillIndex = (harness) => capRuntime(harness)?.capabilities.surface === 'skill-index';
+
 function proxySupported(capId, harness) {
   const kind = capId.slice(0, capId.indexOf(':'));
   if (kind === 'skill') return { ok: true };
-  if (kind === 'sop' && harness === 'opencode') return { ok: true };
-  return { ok: false, reason: `the proxy models skill discovery only${harness === 'opencode' ? ' (skills and SOPs)' : ''}; ${capId} needs live mode` };
+  if (kind === 'sop' && readsSkillIndex(harness)) return { ok: true };
+  return { ok: false, reason: `the proxy models skill discovery only${readsSkillIndex(harness) ? ' (skills and SOPs)' : ''}; ${capId} needs live mode` };
 }
 
 const tail = (query) => `User request:\n"""\n${query}\n"""`;
@@ -110,7 +114,7 @@ async function opencodeUnit({ q, rep, surface, caller, model, capName }) {
  * skipped because the credit budget was reached are listed in `skipped` and are not scored.
  */
 async function runProxy({ harness, capName, queries, reps = 1, surface, caller, model, concurrency = 2, budgetCredits = null, log = () => {} }) {
-  const unit = harness === 'opencode' ? opencodeUnit : kiroUnit;
+  const unit = readsSkillIndex(harness) ? opencodeUnit : kiroUnit;
   const plan = [];
   for (let rep = 1; rep <= reps; rep++) for (const q of queries) plan.push({ q, rep });
   let spent = 0;
