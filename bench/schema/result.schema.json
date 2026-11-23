@@ -68,12 +68,9 @@
       ]
     },
     "harness": {
-      "enum": [
-        "kiro-cli",
-        "opencode",
-        "claude-code",
-        "strands"
-      ]
+      "type": "string",
+      "minLength": 1,
+      "description": "The runtime id; validateResult (runner/lib/result.js) checks it against the harness registry (core/registry.js), so a new harness needs no schema edit."
     },
     "model": {
       "type": "string"

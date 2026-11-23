@@ -57,7 +57,7 @@ session reads it. That is an audit finding, and needs no measurement.
 - Each kind is one file in `bench/cap/units/` (`skill.json`, `agent.json`, `sop.json`, `context.json`): its stage,
   where its files live, which agent-spec list names it, its selection test and the frame line the paid steps put
   ahead of its text. `bench/cap/unitkinds.js` lists the fields. A new kind is a new file there; `cap units --list`
-  prints the kinds (the CLI accepts the flag once D-209's flag line lands).
+  prints the kinds.
 - `cap unit-stage --kind K --unit NAME --run stub-ID` runs one unit through the real stage 1 pipeline on the stub
   provider. It needs a frozen unit baseline and refuses a run id that is not `stub-...`; the paid provider is below.
   With no baseline, a stale one, an entry agent or too few judge families, the record says NO DATA and why.
@@ -74,7 +74,7 @@ session reads it. That is an audit finding, and needs no measurement.
 - `bench/runner/test/cap-units.test.js`, `cap-unitstage.test.js`, `cap-unitrecord.test.js` and
   `cap-delegation.test.js` cover all of these.
 
-### The paid path (built, never run on a real model)
+### The paid path
 
 The pilot has three steps. Steps 1 and 3 are paid and are one command each; step 2 is a person's sign-off:
 
@@ -148,9 +148,9 @@ plan for free. `cap unit-stage --controls-only` (env `KP_CONTROLS_ONLY` in `run-
 
 ## What is missing
 
-1. Unit baselines. No unit has one. Each needs 16 tasks with rubrics, in two batches of 8, written by one model family
-   and reviewed by a second, frozen on the unit's current hash. The pilot unit's writing step is built (above),
-   approved, and waits for the owner to run it; the unit map in the workspace reports lists seed tasks for the rest.
+1. Unit baselines. Only the pilot unit has one: 15 tasks, written by glm-5, reviewed by deepseek-3.2 and signed off
+   on 2026-11-23 (one task was dropped after its one fix). Every other unit needs 16 tasks with rubrics, in two
+   batches of 8, frozen on its current hash; the unit map in the workspace reports lists seed tasks for them.
 2. A deep-depth paid provider. The paid provider answers in one turn, so it runs quick depth only; deep depth needs
    full sessions per replicate.
 3. A live delegation run: the stub test reads streams the stub wrote; a live one needs the orchestrator to run each

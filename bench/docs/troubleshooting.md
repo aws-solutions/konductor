@@ -46,5 +46,5 @@ The owner's scripts in `<workspace>/scripts/` are launchers. They run the copy i
 | You see | Why | What to do |
 | --- | --- | --- |
 | A fix that landed on `feat/bench-pilot-nk` does not show in an owner script | the ops checkout is still on an older commit | move it: `git -C <workspace>/worktrees/ops fetch origin feat/bench-pilot-nk`, then `git -C <workspace>/worktrees/ops checkout --detach FETCH_HEAD` |
-| `No such file` for a script that is new on the branch | it has no launcher yet | after moving the checkout, `bash <workspace>/worktrees/ops/bench/ops/make-launchers.sh <workspace> --replace` |
+| `No such file` for a script that is new on the branch | it has no launcher yet | after moving the checkout, `bash <workspace>/worktrees/ops/bench/ops/make-launchers.sh <workspace> --replace`, then the same with `--check` (exit 0 means every owner script is a launcher). `--replace` overwrites a plain workspace copy, so back that copy up first |
 | `set KONDUCTOR_WS to the owner workspace` | a versioned script was run directly, not through its launcher | run the launcher in `<workspace>/scripts/`, or set `KONDUCTOR_WS` |

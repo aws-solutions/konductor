@@ -184,6 +184,7 @@ where it fits.
 | What can go wrong, and the fix | [Troubleshooting](docs/troubleshooting.md) |
 | The walls around a run and the limits on spend | [Safety and caps](docs/safety-and-caps.md) |
 | A skill, an agent, a machine agent, your own agent | [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) · [your own agent](docs/benchmark-your-own-agent.md) |
+| Add an agent type as a plugin, and check it free | [Write a plugin](docs/write-a-plugin.md) |
 | Keep or prune agent files, SOPs and context | [Keep or prune, stages 2 to 4](docs/keep-prune-stages.md) |
 | The plant report, the counted test set, Claude Code on the plant | [reading the plant report](docs/physical-ai-report.md) · [the counted test set](docs/physical-ai-counted-set.md) · [Claude Code on the plant](docs/physical-ai-claude-code.md) |
 | How Konductor is benchmarked, and the run levels | [how Konductor is benchmarked](docs/konductor-bench.md) · [run levels](docs/run-levels.md) |

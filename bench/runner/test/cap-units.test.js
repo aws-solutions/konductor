@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
-const { cmdUnits } = require('../../cap/unitstage.js');
+const { spawnSync } = require('node:child_process');
 const { listUnits, unitManifest, renderUnitMap, STAGE_OF_KIND, KIND_LABEL, SELECTION, PAID_FRAME, ENTRY_AGENTS } = require('../../cap/units.js');
 const { loadUnitKinds, renderKindList, UNIT_KINDS_DIR } = require('../../cap/unitkinds.js');
 const { scanRepo, PATH_OF } = require('../../cap/scan.js');
@@ -71,13 +71,10 @@ test('a sixth kind JSON shows in the kinds list and is scanned from its own fold
   } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('cap units --list prints every kind of this checkout and reads no tree', (t) => {
-  // shortcut: calls cmdUnits directly; the CLI refuses --list until cli-flags.js (FW-7's file) lists it for cap units (DEBT D-209).
-  let out = '';
-  t.mock.method(process.stdout, 'write', (s) => { out += s; return true; });
-  cmdUnits({ list: true, 'repo-root': '/nonexistent' });
-  t.mock.restoreAll();
-  for (const k of ['skill', 'agent', 'sop', 'context']) assert.match(out, new RegExp(`^\\| ${k} \\|`, 'm'));
+test('cap units --list prints every kind of this checkout and reads no tree', () => {
+  const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'bench.js'), 'cap', 'units', '--list', '--repo-root', '/nonexistent'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  for (const k of ['skill', 'agent', 'sop', 'context']) assert.match(r.stdout, new RegExp(`^\\| ${k} \\|`, 'm'));
 });
 
 test('each stage lists its own kind: 2 agent files, 3 SOPs, 4 always-loaded context', () => {

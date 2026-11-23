@@ -17,7 +17,7 @@ const { preflightStrands } = require('../lib/plant/strands-census.js');
 const { strandsSuiteOf, countingOf, ReleaseRefused } = require('../lib/plant/intake.js');
 const { NOT_COUNTED } = require('../lib/plant/score.js');
 const { resolveArm, parseArmSpec, isPlantArmId } = require('../lib/arms.js');
-const strands = require('../lib/harness/strands.js');
+const strands = require('../../plugins/strands/harness.js');
 const { rig, strandsPlantRun, CONFIG } = require('./plant-run-rig.js');
 
 const STRANDS_PYTHON = process.env.BENCH_STRANDS_PYTHON || null;
@@ -163,7 +163,7 @@ test('a Bedrock run gets what is left of the budget as its hard cap, and only it
 });
 
 test('cost comes from the usage line, else the last reserve when the run was cut off, and is 0 for the fake model', () => {
-  const { aggregateEvents } = require('../lib/harness/strands-parse.js');
+  const { aggregateEvents } = require('../../plugins/strands/parse.js');
   const start = (model) => ({ type: 'start', model, sessionId: 's' });
   const spend = (reservedUsd) => ({ type: 'spend', call: 1, spentUsd: 0, reservedUsd });
   const bedrock = 'bedrock:qwen.qwen3-coder-next';

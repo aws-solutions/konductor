@@ -26,13 +26,13 @@
 const kiro = require('./kiro.js');
 const opencode = require('./opencode.js');
 const claudeCode = require('./claude-code.js');
-const strands = require('./strands.js');
 const { runtimeOf } = require('./runtime.js');
 const { REGISTRY } = require('./descriptors.js');
 
-const BUILTIN = { 'kiro-cli': kiro, opencode, 'claude-code': claudeCode, strands };
+const BUILTIN = { 'kiro-cli': kiro, opencode, 'claude-code': claudeCode };
 // Every harness in registry order: a built-in module, or a plugin's entry module (core/registry.js).
 const HARNESSES = Object.fromEntries(REGISTRY.parts('harness').map((p) => [p.name, p.source === 'builtin' ? BUILTIN[p.name] : require(p.plugin.entry)]));
+const { strands } = HARNESSES;
 
 // id -> descriptor (id, label, armPrefix, costUnit, supports), read from each harness module. runtime.js and arms.js
 // read the same descriptors through descriptors.js because they cannot load the harness modules (require cycle).

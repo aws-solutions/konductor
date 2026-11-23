@@ -14,7 +14,7 @@ const { makeFakeKiro } = require('./fake-kiro.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { validateResult } = require('../lib/result.js');
-const { makeCreditMeter } = require('../lib/credit-watch.js');
+const { makeCreditMeter, ESTIMATE_RATE } = require('../lib/credit-watch.js');
 
 const ARM = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, harness: 'none', agent: null, vanilla: true };
 const config = (agentEngine) => ({ model: 'claude-sonnet-5.5', effort: 'high', agentEngine });
@@ -73,6 +73,24 @@ test('the meter counts v2 credits as live and v3 turn-end credits only in the to
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('v3: the meter estimates live credits from context_usage events at ESTIMATE_RATE, and never once v2 metering is seen', () => {
+  const root = tmp();
+  const ctxEv = (pct) => JSON.stringify({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: pct } } } } });
+  try {
+    const v3 = path.join(root, 'v3.jsonl');
+    write(v3, `${ctxEv(10)}\n${ctxEv(30)}\n`);
+    const m = makeCreditMeter(v3);
+    assert.ok(Math.abs(m.live() - 40 * ESTIMATE_RATE) < 1e-9);
+    assert.equal(m.estimated(), true);
+    assert.equal(m.poll(), 0, 'the estimate is never a charged figure');
+    const mixed = path.join(root, 'mixed.jsonl');
+    write(mixed, `${ctxEv(50)}\n${JSON.stringify({ type: 'metadata', data: { meteringUsage: [{ value: 1, unit: 'credit' }] } })}\n`);
+    const n = makeCreditMeter(mixed);
+    assert.equal(n.live(), 1);
+    assert.equal(n.estimated(), false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 // ---- engine v2: unchanged ----
 
 test('v2: a run past the limit is killed with its whole process group, flagged, and records the overshoot', async () => {
@@ -119,6 +137,21 @@ test('v3: a single-turn run over the limit is not killed on its turn summary; it
     assert.equal(r.creditLimit, 3);
     assert.equal(r.creditOvershoot, 5);
     assert.equal(r.error, null);
+    assert.deepEqual(validateResult(r), []);
+  } finally { s.cleanup(); }
+});
+
+test('v3: a one-shot run whose estimated credits pass the limit is killed and recorded as censored (D-67)', async () => {
+  const s = setup({ contextUsage: [20, 30, 40], hangAfterContext: true }, { engine: 'v3', limit: 2 });
+  try {
+    const r = await s.run();
+    const { pid } = JSON.parse(fs.readFileSync(s.started(1), 'utf8'));
+    assert.equal(alive(pid), false, 'the fake agent is gone');
+    assert.equal(r.status, 'error');
+    assert.ok(r.flags.includes('creditLimit'), r.flags.join());
+    assert.match(r.error, /per-run credit limit 2 reached at an estimated [0-9.]+ credits/);
+    assert.equal(r.creditsCensored, true);
+    assert.equal(r.creditLimit, 2);
     assert.deepEqual(validateResult(r), []);
   } finally { s.cleanup(); }
 });

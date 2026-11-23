@@ -104,7 +104,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       // Read the final credits before closeAll moves the live stream file.
       const credits = meter ? meter.poll() : null;
       closeAll();
-      resolve({ ...result, credits, creditLimitHit: limitHit, stopped, tamperedFiles: tampered });
+      resolve({ ...result, credits, creditLimitHit: limitHit, creditEstimate: metered?.estimate ?? null, stopped, tamperedFiles: tampered });
     };
     // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.
     // The run is then recorded as censored.
@@ -113,7 +113,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       if (limitHit || stopped) return;
       if (stop) stopped = stop.poll();
       if (!stopped && (!meter || meter.live() <= creditLimit)) return;
-      if (!stopped) { limitHit = true; metered = meter.poll(); }
+      if (!stopped) { limitHit = true; metered = meter.estimated() ? { estimate: meter.live() } : meter.poll(); }
       kill('SIGTERM');
       setTimeout(() => kill('SIGKILL'), 5000).unref();
     }, stop ? Math.min(creditPollMs, 250) : creditPollMs) : null;
@@ -133,11 +133,14 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
         exitCode: code,
         timedOut,
         wallClockMs: Date.now() - started,
-        error: limitHit ? `per-run credit limit ${creditLimit} reached at ${metered.toFixed(3)} credits` : signal && !timedOut ? `killed by ${signal}` : null,
+        error: limitHit ? `per-run credit limit ${creditLimit} reached at ${limitText(metered)}` : signal && !timedOut ? `killed by ${signal}` : null,
       });
     });
   });
 }
+
+// "1.234 credits", or for an engine v3 kill on the context_usage estimate (credit-watch.js) "an estimated 1.234 credits".
+const limitText = (m) => (typeof m === 'number' ? `${m.toFixed(3)} credits` : `an estimated ${m.estimate.toFixed(3)} credits (engine v3 meters only at turn end)`);
 
 // Regular files and directories only: a socket, FIFO or device the agent left behind makes cpSync throw.
 function snapshotWorkspace(cwd, dest) {
@@ -345,7 +348,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       } else if (exec.stopped) {
         exec.error = `stopped early: ${exec.stopped.reason} (${exec.stopped.detail})`;
       }
-      if (exec.creditLimitHit) exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${spent.toFixed(3)} credits`;
+      if (exec.creditLimitHit) exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${limitText(exec.creditEstimate == null ? spent : { estimate: spent + exec.creditEstimate })}`;
       execs.push(exec);
       if (exec.creditLimitHit || (exec.stopped && exec.stopped.reason !== 'end_turn')) break;
       if (!multi) break;

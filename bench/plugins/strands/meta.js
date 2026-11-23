@@ -2,7 +2,8 @@
 'use strict';
 
 // Static description of the Strands runtime: a Strands agent run by bench/physical/strands/launch.py with forwarding
-// plant tool stubs (kind B, design 15.1). Plant arms only (st-plant-*). See kiro-meta.js for why this is its own file.
+// plant tool stubs (kind B, design 15.1). Plant arms only (st-plant-*). The first plugin: a descriptor with no requires
+// (runner/lib/harness/CONTRACT.md, "Descriptor"), loaded by core/registry.js through plugin.json.
 const NO_WATCHER = 'the early-stop watcher reads kiro-cli and opencode events only';
 const NO_CREDS_FILE = 'a Bedrock model takes exported keys from --aws-profile; the fake model takes none';
 

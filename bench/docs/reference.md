@@ -797,8 +797,8 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
 - Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. A single prompt is one turn, sub-agents
   included, and the summary is written a few lines before `runFinished`. In four saved runs (8 to 15 minutes, 15.4 to 29.4 credits) it was the only
   credit event; the session log's `usage_summary` is written at the same instant, and `context_usage` events carry context-window tokens, not spend.
-  So the live total stays at 0 until a run finishes, and `--run-credit-limit` cannot stop a one-shot v3 run (see the limit's contract below;
-  `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
+  So the metered total stays at 0 until a run finishes; `--run-credit-limit` stops a one-shot v3 run on an estimate made from the
+  `context_usage` events instead (see the limit's contract below; `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
   sub-agents used, so it appears to cover their spend (seen on one coordinator run). `modelCalls.meteringEntries` counts turns on v3, not model calls. v3 names a tool call by title, so tool names are mapped from the titles in `lib/stream.js` and unmapped
   titles count as `unknown`; a sub-agent call is "Sub-agent: <name>" with the target in `rawInput.name`.
 - `backfill --run DIR [--credits] [--skills] [--write]` repairs v3 runs saved before the runner could read this, from each `stream.jsonl` with
@@ -1232,11 +1232,14 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
   `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
   limits one run to X credits. Engine v2 meters after every model call, so the run's process group is killed once the credits metered so far pass
-  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so a one-shot run always
-  finishes: if it spent more than X it gets the flag `creditLimitExceeded` and nothing is killed. A conversation task (autonomy) is checked when each
+  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so during the turn the
+  runner estimates it: 0.13 credits per percentage point of context window in each `context_usage` event (`ESTIMATE_RATE` in
+  `runner/lib/credit-watch.js`; on 225 saved v3 streams the real ratio was 0.020 to 0.126, so the estimate runs high). Past X on the estimate
+  the process group is killed and the run is censored (flag `creditLimit`, an error saying "an estimated ... credits"); the estimate is never
+  charged. A v3 run that reports no context usage still finishes, and if it spent more than X it gets the flag `creditLimitExceeded`. A conversation task (autonomy) is checked when each
   turn ends, and over the limit the next turn is not started (flag `creditLimit`, an error naming the turn). With a limit, `result.json` records
-  `creditLimit` and `creditOvershoot` (credits above X, else null) for v2 and v3 alike, and the `done` line shows the overshoot. On v3 the
-  overshoot of a one-shot run can be the whole run, so `--budget-credits` is the only bound on total spend.
+  `creditLimit` and `creditOvershoot` (credits above X, else null) for v2 and v3 alike, and the `done` line shows the overshoot. On v3 an
+  estimate can sit below the real spend, so `--budget-credits` stays the bound on total spend.
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
   command that builds hashes `~/.konductor/installs` before and after and exits 1 if it changed.
@@ -1465,7 +1468,7 @@ Free checks before spending: `run ... --prepare-only` builds and trial-installs 
 ## Running a study unattended
 `bench/scripts/` holds the scripts for long studies: `run-real-pilot.sh` (capability study), `run-after-capability.sh` (judging, the skill bench and a summary, chained after it), `run-judging.sh`, `run-skill-bench.sh` and the read-only dashboard `monitor.sh`. Setup, commands, credentials, what each phase does and how to read the monitor are in [runbook.md](runbook.md).
 
-The generated study drivers (`run-all.sh` from `scripts/probe-study.js` and `scripts/refs-study.js`) read `PROBE_PREPARE_ONLY` and `REFS_PREPARE_ONLY`. `1` builds and trial-installs every arm, starts no agent and spends nothing, and the driver prints a `PREPARE ONLY` banner when it is set. Any other non-empty value (`0`, `false`) makes the driver exit 2 with a message, so a stale or mistyped variable cannot turn a real run into a no-op. Unset it for a real run.
+The generated study drivers (`run-all.sh` from `bench/scripts/probe-study.js` and `bench/scripts/refs-study.js`) read `PROBE_PREPARE_ONLY` and `REFS_PREPARE_ONLY`. `1` builds and trial-installs every arm, starts no agent and spends nothing, and the driver prints a `PREPARE ONLY` banner when it is set. Any other non-empty value (`0`, `false`) makes the driver exit 2 with a message, so a stale or mistyped variable cannot turn a real run into a no-op. Unset it for a real run.
 
 ## Plant suite (simulator)
 The plant suite tests an agent that acts on a machine. The machine is a simulated conveyor line, and it sits behind a policy gateway. Every tool call goes to the gateway first, which decides it and logs it. The simulator logs what happened in the world. Safety comes from code over those two logs, never from a judge. Results are labelled SIMULATOR ONLY. The design is still being built in steps. Today you get the simulator with its faults, the gateway (Cedar double ask, where an evaluation error denies the call, approvals, test mode, dropped links), the MCP shim, the first demo, the scorer, the `plant-policy` and `plant-allowall` arms in `run`, which write the `plant` field of `result.json`, and the Strands arms (a fake model, or one pinned Bedrock model under a hard spend cap, below). The walls, the wall prober and the six control suites have run in a real sandbox on a quiet host. No counted suite has been run yet. Short pilots of the real Kiro CLI, and Strands trials on a pinned Bedrock model, have run NOT COUNTED.
@@ -1488,7 +1491,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Arm plant (MuJoCo): model, kinematics, motion, sensors, rules R1 to R5, pose log, replay helpers | `bench/physical/sim/arm*.py`; tools and Cedar context in `bench/physical/gateway/plant_gateway/{arm_tools,arm_context,kinds}.py`; metadata `bench/physical/schemas/plant-meta-arm-v1.json` |
 | Arm scripted controls (careful operator, unsafe agent, scripted calls, path; do-nothing is shared) | `bench/physical/controls/{arm-control.js,arm-*-kiro}`, test `bench/runner/test/plant-arm-controls.test.js` |
 | Step 0 capture of a real Kiro CLI start, and design notes per step | `bench/docs/history/step0-findings.md`, `bench/docs/history/arm-step0-findings.md`, `bench/physical/fixtures/step0/` |
-| Strands arms (kind B): the launcher, forwarding tool stubs, gateway client, model recorder, hook census and the scripted fake model | `bench/physical/strands/`; runner side `bench/runner/lib/harness/strands{,-meta,-parse}.js`, `bench/runner/lib/plant/strands-adapter.js` |
+| Strands arms (kind B): the launcher, forwarding tool stubs, gateway client, model recorder, hook census and the scripted fake model | `bench/physical/strands/`; runner side the plugin `bench/plugins/strands/` (`harness.js`, `meta.js`, `parse.js`), `bench/runner/lib/plant/strands-adapter.js` |
 
 One-time setup: Linux, Python 3.9 or later, Node 22 or later. The gateway uses only the standard library, plus `cedarpy` when a Cedar policy is loaded:
 ```

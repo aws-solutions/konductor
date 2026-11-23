@@ -80,6 +80,9 @@ const finish = () => {
     ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call', toolCallId: 'fake-' + i, title: 'x', rawInput: c.rawInput, _meta: { kiro: { toolName: c.toolName, ...(c.mcpServerName ? { mcpServerName: c.mcpServerName } : {}) } } } });
     if (c.rawOutput !== undefined) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call_update', toolCallId: 'fake-' + i, status: 'completed', rawInput: c.rawInput, rawOutput: c.rawOutput } });
   });
+  // contextUsage: context-window percentages the v3 agent reports during the turn; hangAfterContext stops there, before any credit event.
+  if (engine === 'v3') for (const pct of tc.contextUsage || []) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: pct, contextUsage: { usagePercentage: pct } } } } });
+  if (tc.hangAfterContext) { setTimeout(() => {}, 60000); return; }
   if (engine === 'v3') v3Completion(); else ev('metadata', { sessionId: sid, turnDurationMs: 100, meteringUsage: [{ value: tc.credits ?? 0.5, unit: 'credit' }] });
   if (tc.lingerMs) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, tc.lingerMs);
   if (tc.hangAfterMetering) { setTimeout(() => {}, 60000); return; }
