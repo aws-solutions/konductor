@@ -12,6 +12,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
 const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const { loadConvention, loadDoseLadder } = require('./frozen.js');
@@ -25,6 +26,7 @@ const { readJsonFile } = require('./checkedjson.js');
 const { UNIT_SCHEMA_ID, writeUnitRecord, renderUnitRecord } = require('./unitrecord.js');
 const { WORST_PER_CALL, ledgerSpent } = require('./paidcall.js');
 const { createKiroProvider } = require('./kiroprovider.js');
+const { MIN_COUNTED } = require('./labels.js');
 
 const PROVIDERS = ['stub', 'kiro'];
 /** The first pilot's models: the agent under test is Claude, so the checklist writer and the judges are not. */
@@ -129,6 +131,8 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const stops = isPaid ? [...why, ...unsignedWhy(unit, baseline)] : [];
   if (stops.length) throw new Error(`no paid call made: ${unit.id} cannot be read (${stops.join('; ')})`);
   const blocks = { quick: null, deep: null };
+  // A paid record names the bench commit that made it, so a reader knows which code spent the credits.
+  const commit = isPaid ? commitOf(BENCH_DIR) : null;
   if (!why.length) {
     const ladder = loadDoseLadder();
     const model = isPaid ? createKiroProvider({ paid, callsDir: path.join(outDir, runId, 'calls'), writerModel, frame: PAID_FRAME[kind].answer }) : createStubProvider({ ladder });
@@ -136,10 +140,14 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
     const subject = { name: unit.id, skill: { name: unit.name, text: unit.text }, batches: baseline.batches };
     for (const depth of depths) {
       const before = isPaid ? ledgerSpent(paid.ledger) : 0;
-      const check = checkDepth({ depth, subject, convention: loadConvention(), ladder, provider: model, subjectModel, judges, store, replicates });
-      blocks[depth] = blockFromCheck(check, { commit: null, runId, provider: model.name, replicates: depth === 'deep' ? replicates : null });
-      // Credits as the ledger counts them (each call at the larger of 15 and its real credits); kiro-cli bills no USD.
-      if (isPaid) blocks[depth].cost = { usd: null, credits: ledgerSpent(paid.ledger) - before };
+      const check = checkDepth({ depth, subject, convention: loadConvention(), ladder, provider: model, subjectModel, judges, store, replicates, stopOnControlFail: isPaid });
+      blocks[depth] = blockFromCheck(check, { commit, runId, provider: model.name, replicates: depth === 'deep' ? replicates : null });
+      if (isPaid) {
+        // Credits as the ledger counts them (each call at the larger of 15 and its real credits); kiro-cli bills no USD.
+        blocks[depth].cost = { usd: null, credits: ledgerSpent(paid.ledger) - before };
+        const lost = lostJudgmentsWhy(blocks[depth], model.stats);
+        if (lost) blocks[depth].noData = [lost, ...blocks[depth].noData];
+      }
     }
   }
   const panel = judgePanel({ subjectModel, judges });
@@ -156,6 +164,21 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const markdown = renderUnitRecord(record);
   fs.writeFileSync(file.replace(/\.json$/, '.md'), markdown);
   return { record, file, markdown };
+}
+
+/**
+ * The flag for a paid block whose reading A counted fewer than MIN_COUNTED tasks while judge replies were lost
+ * (unreadable after their one re-ask), or null. Without it such a block reads only "NO DATA" and hides the cause.
+ */
+function lostJudgmentsWhy(block, stats) {
+  if (!stats?.lost || block.coverage.tasksCounted >= MIN_COUNTED) return null;
+  return `FLAG: only ${block.coverage.tasksCounted} of ${block.coverage.tasksTotal} tasks counted, under the floor of ${MIN_COUNTED}, and ${stats.lost} judge repl${stats.lost === 1 ? 'y' : 'ies'} could not be read after one re-ask (${stats.reasked} re-asked in all); this is a judge problem, not a reading of the unit`;
+}
+
+/** The commit of the checkout `repo`, or null outside git. */
+function commitOf(repo) {
+  const r = spawnSync('git', ['-C', repo, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+  return r.status === 0 ? r.stdout.trim() : null;
 }
 
 /**
@@ -191,7 +214,8 @@ function estimateStage({ kind, units, tasks = BATCHES * TASKS_PER_BATCH, replica
   const perUnit = withTotal(add(...depths.map((d) => depthCalls(d, tasks, o))));
   const convention = loadConvention().batches.reduce((n, b) => n + b.tasks.length, 0);
   const pairs = buildPairs(loadDoseLadder()).length;
-  const ladderDepth = { answers: 0, checklists: pairs, judgeCalls: pairs * QUICK_ARMS * seats };
+  // The ladder pairs carry their own rubric, so writeChecklist makes no call for them (checklists 0).
+  const ladderDepth = { answers: 0, checklists: 0, judgeCalls: pairs * QUICK_ARMS * seats };
   const controls = withTotal(add(...depths.flatMap((d) => [depthCalls(d, convention, o), ladderDepth])));
   const total = add(...run.map(() => perUnit), controls);
   const t = costs.credits.typical;
@@ -241,6 +265,9 @@ function cmdUnitStage(opts) {
   const delegation = val(opts.delegation) ? readJsonFile(path.resolve(val(opts.delegation))) : null;
   const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir: path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'unit-stage')), provider, paid, depths, baselinesDir, delegation, ...models });
   console.log(`${r.markdown}\nwrote ${r.file} and its .md${provider === 'stub' ? ' (stub data: never a measurement)' : ''}`);
+  for (const [depth, b] of Object.entries({ quick: r.record.quick, deep: r.record.deep })) {
+    for (const w of (b?.noData ?? []).filter((x) => /^FLAG: |the unit was not run/.test(x))) console.error(`${depth}: ${w}`);
+  }
 }
 
 /**
@@ -286,4 +313,4 @@ function cmdUnits(opts) {
   if (val(opts.out)) { fs.writeFileSync(path.resolve(val(opts.out)), text); console.log(`wrote ${path.resolve(val(opts.out))}`); } else process.stdout.write(text);
 }
 
-module.exports = { COSTS, PILOT_SUBJECT, PILOT_JUDGES, PILOT_WRITER, baselineProblems, loadUnitBaseline, runUnitStage, estimateStage, cmdUnitStage, cmdUnits };
+module.exports = { COSTS, commitOf, PILOT_SUBJECT, PILOT_JUDGES, PILOT_WRITER, baselineProblems, loadUnitBaseline, runUnitStage, estimateStage, cmdUnitStage, cmdUnits };

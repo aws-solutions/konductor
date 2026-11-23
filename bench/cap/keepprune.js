@@ -239,6 +239,13 @@ function checkSubject({ subject, depth, provider, seats, store, subjectModel, re
   return { skill: subject.name, tasks: allTasks.length, A: readingOf(rows.A), B, B_all: B, exclusions: [], aa: depth === 'deep' ? readingOf(rows.aa) : null, status, scores };
 }
 
+/** checkSubject's shape for a subject that was not run: every reading empty, no task counted, no score. */
+function unjudgedSummary(subject, depth) {
+  const tasks = subject.batches.reduce((n, b) => n + b.tasks.length, 0);
+  const empty = readingOf([]);
+  return { skill: subject.name, tasks, A: empty, B: empty, B_all: empty, exclusions: [], aa: depth === 'deep' ? readingOf([]) : null, status: { counted: 0, not_loaded: 0, setup_fault: 0 }, scores: [] };
+}
+
 /**
  * The dose ladder as a judge test: each dose's authored pairs (defective answer in the with arm) judged by reading A.
  * Returns ladderDoses output [{ dose, n, skill, summary }] for evaluateLadder.
@@ -308,11 +315,13 @@ function judgePanel({ subjectModel, judges }) {
  *   judges         judge model ids
  *   bWaiting       batches whose B waits for a refreshed baseline
  *   store          a judgmentStore; replicates and rejudge as in checkSubject
+ *   stopOnControlFail  when a control ran and did not pass, skip the subject (no answers, no judgments): a paid run
+ *                  would spend its calls on a NO DATA result. `subjectSkipped` in the result says so
  * Returns { depth, entry, summary, seats, controls }, where entry is labelSkill's result with every extra no-data
  * cause added in front of his own: not enough judge families first, then `subjectNoData` (a stale unit, an unapproved
  * rename or fold), then SR-25, then the deep rule. `subjectNoData` is a list of reasons the subject cannot be read.
  */
-function checkDepth({ depth, subject, convention = null, ladder = null, provider, subjectModel, judges, bWaiting = [], subjectNoData = [], store = judgmentStore(null), replicates = DEFAULT_REPLICATES, rejudge = false }) {
+function checkDepth({ depth, subject, convention = null, ladder = null, provider, subjectModel, judges, bWaiting = [], subjectNoData = [], store = judgmentStore(null), replicates = DEFAULT_REPLICATES, rejudge = false, stopOnControlFail = false }) {
   if (!DEPTHS[depth]) throw new Error(`depth must be quick or deep, not ${JSON.stringify(depth)}`);
   const panel = judgePanel({ subjectModel, judges });
   const { seats } = panel;
@@ -322,13 +331,15 @@ function checkDepth({ depth, subject, convention = null, ladder = null, provider
   if (convention) { evaluations.push(evaluateConventionControl(checkSubject({ ...common, subject: convention }))); ran.push('convention-control'); }
   if (ladder) { evaluations.push(evaluateLadder(checkLadder({ ladder, provider, seats, store, rejudge }))); ran.push('dose-ladder'); }
   const trust = trustOf(evaluations);
-  const summary = checkSubject({ ...common, subject, bWaiting });
+  // A paid run whose controls failed could only read NO DATA, so it does not spend the subject's calls (stopOnControlFail).
+  const skipped = stopOnControlFail && ran.length > 0 && !trust.trusted;
+  const summary = skipped ? unjudgedSummary(subject, depth) : checkSubject({ ...common, subject, bWaiting });
   const batches = subject.batches.map((b) => b.batch);
   const entry = labelSkill({ summary, batches, bWaiting });
   const extra = [];
   if (panel.why) extra.push(panel.why);
   extra.push(...subjectNoData.filter(Boolean));
-  if (!trust.trusted) extra.push(trust.status === 'NONE' ? 'the run includes no control, so no verdict is read (SR-25)' : `a control did not pass (${trust.evaluations.filter((e) => !e.pass).map((e) => `${e.control} ${e.status}`).join(', ')}), so no verdict is read (SR-25)`);
+  if (!trust.trusted) extra.push(trust.status === 'NONE' ? 'the run includes no control, so no verdict is read (SR-25)' : `a control did not pass (${trust.evaluations.filter((e) => !e.pass).map((e) => `${e.control} ${e.status}`).join(', ')}), so no verdict is read (SR-25)${skipped ? '; the unit was not run, so its calls were not spent' : ''}`);
   const aaWhy = deepNoData(summary.A, summary.aa);
   if (aaWhy) extra.push(aaWhy);
   if (extra.length) {
@@ -336,7 +347,7 @@ function checkDepth({ depth, subject, convention = null, ladder = null, provider
     const v = verdictFor(LABELS.noData, null, null, { noDataWhy: noData[0] });
     Object.assign(entry, { label: LABELS.noData, why: noData[0], verdict: v.verdict, verdict_why: v.why, verdict_action: v.action, no_data: noData });
   }
-  return { depth, entry, summary, seats: panel.info, unjudged: panel.why, controls: { ...trust, ran } };
+  return { depth, entry, summary, seats: panel.info, unjudged: panel.why, controls: { ...trust, ran }, subjectSkipped: skipped };
 }
 
 module.exports = {

@@ -11,8 +11,10 @@
 //   FAKE_KP_NOFIX     task ids the writer's fix leaves unchanged, so they fail the recheck and are dropped
 //   FAKE_KP_BROKEN    a step kind (write, review, checklist, judge, answer) that replies with no JSON
 //   FAKE_KP_UNFINISHED  any value: the call ends with no runFinished event
+//   FAKE_KP_BROKEN_FIRST, FAKE_KP_COUNTER, FAKE_KP_SEE_LEDGER  see below
 
 const fs = require('node:fs');
+const path = require('node:path');
 
 const args = process.argv.slice(2);
 const model = args[args.indexOf('--model') + 1];
@@ -41,14 +43,41 @@ if (prompt.startsWith('You write benchmark tasks')) {
 } else if (prompt.startsWith('Score one answer')) {
   kind = 'judge';
   const n = Number(/with exactly (\d+) labels/.exec(prompt)[1]);
-  // The keep arm's answer carries the unit's mark, so the fake judges score it higher than the drop arm's.
   const answer = prompt.slice(prompt.indexOf('Answer:\n<<<'));
-  reply = { labels: Array.from({ length: n }, (_, i) => (answer.includes('UNIT-LOADED') || i === 0 ? 'MET' : 'MISSING')) };
+  // A dose ladder answer (authored, no unit mark): like the stub judge, an oracle that marks MISSING the item a planted
+  // defect breaks, so the ladder control passes (FAKE_KP_NO_ORACLE=1 turns it off, and the ladder then fails).
+  const ladder = process.env.FAKE_KP_NO_ORACLE ? { tasks: [] } : JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'cap', 'controls', 'dose-ladder-v1.json'), 'utf8'));
+  const defects = ladder.tasks.flatMap((t) => t.defects.map((d) => ({ item: d.rubric_item, edits: Array.isArray(d.edits) ? d.edits : [{ find: d.find, replace: d.replace }] })));
+  const broken = (i) => defects.some((d) => d.item === i && d.edits.every((e) => !answer.includes(e.find) && answer.includes(e.replace)));
+  const isLadder = !process.env.FAKE_KP_NO_ORACLE && !answer.includes('Reply:');
+  // Otherwise, like the stub: an item of the request-only checklist (reading A, the fake writer's "meets point" items)
+  // is met by any answer, and a rubric item (reading B) only by the keep arm, whose answer carries the unit's mark. So
+  // the convention control shows a B gain with A near 0, as it must.
+  const items = prompt.slice(prompt.indexOf('Checklist:\n'), prompt.indexOf('\n\nAnswer:')).split('\n').slice(1);
+  const met = (i) => /meets point/.test(items[i] ?? '') || answer.includes('UNIT-LOADED') || i === 0;
+  reply = { labels: Array.from({ length: n }, (_, i) => (isLadder ? (broken(i) ? 'MISSING' : 'MET') : met(i) ? 'MET' : 'MISSING')) };
+  // FAKE_KP_TITLE_CASE=1: labels spelled Met / Missing, which a judge model may do.
+  if (process.env.FAKE_KP_TITLE_CASE) reply.labels = reply.labels.map((l) => l[0] + l.slice(1).toLowerCase());
 } else {
   kind = 'answer';
   reply = null;
 }
-const text = process.env.FAKE_KP_BROKEN === kind ? 'I cannot answer in JSON.' : reply ? JSON.stringify(reply) : `Reply: ${prompt.includes('<<<FILE') ? 'UNIT-LOADED ' : ''}every point answered.`;
+// FAKE_KP_BROKEN_FIRST=<kind>:<n> with FAKE_KP_COUNTER=<file>: only the first n calls of that kind reply with no JSON.
+let brokenFirst = false;
+if (process.env.FAKE_KP_BROKEN_FIRST && process.env.FAKE_KP_COUNTER) {
+  const [k, n] = process.env.FAKE_KP_BROKEN_FIRST.split(':');
+  if (k === kind) {
+    const seen = fs.existsSync(process.env.FAKE_KP_COUNTER) ? Number(fs.readFileSync(process.env.FAKE_KP_COUNTER, 'utf8')) : 0;
+    fs.writeFileSync(process.env.FAKE_KP_COUNTER, String(seen + 1));
+    brokenFirst = seen < Number(n);
+  }
+}
+// FAKE_KP_SEE_LEDGER=<ledger>:<copy>: copies the ledger as it stands during the call (the reservation test).
+if (process.env.FAKE_KP_SEE_LEDGER) {
+  const [from, to] = process.env.FAKE_KP_SEE_LEDGER.split(':');
+  fs.copyFileSync(from, to);
+}
+const text = process.env.FAKE_KP_BROKEN === kind || brokenFirst ? 'I cannot answer in JSON.' : reply ? JSON.stringify(reply) : `Reply: ${prompt.includes('<<<FILE') ? 'UNIT-LOADED ' : ''}every point answered.`;
 if (process.env.FAKE_KP_LOG) fs.appendFileSync(process.env.FAKE_KP_LOG, `${model} ${kind} ${process.env.HOME}\n`);
 const line = (type, data) => process.stdout.write(`${JSON.stringify({ type, data })}\n`);
 line('metadata', { sessionId: 'fake-kp', meteringUsage: [{ value: Number(process.env.FAKE_KP_CREDITS ?? 0.5), unit: 'credit' }] });

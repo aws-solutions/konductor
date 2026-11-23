@@ -112,6 +112,7 @@ test('writing a baseline: two families, one fix, then a still failing task is dr
     const b = loadUnitBaseline(out);
     assert.equal(b.unit_sha256, unitManifest({ repo: r.repo, kind: 'context', name: 'k-rules' }).sha256);
     assert.deepEqual(b.source.fixed, ['t03', 't12']);
+    assert.match(b.source.commit, /^[0-9a-f]{40}$/, 'the baseline names the bench commit that wrote it');
     assert.match(b.batches[0].tasks[2].prompt, / FIXED$/);
     assert.equal(withEnv({ FAKE_KP_LOG: r.log }, () => authorUnit(args)).status, 'frozen');
     assert.equal(r.calls().length, 8, 'a rerun reads every step back');
@@ -175,12 +176,69 @@ test('the paid quick stage runs keep against drop through the real pipeline, sto
     assert.equal(record.quick.provider, 'kiro');
     assert.equal(record.quick.coverage.tasksTotal, 16);
     assert.deepEqual(record.quick.judges.map((j) => j.model), [...PILOT_JUDGES]);
-    assert.ok(record.quick.gapA.mean > 0, 'the fake judges score the keep arm above the drop arm');
+    assert.equal(record.quick.controls.passed, true, 'the convention control and the dose ladder pass on the fake');
+    assert.equal(record.quick.coverage.tasksCounted, 16);
+    assert.ok(record.quick.gapB.mean > 0, 'the fake judges score the keep arm above the drop arm on the rubric');
+    assert.match(record.quick.commit, /^[0-9a-f]{40}$/, 'the record names the bench commit that spent the credits');
     assert.match(record.claim, /paid run kp-test, quick depth/);
     const answers = r.calls().filter((l) => l.split(' ')[1] === 'answer');
     assert.ok(answers.every((l) => l.startsWith('claude-sonnet-5.5 ')), 'only the agent answers');
     withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ ...base, paid: { ...r.paid, cap: 100000 } }));
     assert.equal(r.calls().length, made, 'a rerun of the same run id makes no call');
+  } finally { r.cleanup(); }
+});
+
+/** One paid quick stage run of the rig's unit on the fake, with the fake's `env`. Returns { record, calls }. */
+function paidStage(r, env = {}) {
+  const base = { kind: 'context', name: 'k-rules', repo: r.repo, runId: 'kp-test', outDir: path.join(r.root, 'runs'), provider: 'kiro', depths: ['quick'], subjectModel: 'claude-sonnet-5.5', judges: [...PILOT_JUDGES], baselinesDir: freeze(r), paid: { ...r.paid, cap: 100000 } };
+  const { record } = withEnv({ FAKE_KP_LOG: r.log, ...env }, () => runUnitStage(base));
+  return { record, calls: r.calls() };
+}
+
+test('a failed control stops the paid run before the unit: none of its answers or judgments are paid for', { timeout: 600000 }, () => {
+  const r = rig();
+  try {
+    const { record, calls } = paidStage(r, { FAKE_KP_NO_ORACLE: '1' });
+    assert.equal(record.quick.controls.passed, false);
+    assert.ok(record.quick.noData.some((w) => /a control did not pass .*the unit was not run, so its calls were not spent/.test(w)));
+    assert.equal(record.quick.coverage.tasksCounted, 0);
+    // Only the convention control answered: 8 tasks x 2 arms. The unit's 16 tasks x 2 arms were never asked.
+    assert.equal(calls.filter((l) => l.split(' ')[1] === 'answer').length, 16);
+  } finally { r.cleanup(); }
+});
+
+test('an unreadable judge reply is asked once more, both calls counted; Met reads as MET', { timeout: 600000 }, () => {
+  const r = rig();
+  try {
+    const counter = path.join(r.root, 'judge-count');
+    const { record, calls } = paidStage(r, { FAKE_KP_BROKEN_FIRST: 'judge:1', FAKE_KP_COUNTER: counter, FAKE_KP_TITLE_CASE: '1' });
+    assert.equal(record.quick.controls.passed, true);
+    assert.equal(record.quick.coverage.tasksCounted, 16, 'the re-ask saved the judgment');
+    assert.ok(!record.quick.noData.some((w) => /^FLAG/.test(w)));
+    assert.equal(ledgerSpent(r.paid.ledger), calls.length * 15, 'the bad reply and its re-ask are both counted');
+    const bad = fs.readdirSync(path.join(r.root, 'runs', 'kp-test', 'calls', 'judge')).filter((f) => /\.bad-1\.json$/.test(f));
+    assert.equal(bad.length, 1, 'the unreadable reply is kept aside');
+  } finally { r.cleanup(); }
+});
+
+test('judge replies still unreadable after their re-ask are flagged, not a silent NO DATA', { timeout: 600000 }, () => {
+  const r = rig();
+  try {
+    const { record, calls } = paidStage(r, { FAKE_KP_BROKEN: 'judge' });
+    assert.match(record.quick.noData[0], /^FLAG: only 0 of 16 tasks counted, under the floor of 12, and \d+ judge replies could not be read after one re-ask/);
+    const judgeCalls = calls.filter((l) => l.split(' ')[1] === 'judge').length;
+    assert.ok(judgeCalls > 0 && judgeCalls % 2 === 0, 'each judgment was asked exactly twice');
+  } finally { r.cleanup(); }
+});
+
+test('the ledger reserves 15 before a call starts, so a killed call is still counted', () => {
+  const r = rig();
+  try {
+    const seen = path.join(r.root, 'ledger-during-call');
+    withEnv({ FAKE_KP_SEE_LEDGER: `${r.paid.ledger}:${seen}` }, () => paidCall({ ...r.paid, model: 'glm-5', prompt: 'hello', out: path.join(r.root, 'out', 'a') }));
+    const during = fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    assert.deepEqual(during.map((l) => [l.counted, l.reserved]), [[15, true]], 'during the call the ledger already counts it at 15');
+    assert.equal(ledgerSpent(r.paid.ledger), 15, 'the settle line adds nothing for a call under 15');
   } finally { r.cleanup(); }
 });
 
@@ -197,10 +255,15 @@ test('the owner scripts: dry runs are free, a paid run needs --cap, and the paid
     assert.equal(dry.status, 0, dry.stderr);
     assert.match(dry.stdout, /at most 8 calls, worst case 120 credits at 15 per call; ledger spent 0; cap 120; the worst case fits/);
     assert.equal(script('author-baseline.sh', [], env).status, 64);
+    // A scratch HOME left by a killed run (with its sign-in copy) is removed before the first call.
+    const stale = path.join(env.KP_PILOT_WORK, 'author', 'home-killed', '.local', 'share', 'kiro-cli');
+    fs.mkdirSync(stale, { recursive: true });
+    fs.writeFileSync(path.join(stale, 'data.sqlite3'), 'copy');
     const paid = script('author-baseline.sh', ['--cap', '120'], env);
     assert.equal(paid.status, 0, paid.stderr);
     assert.equal(loadUnitBaseline(env.KP_BASELINE_OUT).name, 'k-orchestrator-shared');
     assert.equal(r.calls().length, 4);
+    assert.equal(fs.existsSync(path.join(env.KP_PILOT_WORK, 'author', 'home-killed')), false, 'the stale sign-in copy is gone');
 
     const runDry = script('run-pilot.sh', ['--dry-run', '--cap', '1200'], env);
     assert.equal(runDry.status, 0, runDry.stderr);
