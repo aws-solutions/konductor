@@ -9,7 +9,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
 const { createRegistry, folderHash, PLUGIN_API } = require('../../core/registry.js');
-const { REGISTRY, DESCRIPTORS } = require('../lib/harness/descriptors.js');
+const { REGISTRY, DESCRIPTORS, PLUGINS_DIR } = require('../lib/harness/descriptors.js');
+const { HARNESSES } = require('../lib/harness/index.js');
+const { checkHarnessPlugin } = require('../../kit/plugin/check.js');
+
+const STRANDS = path.join(PLUGINS_DIR, 'strands');
 const builtin = (id) => ({ kind: 'harness', meta: Object.freeze({ id }) });
 
 /** A plugin folder `name` under `root` with manifest fields `m` (over good defaults) and a meta of id `metaId`. */
@@ -77,8 +81,30 @@ test('a plugin with the name of a built-in is an error', () => {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the bench registry keeps the runtime order and records no plugin while bench/plugins is empty', () => {
+test('Strands loads from bench/plugins/strands, and the runtime order is unchanged', () => {
   assert.deepEqual(DESCRIPTORS.map((d) => d.id), ['kiro-cli', 'opencode', 'claude-code', 'strands']);
+  const st = REGISTRY.parts('harness').find((p) => p.name === 'strands');
+  assert.equal(st.source, 'plugin');
+  assert.equal(st.plugin.dir, STRANDS);
+  assert.equal(HARNESSES.strands.meta, st.meta);
+  assert.deepEqual(REGISTRY.record(), [{ name: 'strands', kind: 'harness', version: '1.0.0', benchApi: 1, sha256: folderHash(STRANDS) }]);
   assert.deepEqual(REGISTRY.refused(), []);
-  assert.ok(Array.isArray(REGISTRY.record()));
+});
+
+test('the plugin kit passes Strands and names what a broken plugin lacks', () => {
+  assert.deepEqual(checkHarnessPlugin(STRANDS), []);
+  const root = tmp();
+  try {
+    const dir = plugin(root, 'half');
+    const problems = checkHarnessPlugin(dir);
+    for (const want of [/buildCommand must be a function/, /parseResult must be a function/, /meta.costUnit/, /meta.report must be an object/, /same meta object/, /test\/conformance\.js is missing/]) {
+      assert.ok(problems.some((p) => want.test(p)), `${want} in ${problems.join(' | ')}`);
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the write-a-plugin guide is linked from the docs map and names the kit command', () => {
+  const guide = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'write-a-plugin.md'), 'utf8');
+  assert.match(guide, /node bench\/kit\/plugin\/check\.js bench\/plugins\//);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', '..', 'README.md'), 'utf8'), /docs\/write-a-plugin\.md/);
 });

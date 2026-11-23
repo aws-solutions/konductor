@@ -1,0 +1,8 @@
+{
+  "benchApi": 1,
+  "kind": "harness",
+  "name": "strands",
+  "version": "1.0.0",
+  "meta": "meta.js",
+  "entry": "harness.js"
+}

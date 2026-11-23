@@ -11,17 +11,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { parseStream } = require('../stream.js');
-const { promptFor } = require('../arm-opts.js');
-const skills = require('../skills.js');
-const { scrubTreeDetailed } = require('../hygiene.js');
-const { secretLiterals } = require('../scrub.js');
-const { launcherForCwd, pythonArgs } = require('../plant/strands-adapter.js');
-const { aggregateEvents } = require('./strands-parse.js');
+const { parseStream } = require('../../runner/lib/stream.js');
+const { promptFor } = require('../../runner/lib/arm-opts.js');
+const skills = require('../../runner/lib/skills.js');
+const { scrubTreeDetailed } = require('../../runner/lib/hygiene.js');
+const { secretLiterals } = require('../../runner/lib/scrub.js');
+const { launcherForCwd, pythonArgs } = require('../../runner/lib/plant/strands-adapter.js');
+const { aggregateEvents } = require('./parse.js');
 
 const id = 'strands';
-const meta = require('./strands-meta.js');
-const PINS = require('../../../physical/strands/plant_strands/bedrock_models.json');
+const meta = require('./meta.js');
+const PINS = require('../../physical/strands/plant_strands/bedrock_models.json');
 const VERSION_PROBE = 'import sys, importlib.metadata as m; print(m.version("strands-agents")); print(sys.prefix); print(sys.base_prefix)';
 
 /**

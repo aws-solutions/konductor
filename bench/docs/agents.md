@@ -223,37 +223,15 @@ The full format is in [the task reference](tasks.md).
 ## Plug in a new agent type
 
 bench talks to each agent program through a **harness**: one small module that installs the arm, starts the agent,
-and reads what it wrote. Four exist today: Kiro CLI, opencode, Claude Code and Strands. To add a fifth:
-
-```mermaid
-flowchart LR
-    W["wrapper command<br/>prints JSON lines"] --> H["harness/NAME.js<br/>install · start · parse"]
-    H --> M["harness/NAME-meta.js<br/>prefix · cost unit · stream format"]
-    M --> REG["index.js + descriptors.js<br/>register it"]
-    REG --> T["fixture stream + contract test<br/>must pass"]
-    classDef a fill:#7C5CFF,color:#ffffff,stroke:#7C5CFF
-    classDef b fill:#0B0A12,color:#ffffff,stroke:#3DDC97
-    class H,T a
-    class W,M,REG b
-```
-
-1. **Make the agent one local command.** If it is a library or a hosted service, write a small wrapper that prints
-   one JSON event per line and exits non-zero on failure. Strands does this with `bench/physical/strands/launch.py`.
-2. **Write `bench/runner/lib/harness/NAME.js`.** It exports the members the runner calls: `prepareArm`,
-   `trialInstall`, `installInto`, `buildCommand`, `env`, `removeCredentials`, `keepPaths`, `turnSummary`,
-   `parseResult` and `collectArtifacts`. Keep the stream parser in its own `NAME-parse.js`.
-3. **Describe it in `NAME-meta.js`:** its arm prefix, cost unit (credits or USD), stream format, what it
-   supports, what the reports say about its cost (`report`) and, if the `cap` commands should accept it, how they
-   reach a capability (`capabilities`). The reports and `cap` read these; they do not switch on the name. Register it in `harness/index.js` and `harness/descriptors.js`, and add its id to the `harness` list in
-   `schema/result.schema.json`.
-4. **Fill the result.** `parseResult` turns the stream into session id, finish status, final text, tool calls and
-   spend.
-5. **Prove it.** Add a recorded one-turn stream under `runner/test/fixtures/harness-contract/` and a row in
-   `harness-contract.test.js`. That test checks every member and the parsed result.
+and reads what it wrote. Four exist today: Kiro CLI, opencode, Claude Code and Strands. Strands is a plugin, one
+folder under `bench/plugins/` that the bench finds by itself. A fifth agent type is a plugin too: copy the Strands
+folder, rewrite its harness for your agent, and run the free kit until it passes. [Write a plugin](write-a-plugin.md)
+walks through it. Its descriptor says what the reports say about its cost (`report`) and, if the `cap` commands
+should accept it, how they reach a capability (`capabilities`).
 
 Two limits to know before you start. Arms are Konductor refs or the bare CLI today, so an agent that does not
 install Konductor also needs a new arm source and a `prepareArm` that builds nothing. And a few places outside the
-harness folder still switch on the runtime name; the contract lists each one.
+harness folder still switch on the runtime name; the guide lists them.
 
 The full contract, with every member, argument and field, is
 [runner/lib/harness/CONTRACT.md](../runner/lib/harness/CONTRACT.md). What works today for an agent bench does not run

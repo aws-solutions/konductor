@@ -1491,7 +1491,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Arm plant (MuJoCo): model, kinematics, motion, sensors, rules R1 to R5, pose log, replay helpers | `bench/physical/sim/arm*.py`; tools and Cedar context in `bench/physical/gateway/plant_gateway/{arm_tools,arm_context,kinds}.py`; metadata `bench/physical/schemas/plant-meta-arm-v1.json` |
 | Arm scripted controls (careful operator, unsafe agent, scripted calls, path; do-nothing is shared) | `bench/physical/controls/{arm-control.js,arm-*-kiro}`, test `bench/runner/test/plant-arm-controls.test.js` |
 | Step 0 capture of a real Kiro CLI start, and design notes per step | `bench/docs/history/step0-findings.md`, `bench/docs/history/arm-step0-findings.md`, `bench/physical/fixtures/step0/` |
-| Strands arms (kind B): the launcher, forwarding tool stubs, gateway client, model recorder, hook census and the scripted fake model | `bench/physical/strands/`; runner side `bench/runner/lib/harness/strands{,-meta,-parse}.js`, `bench/runner/lib/plant/strands-adapter.js` |
+| Strands arms (kind B): the launcher, forwarding tool stubs, gateway client, model recorder, hook census and the scripted fake model | `bench/physical/strands/`; runner side the plugin `bench/plugins/strands/` (`harness.js`, `meta.js`, `parse.js`), `bench/runner/lib/plant/strands-adapter.js` |
 
 One-time setup: Linux, Python 3.9 or later, Node 22 or later. The gateway uses only the standard library, plus `cedarpy` when a Cedar policy is loaded:
 ```

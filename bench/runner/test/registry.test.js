@@ -13,6 +13,7 @@ const { RUNTIMES, USD_RUNTIMES, isUsdRuntime, runtimeOf, descriptorOf, costUnitO
 const { FLAGS } = require('../lib/cli-flags.js');
 const { parseArmSpec, resolveArm, OC_PREFIX, CC_PREFIX } = require('../lib/arms.js');
 const { kiroArgs } = require('../lib/harness/kiro.js');
+const { validateResult } = require('../lib/result.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
 const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'freshSessions', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly', 'armConfig'];
@@ -30,8 +31,11 @@ function descriptorTable(header) {
 }
 const entries = Object.entries(registry);
 
-test('the result schema harness enum equals the registry ids', () => {
-  assert.deepEqual([...SCHEMA.properties.harness.enum].sort(), Object.keys(registry).sort());
+test('the result schema names no runtime; validateResult accepts every registry harness and refuses another', () => {
+  assert.equal(SCHEMA.properties.harness.enum, undefined, 'the registry, not the schema, lists the harnesses');
+  const harnessErrors = (harness) => validateResult({ harness }).filter((e) => e.startsWith('$.harness'));
+  for (const id of Object.keys(registry)) assert.deepEqual(harnessErrors(id), [], id);
+  assert.match(harnessErrors('codex-cli').join(), /"codex-cli" is not a registered harness/);
 });
 
 test('the registry is built from HARNESSES and matches the descriptor list', () => {
