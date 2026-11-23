@@ -95,6 +95,30 @@ test('bench/ops/README.md lists every versioned file', () => {
   assert.deepEqual(missing, []);
 });
 
+test('--check: a workspace of launchers passes; a plain copy, an unversioned script and a dangling launcher fail', (t) => {
+  const { ws, stub } = setUp(t);
+  assert.equal(make(ws, stub).status, 0);
+  fs.writeFileSync(path.join(ws, 'scripts', 'README.md'), 'local index\n');
+  fs.writeFileSync(path.join(ws, 'scripts', 'keep-creds-fresh.sh'), 'echo local only\n');
+  const clean = make(ws, stub, '--check');
+  assert.equal(clean.status, 0, clean.stdout);
+  assert.match(clean.stdout, /^ok: every workspace owner script is a launcher/m);
+
+  fs.rmSync(path.join(ws, 'scripts', 'run-tonight.sh'));
+  fs.writeFileSync(path.join(ws, 'scripts', 'run-tonight.sh'), 'echo an edited copy\n');
+  fs.writeFileSync(path.join(ws, 'scripts', 'run-new-thing.sh'), 'echo never versioned\n');
+  fs.writeFileSync(path.join(ws, 'reports', 'next-experiment-2026-11-22', 'run-extra.sh'), 'echo never versioned\n');
+  const launcher = fs.readFileSync(path.join(ws, 'scripts', 'run-reruns.sh'), 'utf8').replaceAll('run-reruns.sh', 'run-gone.sh');
+  fs.writeFileSync(path.join(ws, 'scripts', 'run-gone.sh'), launcher);
+  const r = make(ws, stub, '--check');
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /plain copy of bench\/ops\/workspace\/run-tonight\.sh .*scripts\/run-tonight\.sh$/m);
+  assert.match(r.stdout, /not in bench\/ops \(version it under bench\/ops\/workspace\/run-new-thing\.sh.*$/m);
+  assert.match(r.stdout, /not in bench\/ops \(version it under bench\/ops\/next-experiment-2026-11-22\/run-extra\.sh/m);
+  assert.match(r.stdout, /launcher with no versioned script bench\/ops\/workspace\/run-gone\.sh/m);
+  assert.doesNotMatch(r.stdout, /README\.md|keep-creds-fresh/);
+});
+
 test('a file that is not a launcher is refused without --replace, and a rerun over launchers is clean', (t) => {
   const { ws, stub } = setUp(t);
   const own = path.join(ws, 'scripts', 'run-tonight.sh');

@@ -7,7 +7,9 @@
 # with it and BENCH_REQUIRE_ARM=1, and any arm test that still skips fails the run (debt review F1: a suite that
 # skipped every arm test once read clean). With no arm Python the arm tests skip and the run says so.
 # Usage: bench/scripts/test.sh [--tap]     --tap: node prints TAP too, so the whole output is one TAP stream.
-# Exit 0 only when no test failed and no arm test skipped with an arm Python present.
+# With KONDUCTOR_WS set (the owner workspace), it also checks that every workspace owner script is a launcher into
+# bench/ops (bench/ops/make-launchers.sh --check).
+# Exit 0 only when no test failed, no arm test skipped with an arm Python present, and the workspace check passed.
 # Free: no model call. Override for tests: R (the repo root).
 set -euo pipefail
 
@@ -54,4 +56,14 @@ if [ "$ARM" = 1 ]; then
 fi
 echo "# arm skips $skips"
 [ "$skips" = 0 ] || echo "# FAIL: $skips arm test(s) skipped although $ARM_PY imports mujoco and cedarpy" >&2
-[ "$node_code" = 0 ] && [ "$py_code" = 0 ] && [ "$skips" = 0 ]
+
+# With an owner workspace named (the workspace launchers export KONDUCTOR_WS), its scripts must all be launchers into
+# bench/ops: a plain copy there drifts from the versioned one (DEBT D-236).
+ops_code=0
+if [ -n "${KONDUCTOR_WS:-}" ]; then
+  bash bench/ops/make-launchers.sh "$KONDUCTOR_WS" --check > "$LOGS/ops.log" 2>&1 || ops_code=$?
+  sed 's/^/# /' "$LOGS/ops.log"
+  if [ "$ops_code" = 0 ]; then echo "ok 1 - ops: every workspace owner script is a launcher into bench/ops"
+  else echo "not ok 1 - ops: every workspace owner script is a launcher into bench/ops"; fi
+fi
+[ "$node_code" = 0 ] && [ "$py_code" = 0 ] && [ "$skips" = 0 ] && [ "$ops_code" = 0 ]
