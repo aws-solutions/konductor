@@ -4,8 +4,9 @@
 // The paid provider for keep-or-prune stages 2 to 4: the same { answer, writeChecklist, judge } interface as the stub
 // (stubprovider.js), with every call a spend-checked one-turn kiro-cli call (paidcall.js). It runs only at quick depth
 // (one answer per task and arm, no tools), which is what the first pilot needs.
-//   answer    the subject model. The keep arm (`with`) gets the unit's text ahead of the request, marked as part of
-//             its instructions; the drop arm (`without`) gets the request alone.
+//   answer    the subject model. The keep arm (`with`) gets the unit's text ahead of the request, under its kind's
+//             frame line (an instruction file, a started SOP, or the agent it is); the drop arm (`without`) gets the
+//             request alone.
 //   checklist reading A: the writer model writes the items from the request alone. A given rubric (the dose ladder's)
 //             is used as it is, with no call.
 //   judge     each seat is its own model. It sees the checklist and the answer only, never the arm or the unit.
@@ -19,7 +20,8 @@ const VERSION = 'kiro-cli-one-turn/1';
 const LABELS = new Set(['MET', 'PARTIAL', 'MISSING']);
 const LOADING_ARMS = new Set(['with', 'aa']);
 
-const withUnit = (text, request) => `The file below is part of your instructions for this session. Follow it.\n<<<FILE\n${text}\nFILE>>>\n\n${request}`;
+/** The keep arm's prompt: the kind's frame line (units.js PAID_FRAME), the unit's text, then the request. */
+const withUnit = (frame, text, request) => `${frame}\n<<<FILE\n${text}\nFILE>>>\n\n${request}`;
 
 const checklistPrompt = (request, count) => [
   `Write exactly ${count} checklist items that a good answer to the request below must meet. Base them on the request alone.`,
@@ -35,14 +37,16 @@ const judgePrompt = (checklist, answer) => [
 
 /**
  * A paid provider. `paid` is paidCall's spend options { ledger, cap, workDir, bin, authDb }; `callsDir` holds the
- * saved replies; `writerModel` writes the request-only checklists. `subjectModel` is reported by checkDepth itself.
+ * saved replies; `writerModel` writes the request-only checklists; `frame` is the line the keep arm reads ahead of the
+ * unit (PAID_FRAME[kind].answer). `subjectModel` is reported by checkDepth itself.
  */
-function createKiroProvider({ paid, callsDir, writerModel }) {
+function createKiroProvider({ paid, callsDir, writerModel, frame }) {
+  if (!frame) throw new Error('the paid provider needs the frame line of the unit kind');
   const call = (kind, model, prompt) => ({ model, prompt, out: path.join(callsDir, kind, sha256(`${model}\n${prompt}`).slice(0, 24)), label: kind, ...paid });
 
   function answer({ request, skill, arm, replicate = 0, model }) {
     const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
-    const prompt = loaded ? withUnit(skill.text, request) : request;
+    const prompt = loaded ? withUnit(frame, skill.text, request) : request;
     // shortcut: quick depth only, so one answer per task and arm; a deep run needs a replicate in the key and full sessions.
     if (replicate) throw new Error('the paid provider runs quick depth only (one answer per task and arm)');
     return { text: paidCall(call('answer', model, prompt)).text, loaded, model, version: VERSION };

@@ -214,3 +214,18 @@ test('the pilot briefs file matches Appendix C: 16 briefs in two batches of 8 fo
   assert.deepEqual(b.batches, ['b1', 'b2']);
   assert.ok(fs.existsSync(path.join(REPO, 'context', 'k-orchestrator-shared.md')));
 });
+
+test('each unit kind has its own frame: the keep arm reads it ahead of the unit, the writer and reviewer are told what the unit is', () => {
+  const { PAID_FRAME } = require('../../cap/units.js');
+  const { withUnit } = require('../../cap/kiroprovider.js');
+  const { writePrompt, reviewPrompt, fixPrompt } = require('../../cap/unitauthor.js');
+  const briefs = [{ id: 't01', batch: 'b1', section: 'S', situation: 'x', good: 'y' }];
+  for (const kind of ['agent', 'sop', 'context']) {
+    const f = PAID_FRAME[kind];
+    assert.ok(withUnit(f.answer, 'UNIT TEXT', 'the request').startsWith(`${f.answer}\n<<<FILE\nUNIT TEXT\nFILE>>>`), kind);
+    for (const p of [writePrompt(f, 'U', briefs), reviewPrompt(f, 'U', briefs, []), fixPrompt(f, 'U', briefs, [])]) assert.ok(p.includes(f.noun) && p.includes(f.tasks), kind);
+  }
+  assert.match(PAID_FRAME.sop.answer, /started the procedure \(SOP\)/);
+  assert.match(PAID_FRAME.sop.tasks, /the user's yes for its scope or for committing/);
+  assert.match(PAID_FRAME.agent.answer, /You are the agent defined below/);
+});

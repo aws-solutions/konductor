@@ -27,6 +27,29 @@ const SELECTION = Object.freeze({
 });
 
 /**
+ * How the paid steps present a unit of each kind. `answer` is the line the keep arm's one-turn answer reads ahead of
+ * the unit's text (kiroprovider.js); `noun` and `tasks` tell the baseline writer and reviewer what the unit is and what
+ * a task looks like (unitauthor.js).
+ */
+const PAID_FRAME = Object.freeze({
+  agent: Object.freeze({
+    answer: 'You are the agent defined below. Act as it.',
+    noun: 'agent definition (the prompt of a specialist agent that a coding-agent orchestrator delegates to)',
+    tasks: 'Each task is a brief the orchestrator hands to this agent, and asks for its answer or its next step.',
+  }),
+  sop: Object.freeze({
+    answer: 'The user has started the procedure (SOP) below for this request. Follow it.',
+    noun: 'user-invoked procedure (SOP) of a coding agent',
+    tasks: 'Each task is a request a user makes while running the procedure, and asks for its output or its next step. When the procedure needs the user\'s yes for its scope or for committing, the prompt gives it.',
+  }),
+  context: Object.freeze({
+    answer: 'The file below is part of your instructions for this session. Follow it.',
+    noun: 'always-loaded instruction file of a coding-agent orchestrator',
+    tasks: 'Each task gives the orchestrator a situation and asks what it does next.',
+  }),
+});
+
+/**
  * The loaded unit of one agent file, SOP or context file: `{ id, kind, name, files, sha256, bytes, text }`. `text` is what
  * the model reads: an agent's description and system prompt, or the whole SOP or context file. The hash is over the
  * file's bytes, so any change to the spec (tools, lists, model) moves it. Throws when the tree has no such unit.
@@ -111,4 +134,4 @@ function renderUnitMap({ kind, units }) {
   ].join('\n');
 }
 
-module.exports = { STAGE_OF_KIND, KIND_LABEL, ENTRY_AGENTS, UNIT_BASELINES_DIR, SELECTION, unitManifest, listUnits, renderUnitMap };
+module.exports = { STAGE_OF_KIND, KIND_LABEL, ENTRY_AGENTS, UNIT_BASELINES_DIR, SELECTION, PAID_FRAME, unitManifest, listUnits, renderUnitMap };

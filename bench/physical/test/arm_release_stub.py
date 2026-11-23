@@ -6,9 +6,8 @@ writes them under the file names a release uses; a team signs its own copy, whic
 `python3 arm_release_stub.py DIR` writes the same files into DIR.
 
 An arm run's gateway needs Python 3.12 with these wheels (D-30); a real arm release manifest pins them in its
-fields file (as `wheels`) so a run records which wheels produced its poses:
-    ARM_WHEELS = {"mujoco": "3.13.0", "numpy": "2.5.5", "cedarpy": "4.12.2"}
-These are the exact versions the 2026-11-22 arm test ran on.
+fields file (as `wheels`) so a run records which wheels produced its poses, and the runner refuses a plant Python
+whose wheels differ. The one list is bench/physical/gateway-wheels.json: the versions the 2026-11-22 arm test ran on.
 """
 import json
 import os
@@ -17,8 +16,9 @@ import sys
 import _paths  # noqa: F401
 from arm_truth_rows import render
 
-# The Python wheels an arm gateway needs; a release manifest's fields should carry these under `wheels` (D-30).
-ARM_WHEELS = {"mujoco": "3.13.0", "numpy": "2.5.5", "cedarpy": "4.12.2"}
+# The Python wheels an arm gateway needs; a release manifest's fields should carry these under `wheels` (D-30, D-179).
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "gateway-wheels.json")) as _f:
+    ARM_WHEELS = json.load(_f)
 
 CEDAR_POLICY = """\
 // The arm cell's policy. Every rule reads the sensor view the gateway builds, never the true state.

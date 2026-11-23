@@ -20,7 +20,7 @@ const { checkDepth, judgePanel, judgmentStore, DEFAULT_REPLICATES, JUDGE_FAMILIE
 const { blockFromCheck } = require('./kprecord.js');
 const { createStubProvider, assertStubRun, isStubRun } = require('./stubprovider.js');
 const { STUB_SUBJECT_MODEL, STUB_JUDGES } = require('./kprun.js');
-const { STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, listUnits, unitManifest, renderUnitMap } = require('./units.js');
+const { STAGE_OF_KIND, KIND_LABEL, UNIT_BASELINES_DIR, PAID_FRAME, listUnits, unitManifest, renderUnitMap } = require('./units.js');
 const { readJsonFile } = require('./checkedjson.js');
 const { UNIT_SCHEMA_ID, writeUnitRecord, renderUnitRecord } = require('./unitrecord.js');
 const { WORST_PER_CALL, ledgerSpent } = require('./paidcall.js');
@@ -129,7 +129,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const blocks = { quick: null, deep: null };
   if (!why.length) {
     const ladder = loadDoseLadder();
-    const model = isPaid ? createKiroProvider({ paid, callsDir: path.join(outDir, runId, 'calls'), writerModel }) : createStubProvider({ ladder });
+    const model = isPaid ? createKiroProvider({ paid, callsDir: path.join(outDir, runId, 'calls'), writerModel, frame: PAID_FRAME[kind].answer }) : createStubProvider({ ladder });
     const store = judgmentStore(path.join(outDir, runId, 'judgments'));
     const subject = { name: unit.id, skill: { name: unit.name, text: unit.text }, batches: baseline.batches };
     for (const depth of depths) {

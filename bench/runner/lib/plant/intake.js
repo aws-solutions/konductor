@@ -8,11 +8,12 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { copyPlainFile } = require('../safe-copy.js');
 const { sha256File, versionOf, SHARED_LAUNCHER } = require('../sandbox.js');
 const { isComparableMode, realHomes, tmpOutsideHome } = require('../isolate.js');
 const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE } = require('./manifest.js');
-const { DEADLINES } = require('./gateway-proc.js');
+const { DEADLINES, gatewayCommand } = require('./gateway-proc.js');
 const { loadRefusalRule } = require('./refusal.js');
 const { readEnvironment, NOT_COUNTED } = require('./score.js');
 const { AGENT_ENGINES, descriptorOf } = require('../harness/runtime.js');
@@ -210,6 +211,23 @@ function strandsSuiteOf(manifest, strands, model) {
   return { control: false, notCounted: [] };
 }
 
+const WHEELS_PROBE = 'import importlib.metadata as m, json, sys\nout = {}\nfor k in json.loads(sys.argv[1]):\n    try: out[k] = m.version(k)\n    except m.PackageNotFoundError: out[k] = None\nprint(json.dumps(out))';
+
+/**
+ * Throws ReleaseRefused when the release pins `wheels` ({name: version}, D-30) and the plant Python `python`, run as
+ * the gateway runs it, has another version or none of any of them: its poses would not be the release's. A release
+ * with no `wheels` is not checked.
+ */
+function checkWheels(wheels, python) {
+  if (!wheels || !Object.keys(wheels).length) return;
+  const r = spawnSync(python, ['-I', '-c', WHEELS_PROBE, JSON.stringify(Object.keys(wheels))], { encoding: 'utf8', env: gatewayCommand(python).env, timeout: 60000 });
+  let have = null;
+  try { have = JSON.parse(r.stdout); } catch { /* reported below */ }
+  if (r.status !== 0 || !have) throw new ReleaseRefused(`the plant Python ${python} could not report its wheels (${(r.stderr || r.error?.message || '').trim().split('\n').at(-1)})`);
+  const off = Object.entries(wheels).filter(([k, v]) => have[k] !== v).map(([k, v]) => `${k} ${have[k] ?? 'missing'} (the release pins ${v})`);
+  if (off.length) throw new ReleaseRefused(`the plant Python ${python} has other wheels than the release pins: ${off.join(', ')}; pip install ${Object.entries(wheels).map(([k, v]) => `${k}==${v}`).join(' ')}`);
+}
+
 /** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites with isolation). */
 function checkOutFilesystem(outDir, others) {
   const dev = fs.statSync(outDir).dev;
@@ -332,10 +350,12 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     if (toy && !control) throw new ReleaseRefused(`toy release ${release.manifest.release} runs control suites only (a scripted control as --kiro-bin or --claude-bin, or a Strands fake: model): it is signed with the public toy key and never counts`);
     const noise = control ? [] : checkRealSuite({ release, ctx, runtime, outDir, home, versionOfBin, noiseOf });
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
+    const python = opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3';
+    checkWheels(release.manifest.wheels, python);
     return {
       release, privateRoot, socketParent, control, toy, hostNoise: noise, deadlines, makeToken, readListeners,
       ...countingOf({ control, mode: ctx.isolation.mode, noise, reasons: kind.notCounted }),
-      python: opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3',
+      python,
       isolationMode: ctx.isolation.mode,
       tasks: bindTasks(tasks, release),
       gatewayFiles: gatewayFilesOf(release),

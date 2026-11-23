@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
-const { unitManifest, UNIT_BASELINES_DIR } = require('./units.js');
+const { unitManifest, UNIT_BASELINES_DIR, PAID_FRAME } = require('./units.js');
 const { WORST_PER_CALL, ledgerSpent, assertOutsideHome, paidJson } = require('./paidcall.js');
 const { readJsonFile } = require('./checkedjson.js');
 
@@ -28,23 +28,24 @@ const STEPS = ['write', 'review', 'fix', 'recheck'];
 
 const fileBlock = (text) => `<<<FILE\n${text}\nFILE>>>`;
 
-const writePrompt = (unitText, briefs) => [
-  'You write benchmark tasks for one always-loaded instruction file of a coding-agent orchestrator. Each task gives the',
-  'orchestrator a situation and asks what it does next. A model answers it once with the file loaded and once without.',
+// `frame` is PAID_FRAME[kind] (units.js): what the unit is (`noun`) and what a task looks like (`tasks`).
+const writePrompt = (frame, unitText, briefs) => [
+  `You write benchmark tasks for one ${frame.noun}. ${frame.tasks}`,
+  'A model answers each task once with the file loaded and once without.',
   '', 'The file:', fileBlock(unitText), '',
   'Write one task for each brief below. Each task has:',
   '- "id": the brief id;',
-  '- "prompt": the situation, in the words a user or a specialist result would use, ending with a question about what the',
-  '  orchestrator does next. It must not quote, name or hint at the file;',
+  '- "prompt": the situation, in the words its sender would use, ending with a question.',
+  '  It must not quote, name or hint at the file;',
   '- "rubric": 3 to 5 items, each one statement a reader can check against an answer, that together say what the brief\'s',
   '  good answer does. Put exact names (agents, files, commands) in backticks.',
   '', 'Briefs:', JSON.stringify(briefs.map(({ id, section, situation, good }) => ({ id, section, situation, good })), null, 2), '',
   'Reply only with JSON: {"tasks": [{"id": "...", "prompt": "...", "rubric": ["..."]}]}',
 ].join('\n');
 
-const reviewPrompt = (unitText, briefs, tasks) => [
-  'You review benchmark tasks written for one always-loaded instruction file of a coding-agent orchestrator. A model',
-  'answers each task once with the file loaded and once without; judges score each answer against the rubric.',
+const reviewPrompt = (frame, unitText, briefs, tasks) => [
+  `You review benchmark tasks written for one ${frame.noun}. ${frame.tasks}`,
+  'A model answers each task once with the file loaded and once without; judges score each answer against the rubric.',
   '', 'The file:', fileBlock(unitText), '',
   'Fail a task when any of these holds: the prompt quotes, names or hints at the file; the right answer does not follow',
   'from the file; a rubric item cannot be checked against an answer, or does not match the brief\'s good answer; the',
@@ -53,9 +54,9 @@ const reviewPrompt = (unitText, briefs, tasks) => [
   'Reply only with JSON: {"reviews": [{"id": "...", "verdict": "pass" or "fail", "note": "one sentence"}]}, one per task.',
 ].join('\n');
 
-const fixPrompt = (unitText, briefs, failed) => [
-  'You wrote these benchmark tasks for the instruction file below, and a reviewer failed them. Fix each one once, using',
-  'the reviewer\'s note. Keep its id. The prompt must not quote, name or hint at the file; the rubric has 3 to 5 checkable',
+const fixPrompt = (frame, unitText, briefs, failed) => [
+  `You wrote these benchmark tasks for the ${frame.noun} below, and a reviewer failed them. ${frame.tasks}`,
+  'Fix each failed task once, using the reviewer\'s note. Keep its id. The prompt must not quote, name or hint at the file; the rubric has 3 to 5 checkable',
   'items that match the brief\'s good answer, with exact names in backticks.',
   '', 'The file:', fileBlock(unitText), '',
   'Briefs:', JSON.stringify(briefs, null, 2), '', 'Failed tasks with the reviewer\'s notes:', JSON.stringify(failed, null, 2), '',
@@ -91,17 +92,17 @@ const planOf = (batches) => batches.flatMap((b) => STEPS.map((step) => ({ batch:
  * Runs one batch's four steps (fix and recheck only when a task failed). `call(step, model, prompt, parse)` makes one
  * paid call. Returns { tasks: the passing tasks, dropped: [{ id, note }], calls }.
  */
-function authorBatch({ batch, briefs, unitText, call }) {
+function authorBatch({ batch, briefs, unitText, frame, call }) {
   const ids = briefs.map((b) => b.id);
-  const drafts = call(`${batch}.write`, WRITER, writePrompt(unitText, briefs), (j) => readTasks(j, ids));
-  const reviews = call(`${batch}.review`, REVIEWER, reviewPrompt(unitText, briefs, drafts), (j) => readReviews(j, ids));
+  const drafts = call(`${batch}.write`, WRITER, writePrompt(frame, unitText, briefs), (j) => readTasks(j, ids));
+  const reviews = call(`${batch}.review`, REVIEWER, reviewPrompt(frame, unitText, briefs, drafts), (j) => readReviews(j, ids));
   const failed = reviews.filter((r) => r.verdict === 'fail');
   if (!failed.length) return { tasks: drafts, dropped: [], fixed: [] };
   const failedIds = failed.map((r) => r.id);
   const failedBriefs = briefs.filter((b) => failedIds.includes(b.id));
   const failedTasks = drafts.filter((t) => failedIds.includes(t.id)).map((t) => ({ ...t, note: failed.find((r) => r.id === t.id).note }));
-  const fixes = call(`${batch}.fix`, WRITER, fixPrompt(unitText, failedBriefs, failedTasks), (j) => readTasks(j, failedIds));
-  const rechecks = call(`${batch}.recheck`, REVIEWER, reviewPrompt(unitText, failedBriefs, fixes), (j) => readReviews(j, failedIds));
+  const fixes = call(`${batch}.fix`, WRITER, fixPrompt(frame, unitText, failedBriefs, failedTasks), (j) => readTasks(j, failedIds));
+  const rechecks = call(`${batch}.recheck`, REVIEWER, reviewPrompt(frame, unitText, failedBriefs, fixes), (j) => readReviews(j, failedIds));
   const stillFailed = new Map(rechecks.filter((r) => r.verdict === 'fail').map((r) => [r.id, r.note]));
   const fixedById = new Map(fixes.map((t) => [t.id, t]));
   const tasks = drafts.map((t) => (failedIds.includes(t.id) ? fixedById.get(t.id) : t)).filter((t) => !stillFailed.has(t.id));
@@ -128,7 +129,7 @@ function authorUnit({ kind, name, repo, briefsFile, out, paid, dryRun = false })
   const plan = planOf(batches).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.batch}.${p.step}.json`)) }));
   if (dryRun) return { status: 'planned', plan, worst: plan.filter((p) => !p.done).length * WORST_PER_CALL, spent: paid.ledger ? ledgerSpent(paid.ledger) : 0 };
   const call = (step, model, prompt, parse) => paidJson({ ...paid, model, prompt, out: path.join(stepsDir, step), label: `${unit.id} ${step}` }, parse).value;
-  const results = batches.map((b) => ({ batch: b, ...authorBatch({ batch: b, briefs: briefs.filter((x) => x.batch === b), unitText: unit.text, call }) }));
+  const results = batches.map((b) => ({ batch: b, ...authorBatch({ batch: b, briefs: briefs.filter((x) => x.batch === b), unitText: unit.text, frame: PAID_FRAME[kind], call }) }));
   const dropped = results.flatMap((r) => r.dropped.map((d) => ({ batch: r.batch, ...d })));
   const baseline = {
     format_version: 1, kind, name, unit_sha256: unit.sha256,
