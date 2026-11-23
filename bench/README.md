@@ -183,6 +183,7 @@ where it fits.
 | How results are scored | [How scoring works](docs/scoring.md) |
 | What can go wrong, and the fix | [Troubleshooting](docs/troubleshooting.md) |
 | The walls around a run and the limits on spend | [Safety and caps](docs/safety-and-caps.md) |
+| What each paid step costs, its cap, and where its results land | [Paid steps](docs/paid-steps.md) |
 | A skill, an agent, a machine agent, your own agent | [skills](docs/skills.md) · [agents](docs/agents.md) · [physical AI](docs/physical-ai.md) · [your own agent](docs/benchmark-your-own-agent.md) |
 | Add an agent type as a plugin, and check it free | [Write a plugin](docs/write-a-plugin.md) |
 | Keep or prune agent files, SOPs and context | [Keep or prune, stages 2 to 4](docs/keep-prune-stages.md) |
