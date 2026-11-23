@@ -1,19 +1,20 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 # FW-38: the A/A run on the LITE pack. vanilla twice on the 8 tasks of run-forced-aa-r2.sh: set a (replicates 1-3)
-# and set b (replicates 4-6) into two out dirs, 48 runs, hard cap 300 credits. Two sets of one arm, because the frozen
-# bench 69149846 predates the vanilla-b=vanilla repeat arm (77c63b93). Same frozen bench, kiro-cli, model, effort,
-# engine, seed, isolation and per-run limits as the forced runs. Judge it in one pass with run-aa-pack-judge.sh. The
-# code-score floor: node <bench>/bench/scenarios/pilot-gaps.js --aa runs-aa-pack/*/a -- runs-aa-pack/*/b.
-# Sets with runs-aa-pack/<task>/<set>.done are skipped, so a rerun resumes.
+# and set b (replicates 4-6), one bench command per set into runs-aa-pack/a and runs-aa-pack/b: 48 runs, hard cap 300
+# credits. Two sets of one arm, because the frozen bench 69149846 predates the vanilla-b=vanilla repeat arm (77c63b93);
+# one dir per set, so `bench compare --base a --head b --aa vanilla` reads them as the A/A pair. Same frozen bench,
+# kiro-cli, model, effort, engine, seed and isolation as the forced runs. The per-run limit is the largest of the 8
+# tasks (68, t6): a run over it is flagged, not stopped (D-67). Judge it in one pass with run-aa-pack-judge.sh.
+# A finished set has runs-aa-pack/<set>.done and is skipped; an unfinished one resumes (bench run --resume).
 #
 #   sh run-aa-pack.sh          dry run: each set's budget and worst case, at the expected spend so far; no call
 #   sh run-aa-pack.sh --go     PAID run (needs the owner's approval: cap 300 credits). Waits for any other paid run.
 #
 # Test hooks: STUB=<cmd> replaces the paid bench command and skips the user-namespace check; HERE=<dir> points at a
 # copy of this folder; WAIT_PAT=<pattern> is the process pattern of the runs to wait for; LOAD_MAX=<n> is the load a
-# task waits under (default 4); HEAVY_LOCK=<file> is the heavy lock a task waits for.
-# shortcut: this is run-forced-small.sh with other arms, tasks and cap; the shared steps move to one lib with FW-22.
+# set waits under (default 4); HEAVY_LOCK=<file> is the heavy lock a set waits for.
+# shortcut: the host checks are run-forced-small.sh's; the shared steps move to one lib with FW-22.
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 WS=$KONDUCTOR_WS
@@ -32,22 +33,16 @@ LOAD_MAX=${LOAD_MAX:-4}
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 CAP=300
 REPS=3
-# The dry run carries this expected spend per set (3 runs at about 5 credits) from set to set: carrying each set's worst
-# case (0.9 x budget + its limit, about 39) would stop the plan halfway although the run's own guard checks real spend.
-EXPECT_PER_SET=${EXPECT_PER_SET:-15}
+SET_BUDGET=150                                           # 24 runs at about 5 credits; cut by the cap guard
+LIMIT=68                                                 # the largest per-run limit of the 8 tasks (t6)
+# The dry run carries this expected spend from set a to set b (24 runs at about 5 credits). Carrying set a's worst case
+# (0.9 x 150 + 68 = 203) would leave set b no room on paper, though the guard before set b checks real spend.
+EXPECT_PER_SET=${EXPECT_PER_SET:-120}
+# The 8 tasks of run-forced-aa-r2.sh and their batch folders (--extra-tasks).
+TASK_IDS=t8-dec-deploy-strategy,t5-qa-checkout-strategy,t5-qa-sync-strategy,t6-req-field-inspections,t2-dr-notify-fanout,t2-arch-dr-split-checkout,t7-program-brief,t1-nfr-report-queries
+BATCHES='t8 t5 t6 t2 t7 t1'
 stop() { echo "stop: $*" >&2; exit 1; }
 case "$GO" in ''|--go) ;; *) echo "usage: sh run-aa-pack.sh [--go]" >&2; exit 64 ;; esac
-
-# task batch runLimit budget: run-forced-aa-r2.sh's tasks and per-run limits. One line runs both sets of a task, each
-# with this budget (3 runs at about 5 credits); a set's budget is never under its run limit, so t6 gets 68.
-TASKS='t8-dec-deploy-strategy t8 23 18
-t5-qa-checkout-strategy t5 23 18
-t5-qa-sync-strategy t5 23 18
-t6-req-field-inspections t6 68 18
-t2-dr-notify-fanout t2 23 18
-t2-arch-dr-split-checkout t2 23 18
-t7-program-brief t7 15 18
-t1-nfr-report-queries t1 23 18'
 
 [ -e "$R" ] || stop "$R is missing (run-forced-aa-r2.sh creates it)"
 [ "$(git -C "$R" rev-parse HEAD)" = "$BENCH_SHA" ] || stop "$R is not at $BENCH_SHA"
@@ -58,15 +53,14 @@ if [ "$GO" = --go ] && [ -z "$STUB" ]; then
   unshare -Urm true 2>/dev/null || stop "user namespaces are blocked in this shell (--isolate unshare needs them): run from your own terminal"
 fi
 
-# Spend so far: every set dir's ledger (runs-aa-pack/<task>/<set>).
+# Spend so far: the ledgers of both set dirs.
 spent_all() {
   node -e 'const {readLedger}=require(process.argv[1]); const fs=require("fs"), p=require("path"); const d=process.argv[2];
-    const dirs=(x)=>fs.existsSync(x)?fs.readdirSync(x,{withFileTypes:true}).filter((e)=>e.isDirectory()).map((e)=>p.join(x,e.name)):[];
-    let s=0; for (const t of dirs(d)) for (const set of dirs(t)) s+=readLedger(set).totals.total; console.log(s.toFixed(2))' \
+    let s=0; for (const set of ["a","b"]) if (fs.existsSync(p.join(d,set))) s+=readLedger(p.join(d,set)).totals.total; console.log(s.toFixed(2))' \
     "$R/bench/runner/lib/credit-ledger.js" "$OUT"
 }
 
-# Budget for one task, as in run-forced-small.sh: a command can spend up to 0.9 x budget + one run's limit. The budget
+# Budget for one set, as in run-forced-small.sh: a command can spend up to 0.9 x budget + one run's limit. The budget
 # is max(own budget, limit), cut so that spent + 0.9 x budget + limit <= CAP. Prints STOP when even one run would not fit.
 budget_for() {
   bs=$1; bl=$2; bb=$3
@@ -99,26 +93,26 @@ wait_host() {
   done
 }
 
-# Runs (or with no --go, prints) one set of one task. Args: task batch limit budget set offset. Dry-run spend is expected.
+# Runs (or with no --go, prints) one set. Args: set offset. The dry run carries the expected spend between sets.
 run_set() {
-  task=$1; batch=$2; limit=$3; budget=$4; set=$5; offset=$6; s=0; after=0; dir=$OUT/$1/$5
-  [ -e "$dir.done" ] && { echo "$task set $set: done, skipped"; return 0; }
-  [ -e "$dir" ] && stop "$dir exists without .done: check it by hand before a rerun"
+  set=$1; offset=$2; s=0; after=0; dir=$OUT/$1; extra=''; resume=''
+  [ -e "$dir.done" ] && { echo "set $set: done, skipped"; return 0; }
+  [ -e "$dir" ] && resume=--resume
   if [ "$GO" = --go ]; then wait_host; s=$(spent_all); else s=$DRY_SPENT; fi
-  budget=$(budget_for "$s" "$limit" "$budget")
-  [ "$budget" = STOP ] && stop "spent $s of $CAP: $task set $set cannot fit one run of $limit"
-  after=$(worst_case "$s" "$budget" "$limit")
-  if [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] $task set $set: spent $s of $CAP, budget $budget, limit $limit, worst case after $after"
-  else printf '| %s | %s | %s | %s | %s | %s |\n' "$task" "$set" "$limit" "$budget" "$s" "$after"; fi
-  set -- node "$R/bench/runner/bench.js" run --suite pilot --tasks "$task" --arms vanilla \
-    --replicates "$REPS" --replicate-offset "$offset" --parallel 1 --extra-tasks "$R/bench/scenarios/$batch" --repo-root "$R" --hide "$R" \
+  budget=$(budget_for "$s" "$LIMIT" "$SET_BUDGET")
+  [ "$budget" = STOP ] && stop "spent $s of $CAP: set $set cannot fit one run of $LIMIT"
+  after=$(worst_case "$s" "$budget" "$LIMIT")
+  if [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] set $set: spent $s of $CAP, budget $budget, limit $LIMIT, worst case after $after${resume:+, resuming}"
+  else printf '| %s | %s | %s | %s | %s |\n' "$set" "$LIMIT" "$budget" "$s" "$after"; fi
+  for b in $BATCHES; do extra=${extra:+$extra,}$R/bench/scenarios/$b; done
+  set -- node "$R/bench/runner/bench.js" run --suite pilot --tasks "$TASK_IDS" --arms vanilla \
+    --replicates "$REPS" --replicate-offset "$offset" --parallel 1 --extra-tasks "$extra" --repo-root "$R" --hide "$R" \
     --isolate unshare --seed 20261121 --model claude-sonnet-5.5 --effort high --agent-engine v3 --kiro-bin "$KBIN" \
-    --python "$PY312" --cache "$CACHE" --budget-credits "$budget" --run-credit-limit "$limit" --out "$dir"
+    --python "$PY312" --cache "$CACHE" --budget-credits "$budget" --run-credit-limit "$LIMIT" --out "$dir" $resume
   if [ "$GO" = --go ]; then
-    mkdir -p "$OUT/$task"
-    # </dev/null: the task list is on this loop's stdin, and the command must not read it.
-    if [ -n "$STUB" ]; then $STUB "$@" </dev/null || stop "$task set $set stub exited $?"
-    else nice -n 10 "$@" </dev/null || stop "$task set $set exited $?"; fi
+    mkdir -p "$OUT"
+    if [ -n "$STUB" ]; then $STUB "$@" </dev/null || stop "set $set stub exited $?"
+    else nice -n 10 "$@" </dev/null || stop "set $set exited $?; the same command resumes it"; fi
     touch "$dir.done"
   else
     DRY_LAST="$*"
@@ -129,10 +123,8 @@ run_set() {
 wait_others
 DRY_SPENT=$(spent_all)
 DRY_LAST=''
-[ "$GO" = --go ] || { echo '| task | set | run limit | budget | spent before (expected) | worst case after this set |'; echo '| --- | --- | --- | --- | --- | --- |'; }
-# Not a pipe: the loop must run in this shell so DRY_SPENT carries from set to set.
-while read -r t b l bud; do run_set "$t" "$b" "$l" "$bud" a 0; run_set "$t" "$b" "$l" "$bud" b "$REPS"; done <<EOF
-$TASKS
-EOF
-if [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] all tasks done, spent $(spent_all) of $CAP; next: bash run-aa-pack-judge.sh --plan"
+[ "$GO" = --go ] || { echo '| set | run limit | budget | spent before (expected) | worst case after this set |'; echo '| --- | --- | --- | --- | --- |'; }
+run_set a 0
+run_set b "$REPS"
+if [ "$GO" = --go ]; then echo "[$(date -u +%H:%M)] both sets done, spent $(spent_all) of $CAP; next: bash run-aa-pack-judge.sh --plan"
 else echo; echo "expected total: $DRY_SPENT of $CAP credits ($EXPECT_PER_SET a set); before each set the guard checks real spend plus that set's worst case against $CAP"; echo "last command: $DRY_LAST"; fi

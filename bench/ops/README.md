@@ -114,8 +114,8 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 
 | File | What it does |
 | --- | --- |
-| `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, all sets in one pass, then the code-score floor. Paid (USD, cap 2). |
-| `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
+| `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, both sets in one pass, then `bench compare --aa vanilla` prints the floor. Paid (USD, cap 2). |
+| `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b, one bench run each) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
 | `run-forced-aa-r2.sh` | Resume of `run-forced-aa.sh` with the budget fix. Paid. |
 | `run-forced-aa.sh` | The forced-skills experiment's two new arms on the frozen LITE bench. Paid. |
 | `run-forced-judge.sh` | Judge pass of the forced-skills run. Paid (USD). |
