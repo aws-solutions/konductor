@@ -6,6 +6,8 @@
 // or rules). The owner's spend rule: every call counts at the larger of 15 credits and its real credits, and the
 // ledger is read before every call, which is refused when spent plus 15 would pass the cap. A call stopped before it
 // reported credits counts at 15. Calls are saved by their output prefix, so a rerun reads a finished call back free.
+// The read, the check and the reservation run under a lock on the ledger, so parallel callers cannot both pass the cap.
+// kiro-cli gets the runner's env allowlist (runner/lib/env.js), never the host env; BENCH_PAID_ENV_KEEP adds names.
 
 const fs = require('node:fs');
 const os = require('node:os');
@@ -13,6 +15,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const sb = require('../runner/lib/sandbox.js');
+const { buildChildEnv } = require('../runner/lib/env.js');
+const { withFileLock } = require('../runner/lib/file-lock.js');
 
 /** The owner's rule: the credits each paid call is counted at, at least. */
 const WORST_PER_CALL = 15;
@@ -32,6 +36,18 @@ function assertOutsideHome(dir, home = os.homedir()) {
   const real = (p) => { let a = path.resolve(p); const rest = []; while (!fs.existsSync(a)) { rest.unshift(path.basename(a)); a = path.dirname(a); } return path.join(fs.realpathSync(a), ...rest); };
   const inside = (h) => !path.relative(real(h), real(dir)).startsWith('..');
   if (!path.isAbsolute(dir) || inside(home)) throw new Error(`work dir ${dir} must be an absolute path outside ${home} (for example under /var/tmp)`);
+}
+
+const CREDENTIAL_NAME = /(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|COOKIE|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|AUTH|SESSION)/i;
+
+/** The env of one paid call: the agent allowlist, plus BENCH_PAID_ENV_KEEP names. Throws on a credential-like name. */
+function paidEnv(baseEnv, home, tmpdir) {
+  const keep = (baseEnv.BENCH_PAID_ENV_KEEP || '').split(',').map((n) => n.trim()).filter(Boolean);
+  const bad = keep.filter((n) => CREDENTIAL_NAME.test(n));
+  if (bad.length) throw new Error(`BENCH_PAID_ENV_KEEP names ${bad.join(', ')}, which looks like a credential; it is never passed to a paid call`);
+  const { env } = buildChildEnv(baseEnv, { home, tmpdir, agentEngine: baseEnv.KIRO_AGENT_ENGINE, keep, konductor: false });
+  if (env.KIRO_AGENT_ENGINE === undefined) delete env.KIRO_AGENT_ENGINE;
+  return env;
 }
 
 /** The counted credits of one call: the larger of 15 and the real credits, or 15 when the call never reported them. */
@@ -57,18 +73,21 @@ function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', 
   if (!(cap > 0)) throw new Error('a paid call needs a cap in credits (--cap N)');
   assertOutsideHome(workDir);
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  const spent = ledgerSpent(ledger);
-  if (spent + WORST_PER_CALL > cap) {
-    const why = `refused before calling ${model}: spent ${spent} + worst ${WORST_PER_CALL} would pass the cap ${cap}`;
-    fs.writeFileSync(`${out}.refused`, `${why}\n`);
-    throw new PaidCallRefused(why);
-  }
+  paidEnv(process.env, workDir, workDir); // refuses a bad BENCH_PAID_ENV_KEEP before anything is reserved
   fs.mkdirSync(workDir, { recursive: true });
   // The reservation is written before the call, so a kill during it (Ctrl-C, SIGKILL, a reboot) still leaves the call
   // counted at 15; the settle line after it adds the real credits above 15. The ledger never under-counts.
   fs.mkdirSync(path.dirname(ledger), { recursive: true });
   const at = new Date().toISOString();
-  fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted: WORST_PER_CALL, reserved: true, at })}\n`);
+  withFileLock(`${ledger}.lock`, () => {
+    const spent = ledgerSpent(ledger);
+    if (spent + WORST_PER_CALL > cap) {
+      const why = `refused before calling ${model}: spent ${spent} + worst ${WORST_PER_CALL} would pass the cap ${cap}`;
+      fs.writeFileSync(`${out}.refused`, `${why}\n`);
+      throw new PaidCallRefused(why);
+    }
+    fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted: WORST_PER_CALL, reserved: true, at })}\n`);
+  });
   const home = fs.mkdtempSync(path.join(workDir, 'home-'));
   const cwd = path.join(home, 'cwd');
   const tmpdir = path.join(home, 'tmp');
@@ -78,7 +97,7 @@ function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', 
     sb.emptyKiroHome(home);
     sb.copyAuthDb(authDb, home);
     r = spawnSync(bin, ['chat', '--no-interactive', '--trust-tools=', '--model', model, '--output-format', 'stream-json', prompt], {
-      cwd, env: { ...process.env, HOME: home, TMPDIR: tmpdir }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024,
+      cwd, env: paidEnv(process.env, home, tmpdir), encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024,
     });
   } finally {
     sb.removeAuthCopy(home);

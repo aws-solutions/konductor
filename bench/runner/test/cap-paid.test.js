@@ -18,6 +18,8 @@ const { runUnitStage, loadUnitBaseline, PILOT_JUDGES } = require('../../cap/unit
 const { unitManifest } = require('../../cap/units.js');
 
 const FAKE = path.join(__dirname, 'fake-kp-kiro.js');
+// A paid call gets only the env allowlist; the fake's own switches are let through by name.
+process.env.BENCH_PAID_ENV_KEEP = ['LOG', 'CREDITS', 'FAIL', 'NOFIX', 'BROKEN', 'BROKEN_FIRST', 'COUNTER', 'UNFINISHED', 'SEE_LEDGER', 'NO_ORACLE', 'TITLE_CASE'].map((n) => `FAKE_KP_${n}`).join(',');
 const BENCH = path.join(__dirname, '..', '..');
 const REPO = path.join(BENCH, '..');
 const spec = (name, contexts = []) => JSON.stringify({ name, config: { description: `${name} desc`, systemPrompt: `You are ${name}.` },

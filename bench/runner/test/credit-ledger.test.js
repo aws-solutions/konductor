@@ -51,13 +51,13 @@ test('totals split runs from judge calls and add up; this command is counted apa
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('a record with unknown credits is kept, counted as unknown and adds 0', () => {
+test('a record with unknown credits is kept, counted as unknown and adds the 15-credit floor', () => {
   const dir = tmp();
   try {
     const l = openLedger({ dir });
     l.record({ kind: 'run', credits: null, arm: 'a' });
     const t = l.totals();
-    assert.equal(t.total, 0);
+    assert.equal(t.total, 15);
     assert.equal(t.unknown, 1);
     assert.equal(lines(dir)[0].credits, null);
     assert.match(l.line(), /1 call\(s\) with unknown credits/);
@@ -120,7 +120,7 @@ test('with a budget the guard counts only this command and reports 90% and 100%'
 test('readLedger tolerates a missing file and counts lines it cannot read', () => {
   const dir = tmp();
   try {
-    assert.deepEqual(readLedger(dir), { file: path.join(dir, LEDGER_FILE), exists: false, entries: [], bad: 0, totals: { run: 0, judge: 0, other: 0, total: 0, calls: 0, unknown: 0 } });
+    assert.deepEqual(readLedger(dir), { file: path.join(dir, LEDGER_FILE), exists: false, entries: [], bad: 0, totals: { run: 0, judge: 0, other: 0, total: 0, calls: 0, unknown: 0, maxCall: 0 } });
     fs.writeFileSync(path.join(dir, LEDGER_FILE), `${JSON.stringify({ kind: 'run', credits: 2 })}\nnot json\n${JSON.stringify({ kind: 'draft', credits: 1 })}\n`);
     const r = readLedger(dir);
     assert.equal(r.bad, 1);
