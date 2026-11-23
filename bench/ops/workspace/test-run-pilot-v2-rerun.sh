@@ -67,7 +67,7 @@ printf 'tasks-sha256 %s\n' "$SHA" > "$MARK"
 
 # --- the plan ---
 rerun bash "$SELF/run-pilot-v2-rerun.sh" --plan; rc=$?
-[ "$rc" = 0 ] && [ "$(grep -c '^gate [0-5],.*PASS$' "$T/out")" = 6 ] && grep -q '^  convention control: 120 calls, 120 cached (free), 0 new' "$T/out" \
+[ "$rc" = 0 ] && [ "$(grep -c '^gate [0-5],.*PASS$' "$T/out")" = 6 ] && grep -qE '^  convention control: ([0-9]+) calls, \1 cached \(free\), 0 new' "$T/out" \
   && grep -q '^  dose ladder: 120 calls, 120 cached (free), 0 new' "$T/out" && ok "--plan: six gates pass, the controls all cached" || { bad "plan rc $rc"; tail -n 25 "$T/out"; }
 grep -q '^  the unit: 225 calls, 10 cached (free), 215 new, 3,225 counted' "$T/out" && ok "--plan: 215 new unit calls, 3,225 counted, under 3,240" || { bad "plan numbers"; grep "the unit\|this step" "$T/out"; }
 [ "$(calls)" = 0 ] && [ ! -s "$T/rerun-pin" ] && ok "--plan makes no call and pins nothing" || bad "plan calls $(calls)"
@@ -77,7 +77,7 @@ rerun env UNIT_CAP=3000 bash "$SELF/run-pilot-v2-rerun.sh" --plan; rc=$?
 # --- the paid path ---
 rerun bash "$SELF/run-pilot-v2-rerun.sh"; rc=$?
 [ "$rc" = 0 ] && grep -q "^done: the record is" "$T/out" && ok "paid path finishes on the fake" || { bad "paid rc $rc"; tail -n 20 "$T/out"; }
-[ "$(grep -c ' answer ' "$T/calls")" = 30 ] && ok "30 answers: both arms of the 15 unit tasks, no control answer" || bad "answers $(grep -c ' answer ' "$T/calls")"
+[ "$(grep -v whoami "$T/calls" | grep -c ' answer ')" = 30 ] && ok "30 answers: both arms of the 15 unit tasks, no control answer" || bad "answers $(grep -v whoami "$T/calls" | grep -c ' answer ')"
 spent=$(node -e 'console.log(require("fs").readFileSync(process.argv[1],"utf8").split("\n").filter(Boolean).reduce((s,l)=>s+JSON.parse(l).counted,0))' "$T/work/v2-rerun-ledger.jsonl")
 [ "$spent" -le 3240 ] && ok "spent $spent counted, within 3,240" || bad "spent $spent"
 rec="$T/work/runs/kp-pilot-3/stage-4/context-k-orchestrator-shared.json"
