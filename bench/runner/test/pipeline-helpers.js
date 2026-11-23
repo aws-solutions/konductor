@@ -103,7 +103,7 @@ function sandbox() {
 
 /** Env that points run-real-pilot.sh at the sandbox. */
 function pilotEnv(s, extra = {}) {
-  return { REPO: s.repo, STATE_DIR: s.state, RESULTS: s.results, CARGO_TARGET: s.cargo, CLI_JS: s.cli, TASKS_FILE: s.tasksFile, REAL_CACHE: path.join(s.root, 'realrepos'), REPS: '2', ...extra };
+  return { REPO: s.repo, STATE_DIR: s.state, RESULTS: s.results, CARGO_TARGET: s.cargo, CLI_JS: s.cli, TASKS_FILE: s.tasksFile, REAL_CACHE: path.join(s.root, 'realrepos'), REPS: '2', BUDGET_CREDITS: '1000', ...extra };
 }
 
 /** A patch (plain git diff, or format-patch with a subject) that adds files to the sandbox repo. */

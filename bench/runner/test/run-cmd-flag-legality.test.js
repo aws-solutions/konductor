@@ -158,7 +158,7 @@ test('a Strands Bedrock run needs a pinned model, --budget-usd and --aws-profile
     const st = (model, ...more) => run(s, ['--arms', 'st-plant-policy', '--model', model, '--isolate', 'none', '--allow-unisolated', ...more]).stderr;
     const bedrock = 'bedrock:qwen.qwen3-coder-next';
     assert.match(st('bedrock:us.anthropic.claude-sonnet-5-5', '--budget-usd', '5', '--aws-profile', 'p'), /pinned id \(qwen\.qwen3-coder-next\); got bedrock:us\.anthropic/);
-    assert.match(st(bedrock, '--aws-profile', 'p'), /a Strands run on Bedrock needs --budget-usd X/);
+    assert.match(st(bedrock, '--aws-profile', 'p'), /a paid run needs --budget-usd N/);
     assert.match(st(bedrock, '--budget-usd', '5'), /a Strands run on Bedrock needs --aws-profile NAME/);
     assert.match(st('fake:/s.json', '--aws-profile', 'p'), /--aws-profile applies to a Strands run only with a bedrock: model/);
     assert.match(st('fake:/s.json', '--aws-creds-file', 'x'), /--aws-creds-file does not apply to Strands arms/);
@@ -168,7 +168,7 @@ test('a Strands Bedrock run needs a pinned model, --budget-usd and --aws-profile
 test('opencode arms are not refused --effort, --stop-on or --max-tool-calls; the run goes on to ask for credentials', () => {
   const s = setup();
   try {
-    const r = run(s, ['--arms', 'oc-vanilla', '--effort', 'high', '--stop-on', 'end_turn', '--max-tool-calls', '3', '--isolate', 'none', '--allow-unisolated']);
+    const r = run(s, ['--arms', 'oc-vanilla', '--budget-usd', '1', '--effort', 'high', '--stop-on', 'end_turn', '--max-tool-calls', '3', '--isolate', 'none', '--allow-unisolated']);
     assert.notEqual(r.status, 0);
     assert.doesNotMatch(r.stderr, /does not apply to/);
     assert.match(r.stderr, /--aws-creds-file is required for opencode arms/);

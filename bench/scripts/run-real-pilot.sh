@@ -42,6 +42,7 @@
 #   N_ARMS        arms per task dir including the A/A repeat            [number of ARMS, plus 1 when ARMS has a konductor arm]
 #   REPS          replicates per cell                                   [5]
 #   MODEL, ENGINE, SEED   passed to bench.js                            [claude-sonnet-5.5, v3, 1]
+#   BUDGET_CREDITS  the credit cap of each task dir's bench.js run (--budget-credits); required, no default
 #   EXPECT_BRANCH, EXPECT_ORCH_SHA, EXPECT_MAIN_SHA   pin the branch and the commits the study depends on. Unset: the
 #                 branch is not checked and the commits seen at launch are pinned for the whole study.
 #   CACHE, CARGO_TARGET, REAL_CACHE   arm cache, cargo target dir, real-repo cache   [STATE_DIR/cache, STATE_DIR/cargo-target, $BENCH_REAL_CACHE or STATE_DIR/realrepos]
@@ -62,8 +63,8 @@
 #   the script checks HEAD, bench/ cleanliness, origin/main and ORCH_DIR between tasks and stops if they move.
 #   Every bench.js call runs with a scratch HOME and a TMPDIR whose path has no "bench" in it; both are removed.
 #
-# COST: no credit cap is set and this script passes no --budget-credits. The running credit total is logged after every
-#   task dir. Plan for several minutes per run: tasks x arms x replicates runs in total.
+# COST: each task dir's bench.js run gets --budget-credits BUDGET_CREDITS, so bench's guard stops new runs at 90% of it.
+#   The running credit total is logged after every task dir. Plan for several minutes per run: tasks x arms x replicates runs in total.
 #
 # AUTONOMY TASKS (kind auton): run only if the smoke test proved the scripted-user/--resume-id tier on the engine
 #   (marker file STATE_DIR/real-pilot.autonomy-ENGINE) or AUTONOMY=1. Otherwise a "SKIPPED (autonomy tier unsupported ...)"
@@ -106,6 +107,7 @@ if [ -n "${ARMS:-}" ]; then :
 elif [ -n "$ORCH_DIR" ]; then ARMS="vanilla,orch-all=dir:$ORCH_DIR,main"
 else ARMS="vanilla,main"; fi
 REPS=${REPS:-5}
+BUDGET_CREDITS=${BUDGET_CREDITS:-}
 if [ -z "${N_ARMS:-}" ]; then # every arm, plus the A/A repeat of the first konductor arm
   N_ARMS=$(awk -F, '{ n = NF; for (i = 1; i <= NF; i++) if ($i != "vanilla") k = 1; print n + k }' <<<"$ARMS")
 fi
@@ -257,6 +259,8 @@ pf() { # ok|FAIL message
 preflight() {
   PF_FAIL=0
   local br head wtsha wtclean orig free fstype mem running dp d
+  if [[ "$BUDGET_CREDITS" =~ ^[0-9]+([.][0-9]+)?$ ]] && awk -v v="$BUDGET_CREDITS" 'BEGIN { exit !(v > 0) }'; then pf ok "credit cap $BUDGET_CREDITS per task dir"
+  else pf FAIL "BUDGET_CREDITS='$BUDGET_CREDITS' is not a positive number: every paid bench.js run needs a credit cap"; fi
   br=$(git -C "$REPO" branch --show-current)
   if [ -z "$EXPECT_BRANCH" ]; then pf ok "branch ${br:-detached} (EXPECT_BRANCH unset, not pinned)"
   elif [ "$br" = "$EXPECT_BRANCH" ]; then pf ok "branch $br"
@@ -359,7 +363,7 @@ run_bench() {
 # common run flags (after `run --suite S --tasks T --arms A`)
 common_flags() {
   printf '%s\0' --agent-engine "$ENGINE" --model "$MODEL" --seed "$SEED" --cache "$CACHE" --cargo-target "$CARGO_TARGET" \
-    --auth-db "$AUTH_DB" --parallel 1
+    --auth-db "$AUTH_DB" --parallel 1 --budget-credits "$BUDGET_CREDITS"
 }
 
 # ---------------------------------------------------------------- plan helpers
@@ -394,7 +398,7 @@ banner() {
   say "STUDY: tasks from $TASKS_FILE, Kiro $ENGINE, $MODEL, profile detailed ($REPS replicates + A/A), seed $SEED, parallel 1"
   say "ARMS : $ARMS (+ A/A repeat of the first konductor arm)"
   say "TASKS: $n task dirs x $EXPECT_RUNS runs = $((n * EXPECT_RUNS)) runs; estimated $(fmt_dur "$est") wall clock"
-  say "COST : NO credit cap set (no --budget-credits). Running total is logged after each task dir."
+  say "COST : --budget-credits $BUDGET_CREDITS per task dir. Running total is logged after each task dir."
   if [ -n "$sk" ]; then say "SKIPPED (autonomy tier unsupported on engine $ENGINE):$sk"; fi
 }
 
@@ -512,7 +516,7 @@ main_loop() {
     st=$(hj complete "$dir" "$N_ARMS" "$REPS" 2>/dev/null || echo no-summary)
     read -r creds runs nul < <(hj credits "$V"/*/ 2>/dev/null || echo "0 0 0")
     say "[$i/$total_n] $name: runner exit $rc, dir state: $st, $(hj stats "$dir" 2>/dev/null)"
-    say "credits: study total ${creds} over ${runs} runs (no cap set); runs with null credits so far: ${nul}"
+    say "credits: study total ${creds} over ${runs} runs (cap $BUDGET_CREDITS per task dir); runs with null credits so far: ${nul}"
     if [ "$rc" = 4 ] || grep -q 'ISOLATION FAILURE' "$V/logs/$name.run.log" 2>/dev/null; then
       say "ISOLATION FAILURE in $name: the installs gate saw a change in the real ~/.konductor/installs. Stopping the study."
       failed="$failed $name(ISOLATION)"; break

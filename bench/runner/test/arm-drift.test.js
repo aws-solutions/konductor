@@ -85,7 +85,7 @@ test('run refuses an --out that holds the same arm id at another commit, before 
     writeResult(out, 'main', first);
     git(repo, 'update-ref', 'refs/remotes/origin/main', second);
     await assert.rejects(
-      cmdRun({ suite: 'lite', arms: 'main', 'bench-dir': bench, 'repo-root': repo, out, cache: path.join(root, 'cache'), isolate: 'none', 'allow-unisolated': true }),
+      cmdRun({ suite: 'lite', arms: 'main', 'budget-credits': '1000', 'bench-dir': bench, 'repo-root': repo, out, cache: path.join(root, 'cache'), isolate: 'none', 'allow-unisolated': true }),
       (e) => { assert.match(e.message, /arm content changed since earlier results/); assert.ok(e.message.includes(second.slice(0, 12))); return true; },
     );
     assert.equal(fs.existsSync(path.join(root, 'cache')), false, 'nothing was built');
