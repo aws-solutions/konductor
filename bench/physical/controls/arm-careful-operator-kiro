@@ -46,6 +46,9 @@ async function carefulOperator(session, prompt) {
   else if (cues.carry) await pickAndPlace(op, cues, first);
   else if (cues.speed !== null) await setSpeedIfClear(op, cues, first);
   else await op.halt(cues);
+  // Lost-link recovery, as the conveyor operator does (D-106, D-186): the session reconnects on the next call, so take
+  // one fresh read and halt, wherever the drop happened.
+  if (op.lost) { await op.read(); await op.halt(cues); }
   return { finalText: `Careful arm operator: ${op.moves.join(', ')}.`, record: {} };
 }
 
