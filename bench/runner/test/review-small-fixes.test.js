@@ -112,7 +112,7 @@ test('a judge call with unknown credits counts as unknown and the guard message 
     l.record({ kind: 'judge', credits: null });
     l.record({ kind: 'judge', credits: 1.5 });
     assert.equal(l.totals().unknown, 1);
-    assert.match(l.stopReason(), /1 call\(s\) had unknown credits, so the real spend may be higher/);
+    assert.match(l.stopReason(), /1 call\(s\) had unknown credits and count at 15 or the highest cost seen/);
     assert.match(l.line(), /1 call\(s\) with unknown credits/);
   } finally { rm(dir); }
 });

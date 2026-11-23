@@ -65,6 +65,7 @@ SELF=$(readlink -f "${BASH_SOURCE[0]}")
 DEFAULT_REPO=$(cd "$(dirname "$SELF")/../.." 2>/dev/null && pwd)
 REPO=${REPO:-$DEFAULT_REPO}
 . "$(dirname "$SELF")/state-dir.sh"
+bench_strict
 STATE_DIR=$(bench_state_dir "${STATE_DIR:-}") || exit 1
 RESULTS=${RESULTS:-$STATE_DIR/results}
 BENCH_DIR=${BENCH_DIR:-$REPO/bench}
@@ -78,7 +79,7 @@ BENCH_PROC_PATTERN=${BENCH_PROC_PATTERN:-'bench/runner/bench\.js'}
 INSTALL_PROC_PATTERN=${INSTALL_PROC_PATTERN:-'konductor[^ ]* (install|update)'}
 CREDS=${CREDS:-${SKILL_BENCH_CREDS:-}}
 CREDS_EXPIRY_UTC=${CREDS_EXPIRY_UTC:-}
-REAL_HOME=$(getent passwd "$(id -un)" | cut -d: -f6)
+REAL_HOME=$(getent passwd "$(id -un)" | cut -d: -f6) || true
 AUTH_DB=${AUTH_DB:-$REAL_HOME/.local/share/kiro-cli/data.sqlite3}
 OC=${OC:-$(command -v opencode || true)}
 EXPOSURE_RUNS=${EXPOSURE_RUNS:-}
@@ -197,7 +198,7 @@ preflight() {
   if [ "${NO_OPENCODE_CHECK:-0}" != 1 ]; then
     [ -n "$OC" ] && [ -x "$OC" ] && pf ok "opencode binary $OC" || pf "$lvl" "opencode binary not found (set OC)"
   fi
-  mkdir -p "$STATE_DIR" "$RESULTS" 2>/dev/null
+  mkdir -p "$STATE_DIR" "$RESULTS" 2>/dev/null || true
   return "$PF_FAIL"
 }
 
@@ -214,6 +215,7 @@ CHILD_PID=""
 on_term() {
   say "signal received: stopping the study (the runner flushes its summary as interrupted)"
   [ -n "$CHILD_PID" ] && kill -TERM "$CHILD_PID" 2>/dev/null
+  return 0
 }
 trap on_term TERM INT HUP
 trap cleanup_scratch EXIT
@@ -225,9 +227,10 @@ run_node() {
   CUR_TD=$(mktemp -d "$SCRATCH_PARENT/xq.XXXXXX") || { cleanup_scratch; return 99; }
   ( cd "$REPO" && exec env HOME="$CUR_SH" TMPDIR="$CUR_TD" CARGO_HOME="$REAL_HOME/.cargo" RUSTUP_HOME="$REAL_HOME/.rustup" node "$CLI_JS" "$@" ) &
   CHILD_PID=$!
-  wait "$CHILD_PID"; local rc=$?
+  local rc=0
+  wait "$CHILD_PID" || rc=$?
   # a trapped signal ends wait early; keep waiting so the scratch dirs outlive the runner's final flush
-  while kill -0 "$CHILD_PID" 2>/dev/null; do wait "$CHILD_PID"; rc=$?; done
+  while kill -0 "$CHILD_PID" 2>/dev/null; do rc=0; wait "$CHILD_PID" || rc=$?; done
   CHILD_PID=""
   cleanup_scratch
   return "$rc"
@@ -266,8 +269,8 @@ case "$MODE" in
   status)
     if dp=$(daemon_pid); then echo "daemon: running, pid $dp"; else echo "daemon: not running"; fi
     echo "log: $LOG"
-    if V=$(study_dir); then run_node cap skill-study --status --study "$V"; else echo "no study yet ($STUDYFILE missing)"; fi
-    echo "last 15 log lines:"; tail -n 15 "$LOG" 2>/dev/null | sed 's/^/  /'
+    if V=$(study_dir); then run_node cap skill-study --status --study "$V" || true; else echo "no study yet ($STUDYFILE missing)"; fi
+    echo "last 15 log lines:"; tail -n 15 "$LOG" 2>/dev/null | sed 's/^/  /' || true
     exit 0 ;;
   stop)
     if dp=$(daemon_pid); then kill -TERM "$dp" && echo "sent SIGTERM to $dp; watch: tail -f $LOG"; else echo "not running"; fi
@@ -287,12 +290,12 @@ if [ "$MODE" = dry-run ]; then
   say "DRY RUN: nothing is built, planned on disk or run"
   if V=$(study_dir); then
     say "study dir: $V"
-    run_node cap skill-study --dry-run --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${SF[@]}" "${RF[@]}"
+    run_node cap skill-study --dry-run --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${SF[@]}" "${RF[@]}" || exit $?
   else
     say "no study yet; the plan that --init would write (free, no model; shown for the chosen tier and skills):"
-    run_node cap skill-plan "${PA[@]}" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} ${FORCED_LOAD:+--forced-load "$FORCED_LOAD"}
+    run_node cap skill-plan "${PA[@]}" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} ${FORCED_LOAD:+--forced-load "$FORCED_LOAD"} || exit $?
   fi
-  exit $?
+  exit 0
 fi
 
 # real run: study dir, plan, daemonize
@@ -317,8 +320,8 @@ fi
 echo $$ > "$PIDFILE"
 V=$(study_dir) || die "no study directory ($STUDYFILE)"
 say "run-skill-bench started, pid $$, study $V"
-run_node cap skill-study --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${SF[@]}" "${RF[@]}"
-rc=$?
+rc=0
+run_node cap skill-study --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${SF[@]}" "${RF[@]}" || rc=$?
 # The last line goes to the log before the pid file goes, so a missing pid file means the log is complete.
 if [ "$rc" = 0 ]; then say "DONE: decisions are in $V/decisions/decisions.md (nothing was applied)"; else say "FAILED or stopped (exit $rc). Rerun $SELF to resume."; fi
 rm -f -- "$PIDFILE"

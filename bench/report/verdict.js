@@ -24,6 +24,7 @@ const { prefixIdentity } = require('./aa-identity.js');
 const { gradedSummary } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
+const { descriptorOf } = require('../runner/lib/harness/runtime.js');
 
 const KEEP = 'KEEP';
 const DISCARD = 'DISCARD';
@@ -242,7 +243,7 @@ function sentenceFor(a, baseLabel, harness = null) {
   if (a.aaRepeatOf) return `A/A repeat of ${a.aaRepeatOf}. It exists to measure run-to-run noise, so it gets no verdict.`;
   if (a.verdict === NEE) return `Not enough evidence. ${a.reason}.`;
   const dir = a.quality.delta > 0 ? 'higher' : 'lower';
-  const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the ${harness === 'claude-code' ? 'cost' : 'credits'} per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).${censoredNote(a.cost)}`;
+  const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the ${harness ? 'cost' : 'credits'} per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).${censoredNote(a.cost)}`;
   const verb = a.verdict === KEEP ? 'Keep' : 'Discard';
   return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired ${levelText(a.quality.level ?? 0.95)} interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${cost}`;
 }
@@ -270,7 +271,9 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
 
   const all = inputs.flatMap((i) => i.rows);
   const unit = inputs[0].a.scores.unit;
-  const harness = inputs.every((i) => i.run.harness === 'claude-code') ? 'claude-code' : null;
+  // The one runtime every input ran on when its descriptor has its own cost words (report.costWords), else null.
+  const runtimes = [...new Set(inputs.map((i) => i.run.harness))];
+  const harness = runtimes.length === 1 && descriptorOf(runtimes[0]).report.costWords ? runtimes[0] : null;
   const baseRows = all.filter((r) => r.armId === baseline);
   const baselineLabel = [...new Set(baseRows.map((r) => r.label))].join(' + ');
   const labels = [...new Set(all.filter((r) => r.armId !== baseline).map((r) => r.label))];

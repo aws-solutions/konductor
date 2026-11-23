@@ -51,6 +51,7 @@
 #   AC_AUTONOMY_GLOB [pilot-autonomy-*]  task dir names P3 moves and reruns
 #   AC_PILOT_PIDFILE / AC_PILOT_LOG / AC_PILOT_STUDYFILE [$AC_STATE_DIR/real-pilot.{pid,log,study}]
 #   AC_PILOT_SCRIPT [run-real-pilot.sh beside this script]  AC_PILOT_PROC_PATTERN [run-real-pilot]
+#   BUDGET_CREDITS  passed on to run-real-pilot.sh for the P3 rerun; its preflight refuses to run without it
 #   AC_SB_SCRIPT [run-skill-bench.sh beside this script]    AC_SB_STATE_DIR [$AC_STATE_DIR]
 #   AC_SB_SKILLS / SB_SKILLS  comma list for run-skill-bench --skills   [unset: no filter]
 #   AC_SB_RESULTS [auto: the roomiest of AC_RESULTS_CANDIDATES]   AC_RESULTS_CANDIDATES [/var/tmp:/tmp, colon separated]
@@ -75,6 +76,7 @@ set -u -o pipefail
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 SELF_DIR=$(dirname "$SELF")
 . "$SELF_DIR/state-dir.sh"
+bench_strict
 AC_STATE_DIR=$(bench_state_dir "${AC_STATE_DIR:-}") || exit 1
 export AC_STATE_DIR
 for a in "$@"; do

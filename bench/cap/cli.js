@@ -10,7 +10,8 @@ const { BENCH_DIR, realDir } = require('../runner/lib/tasks.js');
 const { repoRootOf } = require('../runner/lib/flag-values.js');
 const { resolveArm } = require('../runner/lib/arms.js');
 const { prepareAll } = require('../runner/lib/orchestrate.js');
-const { DEFAULT_ENGINE, AGENT_ENGINES } = require('../runner/lib/harness/runtime.js');
+const { DEFAULT_ENGINE, AGENT_ENGINES, DEFAULT_RUNTIME, descriptorOf } = require('../runner/lib/harness/runtime.js');
+const { CAP_RUNTIMES, ACTING_RUNTIME, capRuntime, budgetFlagOf, capHarness } = require('./runtimes.js');
 const sandbox = require('../runner/lib/sandbox.js');
 const procs = require('../runner/lib/procs.js');
 const { resolveBase } = require('./source.js');
@@ -22,7 +23,7 @@ const { baselineUpdate } = require('./baseline.js');
 const { buildVariant, verifyInstalled, reachWarning, checkScratch } = require('./variant.js');
 const { planCap } = require('./plan.js');
 const { guardInstalls } = require('./guard.js');
-const { EXPECTED_TOOL, ID_RE } = require('./registry.js');
+const { ID_RE } = require('./registry.js');
 const { makeCapCaller, DEFAULT_MODEL } = require('./model.js');
 const { draftCapability, importQueries, writeDraft } = require('./draft.js');
 const trig = require('./trigger.js');
@@ -97,7 +98,7 @@ function skeletonFor(c, specs) {
     id: c.id, kind: c.kind, path: c.path, owner: '', class: 'uplift',
     tasks: { lift: [], trigger: [], headroom: {} },
     trigger: { gen: 1, queries: [] },
-    expect: { 'kiro-cli': { tool: EXPECTED_TOOL['kiro-cli'][c.kind], ...(acting.length ? { actingAgents: acting } : {}) }, opencode: { tool: EXPECTED_TOOL.opencode[c.kind] } },
+    expect: Object.fromEntries(CAP_RUNTIMES.map((d) => [d.id, { tool: d.capabilities.tools[c.kind], ...(d.capabilities.actingAgents && acting.length ? { actingAgents: acting } : {}) }])),
     notes: '',
   };
 }
@@ -192,7 +193,7 @@ function checkReach(opts, repo, benchDir, base) {
   try {
     const specs = loadAgentSpecs(b.dir);
     const reg = loadRegistry(benchDir).entries.find((e) => e.data?.id === first.id)?.data;
-    const acting = list(opts['acting-agent']).length ? list(opts['acting-agent']) : reg?.expect?.['kiro-cli']?.actingAgents?.length ? reg.expect['kiro-cli'].actingAgents : ['konductor'];
+    const acting = list(opts['acting-agent']).length ? list(opts['acting-agent']) : reg?.expect?.[ACTING_RUNTIME]?.actingAgents?.length ? reg.expect[ACTING_RUNTIME].actingAgents : ['konductor'];
     return reachWarning({ ops, specs, actingAgents: acting });
   } finally { b.cleanup(); }
 }
@@ -334,19 +335,19 @@ const RUN_PASSTHROUGH = ['run-credit-limit', 'auth-db', 'model', 'effort', 'kiro
 function liveRunOpts({ opts, harness, base, tasksDir, taskIds, reps, out, seed, repo, benchDir, extraTasks }) {
   const refName = base === 'main' ? 'origin/main' : base;
   const o = {
-    _: [], suite: 'cap', arms: `${harness === 'opencode' ? 'oc-' : ''}base=${refName}`, tasks: taskIds.join(','), replicates: String(reps), parallel: '1', out, seed: String(seed),
+    _: [], suite: 'cap', arms: `${descriptorOf(harness).armPrefix}base=${refName}`, tasks: taskIds.join(','), replicates: String(reps), parallel: '1', out, seed: String(seed),
     'extra-tasks': [tasksDir, ...extraTasks].join(','), 'bench-dir': benchDir, 'repo-root': repo,
     'stop-on': opts['stop-on'] && opts['stop-on'] !== true ? opts['stop-on'] : 'first-load',
     'max-tool-calls': opts['max-tool-calls'] && opts['max-tool-calls'] !== true ? opts['max-tool-calls'] : '4',
-    'censored-floor': opts['censored-floor'] && opts['censored-floor'] !== true ? opts['censored-floor'] : harness === 'opencode' ? '0.5' : '0.5',
+    'censored-floor': opts['censored-floor'] && opts['censored-floor'] !== true ? opts['censored-floor'] : '0.5',
   };
   for (const k of RUN_PASSTHROUGH) if (opts[k] !== undefined) o[k] = opts[k];
-  if (harness === 'opencode') o['budget-usd'] = opts['budget-usd']; else o['budget-credits'] = opts['budget-credits'];
+  o[budgetFlagOf(harness)] = opts[budgetFlagOf(harness)];
   return o;
 }
 
 async function liveRun({ opts, cap, queries, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log, profile = null }) {
-  const budgetFlag = harness === 'opencode' ? 'budget-usd' : 'budget-credits';
+  const budgetFlag = budgetFlagOf(harness);
   // A profile means credits are tracked in the ledger without a cap; without one a live run still needs a guard.
   if (!profile && (opts[budgetFlag] === undefined || opts[budgetFlag] === true)) throw new Error(`--${budgetFlag} is required for live mode: every query is a real agent run`);
   const slug = cap.id.replace(':', '-');
@@ -384,7 +385,7 @@ function runsMode({ opts, cap, outDir, benchDir, extraTasks, base }) {
   if (!rows.length) throw new Error(`no run in ${dirs.join(', ')} counts for ${cap.id}: a run needs a loadCheck (a konductor arm) and a task that lists ${cap.name} in loadCheck.mustLoad or mustNotLoad, or has it as a target (dropped: ${Object.entries(dropped).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(', ') || 'none'})`);
   const score = scoreTrigger(rows);
   const shares = trig.loadShares(rows);
-  const harness = results.find((r) => r.harness)?.harness ?? 'kiro-cli';
+  const harness = results.find((r) => r.harness)?.harness ?? DEFAULT_RUNTIME;
   const reps = Math.max(...score.queries.map((q) => q.reps));
   const pct = (a, b) => (b ? `${a} of ${b} (${Math.round((100 * a) / b)}%)` : 'n/a');
   const report = `${trig.renderTriggerReport({ cap, harness, mode: 'runs', split: 'task runs', reps, score, credits: 0 }).trimEnd()}\n\n## From the runs' load check\n\n- should-load runs that loaded ${cap.name}: ${pct(shares.loaded, shares.shouldRuns)}\n- of those, loaded before the first file write: ${pct(shares.beforeWrite, shares.loaded)}\n- false loads (runs of twins and controls that list it in mustNotLoad): ${pct(shares.falseLoads, shares.falseRuns)}\n- dropped runs: ${Object.entries(dropped).map(([k, n]) => `${k} ${n}`).join(', ')}\n`;
@@ -402,8 +403,7 @@ async function cmdTrigger(opts) {
   if (!capId) throw new Error('--cap is required (for example skill:backend-review)');
   const mode = opts.mode;
   if (mode !== 'proxy' && mode !== 'live' && mode !== 'runs') throw new Error('--mode takes proxy, live or runs');
-  const harness = opts.harness && opts.harness !== true ? opts.harness : 'kiro-cli';
-  if (!['kiro-cli', 'opencode'].includes(harness)) throw new Error('--harness takes kiro-cli or opencode');
+  const harness = capHarness(opts.harness);
   const split = opts.split && opts.split !== true ? opts.split : 'all';
   const profile = optionalProfile(opts.profile);
   const reps = profile ? replicatesFor(profile, opts.reps) : intIn(opts.reps, 'reps', 1, 20, 3);
@@ -427,7 +427,7 @@ async function cmdTrigger(opts) {
     const queries = opts.queries && opts.queries !== true ? trig.queriesFromDraft(path.resolve(opts.queries), capId) : trig.queriesFromRegistry(entry ?? { id: capId, trigger: { queries: [] } }, split);
     const fromRun = opts['from-run'] && opts['from-run'] !== true ? path.resolve(opts['from-run']) : null;
     const fromArm = opts['from-arm'] && opts['from-arm'] !== true ? opts['from-arm'] : null;
-    const acting = opts['acting-agent'] && opts['acting-agent'] !== true ? opts['acting-agent'] : entry?.expect?.['kiro-cli']?.actingAgents?.[0] ?? 'konductor';
+    const acting = opts['acting-agent'] && opts['acting-agent'] !== true ? opts['acting-agent'] : entry?.expect?.[ACTING_RUNTIME]?.actingAgents?.[0] ?? 'konductor';
     const seed = opts.seed === undefined ? seedOf(`${capId}:trigger`) : Number(opts.seed);
     const model = opts.model && opts.model !== true ? opts.model : DEFAULT_MODEL;
     const splitLabel = opts.queries ? 'draft (no splits)' : split;
@@ -449,13 +449,13 @@ async function cmdTrigger(opts) {
       return;
     }
 
-    surface = harness === 'opencode'
+    surface = capRuntime(harness).capabilities.surface === 'skill-index'
       ? opencodeSurface({ baseDir: b.dir, fromRun, armName: fromArm })
       : kiroSurface({ baseDir: b.dir, actingAgent: acting, fromRun, armName: fromArm });
     if (surface.missing?.length) log(`warning: the filter lists ${surface.missing.length} name(s) with no file in the tree: ${surface.missing.join(', ')}`);
     if (opts['dry-run']) {
       // kiro-cli asks twice per query and repeat (search words, then the pick); opencode once, with the index in the prompt.
-      const calls = queries.length * reps * (harness === 'opencode' ? 1 : 2);
+      const calls = queries.length * reps * capRuntime(harness).capabilities.proxyCallsPerQuery;
       const cross = crossFraction > 0 ? ' The --crosscheck sample would also run live.' : '';
       console.log(`dry run: proxy mode would make up to ${calls} model call(s) (${queries.length} queries x ${reps} rep(s)), about ${(calls * PROXY_CREDITS_PER_CALL).toFixed(1)} credits at about ${PROXY_CREDITS_PER_CALL} per call.${cross} No model call was made.`);
       return;
@@ -504,8 +504,7 @@ async function cmdTrigger(opts) {
 function cmdPruneReport(opts) {
   const { repo, benchDir } = common(opts);
   if (!opts.base || opts.base === true) throw new Error('prune-report needs --base REF, so reachability and usage refer to a known tree');
-  const harness = opts.harness && opts.harness !== true ? opts.harness : 'both';
-  if (!['kiro-cli', 'opencode', 'both'].includes(harness)) throw new Error('--harness takes kiro-cli, opencode or both');
+  const harness = capHarness(opts.harness, { both: true });
   const minRaw = opts['min-exposure'] === undefined ? String(DEFAULT_MIN_EXPOSURE) : String(opts['min-exposure']);
   if (!/^\d+$/.test(minRaw) || Number(minRaw) < MIN_EXPOSURE_FLOOR) throw new Error(`--min-exposure takes a whole number of at least ${MIN_EXPOSURE_FLOOR}: a load rate from fewer runs says nothing`);
   if (Number(minRaw) < DEFAULT_MIN_EXPOSURE) console.error(`note: --min-exposure ${minRaw} is under the default of ${DEFAULT_MIN_EXPOSURE}; confidence is never high below ${HIGH_MIN_EXPOSED} exposed runs`);
@@ -597,7 +596,7 @@ function cmdForcedPrefix(opts) {
   const capId = ids[0];
   const kind = capId.slice(0, capId.indexOf(':'));
   if (!FORCED_KINDS.includes(kind)) throw new Error(`${capId} is not a skill, SOP or agent: only those can be forced`);
-  const harness = opts.harness === undefined ? 'kiro-cli' : String(opts.harness);
+  const harness = opts.harness === undefined ? DEFAULT_RUNTIME : String(opts.harness);
   if (!HARNESSES.includes(harness)) throw new Error(`--harness takes ${HARNESSES.join(' or ')}`);
   const b = resolveBase(base, repo);
   try { if (!scanRepo(b.dir).has(capId)) throw new Error(`unknown capability ${capId} at ${b.label}`); } finally { b.cleanup(); }
@@ -607,7 +606,7 @@ function cmdForcedPrefix(opts) {
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, kind === 'skill' ? `forced-prefix-${name}-${harness}.txt` : `forced-prefix-${kind}-${name}-${harness}.txt`);
   fs.writeFileSync(file, text);
-  const arm = harness === 'opencode' ? 'oc-frc' : 'frc';
+  const arm = `${descriptorOf(harness).armPrefix}frc`;
   console.log([
     `wrote ${file} (sha256 ${prefixHash(text)})`,
     `Use it on a forced arm and on its A/A repeat, in a run of their own: --arms ${arm}=REF,${arm}-b=REF,... --arm-prefix ${arm}=${file},${arm}-b=${file}`,

@@ -25,14 +25,20 @@ const { MIN_JUDGES } = require('../judge/score.js');
 const C = require('./charts.js');
 const { buildPaired, pairedBlocks } = require('./paired.js');
 const { levelHeader } = require('../scenarios/levels.js');
+const { DESCRIPTORS } = require('../runner/lib/harness/descriptors.js');
+const { descriptorOf } = require('../runner/lib/harness/runtime.js');
 
-const SPECS = [
-  { id: 'kiroVanilla', harness: 'kiro-cli', role: 'vanilla', unit: 'credits', flag: 'kiro-vanilla' },
-  { id: 'kiroKonductor', harness: 'kiro-cli', role: 'konductor', unit: 'credits', flag: 'kiro-konductor' },
-  { id: 'ccVanilla', harness: 'claude-code', role: 'vanilla', unit: 'USD', flag: 'cc-vanilla' },
-  { id: 'ccKonductor', harness: 'claude-code', role: 'konductor', unit: 'USD', flag: 'cc-konductor' },
-];
-const HARNESS_NAME = { 'kiro-cli': 'Kiro CLI', 'claude-code': 'Claude Code' };
+// The two harnesses of the table: the descriptors with a `report.factorialKey`, in registry order (A Kiro CLI, B Claude
+// Code). The key prefixes the cell ids (kiroVanilla), the contrast ids (kiroEffect), the cost ratios and the flags.
+const [A, B] = DESCRIPTORS.filter((d) => d.report.factorialKey);
+const HARNESSES = [A.id, B.id];
+const HARNESS_NAME = { [A.id]: A.label, [B.id]: B.label };
+const keyOf = (d) => d.report.factorialKey;
+const cellId = (d, role) => `${keyOf(d)}${role === 'vanilla' ? 'Vanilla' : 'Konductor'}`;
+const SPECS = [A, B].flatMap((d) => ['vanilla', 'konductor'].map((role) => ({
+  id: cellId(d, role), harness: d.id, role, unit: d.costUnit === 'usd' ? 'USD' : 'credits', flag: `${keyOf(d)}-${role}`,
+})));
+const [AV, AK, BV, BK] = SPECS.map((x) => x.id);
 const MIN_REPS = 2;
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -70,7 +76,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
   if (!Array.isArray(dirs) || !dirs.length) throw new Error(`${where}: no run directory given`);
   let run;
   try { run = loadRuns(dirs); } catch (e) { throw new Error(`${where}: ${e.message}`); }
-  if (run.harness !== spec.harness) throw new Error(`${where}: expected a ${spec.harness} run directory, found ${run.harness}. Check the flags: ${spec.harness === 'kiro-cli' ? 'a Kiro cell cannot hold Claude Code or opencode results' : 'a Claude Code cell holds cc- arms only'}`);
+  if (run.harness !== spec.harness) throw new Error(`${where}: expected a ${spec.harness} run directory, found ${run.harness}. Check the flags: ${descriptorOf(spec.harness).armPrefix ? `a ${HARNESS_NAME[spec.harness]} cell holds ${descriptorOf(spec.harness).armPrefix} arms only` : `a ${HARNESS_NAME[spec.harness]} cell cannot hold the results of another runtime`}`);
   if (arm) {
     const present = uniq(run.runs.map((e) => e.armId)).sort();
     if (!present.includes(arm)) throw new Error(`${where}: arm ${arm} is not in the run directory; it holds ${present.length ? present.join(', ') : 'no arm'}`);
@@ -81,10 +87,11 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
   const arms = uniq(executed.map((e) => e.armId));
   if (arms.length !== 1) throw new Error(`${where}: exactly one arm per cell is expected, found ${arms.length ? arms.join(', ') : 'none'}${arms.length > 1 ? `. Pick one with --${spec.flag} DIR:ARM or --cell ${spec.id}=DIR:ARM` : ''}`);
   const armId = arms[0];
-  const isVanillaArm = armId === 'vanilla' || armId === 'cc-vanilla';
+  const prefix = descriptorOf(spec.harness).armPrefix;
+  const isVanillaArm = armId === `${prefix}vanilla`;
   if (spec.role === 'vanilla' && !isVanillaArm) throw new Error(`${where}: the arm is ${armId}, expected vanilla`);
   if (spec.role === 'konductor' && isVanillaArm) throw new Error(`${where}: the arm is ${armId}; a konductor cell needs a konductor arm`);
-  if (spec.harness === 'claude-code' && !armId.startsWith('cc-')) throw new Error(`${where}: arm ${armId} is not a Claude Code arm`);
+  if (prefix && !armId.startsWith(prefix)) throw new Error(`${where}: arm ${armId} is not a ${HARNESS_NAME[spec.harness]} arm`);
 
   const a = analyze({ run, tasks, baseline: armId, scoringFile, qualityPack, quoteRule });
   if (a.scores.unit !== spec.unit) throw new Error(`${where}: cost unit is ${a.scores.unit}, expected ${spec.unit}; units are never mixed across harnesses`);
@@ -169,7 +176,7 @@ function checkComparable(cells) {
     const revs = cells.map((c) => (c.revisions[t] ?? ['none'])[0]);
     if (uniq(revs).length > 1) throw new Error(`task ${t} was judged against different rubric revisions: ${cells.map((c, i) => `${c.spec.id} ${revs[i]}`).join(', ')}`);
   }
-  for (const h of ['kiro-cli', 'claude-code']) {
+  for (const h of HARNESSES) {
     const pair = cells.filter((c) => c.spec.harness === h);
     if (pair[0].unit !== pair[1].unit) throw new Error(`cost units differ inside ${h}: ${pair[0].unit} and ${pair[1].unit}`);
   }
@@ -230,11 +237,11 @@ function contrastOf(label, tasks, cellsById, pick) {
 
 const q = (id, t, c) => c[id].byTask[t].quality ?? NaN;
 const CONTRASTS = [
-  { id: 'kiroEffect', label: 'konductor effect in Kiro CLI (konductor minus vanilla)', pick: (c, t) => q('kiroKonductor', t, c) - q('kiroVanilla', t, c) },
-  { id: 'ccEffect', label: 'konductor effect in Claude Code (konductor minus vanilla)', pick: (c, t) => q('ccKonductor', t, c) - q('ccVanilla', t, c) },
-  { id: 'harnessVanilla', label: 'harness effect, vanilla (Claude Code minus Kiro CLI)', pick: (c, t) => q('ccVanilla', t, c) - q('kiroVanilla', t, c) },
-  { id: 'harnessKonductor', label: 'harness effect, konductor (Claude Code minus Kiro CLI)', pick: (c, t) => q('ccKonductor', t, c) - q('kiroKonductor', t, c) },
-  { id: 'interaction', label: 'interaction (Claude Code konductor effect minus Kiro CLI konductor effect)', pick: (c, t) => (q('ccKonductor', t, c) - q('ccVanilla', t, c)) - (q('kiroKonductor', t, c) - q('kiroVanilla', t, c)) },
+  { id: `${keyOf(A)}Effect`, label: `konductor effect in ${A.label} (konductor minus vanilla)`, pick: (c, t) => q(AK, t, c) - q(AV, t, c) },
+  { id: `${keyOf(B)}Effect`, label: `konductor effect in ${B.label} (konductor minus vanilla)`, pick: (c, t) => q(BK, t, c) - q(BV, t, c) },
+  { id: 'harnessVanilla', label: `harness effect, vanilla (${B.label} minus ${A.label})`, pick: (c, t) => q(BV, t, c) - q(AV, t, c) },
+  { id: 'harnessKonductor', label: `harness effect, konductor (${B.label} minus ${A.label})`, pick: (c, t) => q(BK, t, c) - q(AK, t, c) },
+  { id: 'interaction', label: `interaction (${B.label} konductor effect minus ${A.label} konductor effect)`, pick: (c, t) => (q(BK, t, c) - q(BV, t, c)) - (q(AK, t, c) - q(AV, t, c)) },
 ];
 
 function ratio(num, den) { return fin(num) && fin(den) && den > 0 ? num / den : null; }
@@ -271,7 +278,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
     }
     return [spec.id, c];
   }));
-  const costRatios = { kiro: costRatio(byId.kiroVanilla, byId.kiroKonductor), cc: costRatio(byId.ccVanilla, byId.ccKonductor) };
+  const costRatios = { [keyOf(A)]: costRatio(byId[AV], byId[AK]), [keyOf(B)]: costRatio(byId[BV], byId[BK]) };
   const timeouts = cells.filter((c) => c.timeouts > 0).map((c) => `${labelOf(c)}: ${c.timeouts}`);
   const out = [...notes];
   if (timeouts.length) out.push(`Timed-out runs stay in every mean, scored on whatever they produced (zero when nothing), and are marked in the task table. The "excluding timeouts" row drops them. Timeouts: ${timeouts.join('; ')}.`);
@@ -290,7 +297,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
   const levelLine = levelHeader(loaded.map((c) => ({ cell: labelOf(c.spec), level: c.run.config?.level ?? null })));
   const result = {
     schemaVersion: 1, kind: 'factorial-2x2', quote, tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
-    descriptive: !intervals, descriptiveReason, model: loaded[0].model, effort: loaded[0].effort, units: { 'kiro-cli': 'credits', 'claude-code': 'USD' },
+    descriptive: !intervals, descriptiveReason, model: loaded[0].model, effort: loaded[0].effort, units: Object.fromEntries(HARNESSES.map((h) => [h, SPECS.find((x) => x.harness === h).unit])),
     judges: { backend: loaded[0].panel.backend, panel: loaded[0].panel.judges, models: loaded[0].panel.models },
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
@@ -324,10 +331,9 @@ function factorialSensitivity(res, o) {
 
 // ---- charts ----
 
-const HARNESSES = ['kiro-cli', 'claude-code'];
 const COST_BOUND = { lower: 'lower bound', upper: 'upper bound', both: 'approximate' };
-const effectOf = { 'kiro-cli': 'kiroEffect', 'claude-code': 'ccEffect' };
-const costOf = { 'kiro-cli': 'kiro', 'claude-code': 'cc' };
+const costOf = Object.fromEntries([A, B].map((d) => [d.id, keyOf(d)]));
+const effectOf = Object.fromEntries([A, B].map((d) => [d.id, `${keyOf(d)}Effect`]));
 
 /**
  * Three SVG charts as a Map(name -> svg), drawn with the same helpers as `report`. Quality is one 0..100 axis for all
@@ -461,8 +467,10 @@ function renderFactorial(res, { charts = null } = {}) {
     ...chart('konductor-effect', 'Konductor effect on quality in each harness'),
     D.h(2, 'Cost: konductor over vanilla, inside each harness'),
     D.table(['harness', 'unit', 'vanilla per run', 'konductor per run', 'ratio per run', 'ratio per successful run'], [
-      ['Kiro CLI', res.costRatios.kiro.unit, f2(res.costRatios.kiro.vanillaPerRun), f2(res.costRatios.kiro.konductorPerRun), ratioText(res.costRatios.kiro, 'perRun'), ratioText(res.costRatios.kiro, 'perSuccess')],
-      ['Claude Code', res.costRatios.cc.unit, f2(res.costRatios.cc.vanillaPerRun), f2(res.costRatios.cc.konductorPerRun), ratioText(res.costRatios.cc, 'perRun'), ratioText(res.costRatios.cc, 'perSuccess')],
+      ...HARNESSES.map((h) => {
+        const r = res.costRatios[costOf[h]];
+        return [HARNESS_NAME[h], r.unit, f2(r.vanillaPerRun), f2(r.konductorPerRun), ratioText(r, 'perRun'), ratioText(r, 'perSuccess')];
+      }),
     ]),
     ...chart('cost-ratio', 'Cost ratio, konductor over vanilla, in each harness'),
     D.note('Credits and USD are different units. Only the ratio inside a harness is meaningful; the raw figures of the two harnesses are never compared. ">=" marks a ratio whose konductor side has runs with no metered cost, "<=" a vanilla side with such runs, "~" both.'),

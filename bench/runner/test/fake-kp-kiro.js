@@ -78,6 +78,8 @@ if (process.env.FAKE_KP_SEE_LEDGER) {
   fs.copyFileSync(from, to);
 }
 const text = process.env.FAKE_KP_BROKEN === kind || brokenFirst ? 'I cannot answer in JSON.' : reply ? JSON.stringify(reply) : `Reply: ${prompt.includes('<<<FILE') ? 'UNIT-LOADED ' : ''}every point answered.`;
+// FAKE_KP_ENV_OUT=<file>: writes the env the call was given (the env allowlist test).
+if (process.env.FAKE_KP_ENV_OUT) fs.writeFileSync(process.env.FAKE_KP_ENV_OUT, JSON.stringify(process.env));
 if (process.env.FAKE_KP_LOG) fs.appendFileSync(process.env.FAKE_KP_LOG, `${model} ${kind} ${process.env.HOME}\n`);
 const line = (type, data) => process.stdout.write(`${JSON.stringify({ type, data })}\n`);
 line('metadata', { sessionId: 'fake-kp', meteringUsage: [{ value: Number(process.env.FAKE_KP_CREDITS ?? 0.5), unit: 'credit' }] });

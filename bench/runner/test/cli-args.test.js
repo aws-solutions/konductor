@@ -97,7 +97,7 @@ test('run: a typo next to otherwise valid flags launches nothing and creates no 
   const s = sandbox();
   try {
     const out = path.join(s.root, 'out');
-    const base = ['run', '--suite', 'lite', '--arms', 'vanilla', '--replicates', '1', '--out', out];
+    const base = ['run', '--budget-credits', '1000', '--suite', 'lite', '--arms', 'vanilla', '--replicates', '1', '--out', out];
     for (const typo of [['--arm', 'vanilla'], ['--replicate', '1'], ['--budget-credit', '3'], ['--parallell', '1'], ['--arms=vanilla'], ['--prepare_only'], ['-arms', 'vanilla'], ['-s', 'lite']]) {
       const r = s.cli([...base, ...typo]);
       assert.equal(r.status, 2, `${typo.join(' ')}: ${r.stderr}`);

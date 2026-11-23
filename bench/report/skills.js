@@ -8,7 +8,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { median, mean } = require('./stats.js');
 const { parseStream } = require('../runner/lib/stream.js');
-const { runtimeOf } = require('../runner/lib/harness/runtime.js');
+const { runtimeOf, DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
+const { DESCRIPTORS } = require('../runner/lib/harness/descriptors.js');
+
+/** The runtime an arm id names by its descriptor's arm prefix (no prefix: the default runtime). For runs with no result.json. */
+const runtimeOfArmId = (armId) => DESCRIPTORS.find((d) => d.armPrefix && armId.startsWith(d.armPrefix))?.id ?? DEFAULT_RUNTIME;
 const { SKILL_FIELDS, extractSkills, resultFields, catalogFrom, listCatalogDir, startupKiro, builtinStartup } = require('../runner/lib/skills.js');
 const { loadOrderOf } = require('../runner/lib/load-check.js');
 
@@ -189,7 +193,7 @@ function collectRows(runDir, { tasks = new Map(), repoRoot = null } = {}) {
         if (!fs.existsSync(streamFile)) continue;
         const result = readJson(path.join(runPath, 'result.json'));
         const rec = (config.arms ?? []).find((a) => a.id === armId);
-        const runtime = result ? runtimeOf(result) : armId.startsWith('oc-') ? 'opencode' : armId.startsWith('cc-') ? 'claude-code' : 'kiro-cli';
+        const runtime = result ? runtimeOf(result) : runtimeOfArmId(armId);
         const vanilla = rec ? rec.ref == null : /(^|-)vanilla$/.test(armId);
         ctxCache.v ??= armContext({ runDir: dir, armId, config, repoRoot, runtime, vanilla });
         const task = tasks.get(taskId) ?? { target: null, class: 'unknown' };

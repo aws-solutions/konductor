@@ -34,4 +34,11 @@ module.exports = Object.freeze({
     timeNote: 'stream.jsonl has no per-event timestamps; time is only known for the whole run',
     skillsListing: 'slash-commands',
   }),
+  report: Object.freeze({
+    factorialKey: 'cc',
+    usdNote: 'USD is the list price Claude Code reports (`total_cost_usd`, cost basis list); it is not a bill. Tokens are summed from the per-model usage of the last result line, which covers the main session and its sub-agents; calls are the distinct assistant messages.',
+    killNote: 'A run killed before its result line reports no cost; it is charged the runner\'s ledger value when one was recorded.',
+    costWords: 'USD at list price, as Claude Code reports it',
+  }),
+  capabilities: null,
 });

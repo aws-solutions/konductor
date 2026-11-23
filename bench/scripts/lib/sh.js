@@ -11,6 +11,7 @@ const study = require('./study.js');
 const judgments = require('./judgments.js');
 const ledger = require('./ledger.js');
 const report = require('./chain-report.js');
+const judging = require('./judging.js');
 const { writeFields } = require('./plant-seeds.js');
 
 const COMMANDS = {
@@ -54,6 +55,13 @@ const COMMANDS = {
   },
   // <tasks dir> <fields out> <kiro version> <kiro sha256>: writes the seeds fields file
   seeds: ([tasksDir, out, version, sha256]) => { writeFields({ tasksDir, out, version, sha256 }); return null; },
+  // <smoke output> <its exit status> <models>: 'OK <model>' lines and one 'FAIL ...' line; exit 1 on a failure
+  smoke: ([file, rc, models]) => {
+    const v = judging.smokeVerdict(file, rc, models);
+    return { text: v.lines.join('\n'), code: v.ok ? 0 : 1 };
+  },
+  // <study> <reports dir> <cell=exit;...> <budget> <cells, space separated>: the judging summary
+  jsummary: ([study, rj, statusLines, budget, cells]) => judging.judgingSummary({ study, rj, statusLines, budget, cells: String(cells || '').split(/\s+/).filter(Boolean) }),
   // <repo> <files...>: the first public-hygiene marker in the files; exit 3 when the repo has no scanner
   marker: ([repo, ...files]) => {
     let m;
@@ -67,10 +75,10 @@ const COMMANDS = {
 };
 
 /**
- * Run one command and return its output text (null prints nothing).
+ * Run one command and return its output text (null or '' prints nothing).
  * @param {string} cmd a key of COMMANDS
  * @param {string[]} args the command's arguments
- * @returns {string|null}
+ * @returns {string|null|{text:string, code:number}} the object form also sets the exit status
  */
 function run(cmd, args) {
   const f = COMMANDS[cmd];
@@ -84,8 +92,10 @@ if (require.main === module) {
     process.stderr.write(`usage: node sh.js <${Object.keys(COMMANDS).join('|')}> [args...]\n`);
     process.exit(64);
   }
-  const text = run(cmd, args);
-  if (text !== null && text !== undefined) process.stdout.write(`${text}\n`);
+  const r = run(cmd, args);
+  const text = r !== null && typeof r === 'object' ? r.text : r;
+  if (text) process.stdout.write(`${text}\n`);
+  if (r !== null && typeof r === 'object') process.exitCode = r.code;
 }
 
 module.exports = { run, COMMANDS };

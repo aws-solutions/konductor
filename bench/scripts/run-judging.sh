@@ -67,6 +67,7 @@ SMOKE=${SMOKE:-}
 BUDGET_USD=${BUDGET_USD:-15}
 CONCURRENCY=${CONCURRENCY:-2}
 . "$(dirname "$SELF")/state-dir.sh"
+bench_strict
 STATE_DIR=$(bench_state_dir "${STATE_DIR:-}") || exit 1
 hj() { node "$(dirname "$SELF")/lib/sh.js" "$@"; } # JSON reads (read only)
 EXPECT_RUNS=${EXPECT_RUNS:-}
@@ -174,8 +175,8 @@ run_bench() {
   h=$NEWDIR
   new_scratch || return 99
   t=$NEWDIR
-  (cd "$REPO" && env -u BENCH_JUDGE_CMD HOME="$h" TMPDIR="$t" node "$CLI_JS" "$@")
-  rc=$?
+  rc=0
+  (cd "$REPO" && env -u BENCH_JUDGE_CMD HOME="$h" TMPDIR="$t" node "$CLI_JS" "$@") || rc=$?
   drop_scratch "$h" "$t"
   return "$rc"
 }
@@ -251,11 +252,11 @@ step1_preflight() {
   done
 
   [ -d "$REPO/.git" ] || [ -f "$REPO/.git" ] || die 1 "repo not found at $REPO"
-  b=$(git -C "$REPO" branch --show-current 2>/dev/null)
+  b=$(git -C "$REPO" branch --show-current 2>/dev/null) || true
   if [ -n "$REQUIRED_BRANCH" ]; then
     [ "$b" = "$REQUIRED_BRANCH" ] || die 1 "repo $REPO is on branch '${b:-detached HEAD}', expected '$REQUIRED_BRANCH'. Check it out first."
   fi
-  head=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)
+  head=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null) || true
   if [ -n "$REQUIRED_COMMIT" ]; then
     git -C "$REPO" merge-base --is-ancestor "$REQUIRED_COMMIT" HEAD 2>/dev/null \
       || die 1 "repo HEAD ($head) does not contain the required commit $REQUIRED_COMMIT as an ancestor"
@@ -268,7 +269,7 @@ step1_preflight() {
 
   for c in "${CELLS[@]}"; do
     [ -d "$STUDY/$c" ] || die 1 "study cell missing: $STUDY/$c"
-    n=$(find "$STUDY/$c" -name result.json 2>/dev/null | wc -l)
+    n=$(find "$STUDY/$c" -name result.json 2>/dev/null | wc -l) || true
     if [ -n "$EXPECT_RUNS" ]; then
       [ "$n" -eq "$EXPECT_RUNS" ] || die 1 "cell $c has $n result.json files, expected $EXPECT_RUNS (is the study finished?)"
     else
@@ -284,9 +285,9 @@ step1_preflight() {
 
   for c in "${CELLS[@]}"; do check_prior_state "$c" || exit 1; done
 
-  free=$(df -Pk "$SCRATCH_PARENT" | awk 'NR==2 {print int($4/1024)}')
+  free=$(df -Pk "$SCRATCH_PARENT" | awk 'NR==2 {print int($4/1024)}') || true
   [ "${free:-0}" -ge "$MIN_FREE_MB" ] || die 1 "only ${free:-0} MB free in $SCRATCH_PARENT, need $MIN_FREE_MB MB"
-  free=$(df -Pk "$STUDY" | awk 'NR==2 {print int($4/1024)}')
+  free=$(df -Pk "$STUDY" | awk 'NR==2 {print int($4/1024)}') || true
   [ "${free:-0}" -ge "$MIN_FREE_MB" ] || die 1 "only ${free:-0} MB free next to $STUDY, need $MIN_FREE_MB MB"
   say "disk ok: at least $MIN_FREE_MB MB free"
 
@@ -300,7 +301,7 @@ check_prior_state() {
   j="$STUDY/$c/judgments.json"
   cache="$STUDY/$c/judge/cache"
   cached=0
-  [ -d "$cache" ] && cached=$(find "$cache" -name '*.json' 2>/dev/null | wc -l)
+  [ -d "$cache" ] && cached=$(find "$cache" -name '*.json' 2>/dev/null | wc -l) || true
   if [ -f "$j" ]; then
     backend=$(hj backend "$j")
     if [ "$backend" != "opencode" ]; then
@@ -337,10 +338,10 @@ check_credentials() {
   fi
 
   # Cheap read-only call. Only the exit status and the error class are used; credential contents are never read here.
+  rc=0
   out=$(env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN -u AWS_PROFILE \
         AWS_SHARED_CREDENTIALS_FILE="$CREDS" AWS_CONFIG_FILE=/dev/null AWS_PROFILE="$AWS_PROFILE_NAME" \
-        aws bedrock list-foundation-models --region "$AWS_REGION_NAME" --query 'length(modelSummaries)' --output text 2>&1)
-  rc=$?
+        aws bedrock list-foundation-models --region "$AWS_REGION_NAME" --query 'length(modelSummaries)' --output text 2>&1) || rc=$?
   if [ "$rc" -eq 0 ]; then
     say "credentials ok (Bedrock list call succeeded)"
     return 0
@@ -369,36 +370,13 @@ step2_smoke() {
   t=$NEWDIR
   out="$STATE_DIR/smoke-last.txt"
   say "running $SMOKE"
-  (cd "$REPO" && env -u BENCH_JUDGE_CMD HOME="$h" TMPDIR="$t" node "$SMOKE") >"$out" 2>&1
-  rc=$?
+  rc=0
+  (cd "$REPO" && env -u BENCH_JUDGE_CMD HOME="$h" TMPDIR="$t" node "$SMOKE") >"$out" 2>&1 || rc=$?
   drop_scratch "$h" "$t"
   sed 's/^/    smoke| /' "$out"
 
-  local verdict
-  verdict=$(node - "$out" "$rc" "$SMOKE_MODELS" <<'NODE'
-const fs = require('fs');
-const [file, rc, models] = process.argv.slice(2);
-const seen = {};
-for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-  if (!line.startsWith('{')) continue;
-  let r; try { r = JSON.parse(line); } catch { continue; }
-  if (r && r.model) seen[r.model] = r;
-}
-const bad = [];
-const wanted = models.split(/\s+/).filter(Boolean);
-for (const m of wanted.length ? wanted : Object.keys(seen)) {
-  const r = seen[m];
-  if (!r) bad.push(`${m}: no result printed`);
-  else if (r.error) bad.push(`${m}: ${String(r.error).slice(0, 300)}`);
-  else if (r.jsonOk === false) bad.push(`${m}: reply was not valid JSON`);
-  else console.log(`OK ${m}`);
-}
-if (!wanted.length && !Object.keys(seen).length) bad.push('the smoke script printed no result');
-if (rc !== '0') bad.push(`smoke script exit status ${rc}`);
-if (bad.length) { console.log('FAIL ' + bad.join(' | ')); process.exit(1); }
-NODE
-  )
-  local vrc=$?
+  local verdict vrc=0
+  verdict=$(hj smoke "$out" "$rc" "$SMOKE_MODELS") || vrc=$?
   printf '%s\n' "$verdict" | sed 's/^/    /'
   if [ "$vrc" -ne 0 ]; then
     die 2 "smoke test failed, long run not started: $(printf '%s' "$verdict" | grep '^FAIL' | head -1 | sed 's/^FAIL //')"
@@ -414,8 +392,7 @@ step3_judge() {
     say "judging cell '$c' -> $STUDY/$c  (budget cap \$$BUDGET_USD; rerunning this script resumes from cache)"
     t0=$(date +%s)
     mapfile -t args < <(judge_args "$c")
-    run_bench "${args[@]}" 2>&1 | tee -a "$STATE_DIR/judge-$c.log"
-    rc=${PIPESTATUS[0]}
+    if run_bench "${args[@]}" 2>&1 | tee -a "$STATE_DIR/judge-$c.log"; then rc=0; else rc=${PIPESTATUS[0]}; fi
     JUDGE_RC[$c]=$rc
     say "cell '$c' finished with exit status $rc after $(( ($(date +%s) - t0) / 60 )) min"
     case "$rc" in
@@ -454,8 +431,7 @@ step4_reports() {
     say "report: $name"
     # shellcheck disable=SC2086  # args is a controlled, space-separated flag list without spaces in values
     # Full output goes to the .stdout.txt file; the log shows the first 12 lines only.
-    run_bench $args 2>&1 | tee "$RJ/$name.stdout.txt" | sed -n '1,12s/^/    /p'
-    rc=${PIPESTATUS[0]}
+    if run_bench $args 2>&1 | tee "$RJ/$name.stdout.txt" | sed -n '1,12s/^/    /p'; then rc=0; else rc=${PIPESTATUS[0]}; fi
     [ "$rc" -eq 0 ] || note_failure 4 "'$name' exited with status $rc (see $RJ/$name.stdout.txt)"
   done < <(report_specs)
 }
@@ -467,74 +443,9 @@ step5_summary() {
   for c in "${CELLS[@]}"; do
     status_lines+="$c=${JUDGE_RC[$c]:-not-run};"
   done
-  node - "$STUDY" "$RJ" "$status_lines" "$BUDGET_USD" "${CELLS[*]}" <<'NODE' | tee "$SUMMARY"
-const fs = require('fs');
-const path = require('path');
-const [study, rj, statusLines, budget, cellList] = process.argv.slice(2);
-const cells = cellList.split(/\s+/).filter(Boolean);
-const read = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
-const out = [];
-const p = (s = '') => out.push(s);
-const usd = (n) => (typeof n === 'number' ? `$${n.toFixed(4)}` : 'n/a');
-const exits = Object.fromEntries(statusLines.split(';').filter(Boolean).map((x) => x.split('=')));
-
-p(`Judging summary, generated ${new Date().toISOString()}`);
-p(`Study: ${study}`);
-p(`Budget cap per cell and command: $${budget}`);
-p();
-p('Judging per cell');
-for (const cell of cells) {
-  const j = read(path.join(study, cell, 'judgments.json'));
-  p(`- ${cell}: judge exit status ${exits[cell] ?? 'unknown'}`);
-  if (!j) { p('    judgments.json missing or unreadable, so nothing was judged'); continue; }
-  const inv = j.invocations || [];
-  const calls = inv.reduce((s, x) => s + (x.calls || 0), 0);
-  const cached = inv.reduce((s, x) => s + (x.cachedCalls || 0), 0);
-  const recs = [...(j.rubric || []), ...(j.pairwise || []), ...(j.graded || [])];
-  const parseFailures = recs.reduce((s, r) => s + (typeof r.parseFailures === 'number' ? r.parseFailures : 0), 0);
-  const errors = recs.filter((r) => r.judgeError);
-  const byJudge = {};
-  for (const r of errors) byJudge[r.judge] = (byJudge[r.judge] || 0) + 1;
-  p(`    backend ${j.backend}, subject ${j.subjectModel}, judges ${(j.judges || []).join(', ')}`);
-  p(`    spent ${usd(j.spentUsd)} over ${inv.length} invocation(s) (${Object.entries(j.spentUsdByJudge || {}).map(([k, v]) => `${k} ${usd(v)}`).join(', ')})`);
-  p(`    calls ${calls} (${cached} served from cache), records: ${(j.rubric || []).length} rubric, ${(j.pairwise || []).length} pairwise, ${(j.graded || []).length} graded`);
-  p(`    parse failures ${parseFailures}, judge errors ${errors.length}${errors.length ? ` (${Object.entries(byJudge).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''}, runs not judged ${(j.notJudged || []).length}`);
-  if (errors.length) p('    judge errors were not cached: rerun the script to retry them');
-}
-
-p();
-p('Orchestrator pass rule (cell | arm | call)');
-const pass = read(path.join(rj, 'pass', 'orchestrator-pass.json'));
-if (!pass) p('    report missing: pass/orchestrator-pass.json');
-else {
-  for (const c of pass.cells || []) {
-    for (const a of c.arms || []) {
-      const why = a.aaRepeatOf ? `A/A repeat of ${a.aaRepeatOf}` : (a.reasons || []).slice(0, 2).join('; ');
-      p(`- ${c.key || `${c.harnessLabel} / ${c.model}`} | ${a.label} | ${a.call}${why ? ` | ${why}` : ''}`);
-    }
-  }
-}
-
-p();
-p('Platform verdict (arm | verdict)');
-for (const cell of cells) {
-  const v = read(path.join(rj, `platform-${cell}`, 'verdict.json'));
-  p(`${cell}:`);
-  if (!v) { p('    report missing'); continue; }
-  for (const a of v.arms || []) p(`- ${a.label} | ${a.verdict}${a.aaRepeatOf ? ` (A/A repeat of ${a.aaRepeatOf})` : ''}`);
-}
-
-p();
-p('Reports');
-if (fs.existsSync(rj)) {
-  for (const d of fs.readdirSync(rj).sort()) {
-    const full = path.join(rj, d);
-    if (fs.statSync(full).isDirectory()) p(`- ${full}/`);
-  }
-}
-console.log(out.join('\n'));
-NODE
-  [ "${PIPESTATUS[0]}" -eq 0 ] || note_failure 5 "could not write the summary"
+  if ! hj jsummary "$STUDY" "$RJ" "$status_lines" "$BUDGET_USD" "${CELLS[*]}" | tee "$SUMMARY"; then
+    note_failure 5 "could not write the summary"
+  fi
 }
 
 # ---------------------------------------------------------------- status
@@ -547,14 +458,14 @@ show_status() {
     printf 'Process: not running\n'
   fi
   if [ -f "$LOG" ]; then
-    st=$(grep -E '===== STEP' "$LOG" | tail -1)
+    st=$(grep -E '===== STEP' "$LOG" | tail -1) || true
     [ -n "$st" ] && printf 'Last step started: %s\n' "$st"
   fi
   printf '\nCalls done per cell (finished calls cached in <cell>/judge/cache%s):\n' "${EXPECT_CALLS:+; expected about $EXPECT_CALLS per cell}"
   for c in "${CELLS[@]}"; do
     cache="$STUDY/$c/judge/cache"
     n=0
-    [ -d "$cache" ] && n=$(find "$cache" -name '*.json' 2>/dev/null | wc -l)
+    [ -d "$cache" ] && n=$(find "$cache" -name '*.json' 2>/dev/null | wc -l) || true
     if [ -f "$STUDY/$c/credit-ledger.jsonl" ]; then
       ok=$(hj judgeledger "$STUDY/$c/credit-ledger.jsonl")
     else

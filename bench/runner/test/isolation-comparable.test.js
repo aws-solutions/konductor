@@ -61,7 +61,7 @@ function cliSetup() {
   return { root, bench, repo, home, kiroBin, authDb, tmpdir, out: path.join(root, 'out') };
 }
 
-const runCli = (s, extra) => spawnSync('node', [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--bench-dir', s.bench, '--repo-root', s.repo,
+const runCli = (s, extra) => spawnSync('node', [BENCH_JS, 'run', '--budget-credits', '1000', '--suite', 'lite', '--arms', 'vanilla', '--bench-dir', s.bench, '--repo-root', s.repo,
   '--kiro-bin', s.kiroBin, '--auth-db', s.authDb, '--isolate', 'none', '--cache', path.join(s.root, 'cache'), '--out', s.out, '--replicates', '1', '--seed', '1', ...extra], {
   encoding: 'utf8', env: { ...process.env, HOME: s.home, TMPDIR: s.tmpdir, BENCH_GATE_HOMES: s.home, BENCH_TEST_MODE: '1' },
 });

@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { meanCI, ratioBootstrap } = require('./stats.js');
 const { QUOTE_RULES, DEFAULT_QUOTE_RULE } = require('../judge/quote.js');
+const { descriptorOf } = require('../runner/lib/harness/runtime.js');
 
 const MIN_N = 3;
 const CEILING = 95;
@@ -43,10 +44,11 @@ const FORMULAS = {
   capability: 'For cap prune-report: load rate = runs that loaded the skill / runs that could load it, with a Wilson 95% interval, the exposure n, the skill size in bytes, the class and the evidence verdict. No composite number is made.',
 };
 
-// The cost figure of a Claude Code cell is the list-price USD Claude Code reports; the shared text names credits and opencode.
-function formulasForClaudeCode() {
-  const efficiency = FORMULAS.efficiency.replace('credits, or USD on opencode', 'USD at list price, as Claude Code reports it');
-  return { ...FORMULAS, efficiency };
+// The shared efficiency text names credits and opencode; a runtime whose descriptor has a `report.costWords`
+// (Claude Code: the list-price USD it reports) puts its own cost words there.
+function formulasFor(harness) {
+  const note = harness ? descriptorOf(harness).report.costWords : null;
+  return note ? { ...FORMULAS, efficiency: FORMULAS.efficiency.replace('credits, or USD on opencode', note) } : FORMULAS;
 }
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -245,7 +247,7 @@ function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'cred
       arms[arm][scope] = { quality, reliability: reliabilityBlock(mine), autonomy: autonomyBlock(mine), efficiency: efficiencyBlock(mine, baseRows, baseQuality, quality, unit) };
     }
   }
-  const formulas = formulasForWeights(harness === 'claude-code' ? formulasForClaudeCode() : FORMULAS, weights);
+  const formulas = formulasForWeights(formulasFor(harness), weights);
   return { weights, unit, formulas: weights[PACK_COMPONENT] > 0 ? { ...formulas, quality: formulas.quality + PACK_FORMULA } : formulas, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
 }
 

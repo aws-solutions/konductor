@@ -242,8 +242,9 @@ flowchart LR
 2. **Write `bench/runner/lib/harness/NAME.js`.** It exports the members the runner calls: `prepareArm`,
    `trialInstall`, `installInto`, `buildCommand`, `env`, `removeCredentials`, `keepPaths`, `turnSummary`,
    `parseResult` and `collectArtifacts`. Keep the stream parser in its own `NAME-parse.js`.
-3. **Describe it in `NAME-meta.js`:** its arm prefix, cost unit (credits or USD), stream format, and what it
-   supports. Register it in `harness/index.js` and `harness/descriptors.js`, and add its id to the `harness` list in
+3. **Describe it in `NAME-meta.js`:** its arm prefix, cost unit (credits or USD), stream format, what it
+   supports, what the reports say about its cost (`report`) and, if the `cap` commands should accept it, how they
+   reach a capability (`capabilities`). The reports and `cap` read these; they do not switch on the name. Register it in `harness/index.js` and `harness/descriptors.js`, and add its id to the `harness` list in
    `schema/result.schema.json`.
 4. **Fill the result.** `parseResult` turns the stream into session id, finish status, final text, tool calls and
    spend.

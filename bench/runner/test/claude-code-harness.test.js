@@ -188,7 +188,7 @@ test('run refuses a --claude-tools-dir that now resolves a newer claude than the
     write(path.join(out, 'run-config.json'), JSON.stringify({ startedAt: '2030-01-01T00:00:00Z', claudeCode: { version: '1.0.0', binarySha256: oldSha } }));
     // TMPDIR: root, since cmdRun refuses a Claude Code scratch dir under HOME, as when the suite runs from a session scratch dir.
     await withEnv({ ...CREDS, TMPDIR: root }, () => assert.rejects(
-      cmdRun({ suite: 'lite', arms: 'cc-vanilla', 'bench-dir': bench, 'repo-root': root, out, cache: path.join(root, 'cache'), 'claude-tools-dir': tools, isolate: 'none', 'allow-unisolated': true }),
+      cmdRun({ suite: 'lite', arms: 'cc-vanilla', 'budget-usd': '100', 'bench-dir': bench, 'repo-root': root, out, cache: path.join(root, 'cache'), 'claude-tools-dir': tools, isolate: 'none', 'allow-unisolated': true }),
       (e) => { assert.match(e.message, /One study must use one claude binary/); assert.ok(e.message.includes(`--claude-bin ${oldBin}`), e.message); return true; },
     ));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

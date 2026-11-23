@@ -60,3 +60,10 @@ bench_state_dir() {
   if [ -e "$dir" ] || [ -L "$dir" ]; then _bench_state_dir_verify "$dir" || return 1; fi
   printf '%s\n' "$dir"
 }
+
+# bench_strict: exit on the first failing command (set -e, also inside functions), and say where before the exit.
+# Command substitutions do not inherit errexit, so a failing command inside $( ) prints nothing and the script goes on.
+bench_strict() {
+  set -eE -o pipefail
+  trap '_bench_err=$?; [ "$BASH_SUBSHELL" = 0 ] && printf "%s: line %s: exit %s: %s (stopped by set -e)\n" "${0##*/}" "$LINENO" "$_bench_err" "$BASH_COMMAND" >&2' ERR
+}

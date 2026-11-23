@@ -10,14 +10,11 @@ const path = require('node:path');
 const { validate, loadSchema } = require('../runner/lib/schema.js');
 const { PATH_OF, KINDS } = require('./scan.js');
 const { kiroReachers } = require('./reach.js');
+// The tool a capability of each kind is expected to be used through, per cap runtime (descriptor capabilities.tools).
+const { EXPECTED_TOOL, ACTING_RUNTIME } = require('./runtimes.js');
 
 const ID_RE = /^(skill|agent|sop|context):[a-z0-9][a-z0-9._-]*$/;
 
-// The tool a capability of each kind is expected to be used through, per harness.
-const EXPECTED_TOOL = {
-  'kiro-cli': { skill: 'get_skill', sop: 'prompt', agent: 'subagent', context: 'resource' },
-  opencode: { skill: 'skill', sop: 'skill', agent: 'task', context: 'resource' },
-};
 
 const registryDir = (benchDir) => path.join(benchDir, 'capabilities');
 
@@ -64,12 +61,12 @@ function checkExpect(e, ctx, add) {
   for (const [harness, spec] of Object.entries(e.expect ?? {})) {
     const want = EXPECTED_TOOL[harness]?.[e.kind];
     if (want && spec.tool !== want) add('error', `expect.${harness}.tool "${spec.tool}" does not fit a ${e.kind}; expected "${want}"`);
-    if (harness !== 'kiro-cli') continue;
+    if (harness !== ACTING_RUNTIME) continue;
     const names = new Set(ctx.specs.map((s) => s.name));
     const reach = new Set(kiroReachers(e.id, ctx.specs));
     for (const a of spec.actingAgents ?? []) {
-      if (!names.has(a)) add('error', `expect.kiro-cli.actingAgents: acting agent "${a}" is not an agent spec at the base ref`);
-      else if (!reach.has(a)) add('error', `expect.kiro-cli.actingAgents: acting agent "${a}" does not reach ${e.id} on kiro-cli (its spec does not list it)`);
+      if (!names.has(a)) add('error', `expect.${harness}.actingAgents: acting agent "${a}" is not an agent spec at the base ref`);
+      else if (!reach.has(a)) add('error', `expect.${harness}.actingAgents: acting agent "${a}" does not reach ${e.id} on ${harness} (its spec does not list it)`);
     }
   }
 }
