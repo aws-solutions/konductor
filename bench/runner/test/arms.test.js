@@ -135,3 +135,8 @@ test('copyFixture renames dotgit/ to .git/ and adds the refs/ folders a fresh ch
     fs.rmSync(d, { recursive: true, force: true });
   }
 });
+
+test('an arm names its kind armKind, never harness (FW-28: harness is the runtime)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'lib', 'arms.js'), 'utf8');
+  assert.deepEqual(src.split('\n').filter((l) => /harness: ['b]/.test(l)), []);
+});

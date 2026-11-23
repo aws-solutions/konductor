@@ -17,6 +17,7 @@ const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const sb = require('../runner/lib/sandbox.js');
 const { buildChildEnv } = require('../runner/lib/env.js');
 const { withFileLock } = require('../runner/lib/file-lock.js');
+const { readJsonl } = require('../core/spend.js');
 
 /** The owner's rule: the credits each paid call is counted at, at least. */
 const WORST_PER_CALL = 15;
@@ -24,10 +25,13 @@ const TIMEOUT_MS = 25 * 60 * 1000;
 
 class PaidCallRefused extends Error {}
 
-/** Credits counted so far in the ledger (one JSON line per call, field `counted`); 0 when the file does not exist. */
+/**
+ * Credits counted so far in the ledger (one JSON line per call, field `counted`); 0 when the file does not exist. A
+ * line that is not JSON (a write cut by a kill) counts as one more call at 15, so a torn line never under-counts.
+ */
 function ledgerSpent(file) {
-  if (!fs.existsSync(file)) return 0;
-  return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).reduce((s, l) => s + Number(JSON.parse(l).counted), 0);
+  const { entries, bad } = readJsonl(file);
+  return entries.reduce((s, e) => s + Number(e.counted), 0) + bad * WORST_PER_CALL;
 }
 
 /** Throws unless `dir` is absolute and outside the home folder (work dirs hold sign-in copies and scratch homes). */
@@ -48,6 +52,28 @@ function paidEnv(baseEnv, home, tmpdir) {
   const { env } = buildChildEnv(baseEnv, { home, tmpdir, agentEngine: baseEnv.KIRO_AGENT_ENGINE, keep, konductor: false });
   if (env.KIRO_AGENT_ENGINE === undefined) delete env.KIRO_AGENT_ENGINE;
   return env;
+}
+
+// A scratch HOME lives at most one call; one older than the call timeout plus this was left by a killed caller.
+const STALE_MARGIN_MS = 5 * 60 * 1000;
+
+/**
+ * Removes the `home-*` scratch dirs under `workDir` older than `maxAgeMs` (a SIGKILL skips the cleanup that removes
+ * a call's HOME and its copied sign-in database). Returns the removed paths. A live call's HOME is younger than that.
+ */
+function sweepStaleHomes(workDir, maxAgeMs) {
+  let names;
+  try { names = fs.readdirSync(workDir); } catch { return []; }
+  const removed = [];
+  for (const name of names.filter((n) => n.startsWith('home-'))) {
+    const dir = path.join(workDir, name);
+    const st = fs.lstatSync(dir);
+    if (!st.isDirectory() || Date.now() - st.mtimeMs <= maxAgeMs) continue;
+    sb.removeAuthCopy(dir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    removed.push(dir);
+  }
+  return removed;
 }
 
 /** The counted credits of one call: the larger of 15 and the real credits, or 15 when the call never reported them. */
@@ -88,6 +114,7 @@ function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', 
     }
     fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted: WORST_PER_CALL, reserved: true, at })}\n`);
   });
+  sweepStaleHomes(workDir, Math.max(timeoutMs, TIMEOUT_MS) + STALE_MARGIN_MS);
   const home = fs.mkdtempSync(path.join(workDir, 'home-'));
   const cwd = path.join(home, 'cwd');
   const tmpdir = path.join(home, 'tmp');
@@ -141,4 +168,4 @@ function paidJson(o, parse) {
   }
 }
 
-module.exports = { WORST_PER_CALL, PaidCallRefused, ReplyUnreadable, ledgerSpent, assertOutsideHome, countedOf, paidCall, jsonOf, paidJson };
+module.exports = { WORST_PER_CALL, sweepStaleHomes, PaidCallRefused, ReplyUnreadable, ledgerSpent, assertOutsideHome, countedOf, paidCall, jsonOf, paidJson };

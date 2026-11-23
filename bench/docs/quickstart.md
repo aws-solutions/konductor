@@ -3,8 +3,8 @@
 
 [← bench home](../README.md) · [glossary](glossary.md) · [scoring](scoring.md) · [troubleshooting](troubleshooting.md)
 
-Everything on this page is free: no model call, no credits, no AWS keys, no login. You need Linux or macOS, Node 22
-or later, `git`, a clone of this repository, and (for part 2) Python 3. Run every command from the repository root.
+Everything on this page is free: no model call, no credits, no AWS keys, no login. You need Linux (macOS runs part 1 only), Node 22
+or later, `git`, a clone of this repository, and (for part 2) Python 3.10 or newer, or 3.12 for the robot arm. Run every command from the repository root.
 
 | Part | What you see | Time |
 | --- | --- | --- |
@@ -30,7 +30,7 @@ commands list every agent, skill and SOP in the repo with who reaches it, and ev
 ## 2. The toy plant walkthrough
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2
+python3.12 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2
 bash bench/physical/toy/walkthrough.sh
 ```
 

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Credit ledger sums the bash chains print. Read only.
-// shortcut: these are the two sums the bash scripts used to hold inline; FW-2 folds them into the one spend guard.
+// Credit ledger sums the bash chains print. Read only. Lines are read and counted by core/spend.js, the one spend
+// count, so the chains print the same total as the runner's guard.
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { readJsonl, creditsOf, knownCredits } = require('../../core/spend.js');
 
 const LEDGER = 'credit-ledger.jsonl';
 
@@ -15,14 +16,7 @@ const LEDGER = 'credit-ledger.jsonl';
  * @returns {object[]}
  */
 function ledgerLines(file) {
-  let text;
-  try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
-  const out = [];
-  for (const l of text.split('\n')) {
-    if (!l) continue;
-    try { out.push(JSON.parse(l)); } catch { /* a torn last line is not an entry */ }
-  }
-  return out;
+  return readJsonl(file).entries;
 }
 
 /**
@@ -51,9 +45,12 @@ function studyCredits(dirs) {
   const t = { credits: 0, runs: 0, judgeUsd: 0, judgeCalls: 0 };
   for (const d of dirs) {
     for (const f of ledgerFiles(d)) {
+      let maxSeen = 0;
       for (const e of ledgerLines(f)) {
-        if (e.kind === 'run') { t.runs++; t.credits += Number(e.charged ?? e.credits ?? 0) || 0; }
+        if (e.kind === 'run') { t.runs++; t.credits += creditsOf(e, maxSeen); }
         else if (e.kind === 'judge' && !e.cached && typeof e.usd === 'number') { t.judgeUsd += e.usd; t.judgeCalls++; }
+        const known = knownCredits(e);
+        if (known !== null && e.unit !== 'usd') maxSeen = Math.max(maxSeen, known);
       }
     }
   }

@@ -1,8 +1,8 @@
 # Harness contract
 
-A harness runs one agent CLI for one benchmark run. `runner/lib/harness/index.js` maps a runtime name to a harness module (`harnessFor(armOrResult)`). Today there are four: `kiro.js` (`kiro-cli`), `opencode.js` (`opencode`), `claude-code.js` (`claude-code`) and the plugin `bench/plugins/strands/harness.js` (`strands`, plant arms only: it runs `bench/physical/strands/launch.py`, a Strands agent with forwarding plant tool stubs).
+A harness runs one agent CLI for one benchmark run. The plugin registry, `bench/core/registry.js`, is the one list of harnesses: the built-ins, then every `bench/plugins/<name>/plugin.json`. `runner/lib/harness/index.js` reads it and maps a runtime name to a harness module (`harnessFor(armOrResult)`); `harness/descriptors.js` reads the same list for the descriptors. Today there are four: `kiro.js` (`kiro-cli`), `opencode.js` (`opencode`), `claude-code.js` (`claude-code`) and the plugin `bench/plugins/strands/harness.js` (`strands`, plant arms only: it runs `bench/physical/strands/launch.py`, a Strands agent with forwarding plant tool stubs).
 
-This file lists what the runner calls. It is derived from the call sites in `run-one.js`, `orchestrate.js`, `run-cmd.js`, `arm-opts.js`, `skills.js` and `trace.js`, and it is checked against the three modules by reading them. `runner/test/harness-contract.test.js` reads the member tables below and checks every entry of `HARNESSES` against them, then runs `parseResult` on a recorded stream and checks `acc`. A missing member fails that test instead of raising a `TypeError` in the middle of a run.
+This file lists what the runner calls. It is derived from the call sites in `run-one.js`, `orchestrate.js`, `run-cmd.js`, `arm-opts.js`, `skills.js` and `trace.js`, and it is checked against the four harness modules by reading them. `runner/test/harness-contract.test.js` reads the member tables below and checks every entry of `HARNESSES` against them, then runs `parseResult` on a recorded stream and checks `acc`. A missing member fails that test instead of raising a `TypeError` in the middle of a run.
 
 "Required" means the runner calls it without a guard. "Optional" means the call site is guarded by `if (harness.x)`.
 
@@ -144,7 +144,7 @@ All of these are read by `buildResult` (through `streamFields`) or by classifica
 | `toolCalls`, `workToolCalls`, `subagentCalls` | numbers | `0` | recorded in the result. `workToolCalls` is `toolCalls - subagentCalls` |
 | `toolNames` | object, name to count | `{}` | recorded in the result |
 | `skillsMcpOk` | boolean or null | `null` | kiro-cli only (skills server health). Others use `null` |
-| `delegatedTo` | object, agent name to count | `{}` | subagent delegation counts, summing to `subagentCalls`. All three harnesses set it |
+| `delegatedTo` | object, agent name to count | `{}` | subagent delegation counts, summing to `subagentCalls`. All four harnesses set it (Strands always `{}`) |
 | `finalText` | string or null | `null` | capped at 20000 characters by the harness. Judges and autonomy replies read it |
 | `finalTextTruncated` | boolean or null | `null` | `true` when the cap cut the text |
 | `askedUser` | boolean or null | `null` | recorded; the autonomy conversation reads it through `turnSummary` |
@@ -154,7 +154,7 @@ All of these are read by `buildResult` (through `streamFields`) or by classifica
 
 1. Write `harness/<name>.js` exporting every required member above, with `id` set to the new runtime name. Add the optional members you need. Keep the parser for the agent's event stream in its own `<name>-parse.js` and reuse `parseStream` from `runner/lib/stream.js` for JSON-lines splitting.
 2. Make the agent launchable as one local executable. An agent that is a library or a hosted service needs a small wrapper command that writes JSON lines to stdout and exits non-zero on failure. `buildCommand` returns that command.
-3. Add `harness/<name>-meta.js` (the descriptor above), re-export it as `meta` from the module, list it in `harness/descriptors.js`, and register the module in `harness/index.js` (`HARNESSES`). `RUNTIMES`, `USD_RUNTIMES` and the arm prefix follow from the descriptor. Add the id to the `harness` enum in `schema/result.schema.json`; `registry.test.js` fails until you do.
+3. Register it. A new runtime is a plugin: a folder `bench/plugins/<name>/` with the harness module, its descriptor and a `plugin.json` of `{ "benchApi": 1, "kind": "harness", "name": "<name>", "version", "meta": "<descriptor file>", "entry": "<harness module>" }`. The name must equal the folder name, and both files must stay inside the folder. `core/registry.js` refuses another `benchApi`, an unknown kind or a bad manifest, with its reason, and a name clash is an error. `RUNTIMES`, `USD_RUNTIMES` and the arm prefix follow from the descriptor, and `validateResult` checks `harness` against the registry, so no schema edit is needed. `node bench/kit/plugin/check.js bench/plugins/<name>` checks a harness plugin for free. [Write a plugin](../../../docs/write-a-plugin.md) walks through it with the Strands plugin as the example. (The three built-ins are listed in `harness/index.js`, `BUILTIN`, and in `harness/descriptors.js`.)
 4. Arm construction in `runner/lib/arms.js` follows the descriptor's `armPrefix`. Today every arm is a konductor ref, so a runtime that does not build konductor also needs a new arm source and a `prepareArm` that does not build anything.
 5. Add a fixture: a recorded single-turn stream (one tool call, one final answer) at `runner/test/fixtures/harness-contract/<id>.jsonl` and one row in `CASES` in `harness-contract.test.js`. Also add a fake agent executable under `runner/test/` that prints a canned stream, and a parser test. Copy the shape of `claude-code-parse.test.js`, `claude-code-harness.test.js` and `opencode-run.test.js`.
 6. Make `parseResult` fill `acc` as listed above, and run `validateResult` on a result built from the fixture.
@@ -174,4 +174,4 @@ Each of these must be edited by hand when a runtime is added. The registry work 
 - Later. `runner/lib/backfill.js:39`, `runner/lib/backfill-skills.js:34`: kiro-cli only.
 - Later. `report/render.js:112,170`, `report/verdict.js:243,271`, `report/verdictdoc.js:43,112`, `report/orchpass.js:327`, `report/scores.js:237`, `report/diligence.js:166`, `report/compare.js:48,51`, `report/factorial.js:32,51`: labels, units and score formulas per runtime.
 - Later. `cap/audit.js`, `cap/cli.js`, `cap/evidence.js`, `cap/forced.js`, `cap/proxy.js`, `cap/prune.js`, `cap/usage.js`: accept only `kiro-cli` and `opencode` (`supports.capCommands`); `cap/skillstudy.js`, `cap/studyio.js` (`supports.skillStudy`).
-- Done by hand once: `schema/result.schema.json`, the `harness` enum. `registry.test.js` fails when it differs from the registry.
+- Done. `schema/result.schema.json` has no `harness` enum any more; `validateResult` checks the name against the registry (`registry.test.js`).

@@ -1,6 +1,4 @@
 {
-  "_comment": "Functions over 150 lines that size-lint.test.js tolerates (FW-25). It only shrinks: split a function, then remove its entry. run-one.js executeRun waits for chat-120's FW-5 work on the same file.",
-  "functions": [
-    { "file": "runner/lib/run-one.js", "name": "executeRun" }
-  ]
+  "_comment": "Functions over 150 lines that size-lint.test.js tolerates (FW-25). It only shrinks: split a function, then remove its entry. Empty since D-219.",
+  "functions": []
 }

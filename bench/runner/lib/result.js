@@ -117,7 +117,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     commitSha: arm.commitSha,
     ...provenanceOf(arm),
     harness: runtime,
-    installHarness: usd || arm.vanilla || !config.agentEngine ? arm.harness : kiroInstallHarness(config.agentEngine),
+    // The arm's konductor install kind (arms.js armKind: none, plant, claude, kiro-cli-v2). Arm records built before FW-28 call it harness.
+    installHarness: usd || arm.vanilla || !config.agentEngine ? arm.armKind ?? arm.harness : kiroInstallHarness(config.agentEngine),
     harnessVersion: env?.harnessVersion ?? env?.kiroCliVersion ?? null,
     model: config.model,
     effort: config.effort,

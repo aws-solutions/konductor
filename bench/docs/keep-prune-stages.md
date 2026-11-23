@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Keep or prune, stages 2 to 4: agent files, SOPs and always-loaded context
 
-2026-11-23, version 5: pilot 1 gave NO DATA (a control failed); the control is fixed and a controls-only rerun is
+2026-11-23. Pilot 1 gave NO DATA (a control failed); the control is fixed and a controls-only rerun is
 ready. [← capability playbook](cap-playbook.md) · [reference](reference.md)
 
 **Where it stands.** No unit has been measured yet. The first pilot, the always-loaded context file
@@ -78,7 +78,7 @@ session reads it. That is an audit finding, and needs no measurement.
 
 The pilot has three steps. Steps 1 and 3 are paid and are one command each; step 2 is a person's sign-off:
 
-- `bash bench/cap/pilot/author-baseline.sh --cap N` writes the pilot unit's baseline from its 16 briefs
+- `bash bench/cap/pilot/author-baseline.sh --cap N` writes the pilot unit's baseline from its 16 briefs (15 passed)
   (`bench/cap/unit-baselines/context-k-orchestrator-shared/briefs.json`, the table in Appendix C). It runs
   `cap unit-author`: per batch, glm-5 writes the 8 tasks, deepseek-3.2 reviews them, a failed task gets one fix by
   glm-5 and one recheck, and a task that still fails is dropped and recorded. At most 8 calls. With all 16 passing it
@@ -154,7 +154,7 @@ plan for free. `cap unit-stage --controls-only` (env `KP_CONTROLS_ONLY` in `run-
 2. A deep-depth paid provider. The paid provider answers in one turn, so it runs quick depth only; deep depth needs
    full sessions per replicate.
 3. A live delegation run: the stub test reads streams the stub wrote; a live one needs the orchestrator to run each
-   request (paid). DEBT D-172 holds the remaining work.
+   request (paid).
 
 ## Cost (dry-run estimates, no run made)
 
@@ -167,13 +167,13 @@ own rubric, so they need no checklist call).
 | 2 agent files | 8 | 11,128 | about 6,300 | about 11,900 | 166,920 | about $101 |
 | 3 SOPs | 19 | 25,032 | about 14,100 | about 27,000 | 375,480 | about $228 |
 | 4 context | 4 | 6,072 | about 3,400 | about 6,400 | 91,080 | about $54 |
-| Pilot: 1 unit, quick only | 1 | 552 | about 305 | about 484 | 8,280 | about $4.20 |
+| Pilot: 1 unit, quick only, 15 tasks | 1 | 537 (225 for the unit) | about 296 | about 470 | 8,055 | about $4.10 |
 
 The prices were checked on 2026-11-22 against the LITE run (205 agent runs, 720 judge calls) and the forced-skills run
 (48 agent runs). One price is measured: a judge call costs about $0.005 on Bedrock (it was $0.007 here before). One
 is a measured bound: if each answer is a whole Kiro CLI agent run, it costs about 4.6 credits (the LITE median), not
 0.9; that is the middle column. The rest are still assumptions: no single-call answer, no Kiro judge call and no
-Claude answer on Bedrock has been measured, and no run recorded the agent's token counts (D-163). "Worst case" counts
+Claude answer on Bedrock has been measured, and no run recorded the agent's token counts. "Worst case" counts
 every call at 15 credits, the owner's rule; it is not a true ceiling for agent runs, since 5 of 205 LITE runs passed
 15 credits (the largest 56.5). Appendix B has each number and its source. Start with the pilot.
 
@@ -188,7 +188,8 @@ run). Still open:
 2. After the pilot: each later stage's units and caps (Appendix D lists what fits quick depth).
 3. The deep-depth paid provider and the live delegation run, which are not built.
 
-The cost table above counts both depths. At quick depth a unit is 240 calls (3,600 counted credits), and the controls
+The cost table above counts both depths, with 16 tasks a unit (the pilot unit has 15). At quick depth a unit of 16
+tasks is 240 calls (3,600 counted credits), and one of 15 is 225 (3,375); the controls
 add 312 once per stage run, when the stage's units share one run id.
 
 ## Appendix A: the rules kept from stage 1
@@ -219,7 +220,7 @@ Prices per call (`COSTS` in `bench/cap/unitstage.js`), checked 2026-11-22:
 | USD, a checklist | 0.005 | no | taken as a judge-sized call |
 | USD, an answer | 0.035 | no | about 4k tokens in and 1.5k out on Claude Sonnet at $3 and $15 per million |
 
-Tokens: no LITE or forced-skills result carries the agent's token counts (D-163), so the answer prices cannot be
+Tokens: no LITE or forced-skills result carries the agent's token counts, so the answer prices cannot be
 checked yet. The first pilot answers will give them.
 
 ## Appendix C: the first pilot unit and its 16 baseline tasks
@@ -296,3 +297,10 @@ small, read-only SOP whose input fits in a prompt: `k-pre-cr-critique` (about 2,
 **Stage 2, agent files (8 units).** Quick depth fits: the keep arm reads "You are the agent defined below" and the
 agent's prompt, and each task is a brief the orchestrator hands it. The selection test (does the orchestrator hand it
 the work) runs on the stub only; a live delegation run is paid and not built.
+
+## Appendix E: tracked in DEBT.md
+
+| Row | What it tracks |
+| --- | --- |
+| D-172 | the remaining stages 2 to 4 work: baselines for the other units, a deep paid provider, a live delegation run |
+| D-163 | no run records the agent's token counts, so the answer prices are still assumptions |
