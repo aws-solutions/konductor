@@ -79,7 +79,8 @@ function linkPython(scratchDir, executable, version) {
 
 /** The modules each plant kind's gateway imports, and the exact wheels the arm test ran on (DEBT D-30). */
 const GATEWAY_MODULES = Object.freeze({ 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'] });
-const GATEWAY_WHEELS = Object.freeze({ cedarpy: '4.12.2', mujoco: '3.13.0', numpy: '2.5.5' });
+const { _comment, ...ARM_WHEELS } = require('../../physical/arm-wheels.json'); // the one copy of the pins (D-179)
+const GATEWAY_WHEELS = Object.freeze(ARM_WHEELS);
 
 /**
  * Throws the refusal unless interpreter `python`, run with `env` (the gateway's PATH, a scratch HOME and the dynamic-linker
@@ -122,4 +123,4 @@ function pinPython({ tasks, scratchDir, benchDir, flag = null, plantPython = nul
   }
 }
 
-module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, DEFAULT_WANT };
+module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, GATEWAY_WHEELS, DEFAULT_WANT };

@@ -18,6 +18,7 @@ const { readEnvironment, NOT_COUNTED } = require('./score.js');
 const { AGENT_ENGINES, descriptorOf } = require('../harness/runtime.js');
 const { hasPlantReader } = require('./stream-match.js');
 const { hostNoise } = require('./walls.js');
+const { checkReleaseWheels } = require('./plant-python.js');
 const procs = require('../procs.js');
 
 const POLICY_FILES = ['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'];
@@ -303,9 +304,10 @@ function checkRealSuite({ release, ctx, runtime, outDir, home, versionOfBin, noi
  * Cedar files, no out-dir filesystem check and no quiet-host check, unless that binary reports the pinned version (see
  * isCountedSuite). `counted`, `comparable` and `notCounted` come from countingOf. Seams: `keys` (pinned keys),
  * `privateParent` (where the runner-private dir is made; default TMPDIR, or /tmp when TMPDIR is inside home), `home`, `versionOfBin`, `deadlines`, `makeToken`,
- * `readListeners` and `noiseOf(release)` (the quiet-host check, default hostNoise).
+ * `readListeners`, `noiseOf(release)` (the quiet-host check, default hostNoise) and `checkWheels` (the plant Python's
+ * pinned wheels, default plant-python.js checkReleaseWheels).
  */
-function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = null, home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners, noiseOf = hostNoise }) {
+function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = null, home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners, noiseOf = hostNoise, checkWheels = checkReleaseWheels }) {
   checkSuiteShape({ arms, tasks, parallel });
   const dir = opts['plant-release'];
   const expectedSha256 = opts['plant-release-sha256'];
@@ -332,12 +334,15 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     if (toy && !control) throw new ReleaseRefused(`toy release ${release.manifest.release} runs control suites only (a scripted control as --kiro-bin or --claude-bin, or a Strands fake: model): it is signed with the public toy key and never counts`);
     const noise = control ? [] : checkRealSuite({ release, ctx, runtime, outDir, home, versionOfBin, noiseOf });
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
+    const python = opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3';
+    const bound = bindTasks(tasks, release);
+    checkWheels({ python, release }); // D-179: the manifest's pinned wheels, once, before any trial
     return {
       release, privateRoot, socketParent, control, toy, hostNoise: noise, deadlines, makeToken, readListeners,
       ...countingOf({ control, mode: ctx.isolation.mode, noise, reasons: kind.notCounted }),
-      python: opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3',
+      python,
       isolationMode: ctx.isolation.mode,
-      tasks: bindTasks(tasks, release),
+      tasks: bound,
       gatewayFiles: gatewayFilesOf(release),
       policySha256: release.sha256Of(POLICY_FILES[0]),
       refusalRule: loadRefusalRule(release.fileOf(REFUSAL_RULE)),
