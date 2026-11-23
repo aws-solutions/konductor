@@ -72,7 +72,7 @@ two are opt-in and need an account.
 
 | Agent | Integration | Pre-configured? | What you need |
 | --- | --- | --- | --- |
-| `konductor`, `k-architect`, `k-developer` | AWS documentation and region/service lookups | Yes | `uvx` installed. The proxy needs Python 3.11 or newer; `uvx` downloads one if none is installed. Documentation search and skills work without AWS credentials; calls that act on an AWS account need credentials in `~/.aws/credentials` or environment variables. |
+| `konductor`, `k-architect`, `k-developer` | AWS documentation and region/service lookups | Yes | `uvx` installed. The proxy needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed. Documentation search and skills work without AWS credentials; calls that act on an AWS account need credentials in `~/.aws/credentials` or environment variables. |
 | `k-browser` | Playwright browser automation | Yes | The Chromium binary |
 | `k-researcher` | Slack search | No — opt-in | Your own Slack app. See [Slack integration](../guides/slack-integration.md). |
 | `k-product-manager` | Asana sprint planning | No — opt-in | An Asana OAuth2 app. See [Asana integration](../guides/asana-integration.md). |

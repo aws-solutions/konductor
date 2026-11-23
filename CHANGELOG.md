@@ -442,8 +442,8 @@ not per individual commit.
 - `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
   over `.transform()` for cross-field validation, defensive checks on array index access, and
   TypeScript utility types.
-- Update the aws-mcp proxy to mcp-proxy-for-aws-cli 2.0.0. It needs Python 3.11 or newer; `uvx`
-  downloads one if none is installed.
+- Update the aws-mcp proxy to mcp-proxy-for-aws-cli 2.0.0. It needs Python 3.11 to 3.14; `uvx`
+  downloads a compatible one if none is installed.
 
 ### Removed
 

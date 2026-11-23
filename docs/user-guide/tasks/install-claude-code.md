@@ -228,7 +228,7 @@ tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin 
 server auto-starts as soon as the plugin (or standalone install) is enabled, launching
 `mcp-proxy-for-aws-cli==2.0.0`. The proxy is pinned for repeatable client behavior; AWS
 service documentation and skills still come from the managed endpoint at request time. Install `uvx`.
-The proxy needs Python 3.11 or newer; `uvx` downloads one if none is installed.
+The proxy needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed.
 The server starts with `--skip-auth`, so documentation search and skills work without AWS
 credentials; configure credentials (`~/.aws/credentials` or environment variables) only for calls
 that act on an AWS account.

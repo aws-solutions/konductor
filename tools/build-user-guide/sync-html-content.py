@@ -848,7 +848,7 @@ ROSTER = [
     ("prerequisites integrations: aws-mcp needs",
      _PREREQ_UVX + " installed, plus AWS credentials in " + _PREREQ_CREDS
      + " or environment variables. Both agents work without credentials, just without AWS lookups.</div>",
-     _PREREQ_UVX + " installed. The proxy needs Python 3.11 or newer; " + _PREREQ_UVX + " downloads one if"
+     _PREREQ_UVX + " installed. The proxy needs Python 3.11 to 3.14; " + _PREREQ_UVX + " downloads a compatible one if"
      " none is installed. Documentation search and skills work without AWS credentials; calls that"
      " act on an AWS account need credentials in " + _PREREQ_CREDS + " or environment variables.</div>"),
     ("install-kiro-cli integrations: intro",
@@ -865,8 +865,8 @@ ROSTER = [
      + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
      " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
      " act on an AWS account.</p>",
-     _mono("k-developer") + ". Install " + _mono("uvx") + ". The proxy needs Python 3.11 or newer; "
-     + _mono("uvx") + " downloads one if none is installed. Their agent files carry an " + _mono("aws-mcp")
+     _mono("k-developer") + ". Install " + _mono("uvx") + ". The proxy needs Python 3.11 to 3.14; "
+     + _mono("uvx") + " downloads a compatible one if none is installed. Their agent files carry an " + _mono("aws-mcp")
      + " entry in " + _mono("mcpServers") + ", launched via " + _mono("uvx mcp-proxy-for-aws-cli==2.0.0")
      + " with " + _mono("--skip-auth") + ", so you do not add it to your own MCP config. Without "
      + _mono("uvx") + " the server fails to start and the agents still work, just without AWS lookups."
