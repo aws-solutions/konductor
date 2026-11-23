@@ -293,3 +293,64 @@ test('the kit keeps its spend caps and refusals (the approved numbers are not ed
     assert.match(text, /SPLIT_SALT="konductor-2x2 SR-32 split v1:"/);
   }
 });
+
+// D-50: freeze and report run against a fake bench in a throw-away origin and worktree (no AWS, no model, no sandbox).
+// The fake bench.js records each call and makes its --out dir; the listing estimate is a stub (kit-tools tests it).
+function fakeStudy() {
+  const root = tmp();
+  const origin = path.join(root, 'origin.git');
+  const seed = path.join(root, 'seed');
+  fs.mkdirSync(seed);
+  git(seed, 'init', '-q', '-b', 'main');
+  write(path.join(seed, 'README.md'), 'konductor\n');
+  git(seed, 'add', '-A');
+  git(seed, 'commit', '-qm', 'konductor main');
+  git(seed, 'checkout', '-q', '-b', 'feat/bench-pilot-nk');
+  write(path.join(seed, 'bench/runner/bench.js'), [
+    "const fs = require('fs'); const a = process.argv.slice(2);",
+    "fs.appendFileSync(process.env.CALLS, JSON.stringify(a) + '\\n');",
+    "const i = a.indexOf('--out'); if (i >= 0) fs.mkdirSync(a[i + 1], { recursive: true });",
+  ].join('\n'));
+  write(path.join(seed, 'bench/judge/pack/load.js'), "exports.loadPack = () => ({ revision: 'r7', criteria: [1, 2, 3] });\n");
+  write(path.join(seed, 'bench/profiles/scoring-fractional.json'), '{}\n');
+  git(seed, 'add', '-A');
+  git(seed, 'commit', '-qm', 'bench');
+  spawnSync('git', ['clone', '-q', '--bare', seed, origin]);
+  const repo = path.join(root, 'r');
+  spawnSync('git', ['clone', '-q', origin, repo]);
+  const listing = path.join(root, 'listing-stub.js');
+  write(listing, "console.log(process.argv.includes('--json') ? '{\"sopsListed\":false}' : 'no konductor skill is name-only');\n");
+  const env = { S: path.join(root, 'study'), R: repo, LISTING_JS: listing, CALLS: path.join(root, 'calls.jsonl') };
+  return { root, repo, env, main: git(seed, 'rev-parse', 'main'), bench: git(seed, 'rev-parse', 'feat/bench-pilot-nk') };
+}
+const callsOf = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+
+test('run-2x2.sh freeze pins the konductor and bench commits once, checks out the bench commit, and a second freeze keeps them', () => {
+  const s = fakeStudy();
+  const r = sh('run-2x2.sh', ['freeze'], s.env);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const frozen = fs.readFileSync(path.join(s.env.S, 'freeze.env'), 'utf8');
+  assert.match(frozen, new RegExp(`^COMMIT=${s.main}$`, 'm'));
+  assert.match(frozen, new RegExp(`^BENCH_SHA=${s.bench}$`, 'm'));
+  assert.match(frozen, /^PACK_REV=r7\/3$/m);
+  assert.match(frozen, /^SOP_PARITY=0$/m);
+  assert.equal(git(s.repo, 'rev-parse', 'HEAD'), s.bench, 'the worktree is at the frozen bench commit');
+  const again = sh('run-2x2.sh', ['freeze'], s.env);
+  assert.equal(again.status, 0, again.stderr);
+  assert.match(again.stdout + again.stderr, /already frozen/);
+});
+
+test('run-2x2.sh report 1 builds the DEV tables from the frozen worktree and labels every report dir with the build', () => {
+  const s = fakeStudy();
+  assert.equal(sh('run-2x2.sh', ['freeze'], s.env).status, 0);
+  const r = sh('run-2x2.sh', ['report', '1'], s.env);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const calls = callsOf(s.env.CALLS);
+  assert.deepEqual(calls.map((c) => c[0]), ['report-2x2', 'report-2x2', 'report', 'report']);
+  for (const c of calls) assert.ok(c.includes('--criteria-pack') && c[c.indexOf('--criteria-pack') + 1] === 'quality', c.join(' '));
+  assert.ok(calls[0].includes(`${path.join(s.env.S, 'dev', 'kiro')}:konductor`), 'the DEV kiro dir is a cell');
+  assert.ok(!calls.some((c) => c[0] === 'calibrate'), 'stage 1 (DEV) exports no calibration sample');
+  for (const d of ['report-dev', 'report-dev-fractional', 'report-dev-kiro', 'report-dev-cc']) {
+    assert.match(fs.readFileSync(path.join(s.env.S, d, 'BUILD.txt'), 'utf8'), new RegExp(`konductor commit ${s.main}`), d);
+  }
+});
