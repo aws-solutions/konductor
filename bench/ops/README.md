@@ -63,6 +63,7 @@ is the docs owner's page and points here.
 | `run-pilot-freeze.sh` | Keep-or-prune pilot step 2: freezes the read draft. Free. |
 | `run-pilot-replace.sh` | Keep-or-prune pilot option B: replaces one task. Paid. |
 | `run-pilot-run.sh` | Keep-or-prune pilot step 3: the quick run. Paid. |
+| `run-pilot-rerun.sh` | Keep-or-prune pilot step 3 again after pilot 1: controls only (cap 1,800), then `--unit` (cap 3,375). Paid. |
 | `run-reruns-2.sh` | Second rerun batch of the pilot waves. |
 | `run-reruns.sh` | Reruns of the pilot waves whose keys changed. |
 | `run-standard-claude.sh` | STANDARD Claude Code step with this host's paths. |
