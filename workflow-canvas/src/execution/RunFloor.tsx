@@ -85,16 +85,23 @@ function Stages({
  * with the detail and console of the one picked, and the past runs at the
  * side. It takes what it shows and fetches nothing. Each stage is a button
  * in the Tab order; picking one keeps focus on it, and the detail of that
- * stage comes next in the Tab order.
+ * stage comes next in the Tab order. Runs of one workflow share stage
+ * names, so the pick is dropped whenever `runId` changes.
  */
 export function RunFloor({
   run,
+  runId,
   progress,
   history,
   reasonSentence,
 }: {
   /** The run as `applyRunEvents` keeps it, or `undefined` before there is one. */
   run: FollowedRun | undefined;
+  /**
+   * The id of the run `run` holds the events of. The picked stage is dropped
+   * when it changes, so a pick of one run does not carry into the next.
+   */
+  runId: string | undefined;
   /** How far the run has got, from `runProgress`. */
   progress: RunProgress | undefined;
   /** The past runs, as `GET /api/runs` lists them. */
@@ -106,7 +113,7 @@ export function RunFloor({
       <div className="wf-floor-main">
         {progress && <RunProgressStrip progress={progress} />}
         {run ? (
-          <Stages run={run} reasonSentence={reasonSentence} />
+          <Stages key={runId} run={run} reasonSentence={reasonSentence} />
         ) : (
           <p className="wf-floor-note">No run yet.</p>
         )}
