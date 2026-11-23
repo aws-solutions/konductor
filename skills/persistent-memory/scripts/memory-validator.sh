@@ -275,16 +275,16 @@ def label_matches(label, pattern):
     regex = "[^.]*".join(re.escape(part) for part in pattern.split("*"))
     return re.fullmatch(regex, label) is not None
 
-# Case-insensitive. A "*" that is the whole leftmost label matches one or
-# more labels, never the apex; a "*" anywhere else matches within one label.
-# An IP-literal host matches only a pattern without "*" that spells it
-# exactly.
+# Case-insensitive. "*" matches within one label, so "*.example.com" covers
+# docs.example.com but not a.b.example.com. A "**" that is the whole leftmost
+# label matches one or more labels, never the apex. An IP-literal host
+# matches only a pattern without "*" that spells it exactly.
 def host_matches(host, pattern):
     if is_ip_literal(host):
         return "*" not in pattern and host == pattern.lower().rstrip(".")
     want = pattern.lower().rstrip(".").split(".")
     have = host.split(".")
-    if want[0] == "*":
+    if want[0] == "**":
         rest = want[1:]
         if len(have) <= len(rest):
             return False

@@ -1338,12 +1338,13 @@ def test_editing_an_existing_untagged_entry_requires_a_tag(tmp_path):
 
 # ---------------------------------------------------------------------------
 # URL allowlist matching. Every scheme:// occurrence is checked, including
-# one glued to or nested in another URL, and only https passes. The pattern is compared with the URL's hostname only: the authority
+# one glued to or nested in another URL, and only https passes. The pattern
+# is compared with the URL's hostname only: the authority
 # ends at the first / ? # or backslash, userinfo and port are dropped, and a
 # host that is not plain ASCII after percent-decoding (an encoded dot, raw
-# non-ASCII, a bracketed address) is rejected. A "*" that is the whole
-# leftmost label matches one or more labels; any other "*" stays within one
-# label. An IPv4 host in any spelling matches only an exact pattern.
+# non-ASCII, a bracketed address) is rejected. A "*" label matches exactly
+# one label; a leading "**" label matches one or more. An IPv4 host in any
+# spelling matches only an exact pattern.
 # ---------------------------------------------------------------------------
 
 _ALLOWLIST = ["*.example.com", "docs.example.org", "api-*.example.net"]
@@ -1376,6 +1377,9 @@ def _url_verdict(tmp_path: Path, url: str) -> subprocess.CompletedProcess:
         "https://docs.example.com:notaport/",
         # Upper-case scheme is still a URL and must still be checked.
         "HTTPS://evil.test/",
+        # "*.example.com" covers exactly one label, not two or more.
+        "https://docs.aws.example.com/guide",
+        "https://a.b.c.example.com/x?y=1#z",
         # "*.example.com" does not cover the apex or a look-alike suffix.
         "https://example.com/",
         "https://notexample.com/",
@@ -1428,10 +1432,7 @@ def test_url_allowlist_rejects_non_matching_hosts(tmp_path, url):
     "url",
     [
         "https://docs.example.com/guide",
-        # A leading "*" label covers any number of labels.
-        "https://docs.aws.example.com/guide",
-        "https://eu.api.example.com",
-        "https://a.b.c.example.com/x?y=1#z",
+        "https://docs.example.com/x?y=1#z",
         # Userinfo and port are not part of the host.
         "https://user:pw@docs.example.com:8443/path",
         "https://evil.test:x@docs.example.com/",
@@ -1462,32 +1463,51 @@ def test_url_allowlist_accepts_matching_hosts(tmp_path, url):
     assert result.returncode == 0, f"{url!r} was rejected: {result.stderr}"
 
 
-def test_bare_star_pattern_allows_any_plain_host(tmp_path):
+def test_bare_star_pattern_allows_only_single_label_hosts(tmp_path):
     write_config(tmp_path / ".konductor" / "memory-config.json", ["*"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-11-20] [origin:agent] See https://docs.example.org/a\n"
+    proposed = "- [2026-11-20] [origin:agent] See https://intranet/a\n"
     assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
 
-    proposed = "- [2026-11-20] [origin:agent] See https://evil%2Ecom/a\n"
-    result = run_validator(proposed, target, cwd=tmp_path)
-    assert result.returncode == 1, result.stderr
+    for url in ("https://docs.example.org/a", "https://evil%2Ecom/a"):
+        proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
+        result = run_validator(proposed, target, cwd=tmp_path)
+        assert result.returncode == 1, f"{url!r}: {result.stderr}"
+        assert "blocked external URL" in result.stderr, result.stderr
 
 
-def test_non_https_urls_pass_without_an_allowlist(tmp_path):
-    # No allowlist means every URL is allowed, whatever its scheme.
-    write_config(tmp_path / ".konductor" / "memory-config.json", [])
+@pytest.mark.parametrize(
+    "pattern, url, allowed",
+    [
+        # A leading "**" label matches one or more labels under the suffix.
+        ("**.example.com", "https://docs.example.com/", True),
+        ("**.example.com", "https://docs.aws.example.com/", True),
+        ("**.example.com", "https://a.b.c.example.com/x", True),
+        ("**.example.com", "https://Docs.AWS.Example.COM./", True),
+        # ...but never the apex, a look-alike suffix or another domain.
+        ("**.example.com", "https://example.com/", False),
+        ("**.example.com", "https://notexample.com/", False),
+        ("**.example.com", "https://a.notexample.com/", False),
+        ("**.example.com", "https://example.com.evil.test/", False),
+        ("**.example.com", "https://docs.example.com.evil.test/", False),
+        ("**.example.com", "https://evil.test/", False),
+        ("**.example.com", "http://docs.aws.example.com/", False),
+        # A bare "**" allows any plain https hostname.
+        ("**", "https://docs.example.org/", True),
+        ("**", "https://intranet/", True),
+        ("**", "https://evil%2Ecom/", False),
+        # A "**" that is not the whole leftmost label stays within one label.
+        ("api-**.example.net", "https://api-v1.example.net/", True),
+        ("api-**.example.net", "https://api-v1.evil.example.net/", False),
+        ("**x.example.com", "https://a.bx.example.com/", False),
+    ],
+)
+def test_double_star_pattern_matches_one_or_more_labels(tmp_path, pattern, url, allowed):
+    write_config(tmp_path / ".konductor" / "memory-config.json", [pattern])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-11-20] [origin:agent] Mirror at ftp://evil.test/x and http://evil.test/y\n"
-    assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
-
-
-def test_a_blocked_url_rejects_the_entry_after_an_allowed_one(tmp_path):
-    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
-    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-11-20] [origin:agent] See https://docs.example.com/a and ftp://evil.test/b\n"
+    proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
     result = run_validator(proposed, target, cwd=tmp_path)
-    assert result.returncode == 1
-    assert "blocked external URL: ftp://evil.test/b" in result.stderr
+    assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
 
 
 @pytest.mark.parametrize(
@@ -1503,7 +1523,12 @@ def test_a_blocked_url_rejects_the_entry_after_an_allowed_one(tmp_path):
         ("*.0.0.1", "https://127.0.0.1/", False),
         ("*", "https://10.0.0.1/", False),
         ("*", "https://16909060/", False),
-        ("*", "https://docs.example.org/", True),
+        ("*", "https://intranet/", True),
+        ("**", "https://10.0.0.1/", False),
+        ("**", "https://127.0.0.1/", False),
+        ("**", "https://16909060/", False),
+        ("**", "https://0x7f000001/", False),
+        ("**.0.0.1", "https://127.0.0.1/", False),
     ],
 )
 def test_ip_literal_hosts_need_an_exact_pattern(tmp_path, pattern, url, allowed):
@@ -1512,6 +1537,7 @@ def test_ip_literal_hosts_need_an_exact_pattern(tmp_path, pattern, url, allowed)
     proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
     result = run_validator(proposed, target, cwd=tmp_path)
     assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
+
 
 # ---------------------------------------------------------------------------
 # The URL check runs in python3. When the interpreter fails, the entry is

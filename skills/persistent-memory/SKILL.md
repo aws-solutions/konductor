@@ -128,10 +128,11 @@ Limits and URL allowlist are configurable via `.konductor/memory-config.json` at
 - `allowlist_patterns` — hostname patterns for URLs permitted in entries. Empty array = all URLs allowed. Populate with your org's domains to restrict external URLs.
   With a non-empty list, every `scheme://` in an entry is checked, including one glued to or nested inside another URL, and only `https` URLs can pass: `http://`, `ftp://` and any other scheme are rejected, whatever their letter case. A backslash in place of a slash after `https:` counts as a slash.
   Each pattern is matched, case-insensitively, against the URL's hostname only (userinfo, port, path, query and fragment are ignored).
-  A `*` that is the whole leftmost label matches one or more labels: `*.example.com` covers `docs.example.com` and `a.b.example.com`, but not `example.com`.
-  A `*` anywhere else matches within one label, and a pattern without `*` matches only that exact host.
+  A `*` matches within one label: `*.example.com` covers `docs.example.com` but not `a.b.example.com` or `example.com`, and a bare `*` covers only single-label hosts such as `intranet`.
+  A `**` that is the whole leftmost label matches one or more labels: `**.example.com` covers `docs.example.com` and `a.b.example.com`, but not `example.com`. A bare `**` allows any https hostname. A `**` anywhere else behaves like `*`.
+  A pattern without `*` matches only that exact host.
   A host with a percent-encoded dot or raw non-ASCII characters is rejected; allowlist an internationalized domain by its `xn--` form.
-  A host whose last label is a number is an IPv4 address in any spelling (`16909060`, `0x1020304`, `0177.0.0.1`, `127.0.0.1`). It matches only a pattern without `*` that spells it exactly, so `*` alone never allows an IP address.
+  A host whose last label is a number is an IPv4 address in any spelling (`16909060`, `0x1020304`, `0177.0.0.1`, `127.0.0.1`). It matches only a pattern without `*` that spells it exactly, so neither `*` nor `**` ever allows an IP address.
 
 A template is provided at `skills/persistent-memory/memory-config.json.template`. Copy it to `.konductor/memory-config.json` in your project and customize.
 
