@@ -136,6 +136,57 @@ test('a task the fix does not save is dropped: a draft and the drop are written,
   } finally { r.cleanup(); }
 });
 
+test('a dropped task: option B replaces it (other family writes, first family reviews, two calls), and the freeze step signs the draft off', () => {
+  const { replaceDropped, freezeDraft } = require('../../cap/unitauthor.js');
+  const r = rig();
+  try {
+    const out = path.join(r.root, 'baseline', 'baseline.json');
+    const draftFile = path.join(r.root, 'baseline', 'baseline.draft.json');
+    const args = { kind: 'context', name: 'k-rules', repo: r.repo, briefsFile: briefsFile(r), out, paid: r.paid };
+    withEnv({ FAKE_KP_FAIL: 't05', FAKE_KP_NOFIX: 't05' }, () => authorUnit(args));
+    const spent = ledgerSpent(r.paid.ledger);
+    // The free freeze works on the 15-task draft too.
+    const copy = path.join(r.root, 'fifteen', 'baseline.json');
+    fs.mkdirSync(path.dirname(copy), { recursive: true });
+    assert.throws(() => freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile, out: copy, signedOffBy: ' ' }), /needs the name/);
+    assert.equal(freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile, out: copy, signedOffBy: 'owner' }), 15);
+    assert.equal(loadUnitBaseline(copy).source.signedOffBy, 'owner');
+    assert.throws(() => freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile, out: copy, signedOffBy: 'owner' }), /already exists/);
+    // Option B: the plan is two calls, 30 counted, and makes no call.
+    const plan = replaceDropped({ ...args, draftFile, id: 't05', dryRun: true });
+    assert.deepEqual(plan.plan.map((p) => [p.step, p.model]), [['t05.replace', 'deepseek-3.2'], ['t05.replace-review', 'glm-5']]);
+    assert.equal(plan.worst, 30);
+    assert.equal(ledgerSpent(r.paid.ledger), spent);
+    const res = withEnv({ FAKE_KP_LOG: r.log }, () => replaceDropped({ ...args, draftFile, id: 't05' }));
+    assert.equal(res.status, 'replaced');
+    assert.deepEqual(r.calls().map((l) => l.split(' ').slice(0, 2).join(' ')), ['deepseek-3.2 write', 'glm-5 review']);
+    assert.equal(ledgerSpent(r.paid.ledger), spent + 30);
+    const d = JSON.parse(fs.readFileSync(draftFile, 'utf8'));
+    assert.deepEqual(d.source.dropped, []);
+    assert.deepEqual(d.source.replaced.map((x) => [x.id, x.writtenBy, x.reviewedBy, x.verdict]), [['t05', 'deepseek-3.2', 'glm-5', 'pass']]);
+    assert.deepEqual(d.batches[0].tasks.map((t) => t.id), ['t01', 't02', 't03', 't04', 't05', 't06', 't07', 't08']);
+    assert.equal(freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile, out, signedOffBy: 'owner' }), 16);
+    assert.throws(() => replaceDropped({ ...args, draftFile, id: 't05' }), /not in source.dropped/);
+  } finally { r.cleanup(); }
+});
+
+test('a replacement that fails its review stays dropped, with the failure recorded; it gets no fix', () => {
+  const { replaceDropped } = require('../../cap/unitauthor.js');
+  const r = rig();
+  try {
+    const out = path.join(r.root, 'baseline', 'baseline.json');
+    const draftFile = path.join(r.root, 'baseline', 'baseline.draft.json');
+    const args = { kind: 'context', name: 'k-rules', repo: r.repo, briefsFile: briefsFile(r), out, paid: r.paid };
+    withEnv({ FAKE_KP_FAIL: 't05', FAKE_KP_NOFIX: 't05' }, () => authorUnit(args));
+    const res = withEnv({ FAKE_KP_LOG: r.log, FAKE_KP_FAIL: 't05' }, () => replaceDropped({ ...args, draftFile, id: 't05' }));
+    assert.equal(res.status, 'still dropped');
+    assert.equal(r.calls().length, 2, 'two calls, no fix');
+    const d = JSON.parse(fs.readFileSync(draftFile, 'utf8'));
+    assert.match(d.source.dropped[0].note, /the replacement by deepseek-3.2 also failed review by glm-5/);
+    assert.equal(d.batches[0].tasks.length, 7);
+  } finally { r.cleanup(); }
+});
+
 /** A frozen baseline for the rig's unit, so its stage can run; `signedOffBy` null leaves it unsigned. */
 function freeze(r, signedOffBy = 'test owner') {
   const dir = path.join(r.root, 'unit-baselines');

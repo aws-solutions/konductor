@@ -98,6 +98,35 @@ test('a unit baseline needs two batches of 8 tasks, each with a prompt and a rub
     j.batches[1].tasks.pop();
     fs.writeFileSync(file, JSON.stringify(j));
     assert.throws(() => loadUnitBaseline(file), /batch b2 has 7 tasks; a unit baseline has 2 batches of 8/);
+    // A task dropped under the one-fix rule, and recorded in source.dropped, leaves its batch one short: allowed.
+    const gone = j.batches[1].tasks.length;
+    j.source = { ...j.source, dropped: [{ batch: 'b2', id: 'b2-7', note: 'failed its recheck' }] };
+    fs.writeFileSync(file, JSON.stringify(j));
+    assert.equal(loadUnitBaseline(file).batches[1].tasks.length, gone);
+    // A recorded drop that is still in the batch, or a drop in another batch, is refused.
+    j.source.dropped = [{ batch: 'b1', id: 'b1-0', note: 'x' }];
+    fs.writeFileSync(file, JSON.stringify(j));
+    assert.throws(() => loadUnitBaseline(file), /batch b1 has 8 tasks; with 1 dropped .* it should have 7/);
+  } finally { r.cleanup(); }
+});
+
+test('a 15-task baseline (one task dropped) runs, and its floor is the copied rule scaled: 12 of 15', () => {
+  const { minCounted } = require('../../cap/labels.js');
+  assert.equal(minCounted(16), 12);
+  assert.equal(minCounted(15), 12, 'ceil(15 x 12 / 16) = 12: the copied rule rounds up, so 11 of 15 would loosen it');
+  const r = rig();
+  try {
+    const file = path.join(r.baselines, 'context-k-rules', 'baseline.json');
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    j.batches[1].tasks.pop();
+    j.source = { ...j.source, dropped: [{ batch: 'b2', id: 'b2-7', note: 'failed its recheck' }] };
+    fs.writeFileSync(file, JSON.stringify(j));
+    const { record } = runUnitStage({ kind: 'context', name: 'k-rules', repo: r.repo, runId: 'stub-15', outDir: r.out, baselinesDir: r.baselines });
+    assert.equal(record.quick.coverage.tasksTotal, 15);
+    // The plan of a 15-task unit at quick depth: 30 answers, 15 checklists, 180 judge calls.
+    const e = estimateStage({ kind: 'context', units: [{ status: 'needs baseline', entry: false }], depths: ['quick'], tasks: 15 });
+    assert.deepEqual(e.perUnit, { answers: 30, checklists: 15, judgeCalls: 180, calls: 225 });
+    assert.equal(e.calls, 225 + 312);
   } finally { r.cleanup(); }
 });
 

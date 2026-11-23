@@ -26,7 +26,7 @@ const { readJsonFile } = require('./checkedjson.js');
 const { UNIT_SCHEMA_ID, writeUnitRecord, renderUnitRecord } = require('./unitrecord.js');
 const { WORST_PER_CALL, ledgerSpent } = require('./paidcall.js');
 const { createKiroProvider } = require('./kiroprovider.js');
-const { MIN_COUNTED } = require('./labels.js');
+const { minCounted } = require('./labels.js');
 
 const PROVIDERS = ['stub', 'kiro'];
 /** The first pilot's models: the agent under test is Claude, so the checklist writer and the judges are not. */
@@ -69,8 +69,15 @@ function baselineProblems(b) {
   if (!STAGE_OF_KIND[b?.kind]) p.push(`kind ${JSON.stringify(b?.kind)} is not agent, sop or context`);
   if (!/^[0-9a-f]{64}$/.test(b?.unit_sha256 ?? '')) p.push('unit_sha256 is not a SHA-256');
   if (!Array.isArray(b?.batches) || b.batches.length !== BATCHES) p.push(`a unit baseline has ${BATCHES} batches of ${TASKS_PER_BATCH} tasks`);
+  // A task dropped under the one-fix rule (unitauthor.js) is recorded in source.dropped and leaves its batch one short;
+  // the label floor then scales with the task count (labels.js minCounted: 12 of 16, 12 of 15).
+  const dropped = Array.isArray(b?.source?.dropped) ? b.source.dropped : [];
   for (const batch of b?.batches ?? []) {
-    if ((batch.tasks ?? []).length !== TASKS_PER_BATCH) p.push(`batch ${batch.batch} has ${(batch.tasks ?? []).length} tasks; a unit baseline has ${BATCHES} batches of ${TASKS_PER_BATCH}`);
+    const gone = dropped.filter((d) => d.batch === batch.batch);
+    const want = TASKS_PER_BATCH - gone.length;
+    const have = (batch.tasks ?? []).length;
+    if (have !== want) p.push(gone.length ? `batch ${batch.batch} has ${have} tasks; with ${gone.length} dropped (${gone.map((d) => d.id).join(', ')}) it should have ${want}` : `batch ${batch.batch} has ${have} tasks; a unit baseline has ${BATCHES} batches of ${TASKS_PER_BATCH}`);
+    for (const d of gone) if ((batch.tasks ?? []).some((t) => t.id === d.id)) p.push(`task ${d.id} is recorded as dropped but is still in batch ${batch.batch}`);
     for (const t of batch.tasks ?? []) if (typeof t.prompt !== 'string' || !t.prompt || !Array.isArray(t.rubric) || !t.rubric.length) p.push(`task ${t.id} needs a prompt and a rubric`);
   }
   return p;
@@ -167,12 +174,13 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
 }
 
 /**
- * The flag for a paid block whose reading A counted fewer than MIN_COUNTED tasks while judge replies were lost
+ * The flag for a paid block whose reading A counted fewer than its floor (minCounted) while judge replies were lost
  * (unreadable after their one re-ask), or null. Without it such a block reads only "NO DATA" and hides the cause.
  */
 function lostJudgmentsWhy(block, stats) {
-  if (!stats?.lost || block.coverage.tasksCounted >= MIN_COUNTED) return null;
-  return `FLAG: only ${block.coverage.tasksCounted} of ${block.coverage.tasksTotal} tasks counted, under the floor of ${MIN_COUNTED}, and ${stats.lost} judge repl${stats.lost === 1 ? 'y' : 'ies'} could not be read after one re-ask (${stats.reasked} re-asked in all); this is a judge problem, not a reading of the unit`;
+  const floor = minCounted(block.coverage.tasksTotal);
+  if (!stats?.lost || block.coverage.tasksCounted >= floor) return null;
+  return `FLAG: only ${block.coverage.tasksCounted} of ${block.coverage.tasksTotal} tasks counted, under the floor of ${floor}, and ${stats.lost} judge repl${stats.lost === 1 ? 'y' : 'ies'} could not be read after one re-ask (${stats.reasked} re-asked in all); this is a judge problem, not a reading of the unit`;
 }
 
 /** The commit of the checkout `repo`, or null outside git. */
@@ -277,8 +285,10 @@ function cmdUnitStage(opts) {
 function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
   const unit = unitManifest({ repo, kind, name });
   const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
-  const e = estimateStage({ kind, units: [row], depths });
   const { why, baseline } = blockers({ unit, row, baselinesDir });
+  // The plan counts the baseline's own tasks: 15 when one was dropped under the one-fix rule.
+  const tasks = baseline ? baseline.batches.reduce((n, bt) => n + bt.tasks.length, 0) : BATCHES * TASKS_PER_BATCH;
+  const e = estimateStage({ kind, units: [row], depths, tasks });
   const panel = judgePanel({ subjectModel, judges });
   const spent = paid?.ledger ? ledgerSpent(paid.ledger) : 0;
   const convention = loadConvention().batches.reduce((n, b) => n + b.tasks.length, 0);
@@ -287,6 +297,7 @@ function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BAS
     `dry run, no call made: ${unit.id} at ${depths.join(' and ')} depth, agent ${subjectModel}, judges ${panel.seats.join(', ') || 'none seated'}`,
     `calls: ${fmt(e.calls)} (${fmt(e.perUnit.calls)} for the unit, ${fmt(e.controls.calls)} for the controls); worst case ${fmt(e.credits.worst)} credits at ${WORST_PER_CALL} per call; about ${fmt(e.credits.typical)} credits typical`,
     `controls loaded: convention control (${convention} tasks) and dose ladder (${pairs} pairs)`,
+    `tasks: ${tasks}; a reading needs ${minCounted(tasks)} of them counted (the copied rule, 12 of every 16, rounded up)`,
   ];
   if (paid) lines.push(`ledger ${paid.ledger ?? '(none given)'}: spent ${spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}; ${spent + e.credits.worst <= paid.cap ? 'the worst case fits' : 'the worst case does not fit: the run stops at the cap and a rerun with a larger cap resumes it'}`);
   if (baseline) lines.push(`baseline ${baseline.unit_sha256 === unit.sha256 ? 'fresh' : 'stale'}, signed off by ${signedOffBy(baseline) ?? 'nobody yet'}`);

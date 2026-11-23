@@ -351,9 +351,10 @@ const USAGE = `Usage:
        (PAID: the same stage on the kiro provider, quick depth only, one-turn kiro-cli calls with no tools; the ledger is read before every call at the larger of
        15 and its real credits and a call is refused past --cap; the baseline (in --baselines, default bench/cap/unit-baselines) must be fresh and signed off
        (source.signedOffBy); a rerun of the same --run resumes. --dry-run prints the calls, the worst case and what would stop the run, free)
-  node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+  node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--replace ID] [--sign-off NAME] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
        (PAID: writes a unit's frozen baseline from its briefs: glm-5 writes, deepseek-3.2 reviews, one fix, then a still failing task is dropped and recorded;
-       at most 8 calls, each spend-checked as above, resumable from --work. --dry-run prints the steps and the worst case, free)
+       at most 8 calls, each spend-checked as above, resumable from --work. --dry-run prints the steps and the worst case, free. --replace ID: a dropped
+       task's replacement, deepseek-3.2 writes and glm-5 reviews, two calls, into the draft. --sign-off NAME: free, freezes the draft into --out with source.signedOffBy)
   node bench/runner/bench.js cap delegation --agent NAME --run stub-ID [--stub-behaviour always|never|correct|other] [--requests FILE] [--reps N] [--out DIR] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap unit-stage --estimate [--kind agent|sop|context] [--depth quick|deep|both] [--max-units N] [--repo-root DIR]
        (free: keep-or-prune stages 2 to 4. units lists the agent files, SOPs and always-loaded context with their drop arm and selection test; unit-stage runs

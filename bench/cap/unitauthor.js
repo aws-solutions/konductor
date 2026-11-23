@@ -21,7 +21,7 @@ const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const { unitManifest, UNIT_BASELINES_DIR, PAID_FRAME } = require('./units.js');
 const { WORST_PER_CALL, ledgerSpent, assertOutsideHome, paidJson } = require('./paidcall.js');
 const { readJsonFile } = require('./checkedjson.js');
-const { commitOf } = require('./unitstage.js');
+const { commitOf, baselineProblems } = require('./unitstage.js');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
 
 const WRITER = 'glm-5';
@@ -149,7 +149,68 @@ function authorUnit({ kind, name, repo, briefsFile, out, paid, dryRun = false })
   return { status: dropped.length ? 'dropped' : 'frozen', file, plan, dropped };
 }
 
-/** The command: `cap unit-author --kind K --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--dry-run]`. */
+/** The two calls of one replacement, in order: the other family writes, the first family reviews. */
+const replacePlan = (id) => [{ step: `${id}.replace`, model: REVIEWER }, { step: `${id}.replace-review`, model: WRITER }];
+
+/**
+ * Option B for a task dropped under the one-fix rule: a new task for the same brief, written by the reviewer family
+ * (deepseek-3.2) and reviewed by the writer family (glm-5), so neither family checks its own work. Two paid calls, no
+ * fix: if the review fails, the task stays dropped and the failure is recorded. The draft (`draftFile`) is updated in
+ * place: a passing task goes into its batch and out of `source.dropped`, and `source.replaced` records who wrote and
+ * reviewed it. Returns { status: 'planned' | 'replaced' | 'still dropped', plan, worst, spent, review }.
+ */
+function replaceDropped({ kind, name, repo, briefsFile, draftFile, paid, id, dryRun = false }) {
+  const unit = unitManifest({ repo, kind, name });
+  const { briefs } = loadBriefs(briefsFile, unit.id);
+  const draft = readJsonFile(draftFile);
+  if (draft.unit_sha256 !== unit.sha256) throw new Error(`${draftFile} was written for another version of ${unit.id}; write a new baseline instead`);
+  const dropped = (draft.source?.dropped ?? []).find((d) => d.id === id);
+  if (!dropped) throw new Error(`${id} is not in source.dropped of ${draftFile}`);
+  const brief = briefs.find((b) => b.id === id);
+  const stepsDir = path.join(paid.workDir, 'steps');
+  const plan = replacePlan(id).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.step}.json`)) }));
+  const spent = paid.ledger ? ledgerSpent(paid.ledger) : 0;
+  if (dryRun) return { status: 'planned', plan, worst: plan.filter((p) => !p.done).length * WORST_PER_CALL, spent };
+  const call = (step, model, prompt, parse) => paidJson({ ...paid, model, prompt, out: path.join(stepsDir, step), label: `${unit.id} ${step}` }, parse).value;
+  const frame = PAID_FRAME[kind];
+  const [task] = call(`${id}.replace`, REVIEWER, `${writePrompt(frame, unit.text, [brief])}\n\nAn earlier task for this brief was dropped. Its reviewer said: ${dropped.note}`, (j) => readTasks(j, [id]));
+  const [review] = call(`${id}.replace-review`, WRITER, reviewPrompt(frame, unit.text, [brief], [task]), (j) => readReviews(j, [id]));
+  const record = { id, batch: dropped.batch, writtenBy: REVIEWER, reviewedBy: WRITER, verdict: review.verdict, note: review.note };
+  draft.source.replaced = [...(draft.source.replaced ?? []), record];
+  if (review.verdict === 'pass') {
+    const batch = draft.batches.find((b) => b.batch === dropped.batch);
+    batch.tasks = [...batch.tasks, task].sort((a, b) => (a.id < b.id ? -1 : 1));
+    draft.source.dropped = draft.source.dropped.filter((d) => d.id !== id);
+  } else {
+    dropped.note = `${dropped.note}; the replacement by ${REVIEWER} also failed review by ${WRITER}: ${review.note}`;
+  }
+  draft.source.ledgerCredits = paid.ledger ? ledgerSpent(paid.ledger) : null;
+  fs.writeFileSync(draftFile, `${JSON.stringify(draft, null, 2)}\n`);
+  return { status: review.verdict === 'pass' ? 'replaced' : 'still dropped', plan, review };
+}
+
+/**
+ * The freeze step: the draft (`draftFile`) becomes `out` (baseline.json) with `source.signedOffBy` set to the person
+ * who read and accepted its tasks. Refuses when `out` exists, the person is empty, the unit changed since the draft,
+ * or the draft is not a valid baseline (a dropped task must be recorded; 15 tasks is allowed). Returns the tasks count.
+ */
+function freezeDraft({ kind, name, repo, draftFile, out, signedOffBy }) {
+  if (!String(signedOffBy ?? '').trim()) throw new Error('--sign-off needs the name of the person who read the tasks');
+  if (fs.existsSync(out)) throw new Error(`${out} already exists; nothing was changed`);
+  const draft = readJsonFile(draftFile);
+  if (draft.unit_sha256 !== unitManifest({ repo, kind, name }).sha256) throw new Error(`${draftFile} was written for another version of ${kind}:${name}; it cannot be frozen`);
+  const baseline = { ...draft, source: { ...draft.source, signedOffBy: String(signedOffBy).trim(), signedOffAt: new Date().toISOString() } };
+  const problems = baselineProblems(baseline);
+  if (problems.length) throw new Error(`${draftFile} cannot be frozen: ${problems.join('; ')}`);
+  fs.writeFileSync(out, `${JSON.stringify(baseline, null, 2)}\n`);
+  return baseline.batches.reduce((n, b) => n + b.tasks.length, 0);
+}
+
+/**
+ * The command: `cap unit-author --kind K --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--dry-run]`;
+ * with `--replace ID` the option B replacement of one dropped task (paid, two calls); with `--sign-off NAME` the free
+ * freeze of the draft into baseline.json.
+ */
 function cmdUnitAuthor(opts) {
   const repo = repoRootOf(opts);
   const kind = val(opts.kind);
@@ -163,6 +224,21 @@ function cmdUnitAuthor(opts) {
   };
   assertOutsideHome(paid.workDir);
   const args = { kind, name, repo, briefsFile: path.resolve(val(opts.briefs) ?? path.join(dir, 'briefs.json')), out: path.resolve(val(opts.out) ?? path.join(dir, 'baseline.json')), paid };
+  const draftFile = args.out.replace(/\.json$/, '.draft.json');
+  if (val(opts['sign-off'])) {
+    const n = freezeDraft({ kind, name, repo, draftFile, out: args.out, signedOffBy: val(opts['sign-off']) });
+    console.log(`froze ${args.out}: ${n} tasks, signed off by ${val(opts['sign-off']).trim()}`);
+    return;
+  }
+  if (val(opts.replace)) {
+    const r = replaceDropped({ ...args, draftFile, id: val(opts.replace), dryRun: Boolean(opts['dry-run']) });
+    if (r.status === 'planned') {
+      for (const p of r.plan) console.log(`${p.step.padEnd(18)} ${p.model}${p.done ? '  done (saved, free on a rerun)' : ''}`);
+      console.log(`dry run, no call made: at most ${r.plan.filter((p) => !p.done).length} calls, worst case ${r.worst} credits at ${WORST_PER_CALL} per call; ledger spent ${r.spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}${Number.isFinite(paid.cap) ? (r.spent + r.worst <= paid.cap ? '; the worst case fits' : '; the worst case does not fit') : ''}`);
+    } else console.log(`${val(opts.replace)}: ${r.status} (${r.review.verdict}: ${r.review.note}); ${draftFile} updated`);
+    if (r.status === 'still dropped') process.exitCode = 2;
+    return;
+  }
   if (opts['dry-run']) {
     const r = authorUnit({ ...args, dryRun: true });
     for (const p of r.plan) console.log(`${p.batch} ${p.step.padEnd(7)} ${p.model}${p.done ? '  done (saved, free on a rerun)' : p.step === 'fix' || p.step === 'recheck' ? '  only if a task fails' : ''}`);
@@ -179,4 +255,4 @@ function cmdUnitAuthor(opts) {
   }
 }
 
-module.exports = { WRITER, REVIEWER, planOf, readTasks, readReviews, authorBatch, loadBriefs, authorUnit, cmdUnitAuthor, writePrompt, reviewPrompt, fixPrompt };
+module.exports = { WRITER, REVIEWER, planOf, readTasks, readReviews, authorBatch, loadBriefs, authorUnit, replaceDropped, freezeDraft, cmdUnitAuthor, writePrompt, reviewPrompt, fixPrompt };
