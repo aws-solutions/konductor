@@ -65,5 +65,23 @@ grep -qx "$REF" "$T"/logs/kp-pilot-v2-rewrite-[0-9]*/commit.txt && ok "it ran on
 run bash "$SELF/run-pilot-v2-rewrite.sh"; rc=$?
 [ "$(calls)" = 4 ] && ok "a rerun makes no new call" || bad "rerun rc $rc, calls $(calls)"
 
+# --- the redo of one task (t09): one last try, no fix; here it fails, so t09 is dropped and v2 has 14 tasks ---
+DIR2=$(dirname "$V2")
+run env KP_REF="$REF" bash "$SELF/run-pilot-v2-rewrite.sh" --redo t09 --dry-run; rc=$?
+[ "$rc" = 0 ] && grep -q "^redo-t09 write   deepseek-3.2" "$T/out" && grep -q "dry run, no call made: at most 2 calls, worst case 30 credits at 15 per call; ledger spent 60; cap 120; the worst case fits" "$T/out" \
+  && [ -f "$V2" ] && ok "--redo t09 --dry-run: 2 calls, worst 30, spent 60 of 120, v2 not moved" || { bad "redo dry rc $rc"; tail -n 12 "$T/out"; }
+run env KP_REF="$REF" FAKE_KP_FAIL=t09 bash "$SELF/run-pilot-v2-rewrite.sh" --redo t09; rc=$?
+[ "$rc" = 2 ] && [ -f "${V2%.json}.draft.json" ] && [ ! -f "$V2" ] && [ -f "$DIR2/baseline.before-redo-t09.json" ] && grep -q "t09 failed its last try and is dropped" "$T/out" \
+  && ok "redo fails: t09 dropped, a 14-task draft, the old v2 kept aside" || { bad "redo rc $rc"; tail -n 15 "$T/out"; }
+[ "$(calls)" = 6 ] && ok "the redo made 2 calls (write, review), no fix" || bad "calls $(calls)"
+node -e 'const b=require(process.argv[1]);const n=b.batches.reduce((s,x)=>s+x.tasks.length,0);process.exit(n===14&&b.source.version===2&&b.source.dropped.map(d=>d.id).join()==="t14,t09"&&b.source.redone[0].noFix?0:1)' "${V2%.json}.draft.json" \
+  && ok "the draft: 14 tasks, still version 2, t14 and t09 dropped, the redo recorded" || bad "draft: $(node -e 'console.log(JSON.stringify(require(process.argv[1]).source))' "${V2%.json}.draft.json" 2>&1 | cut -c1-300)"
+grep -q "v2 redo t09" "$T/pinned-commit.log" && ok "the paid redo pinned the commit, logged" || bad "redo pin"
+run bash "$SELF/run-pilot-v2-rewrite.sh" --sign-off "stub owner"; rc=$?
+node -e 'const b=require(process.argv[1]);process.exit(b.source.signedOffBy==="stub owner"&&b.batches.reduce((s,x)=>s+x.tasks.length,0)===14?0:1)' "$V2" 2>/dev/null \
+  && [ "$rc" = 0 ] && ok "--sign-off freezes the 14-task draft into baseline.json" || { bad "sign-off rc $rc"; tail -n 5 "$T/out"; }
+run bash "$SELF/run-pilot-v2-rewrite.sh" --sign-off "stub owner"; rc=$?
+[ "$rc" = 1 ] && ok "a second --sign-off is refused" || bad "second sign-off rc $rc"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"

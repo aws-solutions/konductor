@@ -252,6 +252,54 @@ test('a rewrite: a new baseline version with the named tasks written again and e
   } finally { r.cleanup(); }
 });
 
+test('a redo of one rewritten task: one last try with no fix, same version; a fail drops it, and 14 tasks still run', { timeout: 600000 }, () => {
+  const { rewriteUnit, freezeDraft } = require('../../cap/unitauthor.js');
+  const r = rig();
+  try {
+    // v1 (t14 dropped, signed off), then v2 with five rewrites, unsigned: the state after the first rewrite.
+    const v1 = path.join(r.root, 'v1', 'baseline.json');
+    withEnv({ FAKE_KP_FAIL: 't14', FAKE_KP_NOFIX: 't14' }, () => authorUnit({ kind: 'context', name: 'k-rules', repo: r.repo, briefsFile: briefsFile(r), out: v1, paid: { ...r.paid, workDir: path.join(r.root, 'w1') } }));
+    freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile: v1.replace(/\.json$/, '.draft.json'), out: v1, signedOffBy: 'owner' });
+    const brief = (id, extra = {}) => ({ id, batch: Number(id.slice(1)) <= 8 ? 'b1' : 'b2', section: 'Denials', situation: `new case ${id}`, good: 'asks the user', why: ['user voice'], ...extra });
+    const rw1 = path.join(r.root, 'rw1.json');
+    write(rw1, JSON.stringify({ unit: 'context:k-rules', families: { writer: 'deepseek-3.2', reviewer: 'glm-5' }, tasks: ['t01', 't07', 't09', 't12', 't16'].map((id) => brief(id)) }));
+    const work = path.join(r.root, 'w2');
+    const v2dir = path.join(r.root, 'v2', 'context-k-rules');
+    const v2 = path.join(v2dir, 'baseline.json');
+    rewriteUnit({ kind: 'context', name: 'k-rules', repo: r.repo, rewriteFile: rw1, fromFile: v1, out: v2, paid: { ...r.paid, workDir: work } });
+    const before = path.join(v2dir, 'baseline.before-redo-t09.json');
+    fs.renameSync(v2, before);
+    // The redo: its own step name in the same work dir, no fix.
+    const redoFile = path.join(r.root, 'redo.json');
+    write(redoFile, JSON.stringify({ unit: 'context:k-rules', name: 'redo-t09', noFix: true, families: { writer: 'deepseek-3.2', reviewer: 'glm-5' }, review: 'Fable v2 review', tasks: [brief('t09', { why: ['still the user asking "What do I do next?"'] })] }));
+    const redo = { kind: 'context', name: 'k-rules', repo: r.repo, rewriteFile: redoFile, fromFile: before, out: v2, paid: { ...r.paid, workDir: work } };
+    const plan = rewriteUnit({ ...redo, dryRun: true });
+    assert.deepEqual(plan.plan.map((p) => [p.batch, p.step, p.model, p.done]), [['redo-t09', 'write', 'deepseek-3.2', false], ['redo-t09', 'review', 'glm-5', false]], 'two calls, not the first rewrite\'s saved steps');
+    assert.equal(plan.worst, 30);
+    // It fails its review: dropped, no fix call, a draft of 14 tasks, the same version.
+    const n0 = r.calls().length;
+    const res = withEnv({ FAKE_KP_LOG: r.log, FAKE_KP_FAIL: 't09' }, () => rewriteUnit(redo));
+    assert.equal(res.status, 'dropped');
+    assert.deepEqual(r.calls().slice(n0).map((l) => l.split(' ').slice(0, 2).join(' ')), ['deepseek-3.2 write', 'glm-5 review']);
+    const d = JSON.parse(fs.readFileSync(res.file, 'utf8'));
+    assert.equal(d.source.version, 2, 'a redo of an unsigned version stays that version');
+    assert.equal(d.source.from.signedOffBy, 'owner', 'it still names v1');
+    assert.deepEqual(d.source.kept, ['t02', 't03', 't04', 't05', 't06', 't08', 't10', 't11', 't13', 't15']);
+    assert.deepEqual(d.source.rewritten, ['t01', 't07', 't12', 't16']);
+    assert.deepEqual(d.source.dropped.map((x) => x.id), ['t14', 't09']);
+    assert.deepEqual(d.source.redone.map((x) => [x.rewrite, x.noFix, x.dropped]), [['redo.json', true, ['t09']]]);
+    const old = JSON.parse(fs.readFileSync(before, 'utf8'));
+    const same = (id) => JSON.stringify(d.batches.flatMap((b) => b.tasks).find((t) => t.id === id)) === JSON.stringify(old.batches.flatMap((b) => b.tasks).find((t) => t.id === id));
+    assert.ok(['t01', 't02', 't07', 't12', 't16'].every(same), 'every other task is unchanged');
+    // 14 tasks freeze and run: the floor is 11 of 14 (12 of 16, rounded up).
+    assert.equal(freezeDraft({ kind: 'context', name: 'k-rules', repo: r.repo, draftFile: res.file, out: v2, signedOffBy: 'owner' }), 14);
+    const { record } = withEnv({ FAKE_KP_LOG: r.log }, () => runUnitStage({ kind: 'context', name: 'k-rules', repo: r.repo, runId: 'kp-14', outDir: path.join(r.root, 'runs'), provider: 'kiro', depths: ['quick'], subjectModel: 'claude-sonnet-5.5', judges: [...PILOT_JUDGES], baselinesDir: path.dirname(v2dir), paid: { ...r.paid, cap: 100000 }, roleLine: true }));
+    assert.equal(record.quick.coverage.tasksTotal, 14);
+    assert.equal(record.quick.coverage.tasksCounted, 14);
+    assert.deepEqual(record.baseline.source.dropped.map((x) => x.id), ['t14', 't09']);
+  } finally { r.cleanup(); }
+});
+
 /** A frozen baseline for the rig's unit, so its stage can run; `signedOffBy` null leaves it unsigned. */
 function freeze(r, signedOffBy = 'test owner') {
   const dir = path.join(r.root, 'unit-baselines');

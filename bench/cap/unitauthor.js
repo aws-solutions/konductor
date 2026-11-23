@@ -97,12 +97,14 @@ const planOf = (batches, fam = DEFAULT_FAMILIES) => batches.flatMap((b) => STEPS
  * Runs one batch's four steps (fix and recheck only when a task failed). `call(step, model, prompt, parse)` makes one
  * paid call. Returns { tasks: the passing tasks, dropped: [{ id, note }], calls }.
  */
-function authorBatch({ batch, briefs, unitText, frame, call, fam = DEFAULT_FAMILIES, extra = {} }) {
+function authorBatch({ batch, briefs, unitText, frame, call, fam = DEFAULT_FAMILIES, extra = {}, noFix = false }) {
   const ids = briefs.map((b) => b.id);
   const drafts = call(`${batch}.write`, fam.writer, writePrompt(frame, unitText, briefs, extra.writer), (j) => readTasks(j, ids));
   const reviews = call(`${batch}.review`, fam.reviewer, reviewPrompt(frame, unitText, briefs, drafts, extra.reviewer), (j) => readReviews(j, ids));
   const failed = reviews.filter((r) => r.verdict === 'fail');
   if (!failed.length) return { tasks: drafts, dropped: [], fixed: [] };
+  // A last try (noFix): a task that fails its review is dropped and recorded, with no fix.
+  if (noFix) return { tasks: drafts.filter((t) => !failed.some((r) => r.id === t.id)), dropped: failed.map((r) => ({ id: r.id, note: r.note })), fixed: [] };
   const failedIds = failed.map((r) => r.id);
   const failedBriefs = briefs.filter((b) => failedIds.includes(b.id));
   const failedTasks = drafts.filter((t) => failedIds.includes(t.id)).map((t) => ({ ...t, note: failed.find((r) => r.id === t.id).note }));
@@ -221,7 +223,9 @@ function loadRewrite(file, unitId) {
     if (!Array.isArray(t.why) || !t.why.length) throw new Error(`${file}: task ${t.id} needs "why", the reviews' reasons it was bad`);
   }
   if (new Set(tasks.map((t) => t.id)).size !== tasks.length) throw new Error(`${file}: a task id is listed twice`);
-  return { tasks, review: r.review ?? null, families: familiesOf(r, file) };
+  const step = r.name ?? 'rewrite';
+  if (!/^[a-z0-9-]+$/.test(step)) throw new Error(`${file}: "name" must be lower-case letters, digits and dashes (it names the saved steps)`);
+  return { tasks, review: r.review ?? null, families: familiesOf(r, file), step, noFix: r.noFix === true };
 }
 
 /** The lines the rewrite adds to the writer's and the reviewer's prompts: each earlier task and why it was bad. */
@@ -242,7 +246,7 @@ const rewriteExtra = (tasks, from) => {
  */
 function rewriteUnit({ kind, name, repo, rewriteFile, fromFile, out, paid, dryRun = false }) {
   const unit = unitManifest({ repo, kind, name });
-  const { tasks: briefs, review, families: fam } = loadRewrite(rewriteFile, unit.id);
+  const { tasks: briefs, review, families: fam, step, noFix } = loadRewrite(rewriteFile, unit.id);
   const fromText = fs.readFileSync(fromFile, 'utf8');
   const from = JSON.parse(fromText);
   const problems = baselineProblems(from);
@@ -258,23 +262,35 @@ function rewriteUnit({ kind, name, repo, rewriteFile, fromFile, out, paid, dryRu
   const ids = new Set(briefs.map((t) => t.id));
   const kept = [...byId.keys()].filter((id) => !ids.has(id));
   const stepsDir = path.join(paid.workDir, 'steps');
-  const plan = planOf(['rewrite'], fam).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.batch}.${p.step}.json`)) }));
+  // A rewrite file named for its step ("redo-t09") keeps its saved steps apart from earlier rewrites in the same work dir.
+  const plan = planOf([step], fam).filter((p) => !noFix || p.step === 'write' || p.step === 'review').map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.batch}.${p.step}.json`)) }));
   const spent = paid.ledger ? ledgerSpent(paid.ledger) : 0;
   if (dryRun) return { status: 'planned', plan, worst: plan.filter((p) => !p.done).length * WORST_PER_CALL, spent, kept, rewritten: [...ids] };
   const call = (step, model, prompt, parse) => paidJson({ ...paid, model, prompt, out: path.join(stepsDir, step), label: `${unit.id} ${step}` }, parse).value;
   const extra = rewriteExtra(briefs, new Map([...byId].map(([id, v]) => [id, v.task])));
-  const r = authorBatch({ batch: 'rewrite', briefs, unitText: unit.text, frame: PAID_FRAME[kind], call, fam, extra });
+  const r = authorBatch({ batch: step, briefs, unitText: unit.text, frame: PAID_FRAME[kind], call, fam, extra, noFix });
   const fresh = new Map(r.tasks.map((t) => [t.id, t]));
   const dropped = r.dropped.map((d) => ({ batch: byId.get(d.id).batch, ...d }));
+  // A redo of a version nobody has signed off (it came from a rewrite) stays that version: it keeps its first `from`,
+  // `kept` and `rewritten`, and records the redo in `redone`. A rewrite of a signed-off baseline is the next version.
+  const redo = !from.source?.signedOffBy && from.source?.from;
+  const gone = new Set(dropped.map((d) => d.id));
+  const source = redo ? {
+    ...from.source, commit: commitOf(BENCH_DIR),
+    rewritten: [...new Set([...from.source.rewritten, ...fresh.keys()])].filter((id) => !gone.has(id)),
+    dropped: [...(from.source.dropped ?? []), ...dropped],
+    redone: [...(from.source.redone ?? []), { rewrite: path.basename(rewriteFile), review, ids: [...ids], writtenBy: fam.writer, reviewedBy: fam.reviewer, noFix, passed: [...fresh.keys()], dropped: [...gone] }],
+    ledgerCredits: paid.ledger ? ledgerSpent(paid.ledger) : null, signedOffBy: null,
+  } : {
+    commit: commitOf(BENCH_DIR), version: (from.source?.version ?? 1) + 1,
+    from: { file: path.basename(fromFile), sha256: crypto.createHash('sha256').update(fromText).digest('hex'), signedOffBy: from.source?.signedOffBy ?? null },
+    rewrite: path.basename(rewriteFile), review, writtenBy: fam.writer, reviewedBy: fam.reviewer, rule: 'one fix by the writer, then drop and record; never fixed by hand',
+    kept, rewritten: [...fresh.keys()], fixed: r.fixed, dropped: [...(from.source?.dropped ?? []), ...dropped],
+    ledgerCredits: paid.ledger ? ledgerSpent(paid.ledger) : null, signedOffBy: null,
+  };
   const baseline = {
     format_version: 1, kind, name, unit_sha256: unit.sha256,
-    source: {
-      commit: commitOf(BENCH_DIR), version: (from.source?.version ?? 1) + 1,
-      from: { file: path.basename(fromFile), sha256: crypto.createHash('sha256').update(fromText).digest('hex'), signedOffBy: from.source?.signedOffBy ?? null },
-      rewrite: path.basename(rewriteFile), review, writtenBy: fam.writer, reviewedBy: fam.reviewer, rule: 'one fix by the writer, then drop and record; never fixed by hand',
-      kept, rewritten: [...fresh.keys()], fixed: r.fixed, dropped: [...(from.source?.dropped ?? []), ...dropped],
-      ledgerCredits: paid.ledger ? ledgerSpent(paid.ledger) : null, signedOffBy: null,
-    },
+    source,
     // A kept task is the same object, so it serialises to the same bytes; a rewritten one takes its place.
     batches: from.batches.map((b) => ({ batch: b.batch, tasks: b.tasks.flatMap((t) => (!ids.has(t.id) ? [t] : fresh.has(t.id) ? [fresh.get(t.id)] : [])) })),
   };
