@@ -17,7 +17,9 @@ const path = require('node:path');
 const BENCH = path.join(__dirname, '..', '..');
 const BASELINE = JSON.parse(fs.readFileSync(path.join(__dirname, 'harness-coupling-baseline.json'), 'utf8'));
 const SKIP_DIRS = new Set(['node_modules', 'test', '.git', 'plugins', 'fixtures', 'tasks', 'scenarios', 'ops']);
-const PRIVATE_RE = /require\(\s*['"]([^'"]*\/harness\/(?:kiro|opencode|claude-code|claude-listing|opencode-[a-z]+|claude-code-[a-z]+)\.js)['"]\s*\)/g;
+// A built-in harness's own module, or any module of a harness that moved to bench/plugins/<name>/ (FW-18): a move
+// must not turn a counted import into an uncounted one.
+const PRIVATE_RE = /require\(\s*['"]([^'"]*(?:\/harness\/(?:kiro|opencode|claude-code|claude-listing|opencode-[a-z]+|claude-code-[a-z]+)|\/plugins\/[a-z-]+\/[a-z-]+)\.js)['"]\s*\)/g;
 const NAME_RE = /'(?:kiro-cli|opencode|claude-code|strands)'/g;
 
 /** Every non-test `.js` file under `root`, as posix paths relative to it. */
@@ -53,11 +55,11 @@ test('the scan finds a private import and counts runtime names', (t) => {
   fs.mkdirSync(path.join(root, 'runner/lib/harness'), { recursive: true });
   fs.mkdirSync(path.join(root, 'judge'));
   fs.mkdirSync(path.join(root, 'plugins/x'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'judge/a.js'), "require('../runner/lib/harness/claude-code-parse.js'); if (r === 'opencode' || r === 'kiro-cli') {}");
+  fs.writeFileSync(path.join(root, 'judge/a.js'), "require('../runner/lib/harness/claude-code-parse.js'); require('../plugins/x/parse.js'); if (r === 'opencode' || r === 'kiro-cli') {}");
   fs.writeFileSync(path.join(root, 'runner/lib/harness/kiro.js'), "require('./kiro-meta.js'); const id = 'kiro-cli';");
   fs.writeFileSync(path.join(root, 'plugins/x/h.js'), "require('../../runner/lib/harness/kiro.js'); 'strands'");
   assert.deepEqual(couplingOf(root), {
-    imports: ['judge/a.js -> runner/lib/harness/claude-code-parse.js'],
+    imports: ['judge/a.js -> plugins/x/parse.js', 'judge/a.js -> runner/lib/harness/claude-code-parse.js'],
     names: { 'judge/a.js': 2, 'runner/lib/harness/kiro.js': 1 },
   });
 });

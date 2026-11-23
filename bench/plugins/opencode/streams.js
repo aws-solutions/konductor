@@ -4,7 +4,7 @@
 // The opencode stream readers (harness/streams.js, FW-17). The stream is `opencode run --format json` events. opencode
 // has no plant arms and no trace, so it has no plantCalls or timeline.
 
-const { aggregateEvents } = require('./opencode-parse.js');
+const { aggregateEvents } = require('./parse.js');
 
 // opencode's capability tools: `skill` loads a skill, `task` hands work to a subagent.
 const CAPABILITY = Object.freeze({ skill: 'load', task: 'delegate' });

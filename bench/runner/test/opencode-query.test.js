@@ -12,7 +12,7 @@ const { makeFakeOpencode } = require('./fake-opencode.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { opencode: oc } = require('../lib/harness/index.js');
-const { copyData, prepareQueryDir } = require('../lib/harness/opencode-query.js');
+const { copyData, prepareQueryDir } = require('../../plugins/opencode/query.js');
 
 const FX = path.join(__dirname, 'fixtures');
 const MODEL = 'global.anthropic.claude-sonnet-5-5';

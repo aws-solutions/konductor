@@ -1,0 +1,91 @@
+{
+  "turn": {
+    "sessionId": "ses_e7b047669ffea6BvJf34zDKxOm",
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "finalText": "I created `hello.txt` in the working directory. It contains the word \"hello\".",
+    "askedUser": false
+  },
+  "agg": {
+    "delegatedTo": {},
+    "sessionId": "ses_e7b047669ffea6BvJf34zDKxOm",
+    "sessionIds": [
+      "ses_e7b047669ffea6BvJf34zDKxOm"
+    ],
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "credits": 0,
+    "meteringEntries": 0,
+    "nonCreditUnits": [],
+    "turnDurationMs": 1403,
+    "contextUsagePercentage": null,
+    "toolCalls": 1,
+    "workToolCalls": 1,
+    "subagentCalls": 0,
+    "toolNames": {
+      "write": 1
+    },
+    "skillsMcpOk": null,
+    "finalText": "I created `hello.txt` in the working directory. It contains the word \"hello\".",
+    "finalTextTruncated": false,
+    "askedUser": false
+  },
+  "session": {
+    "model": "global.anthropic.claude-sonnet-5-5",
+    "totalRequestCount": 2
+  },
+  "usage": {
+    "tokens": {
+      "input": 6,
+      "output": 127,
+      "reasoning": 0,
+      "cacheRead": 10568,
+      "cacheWrite": 10685,
+      "total": 21386
+    },
+    "costUsd": 0.029051300000000002,
+    "modelCalls": 2,
+    "sessions": 1,
+    "variants": [
+      "low"
+    ]
+  },
+  "transcript": {
+    "bytes": 2232,
+    "chars": 2232,
+    "partial": false
+  },
+  "skills": {
+    "extraction": {
+      "runtime": "opencode",
+      "skillsLoaded": [],
+      "skillQueries": [],
+      "skillBytesLoaded": 0,
+      "bytesByName": {},
+      "skillsLoadedFull": [],
+      "skillLoadsPreview": 0,
+      "skillLoads": [],
+      "skillCallsFailed": 0,
+      "findSkillsCalls": 0,
+      "findSkillsEmpty": 0,
+      "findSkillsBytes": 0,
+      "requested": [],
+      "failedCalls": [],
+      "failedByTool": {
+        "get_skill": 0,
+        "load_resource": 0,
+        "find_skills": 0
+      },
+      "firstDecision": {
+        "kind": "none",
+        "name": null
+      }
+    },
+    "info": null,
+    "order": {
+      "order": [],
+      "firstWriteAt": 1
+    }
+  },
+  "flags": []
+}

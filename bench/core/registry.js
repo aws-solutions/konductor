@@ -68,13 +68,14 @@ function readPlugin(dir) {
 
 /**
  * The registry over `builtins` ([{kind, meta}], in display order) and the plugin folders found in each of
- * `pluginRoots` (sorted by name, after the built-ins). Throws when two parts share a name. Returns a frozen object:
+ * `pluginRoots` (sorted by name, after the built-ins). `order` (names) puts those parts first, in that order, so a
+ * built-in that becomes a plugin keeps its place. Throws when two parts share a name. Returns a frozen object:
  *   parts(kind)   [{name, kind, meta, source: 'builtin'|'plugin', plugin}] in order
  *   descriptors() the harness descriptors, in order
  *   plugins()     the loaded plugins; refused() the refused folders with their reason
  *   record()      [{name, kind, version, benchApi, sha256}] of the loaded plugins, for run-config.json
  */
-function createRegistry({ builtins = [], pluginRoots = [] } = {}) {
+function createRegistry({ builtins = [], pluginRoots = [], order = [] } = {}) {
   const parts = builtins.map(({ kind, meta }) => ({ name: meta.id, kind, meta, source: 'builtin', plugin: null }));
   const plugins = [];
   const refused = [];
@@ -94,7 +95,9 @@ function createRegistry({ builtins = [], pluginRoots = [] } = {}) {
     if (seen.has(key)) throw new Error(`two ${p.kind} parts are named "${p.name}" (${seen.get(key)} and ${p.plugin?.dir ?? 'a built-in'}); a name must be unique`);
     seen.set(key, p.plugin?.dir ?? 'a built-in');
   }
-  const frozen = Object.freeze(parts.map((p) => Object.freeze(p)));
+  // Parts named in `order` come first, in that order; the rest keep their place after them (Array sort is stable).
+  const rank = (p) => (order.includes(p.name) ? order.indexOf(p.name) : order.length);
+  const frozen = Object.freeze([...parts].sort((a, b) => rank(a) - rank(b)).map((p) => Object.freeze(p)));
   return Object.freeze({
     parts: (kind) => frozen.filter((p) => p.kind === kind),
     descriptors: () => Object.freeze(frozen.filter((p) => p.kind === 'harness').map((p) => p.meta)),

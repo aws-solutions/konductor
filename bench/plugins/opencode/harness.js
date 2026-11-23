@@ -8,21 +8,21 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { parseStream } = require('../stream.js');
-const sandbox = require('../sandbox.js');
-const { ALLOW } = require('../env.js');
-const { translateAll } = require('./opencode-translate.js');
-const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./opencode-parse.js');
-const { installCredentials, removeCredentials, readProfile } = require('./opencode-creds.js');
-const { prepareQueryDir } = require('./opencode-query.js');
-const { copyPlainFile } = require('../safe-copy.js');
-const { scrubTreeDetailed } = require('../hygiene.js');
-const { secretLiterals } = require('../scrub.js');
-const skills = require('../skills.js');
-const { promptFor } = require('../arm-opts.js');
+const { parseStream } = require('../../runner/lib/stream.js');
+const sandbox = require('../../runner/lib/sandbox.js');
+const { ALLOW } = require('../../runner/lib/env.js');
+const { translateAll } = require('./translate.js');
+const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./parse.js');
+const { installCredentials, removeCredentials, readProfile } = require('./creds.js');
+const { prepareQueryDir } = require('./query.js');
+const { copyPlainFile } = require('../../runner/lib/safe-copy.js');
+const { scrubTreeDetailed } = require('../../runner/lib/hygiene.js');
+const { secretLiterals } = require('../../runner/lib/scrub.js');
+const skills = require('../../runner/lib/skills.js');
+const { promptFor } = require('../../runner/lib/arm-opts.js');
 
 const id = 'opencode';
-const meta = require('./opencode-meta.js');
+const meta = require('./meta.js');
 const VERSION = '1.19.5';
 const PROVIDER = 'amazon-bedrock';
 const DEFAULT_MODEL = 'global.anthropic.claude-sonnet-5-5';
@@ -161,7 +161,7 @@ function dbRunner(bin, { env: queryEnv, cwd }) {
 }
 
 // The post-run query never sees the scratch HOME: it gets a fresh config, a copy of the database files and a
-// minimal environment (see opencode-query.js). Only the fixed offline switches are taken from the run env.
+// minimal environment (see query.js). Only the fixed offline switches are taken from the run env.
 function queryDir({ outDir, home, tmpdir, arm, ctx, config }) {
   const { set } = envSetup({ arm, config, ctx, home, tmpdir });
   const flags = Object.fromEntries(Object.entries(set).filter(([k]) => /^OPENCODE_(DISABLE_|PURE$)/.test(k)));
@@ -311,6 +311,6 @@ const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 module.exports = {
   id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./opencode-streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
-  resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
+  resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson, readProfile,
 };

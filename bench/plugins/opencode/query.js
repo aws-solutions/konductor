@@ -8,7 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
+const { copyPlainFile, assertPlainPath } = require('../../runner/lib/safe-copy.js');
 
 const MAX_COPY_BYTES = 512 * 1024 * 1024;
 const PASS = ['PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ', 'USER', 'LOGNAME'];

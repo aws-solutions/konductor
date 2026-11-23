@@ -10,8 +10,10 @@ const { createRegistry } = require('../../../core/registry.js');
 const PLUGINS_DIR = path.resolve(__dirname, '..', '..', '..', 'plugins');
 
 const REGISTRY = createRegistry({
-  builtins: [require('./kiro-meta.js'), require('./opencode-meta.js'), require('./claude-code-meta.js')].map((meta) => ({ kind: 'harness', meta })),
+  builtins: [require('./kiro-meta.js'), require('./claude-code-meta.js')].map((meta) => ({ kind: 'harness', meta })),
   pluginRoots: [PLUGINS_DIR],
+  // The display order from before the moves to bench/plugins (FW-18): list-arms and RUNTIMES stay the same.
+  order: ['kiro-cli', 'opencode', 'claude-code'],
 });
 const DESCRIPTORS = REGISTRY.descriptors();
 for (const r of REGISTRY.refused()) process.stderr.write(`warning: plugin ${r.dir} was not loaded: ${r.why}\n`);

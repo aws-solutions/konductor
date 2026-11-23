@@ -14,7 +14,6 @@ const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc, strands: st } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, notSupporting, joinNames } = require('./harness/runtime.js');
 const { DESCRIPTORS, REGISTRY } = require('./harness/descriptors.js');
-const { readProfile } = require('./harness/opencode-creds.js');
 const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const { repoRootOf } = require('./flag-values.js');
 const real = require('./real.js');
@@ -385,7 +384,7 @@ function runPaths({ opts, repo, arms, isUsd, runtime, log }) {
   if (authDb && !fs.existsSync(authDb)) throw new Error(`kiro-cli auth database not found: ${authDb} (log in with kiro-cli first)`);
   const awsCredsFile = isOc ? path.resolve(need(opts, 'aws-creds-file')) : null;
   const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
-  if (isOc) readProfile(awsCredsFile, awsProfile);
+  if (isOc) oc.readProfile(awsCredsFile, awsProfile);
 
   ensureOwnedDir(outDir, 'run-out');
   ensureOwnedDir(cacheDir, 'cache');

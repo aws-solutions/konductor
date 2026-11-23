@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
-const { extractProfile, installCredentials, removeCredentials } = require('../lib/harness/opencode-creds.js');
+const { extractProfile, installCredentials, removeCredentials } = require('../../plugins/opencode/creds.js');
 const { scanTree, scrubTree } = require('../lib/hygiene.js');
 
 // Obviously fake values shaped like the real thing.

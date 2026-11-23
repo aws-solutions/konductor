@@ -17,8 +17,7 @@ const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
 const { makeOpencodeCaller } = require('../judge/opencode.js');
 const { makeExportedCredentials, awsExport, isProfileName } = require('./lib/aws-creds.js');
 const { DEFAULT_BACKEND, checkBackend, makeBackendCaller, checkOpencodeJudges } = require('../judge/backends.js');
-const oc = require('./lib/harness/opencode.js');
-const { readProfile } = require('./lib/harness/opencode-creds.js');
+const { opencode: oc } = require('./lib/harness/index.js');
 const { runJudging, planJudging } = require('../judge/run.js');
 const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
 const { checkRule } = require('../judge/views.js');
@@ -162,7 +161,7 @@ function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir, log = () => {} }) {
   const awsProfile = flagValue(opts, 'aws-profile') ?? 'bench';
   const region = flagValue(opts, 'aws-region') ?? oc.REGION;
   if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
-  if (credsFile) readProfile(credsFile, awsProfile);
+  if (credsFile) oc.readProfile(credsFile, awsProfile);
   const awsBin = process.env.BENCH_AWS_BIN || 'aws';
   const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { awsBin }), log }) : null;
   const cacheDir = path.resolve(flagValue(opts, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));

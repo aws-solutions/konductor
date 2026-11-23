@@ -87,7 +87,7 @@ test('Strands loads from bench/plugins/strands, and the runtime order is unchang
   assert.equal(st.source, 'plugin');
   assert.equal(st.plugin.dir, STRANDS);
   assert.equal(HARNESSES.strands.meta, st.meta);
-  assert.deepEqual(REGISTRY.record(), [{ name: 'strands', kind: 'harness', version: '1.0.0', benchApi: 1, sha256: folderHash(STRANDS) }]);
+  assert.deepEqual(REGISTRY.record().find((r) => r.name === 'strands'), { name: 'strands', kind: 'harness', version: '1.0.0', benchApi: 1, sha256: folderHash(STRANDS) });
   assert.deepEqual(REGISTRY.refused(), []);
 });
 

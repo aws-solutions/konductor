@@ -1,0 +1,8 @@
+{
+  "benchApi": 1,
+  "kind": "harness",
+  "name": "opencode",
+  "version": "1.0.0",
+  "meta": "meta.js",
+  "entry": "harness.js"
+}

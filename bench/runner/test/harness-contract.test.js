@@ -34,13 +34,6 @@ const CASES = {
       return {};
     },
   },
-  opencode: {
-    config: { model: 'global.anthropic.claude-sonnet-5-5', effort: 'low' },
-    setup({ root }) {
-      const bin = makeFakeOpencode(path.join(root, 'bin'), { rowsFile: path.join(FX, 'opencode.rows.json') });
-      return { opencode: { bin, version: '1.19.5', sha256: 'x' }, awsProfile: 'bench' };
-    },
-  },
   'claude-code': {
     config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'high' },
     setup: () => ({ claude: { version: '9.9.9' } }),

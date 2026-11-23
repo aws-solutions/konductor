@@ -10,9 +10,9 @@ const { parseStream } = require('../runner/lib/stream.js');
 const { spawnWithTimeout } = require('../runner/lib/run-one.js');
 const sandbox = require('../runner/lib/sandbox.js');
 const procs = require('../runner/lib/procs.js');
-const oc = require('../runner/lib/harness/opencode.js');
-const { aggregateEvents, rollUp, SQL } = require('../runner/lib/harness/opencode-parse.js');
-const { installCredentials, removeCredentials, readProfile } = require('../runner/lib/harness/opencode-creds.js');
+const { opencode: oc } = require('../runner/lib/harness/index.js');
+const { aggregateEvents, rollUp, SQL } = require('../plugins/opencode/parse.js');
+const { installCredentials, removeCredentials, readProfile } = require('../plugins/opencode/creds.js');
 const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel } = require('./backends.js');
 const { writeCredentials } = require('../runner/lib/aws-creds.js');
 

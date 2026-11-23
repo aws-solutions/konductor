@@ -53,7 +53,7 @@ function lazyCaller(opts) {
   const caller = async (args) => {
     if (!real) {
       const { makeOpencodeCaller } = require('../judge/opencode.js');
-      const oc = require('../runner/lib/harness/opencode.js');
+      const { opencode: oc } = require('../runner/lib/harness/index.js');
       for (const need of ['opencode-bin', 'aws-creds-file']) if (!opts[need]) throw new Error(`the answer is not cached; pass --${need} to call the model`);
       real = makeOpencodeCaller({
         bin: path.resolve(opts['opencode-bin']), credsFile: path.resolve(opts['aws-creds-file']), awsProfile: opts['aws-profile'] ?? 'bench',

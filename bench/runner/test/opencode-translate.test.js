@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
-const { parseAgent, translateAgent, translateAll, TOOL_PERMISSIONS } = require('../lib/harness/opencode-translate.js');
+const { parseAgent, translateAgent, translateAll, TOOL_PERMISSIONS } = require('../../plugins/opencode/translate.js');
 
 const ORCH = `---
 name: konductor

@@ -315,4 +315,4 @@ if (require.main === module) {
   process.exit(bad ? 1 : 0);
 }
 
-module.exports = { checkHarnessPlugin, checksOf, CHECKS, memberProblems, descriptorProblems, streamProblems, fakeRunProblems, plantProblems, goldenProblems, contractMembers };
+module.exports = { checkHarnessPlugin, checksOf, CHECKS, goldenView, memberProblems, descriptorProblems, streamProblems, fakeRunProblems, plantProblems, goldenProblems, contractMembers };
