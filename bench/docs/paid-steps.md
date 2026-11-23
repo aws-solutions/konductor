@@ -17,7 +17,13 @@ Run each from `<workspace>/scripts/` (launchers into [bench/ops](../ops/README.m
 | Step | Script | Expected cost | Cap |
 | --- | --- | --- | --- |
 | Keep-or-prune pilot rerun, controls only | `run-pilot-rerun.sh` | 120 calls, about 21 real credits | 1,800 counted (15 a call) |
-| Keep-or-prune pilot, the unit (after both controls pass) | `run-pilot-rerun.sh --unit` | 225 calls, about 40 real credits | 3,375 counted |
+| Keep-or-prune pilot, the unit (after both controls pass) | `run-pilot-rerun.sh --unit` | 225 calls, about 40 real credits | 3,375 counted (`UNIT_CAP`; 3,390 approved for the resume after one killed call) |
+
+**A resume after a killed call.** A call killed mid-flight (a restart, a closed host) keeps its 15-credit
+reservation, but its reply is lost, so the resume makes it again. That call is counted twice. So a resume needs the
+cap raised by 15 for each killed call, with the owner's approval: for example
+`UNIT_CAP=3390 bash scripts/run-pilot-rerun.sh --unit` (`CONTROLS_CAP` for the controls part). The dry run's gate 4
+shows whether it fits.
 | STANDARD gate rechecks | `standard-recheck/run.sh` | 7 calls, about 10 real credits | 105 counted |
 | STANDARD stages A and B | `run-standard-v1.sh` (once per stage) | about 707 real credits a stage | 800 real credits a stage |
 | STANDARD judges | `run-standard-judge.sh` | about USD 5 | USD 15 |
