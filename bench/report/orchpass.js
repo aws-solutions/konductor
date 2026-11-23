@@ -24,7 +24,7 @@ const { otherRule } = require('../judge/views.js');
 const { normalize, unisolatedReason, aaNoiseFromCells, levelText, qualityList, aaGroups, refLabel, pairCells, nonScoredOf, componentCheck, MAX_NONSCORED_SHARE, NOISE_FLOOR_PTS } = require('./verdict.js');
 const { pairedCellCI, withinCellSd, MIN_CELLS } = require('./stats.js');
 const { enrichOrch, summarize } = require('./orch.js');
-const { modelFamily } = require('../judge/config.js');
+const { familyOf } = require('../judge/family.js');
 
 const PASS = 'PASS';
 const FAIL = 'FAIL';
@@ -119,7 +119,7 @@ function decideCell(c) {
 
 // ---- cells ----
 
-const isGpt = (model) => modelFamily(model) === 'gpt';
+const isGpt = (model) => familyOf(model) === 'gpt';
 
 /** { harness, engine, model, key } of a loaded run: from run-config, else from its first result. */
 function cellKeyOf(run) {
@@ -294,7 +294,7 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
   // Every test arm in every cell is one comparison with vanilla; an A/A repeat is not. With m comparisons each quality interval
   // is widened to level 1 - 0.05/m (Bonferroni), so the cells are built once to count the arms and again at that level.
   const buildAll = (comparisons) => [...byCell.values()].map((c) => ({
-    harness: c.harness, engine: c.engine, harnessLabel: c.harnessLabel, model: c.model, family: modelFamily(c.model),
+    harness: c.harness, engine: c.engine, harnessLabel: c.harnessLabel, model: c.model, family: familyOf(c.model),
     ...buildCell({ key: c.key, inputs: c.inputs, baseline, weights, unit, testArms, changedSkillsOverride: changedSkills, phases, comparisons }),
   }));
   let cells = buildAll(1);

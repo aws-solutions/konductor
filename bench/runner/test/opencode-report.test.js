@@ -16,7 +16,8 @@ const { compareRuns, formatCompare } = require('../../report/compare.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { buildBundle } = require('../../judge/bundle.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
-const { DEFAULTS, modelFamily } = require('../../judge/config.js');
+const { DEFAULTS } = require('../../judge/config.js');
+const { familyOf } = require('../../judge/family.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const FAKE_JUDGE = `node ${path.join(__dirname, 'fake-judge.js')}`;
@@ -166,8 +167,8 @@ test('the judge command runs on an opencode run with a fake judge and the report
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('modelFamily sees through Bedrock routing prefixes so a Claude judge is still refused', () => {
-  assert.equal(modelFamily('global.anthropic.claude-sonnet-5-5'), 'claude');
-  assert.equal(modelFamily('us.anthropic.claude-haiku-5-5'), 'claude');
-  assert.equal(modelFamily('gpt-5.6-luna'), 'gpt');
+test('familyOf sees through Bedrock routing prefixes so a Claude judge is still refused', () => {
+  assert.equal(familyOf('global.anthropic.claude-sonnet-5-5'), 'claude');
+  assert.equal(familyOf('us.anthropic.claude-haiku-5-5'), 'claude');
+  assert.equal(familyOf('gpt-5.6-luna'), 'gpt');
 });

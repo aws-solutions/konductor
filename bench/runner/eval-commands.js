@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, realDir, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
-const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families, modelFamily } = require('../judge/config.js');
+const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families } = require('../judge/config.js');
 const { familyOf, judgeSeats } = require('../judge/family.js');
 const { resolveIsolation } = require('./lib/isolate.js');
 const procs = require('./lib/procs.js');
@@ -90,16 +90,16 @@ const SUBSTITUTE_JUDGES = ['deepseek-3.2', 'glm-5', 'qwen3-coder-next', 'minimax
 // A default or suite panel never keeps a judge from the subject's own family: it is dropped and replaced from SUBSTITUTE_JUDGES
 // (one per family, never Claude), so a panel for a GPT subject becomes deepseek, glm and qwen. Judges named with --judges are not changed.
 function adaptPanel(judges, subjectModel) {
-  if (!subjectModel) return { judges };
-  const subject = modelFamily(subjectModel);
-  const kept = judges.filter((j) => modelFamily(j) !== subject);
-  const dropped = judges.filter((j) => modelFamily(j) === subject);
+  const subject = subjectModel ? familyOf(subjectModel) : null;
+  if (!subject) return { judges };
+  const kept = judges.filter((j) => familyOf(j) !== subject);
+  const dropped = judges.filter((j) => familyOf(j) === subject);
   if (!dropped.length) return { judges };
   const added = [];
   for (const cand of SUBSTITUTE_JUDGES) {
     if (kept.length + added.length >= judges.length) break;
-    const fam = modelFamily(cand);
-    if (fam === subject || fam === 'claude' || [...kept, ...added].some((j) => modelFamily(j) === fam)) continue;
+    const fam = familyOf(cand);
+    if (fam === subject || fam === 'claude' || [...kept, ...added].some((j) => familyOf(j) === fam)) continue;
     added.push(cand);
   }
   return { judges: [...kept, ...added], substituted: { dropped, added } };
@@ -139,7 +139,7 @@ function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmall
     substituted = adapted.substituted;
   }
   judges.forEach((j) => checkJudgeModel(j, subjectModel));
-  checkPanel(judges, { minFamilies: allowSmallPanel ? 1 : MIN_PANEL_FAMILIES });
+  checkPanel(judges, { minFamilies: 0 }); // one judge per known family; the eligible count is checked below
   const { eligible, refused } = eligibleJudges(judges, subjectModel);
   if (eligible.length < MIN_PANEL_FAMILIES && !allowSmallPanel) {
     throw new Error(`the judge panel has ${eligible.length} eligible model family(ies) (${eligible.join(', ') || 'none'}); SR-24 needs at least ${MIN_PANEL_FAMILIES} distinct families other than the agent's (${subjectModel ?? 'model not recorded'})${refused.length ? `; not eligible: ${refused.join('; ')}` : ''}. Add judges, or pass --allow-small-panel (every score is then NO DATA)`);

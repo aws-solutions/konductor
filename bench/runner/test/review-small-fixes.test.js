@@ -9,7 +9,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { modelFamily, checkJudgeModel, checkPanel } = require('../../judge/config.js');
+const { checkJudgeModel, checkPanel } = require('../../judge/config.js');
+const { familyOf } = require('../../judge/family.js');
 const { frontmatter, fmValue } = require('../lib/frontmatter.js');
 const om = require('../lib/orch-metrics.js');
 const { openLedger } = require('../lib/credit-ledger.js');
@@ -23,10 +24,10 @@ const rm = (d) => fs.rmSync(d, { recursive: true, force: true });
 
 // ---- judge family ----
 
-test('modelFamily drops a provider prefix, so a prefixed Claude id is still a Claude model', () => {
-  for (const id of ['anthropic/claude-sonnet-5', 'openrouter/anthropic/claude-x', 'bedrock/anthropic.claude-3', 'global.anthropic.claude-sonnet-5-5', 'claude-sonnet-5.5']) assert.equal(modelFamily(id), 'claude', id);
-  assert.equal(modelFamily('openai/gpt-5.6-sol'), 'gpt');
-  assert.equal(modelFamily('gpt-5.6-sol'), 'gpt');
+test('familyOf drops a provider prefix, so a prefixed Claude id is still a Claude model', () => {
+  for (const id of ['anthropic/claude-sonnet-5', 'openrouter/anthropic/claude-x', 'bedrock/anthropic.claude-3', 'global.anthropic.claude-sonnet-5-5', 'claude-sonnet-5.5']) assert.equal(familyOf(id), 'claude', id);
+  assert.equal(familyOf('openai/gpt-5.6-sol'), 'gpt');
+  assert.equal(familyOf('gpt-5.6-sol'), 'gpt');
 });
 
 test('the no-Claude judge guard cannot be bypassed with a provider prefix', () => {

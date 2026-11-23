@@ -16,7 +16,7 @@ const { loadTasks } = require('../lib/tasks.js');
 const { kiro } = require('../lib/harness/index.js');
 const sandbox = require('../lib/sandbox.js');
 const { resolveJudges, DEFAULT_JUDGES } = require('../eval-commands.js');
-const { modelFamily } = require('../../judge/config.js');
+const { familyOf } = require('../../judge/family.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const FAKE_JUDGE = path.join(__dirname, 'fake-judge.js');
@@ -95,7 +95,7 @@ test('the default panel drops the gpt family for a gpt subject and takes deepsee
   assert.deepEqual(r.judges, ['deepseek-3.2', 'glm-5', 'qwen3-coder-next']);
   assert.deepEqual(r.substituted, { dropped: ['gpt-5.6-luna'], added: ['qwen3-coder-next'] });
   assert.equal(r.small, false);
-  const fams = r.judges.map(modelFamily);
+  const fams = r.judges.map(familyOf);
   assert.equal(new Set(fams).size, 3);
   assert.ok(!fams.includes('claude') && !fams.includes('gpt'));
 });
@@ -114,8 +114,8 @@ test('a deepseek subject swaps in qwen3-coder-next; the substitutes never includ
   for (const subject of [GPT, 'deepseek-3.2', 'glm-5', 'qwen3-coder-next', 'minimax-m2.5']) {
     const p = resolveJudges({ subjectModel: subject });
     assert.ok(p.judges.length >= 3, subject);
-    assert.ok(p.judges.every((j) => modelFamily(j) !== 'claude' && modelFamily(j) !== modelFamily(subject)), subject);
-    assert.equal(new Set(p.judges.map(modelFamily)).size, p.judges.length, `${subject}: one judge per family`);
+    assert.ok(p.judges.every((j) => familyOf(j) !== 'claude' && familyOf(j) !== familyOf(subject)), subject);
+    assert.equal(new Set(p.judges.map(familyOf)).size, p.judges.length, `${subject}: one judge per family`);
   }
 });
 

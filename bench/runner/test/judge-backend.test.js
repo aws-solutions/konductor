@@ -180,5 +180,5 @@ test('panel rules run on the logical ids; the GPT subject swaps luna for qwen an
   assert.throws(() => resolveJudges({ cliJudges: 'gpt-5.6-luna,gpt-5.6-sol,glm-5', subjectModel: 'claude-sonnet-5.5' }), /both gpt models/);
   assert.throws(() => resolveJudges({ cliJudges: 'claude-sonnet-4.6,glm-5,deepseek-3.2', subjectModel: 'gpt-5.6-sol' }), /Claude model/);
   assert.throws(() => resolveJudges({ cliJudges: 'gpt-5.6-luna,glm-5,deepseek-3.2', subjectModel: 'gpt-5.6-sol' }), /same family as the subject/);
-  assert.throws(() => resolveJudges({ cliJudges: 'glm-5,deepseek-3.2', subjectModel: 'claude-sonnet-5.5' }), /at least 3 are required/);
+  assert.throws(() => resolveJudges({ cliJudges: 'glm-5,deepseek-3.2', subjectModel: 'claude-sonnet-5.5' }), /at least 3 distinct families/);
 });

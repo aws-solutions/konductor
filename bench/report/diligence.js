@@ -5,7 +5,8 @@
 // and an overall rating. Unknown data is WARN ("not recorded"), never PASS. `collectFacts` reads a run; `evaluate`
 // turns plain facts into criteria, so every rule can be tested at its boundary without a run on disk.
 
-const { modelFamily } = require('../judge/config.js');
+const { families } = require('../judge/config.js');
+const { familyOf } = require('../judge/family.js');
 const { raterKappas, formatRaterKappas } = require('../judge/calibrate.js');
 const { MIN_RECALL, fetchUnchecked, FETCH_UNCHECKED } = require('../runner/lib/contamination.js');
 const { qualityOfRun, DEFAULT_WEIGHTS } = require('./scores.js');
@@ -180,7 +181,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     aaArms: aa ? aa.pair : null, sameRefRepeat, aa,
     controls: { positive: taskIds.filter((id) => tasks.get(id)?.control === 'positive').length, negative: taskIds.filter((id) => tasks.get(id)?.control === 'negative').length },
     judging: {
-      present: Boolean(j), backends: j ? (j.backends ?? [j.backend ?? 'kiro']) : [], judges, families: j?.panel?.families ?? [...new Set(judges.map(modelFamily))], claude: judges.filter((x) => ['claude', 'anthropic'].includes(modelFamily(x))),
+      present: Boolean(j), backends: j ? (j.backends ?? [j.backend ?? 'kiro']) : [], judges, families: j?.panel?.families ?? families(judges), claude: judges.filter((x) => familyOf(x) === 'claude'),
       expected: expected.length, unjudged, rubricTasks: taskIds.filter(needsRubric).length,
       parseFailures: [...rubricRecs, ...pairRecs].reduce((n, r) => n + (r.parseFailures || 0), 0),
       pairwise: { run: (j?.modes || []).includes('pairwise'), records: pairRecs.length, bothOrders: pairRecs.filter((r) => Array.isArray(r.orderings) && r.orderings.length === 2 && r.orderings.every(Boolean)).length },
