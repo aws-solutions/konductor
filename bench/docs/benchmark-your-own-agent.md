@@ -242,7 +242,7 @@ Your agent needs a runtime adapter, the same one as step 1 of Track 1. Then:
 - The scripted question channel was written because Kiro CLI's non-interactive mode tells the agent nobody can
   answer. It has not yet been run on a real model (D-107). On Claude Code it has run only against a fake (D-56).
 - The `cap` commands run on Kiro CLI and opencode. The per-skill study runs on Kiro CLI only.
-- The per-run credit limit cannot stop a one-shot Kiro run early (D-67). The command-wide budget still stops new runs.
+- The per-run credit limit stops a one-shot Kiro run on an estimate from its context usage, which runs high (D-67). The command-wide budget still stops new runs.
 - The study levels use Kiro CLI, with Claude Code on part of the pack.
 
 ### Judges, sign-off and spend

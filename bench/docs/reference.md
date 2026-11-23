@@ -793,8 +793,8 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
 - Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. A single prompt is one turn, sub-agents
   included, and the summary is written a few lines before `runFinished`. In four saved runs (8 to 15 minutes, 15.4 to 29.4 credits) it was the only
   credit event; the session log's `usage_summary` is written at the same instant, and `context_usage` events carry context-window tokens, not spend.
-  So the live total stays at 0 until a run finishes, and `--run-credit-limit` cannot stop a one-shot v3 run (see the limit's contract below;
-  `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
+  So the metered total stays at 0 until a run finishes; `--run-credit-limit` stops a one-shot v3 run on an estimate made from the
+  `context_usage` events instead (see the limit's contract below; `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
   sub-agents used, so it appears to cover their spend (seen on one coordinator run). `modelCalls.meteringEntries` counts turns on v3, not model calls. v3 names a tool call by title, so tool names are mapped from the titles in `lib/stream.js` and unmapped
   titles count as `unknown`; a sub-agent call is "Sub-agent: <name>" with the target in `rawInput.name`.
 - `backfill --run DIR [--credits] [--skills] [--write]` repairs v3 runs saved before the runner could read this, from each `stream.jsonl` with
@@ -1228,11 +1228,14 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
   `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
   limits one run to X credits. Engine v2 meters after every model call, so the run's process group is killed once the credits metered so far pass
-  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so a one-shot run always
-  finishes: if it spent more than X it gets the flag `creditLimitExceeded` and nothing is killed. A conversation task (autonomy) is checked when each
+  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so during the turn the
+  runner estimates it: 0.13 credits per percentage point of context window in each `context_usage` event (`ESTIMATE_RATE` in
+  `runner/lib/credit-watch.js`; on 225 saved v3 streams the real ratio was 0.020 to 0.126, so the estimate runs high). Past X on the estimate
+  the process group is killed and the run is censored (flag `creditLimit`, an error saying "an estimated ... credits"); the estimate is never
+  charged. A v3 run that reports no context usage still finishes, and if it spent more than X it gets the flag `creditLimitExceeded`. A conversation task (autonomy) is checked when each
   turn ends, and over the limit the next turn is not started (flag `creditLimit`, an error naming the turn). With a limit, `result.json` records
-  `creditLimit` and `creditOvershoot` (credits above X, else null) for v2 and v3 alike, and the `done` line shows the overshoot. On v3 the
-  overshoot of a one-shot run can be the whole run, so `--budget-credits` is the only bound on total spend.
+  `creditLimit` and `creditOvershoot` (credits above X, else null) for v2 and v3 alike, and the `done` line shows the overshoot. On v3 an
+  estimate can sit below the real spend, so `--budget-credits` stays the bound on total spend.
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
   command that builds hashes `~/.konductor/installs` before and after and exits 1 if it changed.
