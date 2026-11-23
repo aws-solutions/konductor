@@ -76,8 +76,18 @@ rerun; rc=$?
 grep -qx "$REF" "$T/pinned-commit" && grep -q "rerun: convention control fix" "$T/pinned-commit.log" && ok "rerun: the pin moved once, logged" || bad "pin: $(cat "$T/pinned-commit")"
 rec2="$T/work/runs/kp-pilot-2/stage-4/context-k-orchestrator-shared.json"
 node -e 'const r=require(process.argv[1]);process.exit(r.quick.controls.results.every((x)=>(x.checks||[]).length>0)?0:1)' "$rec2" && ok "rerun record: each control keeps its checks" || bad "no checks in $rec2"
-rerun --unit; rc=$?
-[ "$rc" = 0 ] && grep -q "^done: the record is" "$T/out" && grep -q "^gate 4, this step fits its cap:        PASS" "$T/out" && ok "rerun --unit: runs after both controls passed, within 3,375" || { bad "rerun unit rc $rc"; tail -n 20 "$T/out"; }
+# A unit step killed mid-call: 15 calls saved (225 counted), then one reserved call that never settled (15 more,
+# its reply lost). 240 spent, 210 calls left (3,150): the default cap 3,375 fails gate 4, UNIT_CAP=3390 passes.
+env KP_PILOT_WORK="$T/work" KP_KIRO_BIN="$FAKE" KP_AUTH_DB="$T/auth.sqlite3" KP_BASELINES="$T/baselines" KP_PILOT_RUN=kp-pilot-2 \
+  KP_PILOT_LEDGER="$T/work/unit-ledger.jsonl" KP_PILOT_LOCK="$T/kp.lock" FAKE_KP_LOG="$T/calls" \
+  bash "$CLONE/.worktrees/$WT_NAME/bench/cap/pilot/run-pilot.sh" --cap 225 > "$T/out" 2>&1
+printf '%s\n' '{"label":"answer","model":"claude-sonnet-5.5","counted":15,"reserved":true,"at":"2026-11-23T14:53:37.883Z"}' >> "$T/work/unit-ledger.jsonl"
+rerun --unit --dry-run; rc=$?
+[ "$rc" = 1 ] && grep -q "^gate 4, this step fits its cap:        FAIL" "$T/out" && ok "resume after a kill: 240 spent, the default cap 3,375 fails gate 4" || { bad "resume at 3375 rc $rc"; tail -n 20 "$T/out"; }
+UNIT_CAP=3390 rerun --unit --dry-run; rc=$?
+[ "$rc" = 0 ] && grep -q "^gate 4, this step fits its cap:        PASS" "$T/out" && grep -q "cap 3,390, ledger spent 240: fits" "$T/out" && ok "resume after a kill: UNIT_CAP=3390 passes gate 4" || { bad "resume at 3390 rc $rc"; tail -n 20 "$T/out"; }
+UNIT_CAP=3390 rerun --unit; rc=$?
+[ "$rc" = 0 ] && grep -q "^done: the record is" "$T/out" && grep -q "^gate 4, this step fits its cap:        PASS" "$T/out" && ok "rerun --unit: runs after both controls passed, within the resumed cap" || { bad "rerun unit rc $rc"; tail -n 20 "$T/out"; }
 
 [ "$fail" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$fail"
