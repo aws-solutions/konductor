@@ -544,6 +544,7 @@ function cmdCompare(opts) {
     const r = compareRuns({
       baseDir: need(opts, 'base'), headDir: need(opts, 'head'), benchDir: benchDirOf(opts),
       minRel: numOpt(opts, 'min-rel', 0.15), rule, force: Boolean(opts.force), allowMixedPass: Boolean(opts['allow-mixed-pass']),
+      aa: opts.aa === undefined ? null : need(opts, 'aa'),
     });
     (r.exitCode === 2 ? console.error : console.log)(formatCompare(r));
     process.exitCode = r.exitCode;
