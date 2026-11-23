@@ -120,7 +120,7 @@ test('with a budget the guard counts only this command and reports 90% and 100%'
 test('readLedger tolerates a missing file and counts lines it cannot read', () => {
   const dir = tmp();
   try {
-    assert.deepEqual(readLedger(dir), { file: path.join(dir, LEDGER_FILE), exists: false, entries: [], bad: 0, totals: { run: 0, judge: 0, other: 0, total: 0, calls: 0, unknown: 0, maxCall: 0 } });
+    assert.deepEqual(readLedger(dir), { file: path.join(dir, LEDGER_FILE), exists: false, entries: [], bad: 0, totals: { run: 0, judge: 0, other: 0, total: 0, calls: 0, unknown: 0, maxCall: 0, unknownUsd: 0, maxUsd: 0 } });
     fs.writeFileSync(path.join(dir, LEDGER_FILE), `${JSON.stringify({ kind: 'run', credits: 2 })}\nnot json\n${JSON.stringify({ kind: 'draft', credits: 1 })}\n`);
     const r = readLedger(dir);
     assert.equal(r.bad, 1);
