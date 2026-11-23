@@ -537,6 +537,22 @@ function buildRunConfig({ flags, built, paths }) {
   };
 }
 
+/**
+ * The kiro-cli login check, run before any arm is built: a lapsed login would only fail every run. True when the run
+ * may go on (no check, or logged in); false after it logs the failure and sets exit code 6.
+ */
+async function loginOk(loginCheck, log) {
+  if (!loginCheck) return true;
+  const login = await loginCheck();
+  if (!login.ok) {
+    log(`LOGIN FAILURE: kiro-cli is not logged in (${login.detail}). Log in again, then start the chunk right away; nothing was run.`);
+    process.exitCode = AUTH_EXIT_CODE;
+    return false;
+  }
+  log(login.unavailable ? `warning: login check unavailable: ${login.unavailable}` : 'kiro-cli login ok');
+  return true;
+}
+
 async function cmdRun(opts, deps = {}) {
   // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
   preloadSchemas();
@@ -619,15 +635,7 @@ async function cmdRun(opts, deps = {}) {
     if (kiro) log(`kiro-cli: ${kiro.bin}${kiro.shim ? ` (bypassing the shim at ${kiro.shim})` : ''}`);
     // Before any arm is built: a login that has lapsed would only fail every run, so stop here (exit 6).
     const loginCheck = makeLoginCheck({ isUsd, kiroBin: kiro?.bin, authDb, scratchDir, envKeep, agentEngine: config.agentEngine, check: deps.checkLogin });
-    if (loginCheck) {
-      const login = await loginCheck();
-      if (!login.ok) {
-        log(`LOGIN FAILURE: kiro-cli is not logged in (${login.detail}). Log in again, then start the chunk right away; nothing was run.`);
-        process.exitCode = AUTH_EXIT_CODE;
-        return;
-      }
-      log(login.unavailable ? `warning: login check unavailable: ${login.unavailable}` : 'kiro-cli login ok');
-    }
+    if (!(await loginOk(loginCheck, log))) return;
     const ctx = {
       taskInputs: snapshotTaskInputs(tasks),
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
@@ -649,9 +657,7 @@ async function cmdRun(opts, deps = {}) {
     ctx.isolation = isolation;
     ctx.hide = [...list(opts.hide), ...list(process.env.BENCH_HIDE_EXTRA)];
     ctx.mask = maskPaths({ benchDir, extraDirs, outDir, awsCredsFile });
-    ctx.runCreditLimit = runCreditLimit;
-    ctx.stopOn = stopOn;
-    ctx.maxToolCalls = maxToolCalls;
+    Object.assign(ctx, { runCreditLimit, stopOn, maxToolCalls });
     ctx.keyRoots = [benchDir];
     if (arms.some((a) => a.plant)) plantSuite = await setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, deps, isolation, isSt, scratchDir, log });
     ctx.tripwire = tripwireOf({ opts, home, repo: REPO, tripExtra, outDir, cacheDir, cargoTarget, scratchDir, realCache });
