@@ -114,8 +114,8 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 
 | File | What it does |
 | --- | --- |
-| `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, all sets in one pass, then the code-score floor. Paid (USD, cap 2). |
-| `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
+| `run-aa-pack-judge.sh` | FW-38 judge pass of the A/A run, both sets in one pass, then `bench compare --aa vanilla` prints the floor. Paid (USD, cap 2). |
+| `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b, one bench run each) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
 | `run-forced-aa-r2.sh` | Resume of `run-forced-aa.sh` with the budget fix. Paid. |
 | `run-forced-aa.sh` | The forced-skills experiment's two new arms on the frozen LITE bench. Paid. |
 | `run-forced-judge.sh` | Judge pass of the forced-skills run. Paid (USD). |
@@ -126,3 +126,14 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
 | `test-run-nudge-stub.sh` | Test of `run-nudge.sh`'s paid path with a stub bench. Free. |
+
+## Refactor regression net (`bench/ops/refactor-regression/`)
+
+Free; every agent and judge is a test double. Run from a checkout, no launcher.
+
+| File | What it does |
+| --- | --- |
+| `run.sh [--base REF] [--head REF] [--report FILE] [--keep]` | Two fresh worktrees under `/var/tmp/kd-refreg.*`; the same studies on base, head and head again; prints the diff. Needs `BENCH_ARM_PYTHON` and `BENCH_STRANDS_PYTHON` for the plant studies. |
+| `study.js --tree DIR --out DIR` | One side: Kiro CLI twice with a compare, a stub judge pass, opencode, Claude Code, plant on Claude Code and Strands with plant-report, a report of each run. |
+| `diff.js` | Normalises (roots, per-run dirs, times, ids; drops volatile keys, `schemaVersion`, `plugins`, `benchCommit`) and compares two trees. |
+| `report.js --base --head [--noise]` | The markdown; a difference that also shows between two head runs is marked noise. |
