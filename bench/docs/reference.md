@@ -1412,7 +1412,7 @@ A profile changes what is collected, not how it is scored (`profiles/scoring.jso
 `--detail` still wins over the profile. With a profile, `cap plan` prints no default budget and `cap trigger --mode live` does not require one.
 
 Credit ledger: `run` and `judge` append one JSON line per agent run and per judge call to `credit-ledger.jsonl` in the results directory (`kind`, arm, task, replicate, `credits`, `charged`, `cached`; `backfill` lines correct earlier runs) and print
-`credits: this command X (no cap), study total Y (runs R, judge J)` after each one and at the end. A censored run is totalled at its charge. A line with unknown credits counts at the larger of 15 and the highest cost seen in the ledger, never 0. With `--budget-credits X`, at 90% of X
+`credits: this command X (no cap), study total Y (runs R, judge J)` after each one and at the end. A censored run is totalled at its charge. A line with unknown credits counts at the larger of 15 and the highest cost seen in the ledger, never 0. A USD line (the opencode judge) with unknown cost counts the same way in USD: the larger of $0.05 and the highest USD cost seen. With `--budget-credits X`, at 90% of X
 (counted for the command, not the whole directory) no new run or call starts; a command that ends past 100% exits 3. `report` prints the ledger total.
 
 Platform verdict: `report --run DIR[,DIR...] --verdict platform [--baseline vanilla] [--out DIR] [--format md|html|both]` writes `verdict.md`, `verdict.html`, `verdict.json` and `charts/verdict-quality.svg`
