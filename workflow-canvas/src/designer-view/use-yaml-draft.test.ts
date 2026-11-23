@@ -154,6 +154,35 @@ describe('useYamlDraft', () => {
     },
   );
 
+  it('moves the baseline on when a save brings the typed text back as the file', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.answer(0, GOOD);
+    // The page saved `v1` and passes it back with its new hash. Nothing was
+    // typed in the meantime, so the draft holds the file, not unsaved work.
+    rerender({ initialText: 'v1', baseHash: 'hash-saved' });
+
+    expect(result.current.text).toBe('v1');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.baseMoved).toBe(false);
+  });
+
+  it('takes a later reload of the file when nothing was typed after the save', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.answer(0, GOOD);
+    rerender({ initialText: 'v1', baseHash: 'hash-saved' });
+
+    // An agent wrote the file after the save; no edit stands in the way.
+    rerender({ initialText: 'from the agent', baseHash: 'hash-agent' });
+
+    expect(result.current.text).toBe('from the agent');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.baseMoved).toBe(false);
+  });
+
   it('keeps the text typed while a save was in flight', async () => {
     const { result, pause, rerender } = setUp();
     act(() => result.current.edit('v1'));
