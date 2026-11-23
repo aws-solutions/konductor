@@ -38,7 +38,8 @@ test('kit standard: no local read after the branch that binds it (D-157)', () =>
 
 test('kit standard: helper plan places every DEV task in run or skipped, a probe task under its own dir', () => {
   const repo = path.join(__dirname, '..', '..', '..');
-  const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'plan', repo], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  // R given as '.', relative to the cwd: the helper must resolve it, not hand require() a bare "bench/..." name.
+  const r = spawnSync(process.execPath, [path.join(KIT, 'helper.js'), 'plan', '.'], { cwd: repo, encoding: 'utf8', maxBuffer: 1 << 26 });
   assert.equal(r.status, 0, r.stderr);
   const p = JSON.parse(r.stdout);
   const placed = [...p.run.map((t) => t.id), ...p.skipped.map((s) => s.id)].sort();

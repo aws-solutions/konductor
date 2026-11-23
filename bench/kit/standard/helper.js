@@ -18,7 +18,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const [cmd, R, ...rest] = process.argv.slice(2);
+const [cmd, rArg, ...rest] = process.argv.slice(2);
+const R = path.resolve(rArg || '.'); // a relative R would make require() look for a package named "bench"
 const need = (m) => require(path.join(R, m));
 
 // Per-run limit per batch: pilot-wave.sh's value times 1.5 for the konductor arm. It flags a run; it stops none (D-67), so the stage cap keeps a margin.
