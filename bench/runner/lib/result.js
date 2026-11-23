@@ -110,6 +110,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   const creditsCensored = censored && !usd;
 
   return {
+    schemaVersion: RESULT_SCHEMA_VERSION,
     armId: arm.id,
     armLabel: arm.label,
     ref: arm.ref,
@@ -216,6 +217,12 @@ function skippedResult({ arm, task, replicate, config, env, reason = 'budget rea
   return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(costUnitOf(arm.runtime) === 'usd' ? { costCensored: false } : {}) };
 }
 
+// The result.json format version. Bump it when a reader must tell two shapes apart; results written before the field
+// existed have none and read as 1.
+const RESULT_SCHEMA_VERSION = 1;
+/** The format version of a result read back from result.json: its `schemaVersion`, or 1 when it has none. */
+const schemaVersionOf = (result) => result?.schemaVersion ?? 1;
+
 /** Schema errors of `result`, plus one when its `harness` is not a registered runtime. */
 function validateResult(result) {
   const errors = validate(loadSchema('result'), result);
@@ -223,4 +230,4 @@ function validateResult(result) {
   return errors;
 }
 
-module.exports = { serviceCancelled, streamFields, buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits };
+module.exports = { serviceCancelled, streamFields, buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits, RESULT_SCHEMA_VERSION, schemaVersionOf };

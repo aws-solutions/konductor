@@ -29,6 +29,11 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "schemaVersion": {
+      "description": "The result.json format version (runner/lib/result.js RESULT_SCHEMA_VERSION). Results written before it existed have none and read as 1.",
+      "type": "integer",
+      "minimum": 1
+    },
     "throttleRetries": {
       "description": "Attempts the model service refused (a throttle) before this run, each kept as <replicate>.throttled-N with its own attempt-result.json (orchestrate.js DEFAULT_THROTTLE_RETRY).",
       "type": "array",

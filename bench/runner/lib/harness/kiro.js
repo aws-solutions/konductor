@@ -25,6 +25,7 @@ const { secretLiterals } = require('../scrub.js');
 
 const id = 'kiro-cli';
 const meta = require('./kiro-meta.js');
+const { observedListingOf } = require('./kiro-listing.js');
 
 // resume: {sessionId, prompt} continues an earlier turn of the same conversation (autonomy tasks). The session store
 // lives in the run's scratch HOME and is keyed by directory, so the same HOME and cwd find it.
@@ -218,6 +219,14 @@ function skillListingOf(home, info) {
   };
 }
 
+/**
+ * What the run loaded at session start, from its own stream (kiro-listing.js), or null when the stream has no breakdown
+ * or is missing. run-one adds it to the arm's listing record as `skillListing.observed`.
+ */
+function observedListing(outDir) {
+  try { return observedListingOf(fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8')); } catch { return null; } // no stream: nothing observed
+}
+
 /** The listing of a vanilla Kiro arm: no konductor skills. */
 const vanillaSkillListing = () => ({ skillListing: skillListingOf(null, null), skillListingError: null });
 
@@ -331,6 +340,6 @@ function checkScratchRoot(dir) {
 }
 
 module.exports = {
-  id, meta, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

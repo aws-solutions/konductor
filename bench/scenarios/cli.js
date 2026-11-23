@@ -69,6 +69,8 @@ function cmdLint(opts) {
     if (res.packSuite) console.log(res.packSuite);
     for (const l of res.contentLock) console.log(l);
     for (const k of res.stale) console.log(`stale baseline entry (fixed? remove it from bench/scenarios/lint-baseline.json): ${k}`);
+    for (const w of res.warnings) console.log(`WARN ${w.taskId}: ${w.rule}: ${w.detail} (${w.file})`);
+    if (res.warnings.length) console.log(`${res.warnings.length} warning(s): they do not fail the lint, but fix them before a paid run`);
     const known = res.findings.length - fresh.length;
     console.log(`${res.tasks} task(s) checked against ${res.base}: ${fresh.length ? `${fresh.length} finding(s)` : 'clean'}${known ? `, ${known} known (lint-baseline.json)` : ''}${res.stale.length ? `, ${res.stale.length} stale baseline entr${res.stale.length === 1 ? 'y' : 'ies'}` : ''}`);
   }
