@@ -647,8 +647,9 @@ not per individual commit.
   URL's hostname only, so a query string, fragment or userinfo can no longer carry an allowed
   suffix (for example `https://evil%2Ecom?.example.com/x`), and a host with an encoded dot or raw
   non-ASCII characters is rejected. Every `scheme://` is checked in any letter case, including a
-  second link glued to an allowed one. An interpreter failure during the check is reported as an
-  environment problem.
+  second link glued to an allowed one, and `http`, `https`, `ws`, `wss`, `ftp` and `file` are
+  checked with any number of slashes, so `https:evil.test` and `https:/evil.test` no longer skip
+  the allowlist. An interpreter failure during the check is reported as an environment problem.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.

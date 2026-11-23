@@ -231,17 +231,29 @@ check_entry_urls() {
 import re, sys
 from urllib.parse import unquote
 
-# Every scheme:// occurrence is a link, in any letter case, and a backslash
-# in place of either slash counts too. The scan restarts right after each
-# scheme, so a link glued to another one, or carried in its query, is
-# checked on its own.
-SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):([/\\]{2})(\S+)")
+# What counts as a link:
+# - A special scheme (http, https, ws, wss, ftp, file) followed by any number
+#   of / or \, zero included. A browser parses https:evil.test and
+#   https:/evil.test as https://evil.test. Text that is only trailing
+#   punctuation after the colon ("Use https:, not http:.") is prose.
+# - Any other scheme followed by at least two / or \, as in ftp-like or
+#   git+ssh:// links. Without them, "Note: see" or "key:value" is prose.
+# The scan restarts right after each scheme's slashes, so a link glued to
+# another one, or carried in its query, is checked on its own.
+SPECIAL = {"http", "https", "ws", "wss", "ftp", "file"}
+SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):([/\\]*)(\S*)")
+PROSE_TAIL = re.compile(r"[.,;:!?)\]}'\"]*")
 
 def links(text):
     pos = 0
     while (m := SCHEME.search(text, pos)):
+        scheme, slashes, rest = m.group(1).lower(), m.group(2), m.group(3)
         pos = m.start(3)
-        yield m.group(1).lower(), m.group(1) + ":" + m.group(2), m.group(3)
+        if scheme in SPECIAL:
+            if (rest and (slashes or not PROSE_TAIL.fullmatch(rest))) or len(slashes) > 2:
+                yield scheme, m.group(0), rest
+        elif len(slashes) >= 2 and (rest or len(slashes) > 2):
+            yield scheme, m.group(0), rest
 
 # The authority ends at the first / ? # or backslash; userinfo before the
 # last @ and a numeric port are dropped. Anything that is not a plain ASCII

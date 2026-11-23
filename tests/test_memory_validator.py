@@ -1338,8 +1338,10 @@ def test_editing_an_existing_untagged_entry_requires_a_tag(tmp_path):
 
 # ---------------------------------------------------------------------------
 # URL allowlist matching. Every scheme:// occurrence is checked, including
-# one glued to or nested in another URL, and only https passes. The pattern
-# is compared with the URL's hostname only: the authority
+# one glued to or nested in another URL, and only https passes. The special
+# schemes (http, https, ws, wss, ftp, file) count as a link with any number of
+# slashes or backslashes after the colon, zero included, as a browser reads
+# them. The pattern is compared with the URL's hostname only: the authority
 # ends at the first / ? # or backslash, userinfo and port are dropped, and a
 # host that is not plain ASCII after percent-decoding (an encoded dot, raw
 # non-ASCII, a bracketed address) is rejected. A "*" label matches exactly
@@ -1508,6 +1510,106 @@ def test_double_star_pattern_matches_one_or_more_labels(tmp_path, pattern, url, 
     proposed = f"- [2026-11-20] [origin:agent] See {url}\n"
     result = run_validator(proposed, target, cwd=tmp_path)
     assert (result.returncode == 0) == allowed, f"{pattern!r} {url!r}: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # A browser reads a special scheme with any number of / or \ after the
+        # colon, zero included, as a full URL with that host.
+        "https:/evil.test/x",
+        "https:evil.test",
+        "https:evil.test/x",
+        "https:\\evil.test/x",
+        "https:\\/evil.test/x",
+        "https:///evil.test/x",
+        "HTTPS:evil.test",
+        "HtTpS:/evil.test",
+        "https:@evil.test/",
+        "https:docs.example.com@evil.test/",
+        "https:.evil.test/",
+        "[a](https:evil.test)",
+        "<https:evil.test>",
+        "Note:https:evil.test",
+        "https://docs.example.com/?next=https:evil.test",
+        "[a](https://docs.example.com/)[b](https:/evil.test)",
+        # An empty host never passes.
+        "https:///",
+        "https:/?x",
+        "https:#.example.com",
+        "https:/#.example.com",
+        "https:?.example.com",
+        # Every other special scheme is rejected in any slash form.
+        "http:docs.example.com",
+        "http:/docs.example.com",
+        "HTTP:docs.example.com",
+        "ws:docs.example.com",
+        "wss:/docs.example.com",
+        "ftp:docs.example.com",
+        "ftp:/evil.test/x",
+        "file:/etc/passwd",
+        "file:docs.example.com",
+    ],
+)
+def test_special_scheme_with_fewer_slashes_is_still_checked(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 1, f"{url!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https:docs.example.com/x",
+        "https:/docs.example.com",
+        "https:\\docs.example.com/x",
+        "https:///docs.example.com/",
+        "HTTPS:docs.example.org",
+    ],
+)
+def test_https_with_fewer_slashes_to_an_allowed_host_is_accepted(tmp_path, url):
+    result = _url_verdict(tmp_path, url)
+    assert result.returncode == 0, f"{url!r} was rejected: {result.stderr}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Note: see the docs",
+        "Note:see the docs",
+        "time 10:30 daily",
+        "ratio 3:1",
+        "Step 2: run it",
+        "key:value pairs",
+        "the http: header",
+        "Use https:, not http:.",
+        "(see http:)",
+        "mailto:ops@example.org",
+        "git+ssh:repo",
+        "xhttps:evil.test",
+        "httpsx:evil.test",
+    ],
+)
+def test_prose_with_a_colon_is_not_a_link(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
+def test_non_https_urls_pass_without_an_allowlist(tmp_path):
+    # No allowlist means every URL is allowed, whatever its scheme.
+    write_config(tmp_path / ".konductor" / "memory-config.json", [])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] Mirror at ftp://evil.test/x and http://evil.test/y\n"
+    assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
+
+
+def test_a_blocked_url_rejects_the_entry_after_an_allowed_one(tmp_path):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = "- [2026-11-20] [origin:agent] See https://docs.example.com/a and ftp://evil.test/b\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert "blocked external URL: ftp://evil.test/b" in result.stderr
 
 
 @pytest.mark.parametrize(
