@@ -5,7 +5,7 @@
 # as Claude Code, then write the plant report and a call-by-call trace. No model, no credits, no AWS keys, no login.
 # Needs Node 22+ and a Python with cedarpy:
 #
-#   python3 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2
+#   python3.12 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2     # Python 3.10 or newer
 #   bash bench/physical/toy/walkthrough.sh
 #
 # Everything goes under one new dir outside the repo and HOME (TOY_WORK, default a new /tmp/konductor-toy.XXXXXX).
@@ -17,7 +17,12 @@ REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 PY=${TOY_PYTHON:-$REPO/.venv/bin/python}
 BENCH=(node "$REPO/bench/runner/bench.js")
 CONTROLS="$REPO/bench/physical/controls"
-"$PY" -c 'import cedarpy' 2>/dev/null || { echo "STOP: $PY has no cedarpy; run: python3 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2" >&2; exit 1; }
+# cedarpy 4.12.2 ships no wheel for Python 3.9 or older, so name the version before pip fails on it.
+if ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+  echo "STOP: $PY is missing or older than Python 3.10 (cedarpy 4.12.2 needs 3.10+); run: python3.12 -m venv .venv && .venv/bin/pip install cedarpy==4.12.2" >&2
+  exit 1
+fi
+"$PY" -c 'import cedarpy' 2>/dev/null || { echo "STOP: $PY has no cedarpy; run: .venv/bin/pip install cedarpy==4.12.2 (the venv needs Python 3.10 or newer)" >&2; exit 1; }
 WORK=${TOY_WORK:-$(mktemp -d /tmp/konductor-toy.XXXXXX)}
 export TMPDIR=/tmp   # Claude Code runs refuse a scratch dir under HOME
 

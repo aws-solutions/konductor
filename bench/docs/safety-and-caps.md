@@ -29,6 +29,8 @@ and the limits, and which ones stop a run on their own.
 | Counted credits | the owner's rule for paid keep-or-prune calls: each call counts as at least 15 credits; the ledger reserves 15 before the call and settles after; a call that could pass the cap is refused | `--cap N` on `cap unit-author` and `cap unit-stage --provider kiro` |
 | Approval first | no paid run starts without the owner's approval and a cap | every owner script prints its cap and has a free `--dry-run`, `--plan` or `--prepare-only` |
 
+Each paid step waiting on the owner, with its cost and cap, is in [paid steps](paid-steps.md).
+
 A cap can be passed by at most one call's excess over its reservation. One-turn calls with no tools rarely come
 close.
 

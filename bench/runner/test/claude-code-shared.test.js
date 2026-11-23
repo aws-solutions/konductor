@@ -51,7 +51,8 @@ test('arm specs: the cc- prefix selects the Claude Code runtime and keeps the sa
   assert.equal(parseArmSpec('cc-pr-105=pr-105').cc, true);
   assert.equal(parseArmSpec('cc-pr-105=pr-105').name, 'pr-105');
   const v = resolveArm('cc-vanilla', '/nonexistent');
-  assert.deepEqual([v.id, v.runtime, v.harness, v.agent, v.vanilla], ['cc-vanilla', 'claude-code', 'none', null, true]);
+  assert.deepEqual([v.id, v.runtime, v.armKind, v.agent, v.vanilla], ['cc-vanilla', 'claude-code', 'none', null, true]);
+  assert.equal(v.harness, undefined, 'an arm names its kind armKind; harness is the runtime word');
   assert.ok(KNOWN_ARMS.includes('cc-vanilla') && KNOWN_ARMS.includes('cc-main'));
   const row = listArms().find((a) => a.id === 'cc-main');
   assert.match(row.condition, /Claude Code/);
