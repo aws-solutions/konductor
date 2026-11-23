@@ -60,6 +60,10 @@ function parseEvents(events) {
   };
 }
 
+// The readers of this harness's own stream (CONTRACT.md, `streams`). Add `timeline` when meta.supports.trace and
+// `stopEvent` when meta.supports.stopOn.
+const streams = Object.freeze({ finalText: (events) => parseEvents(events).agg.finalText });
+
 function turnSummary(streamText) {
   const { agg } = parseEvents(parseStream(streamText).events);
   return { sessionId: agg.sessionId, runFinishedStatus: agg.runFinishedStatus, stopReason: agg.stopReason, finalText: agg.finalText, askedUser: null };
@@ -80,4 +84,4 @@ function parseResult(outDir, { acc, arm, ctx }) {
 
 const collectArtifacts = () => {};
 
-module.exports = { id, meta, prepareArm, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts };
+module.exports = { id, meta, streams, prepareArm, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts };
