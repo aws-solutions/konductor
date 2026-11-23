@@ -32,7 +32,7 @@ RUN_CAP_USD=1
 TOTAL_CAP_USD=2
 HEAVY_LOCK=/var/tmp/konductor-heavy.lock
 TS=$(date -u +%Y%m%d-%H%M%S)
-LOGDIR="$W/reports/cc-plant-check-$TS$([ "$DRY" = 1 ] && echo -dry)"
+LOGDIR="$W/reports/cc-plant-check-$TS$([ "$DRY" = 1 ] && echo -dry || true)"
 OUT=$(mktemp -d "/var/tmp/cc-plant-check-$TS.XXXXXX")   # outside home and the repo, as bench requires for plant paths
 stop() { echo "STOP: $*" >&2; exit 1; }
 
