@@ -1,45 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
-import { ApiError } from './api';
+import {
+  arrayOf,
+  booleanOf,
+  fail,
+  objectOf,
+  stringOf,
+  type Json,
+} from './parse';
 
 /*
  * The fields of `GET /api/workflow` that `parse.ts` leaves out and the views
  * read when the workflow is loaded: the `stage_fields` of the document and
- * the default goal of the workflow. It reads the same answer and rejects a
- * shape the contract does not allow, as `parse.ts` does, so a view built on
- * it never shows a field the server did not send.
+ * the default goal of the workflow. It reads the same answer with the same
+ * readers as `parse.ts`, and rejects a shape the contract does not allow, so
+ * a view built on it never shows a field the server did not send.
  *
  * The `kind` and the `range` of a stage are not here: they change with every
  * edit, so the Design view reads them from the answer of the check it just
  * made, and one reader of them is enough.
  */
-
-const BAD_REPLY = 'The server sent a reply that this page does not understand.';
-
-function fail(): never {
-  throw new ApiError(BAD_REPLY, 200);
-}
-
-type Json = Record<string, unknown>;
-
-function isObject(value: unknown): value is Json {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function objectOf(value: unknown): Json {
-  return isObject(value) ? value : fail();
-}
-
-function stringOf(value: unknown): string {
-  return typeof value === 'string' ? value : fail();
-}
-
-function booleanOf(value: unknown): boolean {
-  return typeof value === 'boolean' ? value : fail();
-}
-
-function arrayOf(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : fail();
-}
 
 function countOf(value: unknown, least: number): number {
   return Number.isInteger(value) && (value as number) >= least
@@ -62,11 +41,12 @@ function optional<T>(
 }
 
 /**
- * One editable key of a stage, the `StageField` of `stage_fields`. The keys
- * are those of the wire, so the form rules take it as it is. A rule that is
- * left out does not apply.
+ * One editable key of a stage, the `StageField` of `stage_fields` in
+ * `api/openapi.yaml`. The keys are those of the wire, so the form rules take
+ * it as it is: `designer-view/field-rules.ts` names this same type
+ * `StageFieldRule`. A rule that is left out does not apply.
  */
-export interface StageFieldInfo {
+export interface StageField {
   readonly key: string;
   /** `name`, `text` or `path`. A type a later version adds is shown as text. */
   readonly type: string;
@@ -84,12 +64,12 @@ export interface StageFieldInfo {
 /** The fields of the answer that the parsed document leaves out. */
 export interface WorkflowExtras {
   /** The editable keys of a stage, by kind. It is there even with no view. */
-  readonly stageFields: Readonly<Record<string, readonly StageFieldInfo[]>>;
+  readonly stageFields: Readonly<Record<string, readonly StageField[]>>;
   /** The default goal the workflow declares, when it declares one. */
   readonly goalDefault?: string;
 }
 
-function parseField(value: unknown): StageFieldInfo {
+function parseField(value: unknown): StageField {
   const field = objectOf(value);
   return {
     key: stringOf(field.key),
@@ -103,7 +83,7 @@ function parseField(value: unknown): StageFieldInfo {
   };
 }
 
-function parseFieldList(value: unknown): readonly StageFieldInfo[] {
+function parseFieldList(value: unknown): readonly StageField[] {
   const fields = arrayOf(value).map(parseField);
   return fields.length > 0 ? fields : fail();
 }
@@ -112,7 +92,7 @@ function parseFieldList(value: unknown): readonly StageFieldInfo[] {
 // version included, and the contract always sends the `agent` kind.
 function parseStageFields(
   value: unknown,
-): Readonly<Record<string, readonly StageFieldInfo[]>> {
+): Readonly<Record<string, readonly StageField[]>> {
   const byKind = objectOf(value);
   if (!Object.hasOwn(byKind, 'agent')) fail();
   return Object.fromEntries(
