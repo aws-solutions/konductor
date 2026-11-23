@@ -124,7 +124,8 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-aa-pack.sh` | FW-38: vanilla twice (set a and set b, one bench run each) on the 8 LITE tasks, 48 runs. Paid (cap 300); the default is a dry run. |
 | `cc-skill-loads.js` | Which skills each `run-cc-compare.sh` run loaded and whether in full (whole, partial, preload, failed, missing per must-load unit). Free. |
 | `run-cc-compare-judge.sh` | Judge pass of `run-cc-compare.sh`, non-Claude panel, then `report --baseline cc-vanilla`. Paid (USD, cap 2); `--plan` is free. |
-| `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. |
+| `run-cc-compare.sh` | The forced experiment's 8 tasks on Claude Code: cc-vanilla against cc-konductor (f5d18459), 2 replicates, frozen bench 69149846, 32 runs. Paid (USD, cap 30); the default is a dry run, `--prepare` is free. `CC_MODEL`, `CC_ARMS`, `CC_CAP_USD` and `CC_RUN_CAP_USD` change the model, arms and caps for `run-cc-model-swap.sh`. |
+| `run-cc-model-swap.sh` | Claude Code twin of `run-model-swap.sh`: cc-konductor on Sonnet 5.5 (16 runs, cap USD 16; skipped when `run-cc-compare.sh`'s runs exist) and Opus 5.5 (16 runs, cap USD 32), run through `run-cc-compare.sh`; skill loads by `cc-skill-loads.js`. Paid per stage (`--go --stage S`); `--plan`, `--prepare` and `--summary` are free. |
 | `model-swap-summary.js` | Skill-load table of `run-model-swap.sh` per model and arm (task skill loaded, loaded whole, preview only, `find_skills`, "no skill fits", model mismatch), read with `cap nudge-check`'s reader. Free. |
 | `model-swap-judge.js` | Helpers of `run-model-swap-judge.sh`: cells that ran, the judge copy with the arm renamed `konductor-opus`, and the USD estimate from the LITE judge pass. Free. |
 | `run-model-swap-judge.sh` | Judge pass of `run-model-swap.sh`'s natural stage: only the 22 Opus runs, non-Claude panel; the Sonnet konductor and vanilla judgments of the LITE pass are reused. Then `report --baseline vanilla` and `--baseline konductor`. Paid (USD, cap 2); `--plan` is free. |
@@ -138,6 +139,7 @@ Their data (prefixes, runs, judgments) stays in that reports folder; the scripts
 | `run-nudge.sh` | The nudge-arm run. Paid. |
 | `test-run-aa-pack-stub.sh` | Test of `run-aa-pack.sh`'s paid path with a stub bench. Free. |
 | `test-run-cc-compare-stub.sh` | Test of `run-cc-compare.sh`'s paid path with a stub bench, and of `cc-skill-loads.js` on a made-up stream. Free. |
+| `test-run-cc-model-swap-stub.sh` | Test of `run-cc-model-swap.sh` and the `CC_*` overrides of `run-cc-compare.sh` (plan, Opus stage, Sonnet reuse refusal, summary) with a stub bench. Free. |
 | `test-run-forced-small-stub.sh` | Test of `run-forced-small.sh`'s paid path with a stub bench. Free. |
 | `test-run-model-swap-stub.sh` | Test of `run-model-swap.sh` (plan, paid path, resume, hook miss, counted-credit guard) and of `model-swap-summary.js` with a stub bench. Free. |
 | `test-run-model-swap-judge-stub.sh` | Test of `run-model-swap-judge.sh` and `model-swap-judge.js` (plan, paid path, arm rename, resume, USD gate, cap refusal) with a stub bench. Free. |

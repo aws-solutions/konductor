@@ -22,6 +22,8 @@
 # Test hooks: STUB=<cmd> replaces the bench command (the rest of the --go path runs as is) and skips the frozen
 # worktree, user-namespace, claude and python checks; HERE, ROOT, R, HEAVY_LOCK, LOAD_MAX, WAIT_PAT override the paths
 # and the host checks.
+# Study overrides (run-cc-model-swap.sh sets them): CC_MODEL, CC_ARMS, CC_CAP_USD and CC_RUN_CAP_USD replace the model,
+# arms, cap and per-run cap; the task budget and the runs a task needs follow the arm count.
 set -eu
 : "${KONDUCTOR_WS:?set KONDUCTOR_WS to the owner workspace (the launcher in <workspace>/scripts sets it)}"
 WS=$KONDUCTOR_WS
@@ -37,12 +39,13 @@ CLAUDE_VERSION=2.1.330.1791
 CLAUDE_SRC=$HOME/.toolbox/tools/claude-code/$CLAUDE_VERSION/claude
 CLAUDE_PIN=f390eaa0814e6a1bff74cbb47acb74cb9c89d30ced809fe0af5af00c7bfe8ebb
 CLAUDE_BIN=$ROOT/bin/$CLAUDE_VERSION/claude              # a copy, so a toolbox update cannot change the binary mid-study
-MODEL=us.anthropic.claude-sonnet-5-5                    # the Kiro arms' claude-sonnet-5.5, by its Bedrock id
-ARMS=cc-vanilla,cc-konductor=$KONDUCTOR_SHA
+MODEL=${CC_MODEL:-us.anthropic.claude-sonnet-5-5}       # the Kiro arms' claude-sonnet-5.5, by its Bedrock id
+ARMS=${CC_ARMS:-cc-vanilla,cc-konductor=$KONDUCTOR_SHA}
 REPS=2
-CAP_USD=30
-RUN_CAP_USD=1
-TASK_BUDGET=4                                           # 2 arms x 2 replicates x USD 1
+CAP_USD=${CC_CAP_USD:-30}
+RUN_CAP_USD=${CC_RUN_CAP_USD:-1}
+NARMS=$(echo "$ARMS" | tr ',' '\n' | grep -c .)
+TASK_BUDGET=$(awk -v a="$NARMS" -v r="$REPS" -v l="$RUN_CAP_USD" 'BEGIN { print a * r * l }')   # arms x replicates x one run
 HEAVY_LOCK=${HEAVY_LOCK:-/var/tmp/konductor-heavy.lock}
 LOAD_MAX=${LOAD_MAX:-4}
 WAIT_PAT=${WAIT_PAT:-bench/runner/bench[.]js run}
@@ -144,7 +147,7 @@ run_task() {
   local -a resume=()
   check_versions "$task" "$batch" "$version"
   [ -e "$OUT/$task.done" ] && { echo "$task: done, skipped"; return 0; }
-  n=$(runs_done "$task"); left=$((2 * REPS - n))
+  n=$(runs_done "$task"); left=$((NARMS * REPS - n))
   if [ "$MODE" = --go ]; then
     if [ -e "$OUT/$task" ]; then
       [ -f "$OUT/$task/run-config.json" ] || stop "$OUT/$task exists with no run-config.json: check it by hand"
@@ -163,7 +166,7 @@ run_task() {
   else nice -n 10 "${BENCH[@]}" --aws-profile "$CC_AWS_PROFILE" --budget-usd "$budget" --out "$OUT/$task" "${resume[@]}" </dev/null >> "$OUT/$task.log" 2>&1 || rc=$?; fi
   [ "$rc" = 0 ] || stop "$task exited $rc (log $OUT/$task.log); rerun to resume"
   n=$(runs_done "$task")
-  [ "$n" -ge $((2 * REPS)) ] || stop "$task: $n of $((2 * REPS)) runs finished (budget skips?); rerun to resume"
+  [ "$n" -ge $((NARMS * REPS)) ] || stop "$task: $n of $((NARMS * REPS)) runs finished (budget skips?); rerun to resume"
   touch "$OUT/$task.done"
 }
 
