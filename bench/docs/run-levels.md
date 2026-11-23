@@ -13,15 +13,19 @@ the largest one may say who wins.
 | | LITE | STANDARD | FULL |
 | --- | --- | --- | --- |
 | Use it for | a quick check after any change | a broader look; the only level where tuning is allowed | the pre-registered verdict |
-| Tasks | about 16: one DEV task per phase, plus a twin and a control, plus every task changed since the last LITE | every DEV task that passes its gate | the whole pack; the verdict from HELD-OUT tasks only |
+| Tasks | about 16: one DEV task per phase, plus a twin and a control, plus every task changed since the last LITE | every DEV task that passes its gate (43 of 61 on 2026-11-23) | the whole pack; the verdict from HELD-OUT tasks only |
 | Arms | `konductor` against `vanilla` | `vanilla`, `konductor`, `konductor-noskills` | the same three, plus a drop-one arm per unit and a forced-load arm for units that load in under half of their runs |
 | Runtime | Kiro CLI | Kiro CLI, plus Claude Code on 15 tasks | Kiro CLI and Claude Code |
 | Runs | 1 per task | 2 per arm per task | 3 per arm per task |
 | Scoring | code-scored parts only | code parts plus the three-judge rubric | the same, after a person's calibration of 40 outputs |
-| May say | "no regression seen", "this skill failed to load", "this task is broken" | a direction, labelled "DEV, not a verdict" | one verdict word, and keep-or-prune evidence per unit |
-| Cost (estimate) | about 80 credits | about 1,600 credits (two stages, each capped at 800), $15 of judges, $30 of Claude Code | about 19,500 credits and $1,400 |
+| May say | "no regression seen", "this skill failed to load", "this task is broken" | a direction, labelled "DEV, not a verdict" | one verdict word ("beats by the margin", "beats", "ties", "loses", "loses by the margin", "unsettled"), and keep-or-prune evidence per unit, signed off by a person |
+| May not say | any comparison beyond the stored baseline; any verdict | any verdict or margin claim | anything beyond one model and the pack version |
+| Expected cost | about 80 credits | about 1,400 real credits (two stages of about 707), about USD 5 of judges, about USD 20 of Claude Code | about 19,500 credits and USD 1,400 |
+| Caps | the `--budget-credits N` you give | 800 real credits per stage (1,600 in all), USD 15 for judges, USD 30 for Claude Code (USD 1 a run) | not set yet |
 
-The definition is the owner's decision of 2026-11-19. `run --level lite|standard|full` picks a suite's tasks by
+The definition is the owner's decision of 2026-11-19. The STANDARD numbers are the kit's defaults
+(`STAGE_CAP`, `CAP_USD` in `bench/kit/standard/`) and the owner's approval sheet of 2026-11-23. This is the one
+table of run levels; other pages link here. `run --level lite|standard|full` picks a suite's tasks by
 level; FULL also needs `--prereg FILE`, the frozen pre-registration lock.
 
 > [!WARNING]

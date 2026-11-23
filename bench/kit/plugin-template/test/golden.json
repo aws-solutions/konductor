@@ -1,0 +1,90 @@
+{
+  "turn": {
+    "sessionId": "tpl-session-1",
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "finalText": "done",
+    "askedUser": null
+  },
+  "agg": {
+    "sessionId": "tpl-session-1",
+    "sessionIds": [
+      "tpl-session-1"
+    ],
+    "runFinishedStatus": "success",
+    "stopReason": "end_turn",
+    "credits": 0,
+    "meteringEntries": 0,
+    "nonCreditUnits": [],
+    "turnDurationMs": null,
+    "contextUsagePercentage": null,
+    "toolCalls": 1,
+    "workToolCalls": 1,
+    "subagentCalls": 0,
+    "toolNames": {
+      "read": 1
+    },
+    "skillsMcpOk": null,
+    "delegatedTo": {},
+    "finalText": "done",
+    "finalTextTruncated": false,
+    "askedUser": null,
+    "configuredModel": "fake"
+  },
+  "session": {
+    "model": "fake",
+    "totalRequestCount": 1
+  },
+  "usage": {
+    "tokens": {
+      "input": 5,
+      "output": 4,
+      "reasoning": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 9
+    },
+    "costUsd": 0,
+    "modelCalls": 1,
+    "sessions": 1,
+    "variants": []
+  },
+  "transcript": {
+    "bytes": 216,
+    "chars": 216,
+    "partial": false
+  },
+  "skills": {
+    "extraction": {
+      "runtime": "plugin-template",
+      "skillsLoaded": [],
+      "skillQueries": [],
+      "skillBytesLoaded": 0,
+      "bytesByName": {},
+      "skillsLoadedFull": [],
+      "skillLoadsPreview": 0,
+      "skillLoads": [],
+      "skillCallsFailed": 0,
+      "findSkillsCalls": 0,
+      "findSkillsEmpty": 0,
+      "findSkillsBytes": 0,
+      "requested": [],
+      "failedCalls": [],
+      "failedByTool": {
+        "get_skill": 0,
+        "load_resource": 0,
+        "find_skills": 0
+      },
+      "firstDecision": {
+        "kind": "none",
+        "name": null
+      }
+    },
+    "info": null,
+    "order": {
+      "order": [],
+      "firstWriteAt": null
+    }
+  },
+  "flags": []
+}
