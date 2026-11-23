@@ -155,6 +155,8 @@ test('capabilities: present exactly when cap commands accept the runtime; one ru
     assert.deepEqual(Object.keys(d.capabilities.tools).sort(), ['agent', 'context', 'skill', 'sop'], `${id}.capabilities.tools keys`);
     assert.ok(['agent-filter', 'skill-index'].includes(d.capabilities.surface), `${id}.capabilities.surface`);
     assert.ok(Number.isInteger(d.capabilities.proxyCallsPerQuery) && d.capabilities.proxyCallsPerQuery > 0, `${id}.capabilities.proxyCallsPerQuery`);
+    assert.deepEqual(Object.keys(d.capabilities.forcedLoad).sort(), ['agent', 'skill', 'sop'], `${id}.capabilities.forcedLoad keys`);
+    for (const t of Object.values(d.capabilities.forcedLoad)) assert.match(t, /\{name\}/, `${id}.capabilities.forcedLoad names the unit`);
   }
   assert.equal(entries.filter(([, d]) => d.capabilities?.actingAgents).length, 1, 'exactly one runtime reaches capabilities through acting agents');
 });

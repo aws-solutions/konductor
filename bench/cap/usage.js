@@ -9,6 +9,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const { runtimeOf } = require('../runner/lib/harness/runtime.js');
+// A run of a runtime other than these two is read as the filter runtime's, as before.
+const { CAP_RUNTIME_IDS, FILTER_RUNTIME, INDEX_RUNTIME } = require('./runtimes.js');
 const { extractSkills, startupKiro, has } = require('../runner/lib/skills.js');
 
 const UNNAMED = '(unnamed)';
@@ -50,7 +52,7 @@ function skillFilterOf(agent) {
  * anything else; then runs without a stream, without a result.json (still running or aborted), with an infra error,
  * with a stream already seen (a copied directory) and runs of a harness that is not being assessed.
  */
-function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
+function scanRunDirs(dirs, { harnesses = CAP_RUNTIME_IDS } = {}) {
   const runs = [];
   const skipped = { vanilla: 0, noStream: 0, noResult: 0, infraError: 0, duplicate: 0, otherHarness: 0 };
   const seen = new Set();
@@ -75,17 +77,17 @@ function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
           const raw = fs.readFileSync(streamFile);
           const sha = crypto.createHash('sha256').update(raw).digest('hex');
           if (seen.has(sha)) { skip('duplicate'); continue; }
-          const harness = runtimeOf(result) === 'opencode' || runtimeOf(rec) === 'opencode' ? 'opencode' : 'kiro-cli';
+          const harness = runtimeOf(result) === INDEX_RUNTIME || runtimeOf(rec) === INDEX_RUNTIME ? INDEX_RUNTIME : FILTER_RUNTIME;
           if (!harnesses.includes(harness)) { skip('otherHarness'); continue; }
           seen.add(sha);
           const { events } = parseStream(raw.toString('utf8'));
           const ex = extractSkills(events, harness);
           const loads = {};
           for (const s of ex.skillsLoaded) loads[s.name.toLowerCase()] = { name: s.name, count: s.count, bytes: ex.bytesByName[s.name.toLowerCase()] ?? 0 };
-          const agg = harness === 'kiro-cli' ? aggregateStream(events) : null;
+          const agg = harness === FILTER_RUNTIME ? aggregateStream(events) : null;
           const delegatedTo = agg?.delegatedTo ?? {};
           const entryAgent = result.agent ?? readJson(path.join(runPath, 'installed-agent.json'))?.name ?? 'konductor';
-          const installedFile = harness === 'kiro-cli' ? readJson(path.join(runPath, 'installed-agent.json')) : null;
+          const installedFile = harness === FILTER_RUNTIME ? readJson(path.join(runPath, 'installed-agent.json')) : null;
           // Runs recorded before the entry agent's own file was saved hold konductor.json whatever agent started the run. Its filter says nothing about another entry agent.
           const stale = Boolean(installedFile && installedFile.name && installedFile.name !== entryAgent);
           const installed = stale ? null : installedFile;
@@ -115,7 +117,7 @@ function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
  */
 function exposureOf(run, cap, listedBy) {
   const loaded = run.loads[cap.name.toLowerCase()] ?? null;
-  if (run.harness === 'opencode') return { exposed: true, via: 'index', uncertain: false, loaded };
+  if (run.harness === INDEX_RUNTIME) return { exposed: true, via: 'index', uncertain: false, loaded };
   let via = null;
   if (run.entryFilter) { if (has(run.entryFilter, cap.name)) via = 'entry-filter'; } else if (listedBy.includes(run.entryAgent)) via = 'entry-listing';
   if (!via && run.delegated.some((a) => listedBy.includes(a))) via = 'delegated';

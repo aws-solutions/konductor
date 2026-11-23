@@ -17,6 +17,7 @@ const { scoringOf } = require('./captasks.js');
 const { findMarker } = require('./public.js');
 const { lintSkills } = require('./lint.js');
 const { readBaseline, applyBaseline, isRatchetRule } = require('./baseline.js');
+const { FILTER_RUNTIME, INDEX_RUNTIME, capHarness } = require('./runtimes.js');
 
 const TOOL_VERSION = 'cap-audit/2';
 const LEAK_K = 8;
@@ -149,7 +150,7 @@ function publicFindings(benchDir, tasks, registryDir) {
 
 function summarize({ caps, records, specs, findings, harness }) {
   const skills = caps.filter((c) => c.kind === 'skill');
-  const kiro = harness === 'opencode' ? null : (() => {
+  const kiro = harness === INDEX_RUNTIME ? null : (() => {
     const skillsByAgent = Object.fromEntries(specs.map((s) => [s.name, skills.filter((c) => s.skills.length && kiroReachers(c.id, [s]).length).map((c) => c.name)]));
     return {
       skillsByAgent,
@@ -183,7 +184,7 @@ function summarize({ caps, records, specs, findings, harness }) {
  * Returns { report, exitCode }: exit code 1 when any finding is an error, 0 otherwise.
  */
 function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub = false, now = new Date() }) {
-  if (!['kiro-cli', 'opencode', 'both'].includes(harness)) throw new Error('--harness takes kiro-cli, opencode or both');
+  capHarness(harness, { both: true });
   const b = resolveBase(base, repo);
   try {
     const scan = scanRepo(b.dir);
@@ -193,7 +194,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
     const registry = loadRegistry(benchDir);
     const regFindings = validateRegistry(registry, { scan, specs, tasks, baseDir: b.dir });
     const byId = new Map(registry.entries.filter((e) => e.data?.id).map((e) => [e.data.id, e.data]));
-    const kiroOn = harness !== 'opencode';
+    const kiroOn = harness !== INDEX_RUNTIME;
     const caps = [...scan.values()].sort((a, b2) => (a.id < b2.id ? -1 : 1));
     let findings = [];
     const add = (level, id, rule, msg, where) => findings.push({ level, id, rule, msg, ...(where ? { where } : {}) });
@@ -209,7 +210,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
       records.set(c.id, {
         id: c.id, kind: c.kind, name: c.name, path: c.path, registered: Boolean(reg), owner: reg?.owner ?? null, class: reg?.class ?? 'uplift',
         bytes: c.bytes, estTokens: estTokens(c.bytes), description: desc, neighbours: [],
-        reach: { kiro: kiroOn ? { agents: kiroReachers(c.id, specs) } : null, opencode: harness === 'kiro-cli' ? null : reach.opencode[c.id], claude: { agents: claudeReachers(c.id, specs) } },
+        reach: { kiro: kiroOn ? { agents: kiroReachers(c.id, specs) } : null, opencode: harness === FILTER_RUNTIME ? null : reach.opencode[c.id], claude: { agents: claudeReachers(c.id, specs) } },
         inbound: inbound.get(c.id), leakage: [],
         tasks: { linked, byTarget, gap: linked.length ? null : byTarget.length ? 'target only: no registry link' : 'no task' },
         triggerQueries: reg ? reg.trigger.queries.length : 0,
@@ -249,7 +250,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
 
     const startup = {
       kiro: kiroOn ? startupPerAgent(specs, b.dir) : null,
-      opencode: harness === 'kiro-cli' ? null : (() => {
+      opencode: harness === FILTER_RUNTIME ? null : (() => {
         const skills = caps.filter((c) => c.kind === 'skill');
         const bytes = skills.reduce((n, c) => n + Buffer.byteLength(c.name) + Buffer.byteLength(records.get(c.id).description.text), 0);
         return { skillCount: skills.length, skillIndexBytes: bytes, estTokens: estTokens(bytes), note: 'name and description of every skill; the primary agent prompt is produced by the translation and is not sized here' };
@@ -262,7 +263,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
       notes: ['estTokens is bytes / 4, an estimate, not a tokenizer count', 'bytes is the size of the defining file (SKILL.md for a skill), not the whole skill directory'],
       capabilities: caps.map((c) => records.get(c.id)),
       agents: specs.map((s) => ({ name: s.name, skills: s.skills.length, sops: s.sops.length, contexts: s.contexts.length, subagents: s.subagents })),
-      matrix: { agents: reach.agents, kiro: kiroOn ? reach.kiro : null, opencode: harness === 'kiro-cli' ? null : reach.opencode },
+      matrix: { agents: reach.agents, kiro: kiroOn ? reach.kiro : null, opencode: harness === FILTER_RUNTIME ? null : reach.opencode },
       dangling: kiroOn ? reach.dangling : [],
       startup, registry: { entries: registry.entries.length, findings: regFindings },
       summary: { ...summarize({ caps, records, specs, findings, harness }), ratchet: ratchet.summary },

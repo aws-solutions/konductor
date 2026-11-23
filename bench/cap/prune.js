@@ -7,6 +7,7 @@
 const { runAudit } = require('./audit.js');
 const { scanRunDirs, tallyUsage } = require('./usage.js');
 const { MIN_EVIDENCE_N } = require('../report/skillcard.js');
+const { CAP_RUNTIME_IDS, FILTER_RUNTIME, INDEX_RUNTIME } = require('./runtimes.js');
 
 const TOOL_VERSION = 'cap-prune-report/1';
 const LOAD_RATE_MIN = 0.3;
@@ -69,7 +70,7 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 function classify(i) {
   const ev = summarizeEvidence(i.evidence);
   const out = (klass, reason, confidence, wouldChange, provisional = false) => ({ class: klass, provisional, reason, confidence, wouldChange });
-  const oc = i.harness === 'opencode';
+  const oc = i.harness === INDEX_RUNTIME;
 
   const thinHurts = ev.hurts && ev.hurtsN < MIN_EVIDENCE_N;
   if (ev.hurts && !thinHurts) {
@@ -157,7 +158,7 @@ const labelOf = (c) => (c.class === 'KEEP' && c.provisional ? 'KEEP (provisional
 function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = [], evidence = null, minExposure = DEFAULT_MIN_EXPOSURE, now = new Date() }) {
   if (!Number.isInteger(minExposure) || minExposure < MIN_EXPOSURE_FLOOR) throw new Error(`minimum exposure takes a whole number of at least ${MIN_EXPOSURE_FLOOR}`);
   const { report: audit } = runAudit({ repo, base, harness, benchDir });
-  const harnesses = harness === 'both' ? ['kiro-cli', 'opencode'] : [harness];
+  const harnesses = harness === 'both' ? [...CAP_RUNTIME_IDS] : [harness];
   const skills = audit.capabilities.filter((c) => c.kind === 'skill');
   const bytesOf = (id) => audit.capabilities.find((c) => c.id === id)?.bytes ?? 0;
   const warnings = [];
@@ -188,7 +189,7 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
   const capabilities = skills.map((rec) => {
     const trim = trimFor(rec, p90, bytesOf);
     if (trim.flag) trimCount++;
-    const reachable = { 'kiro-cli': (rec.reach.kiro?.agents ?? []).length > 0, opencode: rec.reach.opencode === true };
+    const reachable = { [FILTER_RUNTIME]: (rec.reach.kiro?.agents ?? []).length > 0, [INDEX_RUNTIME]: rec.reach.opencode === true };
     const otherHarness = { signals: signalsFor(rec) };
     const perHarness = {};
     for (const h of harnesses) {
@@ -202,7 +203,7 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
       counts[h][labelOf(classification)]++;
       perHarness[h] = {
         reachable: reachable[h],
-        agents: h === 'kiro-cli' ? rec.reach.kiro?.agents ?? [] : null,
+        agents: h === FILTER_RUNTIME ? rec.reach.kiro?.agents ?? [] : null,
         exposure: { runs: u.exposed, coarse: u.uncertain, basis: u.basis },
         loads: { runsLoaded: u.runsLoaded, total: u.loads, rate: u.exposed ? u.runsLoaded / u.exposed : null, bytes: u.bytes, meanBytesPerLoad: u.loads ? Math.round(u.bytes / u.loads) : null },
         byRef: u.byRef,
@@ -233,11 +234,11 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
   const offBase = refs.filter((r) => r.matchesBase === false);
   if (offBase.length) warnings.push(`runs built from a different commit than the base ${audit.base.label}: ${[...new Set(offBase.map((r) => r.ref))].join(', ')}; their exposure comes from the installed agent filter where the run kept it, otherwise from the base tree`);
   if (refs.length > 1) warnings.push(`overall counts combine ${refs.length} ref rows (${refs.map((r) => `${r.ref} on ${r.harness}`).join(', ')}); the per-ref counts are in each capability's byRef and in the usage table`);
-  if (harnesses.includes('opencode') && scan.runs.some((r) => r.harness === 'opencode')) warnings.push('opencode loads come from the parent session only; subagent sessions are not in the stream');
+  if (harnesses.includes(INDEX_RUNTIME) && scan.runs.some((r) => r.harness === INDEX_RUNTIME)) warnings.push('opencode loads come from the parent session only; subagent sessions are not in the stream');
 
     const oc = skills.map((c) => ({ id: c.id, bytes: Buffer.byteLength(c.name) + Buffer.byteLength(c.description.text) })).sort((a, b) => b.bytes - a.bytes || (a.id < b.id ? -1 : 1));
   const ocTotal = oc.reduce((n, c) => n + c.bytes, 0);
-  const kiroLoads = harnesses.includes('kiro-cli') ? Object.values(usage['kiro-cli']).reduce((a, t) => ({ loads: a.loads + t.loads, bytes: a.bytes + t.bytes }), { loads: 0, bytes: 0 }) : { loads: 0, bytes: 0 };
+  const kiroLoads = harnesses.includes(FILTER_RUNTIME) ? Object.values(usage[FILTER_RUNTIME]).reduce((a, t) => ({ loads: a.loads + t.loads, bytes: a.bytes + t.bytes }), { loads: 0, bytes: 0 }) : { loads: 0, bytes: 0 };
   const costContext = {
     estimateNote: 'Token figures are bytes / 4, an estimate, not a tokenizer count.',
     opencode: {

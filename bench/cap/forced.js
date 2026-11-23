@@ -14,8 +14,10 @@
 const crypto = require('node:crypto');
 const { diffCI } = require('../report/stats.js');
 const { compareArms, variantStatus, MARGIN, NOISE_FLOOR, MIN_RUNS, LOAD_MIN } = require('./decide.js');
+const { CAP_RUNTIME_IDS, capRuntime } = require('./runtimes.js');
+const { DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
-const HARNESSES = ['kiro-cli', 'opencode'];
+const HARNESSES = CAP_RUNTIME_IDS;
 // `off` clears a forced load saved in study.json; it is saved like the other two so a resume stays off.
 const MODES = ['low-load', 'always', 'off'];
 // The forced arm, its A/A repeat (same ref, same prefix) and the skill deleted (with the filler), all in one run of their
@@ -36,20 +38,19 @@ const KINDS = ['skill', 'sop', 'agent'];
  * The first-turn instruction for one harness and kind of unit. Plain text, no dashes, the unit named once in quotes.
  * Kiro CLI's SOP read is a file read of `<name>.sop.md`, which load-check.js counts as a load of that SOP.
  */
-function forcedPrefix({ name, harness = 'kiro-cli', kind = 'skill' }) {
+function forcedPrefix({ name, harness = DEFAULT_RUNTIME, kind = 'skill' }) {
   const how = loadClause({ name, harness, kind });
   if (kind === 'agent') return [`Before you do anything else, ${how}.`, 'Then use its answer to finish the task, and say what you took from it.'].join(' ');
   return [`Before you do anything else, ${how}.`, `Then do the task below, following that ${kind} wherever it applies.`].join(' ');
 }
 
 /** The clause that loads one unit ("load the skill named ... and read it"), shared with the konductor-forced arm (runner/lib/forced-must-load.js). */
-function loadClause({ name, harness = 'kiro-cli', kind = 'skill' }) {
+function loadClause({ name, harness = DEFAULT_RUNTIME, kind = 'skill' }) {
   if (!HARNESSES.includes(harness)) throw new Error(`forced load supports ${HARNESSES.join(' and ')} (got "${harness}")`);
   if (!KINDS.includes(kind)) throw new Error(`forced load takes a ${KINDS.join(', ')} (got "${kind}"); context files are always loaded`);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(String(name))) throw new Error(`"${name}" is not a ${kind} name`);
-  if (kind === 'agent') return `hand the whole task below to the agent named "${name}" with ${harness === 'opencode' ? 'the task tool' : 'the subagent tool'}`;
-  if (kind === 'sop') return harness === 'opencode' ? `load the skill named "sop-${name}" with the skill tool and read it` : `read the SOP named "${name}", the installed file "${name}.sop.md", with your file tool`;
-  return `load the skill named "${name}" with ${harness === 'opencode' ? 'the skill tool' : 'the get_skill tool of the skills server'} and read it`;
+  // The clause is the runtime's descriptor capabilities.forcedLoad[kind], with the unit's name in place of {name}.
+  return capRuntime(harness).capabilities.forcedLoad[kind].replaceAll('{name}', name);
 }
 
 // Neutral sentences for the delete arm's instruction, longest first. None names a skill or a tool, or asks for a load.
