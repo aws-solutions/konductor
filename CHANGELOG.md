@@ -639,6 +639,9 @@ not per individual commit.
   `kept_changed_paths` and `kept_backups`. Under `--dry-run --json`, `would_delete` holds only real
   removals and a new `would_keep` array lists the kept files, with `would_delete_count` and
   `would_keep_count`.
+- `k-verify` no longer runs `cdk synth`, `cdk ls` or `cdk diff` until the user confirms the CDK
+  app is trusted, since all three run the app's code and `cdk diff` also reads the deployed stack.
+  Without named credentials, `cdk ls` and `cdk synth` run with `--no-lookups`.
 
 ### Security
 
