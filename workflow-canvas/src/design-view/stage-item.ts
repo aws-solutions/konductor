@@ -120,6 +120,22 @@ export function writerKeepsItem(
   return itemRefusal(item, name, agent, eol) === undefined;
 }
 
+// A `name:` or `agent:` key whose value is not on the key's own line: the
+// line ends after the colon, or it opens a block scalar (`|` or `>`), so the
+// lines under it carry the value. The writer writes each key and its value on
+// one line, so such a value is what a save would rewrite.
+const SPREAD_KEY =
+  /^[ \t]*(?:- )?(name|agent):[ \t]*(?:[|>][+-]?[0-9]*[ \t]*)?(?:#.*)?$/;
+
+// The `name` or `agent` whose value the lines below it carry, as a phrase.
+function spreadKeyOf(lines: readonly Line[]): string | undefined {
+  for (const line of lines) {
+    const key = SPREAD_KEY.exec(line.text)?.[1];
+    if (key !== undefined) return `the ${key} written over more than one line`;
+  }
+  return undefined;
+}
+
 /**
  * What the lines of the stage hold that the writer would not write back, as
  * a phrase to put after "so it is refused:", or `undefined` when the writer
@@ -135,10 +151,13 @@ export function itemRefusal(
 ): string | undefined {
   if (item === undefined) return 'lines this page cannot read';
   const lines = brokenLinesOf(item);
-  if (lines.length !== 2) {
-    return lines.length > 2
-      ? 'a comment, a blank line or another key inside it'
-      : 'fewer lines than the name and the agent take';
+  if (lines.length < 2) return 'fewer lines than the name and the agent take';
+  if (lines.length > 2) {
+    // A value carried by the lines under its key is what makes the item long
+    // here, so it is named before the things that merely could be.
+    return (
+      spreadKeyOf(lines) ?? 'a comment, a blank line or another key inside it'
+    );
   }
   const first = lines[0]?.text ?? '';
   const dash = /^([ \t]*)- name: (.*)$/.exec(first);

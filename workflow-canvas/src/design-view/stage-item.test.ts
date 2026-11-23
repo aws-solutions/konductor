@@ -388,6 +388,27 @@ describe('stageRefusal', () => {
       'no line break at the end of the file',
     ],
     [
+      'a name carried by the line under its key',
+      'stages:\n  - name:\n      draft\n    agent: k-developer\n',
+      [at(2, 4)],
+      0,
+      'the name written over more than one line',
+    ],
+    [
+      'an agent carried by the line under its key',
+      'stages:\n  - name: draft\n    agent:\n      k-developer\n',
+      [at(2, 4)],
+      0,
+      'the agent written over more than one line',
+    ],
+    [
+      'a name written as a block scalar',
+      'stages:\n  - name: |-\n      draft\n    agent: k-developer\n',
+      [at(2, 4)],
+      0,
+      'the name written over more than one line',
+    ],
+    [
       'a stage with no place in the file',
       FILE,
       [{ name: 'draft' }],
