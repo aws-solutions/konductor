@@ -54,6 +54,28 @@ function paidEnv(baseEnv, home, tmpdir) {
   return env;
 }
 
+// A scratch HOME lives at most one call; one older than the call timeout plus this was left by a killed caller.
+const STALE_MARGIN_MS = 5 * 60 * 1000;
+
+/**
+ * Removes the `home-*` scratch dirs under `workDir` older than `maxAgeMs` (a SIGKILL skips the cleanup that removes
+ * a call's HOME and its copied sign-in database). Returns the removed paths. A live call's HOME is younger than that.
+ */
+function sweepStaleHomes(workDir, maxAgeMs) {
+  let names;
+  try { names = fs.readdirSync(workDir); } catch { return []; }
+  const removed = [];
+  for (const name of names.filter((n) => n.startsWith('home-'))) {
+    const dir = path.join(workDir, name);
+    const st = fs.lstatSync(dir);
+    if (!st.isDirectory() || Date.now() - st.mtimeMs <= maxAgeMs) continue;
+    sb.removeAuthCopy(dir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    removed.push(dir);
+  }
+  return removed;
+}
+
 /** The counted credits of one call: the larger of 15 and the real credits, or 15 when the call never reported them. */
 const countedOf = (real, finished) => (finished && Number.isFinite(real) ? Math.max(WORST_PER_CALL, real) : WORST_PER_CALL);
 
@@ -92,6 +114,7 @@ function paidCall({ model, prompt, out, ledger, cap, workDir, bin = 'kiro-cli', 
     }
     fs.appendFileSync(ledger, `${JSON.stringify({ label, model, counted: WORST_PER_CALL, reserved: true, at })}\n`);
   });
+  sweepStaleHomes(workDir, Math.max(timeoutMs, TIMEOUT_MS) + STALE_MARGIN_MS);
   const home = fs.mkdtempSync(path.join(workDir, 'home-'));
   const cwd = path.join(home, 'cwd');
   const tmpdir = path.join(home, 'tmp');
@@ -145,4 +168,4 @@ function paidJson(o, parse) {
   }
 }
 
-module.exports = { WORST_PER_CALL, PaidCallRefused, ReplyUnreadable, ledgerSpent, assertOutsideHome, countedOf, paidCall, jsonOf, paidJson };
+module.exports = { WORST_PER_CALL, sweepStaleHomes, PaidCallRefused, ReplyUnreadable, ledgerSpent, assertOutsideHome, countedOf, paidCall, jsonOf, paidJson };

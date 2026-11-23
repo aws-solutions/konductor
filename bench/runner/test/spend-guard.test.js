@@ -10,7 +10,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { tmp, write } = require('./helpers.js');
 const { openLedger, readLedger, UNKNOWN_FLOOR } = require('../lib/credit-ledger.js');
-const { paidCall, ledgerSpent } = require('../../cap/paidcall.js');
+const { paidCall, ledgerSpent, sweepStaleHomes } = require('../../cap/paidcall.js');
 const { withFileLock } = require('../lib/file-lock.js');
 
 const FAKE = path.join(__dirname, 'fake-kp-kiro.js');
@@ -146,5 +146,23 @@ paidCall({ ...${JSON.stringify(r.paid)}, model: 'glm-5', prompt: 'slow', out: ${
     if (keep === undefined) delete process.env.BENCH_PAID_ENV_KEEP; else process.env.BENCH_PAID_ENV_KEEP = keep;
     fs.rmSync(r.root, { recursive: true, force: true });
   }
+});
+
+test('a stale scratch HOME left by a killed call is swept before the next call; a fresh one is left alone', () => {
+  const r = rig();
+  try {
+    const stale = path.join(r.paid.workDir, 'home-stale');
+    const fresh = path.join(r.paid.workDir, 'home-fresh');
+    write(path.join(stale, '.local', 'share', 'kiro-cli', 'data.sqlite3'), 'copied sign-in');
+    write(path.join(fresh, 'x'), 'live');
+    const old = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
+    fs.utimesSync(stale, old, old);
+    assert.deepEqual(sweepStaleHomes(r.paid.workDir, 60 * 60 * 1000), [stale]);
+    assert.equal(fs.existsSync(stale), false);
+    assert.equal(fs.existsSync(fresh), true);
+    fs.utimesSync(fresh, old, old);
+    paidCall({ ...r.paid, model: 'glm-5', prompt: 'hello', out: path.join(r.root, 'out', 'a') });
+    assert.equal(fs.existsSync(fresh), false, 'paidCall sweeps before it makes its own HOME');
+  } finally { fs.rmSync(r.root, { recursive: true, force: true }); }
 });
 
