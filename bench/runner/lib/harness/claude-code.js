@@ -20,7 +20,7 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
-const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
+const { copyPlainFile } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
 const { turnStreamTexts } = require('../autonomy.js');
 const listing = require('./claude-listing.js');
@@ -47,140 +47,20 @@ function effortOf(effort) {
   return effort;
 }
 const DEFAULT_RUN_BUDGET_USD = 5;
-// The Claude Code version the stream parser and the harness flags were checked against.
-const VALIDATED_VERSION = '2.1.316.1544';
 const EXPECTED_AGENTS = 11;
 // Claude Code starts these even with an empty config directory, so a vanilla arm is not empty.
 const BUILTIN_AGENTS = ['claude', 'Explore', 'general-purpose', 'Plan', 'statusline-setup'];
-const CREDENTIAL_VARS = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'];
-// With any of these set the AWS SDK ignores the exported keys and looks the profile up in the scratch HOME.
-const PROFILE_VARS = ['AWS_PROFILE', 'AWS_DEFAULT_PROFILE', 'AWS_CONFIG_FILE', 'AWS_SHARED_CREDENTIALS_FILE'];
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
-// The real binary is a few hundred MB; a launcher script is a few KB.
-const MIN_BINARY_BYTES = 50 * 1024 * 1024;
-
-// ---- Binary ----
-
-const versionKey = (v) => v.split('.').map((n) => Number(n) || 0);
-function compareVersions(a, b) {
-  const x = versionKey(a);
-  const y = versionKey(b);
-  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
-  return 0;
-}
-
-/** Why `bin` is not the claude binary, or null when it looks like it: the resolved file is named `claude` and is large. */
-function launcherProblem(bin, minBytes) {
-  let real = bin;
-  try { real = fs.realpathSync(bin); } catch { /* judged by the given path */ }
-  if (path.basename(real) !== 'claude') return `its file name is ${path.basename(real)}, not claude`;
-  let size = 0;
-  try { size = fs.statSync(real).size; } catch { /* reported as too small */ }
-  if (size < minBytes) return `it is ${size} bytes, far smaller than the real binary`;
-  return null;
-}
-
-const executable = (file) => { try { fs.accessSync(file, fs.constants.X_OK); return fs.statSync(file).isFile(); } catch { return false; } };
-
-/** Whether the file contains the bytes of `needle`. Reads in chunks; the Claude Code binary is a few hundred MB. */
-function binaryContains(file, needle) {
-  const want = Buffer.from(needle);
-  const chunk = Buffer.alloc(8 * 1024 * 1024);
-  let tail = Buffer.alloc(0);
-  let fd;
-  try { fd = fs.openSync(file, 'r'); } catch { return false; }
-  try {
-    for (;;) {
-      const n = fs.readSync(fd, chunk, 0, chunk.length, null);
-      if (n === 0) return false;
-      const hay = Buffer.concat([tail, chunk.subarray(0, n)]);
-      if (hay.includes(want)) return true;
-      tail = hay.subarray(Math.max(0, hay.length - (want.length - 1)));
-    }
-  } finally { fs.closeSync(fd); }
-}
-
-const PLANT_CONTROLS_DIR = path.resolve(__dirname, '..', '..', '..', 'physical', 'controls');
-const PLANT_CONTROL_VERSION = 'plant-control';
-
-/** Whether `bin` is one of bench's own Claude Code plant controls: named `<control>-claude`, its file in physical/controls. */
-function isPlantControl(bin) {
-  if (!/-claude$/.test(path.basename(bin))) return false;
-  try { return path.dirname(fs.realpathSync(bin)) === fs.realpathSync(PLANT_CONTROLS_DIR); } catch { return false; }
-}
-
-/**
- * The claude binary a run uses: `binOverride` (or BENCH_CLAUDE_BIN), else the newest `<version>/claude` under `toolsDir`
- * (or BENCH_CLAUDE_TOOLS_DIR). There is no default location. A launcher script is refused.
- */
-function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, toolsDir = process.env.BENCH_CLAUDE_TOOLS_DIR || null, minBytes = MIN_BINARY_BYTES } = {}) {
-  let bin = binOverride ? path.resolve(binOverride) : null;
-  let version = null;
-  if (!bin) {
-    if (!toolsDir) throw new Error('no claude binary given; pass --claude-bin PATH or --claude-tools-dir DIR (BENCH_CLAUDE_BIN, BENCH_CLAUDE_TOOLS_DIR)');
-    let versions = [];
-    try {
-      versions = fs.readdirSync(toolsDir, { withFileTypes: true })
-        .filter((e) => e.isDirectory() && /^\d+(\.\d+)+$/.test(e.name) && executable(path.join(toolsDir, e.name, 'claude')))
-        .map((e) => e.name);
-    } catch { /* reported below */ }
-    if (!versions.length) throw new Error(`no claude binary found under ${toolsDir} (expected <version>/claude); pass --claude-bin PATH`);
-    version = versions.sort(compareVersions).at(-1);
-    bin = path.join(toolsDir, version, 'claude');
-  }
-  if (!executable(bin)) throw new Error(`claude binary is not executable: ${bin}`);
-  // A bench plant control (`<control>-claude`, D-113) is a small script by design. It calls no model and reads no model
-  // flag, so the launcher check does not apply and --effort is moot; its version pins nothing, so its suite is a control.
-  if (isPlantControl(bin)) return { bin, version: PLANT_CONTROL_VERSION, sha256: sandbox.sha256File(bin), supportsHookEvents: false, supportsEffort: true, control: true };
-  const problem = launcherProblem(bin, minBytes);
-  if (problem) throw new Error(`${bin}: this is a launcher, not the claude binary; it can override the model, region and credentials (${problem}). Pass the real binary with --claude-bin PATH or --claude-tools-dir DIR`);
-  version = version ?? path.basename(path.dirname(bin)).match(/^\d+(\.\d+)+$/)?.[0] ?? 'unknown';
-  return { bin, version, sha256: sandbox.sha256File(bin), supportsHookEvents: binaryContains(bin, '--include-hook-events'), supportsEffort: binaryContains(bin, '--effort') };
-}
-
-/**
- * Claude Code binaries recorded by earlier commands into the same --out that differ from `claude`. A tools directory
- * is upgraded in place and --claude-tools-dir takes its newest version, so without this one study could mix versions.
- */
-function claudeChanges(configs, claude) {
-  const out = [];
-  for (const c of configs) {
-    const rec = c?.claudeCode;
-    if (!rec?.binarySha256 || rec.binarySha256 === claude.sha256 || out.some((o) => o.binarySha256 === rec.binarySha256)) continue;
-    out.push({ version: rec.version ?? null, binarySha256: rec.binarySha256, startedAt: c.startedAt ?? null });
-  }
-  return out;
-}
-
-/**
- * The error for `changes`, naming both binaries and the ways out. run-config holds no path under HOME, so the path to
- * pin is rebuilt from `toolsDir` and the recorded version, and offered only when that binary is still there.
- */
-function describeClaudeChanges(changes, claude, outDir, toolsDir = null) {
-  const was = changes.map((c) => `claude ${c.version ?? 'unknown'}, sha256 ${c.binarySha256.slice(0, 12)}${c.startedAt ? `, recorded ${c.startedAt}` : ''}`).join('; ');
-  const pin = toolsDir ? changes.map((c) => c.version && /^\d+(\.\d+)+$/.test(c.version) && path.join(toolsDir, c.version, 'claude')).find((f) => f && executable(f)) : null;
-  return `${outDir} holds runs of ${was}; this command resolved claude ${claude.version} (${claude.bin}), sha256 ${claude.sha256.slice(0, 12)}. One study must use one claude binary: ${pin ? `pass --claude-bin ${pin}, ` : ''}use a new --out, or pass --allow-claude-change to mix them anyway`;
-}
-
-/** A warning line when `version` is not the one the harness was validated against, else null. */
-const versionWarning = (version) => (version === VALIDATED_VERSION ? null : `claude ${version} differs from ${VALIDATED_VERSION}, the version this harness was validated against; stream fields or flags may differ`);
+// ---- Binary: resolveClaude and the study's one-binary check live in claude-code-bin.js (D-192) ----
+const { resolveClaude, isPlantControl, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions } = require('./claude-code-bin.js');
 
 // ---- Model and credentials ----
 
 /** The canonical id a run must report, from the model flag value. */
 const canonicalModel = (model) => parse.canonicalModelOf(model);
 
-/** Names (never values) of the credential variables present in `env`. */
-const credentialNames = (env = process.env) => CREDENTIAL_VARS.filter((k) => env[k]);
-
-/** Throws when the credentials a run needs are not in the caller's environment. Values never appear in the message. */
-function checkCredentials(env = process.env) {
-  const missing = CREDENTIAL_VARS.slice(0, 2).filter((k) => !env[k]);
-  if (missing.length) throw new Error(`Claude Code runs take AWS credentials from the environment; missing ${missing.join(', ')} (export them in the shell that starts the bench, for example from \`aws configure export-credentials --format env\`)`);
-  if (/^ASIA/.test(env.AWS_ACCESS_KEY_ID) && !env.AWS_SESSION_TOKEN) throw new Error('AWS_ACCESS_KEY_ID is a temporary key (ASIA...) but AWS_SESSION_TOKEN is not set');
-  const shadow = PROFILE_VARS.filter((k) => env[k]);
-  return { shadow };
-}
+// The credential variables and checks live in claude-code-creds.js (D-192).
+const { CREDENTIAL_VARS, PROFILE_VARS, credentialNames, checkCredentials } = require('./claude-code-creds.js');
 
 // ---- Environment ----
 
@@ -387,47 +267,8 @@ function removeCredentials(home) {
   fs.rmSync(path.join(home, '.aws'), { recursive: true, force: true });
 }
 
-const slugOf = (cwd) => {
-  let real = cwd;
-  try { real = fs.realpathSync(cwd); } catch { /* the directory is already gone */ }
-  return real.replace(/[^A-Za-z0-9]/g, '-');
-};
-
-// The run's own TMPDIR is agent-writable, so a link there must not steer the delete at a host folder. The shared temp
-// dir may itself sit behind a link (macOS /var), so only the parts below it are checked.
-function isPlainTaskDir(base, runTmpdir, rel) {
-  try {
-    if (base === runTmpdir && fs.lstatSync(base).isSymbolicLink()) return false;
-    assertPlainPath(base, rel, { last: 'dir' });
-    return true;
-  } catch { return false; }
-}
-
-/**
- * Claude Code writes task output under <tmp>/claude-<uid>/<cwd slug>/..., outside HOME. The run's temp directory is given to
- * the process as TMPDIR and CLAUDE_CODE_TMPDIR, and this removes what it made there or in the default temp directory. The cwd slug is unique to the run, so
- * parallel runs never touch each other's files.
- */
-function cleanupRun({ cwd, tmpdir, tmpBases = [os.tmpdir()], uid = process.getuid ? process.getuid() : null }) {
-  if (uid === null) return [];
-  const slug = slugOf(cwd);
-  const removed = [];
-  for (const base of new Set([tmpdir, ...tmpBases].filter(Boolean))) {
-    const root = path.join(base, `claude-${uid}`);
-    const dir = path.join(root, slug);
-    if (!isPlainTaskDir(base, tmpdir, path.join(`claude-${uid}`, slug))) continue;
-    fs.rmSync(dir, { recursive: true, force: true });
-    removed.push(dir);
-    try { if (!fs.readdirSync(root).length) fs.rmdirSync(root); } catch { /* another run uses it */ }
-  }
-  return removed;
-}
-
-/** Where cleanupRun found claude's task directory: in the run's own TMPDIR (claude honors it) or in the default temp dir. */
-function describeCleanup(removed, tmpdir) {
-  const inRun = removed.filter((d) => d.startsWith(`${tmpdir}${path.sep}`)).length;
-  return { removed: removed.length, inRunTmpdir: inRun, inDefaultTmp: removed.length - inRun };
-}
+// Run cleanup (claude's task dirs under the temp dirs) lives in claude-code-cleanup.js (D-192).
+const { slugOf, cleanupRun, describeCleanup } = require('./claude-code-cleanup.js');
 
 // ---- Results ----
 
