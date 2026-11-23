@@ -239,7 +239,7 @@ the three built-in harnesses, then every `bench/plugins/<name>/plugin.json`. A m
 `benchApi` is the plugin interface version (1 today). `kind` is `harness` or `judge-backend`. `name` must equal the
 folder name. `meta` is the descriptor file and `entry` the module, both inside the folder. A manifest with another
 `benchApi`, an unknown kind or a missing file is refused with its reason and never loaded; two parts with one name
-is an error. Each run's `run-config.json` records every loaded plugin with a hash of its folder. Check a plugin for
+is an error. Each run's `run-config.json` records every loaded plugin with a hash of its folder. Check a harness plugin for
 free with `node bench/kit/plugin/check.js bench/plugins/<name>`.
 
 Two limits to know before you start. Arms are Konductor refs or the bare CLI today, so an agent that does not
@@ -264,7 +264,8 @@ A judge is a model that scores answers. Adding one takes up to three steps.
 3. **Reach it.** The judge backend is the program that asks the model: `kiro` (credits, the default) or `opencode`
    (Amazon Bedrock, USD), chosen with `--judge-backend`. A model neither can call needs a `judge-backend` plugin: a
    descriptor `{ id, costUnit, label }` and an entry module that exports `makeCaller`.
-   [Write a plugin](write-a-plugin.md#a-judge-backend) shows it, and `judge-backend-plugin.test.js` loads a fake one.
+   [Write a plugin](write-a-plugin.md#a-judge-backend) has a worked example, and `judge-backend-plugin.test.js` loads
+   a fake one. The free kit check covers harness plugins only, not judge backends yet.
 
 How the panel's scores become one number is in [scoring](scoring.md).
 
