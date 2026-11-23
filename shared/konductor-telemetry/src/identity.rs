@@ -12,6 +12,7 @@
 // Every function takes `home_dir: &Path` explicitly and never
 // resolves `$HOME` itself.
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -84,7 +85,13 @@ pub fn create_private_dir_all(dir: &Path) -> std::io::Result<()> {
 pub fn sha256_hex(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    hasher
+        .finalize()
+        .iter()
+        .fold(String::with_capacity(64), |mut hex, byte| {
+            let _ = write!(hex, "{byte:02x}");
+            hex
+        })
 }
 
 /// Used when no identity is safely resolvable: unattributed usage, an

@@ -150,9 +150,9 @@ Choosing among the three orchestrators:
 
 Two are declared in the agent specs.
 
-**AWS documentation lookups** for `konductor`, `k-architect` and `k-developer`. Install `uvx`.
+**AWS documentation lookups** for `konductor`, `k-architect` and `k-developer`. Install `uvx`. The proxy needs Python 3.11 to 3.14; `uvx` downloads a compatible one if none is installed.
 Their agent files carry an `aws-mcp` entry in `mcpServers`, launched via
-`uvx mcp-proxy-for-aws-cli==1.7.0` with `--skip-auth`, so you do not add it to your own MCP config.
+`uvx mcp-proxy-for-aws-cli==2.0.0` with `--skip-auth`, so you do not add it to your own MCP config.
 Without `uvx` the server fails to start and the agents still work, just without AWS lookups. The
 first start downloads the proxy through `uvx`, which can delay the agent's first reply.
 
