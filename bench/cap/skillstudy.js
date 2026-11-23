@@ -36,8 +36,9 @@ const ACTING_AGENT = 'konductor';
 
 const { readJsonOrNull: readJson } = require('../runner/lib/util.js');
 const { STUDY_RUNTIME } = require('./runtimes.js');
-// The judge backend (judge/backends.js, not a runtime) a study judges on unless --judge-backend names another.
-const STUDY_JUDGE_BACKEND = 'opencode';
+// The judge backend a study judges on unless --judge-backend names another: the built-in one that calls Bedrock and
+// spends USD (judge/backends.js), so the judges never share the study's kiro credits.
+const STUDY_JUDGE_BACKEND = require('../judge/backends.js').BUILTIN_BACKENDS.find((b) => b.costUnit === 'usd').id;
 const writeJson = (f, o) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, `${JSON.stringify(o, null, 2)}\n`); };
 const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
 
