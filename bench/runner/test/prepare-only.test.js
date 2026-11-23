@@ -30,7 +30,8 @@ function setup() {
 }
 // HOME points at an empty directory: --prepare-only must work without a kiro-cli login and write nothing there.
 const run = (s, args) => spawnSync('node', [BENCH, 'run', '--suite', 'lite', '--bench-dir', s.bench, '--repo-root', s.repo, '--cache', s.cache, '--out', s.out, '--prepare-only', ...args], {
-  encoding: 'utf8', env: { ...process.env, HOME: path.join(s.root, 'home') },
+  // TMPDIR: the Claude Code arms refuse a scratch dir under the real HOME, as when the suite runs from a session scratch dir.
+  encoding: 'utf8', env: { ...process.env, HOME: path.join(s.root, 'home'), TMPDIR: s.root },
 });
 
 test('--prepare-only with vanilla only prints the table, exits 0, needs no login, and creates no output directory', () => {

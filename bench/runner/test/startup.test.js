@@ -4,12 +4,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { startupRecord } = require('../lib/startup.js');
+const { mkScratch } = require('./scratch.js');
 
 function scratch(t) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'startup-'));
+  const root = mkScratch('startup-');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const dirs = { realHome: path.join(root, 'real'), home: path.join(root, 'run', 'home'), cwd: path.join(root, 'run', 'work') };
   for (const d of Object.values(dirs)) fs.mkdirSync(d, { recursive: true });
