@@ -1638,6 +1638,41 @@ def test_blocked_link_with_trailing_prose_punctuation_is_still_rejected(tmp_path
     assert "blocked external URL" in result.stderr, result.stderr
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A markdown renderer turns a backslash-escaped colon or an HTML
+        # character reference back into a plain scheme.
+        "[a](https\\://evil.test/x)",
+        "https\\:evil.test",
+        "[a](https&#58;//evil.test)",
+        "[a](https&#x3a;//evil.test)",
+        "[a](https&colon;//evil.test)",
+        "[a](https:&#47;&#47;evil.test)",
+        "[a](http\\://docs.example.com)",
+        "[a](ftp&#58;//docs.example.com)",
+    ],
+)
+def test_escaped_or_entity_encoded_scheme_is_still_checked(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 1, f"{text!r} was accepted: {result.stderr}"
+    assert "blocked external URL" in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[a](https\\://docs.example.com/x)",
+        "[a](https&#58;//docs.example.com)",
+        "path C:\\Users\\me",
+        "Tom &amp; Jerry: a note",
+    ],
+)
+def test_escaped_scheme_to_an_allowed_host_is_accepted(tmp_path, text):
+    result = _url_verdict(tmp_path, text)
+    assert result.returncode == 0, f"{text!r} was rejected: {result.stderr}"
+
+
 def test_non_https_urls_pass_without_an_allowlist(tmp_path):
     # No allowlist means every URL is allowed, whatever its scheme.
     write_config(tmp_path / ".konductor" / "memory-config.json", [])

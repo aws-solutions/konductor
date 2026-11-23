@@ -228,7 +228,7 @@ fi
 # no allowlist configured, every URL is permitted and python3 is not called.
 check_entry_urls() {
   python3 - "$1" "${ALLOWLIST_PATTERNS[@]}" <<'PYEOF'
-import re, sys
+import html, re, sys
 from urllib.parse import unquote
 
 # What counts as a link:
@@ -247,6 +247,16 @@ PROSE_TAIL = re.compile(r"[.,;:!?)\]}'\"]*")
 # right after the host, as in [a](https://docs.example.com) or
 # **https://docs.example.com**. None of it can appear in a plain hostname.
 HOST_TAIL = re.compile(r"[.,;:!?)\]}'\"`>*_~]+$")
+# A markdown renderer drops a backslash before ASCII punctuation and decodes
+# character references, so https\://x and https&#58;//x still render as links.
+MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
+
+# The entry as written plus each way a renderer can decode it. A link that
+# any of them shows must pass.
+def renderings(text):
+    md = MD_ESCAPE.sub(r"\1", text)
+    decoded = html.unescape(text)
+    return dict.fromkeys([text, md, decoded, html.unescape(md), MD_ESCAPE.sub(r"\1", decoded)])
 
 def links(text):
     pos = 0
@@ -321,10 +331,11 @@ def allowed(scheme, rest, patterns):
 
 def main():
     entry, patterns = sys.argv[1], sys.argv[2:]
-    for scheme, start, rest in links(entry):
-        if not allowed(scheme, rest, patterns):
-            print("BLOCKED:" + start + rest)
-            return 1
+    for text in renderings(entry):
+        for scheme, start, rest in links(text):
+            if not allowed(scheme, rest, patterns):
+                print("BLOCKED:" + start + rest)
+                return 1
     print("OK")
     return 0
 
