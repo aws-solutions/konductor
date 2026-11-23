@@ -31,6 +31,7 @@ const { loadRun } = require('./load-run.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
 const toolchain = require('./toolchain.js');
 const { pinPython } = require('./python-pin.js');
+const { isFreeRun, requireRunBudget } = require('./paid-run.js');
 // A string flag value, or null when the flag is absent or given bare.
 const strOpt = (v) => (v !== undefined && v !== true && v !== '' ? String(v) : null);
 const { ensureOwnedDir, writeAtomic } = require('./owned.js');
@@ -230,13 +231,12 @@ function fillOpts(opts, budgetCredits) {
 
 /**
  * The Bedrock model and credentials of a Strands run (DEBT D-24), or nulls: a Strands run on Bedrock spends money, so it
- * needs a --budget-usd cap and an --aws-profile whose keys alone reach the agent. Throws when one is missing.
+ * needs an --aws-profile whose keys alone reach the agent (its --budget-usd cap is checked by paid-run.js). Throws when missing.
  */
-function strandsSpendOpt({ isSt, opts, budgetCredits, deps }) {
+function strandsSpendOpt({ isSt, opts, deps }) {
   const stModel = isSt ? st.bedrockModelOf(opts.model ?? '') : null;
   let stCreds = null;
   if (stModel) {
-    if (budgetCredits === null) throw new Error('a Strands run on Bedrock needs --budget-usd X: what is left of X is each run\'s hard spend cap');
     if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
     stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
     stCreds.current();
@@ -576,6 +576,7 @@ async function cmdRun(opts, deps = {}) {
   // A bench plant control as --claude-bin calls no model, so it needs no keys (D-113).
   const ccControl = isCc && typeof opts['claude-bin'] === 'string' && cc.isPlantControl(path.resolve(opts['claude-bin']));
   if (isCc && !ccControl) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
+  requireRunBudget({ free: isFreeRun({ opts }), budget: budgetCredits, budgetFlag });
   const { maxAuthFailures, maxToolCalls, seed, isolate, envKeep } = runLimitsOpt(opts);
   const { pairOrder, fillBudget } = fillOpts(opts, budgetCredits);
 
@@ -592,7 +593,7 @@ async function cmdRun(opts, deps = {}) {
   // A Strands run on Bedrock spends money. It needs --budget-usd (what is left of it is each run's hard cap, enforced
   // in the launcher before every model call) and --aws-profile (only that profile's exported keys reach the agent).
   // Strands arms are plant arms, and a plant suite runs at --parallel 1 (intake.js), so no two runs share what is left.
-  const { stModel, stCreds } = strandsSpendOpt({ isSt, opts, budgetCredits, deps });
+  const { stModel, stCreds } = strandsSpendOpt({ isSt, opts, deps });
   const config = modelConfigOf({ runtime: runtimes[0], opts, agentEngine });
   const state = { results: [], spent: 0, charged: 0 };
   let runConfig = { suite: suite.name, armIds, startedAt: new Date().toISOString(), seed };

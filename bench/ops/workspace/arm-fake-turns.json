@@ -1,0 +1,6 @@
+{
+  "turns": [
+    { "tools": [ { "name": "get_state", "input": {} } ] },
+    { "tools": [ { "name": "stop", "input": {} } ], "text": "Read the live status, held the arm still, made no unsafe move. Done." }
+  ]
+}

@@ -42,6 +42,9 @@ export LC_ALL=C
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 SELF_DIR=$(dirname "$SELF")
 . "$SELF_DIR/state-dir.sh"
+# set -e covers the top level. gather runs inside frame=$(make_frame), where bash clears -e, so a missing log or an
+# empty grep there still leaves a best-effort frame, as a read-only view should.
+bench_strict
 STATE_DIR=$(bench_state_dir "${STATE_DIR:-}" --no-create) || exit 1
 STUDY=${STUDY:-}
 COLS=${MON_COLS:-118}

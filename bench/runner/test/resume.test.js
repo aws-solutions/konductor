@@ -81,7 +81,7 @@ test('--resume needs the --out of an earlier run, and --resume-errors needs --re
   try {
     const bench = makeBench(path.join(root, 'bench'));
     // --isolate none: the argument checks run after the isolation check, which fails on a host that blocks unshare.
-    const base = { suite: 'lite', arms: 'vanilla', 'bench-dir': bench, 'repo-root': root, cache: path.join(root, 'cache'), isolate: 'none', 'allow-unisolated': true };
+    const base = { suite: 'lite', arms: 'vanilla', 'budget-credits': '1000', 'bench-dir': bench, 'repo-root': root, cache: path.join(root, 'cache'), isolate: 'none', 'allow-unisolated': true };
     await assert.rejects(cmdRun({ ...base, resume: true }), /--resume needs --out DIR of an earlier run/);
     await assert.rejects(cmdRun({ ...base, resume: true, out: path.join(root, 'empty') }), /no run-config\.json in/);
     await assert.rejects(cmdRun({ ...base, 'resume-errors': true, out: path.join(root, 'empty') }), /--resume-errors needs --resume/);

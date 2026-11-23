@@ -546,14 +546,12 @@ function extraDirsFromArgs(argv = process.argv.slice(2)) {
   return out;
 }
 
-function main() {
-  // --only-extra checks the directories named with --extra-tasks alone: no bench tasks, suites, hygiene scan or registry.
-  const onlyExtra = process.argv.includes('--only-extra');
-  const named = extraDirsFromArgs();
-  // Otherwise the extra directories that suite files declare ("extraTasks") are checked too, with or without --extra-tasks.
-  const extraDirs = onlyExtra ? named : [...new Set([...fs.readdirSync(SUITES_DIR).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
-    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), BENCH)), ...named])];
-  if (onlyExtra && !extraDirs.length) { console.error('validate-tasks: --only-extra needs --extra-tasks DIR'); process.exit(2); }
+/**
+ * Every task to validate: the bench's own tasks (unless `onlyExtra`) and the tasks of each extra dir. v3 scenario tasks
+ * (with a `phase`) are skipped here; `scenarios lint` and the batch dry run check them (DEBT D-80).
+ * Returns { tasks, seen (id -> file), rootsOf (task -> roots), skillevalDirs, importDirs, skippedV3, v3Dirs }.
+ */
+function loadAllTasks(onlyExtra, extraDirs) {
   const taskFiles = onlyExtra ? [] : fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort();
   const tasks = [];
   const seen = new Map();
@@ -576,7 +574,6 @@ function main() {
     for (const f of src.files) {
       const t = readJson(path.join(src.dir, f), src.roots.extra ? `${path.basename(src.dir)}/${f}` : f);
       if (!t) continue;
-      // A v3 scenario task (one with a `phase`) has its own rules: `scenarios lint` and the batch dry run (DEBT D-80).
       if (src.roots.extra && t.phase !== undefined) { skippedV3.push(t.id); v3Dirs.add(src.dir); continue; }
       validateShape(f, t, skillevalDirs.has(src.dir) || importDirs.has(src.dir), importDirs.has(src.dir) ? IMPORT_RUBRIC_MAX : 6);
       if (seen.has(t.id)) err(f, `duplicate id "${t.id}" (also ${seen.get(t.id)})`);
@@ -586,126 +583,146 @@ function main() {
     }
   }
   R = DEFAULT_ROOTS;
+  return { tasks, seen, rootsOf, skillevalDirs, importDirs, skippedV3, v3Dirs };
+}
 
-  const manifestFile = path.join(BENCH, 'real', 'manifest.json');
-  const manifest = tasks.some((t) => t.class === 'real') ? readJson(manifestFile, 'real/manifest.json') : null;
-  const benchTasks = tasks.filter((t) => !rootsOf.get(t).extra);
+/** The fixture checks: the bench's fixtures by the classes that use them (unless `onlyExtra`), then each extra dir's. */
+function validateAllFixtures(ctx, onlyExtra, extraDirs, benchTasks) {
   const used = new Set(benchTasks.map((t) => t.fixture).filter(isStr));
-  const hardOnly = new Set([...used].filter((f) => benchTasks.filter((t) => t.fixture === f).every((t) => t.class === 'hard')));
-  const autonomyOnly = new Set([...used].filter((f) => benchTasks.filter((t) => t.fixture === f).every((t) => t.class === 'autonomy')));
-  if (!onlyExtra) validateFixtures(used, hardOnly, autonomyOnly);
+  const onlyClass = (cls) => new Set([...used].filter((f) => benchTasks.filter((t) => t.fixture === f).every((t) => t.class === cls)));
+  if (!onlyExtra) validateFixtures(used, onlyClass('hard'), onlyClass('autonomy'));
   for (const dir of extraDirs) {
     const fx = path.join(dir, 'fixtures');
     if (!fs.existsSync(fx)) continue;
     R = extraRoots(dir);
-    const own = tasks.filter((t) => rootsOf.get(t).dir === dir);
-    if (!own.length && v3Dirs.has(dir)) continue; // a scenario batch: its fixtures are the dry run's to check
+    const own = ctx.tasks.filter((t) => ctx.rootsOf.get(t).dir === dir);
+    if (!own.length && ctx.v3Dirs.has(dir)) continue; // a scenario batch: its fixtures are the dry run's to check
     const usedHere = new Set(own.map((t) => t.fixture).filter(isStr));
-    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, importDirs.has(dir));
+    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, ctx.importDirs.has(dir));
   }
   R = DEFAULT_ROOTS;
+}
 
-  // Pattern criteria are judged only against a task's Pattern key, so a task that declares one must have the key.
+/** Pattern criteria are judged only against a task's Pattern key, so a task that declares one must have the key. */
+function checkPatternKeys(ctx) {
   const qualityPack = loadPack('quality');
-  for (const t of tasks) {
-    const fixture = isStr(t.fixture) ? rootsOf.get(t).fixtures.map((r) => path.join(r, t.fixture, ANSWER_KEY)).find((f) => fs.existsSync(f)) : null;
+  for (const t of ctx.tasks) {
+    const fixture = isStr(t.fixture) ? ctx.rootsOf.get(t).fixtures.map((r) => path.join(r, t.fixture, ANSWER_KEY)).find((f) => fs.existsSync(f)) : null;
     const key = fixture ? fs.readFileSync(fixture, 'utf8') : null;
     for (const problem of patternKeyProblems(declaredArtifacts(qualityPack, t), key)) err(t.id, problem);
   }
+}
 
-  if (!onlyExtra) {
-    try {
-      const pins = toolchain.loadPins(BENCH);
-      for (const id of Object.keys(pins?.tasks || {})) if (!tasks.some((t) => t.id === id)) err('tasks/toolchain/pins.json', `pins a task that does not exist: ${id}`);
-    } catch (e) { err('tasks/toolchain/pins.json', e.message); }
+function checkToolchainPins(tasks) {
+  try {
+    const pins = toolchain.loadPins(BENCH);
+    for (const id of Object.keys(pins?.tasks || {})) if (!tasks.some((t) => t.id === id)) err('tasks/toolchain/pins.json', `pins a task that does not exist: ${id}`);
+  } catch (e) { err('tasks/toolchain/pins.json', e.message); }
+}
+
+/** Import tasks have no reference solution: their checks must work on, and not all pass on, the untouched fixture. */
+function proveImportTask(t) {
+  const bare = copyFixture(t.fixture);
+  const outcomes = t.checks.map((c) => evalCheck(bare, c, fixtureDir(t.fixture)));
+  fs.rmSync(bare, { recursive: true, force: true });
+  outcomes.forEach((r, i) => { if (r.broken) err(t.id, `checks[${i}] is broken on the untouched fixture (${r.detail})`); });
+  if (outcomes.some((r, i) => t.checks[i].type !== 'fixture_unchanged') && outcomes.every((r) => r.pass)) err(t.id, 'every check already passes on the untouched fixture');
+}
+
+/**
+ * The proofs for one task with a fixture and a reference solution (R is the task's roots): its checks work and do not
+ * all pass on the untouched fixture, pass on the solution, need the work, catch the negative cases, and fail the
+ * keyword stub. Adds to `report` (guards, negativeCases, stubs, hard, autonomy).
+ */
+function proveTask(t, report) {
+  const where = t.id;
+  const fixture = fixtureDir(t.fixture);
+  const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;
+  const pristine = copyFixture(t.fixture);
+  const results = t.checks.map((c) => ({ c, r: evalCheck(pristine, c, fixture, hiddenDir) }));
+  fs.rmSync(pristine, { recursive: true, force: true });
+  results.forEach(({ r }, i) => {
+    if (r.broken) err(where, `checks[${i}] is broken on the untouched fixture (${r.detail})`);
+    if (r.pass) report.guards += 1;
+  });
+  if (results.every(({ r }) => r.pass)) err(where, 'every check already passes on the untouched fixture');
+
+  const overlay = path.join(R.solutions, t.id);
+  if (!fs.existsSync(overlay)) {
+    err(where, `missing reference solution at ${R.extra ? `${path.basename(R.dir)}/solutions` : 'tasks/solutions'}/${t.id}/`);
+    return;
   }
+  const passes = (d, c) => evalCheck(d, c, fixture, hiddenDir).pass;
+  const solved = copyFixture(t.fixture, overlay);
+  t.checks.forEach((c, i) => {
+    const r = evalCheck(solved, c, fixture, hiddenDir);
+    if (!r.pass) err(where, `checks[${i}] (${c.type}${c.path ? ' ' + c.path : ''}) fails on the reference solution: ${r.detail}`);
+  });
+  fs.rmSync(solved, { recursive: true, force: true });
+  for (const i of controls.passingOnEmpty(t, passes)) {
+    const c = t.checks[i];
+    err(where, `checks[${i}] (${c.type}${c.path ? ' ' + c.path : ''}) passes on an empty workspace, so it proves nothing; make it need the work`);
+  }
+  for (const rel of controls.deletionGaps(t, overlay, () => copyFixture(t.fixture, overlay), passes)) {
+    warn(where, `every check still passes with ${rel} deleted`);
+  }
+  if (t.class === 'hard' || t.class === 'complex') report.hard.push(validateHard(t, overlay, hiddenDir));
+  if (t.class === 'autonomy') report.autonomy.push(validateAutonomyEvidence(t, overlay, hiddenDir));
 
-  let guards = 0;
-  let negativeCases = 0;
-  const stubReport = [];
-  const hardReport = [];
-  const autonomyReport = [];
-  const realReport = [];
-  for (const t of tasks) {
-    R = rootsOf.get(t);
-    if (t.class === 'real' && manifest && Array.isArray(t.checks)) { realReport.push(validateRealTask(t, manifest)); continue; }
+  const spec = loadCases(R.negatives, t.id);
+  if (spec) {
+    checkCases({
+      task: t, spec,
+      makeWorkspace: () => copyFixture(t.fixture, overlay),
+      evalOne: (dir, c) => evalCheck(dir, c, fixture).pass,
+    }).forEach((p) => err(where, p));
+    report.negativeCases += spec.cases.length;
+  }
+  proveStub(t, overlay, report);
+}
+
+/** The keyword-only stub must fail at least one check, and not only keyword checks. */
+function proveStub(t, overlay, report) {
+  const stub = path.join(R.stubs, t.id);
+  if (!fs.existsSync(stub)) {
+    if (DOC_CLASSES.includes(t.class)) err(t.id, `missing keyword stub at ${R.extra ? `${path.basename(R.dir)}/stubs` : 'tasks/stubs'}/${t.id}/`);
+    return;
+  }
+  const stubbed = copyFixture(t.fixture, overlay);
+  fs.cpSync(stub, stubbed, { recursive: true });
+  const failed = t.checks
+    .map((c) => ({ c, r: evalCheck(stubbed, c, fixtureDir(t.fixture)) }))
+    .filter(({ r }) => !r.pass);
+  fs.rmSync(stubbed, { recursive: true, force: true });
+  if (failed.length === 0) err(t.id, 'the keyword-only stub passes every check');
+  else if (!failed.some(({ c }) => c.type === 'min_matches' || c.type === 'cmd' || c.type === 'labelled_findings')) {
+    err(t.id, 'the keyword-only stub fails only keyword checks (no min_matches or cmd check caught it)');
+  }
+  report.stubs.push(`${t.id} ${failed.length}/${t.checks.length}`);
+}
+
+/** Runs each task's proofs by its kind. Returns { guards, negativeCases, stubs, hard, autonomy, real }. */
+function proveAllTasks(ctx, manifest) {
+  const report = { guards: 0, negativeCases: 0, stubs: [], hard: [], autonomy: [], real: [] };
+  for (const t of ctx.tasks) {
+    R = ctx.rootsOf.get(t);
+    if (t.class === 'real' && manifest && Array.isArray(t.checks)) { report.real.push(validateRealTask(t, manifest)); continue; }
     if (t.class === 'trigger') continue;
-    if (skillevalDirs.has(R.dir)) {
+    if (ctx.skillevalDirs.has(R.dir)) {
       if (t.checks.length) err(t.id, 'skilleval tasks are text-only and carry no checks');
       if (!t.prompt.endsWith(NO_QUESTIONS)) err(t.id, 'prompt must end with the no-questions sentence');
       if (!Array.isArray(t.rubric) || t.rubric.length < 4 || t.rubric.length > 6) err(t.id, 'skilleval rubric needs 4 to 6 items');
       continue;
     }
     if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) continue;
-    const where = t.id;
-    if (importDirs.has(R.dir)) {
-      const bare = copyFixture(t.fixture);
-      const outcomes = t.checks.map((c) => evalCheck(bare, c, fixtureDir(t.fixture)));
-      fs.rmSync(bare, { recursive: true, force: true });
-      outcomes.forEach((r, i) => { if (r.broken) err(where, `checks[${i}] is broken on the untouched fixture (${r.detail})`); });
-      if (outcomes.some((r, i) => t.checks[i].type !== 'fixture_unchanged') && outcomes.every((r) => r.pass)) err(where, 'every check already passes on the untouched fixture');
-      continue;
-    }
-    const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;
-    const pristine = copyFixture(t.fixture);
-    const results = t.checks.map((c) => ({ c, r: evalCheck(pristine, c, fixtureDir(t.fixture), hiddenDir) }));
-    fs.rmSync(pristine, { recursive: true, force: true });
-    results.forEach(({ c, r }, i) => {
-      if (r.broken) err(where, `checks[${i}] is broken on the untouched fixture (${r.detail})`);
-      if (r.pass) guards += 1;
-    });
-    if (results.every(({ r }) => r.pass)) err(where, 'every check already passes on the untouched fixture');
-
-    const overlay = path.join(R.solutions, t.id);
-    if (!fs.existsSync(overlay)) {
-      err(where, `missing reference solution at ${R.extra ? `${path.basename(R.dir)}/solutions` : 'tasks/solutions'}/${t.id}/`);
-      continue;
-    }
-    const solved = copyFixture(t.fixture, overlay);
-    t.checks.forEach((c, i) => {
-      const r = evalCheck(solved, c, fixtureDir(t.fixture), hiddenDir);
-      if (!r.pass) err(where, `checks[${i}] (${c.type}${c.path ? ' ' + c.path : ''}) fails on the reference solution: ${r.detail}`);
-    });
-    fs.rmSync(solved, { recursive: true, force: true });
-    for (const i of controls.passingOnEmpty(t, (d, c) => evalCheck(d, c, fixtureDir(t.fixture), hiddenDir).pass)) {
-      const c = t.checks[i];
-      err(where, `checks[${i}] (${c.type}${c.path ? ' ' + c.path : ''}) passes on an empty workspace, so it proves nothing; make it need the work`);
-    }
-    for (const rel of controls.deletionGaps(t, overlay, () => copyFixture(t.fixture, overlay), (d, c) => evalCheck(d, c, fixtureDir(t.fixture), hiddenDir).pass)) {
-      warn(where, `every check still passes with ${rel} deleted`);
-    }
-    if (t.class === 'hard' || t.class === 'complex') hardReport.push(validateHard(t, overlay, hiddenDir));
-    if (t.class === 'autonomy') autonomyReport.push(validateAutonomyEvidence(t, overlay, hiddenDir));
-
-    const spec = loadCases(R.negatives, t.id);
-    if (spec) {
-      checkCases({
-        task: t, spec,
-        makeWorkspace: () => copyFixture(t.fixture, overlay),
-        evalOne: (dir, c) => evalCheck(dir, c, fixtureDir(t.fixture)).pass,
-      }).forEach((p) => err(where, p));
-      negativeCases += spec.cases.length;
-    }
-
-    const stub = path.join(R.stubs, t.id);
-    if (!fs.existsSync(stub)) {
-      if (DOC_CLASSES.includes(t.class)) err(where, `missing keyword stub at ${R.extra ? `${path.basename(R.dir)}/stubs` : 'tasks/stubs'}/${t.id}/`);
-      continue;
-    }
-    const stubbed = copyFixture(t.fixture, overlay);
-    fs.cpSync(stub, stubbed, { recursive: true });
-    const failed = t.checks
-      .map((c) => ({ c, r: evalCheck(stubbed, c, fixtureDir(t.fixture)) }))
-      .filter(({ r }) => !r.pass);
-    fs.rmSync(stubbed, { recursive: true, force: true });
-    if (failed.length === 0) err(where, 'the keyword-only stub passes every check');
-    else if (!failed.some(({ c }) => c.type === 'min_matches' || c.type === 'cmd' || c.type === 'labelled_findings')) {
-      err(where, 'the keyword-only stub fails only keyword checks (no min_matches or cmd check caught it)');
-    }
-    stubReport.push(`${t.id} ${failed.length}/${t.checks.length}`);
+    if (ctx.importDirs.has(R.dir)) { proveImportTask(t); continue; }
+    proveTask(t, report);
   }
   R = DEFAULT_ROOTS;
+  return report;
+}
 
+function checkVerdictPatterns(tasks) {
   for (const t of tasks) {
     if (!Array.isArray(t.checks)) continue;
     t.checks.forEach((c, i) => {
@@ -714,103 +731,128 @@ function main() {
       }
     });
   }
+}
 
-  const suites = {};
-  if (!onlyExtra) {
-    if (manifest) realReport.push(validateRealSet(tasks, manifest));
-    for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'requirements', 'pilot']) {
-      const file = path.join(SUITES_DIR, `${name}.json`);
-      const s = fs.existsSync(file) ? readJson(file, `suites/${name}.json`) : null;
-      if (!s) { err(`suites/${name}.json`, 'missing or unreadable'); continue; }
-      suites[name] = s;
-      const at = `suites/${name}.json`;
-      if (!Array.isArray(s.tasks) || s.tasks.length === 0) err(at, 'tasks must be a non-empty array');
-      else {
-        if (new Set(s.tasks).size !== s.tasks.length) err(at, 'tasks has duplicates');
-        for (const id of s.tasks) {
-          if (!seen.has(id)) err(at, `unknown task id "${id}"`);
-        }
-      }
-      if (!Array.isArray(s.arms) || !s.arms.every(isStr) || s.arms.length === 0) err(at, 'arms must be a non-empty string array');
-      if (!isInt(s.replicates) || s.replicates < 1) err(at, 'replicates must be a positive integer');
-      if (!Array.isArray(s.judges) || !s.judges.every(isStr) || s.judges.length < MIN_JUDGES) {
-        err(at, `judges must be a string array with at least ${MIN_JUDGES} models`);
-      } else {
-        try { checkPanel(s.judges); } catch (e) { err(at, e.message); }
-        for (const j of s.judges) {
-          try { checkJudgeModel(j, SUBJECT_MODEL); } catch (e) { err(at, e.message); }
-        }
-      }
-    }
-    for (const [name, s] of Object.entries(suites)) {
-      if (!Array.isArray(s.tasks)) continue;
-      const expected = benchTasks.filter((t) => Array.isArray(t.tiers) && t.tiers.includes(name)).map((t) => t.id).sort();
-      const actual = [...s.tasks].sort();
-      if (JSON.stringify(expected) !== JSON.stringify(actual)) {
-        err(`suites/${name}.json`, `tasks do not match the tasks tagged "${name}" (tagged: ${expected.join(', ')})`);
-      }
-    }
-    if (suites.lite && Array.isArray(suites.lite.tasks)) {
-      const at = 'suites/lite.json';
-      if (suites.lite.tasks.length !== LITE_TASKS) err(at, `expected ${LITE_TASKS} tasks, found ${suites.lite.tasks.length}`);
-      const lite = suites.lite.tasks.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
-      const fixtures = new Set(lite.map((t) => t.fixture));
-      const classes = new Set(lite.map((t) => t.class));
-      if (fixtures.size < LITE_MIN_FIXTURES) err(at, `tasks cover ${fixtures.size} fixtures, need at least ${LITE_MIN_FIXTURES}`);
-      if (classes.size < LITE_MIN_CLASSES) err(at, `tasks cover ${classes.size} classes, need at least ${LITE_MIN_CLASSES}`);
-      if (suites.lite.parallel !== 1) err(at, 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-    }
-
-    if (suites.real) {
-      if (suites.real.parallel !== 1) err('suites/real.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-      for (const id of suites.real.tasks || []) {
-        const t = tasks.find((x) => x.id === id);
-        if (t && t.class !== 'real') err('suites/real.json', `task "${id}" is not a real task`);
-      }
-    }
-
-    if (suites.autonomy) {
-      if (suites.autonomy.parallel !== 1) err('suites/autonomy.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-      for (const id of suites.autonomy.tasks || []) {
-        const t = tasks.find((x) => x.id === id);
-        if (t && t.class !== 'autonomy') err('suites/autonomy.json', `task "${id}" is not an autonomy task`);
-      }
-    }
-
-    if (suites.pilot && suites.pilot.parallel !== 1) err('suites/pilot.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-
-    if (suites.hard) {
-      if (suites.hard.parallel !== 1) err('suites/hard.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-      for (const id of suites.hard.tasks || []) {
-        const t = tasks.find((x) => x.id === id);
-        if (t && t.class !== 'hard') err('suites/hard.json', `task "${id}" is not a hard task`);
-      }
-    }
-
-    scanHygiene();
-
-    // The capability registry, checked against this checkout's own skills, agents, SOPs and context files.
-    const repoRoot = path.resolve(BENCH, '..');
-    const registry = loadRegistry(BENCH);
-    const capFindings = validateRegistry(registry, { scan: scanRepo(repoRoot), specs: loadAgentSpecs(repoRoot), tasks: new Map(tasks.map((t) => [t.id, t])), baseDir: repoRoot });
-    for (const f of capFindings) (f.level === 'error' ? err : warn)(f.where, f.msg);
-    console.log(`capabilities: ${registry.entries.length} registry entr${registry.entries.length === 1 ? 'y' : 'ies'}`);
+/** Reads and checks one suite file's shape and judge panel. Returns the suite, or null when it is missing. */
+function readSuite(name, seen) {
+  const file = path.join(SUITES_DIR, `${name}.json`);
+  const at = `suites/${name}.json`;
+  const s = fs.existsSync(file) ? readJson(file, at) : null;
+  if (!s) { err(at, 'missing or unreadable'); return null; }
+  if (!Array.isArray(s.tasks) || s.tasks.length === 0) err(at, 'tasks must be a non-empty array');
+  else {
+    if (new Set(s.tasks).size !== s.tasks.length) err(at, 'tasks has duplicates');
+    for (const id of s.tasks) if (!seen.has(id)) err(at, `unknown task id "${id}"`);
   }
+  if (!Array.isArray(s.arms) || !s.arms.every(isStr) || s.arms.length === 0) err(at, 'arms must be a non-empty string array');
+  if (!isInt(s.replicates) || s.replicates < 1) err(at, 'replicates must be a positive integer');
+  if (!Array.isArray(s.judges) || !s.judges.every(isStr) || s.judges.length < MIN_JUDGES) {
+    err(at, `judges must be a string array with at least ${MIN_JUDGES} models`);
+  } else {
+    try { checkPanel(s.judges); } catch (e) { err(at, e.message); }
+    for (const j of s.judges) {
+      try { checkJudgeModel(j, SUBJECT_MODEL); } catch (e) { err(at, e.message); }
+    }
+  }
+  return s;
+}
 
+/** A suite named for a class runs one at a time and holds only tasks of that class. */
+function checkClassSuite(suites, name, cls, tasks) {
+  const s = suites[name];
+  if (!s) return;
+  if (s.parallel !== 1) err(`suites/${name}.json`, 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+  if (!cls) return;
+  for (const id of s.tasks || []) {
+    const t = tasks.find((x) => x.id === id);
+    if (t && t.class !== cls) err(`suites/${name}.json`, `task "${id}" is not ${cls === 'autonomy' ? 'an' : 'a'} ${cls} task`);
+  }
+}
+
+/** The suite files: shape, tags matching the tasks, the LITE spread, and the one-at-a-time rule. Returns the suites. */
+function validateSuites(tasks, seen, benchTasks) {
+  const suites = {};
+  for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'requirements', 'pilot']) {
+    const s = readSuite(name, seen);
+    if (s) suites[name] = s;
+  }
+  for (const [name, s] of Object.entries(suites)) {
+    if (!Array.isArray(s.tasks)) continue;
+    const expected = benchTasks.filter((t) => Array.isArray(t.tiers) && t.tiers.includes(name)).map((t) => t.id).sort();
+    const actual = [...s.tasks].sort();
+    if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+      err(`suites/${name}.json`, `tasks do not match the tasks tagged "${name}" (tagged: ${expected.join(', ')})`);
+    }
+  }
+  if (suites.lite && Array.isArray(suites.lite.tasks)) {
+    const at = 'suites/lite.json';
+    if (suites.lite.tasks.length !== LITE_TASKS) err(at, `expected ${LITE_TASKS} tasks, found ${suites.lite.tasks.length}`);
+    const lite = suites.lite.tasks.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+    const fixtures = new Set(lite.map((t) => t.fixture));
+    const classes = new Set(lite.map((t) => t.class));
+    if (fixtures.size < LITE_MIN_FIXTURES) err(at, `tasks cover ${fixtures.size} fixtures, need at least ${LITE_MIN_FIXTURES}`);
+    if (classes.size < LITE_MIN_CLASSES) err(at, `tasks cover ${classes.size} classes, need at least ${LITE_MIN_CLASSES}`);
+    if (suites.lite.parallel !== 1) err(at, 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+  }
+  checkClassSuite(suites, 'real', 'real', tasks);
+  checkClassSuite(suites, 'autonomy', 'autonomy', tasks);
+  checkClassSuite(suites, 'pilot', null, tasks);
+  checkClassSuite(suites, 'hard', 'hard', tasks);
+  return suites;
+}
+
+/** The capability registry, checked against this checkout's own skills, agents, SOPs and context files. */
+function checkCapabilityRegistry(tasks) {
+  const repoRoot = path.resolve(BENCH, '..');
+  const registry = loadRegistry(BENCH);
+  const capFindings = validateRegistry(registry, { scan: scanRepo(repoRoot), specs: loadAgentSpecs(repoRoot), tasks: new Map(tasks.map((t) => [t.id, t])), baseDir: repoRoot });
+  for (const f of capFindings) (f.level === 'error' ? err : warn)(f.where, f.msg);
+  console.log(`capabilities: ${registry.entries.length} registry entr${registry.entries.length === 1 ? 'y' : 'ies'}`);
+}
+
+function printSummary(ctx, extraDirs, benchTasks, report, suites) {
+  const { tasks, skippedV3 } = ctx;
   const byClass = {};
   for (const t of tasks) byClass[t.class] = (byClass[t.class] || 0) + 1;
   console.log(`tasks: ${tasks.length} ${JSON.stringify(byClass)}${extraDirs.length ? ` (${tasks.length - benchTasks.length} from ${extraDirs.length} extra dir(s))` : ''}`);
-  console.log(`checks passing on untouched fixtures (regression guards): ${guards}`);
-  console.log(`keyword-only stubs (failing checks / total): ${stubReport.join(', ')}`);
-  console.log(`negative and positive cases for loosened checks: ${negativeCases}`);
-  hardReport.forEach((h) => console.log(`hard ${h}`));
-  autonomyReport.forEach((a) => console.log(`autonomy ${a}`));
-  realReport.forEach((r) => console.log(`real ${r}`));
+  console.log(`checks passing on untouched fixtures (regression guards): ${report.guards}`);
+  console.log(`keyword-only stubs (failing checks / total): ${report.stubs.join(', ')}`);
+  console.log(`negative and positive cases for loosened checks: ${report.negativeCases}`);
+  report.hard.forEach((h) => console.log(`hard ${h}`));
+  report.autonomy.forEach((a) => console.log(`autonomy ${a}`));
+  report.real.forEach((r) => console.log(`real ${r}`));
   for (const [name, s] of Object.entries(suites)) {
     if (Array.isArray(s.judges)) console.log(`suite ${name}: judges ${s.judges.join(', ')}; tasks ${s.tasks.length}`);
   }
   warnings.forEach((w) => console.log(`warning: ${w}`));
   if (skippedV3.length) console.log(`skipped ${skippedV3.length} v3 scenario task(s) (${skippedV3.slice(0, 3).join(', ')}${skippedV3.length > 3 ? ', ...' : ''}): check them with \`bench.js scenarios lint DIR\` and the batch dry run`);
+}
+
+function main() {
+  // --only-extra checks the directories named with --extra-tasks alone: no bench tasks, suites, hygiene scan or registry.
+  const onlyExtra = process.argv.includes('--only-extra');
+  const named = extraDirsFromArgs();
+  // Otherwise the extra directories that suite files declare ("extraTasks") are checked too, with or without --extra-tasks.
+  const extraDirs = onlyExtra ? named : [...new Set([...fs.readdirSync(SUITES_DIR).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
+    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), BENCH)), ...named])];
+  if (onlyExtra && !extraDirs.length) { console.error('validate-tasks: --only-extra needs --extra-tasks DIR'); process.exit(2); }
+  const ctx = loadAllTasks(onlyExtra, extraDirs);
+  const { tasks } = ctx;
+  const manifest = tasks.some((t) => t.class === 'real') ? readJson(path.join(BENCH, 'real', 'manifest.json'), 'real/manifest.json') : null;
+  const benchTasks = tasks.filter((t) => !ctx.rootsOf.get(t).extra);
+  validateAllFixtures(ctx, onlyExtra, extraDirs, benchTasks);
+  checkPatternKeys(ctx);
+  if (!onlyExtra) checkToolchainPins(tasks);
+  const report = proveAllTasks(ctx, manifest);
+  checkVerdictPatterns(tasks);
+  let suites = {};
+  if (!onlyExtra) {
+    if (manifest) report.real.push(validateRealSet(tasks, manifest));
+    suites = validateSuites(tasks, ctx.seen, benchTasks);
+    scanHygiene();
+    checkCapabilityRegistry(tasks);
+  }
+  printSummary(ctx, extraDirs, benchTasks, report, suites);
   if (errors.length) {
     errors.forEach((e) => console.error(`error: ${e}`));
     console.error(`FAILED with ${errors.length} error(s)`);

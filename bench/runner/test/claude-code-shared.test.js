@@ -176,7 +176,7 @@ function cliRoot(cfg = {}) {
 }
 const cli = (s, extra, env = CC_ENV) => spawn(process.execPath, [
   BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', s.bench, '--cache', path.join(s.root, 'cache'),
-  '--claude-bin', s.bin, '--repo-root', s.root, ...extra,
+  '--claude-bin', s.bin, '--repo-root', s.root, ...(extra.some((a) => /^--budget-/.test(a)) ? [] : ['--budget-usd', '100']), ...extra,
 ], { env: testModeEnv({ PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...env }), stdio: ['ignore', 'pipe', 'pipe'] });
 const collect = (child) => new Promise((resolve) => {
   let out = '';
@@ -338,7 +338,7 @@ test('CLI: --claude-tools-dir picks the newest binary there, and with no binary 
   try {
     const viaDir = (extra) => spawn(process.execPath, [
       BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', s.bench, '--cache', path.join(s.root, 'cache'),
-      '--repo-root', s.root, '--arms', 'cc-vanilla', '--out', path.join(s.root, 'o'), ...extra,
+      '--repo-root', s.root, '--arms', 'cc-vanilla', '--out', path.join(s.root, 'o'), ...(extra.some((a) => /^--budget-/.test(a)) ? [] : ['--budget-usd', '100']), ...extra,
     ], { env: testModeEnv({ PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...CC_ENV }), stdio: ['ignore', 'pipe', 'pipe'] });
     const none = await collect(viaDir([]));
     assert.notEqual(none.code, 0);

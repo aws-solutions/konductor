@@ -206,7 +206,7 @@ test('run --model gpt-5.6-sol --agent-engine v3 reaches the agent, records the c
   const s = cliSetup();
   try {
     const out = path.join(s.root, 'out');
-    const r = spawnSync('node', [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--model', GPT, '--agent-engine', 'v3', '--bench-dir', s.bench, '--repo-root', s.repo,
+    const r = spawnSync('node', [BENCH_JS, 'run', '--budget-credits', '1000', '--suite', 'lite', '--arms', 'vanilla', '--model', GPT, '--agent-engine', 'v3', '--bench-dir', s.bench, '--repo-root', s.repo,
       '--kiro-bin', s.kiroBin, '--auth-db', s.authDb, '--isolate', 'none', '--allow-unisolated', '--cache', path.join(s.root, 'cache'), '--out', out, '--replicates', '1', '--seed', '1'], {
       encoding: 'utf8', env: { ...process.env, HOME: s.home, TMPDIR: s.tmpdir, BENCH_GATE_HOMES: s.home, BENCH_TEST_MODE: '1' },
     });
@@ -229,7 +229,7 @@ test('run exits 4 and says so when the real installs change during the batch', (
   try {
     makeFakeKiro(path.join(s.root, 'bin'), { dir: s.probe, sessionJson: true, model: GPT, plantFile: path.join(s.home, '.konductor/installs/probe.json'), plantText: '{}' });
     const out = path.join(s.root, 'out');
-    const r = spawnSync('node', [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--model', GPT, '--bench-dir', s.bench, '--repo-root', s.repo,
+    const r = spawnSync('node', [BENCH_JS, 'run', '--budget-credits', '1000', '--suite', 'lite', '--arms', 'vanilla', '--model', GPT, '--bench-dir', s.bench, '--repo-root', s.repo,
       '--kiro-bin', s.kiroBin, '--auth-db', s.authDb, '--isolate', 'none', '--allow-unisolated', '--cache', path.join(s.root, 'cache'), '--out', out, '--replicates', '1', '--seed', '1'], {
       encoding: 'utf8', env: { ...process.env, HOME: s.home, TMPDIR: s.tmpdir, BENCH_GATE_HOMES: s.home, BENCH_TEST_MODE: '1' },
     });

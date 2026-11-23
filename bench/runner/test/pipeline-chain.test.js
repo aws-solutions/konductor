@@ -256,7 +256,7 @@ test('P3 moves the autonomy dirs aside and reruns them through run-real-pilot wi
   try {
     s.write('tasks.txt', 'pilot|lite-one|60|lite|100\npilot|autonomy-one|60|auton|100\n');
     const { study, env } = chain(s, {
-      AC_N_ARMS: '1', AC_REPS: '1', REPS: '1', ARMS: 'vanilla', AUTONOMY: '1', RERUN_AUTONOMY: '1',
+      AC_N_ARMS: '1', AC_REPS: '1', REPS: '1', ARMS: 'vanilla', AUTONOMY: '1', RERUN_AUTONOMY: '1', BUDGET_CREDITS: '1000',
       REPO: s.repo, CLI_JS: s.cli, TASKS_FILE: s.tasksFile, CARGO_TARGET: s.cargo, REAL_CACHE: path.join(s.root, 'realrepos'),
     });
     fs.rmSync(path.join(study, 'real-one'), { recursive: true });

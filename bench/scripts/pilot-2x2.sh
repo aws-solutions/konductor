@@ -389,7 +389,9 @@ run_args() { # run_args CELL TASK [ALLOWANCE [RUN_CAP]]
   common_run_args "$task" "$(arms_of "$cell")" "$(cell_dir "$cell" "$task")"
   case "$cell" in
     kiro-*)
-      printf '%s\0' --model "$KIRO_MODEL" --agent-engine "$KIRO_ENGINE" --run-credit-limit "$KIRO_LIMIT" --auth-db "$AUTH_DB"
+      # A paid run needs a cap: twice the per-run limit times the replicates, so the 90% soft stop never skips a planned run.
+      printf '%s\0' --model "$KIRO_MODEL" --agent-engine "$KIRO_ENGINE" --run-credit-limit "$KIRO_LIMIT" --auth-db "$AUTH_DB" \
+        --budget-credits "$(awk -v l="$KIRO_LIMIT" -v r="$REPS" 'BEGIN { print 2 * l * r }')"
       if [ -n "$KIRO_BIN_OPT" ]; then printf '%s\0' --kiro-bin "$KIRO_BIN_OPT"; fi
       ;;
     cc-*) printf '%s\0' --model "$CC_MODEL" --budget-usd "$allow" --run-budget-usd "$cap" --aws-region "$REGION" --claude-bin "${CLAUDE_BIN:-<claude>}" ;;
