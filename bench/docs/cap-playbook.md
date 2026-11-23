@@ -1,6 +1,6 @@
 # Capability playbook: evaluate skills, then keep, fix, trim, relocate or prune
 
-This is the how-to for the `cap` family in [README.md](reference.md). It answers three questions: how to run the benchmark, how to
+This is the how-to for the `cap` family in [the reference](reference.md). It answers three questions: how to run the benchmark, how to
 evaluate a skill, and whether a skill should be pruned. Everything marked free spends no credits and calls no model.
 
 ## What each tool answers
@@ -171,6 +171,9 @@ The forced readings are their own Bonferroni family over the skills in the force
 What it cannot show: a section moved to references may never be opened (the move arm counts the runs that opened the file; zero means the move behaved like a removal); the quality score covers the study tasks only; kiro-cli loads skills by name through the skills server, so a changed description or index entry changes whether the skill loads at all, which this study holds fixed. Small effects need more runs than a pilot has: the earlier delegation-protocol lift run was unmeasurable at n=3 for this reason.
 
 ## Keep or prune: one record, two depths (phase A, stub only)
+
+This section is about skills, which run on the stub only. Agent files, SOPs and always-loaded context files have a
+paid quick path on kiro-cli: see [keep-prune-stages.md](keep-prune-stages.md).
 
 `cap keep-prune` is the one keep-or-prune tool. It runs a skill at a quick depth (one answer per task and arm, over the skill's frozen baseline) and a deep depth (replicated answers with an A/A repeat), and writes one record with both verdicts side by side. Both depths use the same judges, controls and rules. No judge comes from the agent's own model family (`bench/judge/family.js`). The rules are Michael Lin's, copied with credit: labels (2026-11-10), suggested verdicts (2026-11-16), NO DATA under 12 of every 16 tasks or with a stale judgment, and the control pass rules. One rule is ours: the deep depth is NO DATA inside the A/A spread (2026-11-17). One is the owner's (2026-11-17): every judged answer has three judges from three distinct, known families, none the agent's, and its score is their median; with fewer than three families nothing is judged and the check is NO DATA, "not enough judge families" first.
 

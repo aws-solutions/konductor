@@ -13,7 +13,7 @@ const { applyForcedMustLoad } = require('./forced-must-load.js');
 const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc, strands: st } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, notSupporting, joinNames } = require('./harness/runtime.js');
-const { DESCRIPTORS } = require('./harness/descriptors.js');
+const { DESCRIPTORS, REGISTRY } = require('./harness/descriptors.js');
 const { readProfile } = require('./harness/opencode-creds.js');
 const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const { repoRootOf } = require('./flag-values.js');
@@ -496,6 +496,7 @@ function buildRunConfig({ tripExtra, suite, runtimes, armIds, tasks, replicates,
     isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
     variants: variants.map((v) => ({ ...v })),
     python: pythonPin,
+    plugins: REGISTRY.record(),
     order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
     timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
     level: levelPlan?.record ?? null,

@@ -1,7 +1,7 @@
 # Design note: the 2x2 pilot (harness by konductor)
 
 Status: the pilot is built and tested with fakes; it has not been run against real services. How to run it is in
-[README.md](reference.md#2x2-pilot). This note records what the pilot measures, what it cannot, and how the pieces fit.
+[the reference](reference.md#2x2-pilot). This note records what the pilot measures, what it cannot, and how the pieces fit.
 
 ## The question
 
