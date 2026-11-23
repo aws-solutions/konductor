@@ -558,7 +558,9 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   }
   const listing = ctx.skillListings?.get(arm.id);
   if (listing) {
-    result.skillListing = listing.listing;
+    // A harness that can read what its run loaded at session start (optional `observedListing`) adds it beside the arm's record.
+    const observed = harness.observedListing && listing.listing ? harness.observedListing(outDir) : null;
+    result.skillListing = observed ? { ...listing.listing, observed } : listing.listing;
     if (harness.id === 'claude-code') {
       const mismatch = claudeListingMismatch(listing.listing, result.claudeCode?.runListing);
       result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing, listingMismatch: mismatch };

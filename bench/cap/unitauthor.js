@@ -23,9 +23,11 @@ const { WORST_PER_CALL, ledgerSpent, assertOutsideHome, paidJson } = require('./
 const { readJsonFile } = require('./checkedjson.js');
 const { commitOf, baselineProblems } = require('./unitstage.js');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
+const { familyOf } = require('../judge/family.js');
 
 const WRITER = 'glm-5';
 const REVIEWER = 'deepseek-3.2';
+const DEFAULT_FAMILIES = Object.freeze({ writer: WRITER, reviewer: REVIEWER });
 const STEPS = ['write', 'review', 'fix', 'recheck'];
 
 const fileBlock = (text) => `<<<FILE\n${text}\nFILE>>>`;
@@ -88,36 +90,51 @@ function readReviews(j, ids) {
 }
 
 /** The steps a batch may take, in order, with each one's model: the plan the dry run prints and the cap is set from. */
-const planOf = (batches) => batches.flatMap((b) => STEPS.map((step) => ({ batch: b, step, model: step === 'write' || step === 'fix' ? WRITER : REVIEWER })));
+const planOf = (batches, fam = DEFAULT_FAMILIES) => batches.flatMap((b) => STEPS.map((step) => ({ batch: b, step, model: step === 'write' || step === 'fix' ? fam.writer : fam.reviewer })));
 
 /**
  * Runs one batch's four steps (fix and recheck only when a task failed). `call(step, model, prompt, parse)` makes one
  * paid call. Returns { tasks: the passing tasks, dropped: [{ id, note }], calls }.
  */
-function authorBatch({ batch, briefs, unitText, frame, call }) {
+function authorBatch({ batch, briefs, unitText, frame, call, fam = DEFAULT_FAMILIES }) {
   const ids = briefs.map((b) => b.id);
-  const drafts = call(`${batch}.write`, WRITER, writePrompt(frame, unitText, briefs), (j) => readTasks(j, ids));
-  const reviews = call(`${batch}.review`, REVIEWER, reviewPrompt(frame, unitText, briefs, drafts), (j) => readReviews(j, ids));
+  const drafts = call(`${batch}.write`, fam.writer, writePrompt(frame, unitText, briefs), (j) => readTasks(j, ids));
+  const reviews = call(`${batch}.review`, fam.reviewer, reviewPrompt(frame, unitText, briefs, drafts), (j) => readReviews(j, ids));
   const failed = reviews.filter((r) => r.verdict === 'fail');
   if (!failed.length) return { tasks: drafts, dropped: [], fixed: [] };
   const failedIds = failed.map((r) => r.id);
   const failedBriefs = briefs.filter((b) => failedIds.includes(b.id));
   const failedTasks = drafts.filter((t) => failedIds.includes(t.id)).map((t) => ({ ...t, note: failed.find((r) => r.id === t.id).note }));
-  const fixes = call(`${batch}.fix`, WRITER, fixPrompt(frame, unitText, failedBriefs, failedTasks), (j) => readTasks(j, failedIds));
-  const rechecks = call(`${batch}.recheck`, REVIEWER, reviewPrompt(frame, unitText, failedBriefs, fixes), (j) => readReviews(j, failedIds));
+  const fixes = call(`${batch}.fix`, fam.writer, fixPrompt(frame, unitText, failedBriefs, failedTasks), (j) => readTasks(j, failedIds));
+  const rechecks = call(`${batch}.recheck`, fam.reviewer, reviewPrompt(frame, unitText, failedBriefs, fixes), (j) => readReviews(j, failedIds));
   const stillFailed = new Map(rechecks.filter((r) => r.verdict === 'fail').map((r) => [r.id, r.note]));
   const fixedById = new Map(fixes.map((t) => [t.id, t]));
   const tasks = drafts.map((t) => (failedIds.includes(t.id) ? fixedById.get(t.id) : t)).filter((t) => !stillFailed.has(t.id));
   return { tasks, dropped: [...stillFailed].map(([id, note]) => ({ id, note })), fixed: failedIds.filter((id) => !stillFailed.has(id)) };
 }
 
-/** The briefs file of a unit: { unit, briefs: [{ id, batch, section, situation, good }] }, two batches of 8. */
+/**
+ * Who writes and who reviews. A briefs file may set { "families": { "writer", "reviewer" } } so a rewrite is not written
+ * by the family that wrote the first tasks (the 2026-11-23 combined review: glm-5 wrote the pilot, so deepseek-3.2
+ * writes and glm-5 reviews). The two must be two known families, and neither Claude, the agent's own family.
+ */
+function familiesOf(b, file) {
+  if (b.families === undefined) return DEFAULT_FAMILIES;
+  const { writer, reviewer } = b.families ?? {};
+  const fw = familyOf(String(writer ?? '')), fr = familyOf(String(reviewer ?? ''));
+  if (!fw || !fr) throw new Error(`${file}: families.writer and families.reviewer must be models of a known family`);
+  if (fw === fr) throw new Error(`${file}: the writer ${writer} and the reviewer ${reviewer} are one family (${fw}); a family never checks its own work`);
+  if (fw === 'claude' || fr === 'claude') throw new Error(`${file}: Claude is the agent's own family and neither writes nor reviews its tasks`);
+  return { writer, reviewer };
+}
+
+/** The briefs file of a unit: { unit, families?, briefs: [{ id, batch, section, situation, good }] }, two batches of 8. */
 function loadBriefs(file, unitId) {
   const b = readJsonFile(file);
   if (b.unit !== unitId) throw new Error(`${file} is for ${b.unit}, not ${unitId}`);
   const batches = [...new Set((b.briefs ?? []).map((x) => x.batch))];
   if (batches.length !== 2 || batches.some((x) => b.briefs.filter((y) => y.batch === x).length !== 8)) throw new Error(`${file} needs 2 batches of 8 briefs`);
-  return { batches, briefs: b.briefs };
+  return { batches, briefs: b.briefs, families: familiesOf(b, file) };
 }
 
 /**
@@ -126,19 +143,19 @@ function loadBriefs(file, unitId) {
  */
 function authorUnit({ kind, name, repo, briefsFile, out, paid, dryRun = false }) {
   const unit = unitManifest({ repo, kind, name });
-  const { batches, briefs } = loadBriefs(briefsFile, unit.id);
+  const { batches, briefs, families: fam } = loadBriefs(briefsFile, unit.id);
   // A person's sign-off is never overwritten: a rerun would rewrite the file with signedOffBy null.
   if (fs.existsSync(out) && JSON.parse(fs.readFileSync(out, 'utf8')).source?.signedOffBy) throw new Error(`${out} is already signed off; move it aside to write a new baseline`);
   const stepsDir = path.join(paid.workDir, 'steps');
-  const plan = planOf(batches).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.batch}.${p.step}.json`)) }));
+  const plan = planOf(batches, fam).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.batch}.${p.step}.json`)) }));
   if (dryRun) return { status: 'planned', plan, worst: plan.filter((p) => !p.done).length * WORST_PER_CALL, spent: paid.ledger ? ledgerSpent(paid.ledger) : 0 };
   const call = (step, model, prompt, parse) => paidJson({ ...paid, model, prompt, out: path.join(stepsDir, step), label: `${unit.id} ${step}` }, parse).value;
-  const results = batches.map((b) => ({ batch: b, ...authorBatch({ batch: b, briefs: briefs.filter((x) => x.batch === b), unitText: unit.text, frame: PAID_FRAME[kind], call }) }));
+  const results = batches.map((b) => ({ batch: b, ...authorBatch({ batch: b, briefs: briefs.filter((x) => x.batch === b), unitText: unit.text, frame: PAID_FRAME[kind], call, fam }) }));
   const dropped = results.flatMap((r) => r.dropped.map((d) => ({ batch: r.batch, ...d })));
   const baseline = {
     format_version: 1, kind, name, unit_sha256: unit.sha256,
     source: {
-      commit: commitOf(BENCH_DIR), briefs: path.basename(briefsFile), writtenBy: WRITER, reviewedBy: REVIEWER, rule: 'one fix by the writer, then drop and record; never fixed by hand',
+      commit: commitOf(BENCH_DIR), briefs: path.basename(briefsFile), writtenBy: fam.writer, reviewedBy: fam.reviewer, rule: 'one fix by the writer, then drop and record; never fixed by hand',
       fixed: results.flatMap((r) => r.fixed), dropped, ledgerCredits: paid.ledger ? ledgerSpent(paid.ledger) : null, signedOffBy: null,
     },
     batches: results.map((r) => ({ batch: r.batch, tasks: r.tasks })),
@@ -150,7 +167,7 @@ function authorUnit({ kind, name, repo, briefsFile, out, paid, dryRun = false })
 }
 
 /** The two calls of one replacement, in order: the other family writes, the first family reviews. */
-const replacePlan = (id) => [{ step: `${id}.replace`, model: REVIEWER }, { step: `${id}.replace-review`, model: WRITER }];
+const replacePlan = (id, fam = DEFAULT_FAMILIES) => [{ step: `${id}.replace`, model: fam.reviewer }, { step: `${id}.replace-review`, model: fam.writer }];
 
 /**
  * Option B for a task dropped under the one-fix rule: a new task for the same brief, written by the reviewer family
@@ -161,28 +178,28 @@ const replacePlan = (id) => [{ step: `${id}.replace`, model: REVIEWER }, { step:
  */
 function replaceDropped({ kind, name, repo, briefsFile, draftFile, paid, id, dryRun = false }) {
   const unit = unitManifest({ repo, kind, name });
-  const { briefs } = loadBriefs(briefsFile, unit.id);
+  const { briefs, families: fam } = loadBriefs(briefsFile, unit.id);
   const draft = readJsonFile(draftFile);
   if (draft.unit_sha256 !== unit.sha256) throw new Error(`${draftFile} was written for another version of ${unit.id}; write a new baseline instead`);
   const dropped = (draft.source?.dropped ?? []).find((d) => d.id === id);
   if (!dropped) throw new Error(`${id} is not in source.dropped of ${draftFile}`);
   const brief = briefs.find((b) => b.id === id);
   const stepsDir = path.join(paid.workDir, 'steps');
-  const plan = replacePlan(id).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.step}.json`)) }));
+  const plan = replacePlan(id, fam).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.step}.json`)) }));
   const spent = paid.ledger ? ledgerSpent(paid.ledger) : 0;
   if (dryRun) return { status: 'planned', plan, worst: plan.filter((p) => !p.done).length * WORST_PER_CALL, spent };
   const call = (step, model, prompt, parse) => paidJson({ ...paid, model, prompt, out: path.join(stepsDir, step), label: `${unit.id} ${step}` }, parse).value;
   const frame = PAID_FRAME[kind];
-  const [task] = call(`${id}.replace`, REVIEWER, `${writePrompt(frame, unit.text, [brief])}\n\nAn earlier task for this brief was dropped. Its reviewer said: ${dropped.note}`, (j) => readTasks(j, [id]));
-  const [review] = call(`${id}.replace-review`, WRITER, reviewPrompt(frame, unit.text, [brief], [task]), (j) => readReviews(j, [id]));
-  const record = { id, batch: dropped.batch, writtenBy: REVIEWER, reviewedBy: WRITER, verdict: review.verdict, note: review.note };
+  const [task] = call(`${id}.replace`, fam.reviewer, `${writePrompt(frame, unit.text, [brief])}\n\nAn earlier task for this brief was dropped. Its reviewer said: ${dropped.note}`, (j) => readTasks(j, [id]));
+  const [review] = call(`${id}.replace-review`, fam.writer, reviewPrompt(frame, unit.text, [brief], [task]), (j) => readReviews(j, [id]));
+  const record = { id, batch: dropped.batch, writtenBy: fam.reviewer, reviewedBy: fam.writer, verdict: review.verdict, note: review.note };
   draft.source.replaced = [...(draft.source.replaced ?? []), record];
   if (review.verdict === 'pass') {
     const batch = draft.batches.find((b) => b.batch === dropped.batch);
     batch.tasks = [...batch.tasks, task].sort((a, b) => (a.id < b.id ? -1 : 1));
     draft.source.dropped = draft.source.dropped.filter((d) => d.id !== id);
   } else {
-    dropped.note = `${dropped.note}; the replacement by ${REVIEWER} also failed review by ${WRITER}: ${review.note}`;
+    dropped.note = `${dropped.note}; the replacement by ${fam.reviewer} also failed review by ${fam.writer}: ${review.note}`;
   }
   draft.source.ledgerCredits = paid.ledger ? ledgerSpent(paid.ledger) : null;
   fs.writeFileSync(draftFile, `${JSON.stringify(draft, null, 2)}\n`);
@@ -255,4 +272,4 @@ function cmdUnitAuthor(opts) {
   }
 }
 
-module.exports = { WRITER, REVIEWER, planOf, readTasks, readReviews, authorBatch, loadBriefs, authorUnit, replaceDropped, freezeDraft, cmdUnitAuthor, writePrompt, reviewPrompt, fixPrompt };
+module.exports = { WRITER, REVIEWER, DEFAULT_FAMILIES, familiesOf, planOf, readTasks, readReviews, authorBatch, loadBriefs, authorUnit, replaceDropped, freezeDraft, cmdUnitAuthor, writePrompt, reviewPrompt, fixPrompt };

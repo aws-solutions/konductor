@@ -81,6 +81,8 @@ const finish = () => {
     if (c.rawOutput !== undefined) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call_update', toolCallId: 'fake-' + i, status: 'completed', rawInput: c.rawInput, rawOutput: c.rawOutput } });
   });
   // contextUsage: context-window percentages the v3 agent reports during the turn; hangAfterContext stops there, before any credit event.
+  // contextBreakdown: the breakdown object of a first v3 context_usage event (what the session loaded at start).
+  if (engine === 'v3' && tc.contextBreakdown) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: 1, breakdown: tc.contextBreakdown } } } });
   if (engine === 'v3') for (const pct of tc.contextUsage || []) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'session_info_update', _meta: { kiro: { kind: 'context_usage', usagePercentage: pct, contextUsage: { usagePercentage: pct } } } } });
   if (tc.hangAfterContext) { setTimeout(() => {}, 60000); return; }
   if (engine === 'v3') v3Completion(); else ev('metadata', { sessionId: sid, turnDurationMs: 100, meteringUsage: [{ value: tc.credits ?? 0.5, unit: 'credit' }] });
