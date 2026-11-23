@@ -125,7 +125,9 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
   const { why, baseline } = blockers({ unit, row, baselinesDir });
   // A paid run that could only read NO DATA spends nothing: it stops before the first call.
-  if (isPaid && why.length) throw new Error(`no paid call made: ${unit.id} cannot be read (${why.join('; ')})`);
+  // A paid run also needs the person's sign-off of the baseline (the owner's rule: a person signs off every verdict's tasks).
+  const stops = isPaid ? [...why, ...unsignedWhy(unit, baseline)] : [];
+  if (stops.length) throw new Error(`no paid call made: ${unit.id} cannot be read (${stops.join('; ')})`);
   const blocks = { quick: null, deep: null };
   if (!why.length) {
     const ladder = loadDoseLadder();
@@ -234,9 +236,10 @@ function cmdUnitStage(opts) {
     ...(val(opts['kiro-bin']) ? { bin: val(opts['kiro-bin']) } : {}), ...(val(opts['auth-db']) ? { authDb: path.resolve(val(opts['auth-db'])) } : {}),
   } : null;
   const models = provider === 'kiro' ? { subjectModel: val(opts.model) ?? PILOT_SUBJECT, judges: judges ?? [...PILOT_JUDGES] } : {};
-  if (opts['dry-run']) return printUnitPlan({ kind: kinds[0], name, repo, depths, paid, ...models });
+  const baselinesDir = val(opts.baselines) ? path.resolve(val(opts.baselines)) : UNIT_BASELINES_DIR;
+  if (opts['dry-run']) return printUnitPlan({ kind: kinds[0], name, repo, depths, paid, baselinesDir, ...models });
   const delegation = val(opts.delegation) ? readJsonFile(path.resolve(val(opts.delegation))) : null;
-  const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir: path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'unit-stage')), provider, paid, depths, delegation, ...models });
+  const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir: path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'unit-stage')), provider, paid, depths, baselinesDir, delegation, ...models });
   console.log(`${r.markdown}\nwrote ${r.file} and its .md${provider === 'stub' ? ' (stub data: never a measurement)' : ''}`);
 }
 
@@ -244,21 +247,31 @@ function cmdUnitStage(opts) {
  * The free plan of one unit's run (`--dry-run`): the calls by kind, the worst case at 15 per call, the ledger's spend
  * against the cap, the judge panel, and anything that would stop the run before its first call. Makes no call.
  */
-function printUnitPlan({ kind, name, repo, depths, paid, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
+function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
   const unit = unitManifest({ repo, kind, name });
-  const row = listUnits({ repo, kind }).find((u) => u.id === unit.id);
+  const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
   const e = estimateStage({ kind, units: [row], depths });
-  const { why } = blockers({ unit, row, baselinesDir: UNIT_BASELINES_DIR });
+  const { why, baseline } = blockers({ unit, row, baselinesDir });
   const panel = judgePanel({ subjectModel, judges });
   const spent = paid?.ledger ? ledgerSpent(paid.ledger) : 0;
+  const convention = loadConvention().batches.reduce((n, b) => n + b.tasks.length, 0);
+  const pairs = buildPairs(loadDoseLadder()).length;
   const lines = [
     `dry run, no call made: ${unit.id} at ${depths.join(' and ')} depth, agent ${subjectModel}, judges ${panel.seats.join(', ') || 'none seated'}`,
     `calls: ${fmt(e.calls)} (${fmt(e.perUnit.calls)} for the unit, ${fmt(e.controls.calls)} for the controls); worst case ${fmt(e.credits.worst)} credits at ${WORST_PER_CALL} per call; about ${fmt(e.credits.typical)} credits typical`,
+    `controls loaded: convention control (${convention} tasks) and dose ladder (${pairs} pairs)`,
   ];
   if (paid) lines.push(`ledger ${paid.ledger ?? '(none given)'}: spent ${spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}; ${spent + e.credits.worst <= paid.cap ? 'the worst case fits' : 'the worst case does not fit: the run stops at the cap and a rerun with a larger cap resumes it'}`);
-  for (const w of [panel.why, ...why].filter(Boolean)) lines.push(`would stop before the first call: ${w}`);
+  if (baseline) lines.push(`baseline ${baseline.unit_sha256 === unit.sha256 ? 'fresh' : 'stale'}, signed off by ${signedOffBy(baseline) ?? 'nobody yet'}`);
+  for (const w of [panel.why, ...why, ...(paid ? unsignedWhy(unit, baseline) : [])].filter(Boolean)) lines.push(`would stop before the first call: ${w}`);
   console.log(lines.join('\n'));
 }
+
+/** Who signed off baseline `b` (its `source.signedOffBy`, a name), or null. */
+const signedOffBy = (b) => (typeof b?.source?.signedOffBy === 'string' && b.source.signedOffBy.trim() ? b.source.signedOffBy.trim() : null);
+
+/** The reason a paid run of `unit` may not use `baseline` yet: a frozen baseline no person has signed off. */
+const unsignedWhy = (unit, baseline) => (baseline && !signedOffBy(baseline) ? [`the baseline of ${unit.id} is not signed off: a person who did not write its tasks reads them and sets source.signedOffBy`] : []);
 
 /**
  * `cap units`: the unit map of one stage's kind (or all three), as markdown or --json, printed or written to --out.

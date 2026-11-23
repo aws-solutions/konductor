@@ -125,6 +125,8 @@ function loadBriefs(file, unitId) {
 function authorUnit({ kind, name, repo, briefsFile, out, paid, dryRun = false }) {
   const unit = unitManifest({ repo, kind, name });
   const { batches, briefs } = loadBriefs(briefsFile, unit.id);
+  // A person's sign-off is never overwritten: a rerun would rewrite the file with signedOffBy null.
+  if (fs.existsSync(out) && JSON.parse(fs.readFileSync(out, 'utf8')).source?.signedOffBy) throw new Error(`${out} is already signed off; move it aside to write a new baseline`);
   const stepsDir = path.join(paid.workDir, 'steps');
   const plan = planOf(batches).map((p) => ({ ...p, done: fs.existsSync(path.join(stepsDir, `${p.batch}.${p.step}.json`)) }));
   if (dryRun) return { status: 'planned', plan, worst: plan.filter((p) => !p.done).length * WORST_PER_CALL, spent: paid.ledger ? ledgerSpent(paid.ledger) : 0 };

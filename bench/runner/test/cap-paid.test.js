@@ -116,6 +116,9 @@ test('writing a baseline: two families, one fix, then a still failing task is dr
     assert.equal(withEnv({ FAKE_KP_LOG: r.log }, () => authorUnit(args)).status, 'frozen');
     assert.equal(r.calls().length, 8, 'a rerun reads every step back');
     assert.equal(ledgerSpent(r.paid.ledger), 120);
+    const signed = { ...b, source: { ...b.source, signedOffBy: 'owner' } };
+    fs.writeFileSync(out, JSON.stringify(signed));
+    assert.throws(() => authorUnit(args), /already signed off/, 'a rerun never overwrites a sign-off');
   } finally { r.cleanup(); }
 });
 
@@ -132,12 +135,12 @@ test('a task the fix does not save is dropped: a draft and the drop are written,
   } finally { r.cleanup(); }
 });
 
-/** A frozen baseline for the rig's unit, so its stage can run. */
-function freeze(r) {
+/** A frozen baseline for the rig's unit, so its stage can run; `signedOffBy` null leaves it unsigned. */
+function freeze(r, signedOffBy = 'test owner') {
   const dir = path.join(r.root, 'unit-baselines');
   const tasks = (batch) => Array.from({ length: 8 }, (_, i) => ({ id: `${batch}-${i}`, prompt: `Third note in a row ${batch} ${i}: what next?`, rubric: ['The answer stops.', 'The answer asks the user.'] }));
   write(path.join(dir, 'context-k-rules', 'baseline.json'), JSON.stringify({ format_version: 1, kind: 'context', name: 'k-rules', unit_sha256: unitManifest({ repo: r.repo, kind: 'context', name: 'k-rules' }).sha256,
-    source: { writtenBy: 'test' }, batches: [{ batch: 'b1', tasks: tasks('b1') }, { batch: 'b2', tasks: tasks('b2') }] }));
+    source: { writtenBy: 'test', signedOffBy }, batches: [{ batch: 'b1', tasks: tasks('b1') }, { batch: 'b2', tasks: tasks('b2') }] }));
   return dir;
 }
 
@@ -151,6 +154,7 @@ test('the paid stage refuses before any call: a stub run id, a deep depth, a sho
       assert.throws(() => runUnitStage({ ...base, runId: 'p1', judges: ['qwen3-coder-next', 'claude-opus-5.5'], baselinesDir: freeze(r) }), /not enough judge families/);
       assert.throws(() => runUnitStage({ ...base, runId: 'p1', paid: { ...r.paid, cap: NaN }, baselinesDir: freeze(r) }), /--cap/);
       assert.throws(() => runUnitStage({ ...base, runId: 'p1', baselinesDir: path.join(r.root, 'none') }), /no paid call made.*no frozen baseline/);
+      assert.throws(() => runUnitStage({ ...base, runId: 'p1', baselinesDir: freeze(r, null) }), /no paid call made.*not signed off/);
     });
     assert.equal(r.calls().length, 0);
   } finally { r.cleanup(); }
@@ -186,7 +190,9 @@ const script = (name, args, env) => spawnSync('bash', [path.join(BENCH, 'cap', '
 test('the owner scripts: dry runs are free, a paid run needs --cap, and the paid path runs end to end on the fake', { timeout: 120000 }, () => {
   const r = rig();
   try {
-    const env = { KP_PILOT_WORK: path.join(r.root, 'kp'), KP_KIRO_BIN: FAKE, KP_AUTH_DB: r.paid.authDb, KP_PILOT_LOCK: path.join(r.root, 'kp.lock'), FAKE_KP_LOG: r.log, KP_BASELINE_OUT: path.join(r.root, 'baseline.json') };
+    const baselines = path.join(r.root, 'baselines');
+    const env = { KP_PILOT_WORK: path.join(r.root, 'kp'), KP_KIRO_BIN: FAKE, KP_AUTH_DB: r.paid.authDb, KP_PILOT_LOCK: path.join(r.root, 'kp.lock'), FAKE_KP_LOG: r.log,
+      KP_BASELINE_OUT: path.join(baselines, 'context-k-orchestrator-shared', 'baseline.json'), KP_BASELINES: baselines };
     const dry = script('author-baseline.sh', ['--dry-run', '--cap', '120'], env);
     assert.equal(dry.status, 0, dry.stderr);
     assert.match(dry.stdout, /at most 8 calls, worst case 120 credits at 15 per call; ledger spent 0; cap 120; the worst case fits/);
@@ -199,12 +205,20 @@ test('the owner scripts: dry runs are free, a paid run needs --cap, and the paid
     const runDry = script('run-pilot.sh', ['--dry-run', '--cap', '1200'], env);
     assert.equal(runDry.status, 0, runDry.stderr);
     assert.match(runDry.stdout, /dry run, no call made: context:k-orchestrator-shared at quick depth, agent claude-sonnet-5\.5, judges qwen3-coder-next, gpt-5\.6-luna, grok-4\.7/);
+    assert.match(runDry.stdout, /would stop before the first call: the baseline of context:k-orchestrator-shared is not signed off/);
     assert.equal(script('run-pilot.sh', [], env).status, 64);
-    // The repo has no signed-off baseline yet, so the paid path stops before its first call.
-    const run = script('run-pilot.sh', ['--cap', '1200'], env);
+    // The written baseline is not signed off yet, so the paid path stops before its first call.
+    const run = script('run-pilot.sh', ['--cap', '8760'], env);
     assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /no paid call made/);
+    assert.match(run.stderr, /no paid call made.*not signed off/);
     assert.equal(r.calls().length, 4);
+    // The owner signs it off; the paid path then runs the whole quick pilot on the fake, within the cap.
+    const b = JSON.parse(fs.readFileSync(env.KP_BASELINE_OUT, 'utf8'));
+    fs.writeFileSync(env.KP_BASELINE_OUT, JSON.stringify({ ...b, source: { ...b.source, signedOffBy: 'test owner' } }));
+    const signed = script('run-pilot.sh', ['--cap', '8760'], env);
+    assert.equal(signed.status, 0, signed.stderr);
+    assert.match(signed.stdout, /wrote .*context-k-orchestrator-shared\.json/);
+    assert.ok(ledgerSpent(path.join(env.KP_PILOT_WORK, 'run-ledger.jsonl')) <= 8760);
   } finally { r.cleanup(); }
 });
 

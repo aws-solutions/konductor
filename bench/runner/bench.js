@@ -347,9 +347,10 @@ const USAGE = `Usage:
        (free: the keep-or-prune check at a quick and a deep depth under Michael Lin's copied rules; writes DIR/<run>/records/NAME.json with both verdicts side by side. Phase A has only the stub provider)
   node bench/runner/bench.js cap units [--kind agent|sop|context] [--coverage FILE] [--out FILE] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --run stub-ID [--out DIR] [--provider stub] [--delegation FILE] [--repo-root DIR]
-  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --provider kiro --run ID --cap N --ledger FILE --work DIR [--depth quick] [--model M] [--judges A,B,C] [--out DIR] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
+  node bench/runner/bench.js cap unit-stage --kind agent|sop|context --unit NAME --provider kiro --run ID --cap N --ledger FILE --work DIR [--depth quick] [--model M] [--judges A,B,C] [--baselines DIR] [--out DIR] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
        (PAID: the same stage on the kiro provider, quick depth only, one-turn kiro-cli calls with no tools; the ledger is read before every call at the larger of
-       15 and its real credits and a call is refused past --cap; a rerun of the same --run resumes. --dry-run prints the calls and the worst case, free)
+       15 and its real credits and a call is refused past --cap; the baseline (in --baselines, default bench/cap/unit-baselines) must be fresh and signed off
+       (source.signedOffBy); a rerun of the same --run resumes. --dry-run prints the calls, the worst case and what would stop the run, free)
   node bench/runner/bench.js cap unit-author --kind agent|sop|context --unit NAME --work DIR --ledger FILE --cap N [--briefs FILE] [--out FILE] [--kiro-bin PATH] [--auth-db PATH] [--repo-root DIR] [--dry-run]
        (PAID: writes a unit's frozen baseline from its briefs: glm-5 writes, deepseek-3.2 reviews, one fix, then a still failing task is dropped and recorded;
        at most 8 calls, each spend-checked as above, resumable from --work. --dry-run prints the steps and the worst case, free)

@@ -71,7 +71,7 @@ const FLAGS = {
   'cap nudge-check': ['run', 'json'],
   'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
   'cap units': ['kind', 'coverage', 'out', 'repo-root', 'json'],
-  'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'delegation', 'estimate', 'depth', 'max-units', 'repo-root', 'cap', 'ledger', 'work', 'model', 'judges', 'kiro-bin', 'auth-db', 'dry-run'],
+  'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'delegation', 'estimate', 'depth', 'max-units', 'repo-root', 'cap', 'ledger', 'work', 'model', 'judges', 'kiro-bin', 'auth-db', 'dry-run', 'baselines'],
   'cap unit-author': ['kind', 'unit', 'work', 'ledger', 'cap', 'briefs', 'out', 'kiro-bin', 'auth-db', 'repo-root', 'dry-run'],
   'cap delegation': ['agent', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'repo-root', 'json'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json', 'usage-runs'],
