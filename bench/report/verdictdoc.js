@@ -39,7 +39,7 @@ const RULES = [
   'A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side.',
 ];
 
-// A verdict on one runtime with its own cost words (`v.harness`, set only then) is costed in list-price USD, not credits.
+// A verdict on one USD runtime (`v.harness`, set only then) is costed in list-price USD, not credits.
 const rulesFor = (v) => (v.harness ? RULES.map((r) => r.replace('cost is credits per successful run', 'cost is USD at list price per successful run')) : RULES);
 
 function buildVerdictDocument(v) {

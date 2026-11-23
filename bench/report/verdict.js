@@ -24,7 +24,7 @@ const { prefixIdentity } = require('./aa-identity.js');
 const { gradedSummary } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
-const { descriptorOf } = require('../runner/lib/harness/runtime.js');
+const { isUsdRuntime } = require('../runner/lib/harness/runtime.js');
 
 const KEEP = 'KEEP';
 const DISCARD = 'DISCARD';
@@ -271,9 +271,9 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
 
   const all = inputs.flatMap((i) => i.rows);
   const unit = inputs[0].a.scores.unit;
-  // The one runtime every input ran on when its descriptor has its own cost words (report.costWords), else null.
+  // The one USD runtime every input ran on, or null (credits, or mixed runtimes): it sets the cost words and formulas.
   const runtimes = [...new Set(inputs.map((i) => i.run.harness))];
-  const harness = runtimes.length === 1 && descriptorOf(runtimes[0]).report.costWords ? runtimes[0] : null;
+  const harness = runtimes.length === 1 && isUsdRuntime(runtimes[0]) ? runtimes[0] : null;
   const baseRows = all.filter((r) => r.armId === baseline);
   const baselineLabel = [...new Set(baseRows.map((r) => r.label))].join(' + ');
   const labels = [...new Set(all.filter((r) => r.armId !== baseline).map((r) => r.label))];

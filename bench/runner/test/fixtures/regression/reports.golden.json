@@ -1495,7 +1495,7 @@
        "diligence rating",
        "executed runs",
        "arms (exact refs)",
-       "credits (ledger)",
+       "cost (ledger)",
        "skill-study controls"
       ],
       "rows": [
@@ -1545,7 +1545,7 @@
        "When several arms are compared with the baseline, each quality interval is widened to the Bonferroni level 1 - 0.05/m for m arms (an A/A repeat is not an arm), and the page notes the level. The interval is paired by cell. A cell is one task in one run directory; each cell contributes the mean of the arm's scores minus the mean of the baseline's, and the 95% interval is a t interval on those differences. Runs of the same task are not independent, so an interval over pooled runs is shown only as a descriptive column. In a simulation with no true effect the paired interval excluded 0 in 4.1% to 6.5% of trials from 5 cells up, where the pooled one excluded it in 20% of trials at 3 runs a side.",
        "NOT ENOUGH EVIDENCE is the answer in every other case. It is forced when there are fewer than 3 runs on a side or fewer than 5 paired task cells, when the difference is inside the A/A noise, or when the diligence rating is anecdotal. It is also the answer when no A/A noise was measured, when a cell has fewer than 3 replicates, when the interval of the difference includes 0, when more than a fifth of the runs on a side have no score, when the arm and the baseline were scored on different components in any cell, or when a gain costs more than 2.0x.",
        "The A/A noise is pooled over every paired task cell of an arm and its repeat at the same commit: each cell gives the arm's mean quality minus the repeat's, and the noise is the larger end of the 95% interval of those differences, with a floor of 5.0 points. Two paired cells are the least that give it; with fewer there is no noise floor.",
-       "Efficiency is a ratio, never a 0 to 100 number: cost is credits per successful run, arm over baseline, and latency is mean wall clock over clean passes, arm over baseline. A ratio above 1 means the arm costs more.",
+       "Efficiency is a ratio, never a 0 to 100 number: cost is USD at list price per successful run, arm over baseline, and latency is mean wall clock over clean passes, arm over baseline. A ratio above 1 means the arm costs more.",
        "A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side."
       ]
      },
@@ -1565,7 +1565,7 @@
      "qualityFloorPts": 5,
      "minCells": 5,
      "maxNonScoredShare": 0.2,
-     "cost": "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
+     "cost": "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean USD at list price per executed run and as USD at list price per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
      "quality": "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
      "drift": "Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.",
      "evidence": "NOT ENOUGH EVIDENCE also when a side has fewer than 3 scored runs, the cell has fewer than 5 paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.",
@@ -1747,7 +1747,7 @@
      {
       "t": "list",
       "items": [
-       "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
+       "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean USD at list price per executed run and as USD at list price per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
        "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
        "Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.",
        "NOT ENOUGH EVIDENCE also when a side has fewer than 3 scored runs, the cell has fewer than 5 paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.",

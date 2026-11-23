@@ -25,7 +25,7 @@ const { normalize, unisolatedReason, aaNoiseFromCells, levelText, qualityList, a
 const { pairedCellCI, withinCellSd, MIN_CELLS } = require('./stats.js');
 const { enrichOrch, summarize } = require('./orch.js');
 const { familyOf } = require('../judge/family.js');
-const { descriptorOf, DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
+const { isUsdRuntime, DEFAULT_RUNTIME } = require('../runner/lib/harness/runtime.js');
 
 const PASS = 'PASS';
 const FAIL = 'FAIL';
@@ -325,7 +325,7 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
   if (comparisons > 1) notes.push(`${comparisons} test arms are compared with vanilla in this report, so each quality interval is widened to the Bonferroni level of ${levelText(1 - 0.05 / comparisons)} (0.05 divided by ${comparisons}).`);
   if (cells.some((c) => c.arms.some((a) => a.failedAsZero))) notes.push('A run that failed or timed out with nothing to score counts as quality 0, and its cost counts. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
-  const costNoun = cells.length && cells.every((c) => descriptorOf(c.harness).report.costWords) ? 'USD at list price' : 'credits';
+  const costNoun = cells.length && cells.every((c) => isUsdRuntime(c.harness)) ? 'USD at list price' : 'credits';
   const rule = {
     costMax: COST_MAX,
     qualityFloorPts: QUALITY_FLOOR_PTS,
