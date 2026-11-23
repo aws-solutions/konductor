@@ -34,6 +34,7 @@ This file lists what the runner calls. It is derived from the call sites in `run
 
 | Member | Arguments | Returns | Guard and caller |
 | --- | --- | --- | --- |
+| `streams` | none (object property) | the readers of the harness's own stream (`harness/streams.js`, FW-17): `finalText(events)` (required: the judge bundle reads it), `timeline(events)` (required when `meta.supports.trace`), `stopEvent(ev)` (one raw event as a stop-watch event `{kind: 'end'\|'call'\|'update', id, capability, detail, input, moreInput, done}`; read when `meta.supports.stopOn`, else the kiro-cli reader is used). Plant readers are not here: they feed the safety scorer and stay core in `plant/stream-match.js` | `judge/bundle.js`, `judge/toolcalls.js`, `trace.js`, `stop-watch.js` through `streamsOf` |
 | `credentialEnv` | none (array property) | credential-like names `env()` may return, for example `AWS_SECRET_ACCESS_KEY` when the agent signs its own model calls. Every other credential-like name is dropped by core. A plugin's list is part of its reviewed, hashed code | `env.agentEnv`: `harness.credentialEnv ?? []` |
 | `requiredPaths` | none (array property) | repo-relative files that must exist in the arm's source tree, checked before building | `orchestrate.prepareAll`: `harnessFor(arm).requiredPaths \|\| []` |
 | `orchMetrics(outDir)` | run directory | spawn, depth, review-flow and phase-document metrics, or `null`. Stored as `acc.orch`. A throw becomes the flag `orchMetricsFailed` | `run-one.postProcess`: `if (harness.orchMetrics)` |

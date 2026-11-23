@@ -60,7 +60,7 @@ test('CONTRACT.md lists the members this test checks', () => {
   for (const name of ['id', 'prepareArm', 'trialInstall', 'installInto', 'buildCommand', 'env', 'removeCredentials', 'keepPaths', 'turnSummary', 'parseResult', 'collectArtifacts']) {
     assert.ok(REQUIRED.includes(name), `required table lost ${name}`);
   }
-  for (const name of ['requiredPaths', 'credentialEnv', 'orchMetrics', 'finalize', 'secrets', 'cleanupRun', 'describeCleanup']) {
+  for (const name of ['requiredPaths', 'credentialEnv', 'streams', 'orchMetrics', 'finalize', 'secrets', 'cleanupRun', 'describeCleanup']) {
     assert.ok(OPTIONAL.includes(name), `optional table lost ${name}`);
   }
 });

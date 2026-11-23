@@ -340,6 +340,6 @@ function checkScratchRoot(dir) {
 }
 
 module.exports = {
-  id, meta, checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, streams: require('./kiro-streams.js'), checkScratchRoot, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, observedListing, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

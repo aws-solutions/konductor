@@ -4,11 +4,8 @@
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const path = require('node:path');
-const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
-const { aggregateEvents } = require('../runner/lib/harness/opencode-parse.js');
-const claudeParse = require('../runner/lib/harness/claude-code-parse.js');
-const strandsParse = require('../plugins/strands/parse.js');
-const { runtimeOf, descriptorOf } = require('../runner/lib/harness/runtime.js');
+const { parseStream } = require('../runner/lib/stream.js');
+const { streamsOf } = require('../runner/lib/harness/streams.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
 const { scrubStringCounted, secretLiterals } = require('../runner/lib/scrub.js');
@@ -62,26 +59,12 @@ function readText(file) {
   return { binary: true, size: buf.length, sha: crypto.createHash('sha256').update(buf).digest('hex') };
 }
 
-// By stream format. kiro-acp: the runFinished event's text. opencode-json: the last assistant text event of the parent
-// session. claude-stream-json: the last result line's text, else (also when that text is blank) the last assistant text
-// of the main session.
-const FINAL_TEXT = {
-  'kiro-acp': (events) => aggregateStream(events).finalText,
-  'opencode-json': (events) => aggregateEvents(events).lastText,
-  'strands-jsonl': (events) => strandsParse.aggregateEvents(events).finalText,
-  'claude-stream-json': (events) => {
-    const a = claudeParse.aggregateEvents(events);
-    const blank = (t) => typeof t !== 'string' || !t.trim();
-    if (!blank(a.finalText)) return a.finalText;
-    return blank(a.lastText) ? a.finalText ?? a.lastText : a.lastText;
-  },
-};
-
+// The run's final text, read by its harness's own stream reader (harness/streams.js).
 function finalTextOf(runDir, result = null) {
   const file = path.join(runDir, 'stream.jsonl');
   if (!fs.existsSync(file)) return null;
   const { events } = parseStream(fs.readFileSync(file, 'utf8'));
-  return FINAL_TEXT[descriptorOf(runtimeOf(result)).streamFormat](events);
+  return streamsOf(result).finalText(events);
 }
 
 // Autonomy runs only: what the scripted user was asked and what it answered. Judged with the rest of the bundle, so redaction applies.

@@ -311,6 +311,6 @@ const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 module.exports = {
   id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, streams: require('./opencode-streams.js'), credentialEnv: ['AWS_SHARED_CREDENTIALS_FILE'], envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson,
 };
