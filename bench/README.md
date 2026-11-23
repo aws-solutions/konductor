@@ -147,7 +147,7 @@ Every other word is in the [glossary](docs/glossary.md).
 | Read help, audit skills, draft tests, run stubs | Node 22 or later, `git`, a clone |
 | Run anything that starts an agent | Linux with `unshare` and `setpriv`, or macOS (`sandbox-exec`); the agent CLI logged in; `cargo` to build Konductor arms |
 | Judge runs, or run Claude Code and opencode arms | Amazon Bedrock access through an AWS profile; these bill in USD |
-| Run the simulated plant | Python 3, plus `cedarpy` for the policy; Python 3.12 with `mujoco` for the robot arm |
+| Run the simulated plant | Python 3.10 or newer, plus `cedarpy` for the policy; Python 3.12 with `mujoco` for the robot arm |
 
 Every command that spends takes a budget or a cap, and has a free first step. [Safety and caps](docs/safety-and-caps.md)
 lists the walls around a run and every limit on spend.
