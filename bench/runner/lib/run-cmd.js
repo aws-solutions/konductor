@@ -6,7 +6,6 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 const { resolveArm } = require('./arms.js');
 const { applyArmOptions, attachVariant } = require('./arm-opts.js');
 const { applyOracle } = require('./oracle.js');
@@ -21,12 +20,12 @@ const { repoRootOf } = require('./flag-values.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD, PAIR_ORDERS } = require('./orchestrate.js');
-const { buildChildEnv, describeEnv } = require('./env.js');
 const { resolveIsolation, describeHide, ISOLATE_MODES, isComparableMode } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
 const rc = require('./runconfig.js');
+const { setUpOpencode, setUpClaude, setUpStrands, envInfoOf, harnessRunConfig, writeEnvJson } = require('./run-harness.js');
 const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = require('./profiles.js');
 const { loadRun } = require('../../report/load.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
@@ -44,7 +43,7 @@ const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
 const { profileCredentials } = require('./aws-creds.js');
-const { writeRunConfig, readRunConfigs } = require('./run-configs.js');
+const { writeRunConfig } = require('./run-configs.js');
 const { preloadSchemas } = require('./schema.js');
 const { snapshotTaskInputs } = require('./task-inputs.js');
 const { requirePrereg } = require('../../scenarios/prereg.js');
@@ -99,18 +98,6 @@ function maskPaths({ benchDir, extraDirs = [], outDir, awsCredsFile = null }) {
 function need(opts, name) {
   if (!opts[name] || opts[name] === true) throw new Error(`--${name} is required for opencode arms`);
   return opts[name];
-}
-
-function listModels(kiroBin, authDb, scratchDir, envKeep, agentEngine) {
-  const dir = fs.mkdtempSync(path.join(scratchDir, 'm-'));
-  try {
-    sandbox.copyAuthDb(authDb, dir);
-    fs.mkdirSync(path.join(dir, 'tmp'), { recursive: true });
-    const { env } = buildChildEnv(process.env, { home: dir, agentEngine, keep: envKeep });
-    return execFileSync(kiroBin, ['chat', '--list-models', '-f', 'json'], { env, encoding: 'utf8' });
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
 }
 
 function summarize(runConfig, state, extra) {
@@ -290,46 +277,29 @@ async function setUpPlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo,
   return plantSuite;
 }
 
-const flagValueOf = (opts, name) => (opts[name] && opts[name] !== true ? opts[name] : null);
-
-/** The opencode binary, ripgrep and credentials of an opencode run, set on `ctx` (DEBT D-24). Throws without ripgrep. */
-function setUpOpencode(ctx, { opts, cacheDir, awsCredsFile, awsProfile, config, log }) {
-  ctx.opencode = oc.resolveOpencode({ cacheDir, binOverride: flagValueOf(opts, 'opencode-bin') });
-  ctx.rgBin = oc.resolveRipgrep(flagValueOf(opts, 'rg-bin'));
-  if (!ctx.rgBin) throw new Error('ripgrep (rg) not found on PATH; install it or pass --rg-bin PATH (opencode would otherwise download it at run time)');
-  Object.assign(ctx, { awsCredsFile, awsProfile });
-  log(`opencode ${ctx.opencode.version} (${ctx.opencode.bin}), sha256 ${ctx.opencode.sha256.slice(0, 12)}, model ${oc.PROVIDER}/${config.model}, variant ${config.effort}, region ${oc.REGION}`);
-}
-
 /**
- * The claude binary, region, per-run budget and credentials of a Claude Code run, set on `ctx` (DEBT D-24). Throws when
- * the binary has no --effort, or when `outDir` holds runs of another claude binary and --allow-claude-change is not given.
+ * The closing lines of a run (DEBT D-24): the study line, unfilled budget-skipped cells, credit notes, and a login,
+ * launch, infra or hard credit stop, each of which sets process.exitCode (auth AUTH_EXIT_CODE, infra 5, hard stop 3).
  */
-function setUpClaude(ctx, { opts, config, outDir, ccRegion, runBudgetUsd, ccCreds, log }) {
-  const toolsDir = flagValueOf(opts, 'claude-tools-dir');
-  ctx.claude = cc.resolveClaude({ binOverride: flagValueOf(opts, 'claude-bin') ?? undefined, toolsDir: toolsDir ?? undefined });
-  if (!ctx.claude.supportsEffort) throw new Error(`${ctx.claude.bin} (claude ${ctx.claude.version}) has no --effort flag, so the run could not apply --effort ${config.effort}; use a claude that lists --effort in claude --help`);
-  const claudeChanged = cc.claudeChanges(readRunConfigs(outDir), ctx.claude);
-  if (claudeChanged.length && !opts['allow-claude-change']) throw new Error(cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, toolsDir));
-  if (claudeChanged.length) log(`warning: --allow-claude-change: ${cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, toolsDir).split('. One study')[0]}`);
-  Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
-  const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${cc.credentialNames().join(', ')})`;
-  log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), effort ${config.effort}, region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
-  const versionNote = cc.versionWarning(ctx.claude.version);
-  if (versionNote) log(`warning: ${versionNote}`);
-  const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);
-  if (shadow.length) log(`note: ${shadow.join(', ')} ${shadow.length === 1 ? 'is' : 'are'} set here and is not passed to claude (the SDK would skip the exported keys)`);
-}
-
-/**
- * The Strands interpreter and agent file of a Strands run, set on `ctx`, with the spend cap when it runs on Bedrock
- * (DEBT D-24). `state.charged` is read live, so the cap's `left()` falls as the command spends.
- */
-function setUpStrands(ctx, { opts, config, stModel, stCreds, budgetCredits, state, log }) {
-  ctx.strands = st.resolveStrands({ python: flagValueOf(opts, 'strands-python') ?? 'python3', agentFile: flagValueOf(opts, 'strands-agent') });
-  if (stCreds) Object.assign(ctx, { awsCreds: stCreds, strandsSpend: { capUsd: budgetCredits, left: () => budgetCredits - state.charged } });
-  const credsNote = stCreds ? `${stModel.region}, keys of profile ${stCreds.profile}, hard spend cap $${budgetCredits} for the command` : 'no credentials passed';
-  log(`strands-agents ${ctx.strands.version} (${ctx.strands.python}), agent ${ctx.strands.agentFile ?? 'plain Agent'}, model ${config.model}, ${credsNote}`);
+function logOutcome({ results, studyLine, fill, authStop, infra, guard, log }) {
+  log(`final ${studyLine}`);
+  const leftSkipped = results.filter((r) => r?.status === 'budget_skipped').length;
+  if (leftSkipped) log(`budget_skipped: ${leftSkipped} cell(s) never ran${fill ? ` (fill pass: ${fill.filled} of ${fill.tried} filled)` : ''}; their pairs are unpaired until filled (--resume, or --fill-skipped X)`);
+  for (const line of creditNoteLines(creditNotes(results))) log(line);
+  if (authStop.tripped) {
+    log(authStop.kind === 'launch'
+      ? `LAUNCH FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Check that the kiro-cli binary is still in place, then rerun the skipped cells in a new --out or with --replicate-offset.`
+      : `LOGIN FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Log in to kiro-cli again, then rerun the skipped cells in a new --out or with --replicate-offset.`);
+    if (!process.exitCode) process.exitCode = AUTH_EXIT_CODE;
+  }
+  if (infra) {
+    log(`INFRA FAILURE: ${infra.reason}`);
+    if (!process.exitCode) process.exitCode = 5;
+  }
+  if (guard === 'hard') {
+    log('credit guard: HARD STOP, this command spent past 100% of --budget-credits; runs already in flight were counted, and no further run started');
+    process.exitCode = 3;
+  }
 }
 
 async function cmdRun(opts, deps = {}) {
@@ -534,17 +504,7 @@ async function cmdRun(opts, deps = {}) {
       absExclude: [outDir, cacheDir, cargoTarget, `${cargoTarget}-mcp`, scratchDir, ...(realCache ? [realCache] : [])],
     };
 
-    if (isSt) {
-      ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.strands.version, modelListSnapshotPath: null };
-    } else if (isOc) {
-      ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.opencode.version, modelListSnapshotPath: null, region: oc.REGION };
-    } else if (isCc) {
-      ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.claude.version, modelListSnapshotPath: null, region: ccRegion };
-    } else {
-      const modelListPath = path.join(outDir, 'model-list.json');
-      fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep, config.agentEngine));
-      ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(ctx.kiroBin), modelListSnapshotPath: modelListPath };
-    }
+    ctx.envInfo = envInfoOf({ runtime: runtimes[0], ctx, ccRegion, outDir, authDb, scratchDir, envKeep, config });
 
     const interpreters = toolchain.interpreterVersions();
     const anyChecks = tasks.some((t) => t.checks?.length || t.hiddenDir);
@@ -570,33 +530,7 @@ async function cmdRun(opts, deps = {}) {
       armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
-      ...(isSt ? {
-        harnessVersion: ctx.strands.version,
-        strands: {
-          python: ctx.strands.python, version: ctx.strands.version, agentFile: ctx.strands.agentFile, adapter: 'kind B: plant tools are forwarding stubs', census: plantSuite?.strandsCensus ?? null,
-          bedrock: stModel ? { ...stModel, spendCapUsd: budgetCredits, awsProfile: stCreds.profile } : null,
-        },
-        env: rc.envPolicy(process.env, []),
-      } : isOc ? {
-        harnessVersion: ctx.opencode.version,
-        opencode: {
-          npmPackage: `opencode-ai@${oc.VERSION}`, version: ctx.opencode.version, binaryPath: ctx.opencode.bin, binarySha256: ctx.opencode.sha256,
-          provider: oc.PROVIDER, modelId: config.model, region: oc.REGION, variant: config.effort, title: oc.TITLE,
-          awsProfile, ripgrep: ctx.rgBin,
-          promptCache: 'Bedrock prompt cache lives about 5 minutes; back-to-back runs can read cache written by the previous run, so cache read and write vary with run order (seeded shuffle kept)',
-        },
-        env: rc.envPolicy(process.env, []),
-      } : isCc ? {
-        harnessVersion: ctx.claude.version,
-        claudeCode: cc.runConfigRecord({ ctx, config, region: ccRegion, runBudgetUsd, arms }),
-        env: rc.envPolicy(process.env, []),
-      } : {
-        requireMcpStartup: true,
-        env: rc.envPolicy(process.env, envKeep),
-        kiroBinary: { path: kiro.bin, bypassedShim: kiro.shim },
-        kiroEnabledFeatures: process.env.KIRO_ENABLED_FEATURES ?? null,
-        agentEnginesAvailable: rc.availableEngines(kiro.bin),
-      }),
+      ...harnessRunConfig({ runtime: runtimes[0], ctx, config, plantSuite, stModel, stCreds, budgetCredits, awsProfile, ccRegion, runBudgetUsd, arms, envKeep, kiro }),
       ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
       ...rc.benchGit(REPO),
       contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
@@ -622,27 +556,7 @@ async function cmdRun(opts, deps = {}) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
     }
-    // The Strands launcher env is the whole env, so it is described as one: every key set, nothing passed through.
-    const strandsSetup = () => {
-      const placeholder = stCreds ? { awsCreds: { current: () => Object.fromEntries(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].map((k) => [k, '<set>'])) } } : null;
-      const set = st.env({ home: '<run-home>', tmpdir: '<run>/tmp', ctx: placeholder });
-      return { keys: Object.keys(set).sort(), set, unset: [] };
-    };
-    const envFor = (konductor) => (isSt
-      ? strandsSetup()
-      : isCc
-      ? cc.envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', tmpdir: '<run>/tmp', baseEnv: { ...process.env, ...Object.fromEntries(cc.CREDENTIAL_VARS.map((k) => [k, '<set>'])) } })
-      : isOc
-      ? oc.envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' })
-      : buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor }));
-    fs.writeFileSync(path.join(outDir, 'env.json'), JSON.stringify({
-      model: config.model, effort: config.effort,
-      konductorArm: describeEnv(process.env, envFor(true)),
-      vanillaArm: describeEnv(process.env, envFor(false)),
-      interpreters,
-      // The skill listing each arm's runs get (claude-listing.js; Kiro's record from its install), by arm id.
-      skillListings: Object.fromEntries(arms.map((a) => [a.id, ctx.skillListings?.get(a.id)?.listing ?? null])),
-    }, null, 2) + '\n');
+    writeEnvJson({ outDir, runtime: runtimes[0], ctx, config, envKeep, stCreds, interpreters, arms });
 
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard, authStop, fill } = await runAll({
@@ -667,24 +581,7 @@ async function cmdRun(opts, deps = {}) {
       process.exitCode = 4;
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
-    log(`final ${studyLine}`);
-    const leftSkipped = results.filter((r) => r?.status === 'budget_skipped').length;
-    if (leftSkipped) log(`budget_skipped: ${leftSkipped} cell(s) never ran${fill ? ` (fill pass: ${fill.filled} of ${fill.tried} filled)` : ''}; their pairs are unpaired until filled (--resume, or --fill-skipped X)`);
-    for (const line of creditNoteLines(creditNotes(results))) log(line);
-    if (authStop.tripped) {
-      log(authStop.kind === 'launch'
-        ? `LAUNCH FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Check that the kiro-cli binary is still in place, then rerun the skipped cells in a new --out or with --replicate-offset.`
-        : `LOGIN FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Log in to kiro-cli again, then rerun the skipped cells in a new --out or with --replicate-offset.`);
-      if (!process.exitCode) process.exitCode = AUTH_EXIT_CODE;
-    }
-    if (infra) {
-      log(`INFRA FAILURE: ${infra.reason}`);
-      if (!process.exitCode) process.exitCode = 5;
-    }
-    if (guard === 'hard') {
-      log('credit guard: HARD STOP, this command spent past 100% of --budget-credits; runs already in flight were counted, and no further run started');
-      process.exitCode = 3;
-    }
+    logOutcome({ results, studyLine, fill, authStop, infra, guard, log });
     if (profile?.calibrationSample) {
       try {
         const sample = writeCalibrationSample({ run: loadRun(outDir), n: profile.calibrationSample, seed: 1 });
