@@ -9,6 +9,7 @@ import {
   startDisabledReason,
   startNotice,
   startsOnEnter,
+  UNFOLLOWED_RUN_REASON,
   type RunStart,
 } from './run-start';
 
@@ -144,6 +145,25 @@ describe('startDisabledReason', () => {
         goalProblem: undefined,
       }),
     ).toBe('A run is in progress.');
+  });
+
+  it('says how to get going again when the follower of the run gave up', () => {
+    expect(
+      startDisabledReason({
+        start: going,
+        runFinished: false,
+        goalProblem: undefined,
+        followFailed: true,
+      }),
+    ).toBe(UNFOLLOWED_RUN_REASON);
+    expect(UNFOLLOWED_RUN_REASON).toContain('Follow it again');
+    expect(UNFOLLOWED_RUN_REASON).toContain('reload');
+  });
+
+  it('keeps Run shut while the run may still be going on the server', () => {
+    expect(
+      canStartRun({ start: going, runFinished: false, goalProblem: undefined }),
+    ).toBe(false);
   });
 
   it('names the goal problem once the run it followed has ended', () => {

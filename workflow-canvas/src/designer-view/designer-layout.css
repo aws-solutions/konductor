@@ -3,16 +3,15 @@
 /*
  * The three columns of the Designer, for the light and the dark mode. A test
  * (designer-layout-contrast.test.ts) checks that these colours are the
- * theme's and reach WCAG AA in both modes.
+ * theme's and reach WCAG AA in both modes. The tabs and the fold button are
+ * Cloudscape components, so their colours, focus ring and forced-colors
+ * behaviour come from the Cloudscape theme and none of it is set here.
  */
 .wf-layout {
   --wf-layout-bg: #ffffff;
   --wf-layout-border: #e0dad0;
   --wf-layout-text: #16131f;
   --wf-layout-text-muted: #56516a;
-  --wf-layout-edge: #7a7490;
-  --wf-layout-selected: #6236f0;
-  --wf-layout-focus: #6236f0;
 
   display: grid;
   grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) minmax(
@@ -30,9 +29,6 @@
   --wf-layout-border: #2a2450;
   --wf-layout-text: #f5f3ee;
   --wf-layout-text-muted: #9c93b8;
-  --wf-layout-edge: #8f86ad;
-  --wf-layout-selected: #a78bfa;
-  --wf-layout-focus: #a78bfa;
 }
 
 .wf-layout[data-folded='true'] {
@@ -69,65 +65,11 @@
 
 .wf-layout-fold {
   align-self: flex-end;
-  padding: 4px 10px;
-  border: 1px solid var(--wf-layout-edge);
-  border-radius: 8px;
-  background: var(--wf-layout-bg);
-  color: var(--wf-layout-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.wf-layout-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--wf-layout-border);
-}
-
-.wf-layout-tab {
-  margin-bottom: -1px;
-  padding: 6px 12px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--wf-layout-text-muted);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.wf-layout-tab[aria-selected='true'] {
-  border-bottom-color: var(--wf-layout-selected);
-  color: var(--wf-layout-text);
-}
-
-.wf-layout-fold:focus-visible,
-.wf-layout-tab:focus-visible,
-.wf-layout-panel:focus-visible {
-  outline: 2px solid var(--wf-layout-focus);
-  outline-offset: 2px;
-}
-
-.wf-layout-panel {
-  min-height: 0;
-  overflow: auto;
 }
 
 .wf-layout-note {
   margin: 0;
   color: var(--wf-layout-text-muted);
-}
-
-@media (forced-colors: active) {
-  .wf-layout-tab[aria-selected='true'] {
-    border-bottom-color: Highlight;
-  }
-
-  .wf-layout-fold:focus-visible,
-  .wf-layout-tab:focus-visible,
-  .wf-layout-panel:focus-visible {
-    outline-color: Highlight;
-  }
 }
 
 /* A narrow window has room for one column, as the Designer has below 900

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { CheckAnswer, CheckRequest } from '../designer-view/yaml-draft';
+import type { CheckAnswer, ValidateRequest } from '../designer-view/yaml-draft';
 import { useInitialCheck } from './use-initial-check';
 
 const answerFor = (text: string): CheckAnswer => ({
@@ -20,7 +20,7 @@ const answerFor = (text: string): CheckAnswer => ({
 
 describe('useInitialCheck', () => {
   it('reads the text as loaded, once', async () => {
-    const validate = vi.fn(async (request: CheckRequest) =>
+    const validate = vi.fn(async (request: ValidateRequest) =>
       answerFor(request.text),
     );
     const { result, rerender } = renderHook(() =>
@@ -37,7 +37,7 @@ describe('useInitialCheck', () => {
   });
 
   it('sends the name of the workflow with the text', async () => {
-    const validate = vi.fn(async (request: CheckRequest) =>
+    const validate = vi.fn(async (request: ValidateRequest) =>
       answerFor(request.text),
     );
     renderHook(() => useInitialCheck({ text: 'a', name: 'hello', validate }));
@@ -47,7 +47,7 @@ describe('useInitialCheck', () => {
   });
 
   it('leaves the name out when the caller has none', async () => {
-    const validate = vi.fn(async (request: CheckRequest) =>
+    const validate = vi.fn(async (request: ValidateRequest) =>
       answerFor(request.text),
     );
     renderHook(() => useInitialCheck({ text: 'a', validate }));
@@ -80,7 +80,7 @@ describe('useInitialCheck', () => {
   });
 
   it('reads another text again, and shows no answer of the one before', async () => {
-    const validate = vi.fn(async (request: CheckRequest) =>
+    const validate = vi.fn(async (request: ValidateRequest) =>
       answerFor(request.text),
     );
     const { result, rerender } = renderHook(
@@ -99,7 +99,7 @@ describe('useInitialCheck', () => {
 
   it('aborts the check of the text before it', async () => {
     const seen: AbortSignal[] = [];
-    const validate = vi.fn((_request: CheckRequest, signal: AbortSignal) => {
+    const validate = vi.fn((_request: ValidateRequest, signal: AbortSignal) => {
       seen.push(signal);
       return new Promise<CheckAnswer>(() => undefined);
     });
@@ -116,7 +116,7 @@ describe('useInitialCheck', () => {
 
   it('aborts the check in flight when the view goes away', () => {
     const seen: AbortSignal[] = [];
-    const validate = vi.fn((_request: CheckRequest, signal: AbortSignal) => {
+    const validate = vi.fn((_request: ValidateRequest, signal: AbortSignal) => {
       seen.push(signal);
       return new Promise<CheckAnswer>(() => undefined);
     });
@@ -149,5 +149,52 @@ describe('useInitialCheck', () => {
 
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('reads the text again when asked, after a check that could not be made', async () => {
+    let attempt = 0;
+    const validate = vi.fn(async (request: ValidateRequest) => {
+      attempt += 1;
+      if (attempt === 1) throw new Error('The server did not answer.');
+      return answerFor(request.text);
+    });
+    const { result } = renderHook(() =>
+      useInitialCheck({ text: 'a', validate }),
+    );
+    await act(async () => {});
+    expect(result.current.failure).toBe('The server did not answer.');
+
+    await act(async () => result.current.checkAgain());
+
+    expect(validate).toHaveBeenCalledTimes(2);
+    expect(result.current.failure).toBeUndefined();
+    expect(result.current.answer?.view?.stages[0]?.prompt).toBe('a');
+  });
+
+  it('reads nothing again once a check has answered', async () => {
+    const validate = vi.fn(async (request: ValidateRequest) =>
+      answerFor(request.text),
+    );
+    const { result } = renderHook(() =>
+      useInitialCheck({ text: 'a', validate }),
+    );
+    await act(async () => {});
+
+    await act(async () => result.current.checkAgain());
+
+    expect(validate).toHaveBeenCalledTimes(1);
+    expect(result.current.answer).toBeTruthy();
+  });
+
+  it('reads nothing again while a check is in flight', async () => {
+    const validate = vi.fn(() => new Promise<CheckAnswer>(() => undefined));
+    const { result } = renderHook(() =>
+      useInitialCheck({ text: 'a', validate }),
+    );
+
+    await act(async () => result.current.checkAgain());
+
+    expect(validate).toHaveBeenCalledTimes(1);
+    expect(result.current.reading).toBe(true);
   });
 });
