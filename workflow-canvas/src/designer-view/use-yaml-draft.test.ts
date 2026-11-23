@@ -183,6 +183,24 @@ describe('useYamlDraft', () => {
     expect(result.current.baseMoved).toBe(false);
   });
 
+  it('takes an external reload after an edit was undone back to the file', async () => {
+    const { result, validate, pause, rerender } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.answer(0, GOOD);
+    // The person undoes the edit, so the draft is the file again even though
+    // it has been edited twice.
+    act(() => result.current.edit('v0'));
+    await pause();
+    await validate.answer(1, GOOD);
+
+    rerender({ initialText: 'v2', baseHash: 'hash-v2' });
+
+    expect(result.current.text).toBe('v2');
+    expect(result.current.status).toBe('unchecked');
+    expect(result.current.baseMoved).toBe(false);
+  });
+
   it('keeps the text typed while a save was in flight', async () => {
     const { result, pause, rerender } = setUp();
     act(() => result.current.edit('v1'));
@@ -376,6 +394,21 @@ describe('useYamlDraft', () => {
     act(() => result.current.edit('v2'));
     expect(result.current.sessionLost).toBe('Open the workflow again.');
     expect(result.current.status).toBe('failed');
+  });
+
+  it('checks nothing more once the session is lost', async () => {
+    const { result, validate, scheduler, pause } = setUp();
+    act(() => result.current.edit('v1'));
+    await pause();
+    await validate.fail(0, new SessionLost('Open the workflow again.'));
+    expect(validate.requests).toHaveLength(1);
+
+    act(() => result.current.edit('v2'));
+    await pause();
+
+    expect(validate.requests).toHaveLength(1);
+    expect(scheduler.pendingCount).toBe(0);
+    expect(result.current.sessionLost).toBe('Open the workflow again.');
   });
 
   it('drops a lost session when another workflow opens', async () => {
