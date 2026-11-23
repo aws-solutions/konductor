@@ -18,6 +18,7 @@ const { scoringOf } = require('./captasks.js');
 const { loadProfile } = require('../runner/lib/profiles.js');
 const { ablationFor } = require('./ablate.js');
 const { LOAD_MIN } = require('./decide.js');
+const { STUDY_RUNTIME } = require('./runtimes.js');
 
 // The forced-load wave: frc, its A/A repeat frc-b and del (see forced.js).
 const FORCED_ARM_COUNT = 3;
@@ -221,8 +222,8 @@ function planSkillStudy({
   const repsN = reps ?? prof.replicates.default;
   const wanted = tiers.includes('all') ? TIERS : tiers;
 
-  const report = buildPruneReport({ repo, base, harness: 'kiro-cli', benchDir, runDirs, evidence: null, now });
-  const scan = scanRunDirs(runDirs, { harnesses: ['kiro-cli'] });
+  const report = buildPruneReport({ repo, base, harness: STUDY_RUNTIME, benchDir, runDirs, evidence: null, now });
+  const scan = scanRunDirs(runDirs, { harnesses: [STUDY_RUNTIME] });
   const obs = observedCosts(scan.runs, { model, coordinator: Boolean(armConfig) });
   const tasks = loadTasks(benchDir, { extraDirs: extraTasks });
 
@@ -248,7 +249,7 @@ function planSkillStudy({
     }
   }
 
-  const per = (c) => c.harnesses['kiro-cli'];
+  const per = (c) => c.harnesses[STUDY_RUNTIME];
   const tiering = assignTiers(caps.map((c) => ({ id: c.id, name: c.name, bytes: c.bytes, loaded: per(c).loads.runsLoaded, neighbours: c.neighbours })), { largeNames, largeTop, duplicatePairs });
   const tierOf = new Map(tiering.map((t) => [t.id, t]));
 
