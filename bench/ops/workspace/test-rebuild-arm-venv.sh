@@ -36,7 +36,7 @@ SH
 chmod +x "$T/python3.12"
 export FAKE_LOG=$T/pip.log
 V=$T/venv
-run() { bash "$SCRIPT" --venv "$V" --python "$T/python3.12" "$@" > "$T/out" 2>&1; }
+run() { env -u KONDUCTOR_WS bash "$SCRIPT" --venv "$V" --python "$T/python3.12" "$@" > "$T/out" 2>&1; }
 
 # A venv whose bin/python points at a base Python that is gone, as after the Crew update.
 mkdir -p "$V/bin" && ln -s "$T/gone/python3.12" "$V/bin/python" && echo old > "$V/marker"

@@ -32,7 +32,9 @@ while [ $# -gt 0 ]; do
     *) echo "usage: rebuild-arm-venv.sh [--check] [--venv DIR] [--python PY]" >&2; exit 64 ;;
   esac
 done
-SELF_CMD="bash bench/ops/workspace/rebuild-arm-venv.sh --venv $VENV"
+# The fix line names the command the reader can run: the workspace launcher when started through it, else the checkout path.
+if [ -n "${KONDUCTOR_WS:-}" ] && [ -e "$KONDUCTOR_WS/scripts/rebuild-arm-venv.sh" ]; then SELF_CMD="bash $KONDUCTOR_WS/scripts/rebuild-arm-venv.sh --venv $VENV"
+else SELF_CMD="bash bench/ops/workspace/rebuild-arm-venv.sh --venv $VENV"; fi
 say() { echo "[arm-venv] $*"; }
 
 # The pins as "name==version" words, read with the given Python (the JSON is a flat object).
@@ -42,7 +44,7 @@ pins_of() { "$1" -c 'import json,sys; print(" ".join(f"{k}=={v}" for k, v in sor
 # pinned versions.
 problem_of() {
   local py=$1/bin/python
-  if [ -L "$py" ] && [ ! -e "$py" ]; then echo "$py does not run: its base Python $(readlink "$py") is gone"; return; fi
+  if [ -L "$py" ] && [ ! -e "$py" ]; then echo "$py does not run: its base Python $(readlink -m "$py") is gone"; return; fi
   [ -e "$py" ] || { echo "$py does not exist"; return; }
   "$py" -c 'pass' 2>/dev/null || { echo "$py does not run (its base Python $(readlink -f "$py" 2>/dev/null || echo '?') is gone)"; return; }
   "$py" -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 12) else 1)' || { echo "$py is Python $("$py" -c 'import platform; print(platform.python_version())'), not 3.12"; return; }
