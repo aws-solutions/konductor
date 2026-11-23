@@ -58,6 +58,15 @@ function inputHashes(files = INPUT_FILES) {
   return Object.fromEntries(Object.entries(files).map(([k, ps]) => [k, sha256(ps.flatMap(filesOf).map((f) => `${path.relative(root, f)}\u0000${fs.readFileSync(f, 'utf8')}`).join('\n\u0000\n'))]));
 }
 
+/** A block's controls as one cell: each control with its own PASS, FAIL or NOT RUN, then each failed check and its numbers. */
+function controlsCell(b) {
+  const results = b.controls.results ?? [];
+  if (!results.length) return `${b.controls.status} (none ran)`;
+  const each = results.map((r) => `${r.control} ${r.status}`).join(', ');
+  const failed = results.filter((r) => r.status === 'FAIL').map((r) => `${r.control} FAIL: ${(r.checks ?? []).filter((c) => !c.ok).map((c) => `${c.name}: no: ${c.detail}`).join('; ')}`);
+  return [each, ...failed].join('. ');
+}
+
 const gapOf = (reading) => (reading && reading.tasks ? { mean: reading.mean_gap, tInterval: reading.t_interval, bootstrapInterval: reading.bootstrap_interval } : null);
 
 /** The panel scores of a check as record rows: one per judged answer, its median and each judge's score and family. */
@@ -89,7 +98,7 @@ function blockFromCheck(check, meta = {}) {
     },
     gapA: gapOf(summary.A), gapB: gapOf(summary.B), bWaiting: [...(meta.bWaiting ?? [])],
     scores: scoreRows(summary.scores),
-    controls: { passed: controls.trusted, status: controls.status, ran: controls.ran, results: controls.evaluations.map((e) => ({ control: e.control, status: e.status, missing: e.missing })) },
+    controls: { passed: controls.trusted, status: controls.status, ran: controls.ran, results: controls.evaluations.map((e) => ({ control: e.control, status: e.status, missing: e.missing, checks: (e.checks ?? []).map((c) => ({ name: c.name, ok: Boolean(c.ok), detail: String(c.detail ?? '') })) })) },
     cost: depth === 'deep' ? { credits: 0, usd: 0 } : { usd: 0 },
     label: entry.label, labelWhy: entry.why ?? null, verdict: entry.verdict, verdictWhy: entry.verdict_why ?? null, action: entry.verdict_action, noData: [...entry.no_data],
   };
@@ -267,7 +276,7 @@ function renderRecord(record) {
     row('why', (b) => (b.noData.length ? b.noData.join('; ') : b.labelWhy)),
     row('gap A', (b) => gap(b.gapA)), row('gap B', (b) => gap(b.gapB)),
     row('tasks counted', (b) => `${b.coverage.tasksCounted} of ${b.coverage.tasksTotal}`),
-    row('controls', (b) => `${b.controls.status} (${b.controls.ran.join(', ') || 'none'})`),
+    row('controls', controlsCell),
     row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
     `Loaded unit: ${record.unit ? `${record.unit.manifestSha256.slice(0, 12)} over ${record.unit.paths.join(', ')}` : 'not recorded'}. Source: ${src?.commit ?? 'unknown'}${src?.dirty ? ' (with uncommitted changes)' : ''}.`,
     `Stale: ${record.stale.value ? `YES: ${record.stale.why}` : 'no'}.`,
@@ -277,4 +286,5 @@ function renderRecord(record) {
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
 
-module.exports = { SCHEMA_ID, MAJOR, RULES, INPUT_FILES, inputHashes, WHOLE, NO_SELECTION, blockFromCheck, blockFromDecision, selectionProblems, wholeSkillGate, buildRecord, recordProblems, writeRecord, readRecord, renderRecord };
+module.exports = {
+  controlsCell, SCHEMA_ID, MAJOR, RULES, INPUT_FILES, inputHashes, WHOLE, NO_SELECTION, blockFromCheck, blockFromDecision, selectionProblems, wholeSkillGate, buildRecord, recordProblems, writeRecord, readRecord, renderRecord };

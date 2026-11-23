@@ -142,6 +142,32 @@ function loadConvention(dir = path.join(CONTROLS_DIR, CONVENTION)) {
   return { name: CONVENTION, skill: { name: CONVENTION, text, sha256: sha256(text) }, batches: batchesIn(dir), bWaiting: [] };
 }
 
+/**
+ * The sentence every convention control task carries, so both arms take the request's dates and facts as given and
+ * neither writes placeholders (the control skill's guard rule asks the same of the with arm only).
+ */
+const CONTROL_AS_GIVEN = 'Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.';
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_DATE = new RegExp(`\\b(\\d{1,2}) (${MONTHS.join('|')}) (\\d{4})\\b`, 'g');
+
+/**
+ * The full dates (`3 November 2026`) in the tasks of `convention` that are before the day of `now`: [{ task, date }].
+ * A date gone stale makes the control's without arm hedge about it, which moves reading A (pilot kp-pilot-1). A month
+ * with no day ("since March 2024") is history the task means as past, and is not read.
+ */
+function pastControlDates(convention, now = new Date()) {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const past = [];
+  for (const b of convention.batches) {
+    for (const t of b.tasks) {
+      for (const m of t.prompt.matchAll(DAY_DATE)) {
+        if (Date.UTC(Number(m[3]), MONTHS.indexOf(m[2]), Number(m[1])) < today) past.push({ task: t.id, date: m[0] });
+      }
+    }
+  }
+  return past;
+}
+
 /** The dose ladder at `file`, refused when it fails its own audit or repeats a key. */
 function loadDoseLadder(file = path.join(CONTROLS_DIR, 'dose-ladder-v1.json')) {
   const ladder = loadLadder(file);
@@ -150,4 +176,4 @@ function loadDoseLadder(file = path.join(CONTROLS_DIR, 'dose-ladder-v1.json')) {
   return ladder;
 }
 
-module.exports = { BASELINES_DIR, CONTROLS_DIR, unitFreshness, loadBaseline, baselineStatus, loadConvention, loadDoseLadder };
+module.exports = { BASELINES_DIR, CONTROLS_DIR, CONTROL_AS_GIVEN, unitFreshness, loadBaseline, baselineStatus, loadConvention, loadDoseLadder, pastControlDates };
