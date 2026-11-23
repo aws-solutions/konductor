@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { CHECK_DELAY_MS, SessionLost } from '../designer/core';
 import type { Scheduler } from '../execution/core/ports';
 import {
-  CHECK_PAUSE_MS,
   currentAnswer,
   draftStatus,
   reduceDraft,
@@ -37,6 +37,16 @@ export interface YamlDraftControls {
   readonly lastGood?: CheckAnswer;
   /** Why the check of the text now could not be made. */
   readonly failure?: string;
+  /**
+   * Why no check can be made at all: the server no longer knows the session.
+   * It is reported as soon as a check meets it and no edit clears it.
+   */
+  readonly sessionLost?: string;
+  /**
+   * The file was written under the draft while it had unsaved edits, so the
+   * typed text was kept rather than replaced by the file's.
+   */
+  readonly baseMoved: boolean;
   edit(text: string): void;
 }
 
@@ -46,22 +56,24 @@ function messageOf(error: unknown): string {
     : CHECK_FAILED;
 }
 
-// Which workflow, as loaded, the draft is of. `use-editor.ts` opens its
-// draft again for each workflow it loads; this one does when the name, the
-// base hash or the loaded text changes.
-function openedKeyOf({ name, baseHash, initialText }: YamlDraftInput): string {
+// Which load of a workflow the draft is of. A change of `name` is another
+// workflow; a change of hash or loaded text with the same name is the same
+// workflow written again, which only moves the base.
+function loadKeyOf({ name, baseHash, initialText }: YamlDraftInput): string {
   return JSON.stringify([name ?? null, baseHash ?? null, initialText]);
 }
 
 /**
  * Holds the edited YAML text of a workflow and checks it once the person
- * stops typing for `CHECK_PAUSE_MS`, with `validate`. A new edit aborts the
+ * stops typing for `CHECK_DELAY_MS`, with `validate`. A new edit aborts the
  * pause and any check in flight, and the next check starts only after that
  * one has ended, so two never overlap. An answer for older text is dropped.
- * Another workflow, or the same one loaded again, opens a fresh draft in the
- * same render: its text, answers and failure start over, and the pause and
- * the check of the one before are aborted. Unmounting aborts both. It never
- * writes the file.
+ * Another workflow opens a fresh draft in the same render: its text, answers
+ * and failure start over, and the pause and the check of the one before are
+ * aborted. The same workflow loaded again, after a save or because the file
+ * changed underneath, replaces the text only while the draft has no unsaved
+ * edits; with unsaved edits the typed text is kept and `baseMoved` says the
+ * file moved under it. Unmounting aborts both. It never writes the file.
  */
 export function useYamlDraft(input: YamlDraftInput): YamlDraftControls {
   const [draft, dispatch] = useReducer(
@@ -71,13 +83,19 @@ export function useYamlDraft(input: YamlDraftInput): YamlDraftControls {
   );
   const latest = useRef(input);
   const previous = useRef<Promise<unknown>>(Promise.resolve());
-  const openedKey = openedKeyOf(input);
-  const [openedFor, setOpenedFor] = useState(openedKey);
+  const loadKey = loadKeyOf(input);
+  const name = input.name ?? null;
+  const [loaded, setLoaded] = useState({ key: loadKey, name });
   // Open in the same render that gets the workflow, as `use-editor.ts` does,
   // so the page never shows the draft of the workflow before.
-  if (openedFor !== openedKey) {
-    setOpenedFor(openedKey);
-    dispatch({ type: 'opened', text: input.initialText });
+  if (loaded.key !== loadKey) {
+    setLoaded({ key: loadKey, name });
+    const unsaved = draft.revision !== draft.opened;
+    if (loaded.name !== name || !unsaved) {
+      dispatch({ type: 'opened', text: input.initialText });
+    } else {
+      dispatch({ type: 'base-moved' });
+    }
   }
 
   useEffect(() => {
@@ -90,22 +108,26 @@ export function useYamlDraft(input: YamlDraftInput): YamlDraftControls {
     const controller = new AbortController();
     const { signal } = controller;
     const check = async () => {
-      const { validate, scheduler, name } = latest.current;
-      await scheduler.wait(CHECK_PAUSE_MS, signal);
+      const { validate, scheduler, name: workflow } = latest.current;
+      await scheduler.wait(CHECK_DELAY_MS, signal);
       if (signal.aborted) return;
       dispatch({ type: 'check-sent', revision });
       try {
-        const request = name === undefined ? { text } : { name, text };
+        const request =
+          workflow === undefined ? { text } : { name: workflow, text };
         const answer = await validate(request, signal);
         if (!signal.aborted) dispatch({ type: 'checked', revision, answer });
       } catch (error) {
-        if (!signal.aborted) {
-          dispatch({
-            type: 'check-failed',
-            revision,
-            message: messageOf(error),
-          });
+        if (signal.aborted) return;
+        if (error instanceof SessionLost) {
+          dispatch({ type: 'session-lost', message: messageOf(error) });
+          return;
         }
+        dispatch({
+          type: 'check-failed',
+          revision,
+          message: messageOf(error),
+        });
       }
     };
     previous.current = previous.current.then(check).catch(() => undefined);
@@ -125,6 +147,10 @@ export function useYamlDraft(input: YamlDraftInput): YamlDraftControls {
     ...(answer ? { answer } : {}),
     ...(draft.lastGood ? { lastGood: draft.lastGood } : {}),
     ...(failure === undefined ? {} : { failure }),
+    ...(draft.sessionLost === undefined
+      ? {}
+      : { sessionLost: draft.sessionLost }),
+    baseMoved: draft.baseMoved === true,
     edit,
   };
 }

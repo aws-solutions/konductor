@@ -66,20 +66,33 @@ export function canStartRun({
   }
 }
 
+/**
+ * The sentence for a run that is still going on the server while this page
+ * has stopped following it. A second start would be refused, so the way out
+ * is to follow the run again or to reload.
+ */
+export const UNFOLLOWED_RUN_REASON =
+  'A run is in progress and is no longer followed. Follow it again, or reload the page.';
+
 /** Why Run cannot be pressed, as a sentence, or `undefined` when it can. */
 export function startDisabledReason({
   start,
   runFinished,
   goalProblem,
+  followFailed = false,
 }: {
   readonly start: RunStart;
   readonly runFinished: boolean;
   readonly goalProblem: string | undefined;
+  /** True once the follower of the run gave up, so the run cannot be read. */
+  readonly followFailed?: boolean;
 }): string | undefined {
   if (canStartRun({ start, runFinished, goalProblem })) return undefined;
   if (start.kind === 'starting') return 'The run is starting.';
   // A run that has ended is not in the way: what is left is the next goal.
-  if (start.kind === 'going' && !runFinished) return 'A run is in progress.';
+  if (start.kind === 'going' && !runFinished) {
+    return followFailed ? UNFOLLOWED_RUN_REASON : 'A run is in progress.';
+  }
   if (start.kind === 'unsure') {
     return 'It is not known whether the last run started. Reload the page.';
   }

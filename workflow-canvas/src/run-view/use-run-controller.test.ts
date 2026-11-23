@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { RunStartUnsure } from '../execution/core';
 import { EventWaits, HeldEvents } from '../test-support/held-events';
+import { UNFOLLOWED_RUN_REASON } from './run-start';
 import { useRunController, type RunViewPorts } from './use-run-controller';
 
 const RUN_ID = '20261024-0412-a7b3c';
@@ -158,5 +159,81 @@ describe('useRunController, the run a swap would cost', () => {
       'It is not known whether the run started.',
     );
     expect(result.current.lifecycle.active).toBe(true);
+  });
+});
+
+describe('useRunController, a follow that gave up', () => {
+  async function gaveUp() {
+    const held = following();
+    await held.started();
+    while (held.events.waiting) {
+      await act(async () => {
+        held.events.drop();
+      });
+    }
+    expect(held.result.current.follow.status.kind).toBe('failed');
+    return held;
+  }
+
+  it('keeps Run shut and says to follow again or reload', async () => {
+    const { result } = await gaveUp();
+
+    expect(result.current.canStart).toBe(false);
+    expect(result.current.disabledReason).toBe(UNFOLLOWED_RUN_REASON);
+    expect(result.current.canFollowAgain).toBe(true);
+  });
+
+  it('reads the run on from where it stopped when told to follow again', async () => {
+    const { events, result } = await gaveUp();
+
+    await act(async () => result.current.followAgain());
+
+    expect(result.current.follow.status.kind).toBe('following');
+    expect(result.current.canFollowAgain).toBe(false);
+    expect(result.current.disabledReason).toBe('A run is in progress.');
+    await act(async () => {
+      events.answer({
+        events: [
+          { seq: 1, type: 'stage_state', stage: 'draft', status: 'running' },
+        ],
+        next: 1,
+        finished: false,
+      });
+    });
+
+    expect(result.current.lifecycle.status).toContain('draft');
+  });
+
+  it('offers no follow again while the run is read', async () => {
+    const { result, started } = following();
+    await started();
+
+    expect(result.current.canFollowAgain).toBe(false);
+    expect(result.current.disabledReason).toBe('A run is in progress.');
+  });
+});
+
+describe('useRunController, the Goal box error', () => {
+  it('holds the goal error back until the person types or asks for a run', async () => {
+    const { result, started } = following();
+
+    expect(result.current.goal).toBe('');
+    expect(result.current.goalTouched).toBe(false);
+
+    await act(async () => result.current.goalTyped('Plan it'));
+    expect(result.current.goalTouched).toBe(true);
+
+    await act(async () => result.current.goalTyped(''));
+    expect(result.current.goalTouched).toBe(true);
+    await started();
+    expect(result.current.goalTouched).toBe(true);
+  });
+
+  it('counts a start as having touched the box', async () => {
+    const { result, started } = following({ now: () => NOW });
+
+    await started();
+
+    expect(result.current.goalTouched).toBe(true);
   });
 });

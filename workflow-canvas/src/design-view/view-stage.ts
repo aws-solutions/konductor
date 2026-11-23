@@ -183,6 +183,13 @@ export interface GuardedStage {
 const ONLY_TWO = 'Only the name and the agent of a stage can be saved yet.';
 
 /**
+ * How to get out of a refusal that comes from a check the server did not
+ * answer: the view offers that check again, and a reload reads the file
+ * afresh.
+ */
+export const CHECK_AGAIN = 'Check the file again, or reload the page.';
+
+/**
  * Why a save of this workflow is refused, or `undefined` when it may go
  * ahead. The stage writer of the editor rebuilds a stage it changed from the
  * name and the agent alone, so saving a stage that has another key, such as a
@@ -192,9 +199,11 @@ const ONLY_TWO = 'Only the name and the agent of a stage can be saved yet.';
  * The guard fails closed. A changed stage whose file stage cannot be read is
  * refused as well, because the keys it would drop are then unknown: that is
  * so while the first check of the file is in flight, after that check failed,
- * and for a file that has no stage at the place this one was loaded from. A
- * stage the person added has nothing in the file to lose, and an unchanged
- * stage keeps its own lines, so neither is refused.
+ * and for a file that has no stage at the place this one was loaded from. The
+ * refusal then says how to get out of it, because a lost read would otherwise
+ * leave a person with a message and nothing to do about it. A stage the
+ * person added has nothing in the file to lose, and an unchanged stage keeps
+ * its own lines, so neither is refused.
  */
 export function saveRefusal(
   stages: readonly GuardedStage[],
@@ -206,7 +215,7 @@ export function saveRefusal(
     const name = stage.draft.name;
     const saved = sourceStageOf(file, stage.source);
     if (saved === undefined) {
-      return `A save would rebuild ${name}, and the keys it has in the file are not known, so it is refused. ${ONLY_TWO}`;
+      return `A save would rebuild ${name}, and the keys it has in the file are not known, so it is refused. ${CHECK_AGAIN} ${ONLY_TWO}`;
     }
     const dropped = droppedKeysOf(saved);
     if (dropped.length > 0) {

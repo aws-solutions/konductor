@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import Button from '@cloudscape-design/components/button';
+import Tabs from '@cloudscape-design/components/tabs';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { FieldForm, type FieldFormChange } from './FieldForm';
 import { YamlPane, type MarkedStage } from './YamlPane';
 import type { AgentOption, FieldValues, StageFieldRule } from './field-rules';
-import { tabKeyTarget } from './tab-keys';
 import './designer-layout.css';
 
 /** The workflow file that the YAML tab shows. */
@@ -33,12 +27,8 @@ export interface LayoutStage {
   readonly readOnlyKeys?: readonly string[];
 }
 
-const TABS = [
-  { id: 'yaml', label: 'YAML' },
-  { id: 'properties', label: 'Properties' },
-] as const;
-
-type TabId = (typeof TABS)[number]['id'];
+const YAML_TAB = 'yaml';
+const PROPERTIES_TAB = 'properties';
 
 const NO_STAGE = 'Pick a stage in the drawing to edit its keys.';
 
@@ -51,10 +41,11 @@ const EDITABLE =
 /**
  * The Designer in three columns: the components on the left (`children`),
  * the drawing in the middle, and a side column on the right with a YAML tab
- * and a Properties tab. The side column folds with a button. The tabs follow
- * the WAI-ARIA tabs pattern: Tab reaches the selected tab, and the arrow
- * keys, Home and End select another, with modifier keys left to the browser.
- * It takes data and callbacks only; it fetches and saves nothing.
+ * and a Properties tab. Each column is a landmark, so a screen reader can
+ * jump to one without tabbing through the others. The side column folds with
+ * a button. Cloudscape `Tabs` carries the tabs, with every panel kept mounted
+ * so neither loses its scroll or its form state on a switch. It takes data
+ * and callbacks only; it fetches and saves nothing.
  *
  * `openProperties` counts the times the page has asked for the keys of a
  * stage, as choosing one in the drawing does: each time it goes up, the
@@ -84,122 +75,95 @@ export function DesignerLayout({
   onStageChange: (change: FieldFormChange) => void;
 }) {
   const id = useId();
-  const [tab, setTab] = useState<TabId>('yaml');
+  const [tab, setTab] = useState<string>(YAML_TAB);
   const [folded, setFolded] = useState(false);
-  const tabs = useRef(new Map<TabId, HTMLButtonElement>());
-  const properties = useRef<HTMLDivElement>(null);
+  const propertiesPanel = useRef<HTMLDivElement>(null);
   const asked = useRef(openProperties);
   // An ask for the keys of a stage that the focus has not answered yet.
   const [wanted, setWanted] = useState(false);
   const sideId = `${id}-side`;
-  const tabId = (tabName: TabId) => `${id}-${tabName}-tab`;
-  const panelId = (tabName: TabId) => `${id}-${tabName}-panel`;
 
   useEffect(() => {
     if (openProperties === asked.current) return;
     asked.current = openProperties;
-    setTab('properties');
+    setTab(PROPERTIES_TAB);
     setFolded(false);
     setWanted(true);
   }, [openProperties]);
 
   // The focus moves for an ask that has not been answered yet, and the ask is
   // spent by that: every other way of reaching this tab, the arrow keys among
-  // them, leaves the focus where the person put it.
+  // them, leaves the focus where the person put it. Cloudscape owns the panel
+  // that holds the form, so the fallback is that panel, which is the focusable
+  // element the form sits in.
   useEffect(() => {
-    if (!wanted || tab !== 'properties' || folded) return;
+    if (!wanted || tab !== PROPERTIES_TAB || folded) return;
     setWanted(false);
-    const panel = properties.current;
-    (panel?.querySelector<HTMLElement>(EDITABLE) ?? panel)?.focus();
+    const form = propertiesPanel.current;
+    const panel = form?.closest<HTMLElement>('[role="tabpanel"]');
+    (form?.querySelector<HTMLElement>(EDITABLE) ?? panel)?.focus();
   }, [wanted, tab, folded]);
 
-  const onKeyDown = (event: KeyboardEvent) => {
-    const index = TABS.findIndex((one) => one.id === tab);
-    const target = tabKeyTarget(event, index, TABS.length);
-    const next = target === undefined ? undefined : TABS[target];
-    if (!next) return;
-    event.preventDefault();
-    setTab(next.id);
-    tabs.current.get(next.id)?.focus();
-  };
-
-  const panels: Record<TabId, ReactNode> = {
-    yaml: <YamlPane file={yaml.file} text={yaml.text} stage={yaml.stage} />,
-    properties: stage ? (
-      <FieldForm
-        stageName={stage.name}
-        rules={stage.rules}
-        agents={agents}
-        originalAgent={stage.originalAgent}
-        values={stage.values}
-        {...(stage.readOnlyKeys ? { readOnlyKeys: stage.readOnlyKeys } : {})}
-        onChange={onStageChange}
-      />
-    ) : (
-      <p className="wf-layout-note">{NO_STAGE}</p>
-    ),
-  };
+  const properties = stage ? (
+    <FieldForm
+      stageName={stage.name}
+      rules={stage.rules}
+      agents={agents}
+      originalAgent={stage.originalAgent}
+      values={stage.values}
+      {...(stage.readOnlyKeys ? { readOnlyKeys: stage.readOnlyKeys } : {})}
+      onChange={onStageChange}
+    />
+  ) : (
+    <p className="wf-layout-note">{NO_STAGE}</p>
+  );
 
   return (
     <div className="wf-layout" data-folded={folded ? 'true' : undefined}>
-      <div className="wf-layout-left">{children}</div>
-      <div className="wf-layout-drawing">{drawing}</div>
-      <div className="wf-layout-side">
-        <button
-          type="button"
-          className="wf-layout-fold"
-          aria-expanded={!folded}
-          aria-controls={sideId}
-          onClick={() => setFolded((was) => !was)}
-        >
-          {folded ? 'Show the side panel' : 'Hide the side panel'}
-        </button>
-        <div id={sideId} className="wf-layout-side-body" hidden={folded}>
-          <div
-            role="tablist"
-            aria-label="Side panel"
-            className="wf-layout-tabs"
-            onKeyDown={onKeyDown}
+      <section className="wf-layout-left" aria-label="Components">
+        {children}
+      </section>
+      <section className="wf-layout-drawing" aria-label="Drawing">
+        {drawing}
+      </section>
+      <aside className="wf-layout-side" aria-label="Side panel">
+        <div className="wf-layout-fold">
+          <Button
+            ariaExpanded={!folded}
+            ariaControls={sideId}
+            onClick={() => setFolded((was) => !was)}
           >
-            {TABS.map((one) => {
-              const selected = one.id === tab;
-              return (
-                <button
-                  key={one.id}
-                  ref={(element) => {
-                    if (element) tabs.current.set(one.id, element);
-                    else tabs.current.delete(one.id);
-                  }}
-                  type="button"
-                  role="tab"
-                  id={tabId(one.id)}
-                  aria-selected={selected}
-                  aria-controls={panelId(one.id)}
-                  tabIndex={selected ? 0 : -1}
-                  className="wf-layout-tab"
-                  onClick={() => setTab(one.id)}
-                >
-                  {one.label}
-                </button>
-              );
-            })}
-          </div>
-          {TABS.map((one) => (
-            <div
-              key={one.id}
-              ref={one.id === 'properties' ? properties : undefined}
-              role="tabpanel"
-              id={panelId(one.id)}
-              aria-labelledby={tabId(one.id)}
-              tabIndex={0}
-              hidden={one.id !== tab}
-              className="wf-layout-panel"
-            >
-              {panels[one.id]}
-            </div>
-          ))}
+            {folded ? 'Show the side panel' : 'Hide the side panel'}
+          </Button>
         </div>
-      </div>
+        <div id={sideId} className="wf-layout-side-body" hidden={folded}>
+          <Tabs
+            ariaLabel="Side panel"
+            activeTabId={tab}
+            onChange={({ detail }) => setTab(detail.activeTabId)}
+            tabs={[
+              {
+                id: YAML_TAB,
+                label: 'YAML',
+                contentRenderStrategy: 'eager',
+                content: (
+                  <YamlPane
+                    file={yaml.file}
+                    text={yaml.text}
+                    stage={yaml.stage}
+                  />
+                ),
+              },
+              {
+                id: PROPERTIES_TAB,
+                label: 'Properties',
+                contentRenderStrategy: 'eager',
+                content: <div ref={propertiesPanel}>{properties}</div>,
+              },
+            ]}
+          />
+        </div>
+      </aside>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { DraftStage } from '../designer/core/draft';
+import type { Draft, DraftStage } from '../designer/core/draft';
 import { useStageSources } from './use-stage-sources';
 
 const FILE = 'stages:\n  - name: draft\n  - name: review\n';
@@ -18,13 +18,34 @@ const LOADED = [stage('s1', 'draft'), stage('s2', 'review')];
 interface Editing {
   text: string;
   stages: readonly DraftStage[];
+  /**
+   * The id the draft would hand out next. It is one past the stage count of
+   * the file the draft was built from, and only ever rises while that draft
+   * is edited, so a lower one is a draft built afresh.
+   */
+  nextId?: number;
   submitted?: string;
 }
 
+// A draft the editor would have, with `nextId` past every id it holds unless
+// the test names one.
+function draftOf({ stages, nextId }: Editing): Draft {
+  const highest = Math.max(0, ...stages.map((one) => Number(one.id.slice(1))));
+  return { stages, nextId: nextId ?? highest + 1 };
+}
+
 const editing = (first: Editing) =>
-  renderHook((props: Editing) => useStageSources(props), {
-    initialProps: first,
-  });
+  renderHook(
+    (props: Editing) =>
+      useStageSources({
+        text: props.text,
+        draft: draftOf(props),
+        ...(props.submitted === undefined
+          ? {}
+          : { submitted: props.submitted }),
+      }),
+    { initialProps: first },
+  );
 
 describe('useStageSources', () => {
   it('reads the place of each stage of the file it opened', () => {
@@ -111,6 +132,35 @@ describe('useStageSources', () => {
 
     expect(result.current.of('s1')).toEqual({ kind: 'loaded', index: 0 });
     expect(result.current.of('s2')).toEqual({ kind: 'loaded', index: 1 });
+  });
+
+  it('reads the places again when the same text arrives with a draft built afresh', () => {
+    const SAVED = 'saved.yml';
+    const { result, rerender } = editing({ text: FILE, stages: LOADED });
+
+    // The first stage is deleted and the rest saved, so the draft that made
+    // the file holds s2 alone, in the first place of that file.
+    const left = [stage('s2', 'review')];
+    rerender({ text: FILE, stages: left });
+    rerender({ text: FILE, stages: left, submitted: SAVED });
+    rerender({ text: SAVED, stages: left });
+    expect(result.current.of('s2')).toEqual({ kind: 'loaded', index: 0 });
+
+    // The file is loaded again. Its text has not changed, but the editor
+    // builds a draft with its own ids, numbered from the first place.
+    rerender({ text: SAVED, stages: [stage('s1', 'review')] });
+
+    expect(result.current.of('s1')).toEqual({ kind: 'loaded', index: 0 });
+  });
+
+  it('keeps the places when a stage is added, whose id the file never had', () => {
+    const { result, rerender } = editing({ text: FILE, stages: LOADED });
+
+    rerender({ text: FILE, stages: [...LOADED, stage('s3', 'agent-3')] });
+
+    expect(result.current.of('s1')).toEqual({ kind: 'loaded', index: 0 });
+    expect(result.current.of('s2')).toEqual({ kind: 'loaded', index: 1 });
+    expect(result.current.of('s3')).toEqual({ kind: 'added' });
   });
 
   it('holds the places of each save, so a second save of the same text is its own', () => {

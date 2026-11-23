@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { AA_GRAPHIC, AA_TEXT, contrastRatio } from '../src/theme/contrast.ts';
-import { colorsOf, RADIUS, type ThemeMode } from '../src/theme/tokens.ts';
+import { AA_TEXT, contrastRatio } from '../src/theme/contrast.ts';
+import { colorsOf, type ThemeMode } from '../src/theme/tokens.ts';
 import { COLOUR_LITERAL, HEX_COLOUR, readStyleSheet } from './css-variables.ts';
 
 const sheet = readStyleSheet(
@@ -61,22 +61,10 @@ const MODES: [ThemeMode, Record<string, string>][] = [
 describe.each(MODES)('designer-layout.css colours in %s', (mode, v) => {
   const ratio = (a: string, b: string) => contrastRatio(v[a]!, v[b]!);
 
-  it('keeps the tabs, the fold button and the notes readable', () => {
+  it('keeps the column text and the notes readable', () => {
     for (const text of ['--wf-layout-text', '--wf-layout-text-muted']) {
       expect(ratio(text, '--wf-layout-bg'), text).toBeGreaterThanOrEqual(
         AA_TEXT,
-      );
-    }
-  });
-
-  it('keeps the edges, the selected tab mark and the focus ring visible', () => {
-    for (const part of [
-      '--wf-layout-edge',
-      '--wf-layout-selected',
-      '--wf-layout-focus',
-    ]) {
-      expect(ratio(part, '--wf-layout-bg'), part).toBeGreaterThanOrEqual(
-        AA_GRAPHIC,
       );
     }
   });
@@ -89,9 +77,6 @@ describe.each(MODES)('designer-layout.css colours in %s', (mode, v) => {
       '--wf-layout-border': c.border,
       '--wf-layout-text': c.text,
       '--wf-layout-text-muted': c.textMuted,
-      '--wf-layout-edge': c.control,
-      '--wf-layout-selected': c.link,
-      '--wf-layout-focus': c.link,
     });
   });
 });
@@ -108,8 +93,7 @@ describe('designer-layout.css', () => {
     expect(sheet.outside(LIGHT_BLOCK)).not.toMatch(COLOUR_LITERAL);
   });
 
-  it('uses the small radius of the theme module, and no smooth scrolling', () => {
-    expect(sheet.text).toContain(`border-radius: ${RADIUS.small}`);
+  it('sets no smooth scrolling', () => {
     expect(sheet.text).not.toMatch(/scroll-behavior:\s*smooth/);
   });
 
@@ -148,9 +132,8 @@ describe('designer-layout.css', () => {
     }
   });
 
-  it('marks the selected tab and the focus with system colours in forced-colors mode', () => {
-    expect(sheet.text).toMatch(
-      /@media \(forced-colors: active\) \{[\s\S]*Highlight/,
-    );
+  it('styles no control of its own, so Cloudscape keeps the focus ring', () => {
+    expect(sheet.text).not.toMatch(/focus-visible|outline:/);
+    expect(sheet.text).not.toMatch(/\[aria-selected/);
   });
 });
