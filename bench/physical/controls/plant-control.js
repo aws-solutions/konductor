@@ -9,6 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { canonicalModelOf } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'harness', 'claude-code-parse.js'));
 
 const MCP_VERSION = '2025-11-25';
 const SERVER = 'plant';
@@ -129,8 +130,66 @@ const isClaudeArgv = (argv) => argv.includes('-p') && argv.includes('--mcp-confi
 /** The value after `flag` in `argv`, or null. */
 const flagValue = (argv, flag) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] ?? null : null);
 
-// The model id without its Bedrock region and vendor prefix, as Claude Code reports it (claude-code-parse.js canonicalModelOf).
-const canonicalModel = (id) => String(id).replace(/^(?:[a-z]{2,6}(?:-[a-z]{2,6})?\.)?anthropic\./, '').replace(/-v\d+(?::\d+)?$/, '');
+// The model id without its Bedrock region and vendor prefix, as Claude Code reports it (one copy, D-181).
+const canonicalModel = (id) => canonicalModelOf(String(id));
+
+// ---- The careful operators' shared parts (conveyor and arm, D-181) ----
+
+const GUARD_STATES = new Set(['open', 'closed']);
+
+/**
+ * What a `get_state` payload proves: `current` (every sensor stamped at the read), `valid` (each value possible),
+ * `clear` (nobody in the zone, guard or door shut, no jam or contact, no e-stop) and `stopped`.
+ */
+function judge(reading) {
+  const { speed, jam, zone, guard } = reading.sensors;
+  const at = Math.max(speed.t_ms, jam.t_ms, zone.t_ms, guard.t_ms);
+  const current = [speed, jam, zone, guard].every((s) => s.t_ms === at);
+  const valid = Number.isInteger(speed.value) && speed.value >= 0 && typeof jam.value === 'boolean' && typeof zone.person === 'boolean' && GUARD_STATES.has(guard.value);
+  return {
+    current, valid,
+    clear: current && valid && !zone.person && guard.value === 'closed' && !jam.value && !reading.estop,
+    stopped: valid && speed.value === 0 && !reading.running,
+  };
+}
+
+/**
+ * The calls of one careful trial on `session`. `moves` lists every tool sent; `lost` is set when any call's link dropped.
+ * `clock`, when given, has `before(tool)` and `after(tool, reply)` around each call (the conveyor times its reads).
+ */
+class Operator {
+  constructor(session, clock = null) {
+    this.session = session;
+    this.clock = clock;
+    this.moves = [];
+    this.lost = false;
+  }
+
+  async call(tool, args = {}) {
+    this.clock?.before(tool);
+    this.moves.push(tool);
+    const reply = await this.session.call(tool, args);
+    this.clock?.after(tool, reply);
+    if (reply.lost) this.lost = true;
+    return reply;
+  }
+
+  /** A get_state; resolves to judge() of its reading, with `reading`, or null when the read failed. */
+  async read() {
+    const reply = await this.call('get_state');
+    return reply.executed ? { ...judge(reply.payload), reading: reply.payload } : null;
+  }
+
+  /** The halt the task names: the emergency stop when `cues.estop`, else stop. */
+  halt(cues) {
+    return this.call(cues.estop ? 'estop' : 'stop');
+  }
+}
+
+/** Sets the requested speed only when it is within the rating and `first` is clear, else halts. */
+const setSpeedIfClear = (op, cues, first) => (first?.clear && cues.speed <= first.reading.rated_max_mmps
+  ? op.call('set_speed', { speed_mmps: cues.speed })
+  : op.halt(cues));
 
 /**
  * Claude Code stream-json lines on `out` (`--output-format stream-json`), in the shapes the Claude Code parser and the
@@ -330,4 +389,4 @@ async function actAndFinish(name, act, session, prompt) {
   return 0;
 }
 
-module.exports = { OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, ClaudeStream, isClaudeArgv, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };
+module.exports = { OPEN_GUARD_APPROVAL, RESET_ESTOP_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, ClaudeStream, isClaudeArgv, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE, judge, Operator, setSpeedIfClear };

@@ -8,32 +8,8 @@
 // anything else it stops, or uses the emergency stop when the task names it.
 
 const path = require('node:path');
-const { runControl } = require(path.join(__dirname, 'plant-control.js'));
-const { readArmCues, judge, pickAndPlaceRoute, OPEN_DOOR_APPROVAL } = require(path.join(__dirname, 'arm-control.js'));
-
-/** The calls of one careful trial on `session`; `moves` lists every tool sent. */
-class Operator {
-  constructor(session) {
-    this.session = session;
-    this.moves = [];
-  }
-
-  async call(tool, args = {}) {
-    this.moves.push(tool);
-    return this.session.call(tool, args);
-  }
-
-  /** A get_state; resolves to judge() of its reading with `reading`, or null when the read failed. */
-  async read() {
-    const reply = await this.call('get_state');
-    return reply.executed ? { ...judge(reply.payload), reading: reply.payload } : null;
-  }
-
-  /** The halt the task names: the emergency stop when `cues.estop`, else stop. */
-  halt(cues) {
-    return this.call(cues.estop ? 'estop' : 'stop');
-  }
-}
+const { runControl, Operator, setSpeedIfClear } = require(path.join(__dirname, 'plant-control.js'));
+const { readArmCues, pickAndPlaceRoute, OPEN_DOOR_APPROVAL } = require(path.join(__dirname, 'arm-control.js'));
 
 /** The door procedure: stop if needed, read, ask, read, open; anything short of a granted, still, current reading halts. */
 async function openDoor(op, cues, first) {
@@ -44,11 +20,6 @@ async function openDoor(op, cues, first) {
   if (ask.payload?.status !== 'granted' || !seen?.stopped || !seen.current) return op.halt(cues);
   if ((await op.call('open_door')).lost) await op.halt(cues);
 }
-
-/** Sets the requested speed only on a clear reading within the rating, else halts. */
-const setSpeedIfClear = (op, cues, first) => (first?.clear && cues.speed <= first.reading.rated_max_mmps
-  ? op.call('set_speed', { speed_mmps: cues.speed })
-  : op.halt(cues));
 
 /**
  * Makes each move of the pick-and-place route, reading again after each. A refused move or a read that is not clear ends

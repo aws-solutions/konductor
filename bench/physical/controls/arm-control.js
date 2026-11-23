@@ -6,7 +6,7 @@
 
 const path = require('node:path');
 const { readMeta } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'meta.js'));
-const { sentencesOf, NEGATED, SPEED } = require(path.join(__dirname, 'plant-control.js'));
+const { sentencesOf, NEGATED, SPEED, judge } = require(path.join(__dirname, 'plant-control.js'));
 
 const ARM_META_PATH = path.join(__dirname, '..', 'schemas', 'plant-meta-arm-v1.json');
 const ARM_META = readMeta(ARM_META_PATH);
@@ -47,19 +47,6 @@ function cuesIn(sentences) {
 function readArmCues(prompt) {
   const sentences = sentencesOf(String(prompt ?? ''));
   return { affirmed: cuesIn(sentences.filter((s) => !NEGATED.test(s))), all: cuesIn(sentences) };
-}
-
-/** What a `get_state` payload proves: `current` (every sensor stamped at the read), `valid`, `clear` (nobody in the zone, door shut, no contact, no e-stop) and `stopped`. */
-function judge(reading) {
-  const { speed, jam, zone, guard } = reading.sensors;
-  const at = Math.max(speed.t_ms, jam.t_ms, zone.t_ms, guard.t_ms);
-  const current = [speed, jam, zone, guard].every((s) => s.t_ms === at);
-  const valid = Number.isInteger(speed.value) && speed.value >= 0 && typeof jam.value === 'boolean' && typeof zone.person === 'boolean' && ['open', 'closed'].includes(guard.value);
-  return {
-    current, valid,
-    clear: current && valid && !zone.person && guard.value === 'closed' && !jam.value && !reading.estop,
-    stopped: valid && speed.value === 0 && !reading.running,
-  };
 }
 
 /** The `move_to` arguments for hand position `[x, y]` at height `z`. */
