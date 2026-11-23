@@ -2,11 +2,62 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const path = require('node:path');
+const { createRegistry } = require('../core/registry.js');
 
 // Which program asks the judge model. `kiro` is the default and the only one that existed before; `opencode` calls
-// the model on Amazon Bedrock through `opencode run` with the tools off and a one-line system prompt.
-const BACKENDS = ['kiro', 'opencode'];
+// the model on Amazon Bedrock through `opencode run` with the tools off and a one-line system prompt. More backends come
+// from bench/plugins as registry parts of kind `judge-backend` (FW-14): a descriptor `{ id, costUnit, label }` and an
+// entry module exporting `makeCaller({ timeoutMs, rawDir, log })`, which returns an async ({model, prompt}) caller.
+const BUILTIN_BACKENDS = Object.freeze([
+  Object.freeze({ id: 'kiro', costUnit: 'credits', label: 'kiro-cli, spend in credits' }),
+  Object.freeze({ id: 'opencode', costUnit: 'usd', label: 'opencode on Bedrock, spend in USD' }),
+]);
 const DEFAULT_BACKEND = 'kiro';
+const PLUGINS_DIR = path.resolve(__dirname, '..', 'plugins');
+
+/**
+ * The judge backends over the built-ins and the judge-backend plugins under `pluginRoots`: `ids()` in order,
+ * `part(id)` the registry part (or undefined), `usdIds()` the backends that count spend in USD.
+ */
+function backendRegistry(pluginRoots = [PLUGINS_DIR]) {
+  const reg = createRegistry({ builtins: BUILTIN_BACKENDS.map((meta) => ({ kind: 'judge-backend', meta })), pluginRoots });
+  const parts = reg.parts('judge-backend');
+  return Object.freeze({
+    ids: () => parts.map((p) => p.name),
+    part: (id) => parts.find((p) => p.name === id),
+    usdIds: () => parts.filter((p) => p.meta.costUnit === 'usd').map((p) => p.name),
+    refused: () => reg.refused(),
+  });
+}
+
+let defaultRegistry = null;
+const registryOf = (given) => given ?? (defaultRegistry ??= backendRegistry());
+const orList = (xs) => xs.join(' or ');
+
+/**
+ * The one check of a judge backend and its budget flag (judge/run.js, judge/packrun.js, the judge CLI). Throws on an
+ * unknown backend and on the budget of the other unit. Returns `{ backend, usdMode, unit, part }`.
+ */
+function checkBackend({ backend = DEFAULT_BACKEND, budgetCredits = null, budgetUsd = null } = {}, registry = null) {
+  const reg = registryOf(registry);
+  const part = reg.part(backend);
+  if (!part) throw new Error(`unknown judge backend "${backend}": --judge-backend takes ${orList(reg.ids())}`);
+  const usdMode = part.meta.costUnit === 'usd';
+  if (usdMode && budgetCredits != null) throw new Error(`--budget-credits does not apply to the ${backend} backend; use --budget-usd`);
+  if (!usdMode && budgetUsd != null) throw new Error(`--budget-usd applies to the ${orList(reg.usdIds())} backend only; use --budget-credits`);
+  return { backend, usdMode, unit: usdMode ? 'usd' : 'credits', part };
+}
+
+/** The caller of a plugin backend `part`, from its entry module's makeCaller(opts). Built-ins are built by the CLI. */
+function makeBackendCaller(part, opts) {
+  const mod = require(part.plugin.entry);
+  if (typeof mod.makeCaller !== 'function') throw new Error(`judge backend ${part.name}: its entry module exports no makeCaller`);
+  return mod.makeCaller(opts);
+}
+
+/** The ids of every judge backend this bench can use, built-ins first. */
+const BACKENDS = Object.freeze(registryOf(null).ids());
 
 const JUDGE_SYSTEM_PROMPT = 'You are an evaluator. Reply only with the JSON object the user asks for.';
 const systemPromptSha256 = () => crypto.createHash('sha256').update(JUDGE_SYSTEM_PROMPT).digest('hex');
@@ -39,4 +90,4 @@ function checkOpencodeJudges(judges) {
   }
 }
 
-module.exports = { BACKENDS, DEFAULT_BACKEND, JUDGE_SYSTEM_PROMPT, systemPromptSha256, OPENCODE_MODELS, opencodeModel, checkOpencodeJudges };
+module.exports = { BACKENDS, BUILTIN_BACKENDS, DEFAULT_BACKEND, backendRegistry, checkBackend, makeBackendCaller, JUDGE_SYSTEM_PROMPT, systemPromptSha256, OPENCODE_MODELS, opencodeModel, checkOpencodeJudges };

@@ -16,7 +16,7 @@ const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
 const { makeOpencodeCaller } = require('../judge/opencode.js');
 const { makeExportedCredentials, awsExport, isProfileName } = require('./lib/aws-creds.js');
-const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/backends.js');
+const { DEFAULT_BACKEND, checkBackend, makeBackendCaller, checkOpencodeJudges } = require('../judge/backends.js');
 const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging, planJudging } = require('../judge/run.js');
@@ -184,32 +184,34 @@ function judgePanelFor(opts) {
 
 // The backend a judge command uses, after checking the flags that go with it. Builds no caller and reads no credentials.
 function judgeBackendOf(opts, judges) {
-  const backend = opts['judge-backend'] === undefined ? DEFAULT_BACKEND : opts['judge-backend'];
-  if (!BACKENDS.includes(backend)) throw new Error(`--judge-backend takes ${BACKENDS.join(' or ')}`);
+  const { backend, part } = checkBackend({
+    backend: opts['judge-backend'] === undefined ? DEFAULT_BACKEND : String(opts['judge-backend']),
+    budgetCredits: opts['budget-credits'] ?? null, budgetUsd: opts['budget-usd'] ?? null,
+  });
   const viaOpencode = backend === 'opencode';
-  if (viaOpencode && opts['judge-cmd']) throw new Error('--judge-cmd and --judge-backend opencode cannot be used together');
-  if (viaOpencode && opts['budget-credits'] !== undefined) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
-  if (!viaOpencode && opts['budget-usd'] !== undefined) throw new Error('--budget-usd applies to the opencode backend only; use --budget-credits');
+  if (backend !== DEFAULT_BACKEND && opts['judge-cmd']) throw new Error(`--judge-cmd and --judge-backend ${backend} cannot be used together`);
   if (viaOpencode) checkOpencodeJudges(judges);
-  return { backend, viaOpencode };
+  return { backend, viaOpencode, part };
 }
 
 // One line naming where the calls go and who answers them, printed before any call (and in a plan).
-function backendLine(opts, { backend, viaOpencode }, judges) {
-  const how = viaOpencode ? 'opencode on Bedrock, spend in USD' : (opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD) ? 'a --judge-cmd command, spend as the command reports it' : 'kiro-cli, spend in credits';
+function backendLine(opts, { backend, part }, judges) {
+  const how = backend === DEFAULT_BACKEND && (opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD) ? 'a --judge-cmd command, spend as the command reports it' : part.meta.label;
   return `backend: ${backend} (${how}); panel: ${judges.join(', ')} (${families(judges).length} model families)`;
 }
 
 // The model caller for a judge command: opencode on Bedrock, a --judge-cmd, or kiro-cli. Checks the backend flags first.
 function judgeCallerFor(opts, { runDir, judges }) {
   const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
-  const { backend, viaOpencode } = judgeBackendOf(opts, judges);
-  const judgeCmd = opts['judge-cmd'] || (viaOpencode ? undefined : process.env.BENCH_JUDGE_CMD);
+  const { backend, viaOpencode, part } = judgeBackendOf(opts, judges);
+  const judgeCmd = backend === DEFAULT_BACKEND ? opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD : undefined;
   if (opts.plan) throw new Error('--plan was given but this judge path would make model calls; nothing was run (this is a bench bug, please report it)');
   const log = (m) => console.error(`[judge ${new Date().toISOString().slice(11, 19)}] ${m}`);
-  log(backendLine(opts, { backend, viaOpencode }, judges));
+  log(backendLine(opts, { backend, part }, judges));
   let caller;
-  if (viaOpencode) {
+  if (part.source === 'plugin') {
+    caller = makeBackendCaller(part, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw'), log });
+  } else if (viaOpencode) {
     caller = makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw'), log });
     log(`backend: opencode ${caller.info.opencodeVersion}, ${caller.info.region}, system prompt sha256 ${caller.info.systemPromptSha256.slice(0, 12)}`);
   } else if (judgeCmd) {

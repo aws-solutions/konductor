@@ -16,7 +16,8 @@ const path = require('node:path');
 
 /** The major version of the plugin interface this core accepts. */
 const PLUGIN_API = 1;
-const KINDS = Object.freeze(['harness']);
+// `judge-backend` parts are read by judge/backends.js (FW-14).
+const KINDS = Object.freeze(['harness', 'judge-backend']);
 // Folders the plugin hash skips: caches, not code.
 const HASH_SKIP = new Set(['node_modules', '__pycache__', '.pytest_cache']);
 
