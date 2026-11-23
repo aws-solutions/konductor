@@ -9,15 +9,17 @@ const path = require('node:path');
 const { readTrial, PlantTraceError } = require('./load.js');
 const { buildTrace } = require('./steps.js');
 const { renderPage } = require('./page.js');
+const { framesFor } = require('./frames.js');
 
 const isText = (v) => typeof v === 'string' && v !== '';
 
 /**
  * The page text for the trial dirs `dirs` (one or two): a trial dir holds result.json, stream.jsonl and plant/gateway.jsonl
- * and plant/world.jsonl. Two runs get the arm names as labels, with `(2)` added when both are the same arm.
+ * and plant/world.jsonl. Two runs get the arm names as labels, with `(2)` added when both are the same arm. An arm trial
+ * also gets still frames of its key moments (frames.js); `python` overrides the arm Python that draws them.
  */
-function pageFor(dirs) {
-  const traces = dirs.map((d) => buildTrace(readTrial(path.resolve(d))));
+function pageFor(dirs, { python } = {}) {
+  const traces = dirs.map((d) => ({ ...buildTrace(readTrial(path.resolve(d))), frames: framesFor(path.resolve(d), python === undefined ? {} : { python }) }));
   if (traces.length === 2 && traces[0].label === traces[1].label) traces[1].label += ' (2)';
   return renderPage(traces);
 }
