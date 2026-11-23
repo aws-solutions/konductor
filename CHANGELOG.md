@@ -27,6 +27,10 @@ not per individual commit.
 - The workflow canvas contract and stub read the first-release workflow format and name the slice of a key they do not read yet. The contract also covers stage evidence, trust and one run per workspace; `STUB_WORKFLOW` picks a stub fixture for each answer of a run.
 - `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
   engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
+- `konductor flow run <name> --harness <harness>` runs a workflow. Each stage gets the stage prompt and passes on a
+  valid `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in
+  `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
+  The only harness so far is `fake`, which is test-only: it runs no agent, and the last line of its runs says so.
 
 ### Changed
 

@@ -281,6 +281,18 @@ mod tests {
     }
 
     #[test]
+    fn gitignore_has_the_runs_line_that_flow_run_relies_on() {
+        let root = scratch_dir("gitignore-runs");
+        let result = run_init(&root, false).expect("init must succeed on an empty target");
+        let contents = fs::read_to_string(&result.gitignore_path).unwrap();
+        assert!(
+            contents.lines().any(|line| line == "runs/"),
+            "`flow run` keeps run state in .konductor/runs/, so init must ignore it, got: {contents}"
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
     fn does_not_clobber_existing_user_edited_gitignore() {
         let root = scratch_dir("gitignore-no-clobber");
         let konductor_dir = root.join(config::KONDUCTOR_DIR_NAME);
