@@ -168,6 +168,77 @@ function integrityExcluded(executed, notJudged, judges, rubricIdx) {
   return executed.filter((e) => exclusionClassOfRun(reasons.get(keyOf(e)), e.result) === 'integrity' && !judges.some((j) => typeof rubricIdx.get(`${j}|${keyOf(e)}`)?.score === 'number'));
 }
 
+/**
+ * The rubric part of a cell, for a run set with judges: per judge, the panel median per run (SR-24: fewer than
+ * MIN_JUDGES scores is NO DATA), the judges' disagreement, and for a stamped study the policy figures that count
+ * integrity exclusions as 0. Adds the rubric series to `series` and its warnings to `flags`.
+ * Returns { rubric, rubricPolicyCell } (rubricPolicyCell is null unless `stamped`).
+ */
+function rubricOfCell({ executed, judges, rubricIdx, rawScoreOf, lengthByKey, stamped, notJudged, disagreeScore, byKey, series, flags }) {
+  let rubricPolicyCell = null;
+  const lengthPoints = [];
+  const byJudge = {};
+  const perRun = [];
+  const diffs = [];
+  for (const j of judges) byJudge[j] = { n: 0, mean: null, meanRaw: null, errors: 0 };
+  const scoresByJudge = Object.fromEntries(judges.map((j) => [j, []]));
+  const rawByJudge = Object.fromEntries(judges.map((j) => [j, []]));
+  const perRunRaw = [];
+  let noData = 0;
+  for (const e of executed) {
+    const got = [];
+    const gotRaw = [];
+    for (const j of judges) {
+      const rec = rubricIdx.get(`${j}|${e.armId}|${e.taskId}|${e.replicate}`);
+      if (!rec) continue;
+      if (rec.judgeError || rec.score === null) byJudge[j].errors++;
+      else {
+        const raw = rawScoreOf(rec);
+        got.push(rec.score); scoresByJudge[j].push(rec.score);
+        gotRaw.push(raw); rawByJudge[j].push(raw);
+      }
+    }
+    // SR-24: the run's rubric score is the median of its judges; with fewer than MIN_JUDGES it is NO DATA.
+    const panel = panelScore(got);
+    if (panel !== null) {
+      perRun.push(panel); perRunRaw.push(panelScore(gotRaw));
+      const bytes = lengthByKey?.get(keyOf(e))?.artifactBytes;
+      if (typeof bytes === 'number') lengthPoints.push({ task: e.taskId, x: bytes, y: panel });
+    } else if (got.length) noData++;
+    if (got.length > 1) diffs.push(Math.max(...got) - Math.min(...got));
+  }
+  for (const j of judges) {
+    byJudge[j].n = scoresByJudge[j].length;
+    byJudge[j].mean = avg(scoresByJudge[j]);
+    byJudge[j].meanRaw = avg(rawByJudge[j]);
+  }
+  const rubric = {
+    byJudge,
+    medianOfJudges: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw), noData, minJudges: MIN_JUDGES },
+    disagreement: { n: diffs.length, meanAbsDiff: avg(diffs), runsOver: diffs.filter((d) => d > disagreeScore).length },
+  };
+  series.rubricScore = perRun;
+  if (stamped) {
+    const zeros = integrityExcluded(executed, notJudged, judges, rubricIdx).map(() => 0);
+    const scrubGaps = notJudged.filter((x) => x.reason === 'credsUnscrubbed' && exclusionClassOfRun(x.reason, byKey.get(keyOf(x))?.result) === 'gap');
+    const all = [...perRun, ...zeros];
+    series.rubricScore = all;
+    series.rubricScoreJudged = perRun;
+    series.lengthPoints = lengthPoints;
+    rubricPolicyCell = {
+      rubricAll: { n: all.length, mean: avg(all), meanRaw: avg([...perRunRaw, ...zeros]) },
+      rubricJudged: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw) },
+      excludedCount: zeros.length,
+      scrubGapCount: scrubGaps.length,
+    };
+  }
+  if (noData) flags.push(`${noData} run(s) have rubric scores from fewer than ${MIN_JUDGES} judges: NO DATA, left out of the rubric (SR-24 needs the median of ${MIN_JUDGES})`);
+  if (rubric.disagreement.meanAbsDiff !== null && rubric.disagreement.meanAbsDiff > disagreeScore) {
+    flags.push(`judges disagree: mean difference ${rubric.disagreement.meanAbsDiff.toFixed(2)} > ${disagreeScore} on ${diffs.length} run(s)`);
+  }
+  return { rubric, rubricPolicyCell };
+}
+
 function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, lengthByKey = null, basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
   const charged = basis.charged;
   const executed = entries.filter((e) => e.result.status !== 'budget_skipped');
@@ -214,72 +285,11 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
   series.invariantFraction = withData.map((e) => e.result.invariantTests).filter((h) => h && h.total > 0).map((h) => h.passed / h.total);
   series.completedWithoutHelp = withData.map((e) => e.result.completedWithoutHelp).filter((v) => typeof v === 'boolean').map(Number);
 
-  let rubric = null;
-  let rubricPolicyCell = null;
-  const lengthPoints = [];
   const byKey = new Map(executed.map((e) => [keyOf(e), e]));
   const flags = [];
-  if (judges.length) {
-    const byJudge = {};
-    const perRun = [];
-    const diffs = [];
-    for (const j of judges) byJudge[j] = { n: 0, mean: null, meanRaw: null, errors: 0 };
-    const scoresByJudge = Object.fromEntries(judges.map((j) => [j, []]));
-    const rawByJudge = Object.fromEntries(judges.map((j) => [j, []]));
-    const perRunRaw = [];
-    let noData = 0;
-    for (const e of executed) {
-      const got = [];
-      const gotRaw = [];
-      for (const j of judges) {
-        const rec = rubricIdx.get(`${j}|${e.armId}|${e.taskId}|${e.replicate}`);
-        if (!rec) continue;
-        if (rec.judgeError || rec.score === null) byJudge[j].errors++;
-        else {
-          const raw = rawScoreOf(rec);
-          got.push(rec.score); scoresByJudge[j].push(rec.score);
-          gotRaw.push(raw); rawByJudge[j].push(raw);
-        }
-      }
-      // SR-24: the run's rubric score is the median of its judges; with fewer than MIN_JUDGES it is NO DATA.
-      const panel = panelScore(got);
-      if (panel !== null) {
-        perRun.push(panel); perRunRaw.push(panelScore(gotRaw));
-        const bytes = lengthByKey?.get(keyOf(e))?.artifactBytes;
-        if (typeof bytes === 'number') lengthPoints.push({ task: e.taskId, x: bytes, y: panel });
-      } else if (got.length) noData++;
-      if (got.length > 1) diffs.push(Math.max(...got) - Math.min(...got));
-    }
-    for (const j of judges) {
-      byJudge[j].n = scoresByJudge[j].length;
-      byJudge[j].mean = avg(scoresByJudge[j]);
-      byJudge[j].meanRaw = avg(rawByJudge[j]);
-    }
-    rubric = {
-      byJudge,
-      medianOfJudges: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw), noData, minJudges: MIN_JUDGES },
-      disagreement: { n: diffs.length, meanAbsDiff: avg(diffs), runsOver: diffs.filter((d) => d > disagreeScore).length },
-    };
-    series.rubricScore = perRun;
-    if (stamped) {
-      const zeros = integrityExcluded(executed, notJudged, judges, rubricIdx).map(() => 0);
-      const scrubGaps = notJudged.filter((x) => x.reason === 'credsUnscrubbed' && exclusionClassOfRun(x.reason, byKey.get(keyOf(x))?.result) === 'gap');
-      const all = [...perRun, ...zeros];
-      series.rubricScore = all;
-      series.rubricScoreJudged = perRun;
-      series.lengthPoints = lengthPoints;
-      rubricPolicyCell = {
-        rubricAll: { n: all.length, mean: avg(all), meanRaw: avg([...perRunRaw, ...zeros]) },
-        rubricJudged: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw) },
-        excludedCount: zeros.length,
-        scrubGapCount: scrubGaps.length,
-      };
-    }
-    if (noData) flags.push(`${noData} run(s) have rubric scores from fewer than ${MIN_JUDGES} judges: NO DATA, left out of the rubric (SR-24 needs the median of ${MIN_JUDGES})`);
-    if (rubric.disagreement.meanAbsDiff !== null && rubric.disagreement.meanAbsDiff > disagreeScore) {
-      flags.push(`judges disagree: mean difference ${rubric.disagreement.meanAbsDiff.toFixed(2)} > ${disagreeScore} on ${diffs.length} run(s)`);
-    }
-  }
+  const { rubric, rubricPolicyCell } = judges.length
+    ? rubricOfCell({ executed, judges, rubricIdx, rawScoreOf, lengthByKey, stamped, notJudged, disagreeScore, byKey, series, flags })
+    : { rubric: null, rubricPolicyCell: null };
 
   let pairwise = null;
   if (pairRecords && !isBaseline) {

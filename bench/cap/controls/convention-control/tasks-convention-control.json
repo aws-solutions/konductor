@@ -5,19 +5,19 @@
   "generated_at": "2026-11-12T00:00:00Z",
   "model": "human",
   "skills_version": "convention-control-1",
-  "rules_sha256": "1e6138de3e54bd1e17675a2b4fd57a77802867c3edd70ec271bb1f80cee1d4c4",
+  "rules_sha256": "7e4a75d9a7197bb14f1a392404cc2707c6c67891b8ca4f068c6f80a477bb7eae",
   "scenarios": [
     {
       "id": "convention-control-1-billing-export-status",
       "title": "Status update on the billing export migration",
       "target_section": "Opening Word",
-      "prompt": "Can you write a short status update for the platform team on the billing export migration? My notes: the export job moved to the new queue on 3 November 2026 and has run clean every night since. Three customers are still on the old path: Acme Freight, Brightwell Foods and Cobalt Print. Acme's cutover is booked for 10 November 2026. Brightwell is waiting on a firewall change from their IT team. Cobalt hasn't replied to our two emails. Next check-in is 12 November 2026. Please list the three customers and where each one stands. The update goes into the team channel, so most readers only skim the first lines. Under 200 words.",
+      "prompt": "Can you write a short status update for the platform team on the billing export migration? My notes: the export job moved to the new queue on 3 November 2037 and has run clean every night since. Three customers are still on the old path: Acme Freight, Brightwell Foods and Cobalt Print. Acme's cutover is booked for 10 November 2037. Brightwell is waiting on a firewall change from their IT team. Cobalt hasn't replied to our two emails. Next check-in is 12 November 2037. Please list the three customers and where each one stands. The update goes into the team channel, so most readers only skim the first lines. Under 200 words. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
         "The last line of the note is exactly `-- end of note`, with nothing after it.",
         "Every bulleted list in the note uses `*` as the bullet marker.",
-        "Every date in the note is written as day, three-letter month and four-digit year, such as `03 Nov 2026`.",
+        "Every date in the note is written as day, three-letter month and four-digit year, such as `03 Nov 2037`.",
         "Says the export job has run clean every night since it moved to the new queue.",
         "Gives each customer's standing: Acme Freight has a cutover booked, Brightwell Foods waits on a firewall change, Cobalt Print has not replied to two emails."
       ],
@@ -27,12 +27,12 @@
       "id": "convention-control-2-payments-incident",
       "title": "Incident summary for the ops channel",
       "target_section": "Summary Heading",
-      "prompt": "Write an incident summary I can post in the ops channel. Notes: on 28 October 2026 the payments API started timing out at about 14:10 and recovered at 15:25. Cause: a connection pool limit of 50 was hit after a deploy at 13:55 doubled the calls per request. Fix: rolled back the deploy at 15:05, and the pool limit was raised to 120 on 29 October 2026. About 1,900 checkouts failed. Follow-up: add an alert on pool saturation, due 6 November 2026. The channel is read by support and finance as well, and most of them were not on the incident call, so they need the basics in plain words. Keep it brief.",
+      "prompt": "Write an incident summary I can post in the ops channel. Notes: on 28 October 2037 the payments API started timing out at about 14:10 and recovered at 15:25. Cause: a connection pool limit of 50 was hit after a deploy at 13:55 doubled the calls per request. Fix: rolled back the deploy at 15:05, and the pool limit was raised to 120 on 29 October 2037. About 1,900 checkouts failed. Follow-up: add an alert on pool saturation, due 6 November 2037. The channel is read by support and finance as well, and most of them were not on the incident call, so they need the basics in plain words. Keep it brief. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
         "The last line of the note is exactly `-- end of note`, with nothing after it.",
-        "Every date in the note is written as day, three-letter month and four-digit year, such as `28 Oct 2026`.",
+        "Every date in the note is written as day, three-letter month and four-digit year, such as `28 Oct 2037`.",
         "States the cause: a connection pool limit of 50 was hit after a deploy doubled the calls per request.",
         "Gives the impact and the follow-up: about 1,900 failed checkouts, and an alert on pool saturation as the follow-up."
       ],
@@ -42,13 +42,13 @@
       "id": "convention-control-3-planning-recap",
       "title": "Recap of a planning meeting",
       "target_section": "List Marker",
-      "prompt": "I need a recap of today's planning meeting to send around. Attendees: Dana, Lukas, Priya and Tomasz. Decisions: we ship the search filter on 16 November 2026; the old dashboard is retired on 30 November 2026; Lukas owns the migration script. Open questions: who pays for the extra staging environment, and whether support needs a training session before 16 November 2026. Next meeting: 9 November 2026. Not everyone could join, and the people who missed it will read the recap before they plan their own work for the next two weeks, so it has to stand on its own. Please list the decisions and the open questions.",
+      "prompt": "I need a recap of today's planning meeting to send around. Attendees: Dana, Lukas, Priya and Tomasz. Decisions: we ship the search filter on 16 November 2037; the old dashboard is retired on 30 November 2037; Lukas owns the migration script. Open questions: who pays for the extra staging environment, and whether support needs a training session before 16 November 2037. Next meeting: 9 November 2037. Not everyone could join, and the people who missed it will read the recap before they plan their own work for the next two weeks, so it has to stand on its own. Please list the decisions and the open questions. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
         "The last line of the note is exactly `-- end of note`, with nothing after it.",
         "Every bulleted list in the note uses `*` as the bullet marker.",
-        "Every date in the note is written as day, three-letter month and four-digit year, such as `16 Nov 2026`.",
+        "Every date in the note is written as day, three-letter month and four-digit year, such as `16 Nov 2037`.",
         "Records the three decisions (the search filter ship date, the old dashboard retirement, Lukas owning the migration script) and the two open questions (staging environment cost, support training)."
       ],
       "why_skill_matters": "Arbitrary team conventions; the recap is equally useful without them."
@@ -57,7 +57,7 @@
       "id": "convention-control-4-oncall-handoff",
       "title": "Handoff note for the on-call cover",
       "target_section": "Closing Line",
-      "prompt": "I'm out from tomorrow and Mei is covering the on-call. Write a handoff note for her. Things to know: the nightly reconcile job sometimes stalls around 02:00 and just needs a restart from the jobs console; the vendor's sandbox is down until 11 November 2026 so nobody should test against it; the certificate for the reports host expires on 20 November 2026 and the renewal ticket is OPS-4471; the pager rotation swaps on 13 November 2026. Mei knows the systems well but has not been on this rotation before, and she will read the note on her phone on the first morning. List what she should watch for.",
+      "prompt": "I'm out from tomorrow and Mei is covering the on-call. Write a handoff note for her. Things to know: the nightly reconcile job sometimes stalls around 02:00 and just needs a restart from the jobs console; the vendor's sandbox is down until 11 November 2037 so nobody should test against it; the certificate for the reports host expires on 20 November 2037 and the renewal ticket is OPS-4471; the pager rotation swaps on 13 November 2037. Mei knows the systems well but has not been on this rotation before, and she will read the note on her phone on the first morning. List what she should watch for. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
@@ -72,7 +72,7 @@
       "id": "convention-control-5-mobile-release",
       "title": "Release summary for the mobile team",
       "target_section": "Summary Heading",
-      "prompt": "Draft a short release summary for the mobile team. This release, shipping on 17 November 2026, has offline mode for saved routes, a fix for the crash when rotating the map, and a new setting to turn off haptic feedback. Known issue: Android 9 devices may show a blank settings screen. The summary goes to the mobile engineers, the support leads and the two product managers. Most of them will read it only once, on the morning of the release, so the changes and the known issue should be easy to find. Support also wants to know what to tell users who ask about the blank screen. Please list the changes and the known issue.",
+      "prompt": "Draft a short release summary for the mobile team. This release, shipping on 17 November 2037, has offline mode for saved routes, a fix for the crash when rotating the map, and a new setting to turn off haptic feedback. Known issue: Android 9 devices may show a blank settings screen. The summary goes to the mobile engineers, the support leads and the two product managers. Most of them will read it only once, on the morning of the release, so the changes and the known issue should be easy to find. Support also wants to know what to tell users who ask about the blank screen. Please list the changes and the known issue. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
@@ -86,12 +86,12 @@
       "id": "convention-control-6-pipeline-vendor-decision",
       "title": "Decision note on the data pipeline vendor",
       "target_section": "Date Style",
-      "prompt": "Write up a decision note: we're choosing Harbor Cloud over Basalt Hosting for the new data pipeline. Reasons: Harbor is 18% cheaper at our volume, has a Frankfurt region which we need, and their support answered in under 2 hours during the trial; Basalt had better docs. The contract with Harbor must be signed by 14 November 2026 and the trial account closes on 21 November 2026. Risk: Harbor has had two outages this year. The note goes to the data engineering leads and to finance, who were not part of the trial, so they need the decision and the reasons without the back and forth that led to it.",
+      "prompt": "Write up a decision note: we're choosing Harbor Cloud over Basalt Hosting for the new data pipeline. Reasons: Harbor is 18% cheaper at our volume, has a Frankfurt region which we need, and their support answered in under 2 hours during the trial; Basalt had better docs. The contract with Harbor must be signed by 14 November 2037 and the trial account closes on 21 November 2037. Risk: Harbor has had two outages this year. The note goes to the data engineering leads and to finance, who were not part of the trial, so they need the decision and the reasons without the back and forth that led to it. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
         "The last line of the note is exactly `-- end of note`, with nothing after it.",
-        "Every date in the note is written as day, three-letter month and four-digit year, such as `14 Nov 2026`.",
+        "Every date in the note is written as day, three-letter month and four-digit year, such as `14 Nov 2037`.",
         "States the decision to choose Harbor Cloud over Basalt Hosting.",
         "Gives the reasons (18% cheaper, a Frankfurt region, support answering in under 2 hours) and the risk of two outages this year."
       ],
@@ -101,13 +101,13 @@
       "id": "convention-control-7-new-engineer-first-week",
       "title": "First-week note for a new engineer",
       "target_section": "Opening Word",
-      "prompt": "A new engineer, Sofia, starts on 9 November 2026. Write her a first-week note. Her laptop arrives on 6 November 2026, her mentor is Arjun, and standup is at 09:30 every day. She should get access to the repo and the staging account in her first two days, read the architecture overview, and ship a small bug fix by Friday 13 November 2026. Sofia joins from another company and has not used our tools before, so keep the note practical. Arjun will walk her through the first day, and she can ask him anything. List what she should do and by when.",
+      "prompt": "A new engineer, Sofia, starts on 9 November 2037. Write her a first-week note. Her laptop arrives on 6 November 2037, her mentor is Arjun, and standup is at 09:30 every day. She should get access to the repo and the staging account in her first two days, read the architecture overview, and ship a small bug fix by Friday 13 November 2037. Sofia joins from another company and has not used our tools before, so keep the note practical. Arjun will walk her through the first day, and she can ask him anything. List what she should do and by when. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
         "The last line of the note is exactly `-- end of note`, with nothing after it.",
         "Every bulleted list in the note uses `*` as the bullet marker.",
-        "Every date in the note is written as day, three-letter month and four-digit year, such as `09 Nov 2026`.",
+        "Every date in the note is written as day, three-letter month and four-digit year, such as `09 Nov 2037`.",
         "Names her mentor Arjun and the daily standup at 09:30, and covers repo and staging access, the architecture overview and a small bug fix by the end of the week."
       ],
       "why_skill_matters": "Arbitrary team conventions; the first-week note is equally useful without them."
@@ -116,12 +116,12 @@
       "id": "convention-control-8-dental-escalation",
       "title": "Support escalation summary for an account manager",
       "target_section": "Closing Line",
-      "prompt": "Summarize this support escalation for the account manager. Customer: Larkspur Dental, with us since March 2024. They reported on 2 November 2026 that invoice exports are missing line items. We confirmed the bug on 4 November 2026 and shipped a fix on 6 November 2026, but 3 of their past exports still need to be regenerated. They asked for a credit of 250 euros, and I think a credit is fair. The account manager has a call with the customer next week and wants to know where things stand before then, without reading the whole ticket thread. Please keep it short.",
+      "prompt": "Summarize this support escalation for the account manager. Customer: Larkspur Dental, with us since March 2024. They reported on 2 November 2037 that invoice exports are missing line items. We confirmed the bug on 4 November 2037 and shipped a fix on 6 November 2037, but 3 of their past exports still need to be regenerated. They asked for a credit of 250 euros, and I think a credit is fair. The account manager has a call with the customer next week and wants to know where things stand before then, without reading the whole ticket thread. Please keep it short. Take the dates and facts in this request as given: they are correct, so use them as they are, with no placeholders.",
       "rubric": [
         "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
         "The note has a short summary under a level-2 heading named exactly `In Short`.",
         "The last line of the note is exactly `-- end of note`, with nothing after it.",
-        "Every date in the note is written as day, three-letter month and four-digit year, such as `04 Nov 2026`.",
+        "Every date in the note is written as day, three-letter month and four-digit year, such as `04 Nov 2037`.",
         "States the problem, invoice exports missing line items, and that a fix has shipped.",
         "Says that three past exports still need regenerating and that the customer asked for a credit of 250 euros."
       ],

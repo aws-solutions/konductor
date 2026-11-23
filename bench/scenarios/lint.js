@@ -11,6 +11,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadTaskFiles } = require('./files.js');
+const { judgedRubric } = require('../runner/lib/expert-rubric.js');
 const { fileFindings } = require('./lint-files.js');
 const { DEFAULT_WEIGHTS } = require('../report/scores.js');
 
@@ -130,9 +131,20 @@ function rubricAnchorFindings(task) {
     .map((r) => ({ rule: 'rubric-anchor', where: `rubric#${r.id}`, detail: `rubric item "${r.id}" has no ${ANCHORS.join(' / ')} anchors in its criterion` }));
 }
 
+// A judged task needs at least MIN_CRITERIA criteria the judge scores (FW-31, DEBT D-225): with one or two, one judge line
+// decides the task. The count is the rubric the judge sees, so each expertKey item counts and its placeholder does not.
+const MIN_CRITERIA = 3;
+function rubricCountFindings(task) {
+  if (!isV3(task) || (!(task.rubric ?? []).length && !(task.expertKey?.items ?? []).length)) return [];
+  const n = judgedRubric(task.rubric ?? [], task.expertKey).length;
+  return n < MIN_CRITERIA
+    ? [{ rule: 'rubric-count', where: 'rubric', detail: `the judges score ${n} criterion${n === 1 ? '' : 's'}; a judged task needs ${MIN_CRITERIA} or more, so no single line decides it` }]
+    : [];
+}
+
 /** All findings of one task that need only its JSON: [{ taskId, rule, detail }]. */
 function lintTask(task, matchers) {
-  return [...promptFindings(task, matchers), ...authorshipFindings(task), ...judgeShareFindings(task), ...rubricAnchorFindings(task)].map((f) => ({ taskId: task.id, ...f }));
+  return [...promptFindings(task, matchers), ...authorshipFindings(task), ...judgeShareFindings(task), ...rubricAnchorFindings(task), ...rubricCountFindings(task)].map((f) => ({ taskId: task.id, ...f }));
 }
 
 const findingKey = (f) => `${f.taskId}|${f.rule}|${f.where ?? ''}`;
@@ -161,4 +173,4 @@ function lintDir(dir, catalog, { baseline = {} } = {}) {
   return { tasks: items.length, findings, stale };
 }
 
-module.exports = { lintTask, lintDir, readBaseline, judgeShare, findingKey, BASELINE_FILE, nameMatchers, catalogOfScan, promptFindings, authorshipFindings, METHOD_ACRONYMS, METHOD_PHRASES };
+module.exports = { MIN_CRITERIA, lintTask, lintDir, readBaseline, judgeShare, findingKey, BASELINE_FILE, nameMatchers, catalogOfScan, promptFindings, authorshipFindings, METHOD_ACRONYMS, METHOD_PHRASES };

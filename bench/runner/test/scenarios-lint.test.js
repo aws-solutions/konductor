@@ -138,7 +138,7 @@ test('the CLI exits 1 with the findings, 0 when clean, and 2 without --base or a
 const { judgeShare } = require('../../scenarios/lint.js');
 
 test('judge-share: the judges carry at most 30% of a v3 task; a task without a tests check or a substance check carries more', () => {
-  const rubric = [{ id: 'r1', criterion: 'c. Fail: x. Partial: y. Pass: z.' }];
+  const rubric = ['r1', 'r2', 'r3'].map((id) => ({ id, criterion: 'c. Fail: x. Partial: y. Pass: z.' }));
   const t = (checks) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, rubric, checks });
   assert.equal(judgeShare(t([{ type: 'tests' }, { type: 'cmd' }])), 0.3);
   assert.deepEqual(rules(t([{ type: 'tests' }, { type: 'cmd' }])), []);
@@ -149,11 +149,27 @@ test('judge-share: the judges carry at most 30% of a v3 task; a task without a t
 });
 
 test('rubric-anchor: a judged rubric item of a v3 task needs Fail / Partial / Pass anchors; the expert-key placeholder and old tasks are exempt (D-117)', () => {
-  const v3 = (rubric) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, checks: [{ type: 'tests' }, { type: 'cmd' }], rubric });
+  // Two anchored items keep the rubric at 3 criteria, so only the anchor rule can fire (rubric-count, FW-31).
+  const ok2 = ['b', 'c'].map((id) => ({ id, criterion: 'Clear. Fail: none. Partial: some. Pass: all.' }));
+  const v3 = (rubric) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, checks: [{ type: 'tests' }, { type: 'cmd' }], rubric: [...rubric, ...ok2] });
   assert.deepEqual(rules(v3([{ id: 'a', criterion: 'Clear. Fail: none. Partial: some. Pass: all.' }])), []);
   assert.deepEqual(rules(v3([{ id: 'a', criterion: 'Clear. Fail: none. Pass: all.' }])), ['rubric-anchor']);
   assert.deepEqual(rules(v3([{ id: 'expert-key', criterion: 'placeholder' }])), []);
   assert.deepEqual(rules({ prompt: 'ok', rubric: [{ id: 'a', criterion: 'no anchors' }] }), []);
+});
+
+test('rubric-count: a judged v3 task needs 3 or more criteria the judge scores; expertKey items count, the placeholder does not (FW-31, D-225)', () => {
+  const item = (id) => ({ id, criterion: `${id}. Fail: x. Partial: y. Pass: z.` });
+  const v3 = (o) => ({ prompt: 'ok', phase: 'bugfix', authorship: ORIGINAL, checks: [{ type: 'tests' }, { type: 'cmd' }], ...o });
+  assert.deepEqual(rules(v3({ rubric: [item('a')] })), ['rubric-count'], 'a 1-criterion task fails');
+  assert.deepEqual(rules(v3({ rubric: [item('a'), item('b')] })), ['rubric-count']);
+  assert.deepEqual(rules(v3({ rubric: [item('a'), item('b'), item('c')] })), []);
+  const key = { items: [{ id: 'k1', text: 'one' }, { id: 'k2', text: 'two' }] };
+  assert.deepEqual(rules(v3({ rubric: [item('a'), { id: 'expert-key', criterion: 'placeholder' }], expertKey: key })), [], '1 own + 2 expert items');
+  assert.deepEqual(rules(v3({ rubric: [{ id: 'expert-key', criterion: 'placeholder' }], expertKey: { items: [key.items[0]] } })), ['rubric-count']);
+  assert.deepEqual(rules(v3({ checks: [{ type: 'tests' }] })), [], 'no rubric, not judged');
+  assert.deepEqual(rules({ prompt: 'ok', rubric: [{ id: 'a', criterion: 'old' }] }), [], 'an old task is exempt');
+  assert.match(lintTask({ id: 't', ...v3({ rubric: [item('a')] }) }, matchers)[0].detail, /1 criterion/);
 });
 
 function filePack() {
@@ -243,7 +259,7 @@ test('a baseline entry marks a finding known; an entry that no longer matches is
 test('the repository lint baseline is shrink-only data: every entry names a DEBT row or a review', () => {
   const { known } = JSON.parse(fs.readFileSync(path.join(__dirname, '../../scenarios/lint-baseline.json'), 'utf8'));
   for (const [k, why] of Object.entries(known)) {
-    assert.match(k, /^[a-z0-9-]+\|(key-negation|bare-test-dir|solution-link|fixture-tells|claim-negation|rubric-anchor|judge-share|names-unit|method-term|no-ask|authorship)\|/, k);
+    assert.match(k, /^[a-z0-9-]+\|(key-negation|bare-test-dir|solution-link|fixture-tells|claim-negation|rubric-anchor|rubric-count|judge-share|names-unit|method-term|no-ask|authorship)\|/, k);
     assert.match(why, /^D-\d+|^not a defect: /, k);
   }
 });

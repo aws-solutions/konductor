@@ -250,6 +250,17 @@ function insensitiveChecks(entry) {
 const loadsOf = (r) => [...(r.sopsLoaded || []).map((s) => `sop:${s}`), ...(r.skillsLoaded || []).map((s) => (typeof s === 'string' ? s : s?.name ?? '?'))];
 
 /** Rows for the runs under `dirs`, in task and replicate order. */
+// A task and arm whose code scores spread more than this (sample sd, points of 100) over its replicates is noisy (FW-35):
+// on the forced-skills pilot, t8-dec-deploy-strategy ran at sd 29 to 58 on one grader line.
+const NOISY_SD = 20;
+
+/** The sample standard deviation of `xs`, or null with fewer than two values. */
+function sampleSd(xs) {
+  if (xs.length < 2) return null;
+  const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+  return Math.sqrt(xs.reduce((a, x) => a + (x - mean) ** 2, 0) / (xs.length - 1));
+}
+
 function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
   const run = loadRuns(dirs);
   const pack = loadPack(packDir);
@@ -261,7 +272,7 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       const entry = pack.tasks.get(e.taskId) ?? null;
       rows.push({
         task: e.taskId, batch: batchOf(e.taskId), arm: e.armId, rep: e.replicate, status: 'budget_skipped', score: null, sec: null, credits: null,
-        loads: [], flags: { budget_skipped: e.result.error || 'budget reached' }, skipped: true,
+        sd: null, loads: [], flags: { budget_skipped: e.result.error || 'budget reached' }, skipped: true,
         handEdited: entry?.task.handEdited ? String(entry.task.handEdited.family ?? 'yes') : entry ? 'no' : 'n/a',
         singleFamily: entry?.task.authorship?.singleFamily ? 'single-family-authored' : '-', knownTask: Boolean(entry),
       });
@@ -275,6 +286,7 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
     // A check index whose pass/fail differs between replicates of the same task and arm.
     const flips = new Set();
     for (const e of group) (e.result.checks || []).forEach((c, i) => { if (group.some((o) => (o.result.checks || [])[i] && o.result.checks[i].passed !== c.passed)) flips.add(i); });
+    const sd = sampleSd(group.map((e) => (cancelled(e.result) ? null : codeScore(e.result))).filter(finite));
     for (const e of group) {
       const r = e.result;
       const entry = pack.tasks.get(e.taskId) ?? null;
@@ -303,6 +315,7 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       if (finite(share) && share < SECOND_FAMILY_SHARE && singleFamily === '-') flags['second-family'] = `${Math.round(share * 100)}% of ${batch} from a second family`;
       const noisy = [...flips].map((i) => `check ${i + 1} differs between replicates`);
       if (entry) for (const [i, want] of insensitiveChecks(entry)) { const c = (r.checks || [])[i]; if (c && c.passed !== want) noisy.push(`check ${i + 1} flipped against the dry run`); }
+      if (sd !== null && sd > NOISY_SD) noisy.push(`within-task sd ${sd.toFixed(1)} over ${NOISY_SD}`);
       if (noisy.length) flags.noisy = noisy.join('; ');
       const fix = entry ? fixReasons(entry.task) : [];
       if (fix.length) flags.fix = fix.join('; ');
@@ -311,7 +324,7 @@ function pilotRows(dirs, { packDir = PACK_DIR } = {}) {
       const he = entry?.task.handEdited;
       const handEdited = he ? String(he.family ?? 'yes') : entry ? 'no' : 'n/a';
       rows.push({
-        task: e.taskId, batch, arm: e.armId, rep: e.replicate, status: r.status ?? null, score,
+        task: e.taskId, batch, arm: e.armId, rep: e.replicate, status: r.status ?? null, score, sd,
         sec: finite(r.wallClockMs) ? r.wallClockMs / 1000 : null, credits: finite(r.creditsCharged) ? r.creditsCharged : finite(r.credits) ? r.credits : null,
         loads: loadsOf(r), flags, handEdited, singleFamily, knownTask: Boolean(entry),
       });
@@ -375,10 +388,10 @@ function renderBatches(summary) {
 }
 
 function renderTable(rows) {
-  const L = ['| task | arm | rep | handEdited | singleFamily | score | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
+  const L = ['| task | arm | rep | handEdited | singleFamily | score | sd | time s | credits | flags | loads |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
   for (const r of rows) {
     const flags = Object.entries(r.flags).map(([k, v]) => `**${k}** (${v})`).join('<br>') || '-';
-    L.push(`| ${r.task}${r.knownTask ? '' : ' (not in the pack)'} | ${r.arm} | ${r.rep} | ${r.handEdited} | ${r.singleFamily} | ${fmt(r.score)} | ${fmt(r.sec)} | ${fmt(r.credits, 2)} | ${flags.replace(/\|/g, '\\|')} | ${r.loads.join(', ') || '-'} |`);
+    L.push(`| ${r.task}${r.knownTask ? '' : ' (not in the pack)'} | ${r.arm} | ${r.rep} | ${r.handEdited} | ${r.singleFamily} | ${fmt(r.score)} | ${fmt(r.sd, 1)} | ${fmt(r.sec)} | ${fmt(r.credits, 2)} | ${flags.replace(/\|/g, '\\|')} | ${r.loads.join(', ') || '-'} |`);
   }
   const total = rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0);
   const count = (k) => rows.filter((r) => r.flags[k]).length;
@@ -404,4 +417,4 @@ function cmdPilotTable(opts) {
   process.stdout.write(opts.json ? `${JSON.stringify(rows, null, 2)}\n` : renderTable(rows));
 }
 
-module.exports = { pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, unpaired, pairedRows, throttled, FLAG_NAMES };
+module.exports = { NOISY_SD, sampleSd, pilotRows, renderTable, cmdPilotTable, loadPack, secondFamilyShare, codeScore, batchSummary, unpaired, pairedRows, throttled, FLAG_NAMES };
