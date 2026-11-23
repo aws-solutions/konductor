@@ -252,7 +252,8 @@ function rewriteUnit({ kind, name, repo, rewriteFile, fromFile, out, paid, dryRu
   const problems = baselineProblems(from);
   if (problems.length) throw new Error(`${fromFile} is not a valid baseline: ${problems.join('; ')}`);
   if (from.unit_sha256 !== unit.sha256) throw new Error(`${fromFile} was written for another version of ${unit.id}; rewrite from a fresh baseline`);
-  if (path.resolve(out) === path.resolve(fromFile)) throw new Error('--out must be a new file: the baseline it comes from is never changed');
+  // A dry run reads a v2 where it is (a redo moves it aside only when it pays); a write never overwrites its source.
+  if (!dryRun && path.resolve(out) === path.resolve(fromFile)) throw new Error('--out must be a new file: the baseline it comes from is never changed');
   if (fs.existsSync(out) && JSON.parse(fs.readFileSync(out, 'utf8')).source?.signedOffBy) throw new Error(`${out} is already signed off; move it aside to write a new baseline`);
   const byId = new Map(from.batches.flatMap((b) => b.tasks.map((t) => [t.id, { batch: b.batch, task: t }])));
   for (const t of briefs) {

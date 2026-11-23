@@ -246,7 +246,7 @@ test('a rewrite: a new baseline version with the named tasks written again and e
     const d = JSON.parse(fs.readFileSync(drop.file, 'utf8'));
     assert.deepEqual(d.source.dropped.map((x) => x.id), ['t14', 't12']);
     assert.equal(d.batches[1].tasks.length, 6);
-    assert.throws(() => rewriteUnit({ ...rw, out: v1, dryRun: true }), /new file/);
+    assert.throws(() => rewriteUnit({ ...rw, out: v1 }), /new file/);
     fs.appendFileSync(path.join(r.repo, 'context', 'k-rules.md'), 'One more line.\n');
     assert.throws(() => rewriteUnit({ ...rw, dryRun: true }), /another version/);
   } finally { r.cleanup(); }
