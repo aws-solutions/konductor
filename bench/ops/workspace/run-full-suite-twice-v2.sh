@@ -44,6 +44,8 @@ say() { echo "[full-suite $(date -u +%H:%M:%S)] $*" | tee -a "$OUT/run.log"; }
 die() { say "STOP: $*"; echo "STOP: $*" > "$OUT/summary.txt"; exit 2; }
 
 # ---- the arm venv: without it the arm tests cannot run, so the reading would say nothing about the arm
+"$ARM_PYTHON" -c pass 2>/dev/null || [ ! -f "$(dirname "$(dirname "$ARM_PYTHON")")/pyvenv.cfg" ] \
+  || die "$ARM_PYTHON does not run (its base Python is gone?); rebuild it: bash $KONDUCTOR_WS/scripts/rebuild-arm-venv.sh --venv $(dirname "$(dirname "$ARM_PYTHON")")"
 LD_LIBRARY_PATH="$ARM_FFI" "$ARM_PYTHON" -c 'import mujoco, cedarpy' 2>/dev/null \
   || die "$ARM_PYTHON cannot import mujoco and cedarpy (LD_LIBRARY_PATH=$ARM_FFI); set ARM_PYTHON to the arm venv's python"
 [ -d "$PLANT_CS/release/tasks" ] || die "no counted set at $PLANT_CS (it must hold release/tasks): set PLANT_CS, or the live plant-wave test skips"

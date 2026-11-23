@@ -66,6 +66,9 @@ if [ -z "${PLANT_VENV:-}" ]; then
   VENV=${BENCH_ARM_PYTHON:-}
   [ -n "$VENV" ] || { [ -x "$CHECKOUT/.venv/bin/python" ] && VENV=$CHECKOUT/.venv/bin/python; } || VENV=$(command -v python3.12 || true)
 else VENV=$PLANT_VENV; fi
+if [ -n "${VENV:-}" ] && [ -L "$VENV" ] && [ ! -e "$VENV" ] && [ -f "$(dirname "$(dirname "$VENV")")/pyvenv.cfg" ]; then
+  stop "PLANT_VENV ($VENV) does not run: its base Python is gone. Rebuild the venv: bash bench/ops/workspace/rebuild-arm-venv.sh --venv $(dirname "$(dirname "$VENV")")"
+fi
 [ -n "${VENV:-}" ] && [ -x "$VENV" ] || stop "set PLANT_VENV to a python 3.12 with cedarpy (none found)"
 case "$VENV" in */shims/*) stop "PLANT_VENV is a version-manager shim ($VENV); use the real binary under .../installs/python/3.12.x/bin or a venv" ;; esac
 "$VENV" -c 'import sys; sys.exit(0 if sys.version_info[:2]==(3,12) else 1)' || stop "PLANT_VENV ($VENV) is not Python 3.12"

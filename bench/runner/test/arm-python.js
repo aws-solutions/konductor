@@ -15,6 +15,10 @@ const HAS_ARM = imports('mujoco, cedarpy');
 const HAS_CEDAR = HAS_ARM || imports('cedarpy');
 
 if (process.env.BENCH_REQUIRE_ARM === '1' && !HAS_ARM) {
+  // A venv python that is a link to a base Python that is gone does not run at all: name the rebuild, not a pip line.
+  const runs = fs.existsSync(PYTHON) && !spawnSync(PYTHON, ['-c', 'pass']).error;
+  const hint = runs ? null : require('../lib/python-pin.js').rebuildHint(PYTHON);
+  if (hint) throw new Error(`BENCH_REQUIRE_ARM=1 but ${PYTHON} does not run (its base Python is gone?). Rebuild its venv: ${hint}`);
   throw new Error(`BENCH_REQUIRE_ARM=1 but ${PYTHON} cannot import mujoco and cedarpy; set BENCH_ARM_PYTHON (and LD_LIBRARY_PATH for libffi)`);
 }
 

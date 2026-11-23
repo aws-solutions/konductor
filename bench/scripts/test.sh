@@ -28,6 +28,12 @@ trap 'rm -rf "$LOGS"' EXIT
 
 ARM_PY=${BENCH_ARM_PYTHON:-$R/.venv/bin/python}
 ARM=0
+# A venv python that does not start (its base Python was removed, as one Kiro Crew update did) is a broken venv, not
+# a missing one: stop with the rebuild command instead of skipping or asking for wheels.
+if { [ -L "$ARM_PY" ] || [ -e "$ARM_PY" ]; } && ! "$ARM_PY" -c pass 2>/dev/null && [ -f "$(dirname "$(dirname "$ARM_PY")")/pyvenv.cfg" ]; then
+  echo "# $ARM_PY does not run (its base Python is gone?). Rebuild its venv: bash bench/ops/workspace/rebuild-arm-venv.sh --venv $(dirname "$(dirname "$ARM_PY")")" >&2
+  exit 2
+fi
 if [ -x "$ARM_PY" ] && "$ARM_PY" -c 'import mujoco, cedarpy' 2>/dev/null; then
   ARM=1
   export BENCH_ARM_PYTHON=$ARM_PY BENCH_REQUIRE_ARM=1

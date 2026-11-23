@@ -52,6 +52,7 @@ is the docs owner's page and points here.
 | `lite-helper.js` | Free helper for the LITE run and judge scripts. Reads files only. |
 | `lite-rejudge-estimate.js` | Free cost estimate for `run-lite-rejudge.sh --plan`. |
 | `lite-rejudge-gap.js` | The judged gap per task, first pass against the re-judge. Free. |
+| `rebuild-arm-venv.sh` | Checks (`--check`) or rebuilds the arm venv on a Python 3.12 outside the Kiro Crew runtime, with the pinned wheels; keeps the old one as `.broken`. Free; downloads wheels. |
 | `regate-open-set.sh` | The full conveyor open-set re-gate in one command. |
 | `run-after-tonight.sh` | Second unattended command of one night (2026-11-21). |
 | `run-all-in-order.sh` | Runs several owner commands one after another. |
@@ -97,6 +98,7 @@ is the docs owner's page and points here.
 | `test-arm-signed-release.sh` | Superseded by `test-arm-signed-release-v2.sh`. |
 | `test-lite-helper-skipped.sh` | Stub test of `lite-helper.js` (D-160). Free. |
 | `test-lite-v2-fill.sh` | Test of the LITE v2 budget and fill rules. Free. |
+| `test-rebuild-arm-venv.sh` | Stub test of `rebuild-arm-venv.sh` with a fake Python; no download. Free. |
 | `test-run-cc-plant-check-v2.sh` | Paid-path test of `run-cc-plant-check-v2.sh`. Free. |
 | `test-run-full-suite-twice-v2.sh` | Stub test of `run-full-suite-twice-v2.sh`. Free. |
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |

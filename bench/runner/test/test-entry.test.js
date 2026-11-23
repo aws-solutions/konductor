@@ -103,3 +103,14 @@ test('with KONDUCTOR_WS set, a plain workspace copy of a bench/ops script fails 
   assert.equal(good.status, 0, good.stdout + good.stderr);
   assert.match(good.stdout, /^ok 1 - ops: /m);
 });
+
+test('an arm venv whose base Python is gone stops the run with the rebuild command, not a skip', (t) => {
+  const { root } = fakeRepo(t, { nodeBody: NODE_OK, pyBody: PY_OK });
+  const venv = path.join(root, 'armvenv');
+  fs.mkdirSync(path.join(venv, 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(venv, 'pyvenv.cfg'), 'home = /gone\n');
+  fs.symlinkSync(path.join(root, 'gone', 'python3.12'), path.join(venv, 'bin', 'python'));
+  const r = run(root, { BENCH_ARM_PYTHON: path.join(venv, 'bin', 'python') });
+  assert.equal(r.status, 2, r.stdout + r.stderr);
+  assert.ok(r.stderr.includes(`Rebuild its venv: bash bench/ops/workspace/rebuild-arm-venv.sh --venv ${venv}`), r.stderr);
+});

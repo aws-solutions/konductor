@@ -77,6 +77,18 @@ function linkPython(scratchDir, executable, version) {
   return dir;
 }
 
+/**
+ * The command that rebuilds the venv of interpreter `python` (`<venv>/bin/python*`), run from the repo root; null when
+ * `python` is not in a venv's bin folder.
+ */
+function rebuildHint(python) {
+  const bin = path.dirname(python);
+  if (path.basename(bin) !== 'bin' || !/^python/.test(path.basename(python))) return null;
+  // A venv has pyvenv.cfg beside bin/; /usr/bin/python3 has none and is not ours to rebuild.
+  if (!fs.existsSync(path.join(path.dirname(bin), 'pyvenv.cfg'))) return null;
+  return `bash bench/ops/workspace/rebuild-arm-venv.sh --venv ${path.dirname(bin)}`;
+}
+
 /** The modules each plant kind's gateway imports, and the exact wheels the arm test ran on (one list, DEBT D-179). */
 const GATEWAY_MODULES = Object.freeze({ 'conveyor-sim': ['cedarpy'], 'arm-sim': ['cedarpy', 'mujoco', 'numpy'] });
 const GATEWAY_WHEELS = Object.freeze(require('../../physical/gateway-wheels.json'));
@@ -90,6 +102,11 @@ function checkGatewayModules(python, plantTasks, env) {
   const mods = [...new Set(plantTasks.flatMap((t) => GATEWAY_MODULES[t.environment.kind] ?? ['cedarpy']))];
   const r = spawnSync(python, ['-I', '-c', `import ${mods.join(', ')}`], { encoding: 'utf8', env, timeout: 60000 });
   if (r.status === 0) return;
+  // The interpreter itself does not start (a venv whose base Python was removed): installing wheels cannot help.
+  if (r.error?.code === 'ENOENT' || r.error?.code === 'EACCES') {
+    const hint = rebuildHint(python);
+    throw new Error(`refused: the plant Python ${python} does not run (${r.error.code}). ${hint ? `Rebuild its venv: ${hint}` : 'Pass --plant-python a Python 3.12 venv that runs'}`);
+  }
   const why = (r.stderr || r.error?.message || `exit ${r.status}`).trim().split('\n').at(-1);
   throw new Error(`refused: the plant Python ${python} cannot import ${mods.join(', ')} (${why}). Install them into it: pip install ${mods.map((m) => `${m}==${GATEWAY_WHEELS[m]}`).join(' ')}, then pass --plant-python <that venv>/bin/python`);
 }
@@ -122,4 +139,4 @@ function pinPython({ tasks, scratchDir, benchDir, flag = null, plantPython = nul
   }
 }
 
-module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, GATEWAY_WHEELS, DEFAULT_WANT };
+module.exports = { pinPython, resolvePython, needsPython, linkPython, wantedVersion, probe, checkGatewayModules, rebuildHint, GATEWAY_WHEELS, DEFAULT_WANT };

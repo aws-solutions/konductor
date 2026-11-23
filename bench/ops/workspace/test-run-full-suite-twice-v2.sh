@@ -40,6 +40,8 @@ rm -rf "$T/leak"/*
 check "a run that prints no totals is broken (node and Python, both runs: 4)" 1 "$(r 4)" "$(stub crash 'echo "Error: Cannot find module"; exit 1')"
 CASE_TIMEOUT=1 check "a run past its timeout is broken (both runs: 2)" 1 "$(r 2)" "$(stub slow "sleep 5; $TAP_OK")"
 # v2
+mkdir -p "$T/deadvenv/bin" && echo 'home = /gone' > "$T/deadvenv/pyvenv.cfg" && ln -sf "$T/gone/python3.12" "$T/deadvenv/bin/python"
+check "an arm venv whose base Python is gone: STOP with the rebuild command" 2 "STOP: $T/deadvenv/bin/python does not run (its base Python is gone?); rebuild it: bash $T/scripts/rebuild-arm-venv.sh --venv $T/deadvenv" "$(stub clean3 "$TAP_OK")" "$T/deadvenv/bin/python"
 check "no arm venv: STOP, exit 2" 2 "STOP: $T/py-bad cannot import mujoco and cedarpy (LD_LIBRARY_PATH=$T); set ARM_PYTHON to the arm venv's python" "$(stub clean2 "$TAP_OK")" "$T/py-bad"
 check "a node arm test that skips makes both runs broken" 1 "$(r 2)" "$(stub armskip "echo 'ok 1 - arm # SKIP no Python with mujoco and cedarpy'; echo '# tests 1'; echo '# skipped 1'; $PY_TAP")"
 check "a Python arm test that skips makes both runs broken" 1 "$(r 2)" "$(stub pyarmskip "echo 'ok 1 - a'; echo '# tests 1'; echo 'ok 1 - py: t.A.test_arm # SKIP MuJoCo is not installed in this Python'; echo '# py tests 1'")"
