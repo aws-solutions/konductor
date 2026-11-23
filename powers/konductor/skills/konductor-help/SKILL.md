@@ -72,7 +72,7 @@ list or hardcoded SOP count.
 
 The `konductor`, `k-architect` and `k-developer` agent files carry the
 `aws-mcp` entry from their `dependencies.mcpRegistry`, so those three agents
-launch AWS MCP themselves. It needs `uvx`; without it the server fails to start and the
+launch AWS MCP themselves. It needs `uvx` (the proxy needs Python 3.11 or newer; `uvx` downloads one if none is installed); without it the server fails to start and the
 agents work without it. It starts with `--skip-auth`, so documentation search
 and skills work without AWS credentials. Kiro does not configure the other
 `dependencies.mcpRegistry` entries automatically. Users configure them in

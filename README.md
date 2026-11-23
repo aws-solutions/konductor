@@ -447,7 +447,8 @@ mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solution
 ### 🔌 Integrations
 
 AWS MCP comes pre-wired for `konductor`, `k-architect` and `k-developer` on Claude Code and Kiro
-CLI, launched through `mcp-proxy-for-aws-cli==2.0.0`. You need `uvx`. Without it the server fails to
+CLI, launched through `mcp-proxy-for-aws-cli==2.0.0`. You need `uvx`. The proxy needs Python 3.11 or newer; `uvx`
+downloads one if none is installed. Without `uvx` the server fails to
 start and the agents work without AWS lookups. The agents start the proxy with `--skip-auth`, so
 documentation search and skills work without AWS credentials; calls that act on an account still
 need them. `k-architect` and `k-developer` get the full server, including AWS API tools, so scope

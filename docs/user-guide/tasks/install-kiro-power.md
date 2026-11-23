@@ -170,7 +170,8 @@ configuration:
 }
 ```
 
-Install `uvx` and configure AWS credentials before using AWS API tools. The
+Install `uvx` and configure AWS credentials before using AWS API tools. The proxy
+needs Python 3.11 or newer; `uvx` downloads one if none is installed. The
 first start downloads the proxy through `uvx`, which can delay the agent's
 first reply. The proxy is pinned for repeatable client behavior; the managed
 endpoint supplies current AWS documentation and skills. `k-architect` and

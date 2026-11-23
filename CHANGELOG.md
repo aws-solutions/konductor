@@ -442,6 +442,8 @@ not per individual commit.
 - `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
   over `.transform()` for cross-field validation, defensive checks on array index access, and
   TypeScript utility types.
+- Update the aws-mcp proxy to mcp-proxy-for-aws-cli 2.0.0. It needs Python 3.11 or newer; `uvx`
+  downloads one if none is installed.
 
 ### Removed
 
@@ -643,6 +645,8 @@ not per individual commit.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
+- Update Rust dependencies, with fixes for RUSTSEC-2026-0381, -0382, -0386, -0457, -0462 and
+  -0486.
 
 ## [1.2.0] - 2026-10-26
 
