@@ -15,15 +15,17 @@
 # Env: KP_PILOT_WORK (work dir, outside the home folder; default /var/tmp/konductor-kp-pilot), KP_PILOT_RUN (run id,
 # default kp-pilot-1), KP_PILOT_MODEL (the agent, default claude-sonnet-5.5), KP_BASELINES (the unit baselines dir,
 # default bench/cap/unit-baselines; the baseline must be signed off), KP_PILOT_LEDGER (default <work>/run-ledger.jsonl),
-# KP_CONTROLS_ONLY (any value: run the two controls only), KP_KIRO_BIN, KP_AUTH_DB, KP_PILOT_LOCK.
+# KP_CONTROLS_ONLY (any value: run the two controls only), KP_ROLE_LINE (any value: both arms of each unit task start
+# with the role line, FW-36), KP_KIRO_BIN, KP_AUTH_DB, KP_PILOT_LOCK.
 set -euo pipefail
 
 main() {
-  local here repo dry cap work run model bin authdb lock baselines ledger only stale=""
+  local here repo dry cap work run model bin authdb lock baselines ledger only role stale=""
   here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   baselines=${KP_BASELINES:-}
   ledger=${KP_PILOT_LEDGER:-}
   only=${KP_CONTROLS_ONLY:-}
+  role=${KP_ROLE_LINE:-}
   repo=$(cd "$here/../../.." && pwd)
   dry=0
   cap=""
@@ -37,7 +39,7 @@ main() {
     case "$1" in
       --dry-run) dry=1 ;;
       --cap) cap=${2:?--cap needs a number}; shift ;;
-      -h|--help) sed -n '2,18p' "$0"; return 0 ;;
+      -h|--help) sed -n '2,19p' "$0"; return 0 ;;
       *) echo "unknown argument: $1" >&2; return 64 ;;
     esac
     shift
@@ -47,6 +49,7 @@ main() {
     --ledger "${ledger:-$work/run-ledger.jsonl}" --work "$work/scratch" --out "$work/runs" --kiro-bin "$bin" --repo-root "$repo")
   [ -n "$baselines" ] && cmd+=(--baselines "$baselines")
   [ -n "$only" ] && cmd+=(--controls-only)
+  [ -n "$role" ] && cmd+=(--role-line)
   [ -n "$cap" ] && cmd+=(--cap "$cap")
   [ -n "$authdb" ] && cmd+=(--auth-db "$authdb")
   if [ "$dry" = 1 ]; then

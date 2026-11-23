@@ -16,7 +16,7 @@
 //   dropArm      (optional) how `cap variant --drop` removes it (default "remove file and lists")
 //   entryAgents  (optional) units a user starts: no drop arm
 //   perSession   (optional) true when every session of a listing agent carries it
-//   claimNoun, selection {test, note}, paidFrame {answer, noun, tasks}: needed for a unit stage (stage 2 and up)
+//   claimNoun, selection {test, note}, paidFrame {answer, noun, tasks, role?}: needed for a unit stage (stage 2 and up)
 
 const fs = require('node:fs');
 const path = require('node:path');

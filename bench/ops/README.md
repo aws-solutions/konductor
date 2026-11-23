@@ -76,6 +76,7 @@ is the docs owner's page and points here.
 | `run-pilot-replace.sh` | Keep-or-prune pilot option B: replaces one task. Paid. |
 | `run-pilot-run.sh` | Keep-or-prune pilot step 3: the quick run. Paid. |
 | `run-pilot-rerun.sh` | Keep-or-prune pilot step 3 again after pilot 1: controls only (cap 1,800), then `--unit` (cap 3,375). Paid. |
+| `run-pilot-v2-rerun.sh` | Keep-or-prune pilot rerun on baseline v2 with the FW-36 role line on both unit arms; needs the v2 sign-off and the Fable review mark (or `--skip-fable-review`). Paid (cap 3,240, `UNIT_CAP`); `--plan` is free. |
 | `run-pilot-v2-rewrite.sh` | Keep-or-prune pilot baseline v2: the 5 BAD tasks written again (deepseek-3.2 writes, glm-5 reviews), the other 10 copied byte for byte. Paid (cap 120, at most 4 calls); `--dry-run` is free. |
 | `run-reruns-2.sh` | Second rerun batch of the pilot waves. |
 | `run-reruns.sh` | Reruns of the pilot waves whose keys changed. |
@@ -105,6 +106,7 @@ is the docs owner's page and points here.
 | `test-run-fw30-rewrite.sh` | Stub run of `run-fw30-rewrite.sh` on its paid path with the fake kiro-cli. Free. |
 | `test-run-full-suite-twice.sh` | Superseded by `test-run-full-suite-twice-v2.sh`. |
 | `test-run-pilot-option-b.sh` | Stub run of the 15-task path and option B. Free. |
+| `test-run-pilot-v2-rerun.sh` | Paid-path test of `run-pilot-v2-rerun.sh` with the fake kiro-cli. Free. |
 | `test-run-pilot-v2-rewrite.sh` | Paid-path test of `run-pilot-v2-rewrite.sh` with the fake kiro-cli. Free. |
 | `test-run-pilot-wrappers.sh` | Stub run of the pilot wrappers on their paid paths. Free. |
 | `test-run-wave0-fix.sh` | Test of `run-wave0-fix.sh`. Free. |

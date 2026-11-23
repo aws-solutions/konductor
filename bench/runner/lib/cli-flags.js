@@ -72,7 +72,7 @@ const FLAGS = {
   'cap nudge-check': ['run', 'json'],
   'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
   'cap units': ['kind', 'coverage', 'out', 'repo-root', 'json', 'list'],
-  'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'delegation', 'estimate', 'depth', 'max-units', 'repo-root', 'cap', 'ledger', 'work', 'model', 'judges', 'kiro-bin', 'auth-db', 'dry-run', 'baselines', 'render', 'controls-only'],
+  'cap unit-stage': ['kind', 'unit', 'run', 'out', 'provider', 'delegation', 'estimate', 'depth', 'max-units', 'repo-root', 'cap', 'ledger', 'work', 'model', 'judges', 'kiro-bin', 'auth-db', 'dry-run', 'baselines', 'render', 'controls-only', 'role-line'],
   'cap unit-author': ['kind', 'unit', 'work', 'ledger', 'cap', 'briefs', 'out', 'kiro-bin', 'auth-db', 'repo-root', 'dry-run', 'replace', 'sign-off', 'rewrite', 'from'],
   'cap delegation': ['agent', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'repo-root', 'json'],
   'cap select': ['skill', 'run', 'out', 'reps', 'stub-behaviour', 'requests', 'from-run', 'write-tasks', 'repo-root', 'json', 'usage-runs'],
@@ -94,7 +94,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenar
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'reask-unquoted', 'fail-on-hole', 'stats', 'apply', 'remove-originals', 'rejudge', 'introspect', 'ids', 'late', 'controls-only', 'allow-mixed-pass', 'list',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'reask-unquoted', 'fail-on-hole', 'stats', 'apply', 'remove-originals', 'rejudge', 'introspect', 'ids', 'late', 'controls-only', 'role-line', 'allow-mixed-pass', 'list',
 ]);
 
 // Positional arguments a command takes after its name (and subcommand): the directory of `scenarios lint DIR`.

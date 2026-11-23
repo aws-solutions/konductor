@@ -24,6 +24,17 @@ const LOADING_ARMS = new Set(['with', 'aa']);
 /** The keep arm's prompt: the kind's frame line (units.js PAID_FRAME), the unit's text, then the request. */
 const withUnit = (frame, text, request) => `${frame}\n<<<FILE\n${text}\nFILE>>>\n\n${request}`;
 
+/**
+ * The answer prompt of one arm: the keep arm gets the unit under its frame line, the drop arm the bare request. When
+ * the subject carries a role line (`skill.role`, the kind's PAID_FRAME role, FW-36), both arms start with it, so the gap
+ * measures the file and not knowing the role. A control's skill has no role, so its prompts never change.
+ */
+function answerPrompt(frame, skill, arm, request) {
+  const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
+  const body = loaded ? withUnit(frame, skill.text, request) : request;
+  return { loaded, prompt: skill?.role ? `${skill.role}\n\n${body}` : body };
+}
+
 const checklistPrompt = (request, count) => [
   `Write exactly ${count} checklist items that a good answer to the request below must meet. Base them on the request alone.`,
   'Each item is one statement a reader can check against an answer.',
@@ -46,8 +57,7 @@ function createKiroProvider({ paid, callsDir, writerModel, frame }) {
   const call = (kind, model, prompt) => ({ model, prompt, out: path.join(callsDir, kind, sha256(`${model}\n${prompt}`).slice(0, 24)), label: kind, ...paid });
 
   function answer({ request, skill, arm, replicate = 0, model }) {
-    const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
-    const prompt = loaded ? withUnit(frame, skill.text, request) : request;
+    const { loaded, prompt } = answerPrompt(frame, skill, arm, request);
     // shortcut: quick depth only, so one answer per task and arm; a deep run needs a replicate in the key and full sessions.
     if (replicate) throw new Error('the paid provider runs quick depth only (one answer per task and arm)');
     return { text: paidCall(call('answer', model, prompt)).text, loaded, model, version: VERSION };
@@ -118,8 +128,7 @@ function createPlanProvider({ callsDir, writerModel, frame, sectionOf }) {
     return cached;
   };
   function answer({ request, skill, arm, model }) {
-    const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
-    const prompt = loaded ? withUnit(frame, skill.text, request) : request;
+    const { loaded, prompt } = answerPrompt(frame, skill, arm, request);
     const file = savedReply(callsDir, 'answer', model, prompt);
     const text = once(file, sectionOf({ request })) ? read(file) : `NEW ANSWER ${sha256(`${model}\n${prompt}`)}`;
     return { text, loaded, model, version: VERSION };
@@ -139,4 +148,4 @@ function createPlanProvider({ callsDir, writerModel, frame, sectionOf }) {
   return { provider: { name: 'plan', version: VERSION, answer, writeChecklist, judge }, tally };
 }
 
-module.exports = { VERSION, createKiroProvider, createPlanProvider, savedReply, withUnit, checklistPrompt, judgePrompt };
+module.exports = { VERSION, createKiroProvider, createPlanProvider, savedReply, withUnit, answerPrompt, checklistPrompt, judgePrompt };

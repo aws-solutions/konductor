@@ -148,7 +148,7 @@ function rerenderUnitRecord({ file, baselinesDir = UNIT_BASELINES_DIR }) {
  * @param {object|null} [o.delegation] a stage 2 delegation result (delegation.js), kept beside the effect, never combined
  * @returns {{ record, file, markdown }}
  */
-function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid = null, writerModel = PILOT_WRITER, depths = ['quick', 'deep'], baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, delegation = null, controlsOnly = false, createdAt = new Date().toISOString() }) {
+function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid = null, writerModel = PILOT_WRITER, depths = ['quick', 'deep'], baselinesDir = UNIT_BASELINES_DIR, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, delegation = null, controlsOnly = false, roleLine = false, createdAt = new Date().toISOString() }) {
   if (kind === 'skill') throw new Error('skills are stage 1: use cap keep-prune');
   if (!STAGE_OF_KIND[kind]) throw new Error(`--kind takes ${UNIT_KIND_NAMES} (got ${JSON.stringify(kind)})`);
   if (!PROVIDERS.includes(provider)) throw new Error(`provider ${JSON.stringify(provider)} is not available: stages 2 to 4 have the stub provider and the paid kiro provider`);
@@ -168,7 +168,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
     const ladder = loadDoseLadder();
     const model = isPaid ? createKiroProvider({ paid, callsDir: path.join(outDir, runId, 'calls'), writerModel, frame: PAID_FRAME[kind].answer }) : createStubProvider({ ladder });
     const store = judgmentStore(path.join(outDir, runId, 'judgments'));
-    const subject = { name: unit.id, skill: { name: unit.name, text: unit.text }, batches: baseline.batches };
+    const subject = { name: unit.id, skill: subjectSkill(unit, kind, roleLine), batches: baseline.batches };
     for (const depth of depths) {
       const before = isPaid ? ledgerSpent(paid.ledger) : 0;
       const check = checkDepth({ depth, subject, convention: loadConvention(), ladder, provider: model, subjectModel, judges, store, replicates, stopOnControlFail: isPaid, controlsOnly });
@@ -184,7 +184,7 @@ function runUnitStage({ kind, name, repo, runId, outDir, provider = 'stub', paid
   const panel = judgePanel({ subjectModel, judges });
   const record = {
     schema: UNIT_SCHEMA_ID, createdAt, stage: STAGE_OF_KIND[kind], kind, name,
-    claim: `${CLAIM}, with the ${UNIT_STAGE_KINDS[kind].claimNoun} in place of a skill${isPaid ? ` (paid run ${runId}, ${depths.join(' and ')} depth)` : ' (stub data: never a measurement)'}`,
+    claim: `${CLAIM}, with the ${UNIT_STAGE_KINDS[kind].claimNoun} in place of a skill${isPaid ? ` (paid run ${runId}, ${depths.join(' and ')} depth)` : ' (stub data: never a measurement)'}${roleLine ? `; both arms of each unit task start with the role line "${roleOf(kind)}"` : ''}`,
     unit: { files: unit.files, sha256: unit.sha256, estTokens: row.estTokens }, ablation: row.ablation, selection: row.selection,
     listedBy: row.listedBy, panel: { families: JUDGE_FAMILIES, seated: panel.seats, why: panel.why },
     baseline: baseline ? { unitSha256: baseline.unit_sha256, source: baseline.source ?? null } : null, delegation,
@@ -301,9 +301,10 @@ function cmdUnitStage(opts) {
   const baselinesDir = val(opts.baselines) ? path.resolve(val(opts.baselines)) : UNIT_BASELINES_DIR;
   const outDir = path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'unit-stage'));
   const controlsOnly = Boolean(opts['controls-only']);
-  if (opts['dry-run']) return printUnitPlan({ kind: kinds[0], name, repo, depths, paid, baselinesDir, runId: val(opts.run), outDir, controlsOnly, ...models });
+  const roleLine = Boolean(opts['role-line']);
+  if (opts['dry-run']) return printUnitPlan({ kind: kinds[0], name, repo, depths, paid, baselinesDir, runId: val(opts.run), outDir, controlsOnly, roleLine, ...models });
   const delegation = val(opts.delegation) ? readJsonFile(path.resolve(val(opts.delegation))) : null;
-  const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir, provider, paid, depths, baselinesDir, delegation, controlsOnly, ...models });
+  const r = runUnitStage({ kind: kinds[0], name, repo, runId: val(opts.run) ?? '', outDir, provider, paid, depths, baselinesDir, delegation, controlsOnly, roleLine, ...models });
   console.log(`${r.markdown}\nwrote ${r.file} and its .md${provider === 'stub' ? ' (stub data: never a measurement)' : ''}`);
   for (const [depth, b] of Object.entries({ quick: r.record.quick, deep: r.record.deep })) {
     for (const w of (b?.noData ?? []).filter((x) => /^FLAG: |the unit was not run/.test(x))) console.error(`${depth}: ${w}`);
@@ -314,7 +315,7 @@ function cmdUnitStage(opts) {
  * The free plan of one unit's run (`--dry-run`): the calls by kind, the worst case at 15 per call, the ledger's spend
  * against the cap, the judge panel, and anything that would stop the run before its first call. Makes no call.
  */
-function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BASELINES_DIR, runId = null, outDir = null, controlsOnly = false, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
+function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BASELINES_DIR, runId = null, outDir = null, controlsOnly = false, roleLine = false, subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES }) {
   const unit = unitManifest({ repo, kind, name });
   const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
   const { why, baseline } = blockers({ unit, row, baselinesDir });
@@ -332,13 +333,14 @@ function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BAS
     `tasks: ${tasks}; a reading needs ${minCounted(tasks)} of them counted (the copied rule, 12 of every 16, rounded up)`,
   ];
   // With a run id, the plan reads the saved replies of that run: a rerun pays only the calls not made yet.
-  const plan = paid && runId && baseline && depths.length === 1 && depths[0] === 'quick' ? planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir, subjectModel, judges }) : null;
+  const plan = paid && runId && baseline && depths.length === 1 && depths[0] === 'quick' ? planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir, subjectModel, judges, roleLine }) : null;
   const fitText = plan ? 'what this step needs is below, by section' : (spent + e.credits.worst <= paid?.cap ? 'the worst case fits' : 'the worst case does not fit: the run stops at the cap and a rerun with a larger cap resumes it');
   if (paid) lines.push(`ledger ${paid.ledger ?? '(none given)'}: spent ${spent}; cap ${Number.isFinite(paid.cap) ? paid.cap : '(none given)'}; ${fitText}`);
   if (baseline) lines.push(`baseline ${baseline.unit_sha256 === unit.sha256 ? 'fresh' : 'stale'}, signed off by ${signedOffBy(baseline) ?? 'nobody yet'}`);
   if (plan) {
     const line = (label, t, paidNow) => `${label}: ${t.calls} calls, ${t.cached} cached (free), ${t.new} new${paidNow ? `, ${fmt(t.new * WORST_PER_CALL)} counted at ${WORST_PER_CALL} per call` : ' (not run in this step)'}`;
     lines.push(`run ${runId}, by section${controlsOnly ? ' (controls only: the unit is not run in this step)' : ''}:`);
+    if (roleLine) lines.push(`  role line for both arms of each unit task: "${roleOf(kind)}" (control prompts unchanged)`);
     lines.push(`  ${line('convention control', plan.convention, true)}`);
     lines.push(`  ${line('dose ladder', plan.ladder, true)}`);
     lines.push(`  ${line('the unit', plan.unit, !controlsOnly)}`);
@@ -354,7 +356,7 @@ function printUnitPlan({ kind, name, repo, depths, paid, baselinesDir = UNIT_BAS
  * a call is cached when its saved reply is under `<outDir>/<runId>/calls`, so a rerun of the same run id pays only the
  * new ones. Free: the paid provider's prompts and keys, no call. Null when the unit has no baseline.
  */
-function planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir = UNIT_BASELINES_DIR, subjectModel = PILOT_SUBJECT, judges = PILOT_JUDGES, writerModel = PILOT_WRITER }) {
+function planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir = UNIT_BASELINES_DIR, subjectModel = PILOT_SUBJECT, judges = PILOT_JUDGES, writerModel = PILOT_WRITER, roleLine = false }) {
   const unit = unitManifest({ repo, kind, name });
   const row = listUnits({ repo, kind, baselinesDir }).find((u) => u.id === unit.id);
   const { baseline } = blockers({ unit, row, baselinesDir });
@@ -368,11 +370,21 @@ function planUnitCalls({ kind, name, repo, runId, outDir, baselinesDir = UNIT_BA
     ? (convPrompts.has(request) ? 'convention' : 'unit')
     : (convIds.has(taskId) ? 'convention' : ladderIds.has(taskId) ? 'ladder' : 'unit'));
   const { provider, tally } = createPlanProvider({ callsDir: path.join(outDir, runId, 'calls'), writerModel, frame: PAID_FRAME[kind].answer, sectionOf });
-  const subject = { name: unit.id, skill: { name: unit.name, text: unit.text }, batches: baseline.batches };
+  const subject = { name: unit.id, skill: subjectSkill(unit, kind, roleLine), batches: baseline.batches };
   checkDepth({ depth: 'quick', subject, convention, ladder, provider, subjectModel, judges: [...judges], store: judgmentStore(null) });
   const zero = { calls: 0, cached: 0, new: 0 };
   return { convention: tally.convention ?? zero, ladder: tally.ladder ?? zero, unit: tally.unit ?? zero };
 }
+
+/** The role line of a unit kind (PAID_FRAME[kind].role, FW-36); throws when the kind has none. */
+function roleOf(kind) {
+  const role = PAID_FRAME[kind].role;
+  if (!role) throw new Error(`--role-line: the ${kind} kind has no role line (paidFrame.role in bench/cap/units/${kind}.json)`);
+  return role;
+}
+
+/** The subject's skill: the unit's text, plus the kind's role line for both arms when `roleLine` is set. */
+const subjectSkill = (unit, kind, roleLine) => ({ name: unit.name, text: unit.text, ...(roleLine ? { role: roleOf(kind) } : {}) });
 
 /** The reason a paid run may not use the convention control today: a task date already in the past makes it not neutral. */
 const staleControlWhy = (now = new Date()) => {
