@@ -250,10 +250,11 @@ def links(text):
         scheme, slashes, rest = m.group(1).lower(), m.group(2), m.group(3)
         pos = m.start(3)
         if scheme in SPECIAL:
-            if (rest and (slashes or not PROSE_TAIL.fullmatch(rest))) or len(slashes) > 2:
-                yield scheme, m.group(0), rest
-        elif len(slashes) >= 2 and (rest or len(slashes) > 2):
-            yield scheme, m.group(0), rest
+            is_link = (rest and (slashes or not PROSE_TAIL.fullmatch(rest))) or len(slashes) > 2
+        else:
+            is_link = len(slashes) >= 2 and (rest or len(slashes) > 2)
+        if is_link:
+            yield scheme, m.group(0)[: m.start(3) - m.start()], rest
 
 # The authority ends at the first / ? # or backslash; userinfo before the
 # last @ and a numeric port are dropped. Anything that is not a plain ASCII

@@ -1603,6 +1603,19 @@ def test_non_https_urls_pass_without_an_allowlist(tmp_path):
     assert run_validator(proposed, target, cwd=tmp_path).returncode == 0
 
 
+@pytest.mark.parametrize(
+    "url",
+    ["ftp://evil.test/b", "HTTPS:evil.test/x", "https:/evil.test", "https:\\\\evil.test/x"],
+)
+def test_reject_message_names_the_blocked_url_exactly(tmp_path, url):
+    write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    proposed = f"- [2026-11-23] [origin:agent] See {url} for details\n"
+    result = run_validator(proposed, target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert f"REJECT: blocked external URL: {url}\n" in result.stderr, result.stderr
+
+
 def test_a_blocked_url_rejects_the_entry_after_an_allowed_one(tmp_path):
     write_config(tmp_path / ".konductor" / "memory-config.json", ["*.example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
