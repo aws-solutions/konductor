@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Keep or prune, stages 2 to 4: agent files, SOPs and always-loaded context
 
-2026-11-23, version 4: the owner approved the first pilot; a paid run now needs a signed-off baseline; a newcomer
-pass. [← capability playbook](cap-playbook.md) · [reference](reference.md)
+2026-11-23, version 5: pilot 1 gave NO DATA (a control failed); the control is fixed and a controls-only rerun is
+ready. [← capability playbook](cap-playbook.md) · [reference](reference.md)
 
-**Where it stands.** Everything below is built and tested without a model. No unit has been measured yet. The first
-pilot, the always-loaded context file `k-orchestrator-shared`, is approved (writing cap 120, run cap 8,760 counted
-credits) and waits for the owner to run its three steps: write the 16 tasks, sign them off, run the quick check
-([The paid path](#the-paid-path-built-never-run-on-a-real-model)). Stages 2 to 4 after the pilot each have their own
-plan and cap to approve (Appendix D).
+**Where it stands.** No unit has been measured yet. The first pilot, the always-loaded context file
+`k-orchestrator-shared`, ran on 2026-11-23: its 15 tasks were written and signed off, and the quick check stopped
+before the unit because the convention control failed. The control is fixed (free). Next is a paid rerun of the
+controls only, then the unit, each the owner's call ([Pilot 1 and the rerun](#pilot-1-and-the-rerun)). Stages 2 to 4
+after the pilot each have their own plan and cap to approve (Appendix D).
 
 Words used here: a **unit** is one agent file, SOP or context file. The **keep arm** answers with the unit, the
 **drop arm** without it. **Quick depth** is one answer per task and arm; **deep depth** is three, plus a repeat of the
@@ -110,6 +110,42 @@ With 16 tasks, a gap under about 0.75 points on the 1 to 5 scale cannot be seen.
 against konductor without the file (`cap variant --drop`). `bench/runner/test/cap-paid.test.js` runs both scripts and both steps end to end on a fake
 kiro-cli (`fake-kp-kiro.js`).
 
+## Pilot 1 and the rerun
+
+**Pilot 1 (run `kp-pilot-1`, commit `8a84d860`): NO DATA.** It made 240 calls (3,600 counted, about 43 real). The dose
+ladder passed. The convention control failed its check (b): reading A must not move, and it moved by 0.25, interval
+[0.011, 0.482]. The run then stopped before the unit's 225 calls, as the pass rule says.
+
+**Why.** The control's task dates (28 Oct to 30 Nov 2026) had passed by the run day. Without the skill the model
+flagged the stale dates and wrote `[CONFIRM]` placeholders. With it, the guard rule r06 ("not placeholders") told it
+to use the dates as given. So the skill raised the request-only score, and the control was no longer neutral. The
+full diagnosis is in the workspace report `pilot-diagnosis-2026-11-23.md`.
+
+**The fix (free, in `bench/cap/controls/`).**
+
+| Change | Effect |
+| --- | --- |
+| Task dates moved to 2037, same days and months | They cannot go stale before 2037. |
+| Every task prompt ends with "take the dates and facts as given" | Both arms get the same instruction about placeholders. |
+| r06 in the control's `SKILL.md` restates that line | The skill no longer adds a quality rule the drop arm lacks. |
+| `kp-control-dates.test.js` | Fails when a control task date is before the run date. A paid run also refuses one. |
+| Each control's checks in the record | The record and its `.md` print PASS or FAIL per control, with each failed check's numbers. |
+
+The edited control is a bench fixture, not a Konductor skill (`bench/cap/controls/README.md`).
+
+**The rerun (run `kp-pilot-2`).** It reuses pilot 1's saved calls and dose-ladder judgments, so the ladder costs
+nothing. The convention control's prompts changed, so its calls are new.
+
+| Part | Command (workspace `scripts/`) | New calls | Counted credits | Cap |
+| --- | --- | --- | --- | --- |
+| Controls only | `run-pilot-rerun.sh` | 120 (16 answers, 8 checklists, 96 judge) | 1,800 | 1,800 |
+| Dose ladder | (inside the controls part) | 0 of 120, plus 192 judgments, all cached | 0 | |
+| The unit | `run-pilot-rerun.sh --unit` | 225 | 3,375 | 3,375 |
+
+The controls part runs on the newest `feat/bench-pilot-nk` commit, pins it, prints each control's checks and stops.
+The unit part refuses to start unless both controls passed. Each part has its own ledger, and `--dry-run` shows its
+plan for free. `cap unit-stage --controls-only` (env `KP_CONTROLS_ONLY` in `run-pilot.sh`) is the mode underneath.
+
 ## What is missing
 
 1. Unit baselines. No unit has one. Each needs 16 tasks with rubrics, in two batches of 8, written by one model family
@@ -147,7 +183,8 @@ Decided on 2026-11-23: the design, the pilot unit `context:k-orchestrator-shared
 reviewing its tasks, Kiro CLI credits as the provider, and the pilot's caps (120 counted credits to write, 8,760 to
 run). Still open:
 
-1. The sign-off of the pilot's 16 tasks (step 2 above).
+1. The pilot rerun: the controls part (cap 1,800), then, if both controls pass, the unit part (cap 3,375). The 15
+   tasks were signed off on 2026-11-23.
 2. After the pilot: each later stage's units and caps (Appendix D lists what fits quick depth).
 3. The deep-depth paid provider and the live delegation run, which are not built.
 

@@ -12,9 +12,10 @@
 //   judge     each seat is its own model. It sees the checklist and the answer only, never the arm or the unit.
 // Every reply is saved under `callsDir` by a hash of its model and prompt, so a rerun reads it back free.
 
+const fs = require('node:fs');
 const path = require('node:path');
 const { sha256 } = require('../runner/lib/util.js');
-const { paidCall, paidJson, ReplyUnreadable } = require('./paidcall.js');
+const { paidCall, paidJson, ReplyUnreadable, jsonOf } = require('./paidcall.js');
 
 const VERSION = 'kiro-cli-one-turn/1';
 const LABELS = new Set(['MET', 'PARTIAL', 'MISSING']);
@@ -91,4 +92,51 @@ function createKiroProvider({ paid, callsDir, writerModel, frame }) {
   return { name: 'kiro', version: VERSION, answer, writeChecklist, judge, stats };
 }
 
-module.exports = { VERSION, createKiroProvider, withUnit, checklistPrompt, judgePrompt };
+/** Where the paid provider saves the reply of one call (`<callsDir>/<kind>/<hash>.json`), so a plan can see it is cached. */
+const savedReply = (callsDir, kind, model, prompt) => path.join(callsDir, kind, `${sha256(`${model}\n${prompt}`).slice(0, 24)}.json`);
+
+/**
+ * A free stand-in with the paid provider's prompts and cache keys, for a dry run: it makes no call, and counts each
+ * call the paid run would make as cached (its saved reply exists, and is read back) or new. A new answer gets a
+ * unique stand-in text, so the judgments of it count as new too. `sectionOf({ request, taskId })` names the section
+ * (convention, ladder, unit) a call belongs to. Returns { provider, tally }: tally[section] = { calls, cached, new }.
+ */
+function createPlanProvider({ callsDir, writerModel, frame, sectionOf }) {
+  const tally = {};
+  const count = (section, cached) => {
+    const t = (tally[section] ??= { calls: 0, cached: 0, new: 0 });
+    t.calls += 1;
+    if (cached) t.cached += 1; else t.new += 1;
+  };
+  const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8')).text;
+  const seen = new Set();
+  // A call made twice in one run is paid once (the second reads the first's saved reply).
+  const once = (file, section) => {
+    const cached = fs.existsSync(file);
+    if (!seen.has(file)) count(section, cached);
+    seen.add(file);
+    return cached;
+  };
+  function answer({ request, skill, arm, model }) {
+    const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
+    const prompt = loaded ? withUnit(frame, skill.text, request) : request;
+    const file = savedReply(callsDir, 'answer', model, prompt);
+    const text = once(file, sectionOf({ request })) ? read(file) : `NEW ANSWER ${sha256(`${model}\n${prompt}`)}`;
+    return { text, loaded, model, version: VERSION };
+  }
+  function writeChecklist({ request, rubric = null, count: n = 5 }) {
+    if (Array.isArray(rubric) && rubric.length) return [...rubric];
+    const file = savedReply(callsDir, 'checklist', writerModel, checklistPrompt(request, n));
+    // A cached checklist is read back, because the judge prompts (and so their cache keys) are built from its items.
+    if (once(file, sectionOf({ request }))) return jsonOf(read(file)).items;
+    return Array.from({ length: n }, (_, i) => `NEW ITEM ${i + 1} ${sha256(request)}`);
+  }
+  function judge({ seat, checklist, answer: text, taskId }) {
+    const file = savedReply(callsDir, 'judge', seat, judgePrompt(checklist, text));
+    once(file, sectionOf({ taskId }));
+    return { labels: checklist.map(() => 'MET'), version: `${VERSION} ${seat}` };
+  }
+  return { provider: { name: 'plan', version: VERSION, answer, writeChecklist, judge }, tally };
+}
+
+module.exports = { VERSION, createKiroProvider, createPlanProvider, savedReply, withUnit, checklistPrompt, judgePrompt };

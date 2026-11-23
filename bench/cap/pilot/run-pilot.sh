@@ -14,13 +14,16 @@
 # under the run folder, so rerunning after a stop (or with a larger cap) makes only the missing calls.
 # Env: KP_PILOT_WORK (work dir, outside the home folder; default /var/tmp/konductor-kp-pilot), KP_PILOT_RUN (run id,
 # default kp-pilot-1), KP_PILOT_MODEL (the agent, default claude-sonnet-5.5), KP_BASELINES (the unit baselines dir,
-# default bench/cap/unit-baselines; the baseline must be signed off), KP_KIRO_BIN, KP_AUTH_DB, KP_PILOT_LOCK.
+# default bench/cap/unit-baselines; the baseline must be signed off), KP_PILOT_LEDGER (default <work>/run-ledger.jsonl),
+# KP_CONTROLS_ONLY (any value: run the two controls only), KP_KIRO_BIN, KP_AUTH_DB, KP_PILOT_LOCK.
 set -euo pipefail
 
 main() {
-  local here repo dry cap work run model bin authdb lock baselines stale=""
+  local here repo dry cap work run model bin authdb lock baselines ledger only stale=""
   here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   baselines=${KP_BASELINES:-}
+  ledger=${KP_PILOT_LEDGER:-}
+  only=${KP_CONTROLS_ONLY:-}
   repo=$(cd "$here/../../.." && pwd)
   dry=0
   cap=""
@@ -34,15 +37,16 @@ main() {
     case "$1" in
       --dry-run) dry=1 ;;
       --cap) cap=${2:?--cap needs a number}; shift ;;
-      -h|--help) sed -n '2,17p' "$0"; return 0 ;;
+      -h|--help) sed -n '2,18p' "$0"; return 0 ;;
       *) echo "unknown argument: $1" >&2; return 64 ;;
     esac
     shift
   done
   local -a cmd=(node "$repo/bench/runner/bench.js" cap unit-stage --kind context --unit k-orchestrator-shared
     --provider kiro --run "$run" --depth quick --model "$model" --judges qwen3-coder-next,gpt-5.6-luna,grok-4.7
-    --ledger "$work/run-ledger.jsonl" --work "$work/scratch" --out "$work/runs" --kiro-bin "$bin" --repo-root "$repo")
+    --ledger "${ledger:-$work/run-ledger.jsonl}" --work "$work/scratch" --out "$work/runs" --kiro-bin "$bin" --repo-root "$repo")
   [ -n "$baselines" ] && cmd+=(--baselines "$baselines")
+  [ -n "$only" ] && cmd+=(--controls-only)
   [ -n "$cap" ] && cmd+=(--cap "$cap")
   [ -n "$authdb" ] && cmd+=(--auth-db "$authdb")
   if [ "$dry" = 1 ]; then

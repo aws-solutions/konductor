@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "skill": "convention-control",
-  "skill_md_sha256": "4dd5f1473dd356c5a9d009d4b2d0638525885b79dba9775c801ae2f281ca8e82",
+  "skill_md_sha256": "ef2fb128f07b4d56faa5b1d53d19710f7bec1cdb5bd4842feb7853dd678fb05c",
   "request_context": "A request to write a short internal note for colleagues: a status update, an incident summary, a meeting recap, a handoff, a release summary, a decision note or an escalation summary, with the facts and dates pasted into the request.",
   "rules": [
     {
@@ -46,10 +46,10 @@
     },
     {
       "id": "convention-control-r06",
-      "source_quote": "Use the names, dates and figures of the request itself, not placeholders.",
+      "source_quote": "When the request says its facts are correct, use them as given.",
       "class": "generic",
       "outcome": "The note states the concrete names, dates and figures of the request instead of placeholders or generalities.",
-      "why": "Any careful writer does this with or without the skill; it is the control's guard rule, met by both arms.",
+      "why": "Every task prompt says the same thing, so both arms get this instruction; it is the control's guard rule, met by both arms.",
       "scenario_hint": "Any short internal note with facts pasted into the request."
     }
   ]
